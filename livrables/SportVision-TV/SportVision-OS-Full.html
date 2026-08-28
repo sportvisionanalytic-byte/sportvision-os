@@ -928,16 +928,26 @@ const NAV={
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
+  // Refonte Commercial (spec "Refonte Interface Commercial", 28/08/2026) : le rôle
+  // recevait jusqu'ici 3 écrans admin non filtrés et sans rapport avec la vente
+  // (reservationsclubs/demandesclub/connectcomptes — mêmes fonctions que admin/sec, aucun
+  // cantonnement par portefeuille commercial, ajoutés à des dates différentes sans lien
+  // avec ce rôle) — retirés, conformément à la liste "À exclure" de la spec. "Prospects"
+  // (liste) et "Agenda" sont nouveaux (le Pipeline existant est un Kanban, pas une liste
+  // filtrable ; aucun agenda commercial n'existait). Devis/Objectifs restent accessibles
+  // (vrais sous-systèmes déjà construits, réutilisés tels quels) mais en écrans de détail
+  // secondaires, pour respecter le principe "5 entrées principales max" de la spec.
   com:[
     {type:'sep',lb:'Commercial'},
-    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
+    {id:'dash',lb:'Accueil',ic:'dash'},
+    {id:'prospects',lb:'Prospects',ic:'cli'},
     {id:'pipeline',lb:'Pipeline',ic:'pipe'},
+    {id:'agenda',lb:'Agenda',ic:'cal'},
+    {id:'commissions',lb:'Commissions',ic:'fin'},
+    {type:'sep',lb:'Ventes (détail)'},
     {id:'devis',lb:'Devis',ic:'doc'},
+    {id:'mesclients',lb:'Mes clients signés',ic:'cli'},
     {id:'objectifs',lb:'Objectifs',ic:'target'},
-    {id:'commissions',lb:'Mes commissions',ic:'fin'},
-    {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
-    {id:'demandesclub',lb:'Demandes Club+',ic:'cli',modal:'modalDemandesClubConnect'},
-    {id:'connectcomptes',lb:'Comptes Club+ / Connect',ic:'cli'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
@@ -2297,26 +2307,32 @@ const VIEWS={
     <div id="audit-log-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── COMMERCIAL ──────────────────────────
+  // Refonte 28/08 (spec Refonte Interface Commercial §3) : "qui dois-je contacter
+  // maintenant ?" — les 4 anciens KPI (Prospects/Qualifiés/Partenaires/Prestations, déjà
+  // visibles dans Pipeline) laissent place aux 6 KPI d'action de la spec, plus une liste de
+  // priorités concrète (au lieu de doublonner Pipeline/Devis en cartes muettes).
   'com.dash':()=>`
     <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="modalNouveauClient()">+ Prospect</button>
     </div>
-    <div class="kpi-g">
-      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="com-kpi-pr">—</div><span class="kpi-d dnt">à travailler</span></div>
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="com-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
-      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Partenaires</div><div class="kpi-v" id="com-kpi-cl">—</div><span class="kpi-d dnt">contrats actifs</span></div>
-      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('objectifs')"><div class="kpi-ey">Prestations ce mois</div><div class="kpi-v" id="com-kpi-pre">—</div><span class="kpi-d dnt">ce mois</span></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(6,1fr)">
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('agenda')"><div class="kpi-ey">À relancer</div><div class="kpi-v" id="com-kpi-relance">—</div><span class="kpi-d dnt">en retard ou aujourd'hui</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('agenda')"><div class="kpi-ey">Échéances 7j</div><div class="kpi-v" id="com-kpi-ech7">—</div><span class="kpi-d dnt">relances + devis</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('devis')"><div class="kpi-ey">Offres en attente</div><div class="kpi-v" id="com-kpi-off">—</div><span class="kpi-d dnt">devis envoyés</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('prospects')"><div class="kpi-ey">Opportunités chaudes</div><div class="kpi-v" id="com-kpi-chaud">—</div><span class="kpi-d dnt">score ≥ 70</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('mesclients')"><div class="kpi-ey">Gagnés ce mois</div><div class="kpi-v" id="com-kpi-gagne">—</div><span class="kpi-d dnt">devenus partenaires</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('commissions')"><div class="kpi-ey">Commissions à percevoir</div><div class="kpi-v" id="com-kpi-commadue" style="font-size:16px">—</div><span class="kpi-d dnt">dues + validées</span></div>
     </div>
-    <div class="g2">
+    <div class="cd" style="margin-top:13px"><div class="cd-h"><div class="cd-t">Priorités</div><button class="btn bg2 bs" onclick="switchView('agenda')">Voir l'agenda</button></div>
+      <div id="com-dash-prio"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div class="g2" style="margin-top:13px">
       <div class="cd"><div class="cd-h"><div class="cd-t">Pipeline prioritaire</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
         <div id="com-dash-pr"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Partenaires & Clients</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
-        <div id="com-dash-cl"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Devis en attente de réponse</div><button class="btn bg2 bs" onclick="switchView('devis')">Tous les devis</button></div>
+        <div id="com-dash-dev"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
-    </div>
-    <div class="cd" style="margin-top:13px"><div class="cd-h"><div class="cd-t">Devis en attente de réponse</div><button class="btn bg2 bs" onclick="switchView('devis')">Tous les devis</button></div>
-      <div id="com-dash-dev"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
   'com.devis':()=>`
@@ -2750,6 +2766,45 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Total commissions</div><div class="fs-v" id="mycom-kpi-total">—</div></div>
     </div>
     <div id="mycommissions-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── Prospects (liste filtrable, spec Refonte Commercial §4) — distincte du Pipeline
+  // (Kanban) : même donnée (`clients`), présentation différente, pour trouver vite un
+  // prospect précis plutôt que parcourir des colonnes.
+  'com.prospects':()=>`
+    <div class="sh"><div class="sh-t">Prospects</div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px">
+      <input id="pr-search" class="l-inp" style="height:36px;max-width:220px" placeholder="Nom, ville…" oninput="renderComProspects()">
+      <select id="pr-sport" class="l-inp" style="height:36px;width:auto" onchange="renderComProspects()"><option value="">Tous sports</option></select>
+      <select id="pr-statut" class="l-inp" style="height:36px;width:auto" onchange="renderComProspects()">
+        <option value="">Tous statuts</option>
+        <option value="prospect">Prospect</option>
+        <option value="qualifié">Qualifié</option>
+        <option value="devis_envoyé">Devis envoyé</option>
+        <option value="négociation">Négociation</option>
+      </select>
+      <select id="pr-temp" class="l-inp" style="height:36px;width:auto" onchange="renderComProspects()">
+        <option value="">Toute température</option>
+        <option value="chaud">Chaud (≥70)</option>
+        <option value="moyen">Moyen (30-69)</option>
+        <option value="long">Long terme (&lt;30)</option>
+      </select>
+    </div>
+    <div id="prospects-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── Agenda commercial (spec §9) — n'existait pas : agrège les relances (clients.
+  // prochaine_action/date_prochaine_action) et les échéances de devis. Les vrais
+  // rendez-vous (table `rendez_vous`) restent hors périmètre ici : réservés aujourd'hui aux
+  // demandes de RDV initiées par un client via le portail (RLS admin/sec uniquement) — pas
+  // un agenda de RDV commerciaux sortants. Voir commentaire dans loadComAgenda().
+  'com.agenda':()=>`
+    <div class="sh"><div><div class="sh-t">Agenda</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Relances et échéances d'offres à venir.</div></div></div>
+    <div id="agenda-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── Mes clients signés (spec §13) — vue commerciale légère, jamais Production/
+  // Livrables/Marge/Paiements équipe (voir "Non visible" de la spec).
+  'com.mesclients':()=>`
+    <div class="sh"><div class="sh-t">Mes clients signés</div></div>
+    <div id="mesclients-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── RAPPORT MENSUEL ──────────────────────
   'admin.rapport':()=>`
@@ -4197,7 +4252,7 @@ async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
   if((role==='admin'||role==='sec')&&view==='crmfullcom') await loadCrmFullCom();
   if((role==='admin'||role==='sec')&&view==='crmclubplus') await loadCrmClubPlus();
-  if((role==='admin'||role==='sec'||role==='com')&&view==='connectcomptes') await loadConnectComptes();
+  if((role==='admin'||role==='sec')&&view==='connectcomptes') await loadConnectComptes();
   if(role==='admin'&&view==='prodhub') await loadProdHub();
   if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
   if(role==='admin'&&view==='commhub') await loadCommHub();
@@ -4229,7 +4284,7 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='jourj') await loadJourJ();
   if(role==='sec'&&view==='dash') await loadSecDash();
   if(role==='sec'&&view==='demandes') await loadSecDemandes();
-  if(['admin','com','sec'].includes(role)&&view==='reservationsclubs'){await loadClubBookings();_rtCbkEnsure();}
+  if(['admin','sec'].includes(role)&&view==='reservationsclubs'){await loadClubBookings();_rtCbkEnsure();}
   if(['admin','sec','compta'].includes(role)&&view==='cotisations') await loadCotisations();
   if(role==='sec'&&view==='relances') await loadSecRelances();
   if(role==='sec'&&view==='contrats') await loadSecContrats();
@@ -4290,6 +4345,9 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='revenus') await loadPhotoRevenus();
   if(role==='com'&&view==='objectifs') await loadObjectifs();
   if(role==='com'&&view==='commissions') await loadMyCommissions();
+  if(role==='com'&&view==='prospects') await loadComProspects();
+  if(role==='com'&&view==='agenda') await loadComAgenda();
+  if(role==='com'&&view==='mesclients') await loadComMesClients();
   if(['com','admin','sec'].includes(role)&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
   if(role==='cm'&&view==='demandes'){await loadCmDemandes();await loadCmClubContentSubmissions();}
@@ -19759,21 +19817,59 @@ async function sauvegarderStats(){
 }
 
 // ── Dashboard commercial ──────────────────────────────────────────────────────
+// Statuts actifs du pipeline (ni gagné ni perdu) — utilisé par le dashboard, Prospects et
+// l'Agenda pour rester cohérents entre eux sur "qu'est-ce qu'une opportunité active ?".
+const COM_STATUTS_ACTIFS=['prospect','qualifié','devis_envoyé','négociation'];
+
 async function loadComDash(){
   try{
     const now=new Date();
+    const today=ymdLocal();
+    const in7=ymdLocal(new Date(now.getTime()+7*86400000));
     const m0=ymdLocal(new Date(now.getFullYear(),now.getMonth(),1));
     const m1=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,0));
-    const [clients,preMois]=await Promise.all([
-      sbFetch('clients?select=id,nom,statut,type_client,sport,ville,created_at,score_priorite&order=created_at.desc&limit=100'),
+    const uid=localStorage.getItem('sv_uid');
+    const [clients,preMois,devisEnAttente,commADue]=await Promise.all([
+      sbFetch('clients?select=id,nom,statut,type_client,sport,ville,created_at,updated_at,score_priorite,prochaine_action,date_prochaine_action&order=created_at.desc&limit=300'),
       sbFetch(`prestations?select=id&date_prestation=gte.${m0}&date_prestation=lte.${m1}&statut=not.in.(annulée,refusée)`),
+      sbFetch('devis?select=id,numero,statut,client_id,total_ttc,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&order=date_expiration.asc&limit=200'),
+      sbFetch('commissions?select=montant_commission,statut&commercial_id=eq.'+uid+'&statut=in.(calculee,validee)').catch(()=>[]),
     ]);
     const list=clients||[];
     _clientsCache=list;
-    const s1=document.getElementById('com-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
-    const s2=document.getElementById('com-kpi-q');if(s2)s2.textContent=list.filter(c=>c.statut==='qualifié').length;
-    const s3=document.getElementById('com-kpi-cl');if(s3)s3.textContent=list.filter(c=>['partenaire','client'].includes(c.statut)).length;
-    const s4=document.getElementById('com-kpi-pre');if(s4)s4.textContent=(preMois||[]).length;
+    const devis=devisEnAttente||[];
+    _devisCache=devis;
+
+    // Priorités (spec §3) : relance en retard/aujourd'hui, opportunité chaude sans prochaine
+    // action, contrat proche renouvellement (approximé : aucune colonne de renouvellement
+    // n'existe sur `clients` aujourd'hui — non affiché plutôt qu'une date inventée).
+    const enRetardOuJour=list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&c.date_prochaine_action&&c.date_prochaine_action<=today);
+    const chaudesSansAction=list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&(c.score_priorite||0)>=70&&!c.date_prochaine_action);
+    const echeance7j=list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&c.date_prochaine_action&&c.date_prochaine_action>today&&c.date_prochaine_action<=in7).length
+      +devis.filter(d=>d.date_expiration&&d.date_expiration>today&&d.date_expiration<=in7).length;
+    const gagnesMois=list.filter(c=>['client','partenaire'].includes(c.statut)&&c.updated_at&&c.updated_at>=m0);
+    const commADueTotal=(commADue||[]).reduce((s,c)=>s+(Number(c.montant_commission)||0),0);
+
+    const setKpi=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+    setKpi('com-kpi-relance',enRetardOuJour.length);
+    setKpi('com-kpi-ech7',echeance7j);
+    setKpi('com-kpi-off',devis.length);
+    setKpi('com-kpi-chaud',list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&(c.score_priorite||0)>=70).length);
+    setKpi('com-kpi-gagne',gagnesMois.length);
+    setKpi('com-kpi-commadue',commADueTotal.toLocaleString('fr-FR')+' €');
+
+    const prio=document.getElementById('com-dash-prio');
+    if(prio){
+      const items=[
+        ...enRetardOuJour.map(c=>({c,txt:c.date_prochaine_action<today?'Relance en retard':'Relance aujourd\'hui',clr:'var(--er)'})),
+        ...chaudesSansAction.map(c=>({c,txt:'Opportunité chaude sans prochaine action',clr:'var(--wa)'})),
+      ].slice(0,8);
+      prio.innerHTML=items.length?'<div class="cd-b">'+items.map(({c,txt,clr})=>{const i=list.indexOf(c);return`
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
+          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div><div style="font-size:11px;color:${clr}">${txt}</div></div>
+        </div>`;}).join('')+'</div>':
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Rien d\'urgent — beau travail.</div>';
+    }
     const ep=document.getElementById('com-dash-pr');
     if(ep){
       const prox=list.filter(c=>['prospect','qualifié','devis_envoyé','négociation'].includes(c.statut)).sort((a,b)=>(b.score_priorite||0)-(a.score_priorite||0)).slice(0,5);
@@ -19786,24 +19882,12 @@ async function loadComDash(){
         </div>`;}).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun prospect. Ajoutez des contacts via le Pipeline.</div>';
     }
-    const ec=document.getElementById('com-dash-cl');
-    if(ec){
-      const clients_signes=list.filter(c=>['partenaire','client'].includes(c.statut)).slice(0,5);
-      ec.innerHTML=clients_signes.length?'<div class="cd-b">'+clients_signes.map(c=>{const i=list.indexOf(c);return`
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
-          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div><div style="font-size:11px;color:var(--t3)">${esc([c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—')}</div></div>
-          <span class="bd ${c.statut==='partenaire'?'bn':'ba'}" style="font-size:10px"><span class="bd-d"></span>${c.statut==='partenaire'?'Partenaire':'Client'}</span>
-        </div>`;}).join('')+'</div>':
-        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client signé pour l\'instant.</div>';
-    }
     const ed=document.getElementById('com-dash-dev');
     if(ed){
       try{
-        const devs=await sbFetch('devis?select=id,numero,statut,client_id,total_ttc,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&order=date_expiration.asc&limit=5');
-        _devisCache=devs||[];
+        const devs=devis.slice(0,5);
         const s_lbl={envoyé:'Envoyé',en_attente:'En attente'};
         const s_cls={envoyé:'bw',en_attente:'bl'};
-        const today=ymdLocal();
         ed.innerHTML=devs&&devs.length?'<div class="cd-b">'+devs.map((d,i)=>{
           const exp=d.date_expiration;
           const expFmt=exp?new Date(exp).toLocaleDateString('fr-FR'):'—';
@@ -19818,6 +19902,130 @@ async function loadComDash(){
       }catch(e){ed.innerHTML='';}
     }
   }catch(e){console.error('loadComDash',e);}
+}
+
+// ── Prospects (liste filtrable) ─────────────────────────────────────────────
+let _prospectsCache=[];
+async function loadComProspects(){
+  const el=document.getElementById('prospects-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,nom_contact,prenom_contact,prochaine_action,date_prochaine_action,score_priorite,created_by,created_at&order=score_priorite.desc.nullslast,created_at.desc&limit=300');
+    _prospectsCache=(data||[]).filter(c=>COM_STATUTS_ACTIFS.includes(c.statut));
+    _clientsCache=data||[];
+    const sportSel=document.getElementById('pr-sport');
+    if(sportSel&&sportSel.options.length<=1){
+      const sports=[...new Set(_prospectsCache.map(c=>c.sport).filter(Boolean))].sort();
+      sportSel.innerHTML='<option value="">Tous sports</option>'+sports.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    }
+    renderComProspects();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function _prospectTemp(score){
+  const s=score||0;
+  if(s>=70)return'chaud';
+  if(s>=30)return'moyen';
+  return'long';
+}
+function renderComProspects(){
+  const el=document.getElementById('prospects-real');
+  if(!el)return;
+  const q=((document.getElementById('pr-search')||{}).value||'').toLowerCase();
+  const sport=(document.getElementById('pr-sport')||{}).value||'';
+  const statut=(document.getElementById('pr-statut')||{}).value||'';
+  const temp=(document.getElementById('pr-temp')||{}).value||'';
+  const today=ymdLocal();
+  const filtered=_prospectsCache.filter(c=>{
+    if(q&&!c.nom.toLowerCase().includes(q)&&!(c.ville||'').toLowerCase().includes(q))return false;
+    if(sport&&c.sport!==sport)return false;
+    if(statut&&c.statut!==statut)return false;
+    if(temp&&_prospectTemp(c.score_priorite)!==temp)return false;
+    return true;
+  });
+  if(!filtered.length){el.innerHTML='<div style="padding:30px;color:var(--t3);text-align:center;font-size:13px">Aucun prospect ne correspond à ces filtres.</div>';return;}
+  const statLb={prospect:'Prospect',qualifié:'Qualifié',devis_envoyé:'Devis envoyé',négociation:'Négociation'};
+  const statCls={prospect:'bw',qualifié:'bb',devis_envoyé:'bl',négociation:'bw'};
+  el.innerHTML='<div class="cd"><div class="cd-b">'+filtered.map(c=>{
+    const i=_clientsCache.indexOf(c);
+    const late=c.date_prochaine_action&&c.date_prochaine_action<today;
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(c.nom)}${c.score_priorite?` <span style="font-size:9px;font-weight:700;color:#F5A524">${c.score_priorite}/100</span>`:''}</div>
+        <div style="font-size:11px;color:var(--t3)">${esc([c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—')}</div>
+        ${c.prochaine_action?`<div style="font-size:10.5px;margin-top:2px;color:${late?'var(--er)':'var(--acc)'}">⚡ ${esc(c.prochaine_action)}${c.date_prochaine_action?' · '+new Date(c.date_prochaine_action).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}</div>`:''}
+      </div>
+      <span class="bd ${statCls[c.statut]||'bw'}" style="font-size:10px;flex-shrink:0"><span class="bd-d"></span>${statLb[c.statut]||c.statut}</span>
+    </div>`;}).join('')+'</div></div>';
+}
+
+// ── Agenda commercial ────────────────────────────────────────────────────────
+// N'existait pas avant le 28/08 (spec Refonte Interface Commercial §9). Agrège deux sources
+// déjà réelles : les relances (clients.prochaine_action/date_prochaine_action) et les
+// échéances de devis (devis.date_expiration). Les vrais RDV (table `rendez_vous`) ne sont
+// PAS inclus ici : cette table sert aujourd'hui aux demandes de RDV initiées par un client
+// via le portail, réservée côté RLS à admin/sec — les inclure nécessiterait une vraie
+// décision produit (élargir l'accès, ou créer un objet RDV commercial distinct), pas fait
+// silencieusement ici.
+async function loadComAgenda(){
+  const el=document.getElementById('agenda-real');
+  if(!el)return;
+  try{
+    const [clients,devisData]=await Promise.all([
+      sbFetch('clients?select=id,nom,statut,prochaine_action,date_prochaine_action&date_prochaine_action=not.is.null&order=date_prochaine_action.asc&limit=200'),
+      sbFetch('devis?select=id,numero,statut,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&date_expiration=not.is.null&order=date_expiration.asc&limit=200'),
+    ]);
+    _clientsCache=clients||[];
+    const today=ymdLocal();
+    const items=[
+      ...(clients||[]).filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)).map(c=>({date:c.date_prochaine_action,type:'Relance',txt:c.prochaine_action||c.nom,sub:c.nom,onclick:`modalModifierClient(${(clients||[]).indexOf(c)})`})),
+      ...(devisData||[]).map(d=>({date:d.date_expiration,type:'Échéance devis',txt:`${d.numero||'Devis'} — ${d.clients?.nom||'—'}`,sub:'Expire',onclick:`switchView('devis')`})),
+    ].filter(it=>it.date).sort((a,b)=>a.date<b.date?-1:1);
+    if(!items.length){el.innerHTML='<div style="padding:30px;color:var(--t3);text-align:center;font-size:13px">Rien de planifié pour le moment.</div>';return;}
+    const groups={};
+    items.forEach(it=>{const k=it.date<today?'retard':(it.date===today?'aujourd\'hui':(it.date<=ymdLocal(new Date(Date.now()+7*86400000))?'7jours':'plustard'));(groups[k]=groups[k]||[]).push(it);});
+    const secLb={retard:'En retard',"aujourd'hui":"Aujourd'hui",'7jours':'Cette semaine','plustard':'Plus tard'};
+    const secClr={retard:'var(--er)',"aujourd'hui":'var(--wa)','7jours':'var(--acc)','plustard':'var(--t3)'};
+    el.innerHTML=['retard',"aujourd'hui",'7jours','plustard'].filter(k=>groups[k]&&groups[k].length).map(k=>`
+      <div class="cd" style="margin-bottom:13px">
+        <div class="cd-h"><div class="cd-t" style="color:${secClr[k]}">${secLb[k]} (${groups[k].length})</div></div>
+        <div class="cd-b">${groups[k].map(it=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="${it.onclick}">
+            <span class="bd bw" style="font-size:9px;flex-shrink:0">${it.type}</span>
+            <div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--t1)">${esc(it.txt)}</div></div>
+            <div style="font-size:11px;color:var(--t3)">${new Date(it.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div>
+          </div>`).join('')}</div>
+      </div>`).join('');
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Mes clients signés (vue commerciale légère) ─────────────────────────────
+async function loadComMesClients(){
+  const el=document.getElementById('mesclients-real');
+  if(!el)return;
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    const [clients,commData]=await Promise.all([
+      sbFetch('clients?select=id,nom,type_client,statut,ville,nom_contact,prenom_contact,telephone,email,created_at&statut=in.(client,partenaire)&order=updated_at.desc&limit=200'),
+      sbFetch('commissions?select=montant_commission,statut,prestations(client_id)&commercial_id=eq.'+uid).catch(()=>[]),
+    ]);
+    _clientsCache=clients||[];
+    const commByClient={};
+    (commData||[]).forEach(c=>{const cid=c.prestations?.client_id;if(!cid)return;commByClient[cid]=(commByClient[cid]||0)+(Number(c.montant_commission)||0);});
+    const list=clients||[];
+    if(!list.length){el.innerHTML='<div style="padding:30px;color:var(--t3);text-align:center;font-size:13px">Aucun client signé pour le moment.</div>';return;}
+    el.innerHTML='<div class="cd"><div class="cd-b">'+list.map(c=>{
+      const i=_clientsCache.indexOf(c);
+      const contact=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||c.email||c.telephone||'—';
+      const comm=commByClient[c.id];
+      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(c.nom)}</div>
+          <div style="font-size:11px;color:var(--t3)">${esc([c.type_client,c.ville].filter(Boolean).join(' · ')||'—')} · ${esc(contact)}</div>
+        </div>
+        <span class="bd ${c.statut==='partenaire'?'bn':'ba'}" style="font-size:10px;flex-shrink:0"><span class="bd-d"></span>${c.statut==='partenaire'?'Partenaire':'Client'}</span>
+        ${comm?`<div style="font-size:12px;color:var(--ok);font-weight:600;flex-shrink:0">${comm.toLocaleString('fr-FR')} €</div>`:''}
+      </div>`;}).join('')+'</div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── Dashboard comptable ───────────────────────────────────────────────────────
@@ -24805,7 +25013,7 @@ async function updateNavBadges(role){
       const prospects=await sbFetch('clients?select=id&statut=in.(prospect,qualifié)');
       setBadge('pipeline',(prospects||[]).length,'nb-o');
     }
-    if(['admin','sec','com'].includes(role)){
+    if(['admin','sec'].includes(role)){
       // Demandes d'ouverture Club+ à traiter (7 types de structure) — migration-connect-v78-
       // signup-unifie-clubplus.sql. RLS déjà limitée au staff admin/sec/com (même garde que la
       // policy), ce fetch échoue silencieusement (catch) pour tout autre rôle.
@@ -25725,6 +25933,7 @@ const VIEW_CTA={
   'cm.contenus':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'com.dash':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
   'com.pipeline':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
+  'com.prospects':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
   'com.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'cm.publications':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'admin.rapport':{t:'Exporter CSV',fn:'exportRapportCSV'},
