@@ -37,8 +37,15 @@
 -- club_teams, prestations, profiles, connect_agent_subscriptions, paiements, stripe_events déjà
 -- confirmés ; aucune table photo_albums / photo_pass_entitlements n'existait avant cette migration.
 --
--- NON EXÉCUTÉE au moment d'écrire ce fichier — voir le résumé en fin de fichier pour les actions
--- manuelles requises (dont la création du Price Stripe par Fouka, hors périmètre de cette session).
+-- EXÉCUTÉE — vérifié en base réelle le 28/08/2026 : tables photo_albums/photo_pass_entitlements,
+-- policies photo_albums_staff_all/ppe_self_select et fonction photo_album_list() existent déjà en
+-- base. RLS vérifiée avec un vrai compte de test jetable (créé/supprimé via l'API Admin Auth, JWT
+-- réel via /auth/v1/token) : lecture directe de photo_albums bloquée pour authenticated (RPC
+-- uniquement), écriture directe de photo_albums et de photo_pass_entitlements bloquée pour un
+-- compte non-staff (403, RLS), déverrouillage correct de secure_collection_ref uniquement après
+-- entitlement actif inséré via service_role. Données de test nettoyées après vérification. Reste
+-- NON FAIT (hors périmètre technique de cette session) : création du Price Stripe et secret
+-- STRIPE_PRICE_PASS_PHOTO — voir le résumé en fin de fichier.
 -- ============================================================
 
 
