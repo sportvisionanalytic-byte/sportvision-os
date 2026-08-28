@@ -710,7 +710,16 @@ const NAV={
     {id:'planning',lb:'Planning',ic:'cal'},
     {id:'pre',lb:'Prestations',ic:'pre'},
     {type:'sep',lb:'Clients & Ventes'},
-    {id:'crm',lb:'Clubs',ic:'cli'},
+    // Refonte nav 28/08 : 3 modules distincts (Full Com / Club+ / Connect) au lieu d'une
+    // liste unique mélangeant tous les `clients` — cf. spec "Refonte des fiches clients".
+    // 'crm' (ancienne vue générique tous-offres) reste défini (fonction/VIEWS intacts,
+    // référencé en interne par modalModifierClient, chargerParcoursClient, etc.) mais
+    // hidden:true : il sort de la sidebar sans rien casser, même patron que le
+    // regroupement Finances du 22/08 (cf. commentaire renderSidebarNav).
+    {id:'crmfullcom',lb:'Full Com',ic:'cli'},
+    {id:'crmclubplus',lb:'Club+',ic:'cli'},
+    {id:'connectcomptes',lb:'Connect',ic:'cli'},
+    {id:'crm',lb:'Clubs',ic:'cli',hidden:true},
     {id:'pipeline',lb:'Prospection',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
@@ -718,7 +727,6 @@ const NAV={
     {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
     {id:'cotisations',lb:'Paiement collectif',ic:'target'},
     {id:'demandesclub',lb:'Demandes Club+',ic:'cli',modal:'modalDemandesClubConnect'},
-    {id:'connectcomptes',lb:'Comptes Club+ / Connect',ic:'cli'},
     {type:'sep',lb:'Communication'},
     {id:'commhub',lb:'Communication',ic:'msg'},
     {id:'mediabank',lb:'Media Bank',ic:'med'},
@@ -767,14 +775,16 @@ const NAV={
     {id:'taches',lb:'Tâches',ic:'task'},
     {id:'relances',lb:'Relances',ic:'alert'},
     {type:'sep',lb:'Clients & Ventes'},
-    {id:'crm',lb:'Clients & Prospects',ic:'cli'},
+    {id:'crmfullcom',lb:'Full Com',ic:'cli'},
+    {id:'crmclubplus',lb:'Club+',ic:'cli'},
+    {id:'connectcomptes',lb:'Connect',ic:'cli'},
+    {id:'crm',lb:'Clients & Prospects',ic:'cli',hidden:true},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
     {id:'abonnements',lb:'Abonnements',ic:'pre'},
     {id:'cotisations',lb:'Paiement collectif',ic:'target'},
     {id:'cmagency',lb:'Agences CM',ic:'cli'},
     {id:'demandesclub',lb:'Demandes Club+',ic:'cli',modal:'modalDemandesClubConnect'},
-    {id:'connectcomptes',lb:'Comptes Club+ / Connect',ic:'cli'},
     {type:'sep',lb:'Prestations'},
     {id:'pre',lb:'Prestations',ic:'pre'},
     {id:'planning',lb:'Planning admin',ic:'cal'},
@@ -1121,6 +1131,19 @@ const VIEWS={
     <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
     <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  // ── Module Full Com (refonte nav 28/08) : clients avec contrat full_communication,
+  // réutilise _clientsCache/loadClients + _offreDuClient déjà en place (22/08) plutôt que
+  // de dupliquer la requête — cf. renderFullComTable ci-dessous.
+  'admin.crmfullcom':()=>`
+    <div class="sh"><div class="sh-t">Full Com</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
+    <div id="crmfullcom-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── Module Club+ (refonte nav 28/08) : tous les workspaces `clubs`, indépendamment du
+  // CRM `clients` — cf. renderClubsPlusTable/loadCrmClubPlus.
+  'admin.crmclubplus':()=>`
+    <div class="sh"><div class="sh-t">Club+</div></div>
+    <div id="crmclubplus-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   // ── Accès délégués Agence CM ↔ Club (plan Tier C § Phase 3 « Accompagnement », 10/08/2026) ──
   'admin.cmagency':()=>_cmAgencyAccessView(),
   'sec.cmagency':()=>_cmAgencyAccessView(),
@@ -1374,6 +1397,14 @@ const VIEWS={
   'sec.crm':()=>`
     <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
     <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'sec.crmfullcom':()=>`
+    <div class="sh"><div class="sh-t">Full Com</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
+    <div id="crmfullcom-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'sec.crmclubplus':()=>`
+    <div class="sh"><div class="sh-t">Club+</div></div>
+    <div id="crmclubplus-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── Comptes Connect (lecture seule, migration v59) : distinct du CRM Clients
   // ci-dessus (pipeline commercial B2B `clients`) — ici les vrais comptes
@@ -2665,7 +2696,7 @@ function _settingsView(){
 
 // ── FALLBACK VIEW ────────────────────────
 function fallbackView(role,view){
-  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',documents:'Centre documentaire',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Analytics',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs',avoirs:'Avoirs & remises',contrats:'Contrats',connectcomptes:'Comptes Club+ / Connect'};
+  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',documents:'Centre documentaire',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Analytics',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs',avoirs:'Avoirs & remises',contrats:'Contrats',connectcomptes:'Connect',crmfullcom:'Full Com',crmclubplus:'Club+'};
   return`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:14px;color:var(--t3);text-align:center">
     <div style="font-size:44px;opacity:.2">📋</div>
     <div style="font-size:15px;font-weight:650;color:var(--t2)">${labels[view]||view}</div>
@@ -3771,17 +3802,72 @@ function modalNouveauClient(){
         <textarea id="fc-notes" class="l-inp" style="height:56px;resize:none;padding-top:8px" placeholder="Contexte, besoins spécifiques, points de contact…"></textarea>
       </div>
       <div id="fc-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div id="fc-doublon-warn"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
         <button class="btn bg2" onclick="closeModal()">Annuler</button>
         <button class="btn bp" onclick="creerClient()">Créer le client</button>
       </div>
     </div>`);
+  window._fcDoublonConfirme=false;
 }
 
+// ── Anti-doublon V1 (refonte 28/08) : avant de créer un nouveau client Full Com, on
+// signale les correspondances probables déjà existantes (nom normalisé — sans accents/
+// casse/espaces superflus — + ville) dans `clients` ET `clubs`, sans jamais bloquer ni
+// fusionner automatiquement. Pas de comparaison de domaine/identifiant fédéral (hors
+// scope V1, aucune donnée fiable disponible pour ça côté OS).
+function _normNomDoublon(s){
+  return(s||'').toString().normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+async function _chercherDoublonsClient(nom,ville){
+  const n=_normNomDoublon(nom);
+  if(!n)return[];
+  const v=_normNomDoublon(ville);
+  try{
+    const [clientsR,clubsR]=await Promise.all([
+      sbFetch('clients?select=id,nom,ville&limit=500').catch(()=>[]),
+      sbFetch('clubs?select=id,nom&limit=500').catch(()=>[]),
+    ]);
+    const matches=[];
+    (Array.isArray(clientsR)?clientsR:[]).forEach(c=>{
+      const cn=_normNomDoublon(c.nom);
+      if(!cn)return;
+      const nameMatch=cn===n||cn.includes(n)||n.includes(cn);
+      const villeMatch=!v||_normNomDoublon(c.ville)===v;
+      if(nameMatch&&(villeMatch||!c.ville))matches.push({source:'client',nom:c.nom,ville:c.ville});
+    });
+    (Array.isArray(clubsR)?clubsR:[]).forEach(c=>{
+      const cn=_normNomDoublon(c.nom);
+      if(!cn)return;
+      if(cn===n||cn.includes(n)||n.includes(cn))matches.push({source:'club',nom:c.nom,ville:null});
+    });
+    return matches;
+  }catch(e){return[];}
+}
 async function creerClient(){
   const err=document.getElementById('fc-err');
+  const warn=document.getElementById('fc-doublon-warn');
   const nom=document.getElementById('fc-nom').value.trim();
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  err.textContent='';
+  if(!window._fcDoublonConfirme){
+    err.textContent='Vérification des doublons…';
+    const doublons=await _chercherDoublonsClient(nom,document.getElementById('fc-ville')?.value);
+    err.textContent='';
+    if(doublons.length){
+      const lbl={client:'client',club:'club Club+'};
+      warn.innerHTML=`<div style="padding:12px 14px;background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.25);border-radius:var(--rb);margin-bottom:4px">
+        <div style="font-size:12.5px;color:var(--t1);font-weight:600;margin-bottom:6px">⚠ Un ${lbl[doublons[0].source]} similaire existe déjà</div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:10px">${doublons.slice(0,3).map(d=>esc(d.nom)+(d.ville?' · '+esc(d.ville):'')+' ('+lbl[d.source]+')').join(', ')}${doublons.length>3?' et '+(doublons.length-3)+' autre(s)':''} — voulez-vous quand même créer ce nouveau client ?</div>
+        <div style="display:flex;gap:10px">
+          <button class="btn bg2 bs" onclick="document.getElementById('fc-doublon-warn').innerHTML=''">Annuler</button>
+          <button class="btn bp bs" onclick="window._fcDoublonConfirme=true;creerClient()">Créer quand même</button>
+        </div>
+      </div>`;
+      return;
+    }
+  }
+  window._fcDoublonConfirme=false;
   err.textContent='Création...';
   try{
     const r=await sbFetch('clients',{method:'POST',body:{
@@ -3945,6 +4031,8 @@ async function creerCollaborateur(){
 async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='prod')&&view==='pre') await loadPrestations();
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
+  if((role==='admin'||role==='sec')&&view==='crmfullcom') await loadCrmFullCom();
+  if((role==='admin'||role==='sec')&&view==='crmclubplus') await loadCrmClubPlus();
   if((role==='admin'||role==='sec'||role==='com')&&view==='connectcomptes') await loadConnectComptes();
   if(role==='admin'&&view==='prodhub') await loadProdHub();
   if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
@@ -4587,9 +4675,301 @@ async function crmAvancerStatut(id,statut){
   loadClients();
 }
 
+// ── Module Full Com (refonte nav 28/08) ──────────────────────────────────
+// Liste dédiée des clients avec une offre Full Communication, séparée du CRM
+// générique (`crm`, toutes offres mélangées). Réutilise _offreDuClient (22/08)
+// pour ne pas dupliquer la logique de dérivation de l'offre depuis les contrats.
+// Filtre "statut" mappé sur le VRAI statut du contrat full_communication le plus
+// pertinent (contrats.statut : brouillon/actif/suspendu/résilié/expiré, cf. audit) :
+//   Actifs = contrat actif · Onboarding = contrat brouillon (pas encore signé/actif)
+//   À renouveler = contrat suspendu · Archivés = résilié/expiré (ou aucun contrat +
+//   client inactif/bloqué, cas résiduel)
+let _fullComCache=[];
+let _fullComTab='actifs';
+let _fullComFiltre='';
+async function loadCrmFullCom(){
+  const el=document.getElementById('crmfullcom-real');
+  if(!el)return;
+  try{
+    // Select aligné sur les champs lus par modalModifierClient (logo_url, division, adresse,
+    // code_postal, notes...) : ouvrir la fiche depuis CE module (sans jamais être passé par le
+    // CRM générique auparavant) ne doit jamais afficher des champs vides pour des données qui
+    // existent réellement, au risque de les écraser silencieusement à l'enregistrement.
+    const data=await sbFetch('clients?select=id,nom,statut,statut_relation,etape_pipeline,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect,logo_url,division,adresse,code_postal,cm_id,contrats(id,type_contrat,statut,created_at)&order=created_at.desc&limit=300');
+    if(sbErr(data)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
+    _fullComCache=(Array.isArray(data)?data:[]).filter(c=>_offreDuClient(c)==='full_communication');
+    renderFullComTable();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function _fullComContrat(c){
+  const fc=(Array.isArray(c.contrats)?c.contrats:[]).filter(k=>k.type_contrat==='full_communication');
+  if(!fc.length)return null;
+  const actif=fc.find(k=>k.statut==='actif');
+  return actif||fc.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0];
+}
+function _fullComCategorie(c){
+  const k=_fullComContrat(c);
+  if(!k)return(c.statut_relation==='inactif'||c.statut_relation==='bloque')?'archives':'onboarding';
+  if(k.statut==='actif')return'actifs';
+  if(k.statut==='brouillon')return'onboarding';
+  if(k.statut==='suspendu')return'arenouveler';
+  return'archives'; // résilié / expiré
+}
+const FULLCOM_CATS=[['actifs','Actifs'],['onboarding','Onboarding'],['arenouveler','À renouveler'],['archives','Archivés']];
+function setFullComTab(t){_fullComTab=t;renderFullComTable();}
+function renderFullComTable(){
+  const el=document.getElementById('crmfullcom-real');
+  if(!el)return;
+  const q=(_fullComFiltre||'').toLowerCase();
+  const counts={actifs:0,onboarding:0,arenouveler:0,archives:0};
+  _fullComCache.forEach(c=>{const k=_fullComCategorie(c);if(counts[k]!==undefined)counts[k]++;});
+  const list=_fullComCache.filter(c=>_fullComCategorie(c)===_fullComTab).filter(c=>{
+    if(!q)return true;
+    return[c.nom,c.ville,c.sport,c.email,c.prenom_contact,c.nom_contact].some(v=>(v||'').toLowerCase().includes(q));
+  });
+  const catClr={actifs:'ba',onboarding:'bb',arenouveler:'bw',archives:'bn'};
+  const tabsHtml=FULLCOM_CATS.map(([id,lb])=>{const on=_fullComTab===id;
+    return`<button onclick="setFullComTab('${id}')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${on?'var(--acc)':'var(--b1)'};background:${on?'var(--acc)':'var(--s2)'};color:${on?'#fff':'var(--t2)'}">${lb} <span style="opacity:.75">(${counts[id]||0})</span></button>`;
+  }).join('');
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:0 0 12px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${tabsHtml}</div>
+    <input type="text" class="l-inp" placeholder="Rechercher nom, ville, sport…" value="${esc(_fullComFiltre)}" oninput="_fullComFiltre=this.value;renderFullComTable()" style="height:34px;flex:1;max-width:280px;margin-left:auto">
+    <span style="font-size:11px;color:var(--t3);white-space:nowrap">${list.length} club${list.length>1?'s':''}</span>
+  </div>
+  ${list.length?`<div class="tw"><table><thead><tr><th>Nom</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Email / Tél.</th><th>Contrat</th><th></th></tr></thead><tbody>${
+    list.map(c=>{const i=_clientsCache.indexOf(c);
+      const idx=i>=0?i:null;
+      const ct=esc([c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'—');
+      const emailBtn=c.email?`<span onclick="copier('${escJs(c.email)}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${esc(c.email)}</span>`:'—';
+      const telBtn=c.telephone?`<span onclick="copier('${escJs(c.telephone)}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${esc(c.telephone)}</span>`:'';
+      const k=_fullComContrat(c);
+      const openFn=`_openFicheFullCom('${c.id}')`;
+      return`<tr>
+        <td class="tp" style="cursor:pointer" onclick="${openFn}">${esc(c.nom)}</td>
+        <td>${esc(c.sport||'—')}</td>
+        <td>${esc(c.ville||'—')}</td>
+        <td>${ct}</td>
+        <td style="font-size:12px">${emailBtn}${telBtn}</td>
+        <td><span class="bd ${catClr[_fullComCategorie(c)]}"><span class="bd-d"></span>${k?k.statut:'—'}</span></td>
+        <td><button onclick="${openFn}" style="padding:4px 8px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Ouvrir la fiche</button></td>
+      </tr>`;}).join('')
+  }</tbody></table></div>`:'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat.</div>'}`;
+}
+// Ouvre la fiche complète (modalModifierClient) depuis le module Full Com : celui-ci a
+// sa propre liste (_fullComCache) distincte de _clientsCache (chargée par le CRM générique
+// et utilisée par index dans modalModifierClient) — on s'assure donc que _clientsCache
+// contient bien ce client avant d'ouvrir sa fiche par index, pour ne jamais dupliquer la
+// modale existante.
+async function _openFicheFullCom(clientId){
+  let idx=_clientsCache.findIndex(c=>c.id===clientId);
+  if(idx<0){
+    const full=_fullComCache.find(c=>c.id===clientId);
+    if(full){_clientsCache=_clientsCache.concat([full]);idx=_clientsCache.length-1;}
+  }
+  if(idx<0){toast('Client introuvable.','er');return;}
+  modalModifierClient(idx);
+}
+
+// ── Module Club+ (refonte nav 28/08) ─────────────────────────────────────
+// Liste dédiée des workspaces `clubs` (indépendante des `clients`) : un club existe dès
+// qu'un dirigeant a activé Club+ (self-service, invitation ou inclus Full Com), avec ou
+// sans client Full Com associé (portail_client_id peut être null). Filtres mappés sur les
+// vraies colonnes (audit du 28/08) : plan (free/club/performance), subscription_status
+// (actif/impaye/annule, uniquement si abonnement Stripe), club_plus_source
+// (clubplus_subscription/full_com_included/manual).
+let _clubsPlusCache=[];
+let _clubsPlusTab='abonnes';
+let _clubsPlusFiltre='';
+async function loadCrmClubPlus(){
+  const el=document.getElementById('crmclubplus-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('clubs?select=id,nom,plan,subscription_status,club_plus_source,portail_client_id,created_at,clients(nom)&order=created_at.desc&limit=300');
+    if(sbErr(data)){el.innerHTML=`<div style="padding:20px;color:var(--er)">Erreur de chargement.<div style="margin-top:8px;font-size:11px;color:var(--t3);font-family:monospace;white-space:pre-wrap">${esc(data.message||data.hint||JSON.stringify(data))}</div></div>`;return;}
+    _clubsPlusCache=Array.isArray(data)?data:[];
+    renderClubsPlusTable();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function _clubPlusCategorie(c){
+  if(c.subscription_status==='actif')return'abonnes';
+  if(c.subscription_status==='impaye')return'paiement';
+  if(c.subscription_status==='annule')return'suspendus';
+  return'onboarding'; // plan free / manual / pas encore d'abonnement Stripe
+}
+const CLUBPLUS_CATS=[['abonnes','Abonnés'],['onboarding','Essais / onboarding'],['paiement','Paiement en cours'],['suspendus','Suspendus / archivés']];
+function setClubsPlusTab(t){_clubsPlusTab=t;renderClubsPlusTable();}
+function renderClubsPlusTable(){
+  const el=document.getElementById('crmclubplus-real');
+  if(!el)return;
+  if(!_clubsPlusCache.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🛡️</div><div>Aucun club Club+ pour le moment.</div></div>';return;}
+  const q=(_clubsPlusFiltre||'').toLowerCase();
+  const counts={abonnes:0,onboarding:0,paiement:0,suspendus:0};
+  _clubsPlusCache.forEach(c=>{const k=_clubPlusCategorie(c);if(counts[k]!==undefined)counts[k]++;});
+  const list=_clubsPlusCache.filter(c=>_clubPlusCategorie(c)===_clubsPlusTab).filter(c=>!q||(c.nom||'').toLowerCase().includes(q));
+  const catClr={abonnes:'ba',onboarding:'bb',paiement:'bw',suspendus:'bn'};
+  const planLb={free:'Gratuit',club:'Club',performance:'Performance'};
+  const srcLb={clubplus_subscription:'Abonnement Club+',full_com_included:'Inclus Full Com',manual:'Activation manuelle'};
+  const tabsHtml=CLUBPLUS_CATS.map(([id,lb])=>{const on=_clubsPlusTab===id;
+    return`<button onclick="setClubsPlusTab('${id}')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${on?'var(--acc)':'var(--b1)'};background:${on?'var(--acc)':'var(--s2)'};color:${on?'#fff':'var(--t2)'}">${lb} <span style="opacity:.75">(${counts[id]||0})</span></button>`;
+  }).join('');
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:0 0 12px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${tabsHtml}</div>
+    <input type="text" class="l-inp" placeholder="Rechercher un club…" value="${esc(_clubsPlusFiltre)}" oninput="_clubsPlusFiltre=this.value;renderClubsPlusTable()" style="height:34px;flex:1;max-width:280px;margin-left:auto">
+    <span style="font-size:11px;color:var(--t3);white-space:nowrap">${list.length} club${list.length>1?'s':''}</span>
+  </div>
+  ${list.length?`<div class="tw"><table><thead><tr><th>Nom</th><th>Plan</th><th>Origine</th><th>Client Full Com lié</th><th>Créé le</th><th></th></tr></thead><tbody>${
+    list.map(c=>`<tr>
+      <td class="tp" style="cursor:pointer" onclick="modalFicheClubPlus('${c.id}')">${esc(c.nom)}</td>
+      <td>${esc(planLb[c.plan]||c.plan||'—')}</td>
+      <td><span class="bd ${catClr[_clubPlusCategorie(c)]}"><span class="bd-d"></span>${esc(srcLb[c.club_plus_source]||c.club_plus_source||'—')}</span></td>
+      <td>${c.clients?.nom?esc(c.clients.nom):'—'}</td>
+      <td>${_ccFmtD(c.created_at)}</td>
+      <td><button onclick="modalFicheClubPlus('${c.id}')" style="padding:4px 8px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Ouvrir la fiche</button></td>
+    </tr>`).join('')
+  }</tbody></table></div>`:'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat.</div>'}`;
+}
+
+// ── Fiche Club+ (refonte nav 28/08) ──────────────────────────────────────
+// Distincte de la fiche Full Com (modalModifierClient) : PAS de CM affilié obligatoire,
+// planning mensuel ou suivi contrat production récurrente ici (règle explicite de la
+// spec), sauf si club_plus_source==='full_com_included' — dans ce cas un bandeau renvoie
+// vers la vraie fiche Full Com plutôt que de dupliquer ses infos.
+let _cfpClub=null;
+async function modalFicheClubPlus(clubId){
+  openModal('<div style="padding:32px;text-align:center;color:var(--t3)">Chargement de la fiche…</div>');
+  let club;
+  try{
+    club=await sbFetch('clubs?id=eq.'+clubId+'&select=id,nom,plan,subscription_status,club_plus_source,portail_client_id,logo_url,ecusson_url,couleur_primaire,couleur_secondaire,saison,credits_balance,credits_reserved,credits_monthly,created_at,clients(nom,email,telephone)&limit=1');
+    if(sbErr(club))club=null;else club=Array.isArray(club)?club[0]:club;
+  }catch(e){club=null;}
+  if(!club){
+    // Repli défensif : certaines colonnes (logo_url/couleurs/saison) peuvent ne pas
+    // exister selon l'état exact de la base — on retente avec le socle confirmé plutôt
+    // que d'afficher une erreur pour une fiche qui devrait pouvoir s'ouvrir.
+    try{
+      const r=await sbFetch('clubs?id=eq.'+clubId+'&select=id,nom,plan,subscription_status,club_plus_source,portail_client_id,created_at,clients(nom,email,telephone)&limit=1');
+      club=sbErr(r)?null:(Array.isArray(r)?r[0]:r);
+    }catch(e){club=null;}
+  }
+  if(!club){openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">Club introuvable.</div>`);return;}
+  _cfpClub=club;
+  const planLb={free:'Gratuit',club:'Club',performance:'Performance'};
+  const srcLb={clubplus_subscription:'Abonnement Club+',full_com_included:'Inclus Full Com',manual:'Activation manuelle'};
+  const stLb={actif:'Abonnement actif',impaye:'Paiement en attente',annule:'Abonnement résilié'};
+  const isFullComIncluded=club.club_plus_source==='full_com_included';
+  const logo=club.logo_url||club.ecusson_url;
+  const bandeau=isFullComIncluded?`<div style="margin-bottom:14px;padding:10px 14px;background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.25);border-radius:var(--rb);font-size:12.5px;color:var(--t2);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <span>🔗 Ce club est inclus dans un accompagnement <b>Full Communication</b>, sans coût supplémentaire.</span>
+    ${club.portail_client_id?`<button class="btn bg2 bs" onclick="closeModal();_openFicheFullCom('${club.portail_client_id}')">Ouvrir la fiche Full Com</button>`:''}
+  </div>`:'';
+  openModal(`<div class="mh">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:48px;height:48px;border-radius:10px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+        ${logo?`<img src="${esc(logo)}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:20px;color:var(--t3)">🛡️</span>`}
+      </div>
+      <div><div class="mt">${esc(club.nom)}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(planLb[club.plan]||club.plan||'—')} · ${esc(srcLb[club.club_plus_source]||club.club_plus_source||'—')}${club.subscription_status?' · '+esc(stLb[club.subscription_status]||club.subscription_status):''}${club.saison?' · Saison '+esc(club.saison):''}</div>
+      </div>
+    </div>
+    <button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button>
+  </div>
+  <div class="mb">
+    ${bandeau}
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      <button id="cfp-tab-resume" onclick="cfpShowTab('resume')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Résumé</button>
+      <button id="cfp-tab-equipes" onclick="cfpShowTab('equipes')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Club & équipes</button>
+      <button id="cfp-tab-demandes" onclick="cfpShowTab('demandes')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Demandes</button>
+      <button id="cfp-tab-media" onclick="cfpShowTab('media')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Médiathèque</button>
+      <button id="cfp-tab-users" onclick="cfpShowTab('users')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Utilisateurs</button>
+      <button id="cfp-tab-gestion" onclick="cfpShowTab('gestion')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Abonnement & gestion</button>
+    </div>
+    <div id="cfp-panel-resume">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Créé le</div><div style="font-size:13.5px;color:var(--t1);font-weight:500;margin-top:4px">${_ccFmtD(club.created_at)}</div></div>
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Client lié</div><div style="font-size:13.5px;color:var(--t1);font-weight:500;margin-top:4px">${club.clients?.nom?esc(club.clients.nom):'Aucun (workspace autonome)'}</div></div>
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Crédits</div><div style="font-size:13.5px;color:var(--t1);font-weight:500;margin-top:4px">${club.credits_balance!=null?club.credits_balance+' disponibles':'—'}</div></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn bg2 bs" onclick="cfpShowTab('equipes')">Voir les équipes</button>
+        <button class="btn bg2 bs" onclick="cfpShowTab('users')">Voir les utilisateurs</button>
+        <button class="btn bg2 bs" onclick="closeModal();switchView('reservationsclubs')">Ouvrir les réservations</button>
+      </div>
+    </div>
+    <div id="cfp-panel-equipes" style="display:none">
+      <div id="cfp-equipes-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+    </div>
+    <div id="cfp-panel-demandes" style="display:none">
+      <div style="font-size:12.5px;color:var(--t2);margin-bottom:10px">Les demandes (réservations, requêtes Club+) de ce club sont gérées dans les écrans dédiés existants, pas dupliqués ici.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn bp bs" onclick="closeModal();switchView('reservationsclubs')">Ouvrir Réservations clubs</button>
+        <button class="btn bg2 bs" onclick="closeModal();modalDemandesClubConnect()">Ouvrir Demandes Club+</button>
+      </div>
+    </div>
+    <div id="cfp-panel-media" style="display:none">
+      <div style="font-size:12.5px;color:var(--t2);margin-bottom:10px">La médiathèque de ce club est gérée dans Media Bank, pas dupliquée ici.</div>
+      <button class="btn bp bs" onclick="closeModal();switchView('mediabank')">Ouvrir Media Bank</button>
+    </div>
+    <div id="cfp-panel-users" style="display:none">
+      <div id="cfp-users-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+    </div>
+    <div id="cfp-panel-gestion" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Plan</div><div style="font-size:13.5px;color:var(--t1);font-weight:500;margin-top:4px">${esc(planLb[club.plan]||club.plan||'—')}</div></div>
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Statut abonnement</div><div style="font-size:13.5px;color:var(--t1);font-weight:500;margin-top:4px">${club.subscription_status?esc(stLb[club.subscription_status]||club.subscription_status):'Pas d’abonnement Stripe (plan '+esc(planLb[club.plan]||club.plan||'—')+')'}</div></div>
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Origine</div><div style="font-size:13.5px;color:var(--t1);font-weight:500;margin-top:4px">${esc(srcLb[club.club_plus_source]||club.club_plus_source||'—')}</div></div>
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Crédits (dispo / réservés / mensuels)</div><div style="font-size:13.5px;color:var(--t1);font-weight:500;margin-top:4px">${club.credits_balance!=null?`${club.credits_balance} / ${club.credits_reserved||0} / ${club.credits_monthly||0}`:'—'}</div></div>
+      </div>
+      ${club.clients?.nom?`<button class="btn bg2 bs" onclick="closeModal();_openFicheFullCom('${club.portail_client_id}')">Ouvrir la fiche client Full Com liée</button>`:''}
+    </div>
+  </div>`);
+  cfpLoadEquipes(clubId);
+}
+function cfpShowTab(tab){
+  const on='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
+  const off='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
+  ['resume','equipes','demandes','media','users','gestion'].forEach(t=>{
+    const b=document.getElementById('cfp-tab-'+t);const p=document.getElementById('cfp-panel-'+t);
+    if(b)b.style.cssText=t===tab?on:off+';font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff);padding:5px 14px;border-radius:var(--rp)';
+    if(p)p.style.display=t===tab?'':'none';
+  });
+  if(!_cfpClub)return;
+  if(tab==='equipes')cfpLoadEquipes(_cfpClub.id);
+  if(tab==='users')cfpLoadUsers(_cfpClub.id);
+}
+async function cfpLoadEquipes(clubId){
+  const el=document.getElementById('cfp-equipes-list');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  try{
+    const data=await sbFetch('club_teams?select=id,name&club_id=eq.'+clubId+'&order=name.asc');
+    const list=Array.isArray(data)?data:[];
+    el.innerHTML=list.length?`<div style="display:flex;flex-direction:column;gap:6px">${list.map(t=>`<div style="padding:8px 12px;background:var(--s2);border-radius:8px;font-size:12.5px;color:var(--t1);font-weight:500">🏐 ${esc(t.name)}</div>`).join('')}</div>`:'<div style="font-size:12px;color:var(--t3)">Aucune équipe enregistrée pour ce club.</div>';
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+}
+const CLUBMEMBER_ROLE_LBL={admin:'Admin',president:'Président',secretaire:'Secrétaire',comm:'Communication',cm_externe:'CM externe',coach:'Coach',resp_equipe:'Resp. équipe',sponsor_mgr:'Sponsoring',tresorier:'Trésorier',membre_bureau:'Membre du bureau',lecture_seule:'Lecture seule'};
+async function cfpLoadUsers(clubId){
+  const el=document.getElementById('cfp-users-list');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  try{
+    const data=await sbFetch('club_members?select=id,prenom,nom,telephone,role,status,created_at&club_id=eq.'+clubId+'&order=created_at.asc');
+    const list=Array.isArray(data)?data:[];
+    if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Aucun utilisateur Club+ pour ce club.</div>';return;}
+    el.innerHTML=`<div class="tw"><table><thead><tr><th>Nom</th><th>Rôle</th><th>Téléphone</th><th>Statut</th><th>Depuis</th></tr></thead><tbody>${
+      list.map(m=>`<tr>
+        <td>${esc([m.prenom,m.nom].filter(Boolean).join(' ')||'—')}</td>
+        <td>${esc(CLUBMEMBER_ROLE_LBL[m.role]||m.role||'—')}</td>
+        <td style="font-size:12px">${esc(m.telephone||'—')}</td>
+        <td><span class="bd ${m.status==='actif'?'ba':m.status==='invitation'?'bw':'bn'}"><span class="bd-d"></span>${esc(m.status||'—')}</span></td>
+        <td>${_ccFmtD(m.created_at)}</td>
+      </tr>`).join('')
+    }</tbody></table></div>`;
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
 // ── Comptes Connect (lecture seule) ─────────────────────────────────────
 function _connectComptesView(){
-  return`<div class="sh"><div class="sh-t">Comptes Club+ / Connect</div></div>
+  return`<div class="sh"><div class="sh-t">Connect</div></div>
     <div id="connectcomptes-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
 }
 
@@ -4625,10 +5005,30 @@ function renderConnectComptes(){
   if(!_connectComptesCache.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👤</div><div>Aucun compte Connect trouvé.</div></div>';return;}
   const tab=_connectComptesTab;
   const q=(_connectComptesFiltre||'').toLowerCase();
-  const counts={club:0,joueur:0,particulier:0};
-  _connectComptesCache.forEach(c=>{if(counts[c.type]!==undefined)counts[c.type]++;});
-  const TABS=[{id:'club',lb:'Club+'},{id:'joueur',lb:'Joueur'},{id:'particulier',lb:'Particulier'}];
-  const list=_connectComptesCache.filter(c=>c.type===tab).filter(c=>{
+  // Sous-onglets Joueurs/Agents/Parents-Particuliers (refonte 28/08, spec Connect à 4
+  // catégories) : la RPC connect_os_accounts_list() ne renvoie que 3 valeurs de `type`
+  // (club/joueur/particulier — cf. audit, la colonne fine connect_profile_settings.
+  // profil_particulier agent/parent/tuteur/autre existe en base mais n'est pas exposée
+  // par cette RPC). Sans accès pour modifier/vérifier la RPC en conditions réelles dans
+  // cet environnement, on dérive la seule distinction fiable déjà présente dans la
+  // réponse : agent_tier non nul = compte Agent, sinon Parent/Particulier. "Parents" et
+  // "Particuliers" restent donc regroupés (impossible de les séparer sans changer la
+  // RPC) plutôt que d'inventer une donnée.
+  const isAgent=c=>c.type==='particulier'&&!!c.agent_tier;
+  const isParticulier=c=>c.type==='particulier'&&!c.agent_tier;
+  const counts={club:0,joueur:0,agent:0,particulier:0};
+  _connectComptesCache.forEach(c=>{
+    if(c.type==='club')counts.club++;
+    else if(c.type==='joueur')counts.joueur++;
+    else if(isAgent(c))counts.agent++;
+    else if(isParticulier(c))counts.particulier++;
+  });
+  const TABS=[{id:'club',lb:'Licenciés Club+'},{id:'joueur',lb:'Joueurs'},{id:'agent',lb:'Agents'},{id:'particulier',lb:'Parents & particuliers'}];
+  const list=_connectComptesCache.filter(c=>{
+    if(tab==='agent')return isAgent(c);
+    if(tab==='particulier')return isParticulier(c);
+    return c.type===tab;
+  }).filter(c=>{
     if(!q)return true;
     const full=[c.prenom,c.nom,c.email].filter(Boolean).join(' ').toLowerCase();
     return full.includes(q);
@@ -4739,7 +5139,8 @@ function modalModifierClient(idx){
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Modifier le client</div>
-    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${esc(c.nom)}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:8px">${esc(c.nom)}</div>
+    <div id="fce-hero-info" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"></div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;align-items:center;gap:14px">
         <div id="fce-logo-preview" style="width:64px;height:64px;border-radius:12px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
@@ -4812,9 +5213,11 @@ function modalModifierClient(idx){
       <div id="fce-tabs" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
         <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
           <button id="fce-tab-resume" onclick="fceShowTab('resume')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Résumé</button>
-          <button id="fce-tab-comm" onclick="fceShowTab('comm')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Communication</button>
+          <button id="fce-tab-club" onclick="fceShowTab('club')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Club, équipes & marque</button>
+          <button id="fce-tab-comm" onclick="fceShowTab('comm')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Communication éditoriale</button>
           <button id="fce-tab-pres" onclick="fceShowTab('pres')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Production</button>
-          <button id="fce-tab-finance" onclick="fceShowTab('finance')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Finance</button>
+          <button id="fce-tab-biblio" onclick="fceShowTab('biblio')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Bibliothèque</button>
+          <button id="fce-tab-finance" onclick="fceShowTab('finance')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Gestion</button>
           <button id="fce-tab-docs" onclick="fceShowTab('docs')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Documents</button>
         </div>
         <div id="fce-panel-resume" style="display:none">
@@ -4825,13 +5228,19 @@ function modalModifierClient(idx){
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Équipe affectée</div>
           <div id="fce-equipe-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
         </div>
+        <div id="fce-panel-club" style="display:none">
+          <div id="fce-club-content"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+        </div>
         <div id="fce-panel-comm" style="display:none">
           <div id="fce-comm-content"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
         </div>
         <div id="fce-panel-pres">
           <div id="fce-hist"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
-          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Médias</div>
+        </div>
+        <div id="fce-panel-biblio" style="display:none">
+          <div style="font-size:12.5px;color:var(--t2);margin-bottom:10px">Les médias de production de ce client sont gérés dans Media Bank, pas dupliqués ici.</div>
           <div id="fce-medias-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+          <button class="btn bp bs" style="margin-top:12px" onclick="closeModal();switchView('mediabank')">Ouvrir Media Bank</button>
         </div>
         <div id="fce-panel-finance" style="display:none">
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Contrats</div>
@@ -4842,6 +5251,8 @@ function modalModifierClient(idx){
           <div id="fce-rentabilite"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Crédits Connect / Club+</div>
           <div id="fce-credits" style="font-size:11.5px;color:var(--t3)">Chargement…</div>
+          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Statut Club+</div>
+          <div id="fce-clubplus-statut" style="font-size:11.5px;color:var(--t3)">Chargement…</div>
         </div>
         <div id="fce-panel-docs" style="display:none">
           <div id="fce-docs-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
@@ -4865,6 +5276,7 @@ function modalModifierClient(idx){
   chargerCreditsProjetClient(c.id);
   window._fceClientId=c.id;
   chargerParcoursClient(c.id);
+  chargerFceHeroInfo(c.id);
 }
 
 // ── Frise de parcours client (ajouté 22/08, simplification demandée par Fouka) ──
@@ -4923,6 +5335,97 @@ async function chargerParcoursClient(clientId){
     </div>
     ${nextLabel&&nextFn?`<button class="btn bp bs" onclick="${nextFn}">${nextLabel}</button>`:`<div style="font-size:11.5px;color:var(--ok);font-weight:600">✓ Parcours complet</div>`}`;
   }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Parcours indisponible.</div>';}
+}
+
+// ── Hero info fiche Full Com (refonte 28/08) ─────────────────────────────
+// Bandeau lecture-seule au-dessus du formulaire d'édition : statut Club+ (via
+// clubs.portail_client_id) + prochaine présence (prestations à venir). Omis
+// volontairement : Pass Photo actif/inactif (pas de source fiable et rapide —
+// photo_pass_entitlements est par utilisateur, pas par club/client, cf. audit) et
+// "Responsable Production" (aucun champ dédié trouvé, seul le CM assigné existe).
+async function chargerFceHeroInfo(clientId){
+  const el=document.getElementById('fce-hero-info');
+  if(!el)return;
+  try{
+    const today=ymdLocal();
+    const [clubR,presR]=await Promise.all([
+      sbFetch('clubs?select=id,plan,club_plus_source,subscription_status&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>[]),
+      sbFetch('prestations?select=id,type_prestation,date_prestation&client_id=eq.'+clientId+'&date_prestation=gte.'+today+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=1').catch(()=>[]),
+    ]);
+    const club=Array.isArray(clubR)&&clubR.length?clubR[0]:null;
+    const pre=Array.isArray(presR)&&presR.length?presR[0]:null;
+    const planLb={free:'Gratuit',club:'Club',performance:'Performance'};
+    const chip=(txt,clr)=>`<span class="bd ${clr}"><span class="bd-d"></span>${txt}</span>`;
+    let clubChip;
+    if(club){
+      const srcLb={clubplus_subscription:'Abonnement',full_com_included:'Inclus Full Com',manual:'Manuel'};
+      clubChip=chip('Club+ actif · '+(planLb[club.plan]||club.plan||'—')+' · '+(srcLb[club.club_plus_source]||club.club_plus_source||''),'ba');
+    }else{
+      clubChip=chip('Club+ non activé','bn');
+    }
+    const preChip=pre?chip('Prochaine présence · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})+(pre.type_prestation?' ('+esc(pre.type_prestation)+')':''),'bb'):chip('Aucune présence programmée','bw');
+    el.innerHTML=clubChip+preChip;
+  }catch(e){el.innerHTML='';}
+}
+
+// ── Onglet "Club, équipes & marque" (refonte 28/08) ──────────────────────
+// Identité + équipes + sponsors du club lié à ce client Full Com (via
+// clubs.portail_client_id) — regroupe volontairement les onglets "Club & équipes"
+// et "Marque & communication (logo/couleurs/sponsors)" de la spec en un seul
+// onglet, les deux tirant leurs données du même enregistrement `clubs` ; le
+// panneau "Communication éditoriale" (plannings hebdo/contenus, déjà existant)
+// reste distinct. Si aucun workspace Club+ n'existe encore pour ce client,
+// l'onglet le dit clairement plutôt que d'afficher un vide silencieux.
+async function loadClientClubIdentite(clientId){
+  const el=document.getElementById('fce-club-content');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  try{
+    let club=await sbFetch('clubs?select=id,nom,saison,logo_url,ecusson_url,couleur_primaire,couleur_secondaire&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>null);
+    club=(Array.isArray(club)&&club.length)?club[0]:null;
+    if(!club){
+      // Repli si les colonnes couleurs/saison/logo_url ne sont pas encore présentes.
+      let r=await sbFetch('clubs?select=id,nom&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>null);
+      club=(Array.isArray(r)&&r.length)?r[0]:null;
+    }
+    if(!club){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Aucun workspace Club+ activé pour ce client — l\'identité, les équipes et les sponsors n\'existent qu\'après activation.</div>';return;}
+    const [teamsR,sponsorsR]=await Promise.all([
+      sbFetch('club_teams?select=id,name&club_id=eq.'+club.id+'&order=name.asc').catch(()=>[]),
+      sbFetch('club_sponsors?select=id,name,niveau,montant,date_debut,date_fin&club_id=eq.'+club.id+'&order=created_at.desc&limit=50').catch(()=>[]),
+    ]);
+    const teams=Array.isArray(teamsR)?teamsR:[];
+    const sponsors=Array.isArray(sponsorsR)?sponsorsR:[];
+    const colorSwatch=(lbl,hex)=>hex?`<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2)"><span style="width:16px;height:16px;border-radius:4px;background:${esc(hex)};border:1px solid var(--b1)"></span>${lbl}</div>`:'';
+    el.innerHTML=`
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        <div style="width:48px;height:48px;border-radius:10px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+          ${club.logo_url||club.ecusson_url?`<img src="${esc(club.logo_url||club.ecusson_url)}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:20px;color:var(--t3)">🛡️</span>`}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(club.nom)}${club.saison?' · Saison '+esc(club.saison):''}</div>
+          <div style="display:flex;gap:12px">${colorSwatch('Primaire',club.couleur_primaire)}${colorSwatch('Secondaire',club.couleur_secondaire)}</div>
+        </div>
+      </div>
+      <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Équipes (${teams.length})</div>
+      ${teams.length?`<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">${teams.map(t=>`<div style="padding:8px 12px;background:var(--s2);border-radius:8px;font-size:12.5px;color:var(--t1);font-weight:500">🏐 ${esc(t.name)}</div>`).join('')}</div>`:'<div style="font-size:12px;color:var(--t3);margin-bottom:16px">Aucune équipe enregistrée.</div>'}
+      <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Sponsors (${sponsors.length})</div>
+      ${sponsors.length?`<div style="display:flex;flex-direction:column;gap:6px">${sponsors.map(s=>`<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--s2);border-radius:8px;font-size:12.5px"><span style="color:var(--t1);font-weight:500">${esc(s.name)}${s.niveau?' · '+esc(s.niveau):''}</span><span style="color:var(--t3)">${s.montant?s.montant.toLocaleString('fr-FR')+' €':''}</span></div>`).join('')}</div>`:'<div style="font-size:12px;color:var(--t3)">Aucun sponsor enregistré.</div>'}`;
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Statut Club+ (onglet Gestion, refonte 28/08) ─────────────────────────
+async function loadClientClubPlusStatut(clientId){
+  const el=document.getElementById('fce-clubplus-statut');
+  if(!el)return;
+  try{
+    const r=await sbFetch('clubs?select=id,plan,subscription_status,club_plus_source,created_at&portail_client_id=eq.'+clientId+'&limit=1');
+    const club=Array.isArray(r)&&r.length?r[0]:null;
+    if(!club){el.innerHTML='Club+ non activé pour ce client.';return;}
+    const planLb={free:'Gratuit',club:'Club',performance:'Performance'};
+    const srcLb={clubplus_subscription:'Abonnement Club+',full_com_included:'Inclus Full Com (sans coût supplémentaire)',manual:'Activation manuelle'};
+    const stLb={actif:'Abonnement actif',impaye:'Paiement en attente',annule:'Abonnement résilié'};
+    el.innerHTML=`Plan <b style="color:var(--t1)">${esc(planLb[club.plan]||club.plan||'—')}</b> · ${esc(srcLb[club.club_plus_source]||club.club_plus_source||'—')}${club.subscription_status?' · '+esc(stLb[club.subscription_status]||club.subscription_status):''} · activé le ${_ccFmtD(club.created_at)}`;
+  }catch(e){el.innerHTML='Statut indisponible.';}
 }
 
 // Onglet Contrats de la fiche client — liste + création directe préremplie (fini l'aller-
@@ -6288,7 +6791,7 @@ async function chargerPresByClient(clientId){
 function fceShowTab(tab){
   const on='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
   const off='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
-  ['resume','comm','pres','finance','docs'].forEach(t=>{
+  ['resume','club','comm','pres','biblio','finance','docs'].forEach(t=>{
     const b=document.getElementById('fce-tab-'+t);const p=document.getElementById('fce-panel-'+t);
     if(b)b.style.cssText=t===tab?on:off;
     if(p)p.style.display=t===tab?'':'none';
@@ -6296,9 +6799,10 @@ function fceShowTab(tab){
   if(!window._fceClientId)return;
   const id=window._fceClientId;
   if(tab==='resume'){loadClientOrganigramme(id);loadClientContacts(id);loadClientEquipe(id);}
+  if(tab==='club')loadClientClubIdentite(id);
   if(tab==='comm')loadClientCommunication(id);
-  if(tab==='pres')loadClientMedias(id);
-  if(tab==='finance'){loadClientContrats(id);loadClientDevisFinance(id);loadClientRentabilite(id);chargerCreditsProjetClient(id);}
+  if(tab==='biblio')loadClientMedias(id);
+  if(tab==='finance'){loadClientContrats(id);loadClientDevisFinance(id);loadClientRentabilite(id);chargerCreditsProjetClient(id);loadClientClubPlusStatut(id);}
   if(tab==='docs')loadClientDocuments(id);
 }
 
@@ -22920,9 +23424,9 @@ const DEMO_ROUTE_MAP={
   'rapprochement':{role:'admin',view:'rapprochement',label:'Rapprochement (voir statut réel dans le pack audit)'},
   'contrats':{role:'admin',view:'contrats',label:'Contrats'},
   'abonnements':{role:'sec',view:'abonnements',label:'Abonnements'},
-  'clubplus':{role:'admin',view:'connectcomptes',label:'Comptes Club+ / Connect'},
+  'clubplus':{role:'admin',view:'crmclubplus',label:'Club+'},
   'clubplus/demandes':{role:'admin',view:'demandesclub',label:'Demandes Club+'},
-  'connect':{role:'admin',view:'connectcomptes',label:'Comptes Club+ / Connect'},
+  'connect':{role:'admin',view:'connectcomptes',label:'Connect'},
   'connect/prestations':{role:'admin',view:'pre',label:'Prestations (dont demandes Connect)'},
   'connect/paiements-collectifs':{role:'admin',view:'cotisations',label:'Paiement collectif (cotisations)'},
   'full-communication':{role:'cm',view:'dash',label:"Vue d'ensemble CM (pas d'écran Full Communication séparé — voir pack audit)"},
@@ -24053,7 +24557,7 @@ async function deleteRealisation(id){
 
 // ── Comptes Portail (client_users) — réservé admin ──
 function tplComptesPortail(){
-  return `<div class="sh"><div class="sh-t">Comptes Portail (legacy)</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Ancien système de connexion client_users, distinct des vrais comptes Club+/Connect (voir "Comptes Club+ / Connect") — supprimer ici ne supprime pas la fiche client ni son historique</div></div>
+  return `<div class="sh"><div class="sh-t">Comptes Portail (legacy)</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Ancien système de connexion client_users, distinct des vrais comptes Club+/Connect (voir le module "Connect") — supprimer ici ne supprime pas la fiche client ni son historique</div></div>
     <div id="comptesportail-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
 }
 let _comptesPortailCache=[];
@@ -24186,6 +24690,7 @@ const VIEW_CTA={
   'admin.pre':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'admin.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'admin.crm':{t:'+ Nouveau client',fn:'modalNouveauClient'},
+  'admin.crmfullcom':{t:'+ Nouveau client',fn:'modalNouveauClient'},
   'admin.equipehub':{t:'+ Inviter',fn:'modalInviterCollaborateur'},
   'admin.kits':{t:'+ Nouveau kit',fn:'modalNouveauKit'},
   'admin.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
@@ -24199,6 +24704,7 @@ const VIEW_CTA={
   'sec.pre':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'sec.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'sec.crm':{t:'+ Nouveau client',fn:'modalNouveauClient'},
+  'sec.crmfullcom':{t:'+ Nouveau client',fn:'modalNouveauClient'},
   'sec.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'sec.taches':{t:'+ Nouvelle tâche',fn:'modalNouvelleTache'},
   'sec.demandes':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
