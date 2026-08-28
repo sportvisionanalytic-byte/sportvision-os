@@ -5096,6 +5096,93 @@ async function assignerCmClient(clientId,cmId){
   toast('CM affecté','ok');
 }
 
+// ── Cascade Full Communication (28/08/2026, demande Fouka) ─────────────────
+// Se déclenche quand un contrat full_communication passe à statut='actif'
+// (sauvegarderContrat/mettreAJourContrat) : avant, la suite (générer et
+// envoyer le lien d'activation Club+, affecter un CM) était 100% manuelle et
+// répartie sur 3 écrans différents — l'admin devait s'en souvenir lui-même.
+async function lancerCascadeFullCom(clientId){
+  try{
+    const cl=await sbFetch('clients?id=eq.'+clientId+'&select=id,nom,email,cm_id');
+    const c=Array.isArray(cl)&&cl[0];
+    if(!c)return;
+    const clubExist=await sbFetch('clubs?select=id&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>[]);
+    let clubMsg='';
+    if(!Array.isArray(clubExist)||!clubExist.length){
+      const sent=await autoActiverClubPlusFullCom(clientId,c.nom);
+      clubMsg=sent?' Accès Club+ envoyé automatiquement à '+(c.email||'l\'e-mail du contact')+'.':' Accès Club+ à générer manuellement (échec de l\'envoi automatique).';
+    }
+    if(!c.cm_id){
+      await proposerAffiliationCm(clientId,c.nom,clubMsg);
+    } else if(clubMsg){
+      toast('Full Communication activée pour '+c.nom+'.'+clubMsg,clubMsg.includes('échec')?'wa':'ok');
+    }
+  }catch(e){}
+}
+
+// Version autonome de genererLienActivationClubPlus() (5256) — celle-ci lit
+// des champs DOM propres à la modale modalInviterClubPlus et ne peut pas être
+// appelée hors de ce contexte ; on duplique volontairement le strict
+// nécessaire plutôt que de risquer de casser le flux manuel existant en le
+// modifiant. Plan toujours 'free' ici : Club+ est inclus sans coût
+// supplémentaire dans Full Communication (règle déjà appliquée ailleurs,
+// voir modalInviterClubPlus isFullCom).
+async function autoActiverClubPlusFullCom(clientId,nom){
+  try{
+    const tok=localStorage.getItem('sv_tok');
+    const r=await fetch(SB_URL+'/functions/v1/clubplus-generate-activation',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
+      body:JSON.stringify({client_id:clientId,club_nom_prefill:nom,plan:'free'})
+    });
+    const d=await r.json();
+    return !!(r.ok&&!d.error&&d.activation_url&&d.email_sent);
+  }catch(e){return false;}
+}
+
+// Suggestion de CM à l'affiliation — le moins chargé (nombre de clients
+// actuellement affectés via clients.cm_id), pas de matching sport/région
+// (aucune donnée fiable pour ça aujourd'hui) : juste répartir la charge.
+async function proposerAffiliationCm(clientId,clientNom,clubMsg){
+  try{
+    const [cms,affectes]=await Promise.all([
+      sbFetch('profiles?role=eq.cm&actif=neq.false&select=id,prenom,nom&order=prenom.asc'),
+      sbFetch('clients?cm_id=not.is.null&select=cm_id'),
+    ]);
+    const cmList=Array.isArray(cms)?cms:[];
+    if(!cmList.length)return;
+    const charge={};
+    (Array.isArray(affectes)?affectes:[]).forEach(c=>{charge[c.cm_id]=(charge[c.cm_id]||0)+1;});
+    cmList.sort((a,b)=>(charge[a.id]||0)-(charge[b.id]||0));
+    const suggestion=cmList[0];
+    const suggNom=esc([suggestion.prenom,suggestion.nom].filter(Boolean).join(' '));
+    openModal(`<div class="mh"><div class="mt">Affecter un CM</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+      <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:13px;color:var(--t2)">Full Communication activée pour <b style="color:var(--t1)">${esc(clientNom)}</b>.${clubMsg?esc(clubMsg):''} Aucun CM n'est encore affecté à ce club.</div>
+        <div style="padding:12px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.25);border-radius:var(--rb)">
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ok);margin-bottom:4px">CM suggéré — le moins chargé</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${suggNom}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${charge[suggestion.id]||0} club${(charge[suggestion.id]||0)>1?'s':''} actuellement en portefeuille</div>
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Ou choisir un autre CM</label>
+          <select id="pac-cmid" class="l-inp" style="height:38px">
+            ${cmList.map(u=>`<option value="${u.id}"${u.id===suggestion.id?' selected':''}>${esc([u.prenom,u.nom].filter(Boolean).join(' '))} — ${charge[u.id]||0} club${(charge[u.id]||0)>1?'s':''}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn bg2" onclick="closeModal()">Plus tard</button>
+        <button class="btn bp" onclick="confirmerAffiliationCm('${escJs(clientId)}')">Affecter</button>
+      </div>`);
+  }catch(e){}
+}
+async function confirmerAffiliationCm(clientId){
+  const cmId=document.getElementById('pac-cmid')?.value;
+  if(!cmId)return;
+  await assignerCmClient(clientId,cmId);
+  closeModal();
+}
+
 async function modifierClient(id){
   const err=document.getElementById('fce-err');
   const nom=document.getElementById('fce-nom').value.trim();
@@ -23512,7 +23599,7 @@ function modalNouveauContrat(prefilClientId){
           </select></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">STATUT</label>
           <select id="nc-statut" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
-            <option value="brouillon">Brouillon</option><option value="actif">Actif</option><option value="suspendu">Suspendu</option><option value="résilié">Résilié</option>
+            <option value="brouillon">Brouillon</option><option value="actif">Actif — signé</option><option value="suspendu">Suspendu</option><option value="résilié">Résilié</option>
           </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -23571,6 +23658,14 @@ async function sauvegarderContrat(){
     description:document.getElementById('nc-description')?.value.trim()||null,
     type_abonnement:document.getElementById('nc-abonnement')?.value||null,
     created_by:S.uid};
+  // "Actif" veut toujours dire "signé" dans ce métier (trigger DB
+  // check_signature_avant_activation, migration-audit-08-08-corrections-
+  // interfaces.sql) — sans ceci, choisir "Actif" dans le formulaire échoue
+  // silencieusement côté base pour tout contrat signé hors Youtrust (papier,
+  // en personne), qui est le cas le plus fréquent tant que Youtrust reste
+  // désactivé. Le flux Youtrust réel (une fois réactivé) pose exactement les
+  // deux mêmes champs dans le même appel, donc ceci ne le court-circuite pas.
+  if(payload.statut==='actif'){payload.signature_statut='signee';payload.signature_confirmee_at=new Date().toISOString();}
   let r=await sbFetch('contrats',{method:'POST',body:payload});
   let descriptionNonEnregistree=false;
   if(sbErr(r)&&/description/i.test(r.message||'')&&payload.description!==undefined){
@@ -23595,6 +23690,7 @@ async function sauvegarderContrat(){
   closeModal();
   toast(descriptionNonEnregistree?'Contrat créé — le périmètre n\'a pas pu être enregistré (migration-contrats-v3-description.sql non exécutée).':'Contrat créé',descriptionNonEnregistree?'wa':'ok');
   await loadContrats();
+  if(payload.type_contrat==='full_communication'&&payload.statut==='actif')await lancerCascadeFullCom(clientId);
 }
 
 async function modalContratFromDevis(devisId){
@@ -23759,6 +23855,8 @@ async function mettreAJourContrat(id){
     date_debut:dateDebut,date_fin:dateFin,
     renouvellement_auto:document.getElementById('ec-auto').checked,notes:document.getElementById('ec-notes').value.trim()||null,
     description:document.getElementById('ec-description')?.value.trim()||null};
+  // Voir le commentaire équivalent dans sauvegarderContrat().
+  if(payload.statut==='actif'){payload.signature_statut='signee';payload.signature_confirmee_at=new Date().toISOString();}
   let r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payload});
   let descriptionNonEnregistree=false;
   if(sbErr(r)&&/description/i.test(r.message||'')&&payload.description!==undefined){
@@ -23769,11 +23867,13 @@ async function mettreAJourContrat(id){
     descriptionNonEnregistree=!sbErr(r);
   }
   if(sbErr(r)){const e=document.getElementById('ecf-err');if(e){e.textContent='Erreur: '+(r.message||'Impossible de modifier.');e.style.display='block';}return;}
+  let cidPourCascade=null;
   if(payload.statut==='actif'){
     try{
       const ct=await sbFetch('contrats?select=client_id&id=eq.'+id);
       const cid=ct&&ct[0]&&ct[0].client_id;
       if(cid){
+        cidPourCascade=cid;
         const cl=await sbFetch('clients?select=id,statut&id=eq.'+cid);
         if(cl&&cl[0]&&cl[0].statut!=='partenaire'){
           const rCl=await sbFetch('clients?id=eq.'+cid,{method:'PATCH',body:{statut:'partenaire'}});
@@ -23785,6 +23885,7 @@ async function mettreAJourContrat(id){
   closeModal();
   toast(descriptionNonEnregistree?'Contrat mis à jour — le périmètre n\'a pas pu être enregistré (migration-contrats-v3-description.sql non exécutée).':'Contrat mis à jour',descriptionNonEnregistree?'wa':'ok');
   await loadContrats();
+  if(payload.type_contrat==='full_communication'&&payload.statut==='actif'&&cidPourCascade)await lancerCascadeFullCom(cidPourCascade);
 }
 
 function supprimerContrat(id){
