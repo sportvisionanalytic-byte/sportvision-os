@@ -827,36 +827,33 @@ const NAV={
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
-  // 'budget' (CA/coûts/marge) retiré du nav prod le 28/08 (spec refonte Responsable
-  // Production §35 "Finance - ce que voit Production" : aucune donnée de rentabilité
-  // au Responsable Production). Vue et fonction loadProdBudget() supprimées avec le nav.
+  // Refonte Responsable Production (spec "Refonte Interface Responsable Production",
+  // 29/08/2026, §2 "Navigation cible" + critère d'acceptation §52.1) : nav ramené aux 5
+  // écrans opérationnels de la spec (Accueil/Missions/Livraisons/Équipe terrain/Matériel).
+  // 'budget' déjà retiré le 28/08 (§35 "Finance — ce que voit Production" : aucune donnée
+  // de rentabilité). Retirés ce soir : planning (devient l'onglet Calendrier de Missions,
+  // §10 "le calendrier est une vue de Missions, pas un module séparé"), jourj/brief/incidents
+  // (accès contextuel depuis la fiche mission, §2 "Accès contextuels" + §8/§24/§25 — actions
+  // "Ouvrir itinéraire"/"Modifier brief"/incident restent atteignables depuis la fiche),
+  // equipes/kanban/post (redondants avec les onglets du module Missions, §7 "À attribuer |
+  // Proposées | Confirmées | En cours | À livrer | Terminées"), media (accès contextuel
+  // "Bibliothèque via une mission ou un club"), rem/frais (suivi personnel, hors des 5 écrans
+  // listés par le critère d'acceptation — restent accessibles via Mon équipe/fiche perso),
+  // rapports (Finance, hors périmètre comme 'budget'), annuaire (doublon Équipe terrain, même
+  // retrait que sec/photo). Toutes les vues/fonctions/dispatch sont conservés (aucune donnée
+  // ni fonctionnalité supprimée), seul le nav change — cf. même principe que sec.rapports.
   prod:[
     {type:'sep',lb:'Opérations'},
-    {id:'dash',lb:'Tableau de bord',ic:'dash'},
-    {id:'pre',lb:'Prestations',ic:'pre'},
-    {id:'planning',lb:'Planning production',ic:'cal'},
-    {id:'jourj',lb:'Mode Jour J',ic:'live'},
-    {type:'sep',lb:'Équipe'},
-    {id:'equipe',lb:'Mon équipe',ic:'col'},
-    {id:'equipes',lb:'Affectations',ic:'col'},
-    {id:'rem',lb:'Rémunérations',ic:'fin'},
-    {id:'frais',lb:'Frais & km',ic:'fin'},
-    {type:'sep',lb:'Production'},
-    {id:'brief',lb:'Briefings',ic:'doc'},
-    {id:'kits',lb:'Kits & matériel',ic:'kits'},
-    {id:'media',lb:'Médias',ic:'med'},
-    {id:'post',lb:'Postproduction',ic:'kan'},
-    {id:'livr',lb:'Livrables',ic:'check'},
-    {type:'sep',lb:'Suivi'},
-    {id:'kanban',lb:'Kanban',ic:'kan'},
-    {id:'incidents',lb:'Incidents',ic:'alert'},
-    {id:'rapports',lb:'Rapports',ic:'doc'},
-    {id:'form',lb:'Centre de formation',ic:'form'},
-    {type:'sep',lb:'Communication'},
-    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
-    {id:'msg',lb:'Messagerie',ic:'msg'},
+    {id:'dash',lb:'Accueil',ic:'dash'},
+    {id:'pre',lb:'Missions',ic:'pre'},
+    {id:'livr',lb:'Livraisons',ic:'check'},
+    {type:'sep',lb:'Équipe & matériel'},
+    {id:'equipe',lb:'Équipe terrain',ic:'col'},
+    {id:'kits',lb:'Matériel',ic:'kits'},
     {type:'sep',lb:'Ressources'},
+    {id:'form',lb:'Centre de formation',ic:'form'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   // Refonte Photo/Vidéaste (spec "Refonte Interface Photographe/Vidéaste", 28/08/2026) :
@@ -25652,7 +25649,9 @@ function closeMobNav(){
 const BNAV_ITEMS={
   admin:['dash','pre','planning','fin'],
   sec:  ['dash','demandes','pre','relances'],
-  prod: ['dash','jourj','pre','planning'],
+  // 29/08 (refonte nav prod) : jourj/planning retirés du nav principal (contextuels / vue
+  // Calendrier de Missions), remplacés par les 4 écrans réellement présents dans NAV.prod.
+  prod: ['dash','pre','livr','equipe'],
   // photo/com (28/08) : alignées sur les NAV.photo/NAV.com refondues — 'jourj'/'medias'
   // (photo) et 'crm' (com, jamais une vue réelle : VIEWS ne définit pas 'com.crm') sont
   // sortis du menu principal, cf. commentaires NAV ci-dessus.
@@ -29212,7 +29211,10 @@ const MOB_MORE_ITEMS={
   // la sidebar desktop (cf. NAV['admin'] section "Finances & Documents").
   admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'agendasec',lb:'Agenda',ic:'📅',sub:'RDV & rappels'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'docrh',lb:'Documents',ic:'📁',sub:'Pièces'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
-  prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'}],
+  // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
+  // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
+  // (jourj/planning/brief/incidents/media/rem/frais) qui n'ont plus de case dans NAV.prod.
+  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
