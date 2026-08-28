@@ -845,6 +845,7 @@ const NAV={
     {id:'demandes',lb:'Demandes reçues',ic:'doc'},
     {id:'briefs',lb:'Briefs production',ic:'pre'},
     {id:'cal',lb:'Calendrier éditorial',ic:'cal'},
+    {id:'planningmensuel',lb:'Planning mensuel',ic:'cal'},
     {id:'contenus',lb:'Contenus',ic:'pre'},
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
@@ -1210,6 +1211,26 @@ const VIEWS={
     </div>
     <div id="cal-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  'cm.planningmensuel':()=>`
+    <div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="pmPrev()" aria-label="Mois précédent">‹</button>
+        <div class="sh-t" id="pm-title">Planning mensuel</div>
+        <button class="btn bg2 bs" onclick="pmNext()" aria-label="Mois suivant">›</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bg2 bs" onclick="modalNouvellePresence()">+ Présence</button>
+        <button class="btn bp bs" id="pm-send-btn" onclick="pmEnvoyerProduction()">Envoyer à la production</button>
+      </div>
+    </div>
+    <div id="pm-client-select" style="margin-bottom:13px"></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Présences ce mois</div><div class="fs-v" id="pm-kpi-total" style="color:var(--ac)">—</div></div>
+      <div class="fs"><div class="fs-l">Alertes (≤14j sans mission)</div><div class="fs-v" id="pm-kpi-alert" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Missions créées</div><div class="fs-v" id="pm-kpi-missions" style="color:var(--ok)">—</div></div>
+    </div>
+    <div id="pm-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   'compta.factures':()=>`
     <div class="sh"><div class="sh-t">Factures</div>
       <div style="display:flex;gap:8px"><button class="btn bg2 bs" onclick="exportCSV('factures')">Export CSV</button></div>
@@ -1419,6 +1440,7 @@ const VIEWS={
     <div class="kpi-g" style="margin-bottom:18px">
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">À valider</div><div class="kpi-v" id="prod-kpi-val" style="color:var(--er)">—</div><span class="kpi-d dnt">en attente prod</span></div>
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">À planifier</div><div class="kpi-v" id="prod-kpi-ap">—</div><span class="kpi-d dnt">confirmées</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Planning mensuel CM</div><div class="kpi-v" id="prod-kpi-pmcm">—</div><span class="kpi-d dnt">sans équipe</span></div>
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Aujourd'hui</div><div class="kpi-v" id="prod-kpi-auj">—</div><span class="kpi-d dnt">productions</span></div>
       <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">En tournage</div><div class="kpi-v" id="prod-kpi-live">—</div><span class="kpi-d dnt">en direct</span></div>
       <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('post')"><div class="kpi-ey">En montage</div><div class="kpi-v" id="prod-kpi-mont">—</div><span class="kpi-d dnt">post-prod</span></div>
@@ -4007,6 +4029,7 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='briefs') await loadCmBriefs();
   if(role==='cm'&&view==='clients') await loadCmClients();
   if(role==='cm'&&view==='cal') await loadCmCal();
+  if(role==='cm'&&view==='planningmensuel') await loadCmPlanningMensuel();
   if(role==='cm'&&view==='contenus') await loadCmContenus();
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
   if(role==='cm'&&view==='charge') await loadCmCharge();
@@ -6769,7 +6792,7 @@ async function loadProdDash(){
   const RL={'admin':'Admin','sec':'Secrétaire','prod':'Production','photo':'Photo/Vidéo','cm':'CM','compta':'Comptable','com':'Commercial'};
   try{
     const [preRaw,kitsRaw,incRaw,profRaw,remRaw]=await Promise.all([
-      sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,role))'),
+      sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,source,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,role))'),
       sbFetch('kits?select=id,statut,nom,type_kit'),
       sbFetch('incidents?select=id,type_incident,description,niveau,cloture,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
       sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=nom.asc'),
@@ -6792,6 +6815,12 @@ async function loadProdDash(){
     const VALIDER_ST=['à_valider_production'];
     const aValider=pre.filter(p=>VALIDER_ST.includes(p.statut));
     const aPlanifier=pre.filter(p=>PLAN_ST.includes(p.statut));
+    // Missions générées par le planning mensuel CM (migration-planning-mensuel-cm.sql,
+    // 28/08/2026) : ce sont déjà des lignes `prestations` normales au statut 'planifiée',
+    // donc elles apparaissent automatiquement dans l'écran Missions/Prestations existant
+    // (pas d'écran dédié). Ce compteur signale juste celles qui n'ont pas encore
+    // d'équipe affectée, pour que prod sache qu'il y a du nouveau à traiter.
+    const planningCmNouvelles=pre.filter(p=>p.source==='planning_mensuel_cm'&&p.statut==='planifiée');
     const aujPres=pre.filter(p=>p.date_prestation===today&&!DONE_ST.includes(p.statut));
     const enTournage=pre.filter(p=>LIVE_ST.includes(p.statut));
     const enMontage=pre.filter(p=>MONT_ST.includes(p.statut));
@@ -6811,6 +6840,7 @@ async function loadProdDash(){
     const collabDispo=collabs.filter(p=>!todayAssigned.has(p.id)).length;
     set('prod-kpi-val',aValider.length||'0');
     set('prod-kpi-ap',aPlanifier.length);
+    set('prod-kpi-pmcm',planningCmNouvelles.length||'0');
     set('prod-kpi-auj',aujPres.length);
     set('prod-kpi-live',enTournage.length);
     set('prod-kpi-mont',enMontage.length);
@@ -17444,6 +17474,183 @@ async function cmSoumettreSemaine(clientId){
   }catch(e){toast('Erreur lors de la soumission.','er');}
 }
 
+// ── Planning mensuel CM (28/08/2026) ───────────────────────────────────────
+// Pour un client Full Communication, le CM récupère le calendrier du mois
+// (matchs/entraînements/événements) et le transmet en un geste à la
+// production. Chaque présence prévue devient une mission opérationnelle
+// (= une ligne `prestations` normale, statut 'planifiée') via la RPC
+// SECURITY DEFINER generate_missions_from_plan (idempotente, rejouable).
+// Sans rapport avec plannings_hebdo (calendrier ÉDITORIAL de `contenus`,
+// domaine différent) — voir migration-planning-mensuel-cm.sql.
+const PM_COUVERTURE_LB={photo:'Photo',video:'Vidéo',photo_video:'Photo + Vidéo'};
+let _pmMonthOffset=0;
+let _pmClientId=null;
+let _pmClients=[];
+let _pmPlan=null;
+let _pmPresences=[];
+function pmMonthDate(offset){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()+(offset||0));return d;}
+function pmMonthStr(offset){const d=pmMonthDate(offset);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';}
+function pmPrev(){_pmMonthOffset--;loadCmPlanningMensuel();}
+function pmNext(){_pmMonthOffset++;loadCmPlanningMensuel();}
+function pmSelectClient(id){_pmClientId=id;loadCmPlanningMensuel();}
+
+async function loadCmPlanningMensuel(){
+  const el=document.getElementById('pm-real');
+  if(!el)return;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const titleEl=document.getElementById('pm-title');
+  if(titleEl){
+    const lb=pmMonthDate(_pmMonthOffset).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    titleEl.textContent='Planning mensuel — '+lb.charAt(0).toUpperCase()+lb.slice(1);
+  }
+  try{
+    // Seuls les clients Full Communication (contrat actif) sont concernés par
+    // cette fonctionnalité — pas tous les clients visibles par le CM (cf.
+    // migration-planning-mensuel-cm.sql, point 2). La RLS sur `contrats`
+    // (contenus_visible_par_cm) fait déjà le filtre d'affiliation.
+    const contratsRaw=await sbFetch('contrats?select=client_id,clients(id,nom)&type_contrat=eq.full_communication&statut=eq.actif').catch(()=>[]);
+    const seen=new Set();
+    _pmClients=(Array.isArray(contratsRaw)?contratsRaw:[]).map(c=>c.clients).filter(c=>c&&c.id&&!seen.has(c.id)&&seen.add(c.id));
+    _pmClients.sort((a,b)=>(a.nom||'').localeCompare(b.nom||''));
+    const selEl=document.getElementById('pm-client-select');
+    if(!_pmClients.length){
+      if(selEl)selEl.innerHTML='';
+      set('pm-kpi-total','—');set('pm-kpi-alert','—');set('pm-kpi-missions','—');
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🗓️</div><div>Aucun client Full Communication ne vous est affilié pour l\'instant.</div></div>';
+      return;
+    }
+    if(!_pmClientId||!_pmClients.some(c=>c.id===_pmClientId)) _pmClientId=_pmClients[0].id;
+    if(selEl){
+      selEl.innerHTML=_pmClients.length>1
+        ?`<select class="fi" style="max-width:320px" onchange="pmSelectClient(this.value)">${_pmClients.map(c=>`<option value="${c.id}"${c.id===_pmClientId?' selected':''}>${esc(c.nom)}</option>`).join('')}</select>`
+        :`<div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(_pmClients[0].nom)}</div>`;
+    }
+    const mois=pmMonthStr(_pmMonthOffset);
+    const planRaw=await sbFetch('monthly_production_plans?client_id=eq.'+_pmClientId+'&mois=eq.'+mois);
+    _pmPlan=(Array.isArray(planRaw)&&planRaw[0])?planRaw[0]:null;
+    _pmPresences=_pmPlan?((await sbFetch('planned_presences?plan_id=eq.'+_pmPlan.id+'&order=date_presence.asc'))||[]):[];
+    if(!Array.isArray(_pmPresences))_pmPresences=[];
+    const today=new Date();today.setHours(0,0,0,0);
+    const dayMs=86400000;
+    const withAlert=_pmPresences.map(p=>{
+      let niveau='neutre',label='Planifié';
+      if(p.statut==='mission_creee'){niveau='ok';label='✓ Mission créée';}
+      else if(p.statut==='annule'){niveau='neutre';label='Annulé';}
+      else{
+        const d=new Date(p.date_presence+'T00:00:00');
+        const diffDays=Math.round((d-today)/dayMs);
+        if(diffDays<=0){niveau='urgent';label='⚠ Urgent';}
+        else if(diffDays<=14){niveau='attention';label='Attention';}
+        else{niveau='neutre';label='Planifié';}
+      }
+      return{...p,_niveau:niveau,_label:label};
+    });
+    set('pm-kpi-total',_pmPresences.length);
+    set('pm-kpi-alert',withAlert.filter(p=>['attention','urgent'].includes(p._niveau)).length);
+    set('pm-kpi-missions',_pmPresences.filter(p=>p.statut==='mission_creee').length);
+    const sendBtn=document.getElementById('pm-send-btn');
+    if(sendBtn)sendBtn.style.opacity=_pmPresences.some(p=>p.statut==='prevu')?'1':'.5';
+    if(!_pmPresences.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div>Aucune présence ce mois-ci. Ajoutez-en une pour commencer.</div></div>';
+      return;
+    }
+    const badgeCls={ok:'ba',attention:'bw',urgent:'bl',neutre:'bn'};
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Date</th><th>Équipe</th><th>Adversaire</th><th>Lieu</th><th>Couverture</th><th>Statut</th><th></th></tr></thead><tbody>'+
+      withAlert.map(p=>{
+        const dt=new Date(p.date_presence+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+        const heure=p.heure_debut?' '+p.heure_debut.slice(0,5):'';
+        return`<tr>
+          <td class="tm">${dt}${heure}</td>
+          <td>${esc(p.equipe||'—')}</td>
+          <td>${esc(p.adversaire||'—')}</td>
+          <td>${esc(p.lieu||'—')}</td>
+          <td style="font-size:11.5px;color:var(--t3)">${PM_COUVERTURE_LB[p.type_couverture]||p.type_couverture}</td>
+          <td><span class="bd ${badgeCls[p._niveau]}"><span class="bd-d"></span>${p._label}</span></td>
+          <td>${p.statut==='prevu'?`<button class="btn bg2 bs" onclick="pmSupprimerPresence('${p.id}')">Suppr.</button>`:''}</td>
+        </tr>`;
+      }).join('')+
+      '</tbody></table></div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';console.error(e);}
+}
+
+function modalNouvellePresence(){
+  if(!_pmClientId){toast('Aucun client Full Communication affilié.','er');return;}
+  openModal(`<div class="mh"><div class="mt">Nouvelle présence</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb">
+      <div class="g2">
+        <div class="fg"><label class="fl">Équipe</label><input type="text" id="pp-eq" class="fi" placeholder="Ex: Seniors A" autofocus></div>
+        <div class="fg"><label class="fl">Date</label><input type="date" id="pp-dt" class="fi" value="${ymdLocal()}"></div>
+      </div>
+      <div class="g2">
+        <div class="fg"><label class="fl">Heure</label><input type="time" id="pp-he" class="fi"></div>
+        <div class="fg"><label class="fl">Lieu</label><input type="text" id="pp-li" class="fi" placeholder="Ex: Gymnase municipal"></div>
+      </div>
+      <div class="g2">
+        <div class="fg"><label class="fl">Adversaire</label><input type="text" id="pp-ad" class="fi"></div>
+        <div class="fg"><label class="fl">Couverture</label>
+          <select id="pp-tc" class="fi"><option value="photo_video" selected>Photo + Vidéo</option><option value="photo">Photo</option><option value="video">Vidéo</option></select></div>
+      </div>
+      <div class="fg"><label class="fl">Notes</label><textarea id="pp-no" class="fi" style="height:50px"></textarea></div>
+      <div id="pp-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerPresence()">Ajouter</button></div>`);
+  setTimeout(()=>document.getElementById('pp-eq')?.focus(),50);
+}
+
+async function creerPresence(){
+  const equipe=(document.getElementById('pp-eq')?.value||'').trim();
+  const date_presence=document.getElementById('pp-dt')?.value||'';
+  const heure_debut=document.getElementById('pp-he')?.value||null;
+  const lieu=(document.getElementById('pp-li')?.value||'').trim();
+  const adversaire=(document.getElementById('pp-ad')?.value||'').trim();
+  const type_couverture=document.getElementById('pp-tc')?.value||'photo_video';
+  const notes=(document.getElementById('pp-no')?.value||'').trim();
+  const err=document.getElementById('pp-err');
+  if(!date_presence){if(err)err.textContent='La date est obligatoire.';return;}
+  const uid=localStorage.getItem('sv_uid');
+  try{
+    if(!_pmPlan){
+      const mois=pmMonthStr(_pmMonthOffset);
+      const created=await sbFetch('monthly_production_plans',{method:'POST',body:{client_id:_pmClientId,cm_id:uid,mois}});
+      if(sbErr(created)){
+        // Course possible sur unique(client_id, mois) si le plan a été créé
+        // entre-temps (autre onglet) : on récupère la ligne existante plutôt
+        // que d'échouer.
+        const existing=await sbFetch('monthly_production_plans?client_id=eq.'+_pmClientId+'&mois=eq.'+mois);
+        if(!Array.isArray(existing)||!existing[0]){if(err)err.textContent='Erreur : '+(created.message||'création du plan impossible.');return;}
+        _pmPlan=existing[0];
+      }else{_pmPlan=created[0];}
+    }
+    const r=await sbFetch('planned_presences',{method:'POST',body:{
+      plan_id:_pmPlan.id,equipe:equipe||null,date_presence,heure_debut,
+      lieu:lieu||null,adversaire:adversaire||null,type_couverture,notes:notes||null
+    }});
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'ajout impossible.');return;}
+    closeModal();
+    toast('Présence ajoutée.','ok');
+    loadCmPlanningMensuel();
+  }catch(e){if(err)err.textContent='Erreur lors de l\'ajout.';}
+}
+
+async function pmSupprimerPresence(id){
+  if(!confirm('Supprimer cette présence ?'))return;
+  const r=await sbFetch('planned_presences?id=eq.'+id,{method:'DELETE'});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+  toast('Présence supprimée.','ok');
+  loadCmPlanningMensuel();
+}
+
+async function pmEnvoyerProduction(){
+  if(!_pmPlan||!_pmPresences.some(p=>p.statut==='prevu')){
+    toast('Ajoutez au moins une présence prévue avant d\'envoyer.','er');return;
+  }
+  const r=await sbFetch('rpc/generate_missions_from_plan',{method:'POST',body:{p_plan_id:_pmPlan.id}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'envoi impossible.'),'er');return;}
+  const n=Number(r)||0;
+  toast(n>0?(n+' mission'+(n>1?'s':'')+' créée'+(n>1?'s':'')+' et envoyée'+(n>1?'s':'')+' à la production.'):'Planning envoyé (rien de nouveau à traiter).','ok');
+  loadCmPlanningMensuel();
+}
+
 // ── Admin/CM lead — validation des plannings hebdo soumis ─────────────────
 function modalPlanningsAValider(){
   openModal(`<div class="mh"><div class="mt">Plannings à valider</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
@@ -23504,6 +23711,7 @@ const VIEW_CTA={
   'prod.frais':{t:'+ Déclarer frais',fn:'modalDeclarerFrais'},
   'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.cal':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
+  'cm.planningmensuel':{t:'+ Présence',fn:'modalNouvellePresence'},
   'cm.contenus':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'com.dash':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
   'com.pipeline':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
