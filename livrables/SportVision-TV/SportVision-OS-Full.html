@@ -726,6 +726,7 @@ const NAV={
     {id:'grades',lb:'Grades & XP',ic:'target'},
     {id:'form',lb:'Centre de formation',ic:'form'},
     {type:'sep',lb:'Production'},
+    {id:'prodhub',lb:'Production',ic:'pre'},
     {id:'kits',lb:'Kits',ic:'kits'},
     {id:'incidents',lb:'Incidents',ic:'alert'},
     {type:'sep',lb:'Finances & Documents'},
@@ -1072,6 +1073,26 @@ const VIEWS={
         <div class="cd-h"><div class="cd-t">🕒 Activité</div></div>
         <div id="dash-activite"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
+    </div>`,
+
+  'admin.prodhub':()=>`
+    <div class="cd" style="margin-bottom:16px">
+      <div class="cd-h"><div class="cd-t">Pipeline de production</div><button class="btn bg2 bs" onclick="switchView('pre')">Toutes les prestations</button></div>
+      <div id="prodhub-pipeline" style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
+    </div>
+    <div class="g32">
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">Cette semaine — équipe &amp; terrain</div><button class="btn bg2 bs" onclick="switchView('planning')">Planning →</button></div>
+        <div id="prodhub-semaine"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      </div>
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">Kits utilisés</div><button class="btn bg2 bs" onclick="switchView('kits')">Inventaire</button></div>
+        <div id="prodhub-kits"><div style="padding:16px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
+      </div>
+    </div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Incidents ouverts</div><button class="btn bg2 bs" onclick="switchView('incidents')">Voir tout</button></div>
+      <div id="prodhub-incidents"><div style="padding:16px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
     </div>`,
 
   'admin.planning':()=>`
@@ -3818,6 +3839,7 @@ async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='prod')&&view==='pre') await loadPrestations();
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
   if((role==='admin'||role==='sec'||role==='com')&&view==='connectcomptes') await loadConnectComptes();
+  if(role==='admin'&&view==='prodhub') await loadProdHub();
   if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
   if(role==='admin'&&view==='col') await loadCollaborateurs();
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';await loadKits();}
@@ -6438,6 +6460,106 @@ async function loadAdminDash(){
         <span style="font-size:16px">${it.ic}</span>
         <div style="flex:1;font-size:13px">${it.txt}</div>
         <span style="font-size:11px;color:var(--ac)">›</span>
+      </div>`).join('');
+    }
+  }
+}
+
+async function loadProdHub(){
+  const now=new Date();
+  const dow=now.getDay()||7;
+  const lun=new Date(now);lun.setDate(now.getDate()-(dow-1));
+  const dim=new Date(lun);dim.setDate(lun.getDate()+6);
+  const weekStart=ymdLocal(lun);
+  const weekEnd=ymdLocal(dim);
+
+  let allPre=[],semainePre=[],kits=[],inc=[];
+  try{
+    [allPre,semainePre,kits,inc]=await Promise.all([
+      sbFetch('prestations?select=id,statut&order=date_prestation.asc&limit=500'),
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom))&date_prestation=gte.'+weekStart+'&date_prestation=lte.'+weekEnd+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc,heure_debut.asc'),
+      sbFetch('kits?select=id,nom,statut&order=nom.asc'),
+      sbFetch('incidents?select=id,type_incident,description,niveau,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
+    ]);
+  }catch(e){}
+
+  // Pipeline de production — logique reprise telle quelle de l'ancien Accueil
+  // (dash-prod, retiré lors de la refonte Admin V2 page 1/N) : groupes de
+  // statuts et filtre par clic déjà corrigés et validés, voir _preStatutsFiltre
+  // dans renderPreTable.
+  const elPipe=document.getElementById('prodhub-pipeline');
+  if(elPipe){
+    const stages=[
+      {lb:'À tourner',col:'#366BFF',sts:['confirmée','planifiée','équipe_affectée','prête','équipe_en_route','arrivée_sur_place','production_démarrée']},
+      {lb:'En tri',col:'#00B8D4',sts:['production_terminée','médias_à_transférer','médias_complets']},
+      {lb:'En retouche',col:'#F5A524',sts:['à_monter']},
+      {lb:'En montage',col:'#7C4DFF',sts:['montage_en_cours']},
+      {lb:'À valider',col:'#FF6B35',sts:['prêt_validation','à_valider_client']},
+      {lb:'À livrer',col:'#2ECC8A',sts:['prête_à_livrer']},
+    ];
+    const pre=Array.isArray(allPre)?allPre:[];
+    elPipe.innerHTML=stages.map(s=>{
+      const n=pre.filter(p=>s.sts.includes(p.statut)).length;
+      const stsJson=escJs(JSON.stringify(s.sts));
+      return`<div style="background:var(--c2);border-radius:8px;padding:10px 12px;text-align:center;border-top:2px solid ${s.col};cursor:${n>0?'pointer':'default'}" onclick="${n>0?`_preFiltre='';_preStatutsFiltre=JSON.parse('${stsJson}');switchView('pre')`:''}">
+        <div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:${n>0?s.col:'var(--t3)'}">${n}</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:3px;white-space:nowrap">${s.lb}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Cette semaine — équipe & terrain
+  const elSem=document.getElementById('prodhub-semaine');
+  if(elSem){
+    const list=Array.isArray(semainePre)?semainePre:[];
+    if(!list.length){
+      elSem.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation planifiée cette semaine.</div>';
+    } else {
+      elSem.innerHTML=list.map((p,i)=>{
+        const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'}):'—';
+        const h=p.heure_debut?p.heure_debut.slice(0,5):'--:--';
+        const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').map(e=>esc([e.collaborateur?.prenom,e.collaborateur?.nom].filter(Boolean).join(' '))).filter(Boolean);
+        const equipeHtml=equipe.length?`<span style="font-size:11px;color:var(--t3)">${equipe.join(', ')}</span>`:'<span class="bd bl"><span class="bd-d"></span>Sans équipe</span>';
+        return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:center;gap:12px;padding:9px 16px;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+          <div style="min-width:92px;font-size:11.5px;color:var(--t3);flex-shrink:0">${d} · ${h}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.clients?.nom||p.reference||'—')} — ${p.type_prestation||'—'}</div>
+            <div style="font-size:10.5px;color:var(--t3);margin-top:1px">${esc(p.lieu||'—')}</div>
+          </div>
+          <div style="flex-shrink:0;text-align:right">${equipeHtml}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Kits utilisés — logique reprise telle quelle de l'ancien Accueil
+  const elKits=document.getElementById('prodhub-kits');
+  if(elKits){
+    const kitsUses=(Array.isArray(kits)?kits:[]).filter(k=>k.statut!=='disponible');
+    if(!kitsUses.length){
+      elKits.innerHTML='<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Tous les kits sont disponibles.</div>';
+    } else {
+      const sc={'sorti':'#F5A524','en_prestation':'#F0445E','pré_réservé':'#366BFF','réservé':'#7C4DFF','en_maintenance':'#FF6B35','endommagé':'#F0445E','indisponible':'#888'};
+      elKits.innerHTML=kitsUses.map(k=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--bd)">
+        <div style="width:8px;height:8px;border-radius:50%;background:${sc[k.statut]||'#888'};flex-shrink:0"></div>
+        <div style="flex:1;font-size:13px">${esc(k.nom)}</div>
+        <span style="font-size:11px;color:var(--t3)">${k.statut}</span>
+      </div>`).join('');
+    }
+  }
+
+  // Incidents ouverts
+  const elInc=document.getElementById('prodhub-incidents');
+  if(elInc){
+    const list=Array.isArray(inc)?inc:[];
+    if(!list.length){
+      elInc.innerHTML='<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Aucun incident ouvert.</div>';
+    } else {
+      elInc.innerHTML=list.map((i,idx)=>`<div onclick="switchView('incidents')" style="display:flex;align-items:center;gap:10px;padding:9px 16px;${idx<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+        <div style="width:7px;height:7px;border-radius:50%;background:${i.niveau==='critique'?'var(--er)':i.niveau==='important'?'var(--wa)':'var(--t3)'};flex-shrink:0"></div>
+        <div style="flex:1;min-width:0;font-size:12.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.type_incident||(i.description?i.description.slice(0,40):'')||'—')}</div>
+        <div style="font-size:11px;color:var(--t3);flex-shrink:0">${esc(i.prestations?.clients?.nom||i.prestations?.reference||'—')}</div>
+        <div style="font-size:10.5px;color:var(--t3);flex-shrink:0">${i.created_at?new Date(i.created_at).toLocaleDateString('fr-FR'):'—'}</div>
       </div>`).join('');
     }
   }
