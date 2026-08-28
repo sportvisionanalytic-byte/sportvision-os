@@ -789,6 +789,7 @@ const NAV={
     {type:'sep',lb:'Administration'},
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
     {id:'demandes',lb:'Demandes entrantes',ic:'msg'},
+    {id:'agendasec',lb:'Agenda',ic:'cal'},
     {id:'taches',lb:'Tâches',ic:'task'},
     {id:'relances',lb:'Relances',ic:'alert'},
     {type:'sep',lb:'Clients & Ventes'},
@@ -802,13 +803,16 @@ const NAV={
     {id:'cotisations',lb:'Paiement collectif',ic:'target'},
     {id:'cmagency',lb:'Agences CM',ic:'cli'},
     {id:'demandesclub',lb:'Demandes Club+',ic:'cli',modal:'modalDemandesClubConnect'},
+    {type:'sep',lb:'Recrutement'},
+    {id:'recrutement',lb:'Recrutement',ic:'col'},
     {type:'sep',lb:'Prestations'},
     {id:'pre',lb:'Prestations',ic:'pre'},
     {id:'planning',lb:'Planning admin',ic:'cal'},
     {id:'livraisons',lb:'Livraisons',ic:'pub'},
     {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
     {type:'sep',lb:'Documents & Suivi'},
-    {id:'docs',lb:'Documents',ic:'doc'},
+    {id:'docrh',lb:'Documents (pièces)',ic:'doc'},
+    {id:'docs',lb:'Documents (devis/factures)',ic:'doc'},
     {id:'rapports',lb:'Rapports admin',ic:'fin'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
@@ -818,6 +822,9 @@ const NAV={
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
+  // 'budget' (CA/coûts/marge) retiré du nav prod le 28/08 (spec refonte Responsable
+  // Production §35 "Finance - ce que voit Production" : aucune donnée de rentabilité
+  // au Responsable Production). Vue et fonction loadProdBudget() supprimées avec le nav.
   prod:[
     {type:'sep',lb:'Opérations'},
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
@@ -838,7 +845,6 @@ const NAV={
     {type:'sep',lb:'Suivi'},
     {id:'kanban',lb:'Kanban',ic:'kan'},
     {id:'incidents',lb:'Incidents',ic:'alert'},
-    {id:'budget',lb:'Budget production',ic:'fin'},
     {id:'rapports',lb:'Rapports',ic:'doc'},
     {id:'form',lb:'Centre de formation',ic:'form'},
     {type:'sep',lb:'Communication'},
@@ -1195,6 +1201,11 @@ const VIEWS={
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Prestations en cours</div><div class="kpi-v" id="sec-kpi-pre">—</div><span class="kpi-d dnt">actives</span></div>
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('taches')"><div class="kpi-ey">Tâches urgentes</div><div class="kpi-v" id="sec-kpi-taches">—</div><span class="kpi-d dnt">haute priorité</span></div>
     </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-top:8px">
+      <div class="kpi" style="--kl:#8891A8;cursor:pointer" onclick="switchView('recrutement')"><div class="kpi-ey">Candidats à appeler</div><div class="kpi-v" id="sec-kpi-candidats">—</div><span class="kpi-d dnt">recrutement</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('docrh')"><div class="kpi-ey">Documents manquants</div><div class="kpi-v" id="sec-kpi-docmanq">—</div><span class="kpi-d dnt">pièces à obtenir</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('agendasec')"><div class="kpi-ey">RDV aujourd'hui</div><div class="kpi-v" id="sec-kpi-rdvauj">—</div><span class="kpi-d dnt">agenda</span></div>
+    </div>
     <div id="sec-dash-priorite" style="display:none;margin-top:12px">
       <div class="cd" style="border-color:rgba(240,68,94,.25)">
         <div class="cd-h"><div class="cd-t" style="color:var(--er)">⚡ À traiter aujourd'hui</div></div>
@@ -1349,6 +1360,13 @@ const VIEWS={
     <div id="eqov-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'admin.recrutement':()=>`
+    <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Candidatures reçues via le site — pipeline Nouveaux → Collaborateur</div></div></div>
+    <div id="recrut-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // 28/08/2026 : Recrutement ouvert à 'sec' (spec refonte Secrétaire §24
+  // "Recrutement - pipeline" — préqualification/appels, la Direction valide
+  // la décision finale via le pipeline lui-même, pas un accès distinct).
+  'sec.recrutement':()=>`
     <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Candidatures reçues via le site — pipeline Nouveaux → Collaborateur</div></div></div>
     <div id="recrut-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1605,6 +1623,51 @@ const VIEWS={
 
   'sec.docs':()=>_documentsView('sec'),
 
+  // ── AGENDA SECRÉTAIRE (28/08/2026, spec refonte Secrétaire §30) ──────────
+  // Agenda ADMINISTRATIF (RDV, rappels, relances, échéances), distinct du
+  // calendrier de missions ('sec.planning'/'prod.planning' partagent
+  // loadPlanning()) — table dédiée secretariat_agenda_events, jamais les
+  // missions en flux principal (prestation_id = lien de contexte seulement).
+  'sec.agendasec':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Agenda</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Rendez-vous, rappels et échéances administratives</div></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bg2 bs" onclick="modalNouvelEvenementAgenda('rappel_interne')">+ Rappel</button>
+        <button class="btn bp bs" onclick="modalNouvelEvenementAgenda('rdv_client')">+ Rendez-vous</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+      <button onclick="filterAgendaSec('a_faire')" class="btn bp bs" id="ag-f-afaire" style="flex-shrink:0;font-size:11px">À faire</button>
+      <button onclick="filterAgendaSec('reporte')" class="btn bg2 bs" id="ag-f-reporte" style="flex-shrink:0;font-size:11px">Reportés</button>
+      <button onclick="filterAgendaSec('termine')" class="btn bg2 bs" id="ag-f-termine" style="flex-shrink:0;font-size:11px">Terminés</button>
+      <button onclick="filterAgendaSec('all')" class="btn bg2 bs" id="ag-f-all" style="flex-shrink:0;font-size:11px">Tous</button>
+    </div>
+    <div id="agenda-sec-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── DOCUMENTS (pièces RH/client/Club+/avenants/recrutement) ──────────────
+  // 28/08/2026, spec refonte Secrétaire §28-29 : vue secretariat_documents
+  // (migration-documents-rh-v2-vue-secretariat.sql), 4 filtres transverses,
+  // distinct de 'sec.docs' (devis/contrats/factures/avoirs — cycle de vie
+  // commercial, écran existant conservé tel quel).
+  'sec.docrh':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Documents</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Pièces RH, client, Club+, recrutement — statut et échéances</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Manquants</div><div class="fs-v" id="docrh-kpi-manquant" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À valider</div><div class="fs-v" id="docrh-kpi-avalider" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Expirent bientôt</div><div class="fs-v" id="docrh-kpi-expire" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Complets</div><div class="fs-v" id="docrh-kpi-valide" style="color:var(--ok)">—</div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+      <button onclick="filterDocRh('manquant')" class="btn bp bs" id="dr-f-manquant" style="flex-shrink:0;font-size:11px">Manquants</button>
+      <button onclick="filterDocRh('a_valider')" class="btn bg2 bs" id="dr-f-avalider" style="flex-shrink:0;font-size:11px">À valider</button>
+      <button onclick="filterDocRh('expire_bientot')" class="btn bg2 bs" id="dr-f-expire" style="flex-shrink:0;font-size:11px">Expirent bientôt</button>
+      <button onclick="filterDocRh('valide')" class="btn bg2 bs" id="dr-f-valide" style="flex-shrink:0;font-size:11px">Complets</button>
+      <button onclick="filterDocRh('all')" class="btn bg2 bs" id="dr-f-all" style="flex-shrink:0;font-size:11px">Tous</button>
+    </div>
+    <div id="docrh-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   // ── PRODUCTION ──────────────────────────
   'prod.dash':()=>`
     <div style="overflow-x:auto;scrollbar-width:none;margin-bottom:18px;-webkit-overflow-scrolling:touch">
@@ -1820,19 +1883,6 @@ const VIEWS={
       <button onclick="filterProdLivr('livre')" class="btn bg2 bs" id="pliv-lv" style="flex-shrink:0;font-size:11px">Livrés</button>
     </div>
     <div id="prod-livr-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
-
-  // ── PROD : BUDGET ──────────────────────────────────────────────────────────
-  'prod.budget':()=>`
-    <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">Budget production</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Suivi financier opérationnel (hors comptabilité générale)</div></div>
-    </div>
-    <div class="kpi-g" style="margin-bottom:16px">
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">CA produit</div><div class="kpi-v" id="bud-ca">—</div><span class="kpi-d dnt">ce mois</span></div>
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Coûts prod</div><div class="kpi-v" id="bud-couts">—</div><span class="kpi-d dnt">estimés</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Marge op.</div><div class="kpi-v" id="bud-marge">—</div><span class="kpi-d dnt">estimée</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations</div><div class="kpi-v" id="bud-nb">—</div><span class="kpi-d dnt">actives</span></div>
-    </div>
-    <div id="prod-budget-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── PROD : RÉMUNÉRATIONS ──────────────────────────────────────────────────
   'prod.rem':()=>`
@@ -3456,6 +3506,8 @@ function demoRpc(name,body){
       return {ok:true};
     case 'rpc_get_custom_quiz':
       return [];
+    case 'validate_production':
+      return {prestation_id:(body&&body.p_prestation_id)||null,statut:'clôturée',deja_clôturee_avant_appel:false,media_livrables_marques_livres:0,expirations_90j_posees:0,brouillon_cm_cree:false,payables_operateur_valides:0};
     default:
       return [];
   }
@@ -4261,7 +4313,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='commhub') await loadCommHub();
   if(role==='admin'&&view==='equipeoverview') await loadEquipeOverview();
   if(role==='admin'&&view==='equipehub') await loadCollaborateurs();
-  if(role==='admin'&&view==='recrutement') await loadRecrutement();
+  if(['admin','sec'].includes(role)&&view==='recrutement') await loadRecrutement();
   if(role==='admin'&&view==='form'){await loadAdminForm();}
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';await loadKits();}
   if(role==='admin'&&view==='dash') await loadAdminDash();
@@ -4278,7 +4330,6 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='post') await loadProdPostprod();
   if(role==='prod'&&view==='livr') await loadProdLivrables();
   if(role==='prod'&&view==='kanban') await loadKanban();
-  if(role==='prod'&&view==='budget') await loadProdBudget();
   // prod.form uses loadForm() — see line below
   if(role==='prod'&&view==='rapports') await loadProdRapport('prestations');
   if(role==='photo'&&view==='dash') await loadPhotoDash();
@@ -4380,6 +4431,8 @@ async function loadViewData(role,view){
   if(['admin','compta'].includes(role)&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
   if((['admin','compta','expert_comptable'].includes(role)&&view==='documents')||((role==='sec'||role==='admin'||_isComptaLike)&&view==='docs')) await loadDocuments(role);
+  if(role==='sec'&&view==='agendasec') await loadAgendaSec();
+  if(role==='sec'&&view==='docrh') await loadDocRh();
   if(_isComptaLike&&view==='rapprochement') await loadRapprochementBancaire();
   if(view==='set') await loadSettings();
   if(role==='admin'&&view==='rapport'){_rapportOffset=0;await loadRapport();}
@@ -4412,6 +4465,7 @@ const SC={'confirmée':'ba','planifiée':'ba','prête':'ba','prête_à_livrer':'
   'livrée':'bn','facturée':'bw','partiellement_payée':'bw'};
 
 let _prestationsCache=[];
+let _missionPreteMap={};
 let _preFiltre='';
 let _preDateFiltre='';
 // Filtre multi-statuts (ex: KPI "Suivi de production" du dashboard, qui
@@ -4446,6 +4500,13 @@ async function loadPrestations(){
     const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,source,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,options_selectionnees,mode_paiement_choisi,distance_km,frais_deplacement_ht,offre_id,catalogue_offres(nom,categorie,description,tarif_type,prix_ht,duree_estimee,livrables_inclus),clients(nom)&order=date_prestation.desc&limit=200');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div>Aucune prestation. Créez la première.</div></div>';return;}
     _prestationsCache=data;
+    // Badge "PRÊTE" (spec refonte Responsable Production §23) : réservé au
+    // rôle prod, évite la charge de requête supplémentaire pour les autres.
+    _missionPreteMap={};
+    if(S.role==='prod'){
+      const rdy=await sbFetch('v_mission_prete?select=prestation_id,operateur_confirme,brief_rempli,lieu_horaire_ok,kit_ok,pas_incident_ouvert').catch(()=>[]);
+      (Array.isArray(rdy)?rdy:[]).forEach(r=>{_missionPreteMap[r.prestation_id]=r.operateur_confirme&&r.brief_rempli&&r.lieu_horaire_ok&&r.kit_ok&&r.pas_incident_ouvert;});
+    }
     renderPreTable();
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
@@ -4506,7 +4567,7 @@ function renderPreTable(){
         <td style="font-size:11px;color:var(--t3)">${SOURCE_PRE_LBL[p.source]||p.source||'—'}</td>
         <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
         <td class="tm">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-        <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+        <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>${S.role==='prod'&&_missionPreteMap[p.id]?' <span class="bd ba" title="Opérateur confirmé, brief rempli, lieu/horaire ok, kit ok, aucun incident ouvert" style="font-size:9.5px"><span class="bd-d"></span>✓ PRÊTE</span>':''}</td>
         <td><span class="bd ${SF_CLS[p.statut_financier]||'bn'}" style="font-size:10px"><span class="bd-d"></span>${SF_LBL[p.statut_financier]||'—'}</span></td>
         <td style="display:flex;gap:4px;flex-wrap:wrap">
           <button onclick="modalDetailPrestation(${ri})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer;white-space:nowrap">Ouvrir</button>
@@ -4622,9 +4683,9 @@ function modalDetailPrestation(idx){
       ${p.mode_paiement_choisi?`<div style="font-size:12px;color:var(--t1)"><b>Mode de paiement souhaité :</b> ${p.mode_paiement_choisi==='carte'?'Carte (en ligne)':'Espèces (sur place)'}<span style="display:block;font-size:10.5px;font-weight:400;color:var(--t3);margin-top:2px">Issu d'une ancienne demande — ce choix n'est plus proposé dans le tunnel de réservation depuis le 09/08/2026.</span></div>`:''}
       ${(p.distance_km||p.frais_deplacement_ht)?`<div style="font-size:12px;color:var(--t1)"><b>Déplacement :</b> ${p.distance_km?p.distance_km+' km (A/R)':'—'}${p.frais_deplacement_ht?' · '+p.frais_deplacement_ht.toLocaleString('fr-FR')+' € HT':''}</div>`:''}
     </div>`:''}
-    ${p.statut==='à_valider_production'&&S.role==='prod'?`<div style="display:flex;gap:8px;margin-bottom:14px;padding:12px 14px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.25);border-radius:var(--rb)">
-      <div style="flex:1"><div style="font-size:11px;font-weight:700;color:var(--er);margin-bottom:2px">VALIDATION PRODUCTION REQUISE</div>
-      <div style="font-size:12px;color:var(--t2)">Cette prestation attend votre validation avant planification.</div></div>
+    ${p.statut==='à_valider_production'&&['admin','sec'].includes(S.role)?`<div style="display:flex;gap:8px;margin-bottom:14px;padding:12px 14px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.25);border-radius:var(--rb)">
+      <div style="flex:1"><div style="font-size:11px;font-weight:700;color:var(--er);margin-bottom:2px">VALIDATION REQUISE</div>
+      <div style="font-size:12px;color:var(--t2)">Dossier complet (devis accepté, paiement conforme) : valider la prestation crée automatiquement la mission pour la Production.</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
         <button onclick="validerPrestation('${p.id}','refusée')" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer">✕ Refuser</button>
         <button onclick="validerPrestation('${p.id}','confirmée')" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer">✓ Valider</button>
@@ -5397,6 +5458,14 @@ function modalModifierClient(idx){
   const canEdit=S.role!=='cm';
   const canAssignCm=S.role==='admin'||(S.role==='cm'&&_myNiveauCm==='cm_lead');
   const ro=canEdit?'':'disabled';
+  // Périmètre Secrétaire (28/08/2026, spec refonte §19 "Fiche Full Com - vue
+  // Secrétaire", masqué : Rentabilité, Rushs, Media Bank, Planning éditorial
+  // complet, Planning mensuel Production détaillé) : la secrétaire prépare le
+  // dossier administratif, elle ne pilote ni le planning éditorial CM ni la
+  // production/bibliothèque média. La donnée sous-jacente (v_rentabilite_missions)
+  // est déjà bloquée côté base pour ce rôle (migration-rentabilite-exclure-sec-prod.sql) ;
+  // ceci retire en plus les onglets eux-mêmes pour ne pas laisser d'écrans vides.
+  const secHideTabs=S.role==='sec'?'display:none':'';
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Modifier le client</div>
@@ -5475,9 +5544,9 @@ function modalModifierClient(idx){
         <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
           <button id="fce-tab-resume" onclick="fceShowTab('resume')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Résumé</button>
           <button id="fce-tab-club" onclick="fceShowTab('club')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Club, équipes & marque</button>
-          <button id="fce-tab-comm" onclick="fceShowTab('comm')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Communication éditoriale</button>
-          <button id="fce-tab-pres" onclick="fceShowTab('pres')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Production</button>
-          <button id="fce-tab-biblio" onclick="fceShowTab('biblio')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Bibliothèque</button>
+          <button id="fce-tab-comm" onclick="fceShowTab('comm')" style="${secHideTabs};padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Communication éditoriale</button>
+          <button id="fce-tab-pres" onclick="fceShowTab('pres')" style="${secHideTabs};padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Production</button>
+          <button id="fce-tab-biblio" onclick="fceShowTab('biblio')" style="${secHideTabs};padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Bibliothèque</button>
           <button id="fce-tab-finance" onclick="fceShowTab('finance')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Gestion</button>
           <button id="fce-tab-docs" onclick="fceShowTab('docs')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Documents</button>
         </div>
@@ -5508,8 +5577,8 @@ function modalModifierClient(idx){
           <div id="fce-contrats-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Devis</div>
           <div id="fce-devis-finance-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
-          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Rentabilité</div>
-          <div id="fce-rentabilite"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div style="${secHideTabs};font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Rentabilité</div>
+          <div id="fce-rentabilite" style="${secHideTabs}"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Crédits Connect / Club+</div>
           <div id="fce-credits" style="font-size:11.5px;color:var(--t3)">Chargement…</div>
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Statut Club+</div>
@@ -6580,6 +6649,9 @@ async function recrutCreerCollaborateur(candId){
       telephone:c.telephone||null,
       vehicule:c.vehicule==='oui',
       permis:c.permis==='oui',
+      zone:c.zone||null,
+      materiel_personnel:c.materiel||null,
+      portfolio_url:c.portfolio_url||null,
       actif:false,
       onboarding_started_at:new Date().toISOString(),
     }}).catch(()=>{});
@@ -7224,6 +7296,9 @@ async function chargerPresByClient(clientId){
 }
 
 function fceShowTab(tab){
+  // Périmètre Secrétaire : ces onglets sont déjà masqués (cf. secHideTabs dans
+  // modalModifierClient), garde défensive si jamais appelé programmatiquement.
+  if(S.role==='sec'&&['comm','pres','biblio'].includes(tab))tab='resume';
   const on='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
   const off='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
   ['resume','club','comm','pres','biblio','finance','docs'].forEach(t=>{
@@ -7237,7 +7312,7 @@ function fceShowTab(tab){
   if(tab==='club')loadClientClubIdentite(id);
   if(tab==='comm')loadClientCommunication(id);
   if(tab==='biblio')loadClientMedias(id);
-  if(tab==='finance'){loadClientContrats(id);loadClientDevisFinance(id);loadClientRentabilite(id);chargerCreditsProjetClient(id);loadClientClubPlusStatut(id);}
+  if(tab==='finance'){loadClientContrats(id);loadClientDevisFinance(id);if(S.role!=='sec')loadClientRentabilite(id);chargerCreditsProjetClient(id);loadClientClubPlusStatut(id);}
   if(tab==='docs')loadClientDocuments(id);
 }
 
@@ -9784,63 +9859,6 @@ async function confirmerLivraison(livrableId){
   }catch(e){err.textContent='Erreur lors de l\'enregistrement.';}
 }
 
-// ── PROD BUDGET ───────────────────────────────────────────────────────────────
-async function loadProdBudget(){
-  const el=document.getElementById('prod-budget-real');
-  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  if(!el)return;
-  try{
-    const now=new Date();
-    const mStart=now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-01';
-    const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
-    // Fetch this month's prestations (CA), + equipe rémunérations + frais in parallel
-    const [rawPre,rawFrais]=await Promise.all([
-      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,montant_ttc,clients(nom)&statut=not.in.(annulée,refusée)&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext+'&order=date_prestation.desc&limit=100'),
-      sbFetch('frais?select=montant&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext+'&statut=in.(validé,remboursé)').catch(()=>[]),
-    ]);
-    const pre=Array.isArray(rawPre)?rawPre:[];
-    const preIds=pre.map(p=>p.id);
-    const rawRem=preIds.length
-      ? await sbFetch('prestations_equipe_display?select=remuneration,statut&prestation_id=in.('+preIds.join(',')+')')
-      : [];
-    const active=pre.filter(p=>!['livrée','clôturée'].includes(p.statut));
-    // active.length||pre.length affichait le TOTAL du mois dès que active.length
-    // valait 0 (0 est falsy en JS) — donc le KPI "Prestations actives" montrait
-    // le nombre de prestations livrées/clôturées au lieu de 0 quand tout était
-    // déjà terminé, l'exact inverse de ce que le libellé annonce.
-    s('bud-nb',active.length);
-    const ca=pre.reduce((acc,p)=>acc+(Number(p.montant_ttc)||0),0);
-    // Une mission refusée/remplacée/annulée n'est pas un coût réel.
-    const costsRem=(Array.isArray(rawRem)?rawRem:[]).filter(r=>r.statut==='acceptée').reduce((acc,r)=>acc+(Number(r.remuneration)||0),0);
-    const costsFrais=(Array.isArray(rawFrais)?rawFrais:[]).reduce((acc,f)=>acc+(Number(f.montant)||0),0);
-    const couts=costsRem+costsFrais;
-    const marge=ca-couts;
-    const fmt=v=>v.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
-    s('bud-ca',ca>0?fmt(ca):'—');
-    s('bud-couts',couts>0?fmt(couts):'—');
-    s('bud-marge',(ca>0||couts>0)?fmt(marge):'—');
-    if(!pre.length){
-      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:10px;color:var(--t3)"><div style="font-size:40px;opacity:.15">📊</div><div style="font-size:13px">Aucune prestation ce mois-ci.</div></div>';
-      return;
-    }
-    el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+pre.slice(0,12).map((p,i)=>{
-      const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
-      const ttc=p.montant_ttc?Number(p.montant_ttc).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €':'—';
-      const stClr=p.statut==='confirmée'?'var(--acc)':p.statut==='en_cours'?'var(--ok)':p.statut==='livrée'?'var(--wa)':'var(--t3)';
-      return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:center;${i<Math.min(pre.length,12)-1?'border-bottom:1px solid var(--b1)':''};padding:12px 18px;cursor:pointer;gap:12px" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
-        <div style="width:6px;height:6px;border-radius:50%;background:${stClr};flex-shrink:0"></div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.clients?.nom||'—')} — ${p.type_prestation||'—'}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · ${p.reference||'—'}</div>
-        </div>
-        <div style="font-size:13px;font-weight:700;color:var(--ok);flex-shrink:0">${ttc}</div>
-      </div>`;
-    }).join('')+'</div>';
-  }catch(e){
-    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
-  }
-}
-
 // ── PROD RÉMUNÉRATIONS ────────────────────────────────────────────────────────
 let _prodRemData=[];
 let _prodRemFilter='all';
@@ -11027,6 +11045,189 @@ function supprimerTache(id){
       loadTaches();
     }catch(e){toast('Erreur réseau : suppression impossible.','er');}
   });
+}
+
+// ── AGENDA SECRÉTAIRE (28/08/2026) ───────────────────────────────────────────
+// Table dédiée secretariat_agenda_events (migration-agenda-secretaire-v1.sql),
+// distincte de notifications/taches ci-dessus (liste actionnable persistante
+// avec date/statut à_faire/terminé/reporté, pas une simple alerte lue/non lue).
+const AGENDA_TYPE_LBL={appel_candidat:'Appel candidat',rdv_client:'RDV client',relance_devis:'Relance devis',relance_paiement:'Relance paiement',signature:'Signature',renouvellement:'Renouvellement',echeance_document:'Échéance document',rappel_interne:'Rappel interne'};
+let _agendaSecData=[];
+let _agendaSecFilter='a_faire';
+
+function filterAgendaSec(f){
+  _agendaSecFilter=f;
+  ['afaire','reporte','termine','all'].forEach(k=>{
+    const b=document.getElementById('ag-f-'+k);
+    if(b)b.className='btn '+((k==='afaire'?'a_faire':k)===f?'bp':'bg2')+' bs';
+  });
+  renderAgendaSecList();
+}
+
+function renderAgendaSecList(){
+  const el=document.getElementById('agenda-sec-real');
+  if(!el)return;
+  let list=_agendaSecData;
+  if(_agendaSecFilter!=='all')list=list.filter(e=>e.statut===_agendaSecFilter);
+  if(!list.length){
+    el.innerHTML='<div class="cd"><div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:10px;color:var(--t3)"><div style="font-size:40px;opacity:.15">📅</div><div style="font-size:13px">Rien ici pour ce filtre.</div></div></div>';
+    return;
+  }
+  const stC={a_faire:'bw',termine:'ba',reporte:'bn'};
+  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+list.map((e,i)=>{
+    const d=e.date_heure?new Date(e.date_heure).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+    return`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;${i<list.length-1?'border-bottom:1px solid var(--b1)':''}">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(e.titre)}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${AGENDA_TYPE_LBL[e.type]||e.type} · ${d}</div>
+        ${e.description?`<div style="font-size:11.5px;color:var(--t2);margin-top:4px">${esc(e.description)}</div>`:''}
+      </div>
+      <span class="bd ${stC[e.statut]||'bn'}" style="flex-shrink:0"><span class="bd-d"></span>${e.statut.replace('_',' ')}</span>
+      ${e.statut!=='termine'?`<button onclick="terminerEvenementAgenda('${e.id}')" style="flex-shrink:0;padding:5px 10px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer">✓ Terminer</button>
+      <button onclick="reporterEvenementAgenda('${e.id}')" style="flex-shrink:0;padding:5px 10px;font-size:11px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Reporter</button>`:''}
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function loadAgendaSec(){
+  const el=document.getElementById('agenda-sec-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('secretariat_agenda_events?select=id,type,titre,description,date_heure,statut&order=date_heure.asc&limit=200');
+    _agendaSecData=Array.isArray(data)?data:[];
+    filterAgendaSec(_agendaSecFilter);
+  }catch(e){_agendaSecData=[];el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function modalNouvelEvenementAgenda(type){
+  const uid=localStorage.getItem('sv_uid');
+  if(!uid)return;
+  const typeOpts=Object.entries(AGENDA_TYPE_LBL).map(([v,l])=>`<option value="${v}"${v===type?' selected':''}>${l}</option>`).join('');
+  const now=new Date();now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+  openModal(`<div class="mh"><div class="mt">Nouvel événement d'agenda</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Type</label><select id="ag-type" class="fi">${typeOpts}</select></div>
+      <div class="fg"><label class="fl">Titre</label><input type="text" id="ag-titre" class="fi" placeholder="Ex: Appeler Lucas Martin" autofocus></div>
+      <div class="fg"><label class="fl">Date / heure</label><input type="datetime-local" id="ag-date" class="fi" value="${now.toISOString().slice(0,16)}"></div>
+      <div class="fg"><label class="fl">Détail</label><input type="text" id="ag-desc" class="fi" placeholder="Optionnel"></div>
+      <div id="ag-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerEvenementAgenda()">Ajouter</button></div>`);
+  setTimeout(()=>document.getElementById('ag-titre')?.focus(),50);
+}
+
+async function creerEvenementAgenda(){
+  const titre=(document.getElementById('ag-titre')?.value||'').trim();
+  const type=document.getElementById('ag-type')?.value;
+  const dateHeure=document.getElementById('ag-date')?.value;
+  const desc=(document.getElementById('ag-desc')?.value||'').trim();
+  const err=document.getElementById('ag-err');
+  if(!titre){if(err)err.textContent='Donnez un titre à cet événement.';return;}
+  if(!dateHeure){if(err)err.textContent='Choisissez une date.';return;}
+  const uid=localStorage.getItem('sv_uid');
+  try{
+    const r=await sbFetch('secretariat_agenda_events',{method:'POST',body:{
+      type,titre,description:desc||null,date_heure:new Date(dateHeure).toISOString(),created_by:uid
+    }});
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'Création impossible.');return;}
+    closeModal();toast('Événement ajouté à l\'agenda.','ok');loadAgendaSec();
+  }catch(e){if(err)err.textContent='Erreur lors de la création.';}
+}
+
+async function terminerEvenementAgenda(id){
+  const r=await sbFetch('secretariat_agenda_events?id=eq.'+id,{method:'PATCH',body:{statut:'termine'}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+  toast('Marqué terminé.','ok');loadAgendaSec();
+}
+
+function reporterEvenementAgenda(id){
+  const evt=_agendaSecData.find(e=>e.id===id);
+  const cur=evt&&evt.date_heure?new Date(evt.date_heure):new Date();
+  cur.setMinutes(cur.getMinutes()-cur.getTimezoneOffset());
+  openModal(`<div class="mh"><div class="mt">Reporter</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Nouvelle date / heure</label><input type="datetime-local" id="ag-reporte-date" class="fi" value="${cur.toISOString().slice(0,16)}"></div>
+      <div id="ag-reporte-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="confirmerReportEvenementAgenda('${id}')">Reporter</button></div>`);
+}
+
+async function confirmerReportEvenementAgenda(id){
+  const newDate=document.getElementById('ag-reporte-date')?.value;
+  const err=document.getElementById('ag-reporte-err');
+  if(!newDate){if(err)err.textContent='Choisissez une date.';return;}
+  const evt=_agendaSecData.find(e=>e.id===id);
+  const r=await sbFetch('secretariat_agenda_events?id=eq.'+id,{method:'PATCH',body:{
+    statut:'reporte',date_heure_initiale:evt?evt.date_heure:null,date_heure:new Date(newDate).toISOString()
+  }});
+  if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'Report impossible.');return;}
+  closeModal();toast('Événement reporté.','ok');loadAgendaSec();
+}
+
+// ── DOCUMENTS — pièces RH/client/Club+/avenants/recrutement (28/08/2026) ───
+// Vue secretariat_documents (migration-documents-rh-v2-vue-secretariat.sql) :
+// lecture seule ici (upload de nouvelles pièces hors périmètre V1 de cet
+// écran — statut/échéance sont déjà gérés côté Recrutement/Contrats/RH pour
+// les sources existantes). statut_affichage porte les 4 valeurs des filtres.
+const DOCRH_CAT_LBL={rh:'RH',avenant:'Avenant',club_plus:'Club+',client:'Client',contrat_full_com:'Full Com',recrutement_onboarding:'Recrutement'};
+let _docRhData=[];
+let _docRhFilter='manquant';
+
+function filterDocRh(f){
+  _docRhFilter=f;
+  ['manquant','avalider','expire','valide','all'].forEach(k=>{
+    const key=k==='avalider'?'a_valider':k==='expire'?'expire_bientot':k;
+    const b=document.getElementById('dr-f-'+k);
+    if(b)b.className='btn '+(key===f?'bp':'bg2')+' bs';
+  });
+  renderDocRhList();
+}
+
+function renderDocRhList(){
+  const el=document.getElementById('docrh-real');
+  if(!el)return;
+  let list=_docRhData;
+  if(_docRhFilter!=='all')list=list.filter(d=>d.statut_affichage===_docRhFilter);
+  if(!list.length){
+    el.innerHTML='<div class="cd"><div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:10px;color:var(--t3)"><div style="font-size:40px;opacity:.15">📁</div><div style="font-size:13px">Rien ici pour ce filtre.</div></div></div>';
+    return;
+  }
+  const stC={manquant:'br',a_valider:'bw',expire_bientot:'bw',valide:'ba'};
+  const stLbl={manquant:'Manquant',a_valider:'À valider',expire_bientot:'Expire bientôt',valide:'Complet'};
+  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+list.map((d,i)=>{
+    const ech=d.date_echeance?new Date(d.date_echeance).toLocaleDateString('fr-FR'):null;
+    return`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;${i<list.length-1?'border-bottom:1px solid var(--b1)':''}">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(d.nom)} <span style="font-weight:400;color:var(--t3)">— ${esc(d.proprietaire_label||'—')}</span></div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${DOCRH_CAT_LBL[d.categorie]||d.categorie}${ech?' · échéance '+ech:''}</div>
+      </div>
+      <span class="bd ${stC[d.statut_affichage]||'bn'}" style="flex-shrink:0"><span class="bd-d"></span>${stLbl[d.statut_affichage]||d.statut_affichage}</span>
+      ${d.storage_path?`<button onclick="voirDocumentRh('${escJs(d.storage_path)}')" style="flex-shrink:0;padding:5px 10px;font-size:11px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Voir</button>`:''}
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function loadDocRh(){
+  const el=document.getElementById('docrh-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('secretariat_documents?select=categorie,id,sous_type,proprietaire_label,nom,statut,date_echeance,storage_path,statut_affichage&order=date_echeance.asc.nullslast&limit=300');
+    const list=Array.isArray(data)?data:[];
+    _docRhData=list;
+    const cnt=k=>list.filter(d=>d.statut_affichage===k).length;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('docrh-kpi-manquant',cnt('manquant'));
+    set('docrh-kpi-avalider',cnt('a_valider'));
+    set('docrh-kpi-expire',cnt('expire_bientot'));
+    set('docrh-kpi-valide',cnt('valide'));
+    renderDocRhList();
+  }catch(e){_docRhData=[];el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function voirDocumentRh(storagePath){
+  const url=await sbSignedUrl('sportvision-media-prive',storagePath,3600);
+  if(!url){toast('Impossible de générer le lien du document.','er');return;}
+  window.open(url,'_blank','noopener');
 }
 
 async function loadSettings(){
@@ -21790,12 +21991,17 @@ async function loadSecDash(){
   try{
     const uid=localStorage.getItem('sv_uid');
     const now=new Date();const in14=new Date(now);in14.setDate(in14.getDate()+14);
-    const [clients,pres,devis,conts,tachesRaw]=await Promise.all([
+    const todayStr=ymdLocal();
+    const tomorrowStr=ymdLocal(new Date(now.getFullYear(),now.getMonth(),now.getDate()+1));
+    const [clients,pres,devis,conts,tachesRaw,candidatsRaw,docsManqRaw,rdvAujRaw]=await Promise.all([
       sbFetch('clients?select=id,statut&limit=500'),
       sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ttc,clients(nom)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200'),
       sbFetch('devis?select=id,statut&limit=200'),
       sbFetch('contrats?select=id,statut&limit=500').catch(()=>[]),
       uid?sbFetch('notifications?select=id&type=eq.tache&lue=eq.false&destinataire_id=eq.'+uid).catch(()=>[]):[],
+      sbFetch('recruitment_applications?select=id&statut=eq.a_appeler').catch(()=>[]),
+      sbFetch('secretariat_documents?select=id&statut_affichage=eq.manquant').catch(()=>[]),
+      sbFetch('secretariat_agenda_events?select=id&statut=eq.a_faire&date_heure=gte.'+todayStr+'&date_heure=lt.'+tomorrowStr).catch(()=>[]),
     ]);
     const actifs=(clients||[]).filter(c=>['client','partenaire'].includes(c.statut)).length;
     const demandes=(pres||[]).filter(p=>['demande_reçue','à_qualifier','offre_en_préparation'].includes(p.statut)).length;
@@ -21816,6 +22022,9 @@ async function loadSecDash(){
     set('sec-kpi-clients',actifs);
     set('sec-kpi-pre',encours);
     set('sec-kpi-taches',tachesOuvertes);
+    set('sec-kpi-candidats',(Array.isArray(candidatsRaw)?candidatsRaw:[]).length);
+    set('sec-kpi-docmanq',(Array.isArray(docsManqRaw)?docsManqRaw:[]).length);
+    set('sec-kpi-rdvauj',(Array.isArray(rdvAujRaw)?rdvAujRaw:[]).length);
 
     // Bloc priorité
     const prioItems=[];
@@ -23146,6 +23355,22 @@ async function sauvegarderHeures(equipeId){
 }
 
 // ── Modale fiche prod — vue tabulée ─────────────────────────────────────────
+// Templates de brief (spec refonte Responsable Production §15) — accélèrent la
+// saisie pour les missions répétitives. Pré-remplit uniquement "Description du
+// besoin" (priorités de contenu) : livrables_demandes reste spécifique à
+// chaque mission, jamais généré automatiquement.
+const BRIEF_TEMPLATES={
+  'Football Photo + Vidéo':'Arrivée, échauffement, actions, buts, célébrations, supporters, coach, sponsors, inserts.',
+  'Football Photo':'Actions, émotions, portraits, supporters, sponsors.',
+  'Basket Photo + Vidéo':'Paniers, shoots, dunks, crossovers, défense, célébrations, ambiance.',
+  'SportVision interne':'Coulisses, matériel, équipe, formation, backstage.',
+};
+function appliquerTemplateBrief(key){
+  const el=document.getElementById('pd-desc');
+  if(!el||!BRIEF_TEMPLATES[key])return;
+  el.value=BRIEF_TEMPLATES[key];
+}
+
 function modalProdFiche(p){
   if(!p)return;
   const stO=Object.keys(SL).map(s=>`<option value="${s}"${p.statut===s?' selected':''}>${SL[s]}</option>`).join('');
@@ -23171,6 +23396,11 @@ function modalProdFiche(p){
         <button onclick="validerPrestation('${pref}','refusée')" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer">✕ Refuser</button>
         <button onclick="validerPrestation('${pref}','confirmée')" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer">✓ Valider</button>
       </div></div>`:''}
+    ${p.statut==='livrée'&&(S.role==='prod'||S.role==='admin')?`<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:12px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.25);border-radius:var(--rb)">
+      <div style="flex:1"><div style="font-size:11px;font-weight:700;color:var(--ok);margin-bottom:2px">PRÊTE À CLÔTURER</div>
+      <div style="font-size:12px;color:var(--t2)">Une seule action distribue automatiquement les livrables au CM/Club+ et valide les rémunérations équipe.</div></div>
+      <button onclick="validerProduction('${pref}')" id="btn-valider-production" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;flex-shrink:0">✓ Valider la production</button>
+    </div>`:''}
     <div style="display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--b1)">
       ${[['infos','Infos'],['equipe','Équipe'],['brief','Brief'],['budget','Budget'],['historique','Historique']].map(([t,lb],i)=>
         `<button id="pf-tab-${t}" onclick="setProdFicheTab('${t}')" style="padding:7px 14px;font-size:12px;font-weight:600;background:none;border:none;border-bottom:2px solid ${i===0?'var(--acc)':'transparent'};color:${i===0?'var(--acc)':'var(--t3)'};cursor:pointer;margin-bottom:-1px;transition:color .15s,border-color .15s">${lb}</button>`
@@ -23210,6 +23440,12 @@ function modalProdFiche(p){
       <button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${pref}','${escJs(p.reference||'')}'),150)" style="align-self:flex-start;padding:8px 14px;font-size:12px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Gérer l'équipe</button>
     </div>
     <div id="pf-panel-brief" style="display:none;flex-direction:column;gap:11px">
+      <div>
+        <label style="${L}">Template (pré-remplit la description ci-dessous)</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${Object.keys(BRIEF_TEMPLATES).map(k=>`<button onclick="appliquerTemplateBrief('${k}')" style="padding:5px 10px;font-size:11px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer">${k}</button>`).join('')}
+        </div>
+      </div>
       <div><label style="${L}">Description du besoin</label><textarea id="pd-desc" class="l-inp" style="height:90px;padding-top:10px;resize:none" placeholder="Que souhaite le client ?">${esc(p.description_besoin||'')}</textarea></div>
       <div><label style="${L}">Livrables attendus</label><textarea id="pd-livr" class="l-inp" style="height:90px;padding-top:10px;resize:none" placeholder="Photos, vidéos, délais…">${esc(p.livrables_demandes||'')}</textarea></div>
     </div>
@@ -23234,6 +23470,31 @@ function modalProdFiche(p){
   chargerEquipeModal(p.id);
   _chargerRemProdFiche(p.id);
   _chargerHistoriqueProdFiche(p.id);
+}
+
+// Action unique « Valider la production » (spec refonte Responsable Production
+// §29 "Validation finale" — une seule action déclenche la distribution CM/
+// Club+/Finance, remplace l'ancien envoi manuel par livrable). Appelle la RPC
+// serveur validate_production() (migration-production-validation-unifiee-v1.sql,
+// SECURITY DEFINER, revérifie elle-même le rôle et le statut — ce bouton n'est
+// qu'un déclencheur, aucune logique métier ici).
+async function validerProduction(prestationId){
+  const btn=document.getElementById('btn-valider-production');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='Validation…';}
+  const r=await sbFetch('rpc/validate_production',{method:'POST',body:{p_prestation_id:prestationId}});
+  if(sbErr(r)){
+    toast('Erreur : '+(r.message||'Validation impossible.'),'er');
+    if(btn){btn.disabled=false;btn.textContent='✓ Valider la production';}
+    return;
+  }
+  const parts=[];
+  if(r.media_livrables_marques_livres)parts.push(r.media_livrables_marques_livres+' livrable(s) marqué(s) livré(s)');
+  if(r.brouillon_cm_cree)parts.push('brouillon créé pour le CM');
+  if(r.payables_operateur_valides)parts.push(r.payables_operateur_valides+' rémunération(s) validée(s)');
+  toast('Production validée.'+(parts.length?' '+parts.join(', ')+'.':''),'ok');
+  closeModal();
+  loadViewData(S.role,S.view);
+  updateNavBadges(S.role);
 }
 
 function setProdFicheTab(tab){
@@ -28340,7 +28601,7 @@ async function loadEquipeEnDirect(){
   const _eqRole=localStorage.getItem('sv_role');
   const _eqRoleFilter=_eqRole==='prod'?'&role=in.(photo,cm)':'';
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
+    sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone,ville,vehicule,permis,zone,materiel_personnel'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
     sbFetch('prestations_equipe_display?select=collaborateur_id,statut,prestations!inner(id,reference,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
     sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
@@ -28407,6 +28668,12 @@ async function loadEquipeEnDirect(){
         <div style="font-size:11px;color:var(--t3);text-align:right;flex-shrink:0"><div style="font-size:18px;font-weight:800;color:var(--t1)">${nb}</div><div>mission${nb!==1?'s':''}</div></div>
       </div>
       <div style="margin-bottom:10px">${statusHtml}</div>
+      ${(c.ville||c.zone||c.vehicule||c.permis||c.materiel_personnel)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:10.5px;color:var(--t3)">
+        ${c.zone?`<span>🗺 ${esc(c.zone)}</span>`:(c.ville?`<span>📍 ${esc(c.ville)}</span>`:'')}
+        ${c.vehicule?`<span>🚗 Véhiculé</span>`:''}
+        ${c.permis?`<span>🪪 Permis</span>`:''}
+        ${c.materiel_personnel?`<span>🎒 ${esc(c.materiel_personnel)}</span>`:'<span style="color:var(--wa)">🎒 Kit requis</span>'}
+      </div>`:''}
       <div style="display:flex;gap:6px;margin-bottom:6px">
         <button onclick="ouvrirConvAvec('${c.id}','${escJs(nom)}')" style="flex:1;padding:7px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff)">💬 Message</button>
         ${tel?`<a href="tel:${tel}" style="flex:1;padding:7px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);text-decoration:none;text-align:center;display:block">📞 Appeler</a>`:''}
@@ -28875,8 +29142,8 @@ const MOB_MORE_ITEMS={
   // dépenses/clôtures) remplacés par les 4 pages réelles + 1 secondaire, même patron que
   // la sidebar desktop (cf. NAV['admin'] section "Finances & Documents").
   admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
-  sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
-  prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
+  sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'agendasec',lb:'Agenda',ic:'📅',sub:'RDV & rappels'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'docrh',lb:'Documents',ic:'📁',sub:'Pièces'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
+  prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
