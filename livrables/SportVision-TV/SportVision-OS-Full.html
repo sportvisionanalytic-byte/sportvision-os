@@ -10267,6 +10267,20 @@ async function loadEquipes(){
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
+// ── Rémunération Photo/Vidéo (spec "Système de Rémunération Photographes/Vidéastes",
+// 29/08/2026) : niveau opérateur ★ à ★★★★★, DISTINCT du grade XP ci-dessous
+// (GRADES_DEF/SV_GRADES — progression/formation, recalculé automatiquement depuis l'XP).
+// Le niveau opérateur est validé humainement (profiles.niveau_operateur), sert
+// uniquement au calcul de la rémunération, et ne doit jamais être déduit du grade XP.
+const OPERATOR_BASE_RATES={1:45,2:50,3:55,4:65,5:80};
+const MISSION_MULTIPLIERS={standard:1,double:1.25,journee:1.6};
+const MISSION_FORMAT_LABELS={standard:'Standard',double:'Double match',journee:'Journée complète',exceptionnelle:'Exceptionnelle'};
+function niveauStars(n){return '★'.repeat(n||3)+'☆'.repeat(5-(n||3));}
+function computeMissionPay(niveau,format){
+  if(!niveau||!MISSION_MULTIPLIERS[format])return null;
+  return Math.round(OPERATOR_BASE_RATES[niveau]*MISSION_MULTIPLIERS[format]*100)/100;
+}
+
 const GRADES_DEF=[
   {nom:'Débutant',xp:0,color:'#8891A8',ic:'🌱'},
   {nom:'Confirmé',xp:600,color:'#2ECC8A',ic:'⭐'},
@@ -11435,12 +11449,23 @@ async function modalEquipePrestation(prestationId,ref){
   // le champ rémunération à la création ; canSetRem contrôle aussi l'action "Modifier" sur une
   // ligne déjà affectée (chargerEquipe ci-dessous).
   const canSetRem=(S.role==='admin'||S.role==='sec');
+  _eqNiveauMap={};
   openModal(`<div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Équipe — ${ref}</div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Format de mission</label>
+      <select id="eq-format" class="l-inp" style="height:36px" onchange="majFormatMission('${prestationId}')">
+        <option value="standard">Standard ×1</option>
+        <option value="double">Double match ×1,25</option>
+        <option value="journee">Journée complète ×1,60</option>
+        <option value="exceptionnelle">Exceptionnelle (montant manuel)</option>
+      </select>
+    </div>
     <div id="eq-liste" style="min-height:60px;margin-bottom:16px"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
     <div style="background:var(--s2);border-radius:var(--rb);padding:14px;display:flex;flex-direction:column;gap:10px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">Ajouter un collaborateur</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><select id="eq-col" class="l-inp" style="height:36px"><option value="">— Choisir —</option></select></div>
+        <div><select id="eq-col" class="l-inp" style="height:36px" onchange="majSuggestionRem()"><option value="">— Choisir —</option></select>
+          <div id="eq-rem-suggest" style="font-size:10.5px;color:var(--t3);margin-top:4px"></div></div>
         <div><input id="eq-fonc" type="text" class="l-inp" placeholder="Fonction (ex: photo)" style="height:36px"></div>
       </div>
       <div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Consignes</label>
@@ -11451,18 +11476,22 @@ async function modalEquipePrestation(prestationId,ref){
         <div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Heure RDV</label>
           <input id="eq-rdv" type="time" class="l-inp" style="height:36px"></div>
       </div>
-      ${canSetRem?'':'<div style="font-size:11px;color:var(--t3)">La rémunération est fixée par le secrétariat ou l\'administrateur, après affectation.</div>'}
+      ${canSetRem?'':'<div style="font-size:11px;color:var(--t3)">Rémunération calculée automatiquement depuis le niveau du collaborateur et le format de mission.</div>'}
       <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="ajouterMembreEquipe('${prestationId}','${ref}')">+ Ajouter</button></div>
     </div>
     <div id="eq-err" style="font-size:12px;color:var(--er);margin-top:8px;min-height:14px"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
   await chargerEquipe(prestationId,ref);
+  sbFetch('prestations?id=eq.'+prestationId+'&select=format_mission').then(d=>{
+    const f=document.getElementById('eq-format');
+    if(f&&d?.[0]?.format_mission)f.value=d[0].format_mission;
+  }).catch(()=>{});
   // Charge (missions acceptées à venir, 30 prochains jours) affichée à côté
   // de chaque nom — "attribution fluide" (28/08/2026, demande Fouka) : avant,
   // affecter quelqu'un exigeait de deviner ou vérifier ailleurs qui était
   // déjà chargé. Tri photo/cm (rôles terrain) en tête, moins chargé d'abord.
   Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role&order=nom.asc'),
+    sbFetch('profiles?select=id,prenom,nom,role,niveau_operateur&order=nom.asc'),
     sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation,statut)&statut=eq.acceptée&prestations.date_prestation=gte.'+ymdLocal()+'&prestations.statut=not.in.(annulée,refusée)').catch(()=>[]),
   ]).then(([data,chargeRaw])=>{
     const sel=document.getElementById('eq-col');
@@ -11476,12 +11505,31 @@ async function modalEquipePrestation(prestationId,ref){
       return (charge[a.id]||0)-(charge[b.id]||0);
     });
     sorted.forEach(p=>{
+      _eqNiveauMap[p.id]=p.niveau_operateur||null;
       const o=document.createElement('option');o.value=p.id;
       const n=charge[p.id]||0;
       o.textContent=([p.prenom,p.nom].filter(Boolean).join(' ')||p.role)+' — '+(p.role||'')+' · '+n+' mission'+(n>1?'s':'')+' à venir';
       sel.appendChild(o);
     });
   });
+}
+let _eqNiveauMap={};
+async function majFormatMission(prestationId){
+  const format=document.getElementById('eq-format')?.value;
+  if(!format)return;
+  await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{format_mission:format}}).catch(()=>{});
+  majSuggestionRem();
+}
+function majSuggestionRem(){
+  const colId=document.getElementById('eq-col')?.value;
+  const format=document.getElementById('eq-format')?.value||'standard';
+  const sug=document.getElementById('eq-rem-suggest');
+  const niveau=colId?_eqNiveauMap[colId]:null;
+  if(!colId||!niveau){if(sug)sug.textContent=colId?'Niveau opérateur non défini — voir sa fiche.':'';return;}
+  const montant=computeMissionPay(niveau,format);
+  if(sug)sug.textContent=montant!=null?'Suggestion : '+niveauStars(niveau)+' · '+montant.toLocaleString('fr-FR')+' €':'Format exceptionnel — montant à définir manuellement.';
+  const remEl=document.getElementById('eq-rem');
+  if(remEl&&montant!=null)remEl.value=montant;
 }
 async function chargerEquipe(prestationId,ref){
   const el=document.getElementById('eq-liste');
@@ -11541,9 +11589,14 @@ async function ajouterMembreEquipe(prestationId,ref){
     const already=await sbFetch('prestations_equipe_display?select=id&prestation_id=eq.'+prestationId+'&collaborateur_id=eq.'+colId+'&limit=1').catch(()=>[]);
     if(Array.isArray(already)&&already.length){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
     // eq-rem n'existe dans le DOM que pour admin/sec (voir modalEquipePrestation) — 'prod' peut
-    // affecter et ajouter des consignes, jamais fixer la rémunération.
+    // affecter et ajouter des consignes, jamais fixer la rémunération à la main. Dans les deux
+    // cas le montant part du calcul automatique (niveau opérateur × format de mission, spec
+    // Rémunération Photo/Vidéo 29/08) ; admin/sec peuvent l'ajuster dans le champ avant d'ajouter.
+    const format=document.getElementById('eq-format')?.value||'standard';
+    const niveauOp=_eqNiveauMap[colId]||null;
+    const autoPay=computeMissionPay(niveauOp,format);
     const remEl=document.getElementById('eq-rem');
-    const rem=remEl?remEl.value:'';
+    const rem=remEl?remEl.value:(autoPay!=null?String(autoPay):'');
     const notes=document.getElementById('eq-notes').value.trim();
     const rdv=document.getElementById('eq-rdv').value;
     // Détection de conflit de planning avant confirmation. L'edge function
@@ -11572,7 +11625,16 @@ async function ajouterMembreEquipe(prestationId,ref){
         }
       }
     }catch(e){}
-    const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,notes:notes||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
+    const equipeBody={prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,notes:notes||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null};
+    // Snapshot du calcul (niveau/base/coefficient) uniquement quand le montant final
+    // correspond bien à la suggestion automatique — un montant ajusté à la main par
+    // admin/sec (ou format "exceptionnelle") n'a pas de règle figée à historiser.
+    if(niveauOp&&autoPay!=null&&Number(rem)===autoPay){
+      equipeBody.niveau_snapshot=niveauOp;
+      equipeBody.base_rate_snapshot=OPERATOR_BASE_RATES[niveauOp];
+      equipeBody.multiplier_snapshot=MISSION_MULTIPLIERS[format];
+    }
+    const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:equipeBody});
     if(sbErr(rAdd)){err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');if(btn)btn.disabled=false;return;}
     creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
     document.getElementById('eq-col').value='';
@@ -24444,6 +24506,27 @@ async function modifierCollaborateur(id){
   loadCollaborateurs();
 }
 
+function modalChangerNiveauOperateur(id,current){
+  openModal(`<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">Niveau opérateur</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Sert uniquement au calcul de la rémunération des futures missions — n'affecte jamais les missions déjà acceptées.</div>
+    <select id="niv-op-select" class="l-inp" style="height:38px;margin-bottom:14px">
+      ${[1,2,3,4,5].map(n=>`<option value="${n}"${n===current?' selected':''}>${niveauStars(n)} — ${OPERATOR_BASE_RATES[n]} €/mission standard</option>`).join('')}
+    </select>
+    <div id="niv-op-err" style="font-size:12px;color:var(--er);min-height:14px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="executerChangerNiveauOperateur('${id}')">Enregistrer</button>
+    </div>`);
+}
+async function executerChangerNiveauOperateur(id){
+  const err=document.getElementById('niv-op-err');
+  const niveau=Number(document.getElementById('niv-op-select')?.value);
+  const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{niveau_operateur:niveau}});
+  if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'Modification impossible.');return;}
+  closeModal();
+  toast('Niveau opérateur mis à jour.','ok');
+  modalFicheCollaborateur(id);
+}
 async function modalFicheCollaborateur(id){
   const myRole=localStorage.getItem('sv_role');
   const canManage=(myRole==='admin'||myRole==='sec'||myRole==='prod');
@@ -24665,7 +24748,16 @@ async function modalFicheCollaborateur(id){
           +'<button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'refuse\');closeModal();setTimeout(()=>modalFicheCollaborateur(\''+id+'\'),400)">Refuser</button>'
           +'</div></div>'
         :'<div style="margin-top:16px;text-align:right"><button class="btn bg2 bs" onclick="closeModal();centreModalChangerGrade(\''+id+'\',\''+escJs(prof.prenom||'')+'\',\''+escJs(prof.nom||'')+'\','+(prof.grade||0)+')">Changer le grade</button></div>'
-      ):'');
+      ):'')
+      // Niveau opérateur ★ (spec Rémunération Photo/Vidéo, 29/08) : DISTINCT du grade XP
+      // ci-dessus — sert uniquement au calcul automatique de la rémunération (Équipe
+      // prestation → OPERATOR_BASE_RATES). Nouveaux profils photo migrés à ★★★ (55€/mission
+      // standard) par défaut, à ajuster individuellement ici.
+      +(isPhotoProfile&&canSeeRem?'<div style="margin-top:12px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
+        +'<div><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Niveau opérateur (rémunération)</div>'
+        +'<div style="font-size:15px;font-weight:800;color:var(--acc)">'+niveauStars(prof.niveau_operateur||3)+' — '+OPERATOR_BASE_RATES[prof.niveau_operateur||3]+' €/mission standard</div></div>'
+        +(['admin','sec'].includes(myRole)?'<button class="btn bg2 bs" onclick="modalChangerNiveauOperateur(\''+id+'\','+(prof.niveau_operateur||3)+')">Changer</button>':'')
+        +'</div>':'');
     const T_FORMATION=inscriptions.length
       ?'<div style="display:flex;flex-direction:column;gap:8px">'+inscriptions.map(ins=>{
           const s=ins.statut||'en_cours';
