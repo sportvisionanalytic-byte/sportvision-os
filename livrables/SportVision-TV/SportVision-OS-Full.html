@@ -1221,10 +1221,15 @@ const VIEWS={
   'admin.kits':()=>_kitsViewShell('admin'),
 
   'admin.fin':()=>`
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">CA HT (mois)</div><div class="fs-v" id="fin-ca-ht-mois">—</div></div>
+      <div class="fs"><div class="fs-l">Charges (mois)</div><div class="fs-v" id="fin-charges-mois" style="color:var(--er)">—</div></div>
+      <div class="fs"><div class="fs-l">Marge nette (mois)</div><div class="fs-v" id="fin-marge-mois">—</div></div>
+    </div>
     <div class="g3">
       <div class="fs"><div class="fs-l">CA encaissé (année)</div><div class="fs-v" id="fin-ca-enc">—</div></div>
-      <div class="fs"><div class="fs-l">CA total facturé</div><div class="fs-v" id="fin-ca-total">—</div></div>
       <div class="fs"><div class="fs-l">En attente paiement</div><div class="fs-v" id="fin-en-attente" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Revenus clubs (récurrent/mois)</div><div class="fs-v" id="fin-revenus-clubs">—</div></div>
     </div>
     ${finHubRaccourcisHTML()}
     <div class="cd"><div class="cd-h"><div class="cd-t">Prestations avec montant</div></div>
@@ -21033,9 +21038,45 @@ function planningPrev(){_planningDate=new Date(_planningDate.getFullYear(),_plan
 function planningNext(){_planningDate=new Date(_planningDate.getFullYear(),_planningDate.getMonth()+1,1);loadPlanning();}
 
 // ── Finances admin ───────────────────────────────────────────────────────────
+// Résumé P&L du mois (CA HT/Charges/Marge nette) — même calcul que le compte
+// de résultat officiel (loadComptaResultat) pour ne jamais afficher deux
+// chiffres différents pour la même notion. Revenus clubs = somme des
+// contrats actifs facturés au mois (montant_mensuel), le seul chiffre de
+// revenu récurrent réel qui existe aujourd'hui (les crédits Club+ ne sont
+// pas un montant facturé, juste un solde d'usage).
+async function loadFinResumeP_L(){
+  try{
+    const now=new Date();
+    const mStart=ymdLocal(new Date(now.getFullYear(),now.getMonth(),1));
+    const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
+    const [missions,employeeCosts,commissionsData,chargesGenData,contratsActifs]=await Promise.all([
+      sbFetch('v_rentabilite_missions?select=revenu_ht,cout_remunerations,cout_frais,cout_depenses_directes,cout_indirect_alloue&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext),
+      sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct').catch(()=>[]),
+      sbFetch('commissions?select=montant_commission&date_calcul=gte.'+mStart+'&date_calcul=lt.'+mNext).catch(()=>[]),
+      sbFetch('expenses?select=montant_ht&prestation_id=is.null&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext+'&statut=in.(engagee,payee,comptabilisee)').catch(()=>[]),
+      sbFetch('contrats?select=montant_mensuel&statut=eq.actif').catch(()=>[]),
+    ]);
+    const list=Array.isArray(missions)?missions:[];
+    const revenu=list.reduce((s,p)=>s+(p.revenu_ht||0),0);
+    const coutsMissions=list.reduce((s,p)=>s+(p.cout_remunerations||0)+(p.cout_frais||0)+(p.cout_depenses_directes||0)+(p.cout_indirect_alloue||0),0);
+    const masseSalariale=(Array.isArray(employeeCosts)?employeeCosts:[]).reduce((s,e)=>s+(e.salaire_brut_mensuel||0)*(1+(e.charges_patronales_pct||0)/100),0);
+    const commissionsMois=(Array.isArray(commissionsData)?commissionsData:[]).reduce((s,c)=>s+(c.montant_commission||0),0);
+    const chargesGen=(Array.isArray(chargesGenData)?chargesGenData:[]).reduce((s,d)=>s+(d.montant_ht||0),0);
+    const charges=coutsMissions+masseSalariale+commissionsMois+chargesGen;
+    const marge=revenu-charges;
+    const revenusClubs=(Array.isArray(contratsActifs)?contratsActifs:[]).reduce((s,c)=>s+(c.montant_mensuel||0),0);
+    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+    const set=(id,v,clr)=>{const e=document.getElementById(id);if(e){e.textContent=v;if(clr)e.style.color=clr;}};
+    set('fin-ca-ht-mois',fmt(revenu));
+    set('fin-charges-mois',fmt(charges));
+    set('fin-marge-mois',fmt(marge),marge>=0?'var(--ok)':'var(--er)');
+    set('fin-revenus-clubs',fmt(revenusClubs));
+  }catch(e){}
+}
 async function loadFinances(){
   const el=document.getElementById('fin-real');
   if(!el)return;
+  loadFinResumeP_L();
   try{
     // "CA encaissé (année)" et les KPI voisins ignoraient le statut (une
     // prestation annulée avec montant_ttc renseigné gonflait quand même le
