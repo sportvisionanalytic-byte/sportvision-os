@@ -1766,19 +1766,28 @@ const VIEWS={
     <div id="incidents-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── PROD : PRESTATIONS ──────────────────────────────────────────────────────
+  // Refonte Responsable Production §7 "Module Missions" (29/08) : nav ramenée aux 6 onglets
+  // exacts de la spec (À attribuer | Proposées | Confirmées | En cours | À livrer |
+  // Terminées) — remplace les 7 filtres précédents (dont "Sans équipe", redondant avec "À
+  // attribuer", et "Post-prod" fondu dans "À livrer"). "Calendrier" (§10, "une vue de
+  // Missions, pas un module séparé") : bouton vers l'écran planning existant plutôt qu'un
+  // vrai bascule de contenu inline, pour ne pas dupliquer loadPlanningProd().
   'prod.pre':()=>`
     <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">Prestations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Toutes les prestations opérationnelles</div></div>
-      <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle</button>
+      <div><div class="sh-t">Missions</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Réceptionner, affecter, superviser, contrôler</div></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bg2 bs" onclick="switchView('planning')">📅 Calendrier</button>
+        <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle</button>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
       <button onclick="filterProdPre('all')" class="btn bp bs" id="ppf-all" style="flex-shrink:0;font-size:11px">Toutes</button>
-      <button onclick="filterProdPre('valider')" class="btn bg2 bs" id="ppf-val" style="flex-shrink:0;font-size:11px;border-color:rgba(240,68,94,.3);color:var(--er)">⚠ À valider</button>
-      <button onclick="filterProdPre('planifier')" class="btn bg2 bs" id="ppf-plan" style="flex-shrink:0;font-size:11px">À planifier</button>
-      <button onclick="filterProdPre('equipe')" class="btn bg2 bs" id="ppf-eq" style="flex-shrink:0;font-size:11px">Sans équipe</button>
-      <button onclick="filterProdPre('active')" class="btn bg2 bs" id="ppf-act" style="flex-shrink:0;font-size:11px">En production</button>
-      <button onclick="filterProdPre('postprod')" class="btn bg2 bs" id="ppf-post" style="flex-shrink:0;font-size:11px">Post-prod</button>
-      <button onclick="filterProdPre('done')" class="btn bg2 bs" id="ppf-done" style="flex-shrink:0;font-size:11px">Terminées</button>
+      <button onclick="filterProdPre('attribuer')" class="btn bg2 bs" id="ppf-attribuer" style="flex-shrink:0;font-size:11px;border-color:rgba(240,68,94,.3);color:var(--er)">À attribuer</button>
+      <button onclick="filterProdPre('proposees')" class="btn bg2 bs" id="ppf-proposees" style="flex-shrink:0;font-size:11px">Proposées</button>
+      <button onclick="filterProdPre('confirmees')" class="btn bg2 bs" id="ppf-confirmees" style="flex-shrink:0;font-size:11px">Confirmées</button>
+      <button onclick="filterProdPre('encours')" class="btn bg2 bs" id="ppf-encours" style="flex-shrink:0;font-size:11px">En cours</button>
+      <button onclick="filterProdPre('alivrer')" class="btn bg2 bs" id="ppf-alivrer" style="flex-shrink:0;font-size:11px">À livrer</button>
+      <button onclick="filterProdPre('terminees')" class="btn bg2 bs" id="ppf-terminees" style="flex-shrink:0;font-size:11px">Terminées</button>
     </div>
     <div id="prod-pre-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -8165,29 +8174,47 @@ let _prodPreFilter='all';
 
 function filterProdPre(f){
   _prodPreFilter=f;
-  ['all','valider','planifier','equipe','active','postprod','done'].forEach(id=>{
-    const b=document.getElementById('ppf-'+id.replace('valider','val').replace('planifier','plan').replace('equipe','eq').replace('active','act').replace('postprod','post').replace('done','done'));
+  ['all','attribuer','proposees','confirmees','encours','alivrer','terminees'].forEach(id=>{
+    const b=document.getElementById('ppf-'+id);
     if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
     if(b)b.style.fontSize='11px';
-    if(b&&f===id&&id==='valider'){b.style.borderColor='rgba(240,68,94,.3)';b.style.color='var(--er)';}
+    if(b&&f===id&&id==='attribuer'){b.style.borderColor='rgba(240,68,94,.3)';b.style.color='var(--er)';}
   });
   renderProdPreList();
+}
+
+// Regroupement en 6 états (spec §9 "États de mission") appliqué aux 32 valeurs réelles de
+// statut_prestation + prestations_equipe.statut — même découpage PROD_ACTIVE_ST/LIVE_ST que
+// loadProdDash() (§3/§4), gardé identique ici pour que les chiffres du dashboard et les
+// onglets Missions comptent exactement la même chose.
+const PROD_MISSION_ACTIVE_ST=['confirmée','à_planifier','planifiée','équipe_affectée','prête'];
+function prodMissionBucket(p){
+  const DONE_ST=['clôturée','annulée','refusée'];
+  const LIVE_ST=['production_démarrée','équipe_en_route','arrivée_sur_place'];
+  const POST_ST=['médias_à_transférer','production_terminée','médias_complets','à_monter','montage_en_cours'];
+  if(DONE_ST.includes(p.statut))return 'terminees';
+  if(p.statut==='livrée'||POST_ST.includes(p.statut))return 'alivrer';
+  if(LIVE_ST.includes(p.statut))return 'encours';
+  const accepte=(p.prestations_equipe||[]).some(e=>e.statut==='acceptée');
+  if(['équipe_affectée','prête'].includes(p.statut)&&accepte)return 'confirmees';
+  if(PROD_MISSION_ACTIVE_ST.includes(p.statut)&&!accepte){
+    const propose=(p.prestations_equipe||[]).some(e=>['invitation_envoyée','en_attente'].includes(e.statut));
+    return propose?'proposees':'attribuer';
+  }
+  // à_valider_production (commercial→prod) et statuts hors périmètre (demande_reçue…
+  // devis_accepté, en_attente_signature/acompte, documents_complets) : pas encore une
+  // mission opérationnelle au sens de cette spec — regroupés avec "à attribuer" pour rester
+  // visibles plutôt que silencieusement absents des 6 onglets.
+  return 'attribuer';
 }
 
 function renderProdPreList(){
   const el=document.getElementById('prod-pre-real');
   if(!el)return;
   const DONE_ST=['livrée','clôturée','annulée','refusée'];
-  const LIVE_ST=['production_démarrée','équipe_en_route','arrivée_sur_place'];
-  const POST_ST=['médias_à_transférer','production_terminée','médias_complets','à_monter','montage_en_cours','prête_validation','prêt_validation'];
   let list=_prodPreData;
-  if(_prodPreFilter==='valider') list=list.filter(p=>p.statut==='à_valider_production');
-  else if(_prodPreFilter==='planifier') list=list.filter(p=>['confirmée','planifiée'].includes(p.statut));
-  else if(_prodPreFilter==='equipe') list=list.filter(p=>!DONE_ST.includes(p.statut)&&(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length===0);
-  else if(_prodPreFilter==='active') list=list.filter(p=>LIVE_ST.includes(p.statut)||['équipe_affectée','prête'].includes(p.statut));
-  else if(_prodPreFilter==='postprod') list=list.filter(p=>POST_ST.includes(p.statut));
-  else if(_prodPreFilter==='done') list=list.filter(p=>DONE_ST.includes(p.statut));
-  else list=list.filter(p=>!DONE_ST.includes(p.statut));
+  if(_prodPreFilter!=='all') list=list.filter(p=>prodMissionBucket(p)===_prodPreFilter);
+  else list=list.filter(p=>prodMissionBucket(p)!=='terminees');
   if(!list.length){
     el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div style="font-size:13px">Aucune prestation dans ce filtre.</div></div>';
     return;
@@ -8226,8 +8253,8 @@ async function loadProdPrestations(){
     const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom))&order=date_prestation.desc&limit=100');
     _prodPreData=Array.isArray(raw)?raw:[];
     _prodPreFilter='all';
-    ['all','valider','planifier','equipe','active','postprod','done'].forEach(id=>{
-      const b=document.getElementById('ppf-'+id.replace('valider','val').replace('planifier','plan').replace('equipe','eq').replace('active','act').replace('postprod','post').replace('done','done'));
+    ['all','attribuer','proposees','confirmees','encours','alivrer','terminees'].forEach(id=>{
+      const b=document.getElementById('ppf-'+id);
       if(b)b.className='btn '+(id==='all'?'bp':'bg2')+' bs';
       if(b)b.style.fontSize='11px';
     });
