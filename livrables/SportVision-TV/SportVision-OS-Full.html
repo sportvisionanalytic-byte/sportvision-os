@@ -801,7 +801,8 @@ const NAV={
     {id:'contrats',lb:'Contrats',ic:'doc'},
     {id:'abonnements',lb:'Abonnements',ic:'pre'},
     {id:'cotisations',lb:'Paiement collectif',ic:'target'},
-    {id:'cmagency',lb:'Agences CM',ic:'cli'},
+    // 'cmagency' (délégation clubs↔agences CM) retiré le 29/08 : outil
+    // technique Admin/Production-CM, hors périmètre secrétariat (audit nav).
     {id:'demandesclub',lb:'Demandes Club+',ic:'cli',modal:'modalDemandesClubConnect'},
     {type:'sep',lb:'Recrutement'},
     {id:'recrutement',lb:'Recrutement',ic:'col'},
@@ -813,9 +814,13 @@ const NAV={
     {type:'sep',lb:'Documents & Suivi'},
     {id:'docrh',lb:'Documents (pièces)',ic:'doc'},
     {id:'docs',lb:'Documents (devis/factures)',ic:'doc'},
-    {id:'rapports',lb:'Rapports admin',ic:'fin'},
+    // 'rapports' (CA payé, export) retiré le 29/08 (spec refonte Secrétaire §3
+    // "Pas de KPI direction... Pas de CA global"). Vue et dispatch conservés
+    // mais plus jamais atteints depuis le nav — voir loadSecRapports().
     {type:'sep',lb:'Communication'},
-    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
+    // 'annuaire' (Annuaire équipe) retiré le 29/08 : doublon de la vue Équipe
+    // d'Admin (equipeoverview/equipehub), aucune valeur propre à Secrétaire —
+    // la contacter reste possible via Messagerie.
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
     {id:'form',lb:'Centre de formation',ic:'form'},
@@ -21984,6 +21989,10 @@ async function exportComptaMois(moisKey){
 let _secDemData=[],_secDemFilter='all',_secDemSourceFilter='all';
 const DEM_SOURCE_LBL={vitrine:'Vitrine',connect:'Connect',clubplus:'Club+',interne:'Interne'};
 const DEM_SOURCE_CLS={vitrine:'bw',connect:'bb',clubplus:'ba',interne:'bn'};
+// Statuts non terminaux uniquement (migration-staff-access-membership-support-tickets.sql,
+// 29/08) : validee/refusee/doublon_signale sont déjà traités, pas besoin de les remonter ici.
+const MR_STATUT_LBL={a_verifier:'À vérifier',autorisation_manquante:'Autorisation manquante',en_attente_parent:'En attente parent',pret_a_valider:'Prêt à valider',transferee_admin:'Transférée admin'};
+const CST_STATUT_LBL={ouvert:'Ouvert',en_cours:'En cours'};
 let _secRelData=[],_secRelFilter='all';
 let _secLivrData=[],_secLivrFilter='all';
 
@@ -22096,7 +22105,7 @@ async function loadSecDemandes(){
   const el=document.getElementById('sec-demandes-real');
   if(!el)return;
   try{
-    const [pres,cbk,ccsr,cbreq]=await Promise.all([
+    const [pres,cbk,ccsr,cbreq,mreq,cst]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,source,type_prestation,date_prestation,created_at,clients(nom)&statut=in.(demande_reçue,à_qualifier,offre_en_préparation,devis_envoyé,en_attente_réponse,devis_accepté,confirmée)&order=date_prestation.asc&limit=100'),
       // Mêmes colonnes que loadClubBookings (pas juste celles affichées ici) : modalReservationClub
       // lit _cbkData par id, il faut donc que les lignes fusionnées ici aient exactement la même
@@ -22112,6 +22121,14 @@ async function loadSecDemandes(){
       // (info_manquante/en_traitement/prete_a_creer) — cette Inbox reste un point d'entrée, pas un
       // doublon de cet écran.
       sbFetch('club_requests?select=id,club_id,type,team,status,urgency,credits_reserved,created_at,clubs(nom)&status=eq.recues&order=created_at.asc&limit=100').catch(()=>[]),
+      // Ajoutés le 29/08 (migration-staff-access-membership-support-tickets.sql) : ces deux
+      // flux Club+ (demande de rejoindre une équipe, ticket support club) n'avaient aucune
+      // policy staff avant — invisibles pour tout le monde côté OS. Lecture seule volontaire :
+      // voir modalMembershipRequestApercu/modalSupportTicketApercu, le workflow de traitement
+      // reste géré côté Connect (double validation éducateur→admin pour l'un, pas de colonne
+      // de réponse pour l'autre — rien à réinventer ici sans spec).
+      sbFetch('membership_requests?select=id,club_id,team_id,player_id,statut,created_at,clubs(nom),club_teams(name),player_profiles(prenom,nom)&statut=in.(a_verifier,autorisation_manquante,en_attente_parent,pret_a_valider,transferee_admin)&order=created_at.asc&limit=100').catch(()=>[]),
+      sbFetch('club_support_tickets?select=id,club_id,subject,category,status,created_at,clubs(nom)&status=in.(ouvert,en_cours)&order=created_at.asc&limit=100').catch(()=>[]),
     ]);
     // Fusionne dans _cbkData (partagé avec l'écran "Réservations clubs") par id, sans écraser des
     // lignes déjà chargées ailleurs — modalReservationClub() doit pouvoir ouvrir une ligne cliquée
@@ -22144,7 +22161,21 @@ async function loadSecDemandes(){
       date:null,createdAt:r.created_at,statutRaw:'recues',
       statutLabel:'Nouvelle demande',statutCls:'bn',bucket:'nouveau',
     }));
-    _secDemData=[...presRows,...cbkRows,...ccsrRows,...cbreqRows].sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+    const mreqRows=(Array.isArray(mreq)?mreq:[]).map(r=>({
+      kind:'membership_request',id:r.id,reference:'—',source:'clubplus',
+      demande:"Demande d'adhésion"+(r.club_teams?.name?' — '+r.club_teams.name:'')+(r.player_profiles?' ('+[r.player_profiles.prenom,r.player_profiles.nom].filter(Boolean).join(' ')+')':''),
+      clientNom:r.clubs?.nom||'—',
+      date:null,createdAt:r.created_at,statutRaw:r.statut,
+      statutLabel:MR_STATUT_LBL[r.statut]||r.statut,statutCls:'bn',bucket:'nouveau',
+    }));
+    const cstRows=(Array.isArray(cst)?cst:[]).map(r=>({
+      kind:'club_support_ticket',id:r.id,reference:'—',source:'clubplus',
+      demande:'Ticket support'+(r.subject?' — '+r.subject:'')+(r.category?' ('+r.category+')':''),
+      clientNom:r.clubs?.nom||'—',
+      date:null,createdAt:r.created_at,statutRaw:r.status,
+      statutLabel:CST_STATUT_LBL[r.status]||r.status,statutCls:'bn',bucket:'nouveau',
+    }));
+    _secDemData=[...presRows,...cbkRows,...ccsrRows,...cbreqRows,...mreqRows,...cstRows].sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
     const katt=_secDemData.filter(r=>r.bucket==='nouveau').length;
     const kdev=_secDemData.filter(r=>r.bucket==='devis').length;
     const kconf=_secDemData.filter(r=>r.bucket==='confirmee').length;
@@ -22179,6 +22210,8 @@ function renderSecDemandes(){
     if(r.kind==='prestation')return `onclick="modalDetailById('${r.id}')"`;
     if(r.kind==='club_booking')return `onclick="modalReservationClub('${r.id}')"`;
     if(r.kind==='club_request')return `onclick="modalClubRequestApercu('${r.id}')"`;
+    if(r.kind==='membership_request')return `onclick="modalMembershipRequestApercu('${r.id}')"`;
+    if(r.kind==='club_support_ticket')return `onclick="modalSupportTicketApercu('${r.id}')"`;
     return `onclick="modalDemandesClubConnect()"`;
   };
   el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Source</th><th>Demande</th><th>Client</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
@@ -22214,6 +22247,42 @@ async function modalClubRequestApercu(id){
       ${d.detail?`<div><span style="color:var(--t3)">Détail</span><br>${esc(d.detail)}</div>`:''}
     </div>
     <div style="margin-top:16px;font-size:12px;color:var(--t3)">Traitement (accepter/refuser) réservé au Community Manager — écran « Demandes reçues ».</div>`);
+}
+
+// Aperçu lecture seule d'une demande d'adhésion (membership_requests) — ajouté le 29/08
+// (migration-staff-access-membership-support-tickets.sql). Double validation éducateur→admin
+// déjà gérée côté Connect ; pas de bouton d'action ici, uniquement de la visibilité staff.
+async function modalMembershipRequestApercu(id){
+  const data=await sbFetch('membership_requests?select=id,statut,validation_mode,refus_motif,created_at,clubs(nom),club_teams(name),player_profiles(prenom,nom)&id=eq.'+id);
+  const d=Array.isArray(data)&&data[0];
+  if(!d){toast('Demande introuvable ou accès refusé.','er');return;}
+  openModal(`<div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:16px">Demande d'adhésion</div>
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+      <div><span style="color:var(--t3)">Club</span><br>${esc(d.clubs?.nom||'—')}</div>
+      <div><span style="color:var(--t3)">Équipe</span><br>${esc(d.club_teams?.name||'—')}</div>
+      <div><span style="color:var(--t3)">Joueur</span><br>${esc(d.player_profiles?[d.player_profiles.prenom,d.player_profiles.nom].filter(Boolean).join(' '):'—')}</div>
+      <div><span style="color:var(--t3)">Statut</span><br>${esc(MR_STATUT_LBL[d.statut]||d.statut)}</div>
+      ${d.refus_motif?`<div><span style="color:var(--t3)">Motif de refus</span><br>${esc(d.refus_motif)}</div>`:''}
+    </div>
+    <div style="margin-top:16px;font-size:12px;color:var(--t3)">Validation (éducateur puis admin) gérée côté Connect — lecture seule ici.</div>`);
+}
+
+// Aperçu lecture seule d'un ticket support club (club_support_tickets) — ajouté le 29/08
+// (migration-staff-access-membership-support-tickets.sql). Pas de colonne de réponse en base,
+// pas de workflow existant à réinventer : visibilité staff uniquement.
+async function modalSupportTicketApercu(id){
+  const data=await sbFetch('club_support_tickets?select=id,subject,category,message,status,author_name,created_at,clubs(nom)&id=eq.'+id);
+  const d=Array.isArray(data)&&data[0];
+  if(!d){toast('Ticket introuvable ou accès refusé.','er');return;}
+  openModal(`<div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:16px">Ticket support club</div>
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+      <div><span style="color:var(--t3)">Club</span><br>${esc(d.clubs?.nom||'—')}</div>
+      <div><span style="color:var(--t3)">Sujet</span><br>${esc(d.subject||'—')}</div>
+      <div><span style="color:var(--t3)">Catégorie</span><br>${esc(d.category||'—')}</div>
+      <div><span style="color:var(--t3)">Auteur</span><br>${esc(d.author_name||'—')}</div>
+      <div><span style="color:var(--t3)">Statut</span><br>${esc(CST_STATUT_LBL[d.status]||d.status)}</div>
+      ${d.message?`<div><span style="color:var(--t3)">Message</span><br>${esc(d.message)}</div>`:''}
+    </div>`);
 }
 
 // ── Réservations clubs (club_bookings, migration-clubplus-v6.sql) ──────────
