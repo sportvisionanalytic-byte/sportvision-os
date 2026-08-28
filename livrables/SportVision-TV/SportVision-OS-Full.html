@@ -3665,6 +3665,26 @@ function modalNouveauClient(){
           </select>
         </div>
       </div>
+      <div style="padding:12px 14px;background:rgba(14,165,255,.06);border:1px solid rgba(14,165,255,.2);border-radius:var(--rb)">
+        <label style="${L}">Offre <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3)">(facultatif — accélère la mise en route)</span></label>
+        <select id="fc-offre" class="l-inp" style="height:38px" onchange="fcToggleOffre()">
+          <option value="">Prospect simple — pas encore d'offre</option>
+          <option value="full_communication">Full Communication</option>
+          <option value="club_plus">Club+ (abonnement)</option>
+          <option value="ponctuel">Prestation ponctuelle</option>
+        </select>
+        <div id="fc-offre-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(14,165,255,.15)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <input type="checkbox" id="fc-offre-signe" style="width:15px;height:15px;accent-color:var(--acc)">
+            <label for="fc-offre-signe" style="font-size:12px;color:var(--t2);cursor:pointer">Contrat déjà signé (papier ou en personne)</label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label style="${L}">Montant mensuel (€ TTC)</label><input id="fc-offre-montant" type="number" min="0" step="0.01" class="l-inp" style="height:36px" placeholder="0.00"></div>
+            <div><label style="${L}">Date de début</label><input id="fc-offre-debut" type="date" class="l-inp" style="height:36px" value="${ymdLocal()}"></div>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:8px">Un contrat est créé automatiquement avec ce client. S'il est déjà signé et en Full Communication, l'accès Club+ est envoyé et un CM vous est suggéré tout de suite.</div>
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Statut CRM</label>
           <select id="fc-statut" class="l-inp" style="height:38px">
@@ -3745,11 +3765,38 @@ async function creerClient(){
       created_by:localStorage.getItem('sv_uid')
     }});
     if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Création impossible.');return;}
+    const created=Array.isArray(r)&&r[0];
+    // Offre sélectionnée au même écran (28/08/2026, demande Fouka) : évite
+    // l'aller-retour "créer le client" puis "ouvrir Nouveau contrat" séparé
+    // quand l'admin sait déjà ce qui a été vendu au moment de la création.
+    const offreType=document.getElementById('fc-offre')?.value;
+    const dejaSigne=!!document.getElementById('fc-offre-signe')?.checked;
+    let contratMsg='';
+    if(created&&offreType){
+      const contratPayload={
+        client_id:created.id,type_contrat:offreType,statut:dejaSigne?'actif':'brouillon',
+        montant_mensuel:parseFloat(document.getElementById('fc-offre-montant')?.value)||null,
+        frequence:'mensuel',date_debut:document.getElementById('fc-offre-debut')?.value||ymdLocal(),
+        created_by:S.uid,
+      };
+      if(contratPayload.statut==='actif'){contratPayload.signature_statut='signee';contratPayload.signature_confirmee_at=new Date().toISOString();}
+      const rc=await sbFetch('contrats',{method:'POST',body:contratPayload});
+      if(!sbErr(rc)){
+        contratMsg=' Contrat créé.';
+        if(contratPayload.statut==='actif')await sbFetch('clients?id=eq.'+created.id,{method:'PATCH',body:{statut:'partenaire'}});
+      }else contratMsg=' (contrat non créé : '+(rc.message||'erreur')+')';
+    }
     closeModal();
-    toast('Client créé.','ok');
+    toast('Client créé.'+contratMsg,'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
+    if(created&&offreType==='full_communication'&&dejaSigne)await lancerCascadeFullCom(created.id);
   }catch(e){err.textContent='Erreur lors de la création.';}
+}
+function fcToggleOffre(){
+  const v=document.getElementById('fc-offre')?.value;
+  const d=document.getElementById('fc-offre-detail');
+  if(d)d.style.display=v?'block':'none';
 }
 
 // ── KITS v2 — fonctions déplacées dans le bloc principal Kits ────────────────
