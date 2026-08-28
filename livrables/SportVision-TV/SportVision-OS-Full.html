@@ -9624,6 +9624,29 @@ async function repondreInvitation(equipeId,statut,motif){
         }
       }catch(e){}
     }
+    // Refus → réattribution automatique (28/08/2026, spec Prestations/Missions
+    // §9 : "un refus renvoie automatiquement la mission dans « À attribuer »").
+    // Ne renvoie la prestation en arrière que si AUCUN autre opérateur n'est
+    // resté "acceptée" dessus — un refus d'un des N opérateurs d'une mission
+    // à plusieurs personnes ne doit pas défaire ce que les autres ont déjà
+    // confirmé. Trigger serveur : migration-prestations-refus-reattribution.sql
+    // (seule transition arrière ajoutée, équipe_affectée→planifiée).
+    if(statut==='refusée'){
+      try{
+        const pe=await sbFetch('prestations_equipe?id=eq.'+equipeId+'&select=prestation_id,prestations(statut,responsable_prod_id,reference)');
+        const presId=pe?.[0]?.prestation_id;
+        const pres=pe?.[0]?.prestations;
+        if(presId&&pres?.statut==='équipe_affectée'){
+          const autresAcceptes=await sbFetch('prestations_equipe?prestation_id=eq.'+presId+'&statut=eq.acceptée&select=id&limit=1');
+          if(!autresAcceptes?.length){
+            await sbFetch('prestations?id=eq.'+presId,{method:'PATCH',body:{statut:'planifiée'}}).catch(()=>{});
+          }
+        }
+        if(presId&&pres?.responsable_prod_id){
+          await creerNotifSiActive(pres.responsable_prod_id,'taches',{type:'mission_refusee',titre:'Mission à réattribuer',message:(pres.reference||'Une mission')+' a été refusée — à réattribuer.',lue:false,prestation_id:presId}).catch(()=>{});
+        }
+      }catch(e){}
+    }
     if(S.view==='pre') loadPhotoMesPrestations();
     else loadPhotoDash();
     updateNavBadges(S.role);
