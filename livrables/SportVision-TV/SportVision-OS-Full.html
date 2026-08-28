@@ -848,24 +848,23 @@ const NAV={
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
+  // Refonte Photo/Vidéaste (spec "Refonte Interface Photographe/Vidéaste", 28/08/2026) :
+  // menu ramené aux 7 entrées de la spec. Mode Jour J / Mes médias / Mes kits / Annuaire /
+  // Centre SportVision ne sont plus des pages permanentes du menu (ils restent de vraies
+  // vues, atteignables depuis le contexte : bouton sur la mission du jour, onglets de "Mes
+  // missions", lien dans Messagerie/Formation/Mon profil) — cf. §"Mode Jour J devient
+  // contextuel" et "À exclure du menu principal" de la spec.
   photo:[
     {type:'sep',lb:'Mes missions'},
-    {id:'dash',lb:'Tableau de bord',ic:'dash'},
-    {id:'pre',lb:'Mes prestations',ic:'pre'},
+    {id:'dash',lb:'Accueil',ic:'dash'},
+    {id:'pre',lb:'Mes missions',ic:'pre'},
     {id:'planning',lb:'Mon planning',ic:'cal'},
-    {id:'jourj',lb:'Mode Jour J',ic:'live'},
-    {type:'sep',lb:'Production'},
-    {id:'medias',lb:'Mes médias',ic:'img'},
-    {id:'kits',lb:'Mes kits',ic:'kits'},
     {type:'sep',lb:'Revenus & Progression'},
     {id:'revenus',lb:'Mes revenus',ic:'fin'},
-    {id:'form',lb:'Centre de formation',ic:'form'},
+    {id:'form',lb:'Formation',ic:'form'},
     {type:'sep',lb:'Communication'},
-    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
-    {type:'sep',lb:'Ressources'},
-    {id:'centre',lb:'Centre SportVision',ic:'help'},
-    {id:'set',lb:'Paramètres',ic:'set'},
+    {id:'set',lb:'Mon profil',ic:'set'},
   ],
   cm:[
     {type:'sep',lb:'Éditorial'},
@@ -1949,7 +1948,7 @@ const VIEWS={
   'prod.msg':()=>buildMsgShell(),
   'admin.msg':()=>buildMsgShell(),
   'sec.msg':()=>buildMsgShell(),
-  'photo.msg':()=>buildMsgShell(),
+  'photo.msg':()=>`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('annuaire')">👥 Annuaire équipe</button></div>`+buildMsgShell(),
   'cm.msg':()=>buildMsgShell(),
   'compta.msg':()=>buildMsgShell(),
   'com.msg':()=>buildMsgShell(),
@@ -2002,11 +2001,13 @@ const VIEWS={
     </div>`,
 
   'photo.pre':()=>`
-    <div class="sh"><div class="sh-t">Mes prestations</div></div>
-    <div style="display:flex;gap:8px;margin-bottom:13px" id="photo-pre-tabs">
+    <div class="sh"><div class="sh-t">Mes missions</div></div>
+    <div style="display:flex;gap:8px;margin-bottom:13px;overflow-x:auto;scrollbar-width:none" id="photo-pre-tabs">
       <button onclick="filterPhotoPre('')" class="btn bp bs" id="ppt-all" style="flex-shrink:0">Toutes</button>
-      <button onclick="filterPhotoPre('invitation_envoyée')" class="btn bg2 bs" id="ppt-inv" style="flex-shrink:0">📬 À confirmer</button>
-      <button onclick="filterPhotoPre('acceptée')" class="btn bg2 bs" id="ppt-acc" style="flex-shrink:0">✓ Confirmées</button>
+      <button onclick="filterPhotoPre('invitation_envoyée')" class="btn bg2 bs" id="ppt-prop" style="flex-shrink:0">📬 Proposées</button>
+      <button onclick="filterPhotoPre('upcoming')" class="btn bg2 bs" id="ppt-av" style="flex-shrink:0">📅 À venir</button>
+      <button onclick="filterPhotoPre('today')" class="btn bg2 bs" id="ppt-jj" style="flex-shrink:0">🔴 Jour J</button>
+      <button onclick="filterPhotoPre('delivery')" class="btn bg2 bs" id="ppt-liv" style="flex-shrink:0">📦 Livraison</button>
       <button onclick="filterPhotoPre('done')" class="btn bg2 bs" id="ppt-done" style="flex-shrink:0">🏁 Terminées</button>
     </div>
     <div id="photo-pre-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
@@ -2070,6 +2071,7 @@ const VIEWS={
     </div>`,
 
   'photo.form':()=>`
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('centre')">ℹ️ Centre SportVision</button></div>
     <div class="cd" style="margin-bottom:14px">
       <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
     </div>
@@ -2868,7 +2870,7 @@ const VIEWS={
   // ── PARAMÈTRES (tous rôles non-admin) ───
   'sec.set':()=>_settingsView(),
   'prod.set':()=>_settingsView(),
-  'photo.set':()=>_settingsView(),
+  'photo.set':()=>`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('kits')">🎒 Mes kits assignés</button></div>`+_settingsView(),
   'cm.set':()=>_settingsView(),
   'compta.set':()=>_settingsView(),
   'com.set':()=>_settingsView(),
@@ -10537,11 +10539,11 @@ async function loadPhotoMesPrestations(){
 
 function filterPhotoPre(statut){
   _photoPreFilter=statut;
-  ['all','inv','acc','done'].forEach(k=>{
+  ['all','prop','av','jj','liv','done'].forEach(k=>{
     const b=document.getElementById('ppt-'+k);
     if(b){b.className='btn bg2 bs';}
   });
-  const idMap={'':'all','invitation_envoyée':'inv','acceptée':'acc','done':'done'};
+  const idMap={'':'all','invitation_envoyée':'prop','upcoming':'av','today':'jj','delivery':'liv','done':'done'};
   const active=document.getElementById('ppt-'+(idMap[statut]||'all'));
   if(active)active.className='btn bp bs';
   renderPhotoPre();
@@ -10550,8 +10552,12 @@ function filterPhotoPre(statut){
 function renderPhotoPre(){
   const el=document.getElementById('photo-pre-real');
   if(!el)return;
+  const today=ymdLocal();
   let rows=_photoPreData;
   if(_photoPreFilter==='done') rows=rows.filter(d=>['livrée','clôturée','payée'].includes(d.prestations?.statut));
+  else if(_photoPreFilter==='delivery') rows=rows.filter(d=>d.prestations&&!['livrée','clôturée','payée'].includes(d.prestations.statut)&&d.prestations.date_prestation&&d.prestations.date_prestation<today);
+  else if(_photoPreFilter==='today') rows=rows.filter(d=>d.prestations&&d.prestations.date_prestation===today&&!['livrée','clôturée','payée'].includes(d.prestations.statut));
+  else if(_photoPreFilter==='upcoming') rows=rows.filter(d=>d.statut==='acceptée'&&d.prestations&&d.prestations.date_prestation&&d.prestations.date_prestation>today);
   else if(_photoPreFilter) rows=rows.filter(d=>d.statut===_photoPreFilter);
   if(!rows.length){
     el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation dans cette catégorie.</div>';
@@ -10587,7 +10593,7 @@ function renderPhotoPre(){
           ${row.statut==='invitation_envoyée'?`<div style="display:flex;flex-direction:column;gap:5px" onclick="event.stopPropagation()">
             <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px">✓ Accepter</button>
             <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
-          </div>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
+          </div>`:(p.date_prestation===today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();switchView('jourj')" style="padding:10px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">🔴 Jour J</button>`:(p.date_prestation<today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();switchView('medias')" style="padding:10px 14px;font-size:12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">📦 Livrer</button>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
         </div>
       </div>
     </div>`;
@@ -25262,8 +25268,11 @@ const BNAV_ITEMS={
   admin:['dash','pre','planning','fin'],
   sec:  ['dash','demandes','pre','relances'],
   prod: ['dash','jourj','pre','planning'],
-  photo:['dash','jourj','pre','medias'],
-  com:  ['dash','crm','pipeline','devis'],
+  // photo/com (28/08) : alignées sur les NAV.photo/NAV.com refondues — 'jourj'/'medias'
+  // (photo) et 'crm' (com, jamais une vue réelle : VIEWS ne définit pas 'com.crm') sont
+  // sortis du menu principal, cf. commentaires NAV ci-dessus.
+  photo:['dash','pre','planning','revenus'],
+  com:  ['dash','prospects','pipeline','agenda'],
   compta:['dash','factures','impayes','rapprochement'],
   cm:   ['dash','cal','contenus','publications'],
 };
@@ -28814,9 +28823,9 @@ const MOB_MORE_ITEMS={
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
-  photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
+  photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
-  com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
+  com:[{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'mesclients',lb:'Mes clients signés',ic:'🤝',sub:'Portefeuille gagné'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
 };
 function openMobMore(){
   const el=document.getElementById('mob-more-overlay');
