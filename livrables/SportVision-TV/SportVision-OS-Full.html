@@ -4860,7 +4860,15 @@ async function chargerParcoursClient(clientId){
     // même une fois le contrat déjà en place).
     let nextLabel=null,nextFn=null;
     if(hasContrat){
-      if(!isSigne){nextLabel='→ Envoyer en signature';const c0=contrats[0];nextFn=c0?`demanderSignatureDoc('contrat','${c0.id}','Contrat')`:null;}
+      if(!isSigne){
+        // demanderSignatureDoc (Youtrust) est désactivé depuis le 10-11/08
+        // (rappel réactivation 11/09) — tant qu'il l'est, la vraie prochaine
+        // étape est de marquer le contrat signé manuellement (papier/en
+        // personne) depuis sa fiche, pas un lien de signature électronique
+        // mort. modalEditerContrat expose ce choix (statut "Actif — signé"),
+        // qui déclenche désormais la cascade Full Com automatiquement.
+        nextLabel='→ Marquer le contrat signé';const c0=contrats[0];nextFn=c0?`closeModal();modalEditerContrat('${c0.id}')`:null;
+      }
       else if(!hasCompte){nextLabel=isFullCom?'→ Activer Club+ (inclus)':'→ Activer Club+';const nom=(document.getElementById('fce-nom')?.value||'').replace(/'/g,"\\'");nextFn=`modalInviterClubPlus('${clientId}','${nom}',${isFullCom})`;}
     }else if(hasDevis){nextLabel='→ Créer le contrat';nextFn=`closeModal();modalNouveauContrat('${clientId}')`;}
     else{nextLabel='→ Créer un devis';nextFn=`closeModal();modalNouveauDevis('${clientId}')`;}
