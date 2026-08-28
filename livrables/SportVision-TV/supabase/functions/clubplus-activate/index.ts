@@ -187,24 +187,45 @@ serve(async (req) => {
       return json({ error: "Le nom du club est obligatoire." }, 400);
     }
 
-    // portail_client_id est posé dès l'INSERT : le trigger protect_sensitive_club_
-    // fields (v24) ne s'applique qu'aux UPDATE, et cette colonne reste de toute façon
-    // hors de portée d'un admin de club.
-    const { data: createdClub, error: clubErr } = await admin
+    // Provisioning automatique (provisionner_club_plus_full_com, migration-fullcom-
+    // provisioning-auto.sql) peut avoir déjà créé ce club AVANT que ce lien soit cliqué —
+    // Full Communication prépare désormais le workspace à l'avance, le clic du dirigeant
+    // reste le seul geste qui crée son compte et l'y rattache. On RATTACHE dans ce cas plutôt
+    // que d'en recréer un : sinon deux clubs existeraient pour le même client Portail, avec
+    // deux organizations et deux jeux d'entitlements divergents. portail_client_id est posé
+    // dès l'INSERT dans les deux branches : le trigger protect_sensitive_club_fields (v24) ne
+    // s'applique qu'aux UPDATE, et cette colonne reste de toute façon hors de portée d'un
+    // admin de club.
+    const { data: existingClub } = await admin
       .from("clubs")
-      .insert({
-        nom: clubNom,
-        plan,
-        pilot_mode: true,
-        portail_client_id: tokenRow.client_id,
-        credits_monthly: CREDITS_BY_PLAN[plan],
-        credits_balance: CREDITS_BY_PLAN[plan],
-      })
       .select("id")
-      .single();
-    if (clubErr) {
-      await releaseToken();
-      return json({ error: clubErr.message }, 500);
+      .eq("portail_client_id", tokenRow.client_id)
+      .limit(1)
+      .maybeSingle();
+
+    let club: { id: string };
+    if (existingClub) {
+      // Club déjà provisionné : le nom choisi au provisioning (ou déjà modifié depuis) fait
+      // autorité, on n'écrase rien avec clubNom ici.
+      club = existingClub;
+    } else {
+      const { data: createdClub, error: clubErr } = await admin
+        .from("clubs")
+        .insert({
+          nom: clubNom,
+          plan,
+          pilot_mode: true,
+          portail_client_id: tokenRow.client_id,
+          credits_monthly: CREDITS_BY_PLAN[plan],
+          credits_balance: CREDITS_BY_PLAN[plan],
+        })
+        .select("id")
+        .single();
+      if (clubErr) {
+        await releaseToken();
+        return json({ error: clubErr.message }, 500);
+      }
+      club = createdClub;
     }
 
     // Rôle Connect posé par le token, jamais en dur — voir migration-connect-v44-
@@ -220,7 +241,7 @@ serve(async (req) => {
 
     const { error: cmErr } = await admin.from("club_members").insert({
       user_id: user.id,
-      club_id: createdClub.id,
+      club_id: club.id,
       role,
       prenom: prenom || null,
       nom: nom || null,
@@ -228,9 +249,14 @@ serve(async (req) => {
       status: "actif",
     });
     if (cmErr) {
-      // Rien ne rattache encore ce club à personne : on le retire plutôt que de
-      // laisser un club orphelin, et on rend le lien réutilisable.
-      await admin.from("clubs").delete().eq("id", createdClub.id);
+      // Rien ne rattache encore ce club à personne : on le retire plutôt que de laisser un
+      // club orphelin, et on rend le lien réutilisable. Ne supprime le club que si on vient
+      // de le créer dans CET appel — un club préexistant (provisionné à l'avance pour Full
+      // Communication, ou activé par un autre chemin) ne doit jamais être supprimé par un
+      // simple échec d'attachement de ce compte.
+      if (!existingClub) {
+        await admin.from("clubs").delete().eq("id", club.id);
+      }
       await releaseToken();
       return json({ error: cmErr.message }, 500);
     }
@@ -278,7 +304,7 @@ serve(async (req) => {
     }
 
     return json({
-      club_id: createdClub.id,
+      club_id: club.id,
       role,
       already_activated: false,
       portail_lie: portailLie,

@@ -5203,9 +5203,30 @@ async function lancerCascadeFullCom(clientId){
     const cl=await sbFetch('clients?id=eq.'+clientId+'&select=id,nom,email,cm_id');
     const c=Array.isArray(cl)&&cl[0];
     if(!c)return;
-    const clubExist=await sbFetch('clubs?select=id&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>[]);
+    // Provisionne à l'avance club+organization+entitlements (RPC idempotente, staff-only,
+    // migration-fullcom-provisioning-auto.sql) : le lien envoyé plus bas devient l'accès à
+    // un workspace déjà prêt, pas un déclencheur de création. Best-effort : un échec ici ne
+    // doit pas bloquer l'envoi du lien, clubplus-activate sait encore créer le club lui-même
+    // si ce provisioning n'a pas eu lieu (chemin historique inchangé).
+    let clubId=null;
+    try{
+      const rp=await sbFetch('rpc/provisionner_club_plus_full_com',{method:'POST',body:{p_client_id:clientId}});
+      if(!sbErr(rp))clubId=rp;
+    }catch(e){}
+    if(!clubId){
+      const clubRow=await sbFetch('clubs?select=id&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>[]);
+      clubId=Array.isArray(clubRow)&&clubRow[0]&&clubRow[0].id;
+    }
+    // "Déjà activé" = un club_members existe pour ce club (le dirigeant a cliqué le lien et
+    // créé son compte) — plus fiable que "le club existe", puisque le club existe désormais
+    // dès le provisioning, avant même que le lien soit cliqué.
+    let dejaActive=false;
+    if(clubId){
+      const cm=await sbFetch('club_members?select=id&club_id=eq.'+clubId+'&limit=1').catch(()=>[]);
+      dejaActive=Array.isArray(cm)&&cm.length>0;
+    }
     let clubMsg='';
-    if(!Array.isArray(clubExist)||!clubExist.length){
+    if(!dejaActive){
       const sent=await autoActiverClubPlusFullCom(clientId,c.nom);
       clubMsg=sent?' Accès Club+ envoyé automatiquement à '+(c.email||'l\'e-mail du contact')+'.':' Accès Club+ à générer manuellement (échec de l\'envoi automatique).';
     }
