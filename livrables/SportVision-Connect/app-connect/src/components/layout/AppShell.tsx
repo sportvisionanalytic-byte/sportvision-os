@@ -52,6 +52,7 @@ const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
       { href: "/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
       { href: "/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
       { href: "/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
+      { href: "/photos", label: "Pass Photo", icon: "photo_camera", color: "#34D399" },
       { href: "/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
       { href: "/calendrier", label: "Calendrier", icon: "calendar_month", color: "#8CA9FF" },
       { href: "/messages", label: "Messages", icon: "forum", color: "#22D3EE" },

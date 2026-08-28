@@ -1,0 +1,202 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/Button";
+import { fetchPhotoAlbums, type PhotoAlbumTeaser } from "@/lib/supabase/photoPass";
+
+// Pass Photo (Espace joueur) — voir page.tsx pour le contexte. Achat via l'edge function
+// create-pass-photo-checkout (mode Stripe 'payment', ponctuel) : cette page ne pose JAMAIS
+// elle-même un Pass "actif" — l'accès complet aux albums ne devient réel qu'une fois le webhook
+// Stripe traité (MASTER-CONNECT-V1.md §25), d'où le rafraîchissement différé après un retour de
+// paiement réussi, même mécanisme que AbonnementView.tsx.
+//
+// RÈGLE DE SÉCURITÉ : secureCollectionRef n'apparaît QUE sur un album où `unlocked` est déjà true
+// (calculé côté serveur par la RPC photo_album_list — jamais recalculé/deviné ici). Un album
+// verrouillé n'affiche jamais qu'un teaser (titre, date, aperçu, nombre de photos).
+function formatDate(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
+
+export function PhotosView({
+  clubId,
+  teamId,
+  teamName,
+  seasonId,
+  albums: initialAlbums,
+  returnStatus,
+}: {
+  clubId: string | null;
+  teamId: string | null;
+  teamName: string | null;
+  seasonId: string | null;
+  albums: PhotoAlbumTeaser[];
+  returnStatus: "succes" | "annule" | null;
+}) {
+  const router = useRouter();
+  const [albums, setAlbums] = useState(initialAlbums);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const hasAlbums = albums.length > 0;
+  const unlocked = albums.some((a) => a.unlocked);
+
+  // Le webhook Stripe (checkout.session.completed) confirme l'activation en tâche de fond — même
+  // délai/logique que AbonnementView.tsx : un seul rafraîchissement différé après un retour
+  // "succes" suffit à rattraper la quasi-totalité des cas.
+  useEffect(() => {
+    if (returnStatus !== "succes" || !clubId || !teamId || !seasonId) return;
+    const t = setTimeout(async () => {
+      const supabase = createClient();
+      const fresh = await fetchPhotoAlbums(supabase, clubId, teamId, seasonId);
+      setAlbums(fresh);
+      router.refresh();
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [returnStatus, clubId, teamId, seasonId, router]);
+
+  async function acheterPass() {
+    if (!clubId || !teamId || !seasonId) return;
+    setBusy(true);
+    setError(null);
+    const supabase = createClient();
+    const { data, error: fnError } = await supabase.functions.invoke("create-pass-photo-checkout", {
+      body: { club_id: clubId, team_id: teamId, season_id: seasonId },
+    });
+    setBusy(false);
+    if (fnError || data?.error) {
+      setError(data?.error || "Impossible de traiter votre demande pour le moment.");
+      return;
+    }
+    if (data?.url) {
+      window.location.href = data.url;
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6 animate-sv-in">
+      <div className="flex flex-col gap-2">
+        <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Pass Photo</h1>
+        <p className="max-w-[560px] text-[15px] text-text-tertiary">
+          {teamName ? `Les albums photo de ${teamName}.` : "Les albums photo de votre équipe."}
+        </p>
+      </div>
+
+      {returnStatus === "succes" && (
+        <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
+          <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
+          <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
+            Paiement reçu par Stripe — déverrouillage de votre Pass Photo en cours. Cette page se met à jour automatiquement.
+          </span>
+        </div>
+      )}
+      {returnStatus === "annule" && (
+        <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-4 py-3.5">
+          <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
+          <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">Paiement annulé — aucun changement n&apos;a été effectué.</span>
+        </div>
+      )}
+      {error && (
+        <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
+          <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
+          <span className="text-[14px] leading-relaxed text-[#FBCFE8] lg:text-[13px]">{error}</span>
+        </div>
+      )}
+
+      {!clubId || !teamId || !seasonId ? (
+        <EmptyState text="Rejoignez votre club et votre équipe pour retrouver ici les albums Pass Photo." />
+      ) : !hasAlbums ? (
+        <EmptyState text="Aucun album publié pour le moment. Vos prochains albums photo apparaîtront ici." />
+      ) : (
+        <>
+          {!unlocked && (
+            <div className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-5">
+              <span className="flex h-12 w-12 flex-none items-center justify-center rounded-sv bg-contenus-bg">
+                <span className="material-symbols-rounded !text-[24px] text-contenus" aria-hidden="true">lock</span>
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="font-sora text-[15px] font-semibold">Déverrouillez tous les albums de la saison</span>
+                <span className="text-[13px] text-text-tertiary">Un seul Pass déverrouille tous les albums publiés de cette équipe pour cette saison.</span>
+              </div>
+              <Button onClick={acheterPass} loading={busy} className="flex-none">
+                Obtenir le Pass Photo
+              </Button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {albums.map((a) => (
+              <AlbumCard key={a.id} album={a} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AlbumCard({ album }: { album: PhotoAlbumTeaser }) {
+  return (
+    <div className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface">
+      <div
+        className="relative h-[130px]"
+        style={{ background: "linear-gradient(135deg, rgba(168,85,247,.35), rgba(34,211,238,.18))" }}
+      >
+        {album.coverPreviewUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- aperçu distant, pas un domaine autorisé pour next/image
+          <img src={album.coverPreviewUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+        )}
+        {!album.unlocked && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55">
+              <span className="material-symbols-rounded !text-[20px] text-white" aria-hidden="true">lock</span>
+            </span>
+          </div>
+        )}
+        <span className="absolute right-3 top-3 rounded-sv-pill bg-black/45 px-2.5 py-1 text-[11px] font-medium text-text">
+          {album.photoCount} photo{album.photoCount > 1 ? "s" : ""}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1.5 p-4">
+        <span className="font-sora text-[16px] font-semibold">{album.title}</span>
+        <span className="text-[13px] text-text-tertiary">{formatDate(album.eventDate) || "Date non précisée"}</span>
+        {album.unlocked ? (
+          album.secureCollectionRef ? (
+            <a
+              href={album.secureCollectionRef}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus"
+            >
+              Ouvrir l&apos;album
+              <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>
+            </a>
+          ) : (
+            <span className="mt-1 text-[13px] leading-relaxed text-text-tertiary">
+              Accès activé — contactez SportVision pour le lien complet s&apos;il n&apos;apparaît pas ici.
+            </span>
+          )
+        ) : (
+          <span className="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-text-faint">
+            <span className="material-symbols-rounded !text-[15px]" aria-hidden="true">lock</span>
+            Pass Photo requis
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="flex max-w-[560px] flex-col gap-3.5 rounded-sv-card border border-dashed border-border-strong bg-surface p-6">
+      <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-contenus-bg">
+        <span className="material-symbols-rounded !text-[24px] text-contenus" aria-hidden="true">photo_camera</span>
+      </span>
+      <span className="font-sora text-[18px] font-semibold">Aucun album ici</span>
+      <p className="text-[14px] leading-relaxed text-text-tertiary">{text}</p>
+    </div>
+  );
+}
