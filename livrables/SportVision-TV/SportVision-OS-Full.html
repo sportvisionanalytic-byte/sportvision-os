@@ -29507,37 +29507,48 @@ async function loadMobileCmDash(ct){
 }
 
 // ── Dashboard Commercial ──────────────────────────────────────────────────
+// Refonte 28/08 (spec Refonte Interface Commercial) : ce tableau de bord mobile est un
+// routeur séparé du VIEWS['com.dash'] desktop (cf. loadMobileDash) — il était resté sur
+// l'ancien cadrage 4 KPI (Prospects/Qualifiés/Partenaires/Devis) après la refonte du
+// dashboard desktop, repéré en testant la version mobile réelle. Aligné ici sur le même
+// principe "qui dois-je contacter maintenant ?" que loadComDash, en plus condensé.
 async function loadMobileComDash(ct){
   ct.innerHTML=`<div style="padding:24px;text-align:center;color:var(--t3)">Chargement…</div>`;
   try{
-    const [clients,devis]=await Promise.all([
-      sbFetch('clients?select=id,nom,statut,sport,ville,created_at&order=created_at.desc&limit=100').catch(()=>[]),
-      sbFetch('devis?select=id,statut&limit=200').catch(()=>[]),
+    const today=ymdLocal();
+    const uid=localStorage.getItem('sv_uid');
+    const [clients,devisEnAttente,commADue]=await Promise.all([
+      sbFetch('clients?select=id,nom,statut,type_client,sport,ville,score_priorite,prochaine_action,date_prochaine_action&order=created_at.desc&limit=300').catch(()=>[]),
+      sbFetch('devis?select=id,statut&statut=in.(envoyé,en_attente)').catch(()=>[]),
+      sbFetch('commissions?select=montant_commission,statut&commercial_id=eq.'+uid+'&statut=in.(calculee,validee)').catch(()=>[]),
     ]);
-    const prospects=(clients||[]).filter(c=>c.statut==='prospect').length;
-    const qualifies=(clients||[]).filter(c=>c.statut==='qualifié').length;
-    const actifs=(clients||[]).filter(c=>['partenaire','client'].includes(c.statut)).length;
-    const devisEnv=(devis||[]).filter(d=>['envoyé','en_attente'].includes(d.statut)).length;
+    const list=clients||[];
+    _clientsCache=list;
+    const enRetardOuJour=list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&c.date_prochaine_action&&c.date_prochaine_action<=today);
+    const chaudesSansAction=list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&(c.score_priorite||0)>=70&&!c.date_prochaine_action);
+    const chaudes=list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&(c.score_priorite||0)>=70).length;
+    const commADueTotal=(commADue||[]).reduce((s,c)=>s+(Number(c.montant_commission)||0),0);
     let html=`<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:800;color:var(--t1)">Commercial</div></div>
     <div class="mkpi-strip">
-      <div class="mkpi" style="--mkl:var(--wa)"><div class="mkpi-label">Prospects</div><div class="mkpi-val">${prospects}</div><div class="mkpi-sub">pipeline</div></div>
-      <div class="mkpi" style="--mkl:#7C4DFF"><div class="mkpi-label">Qualifiés</div><div class="mkpi-val">${qualifies}</div><div class="mkpi-sub">à proposer</div></div>
-      <div class="mkpi" style="--mkl:var(--ok)"><div class="mkpi-label">Partenaires</div><div class="mkpi-val">${actifs}</div><div class="mkpi-sub">signés</div></div>
-      <div class="mkpi" style="--mkl:var(--acc)"><div class="mkpi-label">Devis</div><div class="mkpi-val">${devisEnv}</div><div class="mkpi-sub">en attente</div></div>
+      <div class="mkpi" style="--mkl:var(--er)" onclick="switchView('agenda')"><div class="mkpi-label">À relancer</div><div class="mkpi-val">${enRetardOuJour.length}</div><div class="mkpi-sub">retard/jour</div></div>
+      <div class="mkpi" style="--mkl:var(--wa)" onclick="switchView('prospects')"><div class="mkpi-label">Chaudes</div><div class="mkpi-val">${chaudes}</div><div class="mkpi-sub">score ≥70</div></div>
+      <div class="mkpi" style="--mkl:#7C4DFF" onclick="switchView('devis')"><div class="mkpi-label">Offres</div><div class="mkpi-val">${(devisEnAttente||[]).length}</div><div class="mkpi-sub">en attente</div></div>
+      <div class="mkpi" style="--mkl:var(--ok)" onclick="switchView('commissions')"><div class="mkpi-label">Commissions</div><div class="mkpi-val">${commADueTotal.toLocaleString('fr-FR')}€</div><div class="mkpi-sub">à percevoir</div></div>
     </div>
     <div class="mob-actions">
-      <button class="mob-action-btn" onclick="switchView('pipeline')"><div class="mob-action-btn-ic">🎯</div><div><div class="mob-action-btn-t">Pipeline</div><div class="mob-action-btn-s">Prospects</div></div></button>
-      <button class="mob-action-btn" onclick="switchView('pipeline')"><div class="mob-action-btn-ic">➕</div><div><div class="mob-action-btn-t">Nouveau prospect</div><div class="mob-action-btn-s">Pipeline</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('agenda')"><div class="mob-action-btn-ic">📅</div><div><div class="mob-action-btn-t">Agenda</div><div class="mob-action-btn-s">Relances</div></div></button>
+      <button class="mob-action-btn" onclick="modalNouveauClient()"><div class="mob-action-btn-ic">➕</div><div><div class="mob-action-btn-t">Nouveau prospect</div><div class="mob-action-btn-s">Ajouter</div></div></button>
     </div>`;
-    const recents=(clients||[]).slice(0,6);
-    html+=`<div class="ms-head"><div class="ms-title">Clients récents</div><button class="ms-link" onclick="switchView('pipeline')">Tous →</button></div>`;
-    html+=recents.map(c=>{const sc={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw','partenaire':'bn','client':'ba','inactif':'bn','bloqué':'bb','perdu':'bb'};const sl={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis','négociation':'Nég.','partenaire':'Partenaire','client':'Client','inactif':'Inactif','bloqué':'Bloqué','perdu':'Perdu'};
-      return`<div class="mc" onclick="modalModifierClientById('${c.id}')" style="cursor:pointer">
+    const prio=[
+      ...enRetardOuJour.map(c=>({c,txt:c.date_prochaine_action<today?'Relance en retard':'Relance aujourd\'hui',clr:'var(--er)'})),
+      ...chaudesSansAction.map(c=>({c,txt:'Opportunité chaude sans prochaine action',clr:'var(--wa)'})),
+    ].slice(0,6);
+    html+=`<div class="ms-head"><div class="ms-title">Priorités</div><button class="ms-link" onclick="switchView('prospects')">Tous →</button></div>`;
+    html+=prio.length?prio.map(({c,txt,clr})=>`<div class="mc" onclick="modalModifierClientById('${c.id}')" style="cursor:pointer">
         <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-          <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.nom)}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${esc([c.sport,c.ville].filter(Boolean).join(' · ')||'—')}</div></div>
-          <span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${sl[c.statut]||c.statut}</span>
+          <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.nom)}</div><div style="font-size:12px;color:${clr};margin-top:2px">${txt}</div></div>
         </div>
-      </div>`;}).join('');
+      </div>`).join(''):`<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Rien d'urgent — beau travail.</div>`;
     ct.innerHTML=html;
   }catch(e){ct.innerHTML=`<div style="padding:32px;color:var(--er);text-align:center;font-size:13px">Erreur de chargement.</div>`;}
 }
