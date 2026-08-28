@@ -1,11 +1,15 @@
-// ⚠️  REDÉPLOIEMENT MANUEL REQUIS après toute modification de ce fichier.
-// Ce code ne se déploie PAS automatiquement sur Supabase depuis le repo.
-// Étape à faire à chaque édition : Supabase Dashboard → Edge Functions →
-// invite-collaborateur → coller ce code → Deploy.
-// Oublier cette étape est la cause la plus fréquente de "le code est bon
-// mais ça ne marche pas en prod" sur ce projet (déjà arrivé sur au moins
-// 5 fonctions : clubplus-billing-portal, create-clubplus-subscription-
-// checkout, dispatch-notifications, create-guest-rdv, create-guest-request).
+// Déploiement : `supabase functions deploy invite-collaborateur --project-ref
+// <ref>` depuis SportVision-TV/ (pas depuis SportVision-TV/supabase/) —
+// fonctionne en CLI malgré les avertissements historiques de ce repo sur le
+// redéploiement manuel obligatoire (vérifié 28/08/2026).
+//
+// 28/08/2026 (refonte interface Secrétaire, spec §23/§24 "Création de comptes
+// collaborateurs" + tableau permissions "Collaborateurs : créer compte/
+// onboarding") : ouvert au rôle 'sec' en plus de 'admin', mais seulement pour
+// les rôles opérationnels (voir INVITABLE_ROLES_SEC) — les rôles sensibles
+// (admin/compta/expert_comptable/auditeur) restent réservés à un admin, pour
+// éviter qu'une secrétaire puisse s'auto-attribuer ou attribuer un accès
+// financier/administratif via ce formulaire.
 
 // Supabase Edge Function — invite-collaborateur
 // Remplace le flux actuel (créerCollaborateur() côté OS révèle un mot de
@@ -18,8 +22,9 @@
 // par le Communication Hub (enqueue_notification) pour un e-mail SportVision
 // branded, envoyé par le worker dispatch-notifications via Brevo.
 //
-// Réservé au staff admin (vérifie le JWT appelant + son rôle, même pattern
-// que send-devis-email/send-facture-email).
+// Réservé au staff admin et secrétaire (vérifie le JWT appelant + son rôle,
+// même pattern que send-devis-email/send-facture-email ; secrétaire limitée
+// aux rôles opérationnels, cf. INVITABLE_ROLES_SEC).
 //
 // Secrets requis : aucun secret supplémentaire — utilise SUPABASE_URL et
 // SUPABASE_SERVICE_ROLE_KEY déjà présents par défaut sur le projet.
@@ -37,6 +42,11 @@ const ROLE_LABELS: Record<string, string> = {
   cm: "Community Manager", compta: "Comptable", com: "Commercial", admin: "Administrateur",
   expert_comptable: "Expert-comptable", auditeur: "Auditeur",
 };
+
+// Rôles qu'une secrétaire peut attribuer elle-même (opérationnels). Les rôles
+// financiers/administratifs (admin, compta, expert_comptable, auditeur)
+// restent réservés à un admin.
+const INVITABLE_ROLES_SEC = new Set(["sec", "prod", "photo", "cm", "com"]);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -60,11 +70,25 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey);
 
     const { data: callerProfile } = await admin.from("profiles").select("role").eq("id", userData.user.id).maybeSingle();
-    if (!callerProfile || callerProfile.role !== "admin") return json({ error: "Réservé aux administrateurs" }, 403);
+    const callerIsAdmin = callerProfile?.role === "admin";
+    const callerIsSec = callerProfile?.role === "sec";
+    if (!callerIsAdmin && !callerIsSec) return json({ error: "Réservé aux administrateurs et à la secrétaire" }, 403);
 
     const { email, prenom, nom, role, organization_name, redirect_url } = await req.json();
     if (!email || !prenom || !nom || !role) return json({ error: "Champs manquants" }, 400);
     if (!ROLE_LABELS[role]) return json({ error: "Rôle invalide" }, 400);
+    if (callerIsSec && !INVITABLE_ROLES_SEC.has(role)) {
+      return json({ error: "La secrétaire ne peut pas attribuer ce rôle. Seul un administrateur le peut." }, 403);
+    }
+
+    // Idempotence (spec : "une invitation rejouée ne crée pas deux profils") —
+    // si un compte existe déjà pour cet email, ne pas retenter generateLink
+    // type 'invite' (qui échoue de toute façon sur un email déjà enregistré) ;
+    // renvoyer un succès idempotent avec l'id existant plutôt qu'une erreur.
+    const { data: existing } = await admin.from("profiles").select("id").ilike("email", email).maybeSingle();
+    if (existing) {
+      return json({ user_id: existing.id, success: true, already_existed: true });
+    }
 
     // Génère l'invitation Supabase (crée le compte auth s'il n'existe pas) sans
     // envoyer l'e-mail par défaut de Supabase — on utilise le nôtre ensuite.
