@@ -8425,8 +8425,28 @@ async function confirmerLivraison(livrableId){
     const rStatut=await sbFetch('media_livrables?id=eq.'+livrableId,{method:'PATCH',body:{statut:'livre'}}).catch(()=>({code:'network_error'}));
     if(sbErr(rStatut))console.error('MAJ statut livrable échouée',rStatut);
     if(lv?.prestation_id) await logMediaHistory(lv.prestation_id,S.uid,'Livraison effectuée','livraison',null,null,email);
+    // Pont Full Communication (28/08/2026, demande Fouka) : prépare un
+    // brouillon dans le calendrier éditorial du CM plutôt qu'une simple
+    // notification sans rien de concret à ouvrir — contenus et prestations
+    // restent deux tables non fusionnées, prestation_id est juste un lien de
+    // traçabilité (migration-contenus-prestation-link.sql). RLS vérifiée en
+    // conditions réelles (compte de test jetable role=prod) : sec/prod
+    // peuvent créer un brouillon pour un CM qui n'est pas eux-mêmes.
     const cmId=document.getElementById('liv-cmid')?.value;
-    if(cmId)await creerNotifSiActive(cmId,'taches',{type:'livraison_full_com',titre:'Contenu livré — '+(lv?.nom||'à publier'),message:'Le contenu vient d\'être livré au club. À vous de gérer la publication (Full Communication).',lue:false,prestation_id:lv?.prestation_id||null}).catch(()=>{});
+    if(cmId&&lv?.prestation_id){
+      try{
+        const presInfo=await sbFetch('prestations?select=client_id,reference,type_prestation&id=eq.'+lv.prestation_id);
+        const pi=presInfo?.[0];
+        if(pi?.client_id){
+          await sbFetch('contenus',{method:'POST',body:{
+            client_id:pi.client_id,cm_id:cmId,prestation_id:lv.prestation_id,
+            titre:'Contenu livré — '+(pi.type_prestation||pi.reference||lv?.nom||'prestation'),
+            statut:'brouillon',
+          }});
+        }
+      }catch(e){}
+      await creerNotifSiActive(cmId,'taches',{type:'livraison_full_com',titre:'Contenu livré — '+(lv?.nom||'à publier'),message:'Le contenu vient d\'être livré au club. Un brouillon a été préparé dans votre calendrier éditorial.',lue:false,prestation_id:lv?.prestation_id||null}).catch(()=>{});
+    }
     closeModal();
     toast(sbErr(rStatut)?'Livraison enregistrée, mais le statut du livrable n\'a pas pu être synchronisé.':'Livraison enregistrée','ok');
     loadProdLivrables();
