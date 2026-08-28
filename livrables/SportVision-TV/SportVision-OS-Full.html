@@ -739,7 +739,22 @@ const NAV={
     {id:'kits',lb:'Kits',ic:'kits'},
     {id:'incidents',lb:'Incidents',ic:'alert'},
     {type:'sep',lb:'Finances & Documents'},
-    {id:'fin',lb:'Finances',ic:'fin'},
+    // Refonte Finance (28/08, nuit) : le hub "Finances" (grille de 22 raccourcis) laisse
+    // place à 4 pages réelles + 1 secondaire, même esprit que la refonte Équipe & RH du
+    // même soir (3 pages réelles au lieu d'un hub de raccourcis). 'fin' devient
+    // "Vue d'ensemble" (KPI + liens), 'finrevenus'/'findepenses'/'finequipe' fusionnent les
+    // écrans dispersés (factures/acomptes/impayés/avoirs/encaissements → Revenus ;
+    // dépenses+générateur de charges récurrentes → Dépenses ; rémunérations/frais/
+    // commissions équipe → Équipe), 'finrapports' regroupe ce qui reste (analyse, clôtures,
+    // exports, rapprochement bancaire — cf. VIEWS['admin.finrapports']). Tous les anciens id
+    // restent définis avec hidden:true (mécanisme du 22/08 inchangé) : rien n'est supprimé,
+    // juste sorti de la sidebar — VIEWS/fonctions/CTA continuent de fonctionner à l'identique
+    // pour quiconque y accède encore par ancien lien direct.
+    {id:'fin',lb:"Vue d'ensemble",ic:'fin'},
+    {id:'finrevenus',lb:'Revenus',ic:'fin'},
+    {id:'findepenses',lb:'Dépenses',ic:'fin'},
+    {id:'finequipe',lb:'Équipe',ic:'col'},
+    {id:'finrapports',lb:'Rapports & exports',ic:'export'},
     {id:'resultat',lb:'Compte de résultat',ic:'fin',hidden:true},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin',hidden:true},
     {id:'commissions',lb:'Commissions',ic:'fin',hidden:true},
@@ -981,21 +996,25 @@ const NAV={
   ],
 };
 
-// ── Regroupement menu Finances (22/08, simplification demandée par Fouka) ──
+// ── Regroupement menu Finances (22/08, simplification demandée par Fouka ; retravaillé
+// 28/08 lors de la refonte Finance) ──
 // Le groupe "Finances & Documents" comptait 23 items visibles directement dans le menu
 // (sur 47 au total pour le rôle admin) — de loin le plus chargé (audit du 21/08). Plutôt
 // que de les supprimer, ils passent en `hidden:true` (voir NAV admin ci-dessus) : ils
 // restent des entrées valides de NAV (titre de page, CTA, badges continuent de
 // fonctionner exactement comme avant si on y accède), simplement renderSidebarNav() ne
-// les affiche plus comme boutons. Le seul point d'entrée visible redevient l'écran
-// "Finances" (id 'fin'), dont le template ci-dessus a été complété avec cette grille de
-// raccourcis groupée par thème — un clic appelle switchView() normalement, donc l'écran
-// cible se comporte à l'identique de son ancien accès direct depuis le menu.
+// les affiche plus comme boutons.
+// 28/08 : les groupes "Facturation & paiements" et "Dépenses & paie" ont été retirés
+// d'ici — ces écrans sont désormais fusionnés dans les vraies pages Revenus/Dépenses/
+// Équipe (VIEWS['admin.finrevenus']/['admin.findepenses']/['admin.finequipe']), qui
+// restent le point d'entrée normal. Ce qui reste ci-dessous (Analyse, Clôtures & exports,
+// Autres) vit maintenant dans VIEWS['admin.finrapports'] ("Rapports & exports"), pas
+// dans 'fin' (devenu "Vue d'ensemble" avec 4 cartes de navigation, cf. plus bas) — un
+// clic appelle switchView() normalement, donc l'écran cible se comporte à l'identique de
+// son ancien accès direct depuis le menu.
 const FIN_HUB_GROUPES=[
-  {titre:'Facturation & paiements',items:[['factures','Factures'],['acomptes','Acomptes'],['impayes','Impayés'],['avoirs','Avoirs & remises'],['encaissements','Encaissements Stripe']]},
-  {titre:'Dépenses & paie',items:[['depenses','Dépenses'],['frais','Frais & km'],['paiements','Paiements équipe'],['rem','Rémunérations']]},
   {titre:'Analyse',items:[['resultat','Compte de résultat'],['rentabilite','Rentabilité'],['commissions','Commissions'],['budgets','Budgets & prévisions'],['tva','TVA & provisions']]},
-  {titre:'Clôtures & exports',items:[['rapprochement','Rapprochement'],['clotures','Clôtures mensuelles'],['export','Exports comptables'],['fec','Export FEC'],['audit',"Journal d'audit"]]},
+  {titre:'Clôtures & exports',items:[['rapprochement','Rapprochement bancaire'],['clotures','Clôtures mensuelles'],['export','Exports comptables'],['fec','Export FEC'],['audit',"Journal d'audit"]]},
   {titre:'Autres',items:[['immobilisations','Immobilisations'],['rapport','Rapport mensuel'],['documents','Centre documentaire']]},
 ];
 function finHubRaccourcisHTML(){
@@ -1353,10 +1372,119 @@ const VIEWS={
       <div class="fs"><div class="fs-l">En attente paiement</div><div class="fs-v" id="fin-en-attente" style="color:var(--wa)">—</div></div>
       <div class="fs"><div class="fs-l">Revenus clubs (récurrent/mois)</div><div class="fs-v" id="fin-revenus-clubs">—</div></div>
     </div>
-    ${finHubRaccourcisHTML()}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:13px">
+      <div class="cd" style="margin-bottom:0;padding:20px;cursor:pointer;display:flex;flex-direction:column;gap:8px" onclick="switchView('finrevenus')">
+        <div style="font-size:26px">💶</div>
+        <div style="font-size:14px;font-weight:700;color:var(--t1)">Revenus</div>
+        <div style="font-size:12px;color:var(--t3)">Factures, paiements, avoirs, impayés — tout en un seul endroit</div>
+      </div>
+      <div class="cd" style="margin-bottom:0;padding:20px;cursor:pointer;display:flex;flex-direction:column;gap:8px" onclick="switchView('findepenses')">
+        <div style="font-size:26px">🧾</div>
+        <div style="font-size:14px;font-weight:700;color:var(--t1)">Dépenses</div>
+        <div style="font-size:12px;color:var(--t3)">Fournisseurs, charges récurrentes, notes de frais</div>
+      </div>
+      <div class="cd" style="margin-bottom:0;padding:20px;cursor:pointer;display:flex;flex-direction:column;gap:8px" onclick="switchView('finequipe')">
+        <div style="font-size:26px">👥</div>
+        <div style="font-size:14px;font-weight:700;color:var(--t1)">Équipe</div>
+        <div style="font-size:12px;color:var(--t3)">Missions, rémunérations mensuelles, remboursements, commissions</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn bg2 bs" onclick="switchView('finrapports')">Rapports & exports →</button>
+    </div>
     <div class="cd"><div class="cd-h"><div class="cd-t">Prestations avec montant</div></div>
       <div id="fin-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
+
+  // ── Refonte Finance (28/08, nuit) : Revenus/Dépenses/Équipe/Rapports & exports ──
+  // Voir le commentaire détaillé au-dessus de NAV['admin'] section "Finances & Documents"
+  // pour l'explication complète. Les 3 pages fusionnées (Revenus/Dépenses/Équipe) sont de
+  // VRAIES nouvelles vues (pas des alias de compta.*) car elles lisent plusieurs tables à la
+  // fois avec une UI de filtres propre — contrairement aux écrans compta.* individuels
+  // (factures/acomptes/impayes/avoirs/encaissements etc.) qui restent inchangés et
+  // accessibles en hidden:true pour compat (cf. VIEWS['admin.finrapports'] plus bas qui
+  // regroupe ce qu'il en reste + l'analyse/clôtures/exports/rapprochement bancaire).
+  'admin.finrevenus':()=>`
+    <div class="sh"><div><div class="sh-t">Revenus</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Factures et paiements, tous flux confondus (Full Com, Club+, Prestations, Connect, Pass Photo, Agent)</div></div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Encaissé</div><div class="fs-v" id="finrev-kpi-enc" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À encaisser</div><div class="fs-v" id="finrev-kpi-att" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">En retard</div><div class="fs-v" id="finrev-kpi-retard" style="color:var(--er)">—</div></div>
+    </div>
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Statut</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn bg2 bs" onclick="filterFinRevenus('all')" id="finrev-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
+      <button class="btn bg2 bs" onclick="filterFinRevenus('encaisser')" id="finrev-f-encaisser">À encaisser</button>
+      <button class="btn bg2 bs" onclick="filterFinRevenus('payee')" id="finrev-f-payee">Payés</button>
+      <button class="btn bg2 bs" onclick="filterFinRevenus('retard')" id="finrev-f-retard">En retard</button>
+    </div>
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Source</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterFinRevenusSource('all')" id="finrevs-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterFinRevenusSource('fullcom')" id="finrevs-f-fullcom">Full Com</button>
+      <button class="btn bg2 bs" onclick="filterFinRevenusSource('clubplus')" id="finrevs-f-clubplus">Club+</button>
+      <button class="btn bg2 bs" onclick="filterFinRevenusSource('prestation')" id="finrevs-f-prestation">Prestation</button>
+      <button class="btn bg2 bs" onclick="filterFinRevenusSource('connect')" id="finrevs-f-connect">Connect</button>
+      <button class="btn bg2 bs" onclick="filterFinRevenusSource('passphoto')" id="finrevs-f-passphoto">Pass Photo</button>
+      <button class="btn bg2 bs" onclick="filterFinRevenusSource('agent')" id="finrevs-f-agent">Agent</button>
+    </div>
+    <div id="finrevenus-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'admin.findepenses':()=>`
+    <div class="sh"><div><div class="sh-t">Dépenses</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Charges fournisseurs et récurrentes de l'entreprise</div></div>
+      <div style="display:flex;gap:8px"><button class="btn bg2 bs" onclick="genererDepensesRecurrentes()">↻ Générer les échéances dues</button><button class="btn bp bs" onclick="modalNouvelleDepense()">+ Nouvelle dépense</button></div>
+    </div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Dépenses ce mois</div><div class="fs-v" id="findep-kpi-mois" style="color:var(--er)">—</div></div>
+      <div class="fs"><div class="fs-l">Récurrentes actives</div><div class="fs-v" id="findep-kpi-recur">—</div></div>
+      <div class="fs"><div class="fs-l">Prochaine échéance à générer</div><div class="fs-v" id="findep-kpi-prochaine" style="font-size:14px">—</div></div>
+    </div>
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Statut</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn bg2 bs" onclick="filterFinDepenses('all')" id="findep-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterFinDepenses('prevue')" id="findep-f-prevue">Prévus</button>
+      <button class="btn bg2 bs" onclick="filterFinDepenses('engagee')" id="findep-f-engagee">À valider</button>
+      <button class="btn bg2 bs" onclick="filterFinDepenses('payee')" id="findep-f-payee">Payés</button>
+    </div>
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Catégorie</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterFinDepensesCat('all')" id="findepc-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterFinDepensesCat('materiel')" id="findepc-f-materiel">Matériel</button>
+      <button class="btn bg2 bs" onclick="filterFinDepensesCat('logiciel')" id="findepc-f-logiciel">Logiciel</button>
+      <button class="btn bg2 bs" onclick="filterFinDepensesCat('marketing')" id="findepc-f-marketing">Marketing</button>
+      <button class="btn bg2 bs" onclick="filterFinDepensesCat('loyer')" id="findepc-f-loyer">Loyer</button>
+      <button class="btn bg2 bs" onclick="filterFinDepensesCat('assurance')" id="findepc-f-assurance">Assurance</button>
+      <button class="btn bg2 bs" onclick="filterFinDepensesCat('sous_traitance')" id="findepc-f-sous_traitance">Sous-traitance</button>
+      <button class="btn bg2 bs" onclick="filterFinDepensesCat('autre')" id="findepc-f-autre">Autres</button>
+    </div>
+    <div id="findepenses-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'admin.finequipe':()=>`
+    <div class="sh"><div><div class="sh-t">Équipe — Paiements</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Ce que l'entreprise doit à son équipe : missions, salaires, remboursements, commissions — distinct des fiches collaborateurs (menu Équipe & RH)</div></div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À payer</div><div class="fs-v" id="fineq-kpi-att" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Payés (mois)</div><div class="fs-v" id="fineq-kpi-paye" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Total historique</div><div class="fs-v" id="fineq-kpi-hist">—</div></div>
+    </div>
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Statut</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn bg2 bs" onclick="filterFinEquipe('apayer')" id="fineq-f-apayer" style="background:rgba(54,107,255,.15);color:var(--acc)">À payer</button>
+      <button class="btn bg2 bs" onclick="filterFinEquipe('payee')" id="fineq-f-payee">Payés</button>
+      <button class="btn bg2 bs" onclick="filterFinEquipe('all')" id="fineq-f-all">Historique complet</button>
+    </div>
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Type</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterFinEquipeType('all')" id="fineqt-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
+      <button class="btn bg2 bs" onclick="filterFinEquipeType('mission')" id="fineqt-f-mission">Mission</button>
+      <button class="btn bg2 bs" onclick="filterFinEquipeType('salaire')" id="fineqt-f-salaire">Rémunération mensuelle</button>
+      <button class="btn bg2 bs" onclick="filterFinEquipeType('frais')" id="fineqt-f-frais">Remboursement</button>
+      <button class="btn bg2 bs" onclick="filterFinEquipeType('commission')" id="fineqt-f-commission">Commission</button>
+    </div>
+    <div id="finequipe-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'admin.finrapports':()=>`
+    <div class="sh"><div class="sh-t">Rapports & exports</div></div>
+    ${finHubRaccourcisHTML()}`,
 
   'admin.set':()=>`
     <div class="sh"><div class="sh-t">Paramètres</div></div>
@@ -2358,14 +2486,36 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Publications</div><button class="btn bp bs" onclick="modalNouveauContenu()">+ Nouveau contenu</button></div>
     <div id="pub-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  // ── Rapprochement bancaire — REFONTE 28/08/2026 ──────────────────────────
+  // Remplace l'ancien écran (suivi manuel de prestations.statut_financier, aucun vrai
+  // rapprochement — cf. audit du soir) par un vrai moteur : import CSV bancaire
+  // (bank_transactions, migration-finance-refonte-28-08.sql) + suggestions de
+  // correspondance scorées (fin_suggerer_rapprochements) + action de rapprochement
+  // idempotente (fin_rapprocher_transaction). loadRapprochement()/majStatutFinancier()
+  // restent définies plus bas (inchangées, plus appelées depuis cet écran) — rien
+  // n'est supprimé, cf. même principe que le regroupement du 22/08.
   'compta.rapprochement':()=>`
-    <div class="sh"><div class="sh-t">Rapprochement bancaire</div></div>
-    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:13px">
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Encaissé</div><div class="kpi-v" id="rap-enc" style="color:var(--ok)">—</div><span class="kpi-d dnt">ce mois</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">En attente</div><div class="kpi-v" id="rap-att" style="color:var(--wa)">—</div><span class="kpi-d dnt">à confirmer</span></div>
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">En retard</div><div class="kpi-v" id="rap-ret" style="color:var(--er)">—</div><span class="kpi-d dnt">impayés</span></div>
+    <div class="sh"><div><div class="sh-t">Rapprochement bancaire</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Import CSV (Revolut Business ou export équivalent) + suggestions de correspondance avec factures et dépenses</div></div>
+      <button class="btn bp bs" onclick="modalImporterCSVBancaire()">↑ Importer un CSV</button>
     </div>
-    <div id="rap-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div class="cd" style="margin-bottom:13px;border-left:3px solid var(--wa)">
+      <div style="padding:14px 18px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px;line-height:1">⚠️</span>
+        <div style="font-size:12.5px;color:var(--t2)"><strong style="color:var(--wa)">Import manuel uniquement, ce soir</strong> — aucune credential Revolut/Qonto n'est configurée. Exportez le CSV de votre compte bancaire pro et importez-le ici. Le schéma est déjà multi-provider : brancher une vraie synchronisation API plus tard ne changera pas cet écran.</div>
+      </div>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">À traiter</div><div class="kpi-v" id="rapb-kpi-atraiter" style="color:var(--wa)">—</div><span class="kpi-d dnt">transactions</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Rapprochées</div><div class="kpi-v" id="rapb-kpi-rapprochees" style="color:var(--ok)">—</div><span class="kpi-d dnt">total</span></div>
+      <div class="kpi" style="--kl:#9AA5B1"><div class="kpi-ey">Ignorées</div><div class="kpi-v" id="rapb-kpi-ignorees">—</div><span class="kpi-d dnt">hors périmètre</span></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterRapprochementBancaire('a_traiter')" id="rapb-f-a_traiter" style="background:rgba(54,107,255,.15);color:var(--acc)">À traiter</button>
+      <button class="btn bg2 bs" onclick="filterRapprochementBancaire('rapprochee')" id="rapb-f-rapprochee">Rapprochées</button>
+      <button class="btn bg2 bs" onclick="filterRapprochementBancaire('ignoree')" id="rapb-f-ignoree">Ignorées</button>
+      <button class="btn bg2 bs" onclick="filterRapprochementBancaire('all')" id="rapb-f-all">Toutes</button>
+    </div>
+    <div id="rapb-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.acomptes':()=>`
     <div class="sh"><div class="sh-t">Acomptes clients</div></div>
@@ -4088,6 +4238,9 @@ async function loadViewData(role,view){
   if(role==='sec'&&view==='rapports'){_secRapDate=new Date();await loadSecRapports();}
   if(role==='sec'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='admin'&&view==='fin') await loadFinances();
+  if(role==='admin'&&view==='finrevenus') await loadFinRevenus();
+  if(role==='admin'&&view==='findepenses') await loadFinDepenses();
+  if(role==='admin'&&view==='finequipe') await loadFinEquipe();
   const _isComptaLike=['compta','expert_comptable','auditeur'].includes(role);
   if(_isComptaLike&&view==='factures') await loadComptaFactures();
   if(role==='expert_comptable'&&view==='dash') await loadExpertComptableDash(); else if(_isComptaLike&&view==='dash') await loadComptaDash();
@@ -4123,7 +4276,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='rentabilite') await loadComptaRentabilite();
   if(role==='admin'&&view==='clotures') await loadComptaClotures();
   if(role==='admin'&&view==='paiements') await loadPaiements();
-  if(role==='admin'&&view==='rapprochement') await loadRapprochement();
+  if(role==='admin'&&view==='rapprochement') await loadRapprochementBancaire();
   if(role==='admin'&&view==='resultat') await loadComptaResultat();
   if(role==='admin'&&view==='commissions') await loadComptaCommissions();
   if(role==='admin'&&view==='budgets') await loadComptaBudgets();
@@ -4166,7 +4319,7 @@ async function loadViewData(role,view){
   if(['admin','compta'].includes(role)&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
   if((['admin','compta','expert_comptable'].includes(role)&&view==='documents')||((role==='sec'||role==='admin'||_isComptaLike)&&view==='docs')) await loadDocuments(role);
-  if(_isComptaLike&&view==='rapprochement') await loadRapprochement();
+  if(_isComptaLike&&view==='rapprochement') await loadRapprochementBancaire();
   if(view==='set') await loadSettings();
   if(role==='admin'&&view==='rapport'){_rapportOffset=0;await loadRapport();}
   if(role==='admin'&&view==='contrats') await loadContrats();
@@ -4937,6 +5090,10 @@ async function modalFicheClubPlus(clubId){
         <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Crédits (dispo / réservés / mensuels)</div><div style="font-size:13.5px;color:var(--t1);font-weight:500;margin-top:4px">${club.credits_balance!=null?`${club.credits_balance} / ${club.credits_reserved||0} / ${club.credits_monthly||0}`:'—'}</div></div>
       </div>
       ${club.clients?.nom?`<button class="btn bg2 bs" onclick="closeModal();_openFicheFullCom('${club.portail_client_id}')">Ouvrir la fiche client Full Com liée</button>`:''}
+      <div class="cd" style="margin-top:16px">
+        <div class="cd-h"><div class="cd-t">Rentabilité</div></div>
+        <div id="cfp-rentabilite" style="padding:14px 16px"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+      </div>
     </div>
   </div>`);
   cfpLoadEquipes(clubId);
@@ -4952,6 +5109,32 @@ function cfpShowTab(tab){
   if(!_cfpClub)return;
   if(tab==='equipes')cfpLoadEquipes(_cfpClub.id);
   if(tab==='users')cfpLoadUsers(_cfpClub.id);
+  if(tab==='gestion')cfpLoadRentabilite(_cfpClub);
+}
+// Rentabilité (v_rentabilite_missions, refonte Finance 28/08) — déjà branchée sur la fiche
+// Full Com (loadClientRentabilite, onglet "Gestion" fce-tab-finance) mais absente ici avant
+// ce soir. La vue est indexée par clients.id, pas clubs.id : un club Club+ sans client Full
+// Com lié (workspace autonome, club.clients===null) n'a donc structurellement aucune donnée
+// de rentabilité disponible via cette vue — message honnête plutôt que 0 trompeur.
+async function cfpLoadRentabilite(club){
+  const el=document.getElementById('cfp-rentabilite');
+  if(!el)return;
+  if(!club.portail_client_id){
+    el.innerHTML='<div style="font-size:12px;color:var(--t3)">Workspace autonome, sans client Full Com lié — pas de rentabilité par mission disponible à ce niveau (v_rentabilite_missions est indexée par client).</div>';
+    return;
+  }
+  try{
+    const data=await sbFetch('v_rentabilite_missions?select=revenu_ht,marge_nette&client_id=eq.'+club.portail_client_id+'&limit=500');
+    if(sbErr(data)||!Array.isArray(data)||!data.length){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Aucune mission facturée pour l\'instant.</div>';return;}
+    const revenu=data.reduce((s,m)=>s+(m.revenu_ht||0),0);
+    const marge=data.reduce((s,m)=>s+(m.marge_nette||0),0);
+    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+    el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Missions</div><div style="font-size:15px;color:var(--t1);font-weight:700;margin-top:4px">${data.length}</div></div>
+      <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Revenu HT cumulé</div><div style="font-size:15px;color:var(--t1);font-weight:700;margin-top:4px">${fmt(revenu)}</div></div>
+      <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Marge nette cumulée</div><div style="font-size:15px;font-weight:700;margin-top:4px;color:${marge>=0?'var(--ok)':'var(--er)'}">${fmt(marge)}</div></div>
+    </div>`;
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
 }
 async function cfpLoadEquipes(clubId){
   const el=document.getElementById('cfp-equipes-list');
@@ -14060,8 +14243,9 @@ async function emettreFacture(prestationId){
     logFinancialAudit('creation','factures',fact.id,null,fact.montant_ttc,{prestation_id:prestationId,numero:fact.numero});
     toast('Facture '+(fact.numero||'')+' émise.','ok');
     if(document.getElementById('docs-content')){await docsLoadAll();docsUpdateKPIs();await docsRenderTab();}
-    else if(S.view==='rapprochement')await loadRapprochement();
+    else if(S.view==='rapprochement')await loadRapprochementBancaire();
     else if(S.view==='factures')await loadComptaFactures();
+    else if(S.view==='finrevenus')await loadFinRevenus();
   }catch(e){toast('Erreur lors de l\'émission.','er');}
 }
 
@@ -23119,10 +23303,473 @@ async function majStatutFinancier(id,statut){
     const lbl={facturée:'Prestation facturée.',payée:'Paiement enregistré.'}[statut]||'Mis à jour.';
     toast(lbl,'ok');
     if(S.view==='fin')loadFinances();
-    else if(S.view==='rapprochement')loadRapprochement();
+    else if(S.view==='rapprochement')loadRapprochementBancaire();
     else if(S.view==='factures')loadComptaFactures();
+    else if(S.view==='finrevenus')loadFinRevenus();
     updateNavBadges(S.role);
   }catch(e){toast('Erreur lors de la mise à jour.');}
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ── Refonte Finance (28/08/2026, nuit) — Revenus / Dépenses / Équipe ──────
+// ════════════════════════════════════════════════════════════════════════
+// Ces 3 pages LISENT les tables déjà en prod (factures/paiements/expenses/
+// frais/employee_costs/commissions/prestations_equipe) — aucune n'écrit de
+// nouveau mécanisme de facturation/paie, cf. spec "Refonte du module
+// Finance". Seul le générateur de charges récurrentes (RPC
+// fin_generer_depenses_recurrentes, migration-finance-refonte-28-08.sql)
+// écrit réellement de nouvelles lignes `expenses`.
+
+// ── Revenus (fusion factures/acomptes/impayés/avoirs/encaissements) ──────
+let _finrevCache=[];
+let _finrevFiltre='all';
+let _finrevSourceFiltre='all';
+async function loadFinRevenus(){
+  const el=document.getElementById('finrevenus-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const [factures,contrats]=await Promise.all([
+      sbFetch('factures?select=id,numero,client_id,prestation_id,montant_ht,montant_ttc,montant_paye,statut,date_emission,date_echeance,clients(nom),prestations(source,type_prestation)&order=date_emission.desc&limit=500'),
+      sbFetch('contrats?select=client_id,type_contrat&statut=eq.actif').catch(()=>[]),
+    ]);
+    if(sbErr(factures)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
+    const contratsMap={};
+    (Array.isArray(contrats)?contrats:[]).forEach(c=>{(contratsMap[c.client_id]=contratsMap[c.client_id]||[]).push(c.type_contrat);});
+    _finrevCache=(factures||[]).map(f=>({...f,_source:_finClassifySource(f,contratsMap)}));
+    renderFinRevenus();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+// Classification de la source d'un flux de revenu : basée sur des colonnes réelles déjà en
+// prod (prestations.source vitrine/connect/clubplus/interne — migration-prestations-v89 ;
+// contrats.type_contrat full_communication/club_plus — migration-contrats-v2). Pass Photo et
+// Agent n'ont volontairement PAS de ligne `paiements`/`factures` aujourd'hui (choix produit
+// documenté dans migration-connect-pass-photo-v1.sql et migration-connect-v57 : ces paiements
+// Stripe restent hors du modèle factures/paiements) — ces 2 filtres existent pour préparer le
+// jour où ce choix change, mais resteront honnêtement VIDES tant que ce n'est pas le cas.
+function _finClassifySource(f,contratsMap){
+  const src=f.prestations?.source;
+  if(src==='clubplus')return'clubplus';
+  if(src==='connect')return'connect';
+  const contrats=contratsMap[f.client_id]||[];
+  if(contrats.includes('full_communication'))return'fullcom';
+  if(contrats.includes('club_plus'))return'clubplus';
+  return'prestation';
+}
+function filterFinRevenus(f){
+  _finrevFiltre=f;
+  ['all','encaisser','payee','retard'].forEach(x=>{const b=document.getElementById('finrev-f-'+x);if(b)b.style.cssText=x===f?'background:rgba(54,107,255,.15);color:var(--acc)':'';});
+  renderFinRevenus();
+}
+function filterFinRevenusSource(s){
+  _finrevSourceFiltre=s;
+  ['all','fullcom','clubplus','prestation','connect','passphoto','agent'].forEach(x=>{const b=document.getElementById('finrevs-f-'+x);if(b)b.style.cssText=x===s?'background:rgba(54,107,255,.15);color:var(--acc)':'';});
+  renderFinRevenus();
+}
+function renderFinRevenus(){
+  const el=document.getElementById('finrevenus-real');
+  if(!el)return;
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  let enc=0,att=0,retard=0;
+  _finrevCache.forEach(f=>{
+    const reste=(f.montant_ttc||0)-(f.montant_paye||0);
+    if(f.statut==='payee')enc+=f.montant_paye||f.montant_ttc||0;
+    else if(f.montant_paye)enc+=f.montant_paye;
+    if(['emise','partiellement_payee','en_retard'].includes(f.statut))att+=reste;
+    if(f.statut==='en_retard')retard+=reste;
+  });
+  const s1=document.getElementById('finrev-kpi-enc');if(s1)s1.textContent=fmt(enc);
+  const s2=document.getElementById('finrev-kpi-att');if(s2)s2.textContent=fmt(att);
+  const s3=document.getElementById('finrev-kpi-retard');if(s3)s3.textContent=fmt(retard);
+  let list=_finrevCache;
+  if(_finrevFiltre==='encaisser')list=list.filter(f=>['emise','partiellement_payee'].includes(f.statut));
+  else if(_finrevFiltre==='payee')list=list.filter(f=>f.statut==='payee');
+  else if(_finrevFiltre==='retard')list=list.filter(f=>f.statut==='en_retard');
+  if(_finrevSourceFiltre!=='all')list=list.filter(f=>f._source===_finrevSourceFiltre);
+  const srcLb={fullcom:'Full Com',clubplus:'Club+',prestation:'Prestation',connect:'Connect',passphoto:'Pass Photo',agent:'Agent'};
+  const stLb={brouillon:'Brouillon',emise:'Émise',partiellement_payee:'Part. payée',payee:'Payée',en_retard:'En retard',annulee:'Annulée',remboursee:'Remboursée'};
+  const stClr={brouillon:'bn',emise:'bw',partiellement_payee:'bw',payee:'ba',en_retard:'bb',annulee:'bn',remboursee:'bn'};
+  if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">💶</div><div>Aucune facture pour ce filtre.</div>'+(['passphoto','agent'].includes(_finrevSourceFiltre)?'<div style="font-size:11.5px;max-width:360px;text-align:center">Normal : le Pass Photo et les abonnements Agent sont facturés directement via Stripe sans créer de ligne `factures` (choix produit du 14/08 et du 21/08) — cette source restera vide tant que ce choix n\'est pas revu.</div>':'')+'</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Numéro</th><th>Client</th><th>Source</th><th>Montant TTC</th><th>Payé</th><th>Statut</th><th>Échéance</th></tr></thead><tbody>'+
+    list.map(f=>`<tr>
+      <td class="tm">${esc(f.numero||'—')}</td>
+      <td class="tp">${esc(f.clients?.nom||'—')}</td>
+      <td><span class="bd bn"><span class="bd-d"></span>${srcLb[f._source]||f._source}</span></td>
+      <td class="tm" style="color:var(--t1);font-weight:600">${fmt(f.montant_ttc)}</td>
+      <td class="tm">${fmt(f.montant_paye)}</td>
+      <td><span class="bd ${stClr[f.statut]||'bw'}"><span class="bd-d"></span>${stLb[f.statut]||f.statut}</span></td>
+      <td>${f.date_echeance?new Date(f.date_echeance).toLocaleDateString('fr-FR'):'—'}</td>
+    </tr>`).join('')+
+  '</tbody></table></div>';
+}
+
+// ── Dépenses (fusion dépenses fournisseurs + générateur de charges récurrentes) ──
+let _findepCache=[];
+let _findepFiltre='all';
+let _findepCatFiltre='all';
+async function loadFinDepenses(){
+  const el=document.getElementById('findepenses-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  // Génère silencieusement les échéances récurrentes dues à chaque ouverture de la page —
+  // idempotent (index unique source_expense_id+periode_recurrence côté DB), donc sans risque
+  // si l'utilisateur recharge la page plusieurs fois. Pas un vrai cron : cf. rapport de fin de
+  // chantier pour la recommandation pg_cron si Fouka veut une génération sans ouvrir l'OS.
+  try{await sbFetch('rpc/fin_generer_depenses_recurrentes',{method:'POST',body:{}});}catch(e){}
+  try{
+    const data=await sbFetch('expenses?select=id,libelle,categorie,montant_ht,montant_ttc,statut,date_depense,date_prochaine_echeance,recurrence,source_expense_id,vendors(nom)&order=date_depense.desc&limit=500');
+    if(sbErr(data)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
+    _findepCache=data||[];
+    renderFinDepenses();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function filterFinDepenses(f){
+  _findepFiltre=f;
+  ['all','prevue','engagee','payee'].forEach(x=>{const b=document.getElementById('findep-f-'+x);if(b)b.style.cssText=x===f?'background:rgba(54,107,255,.15);color:var(--acc)':'';});
+  renderFinDepenses();
+}
+function filterFinDepensesCat(c){
+  _findepCatFiltre=c;
+  ['all','materiel','logiciel','marketing','loyer','assurance','sous_traitance','autre'].forEach(x=>{const b=document.getElementById('findepc-f-'+x);if(b)b.style.cssText=x===c?'background:rgba(54,107,255,.15);color:var(--acc)':'';});
+  renderFinDepenses();
+}
+function renderFinDepenses(){
+  const el=document.getElementById('findepenses-real');
+  if(!el)return;
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const now=new Date();const mStart=now.toISOString().slice(0,7);
+  const moisTotal=_findepCache.filter(d=>d.date_depense&&d.date_depense.slice(0,7)===mStart).reduce((s,d)=>s+(d.montant_ttc||0),0);
+  const recurrentes=_findepCache.filter(d=>d.recurrence&&d.recurrence!=='ponctuelle'&&!d.source_expense_id);
+  const prochaine=recurrentes.filter(d=>d.date_prochaine_echeance).sort((a,b)=>a.date_prochaine_echeance<b.date_prochaine_echeance?-1:1)[0];
+  const s1=document.getElementById('findep-kpi-mois');if(s1)s1.textContent=fmt(moisTotal);
+  const s2=document.getElementById('findep-kpi-recur');if(s2)s2.textContent=recurrentes.length;
+  const s3=document.getElementById('findep-kpi-prochaine');if(s3)s3.textContent=prochaine?new Date(prochaine.date_prochaine_echeance).toLocaleDateString('fr-FR')+(prochaine.date_prochaine_echeance<=now.toISOString().slice(0,10)?' (due)':''):'—';
+  let list=_findepCache;
+  if(_findepFiltre==='payee')list=list.filter(d=>['payee','comptabilisee'].includes(d.statut));
+  else if(_findepFiltre!=='all')list=list.filter(d=>d.statut===_findepFiltre);
+  if(_findepCatFiltre!=='all')list=list.filter(d=>d.categorie===_findepCatFiltre);
+  const stLb={prevue:'Prévue',engagee:'Engagée',payee:'Payée',comptabilisee:'Comptabilisée'};
+  const stClr={prevue:'bw',engagee:'bw',payee:'ba',comptabilisee:'ba'};
+  if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🧾</div><div>Aucune dépense pour ce filtre.</div></div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Libellé</th><th>Fournisseur</th><th>Catégorie</th><th>Montant TTC</th><th>Statut</th><th>Date</th><th>Récurrence</th></tr></thead><tbody>'+
+    list.map(d=>`<tr>
+      <td class="tp">${esc(d.libelle||'—')}${d.source_expense_id?' <span style="font-size:10px;color:var(--t3)" title="Occurrence générée automatiquement">↻</span>':''}</td>
+      <td>${esc(d.vendors?.nom||'—')}</td>
+      <td>${esc(d.categorie||'—')}</td>
+      <td class="tm" style="color:var(--t1);font-weight:600">${fmt(d.montant_ttc)}</td>
+      <td><span class="bd ${stClr[d.statut]||'bw'}"><span class="bd-d"></span>${stLb[d.statut]||d.statut}</span></td>
+      <td>${d.date_depense?new Date(d.date_depense).toLocaleDateString('fr-FR'):'—'}</td>
+      <td style="font-size:11.5px;color:var(--t3)">${d.recurrence&&d.recurrence!=='ponctuelle'?d.recurrence:'—'}</td>
+    </tr>`).join('')+
+  '</tbody></table></div>';
+}
+async function genererDepensesRecurrentes(){
+  try{
+    const r=await sbFetch('rpc/fin_generer_depenses_recurrentes',{method:'POST',body:{}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'génération impossible.'),'er');return;}
+    const n=Array.isArray(r)?r.length:0;
+    toast(n>0?n+' échéance(s) générée(s).':'Aucune échéance due pour le moment.','ok');
+    loadFinDepenses();
+  }catch(e){toast('Erreur lors de la génération.','er');}
+}
+
+// ── Équipe — paiements collaborateurs (missions/salaires/remboursements/commissions) ──
+let _fineqCache=[];
+let _fineqFiltre='apayer';
+let _fineqTypeFiltre='all';
+async function loadFinEquipe(){
+  const el=document.getElementById('finequipe-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const [missions,salaires,frais,commissions]=await Promise.all([
+      sbFetch('prestations_equipe?select=id,collaborateur_id,remuneration,statut,statut_paiement,date_paiement,profiles(nom,prenom),prestations(reference,date_prestation)&statut=eq.acceptée&remuneration=not.is.null&order=date_paiement.desc.nullslast&limit=500'),
+      sbFetch('employee_costs?select=id,collaborateur_id,salaire_brut_mensuel,charges_patronales_pct,profiles(nom,prenom)&limit=200').catch(()=>[]),
+      sbFetch('frais?select=id,collaborateur_id,type,montant,km,statut,date_frais,profiles(nom,prenom),prestations(reference)&order=date_frais.desc&limit=500').catch(()=>[]),
+      sbFetch('commissions?select=id,commercial_id,montant_commission,statut,date_calcul,date_paiement,profiles(nom,prenom)&order=date_calcul.desc&limit=500').catch(()=>[]),
+    ]);
+    const nom=p=>p?[p.prenom,p.nom].filter(Boolean).join(' ')||'—':'—';
+    const unified=[];
+    (Array.isArray(missions)?missions:[]).forEach(m=>{
+      const paye=m.statut_paiement==='payé';
+      unified.push({type:'mission',id:m.id,collab:nom(m.profiles),montant:m.remuneration||0,statut:paye?'paye':'apayer',date:m.date_paiement,ref:m.prestations?.reference||'—'});
+    });
+    (Array.isArray(frais)?frais:[]).forEach(f=>{
+      if(f.statut==='refusé')return;
+      const paye=f.statut==='remboursé';
+      unified.push({type:'frais',id:f.id,collab:nom(f.profiles),montant:f.montant||0,statut:paye?'paye':'apayer',date:f.date_frais,ref:f.prestations?.reference||f.type||'—'});
+    });
+    (Array.isArray(commissions)?commissions:[]).forEach(c=>{
+      const paye=c.statut==='payee';
+      unified.push({type:'commission',id:c.id,collab:nom(c.profiles),montant:c.montant_commission||0,statut:paye?'paye':'apayer',date:c.date_paiement||c.date_calcul,ref:'Commission'});
+    });
+    (Array.isArray(salaires)?salaires:[]).forEach(s=>{
+      const total=(s.salaire_brut_mensuel||0)*(1+(s.charges_patronales_pct||0)/100);
+      unified.push({type:'salaire',id:s.id,collab:nom(s.profiles),montant:total,statut:'recurrent',date:null,ref:'Masse salariale mensuelle'});
+    });
+    _fineqCache=unified;
+    renderFinEquipe();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function filterFinEquipe(f){
+  _fineqFiltre=f;
+  ['apayer','payee','all'].forEach(x=>{const b=document.getElementById('fineq-f-'+x);if(b)b.style.cssText=x===f?'background:rgba(54,107,255,.15);color:var(--acc)':'';});
+  renderFinEquipe();
+}
+function filterFinEquipeType(t){
+  _fineqTypeFiltre=t;
+  ['all','mission','salaire','frais','commission'].forEach(x=>{const b=document.getElementById('fineqt-f-'+x);if(b)b.style.cssText=x===t?'background:rgba(54,107,255,.15);color:var(--acc)':'';});
+  renderFinEquipe();
+}
+function renderFinEquipe(){
+  const el=document.getElementById('finequipe-real');
+  if(!el)return;
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const now=new Date();const mStart=now.toISOString().slice(0,7);
+  const aPayer=_fineqCache.filter(x=>x.statut==='apayer').reduce((s,x)=>s+x.montant,0)+_fineqCache.filter(x=>x.statut==='recurrent').reduce((s,x)=>s+x.montant,0);
+  const payeMois=_fineqCache.filter(x=>x.statut==='paye'&&x.date&&x.date.slice(0,7)===mStart).reduce((s,x)=>s+x.montant,0);
+  const hist=_fineqCache.filter(x=>x.statut!=='recurrent').reduce((s,x)=>s+x.montant,0);
+  const s1=document.getElementById('fineq-kpi-att');if(s1)s1.textContent=fmt(aPayer);
+  const s2=document.getElementById('fineq-kpi-paye');if(s2)s2.textContent=fmt(payeMois);
+  const s3=document.getElementById('fineq-kpi-hist');if(s3)s3.textContent=fmt(hist);
+  let list=_fineqCache;
+  if(_fineqFiltre==='apayer')list=list.filter(x=>x.statut==='apayer'||x.statut==='recurrent');
+  else if(_fineqFiltre==='payee')list=list.filter(x=>x.statut==='paye');
+  if(_fineqTypeFiltre!=='all')list=list.filter(x=>x.type===_fineqTypeFiltre);
+  const typeLb={mission:'Mission',salaire:'Rémunération mensuelle',frais:'Remboursement',commission:'Commission'};
+  const stLb={apayer:'À payer',paye:'Payé',recurrent:'Récurrent'};
+  const stClr={apayer:'bw',paye:'ba',recurrent:'bn'};
+  if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun paiement pour ce filtre.</div></div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Collaborateur</th><th>Type</th><th>Référence</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+
+    list.map(x=>`<tr>
+      <td class="tp">${esc(x.collab)}</td>
+      <td>${typeLb[x.type]}</td>
+      <td style="font-size:11.5px;color:var(--t3)">${esc(x.ref)}</td>
+      <td class="tm" style="color:var(--t1);font-weight:600">${fmt(x.montant)}</td>
+      <td><span class="bd ${stClr[x.statut]}"><span class="bd-d"></span>${stLb[x.statut]}</span></td>
+      <td>${x.date?new Date(x.date).toLocaleDateString('fr-FR'):'—'}</td>
+    </tr>`).join('')+
+  '</tbody></table></div><div style="padding:10px 4px;font-size:11px;color:var(--t3)">"Récurrent" = masse salariale mensuelle structurelle (employee_costs) — l\'OS n\'a pas de suivi payé/non-payé par échéance individuelle pour ces lignes, cf. comptabilité/paie externe.</div>';
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ── Rapprochement bancaire (28/08/2026) — moteur réel, provider csv_import ──
+// ════════════════════════════════════════════════════════════════════════
+// Décision produit (cf. rapport de fin de chantier) : aucune credential Revolut/Qonto
+// disponible ce soir, et Revolut Business n'offre pas d'API OAuth simple à brancher sans
+// pouvoir tester. bank_transactions.provider reste multi-provider (csv_import/revolut/qonto,
+// migration-finance-refonte-28-08.sql) mais seul 'csv_import' est alimenté ici — Revolut
+// Business permet d'exporter un CSV de ses transactions, réimportable sans risque de doublon
+// (contrainte unique provider+compte+id transaction, testée en conditions réelles ce soir).
+let _rapbCache=[];
+let _rapbFiltre='a_traiter';
+async function loadRapprochementBancaire(){
+  const el=document.getElementById('rapb-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const data=await sbFetch('bank_transactions?select=id,provider,booking_date,amount,currency,description,counterparty,status,matched_facture_id,matched_expense_id&order=booking_date.desc&limit=500');
+    if(sbErr(data)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
+    _rapbCache=data||[];
+    const s1=document.getElementById('rapb-kpi-atraiter');if(s1)s1.textContent=_rapbCache.filter(t=>t.status==='a_traiter').length;
+    const s2=document.getElementById('rapb-kpi-rapprochees');if(s2)s2.textContent=_rapbCache.filter(t=>t.status==='rapprochee').length;
+    const s3=document.getElementById('rapb-kpi-ignorees');if(s3)s3.textContent=_rapbCache.filter(t=>t.status==='ignoree').length;
+    renderRapprochementBancaire();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function filterRapprochementBancaire(f){
+  _rapbFiltre=f;
+  ['a_traiter','rapprochee','ignoree','all'].forEach(x=>{const b=document.getElementById('rapb-f-'+x);if(b)b.style.cssText=x===f?'background:rgba(54,107,255,.15);color:var(--acc)':'';});
+  renderRapprochementBancaire();
+}
+function renderRapprochementBancaire(){
+  const el=document.getElementById('rapb-real');
+  if(!el)return;
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  let list=_rapbCache;
+  if(_rapbFiltre!=='all')list=list.filter(t=>t.status===_rapbFiltre);
+  const stLb={a_traiter:'À traiter',rapprochee:'Rapprochée',ignoree:'Ignorée'};
+  const stClr={a_traiter:'bw',rapprochee:'ba',ignoree:'bn'};
+  if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🏦</div><div>Aucune transaction. Importez un CSV bancaire pour commencer.</div></div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Date</th><th>Libellé</th><th>Contrepartie</th><th>Montant</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    list.map(t=>`<tr>
+      <td>${t.booking_date?new Date(t.booking_date).toLocaleDateString('fr-FR'):'—'}</td>
+      <td style="font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.description||'')}">${esc(t.description||'—')}</td>
+      <td>${esc(t.counterparty||'—')}</td>
+      <td class="tm" style="font-weight:600;color:${t.amount>=0?'var(--ok)':'var(--er)'}">${t.amount>=0?'+':''}${fmt(t.amount)}</td>
+      <td><span class="bd ${stClr[t.status]}"><span class="bd-d"></span>${stLb[t.status]}</span></td>
+      <td>${t.status==='a_traiter'?`<button class="btn bp bs" onclick="modalRapprocherTransaction('${t.id}')">Rapprocher</button>`:'<span style="font-size:11px;color:var(--t3)">—</span>'}</td>
+    </tr>`).join('')+
+  '</tbody></table></div>';
+}
+async function modalRapprocherTransaction(txId){
+  const tx=_rapbCache.find(t=>t.id===txId);
+  if(!tx)return;
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  openModal(`<div class="mh"><div class="mt">Rapprocher une transaction</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+  <div class="mb">
+    <div style="background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(tx.description||'Transaction')}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:2px">${tx.booking_date?new Date(tx.booking_date).toLocaleDateString('fr-FR'):'—'} · ${esc(tx.counterparty||'—')}</div>
+      <div style="font-size:18px;font-weight:800;margin-top:6px;color:${tx.amount>=0?'var(--ok)':'var(--er)'}">${tx.amount>=0?'+':''}${fmt(tx.amount)}</div>
+    </div>
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Suggestions</div>
+    <div id="rapb-suggestions"><div style="font-size:12px;color:var(--t3)">Recherche de correspondances…</div></div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--b1)">
+      <button class="btn bg2 bs" onclick="ignorerTransactionBancaire('${txId}')">Ignorer cette transaction (hors périmètre)</button>
+    </div>
+  </div>`);
+  try{
+    const r=await sbFetch('rpc/fin_suggerer_rapprochements',{method:'POST',body:{p_transaction_id:txId}});
+    const box=document.getElementById('rapb-suggestions');
+    if(!box)return;
+    if(sbErr(r)||!Array.isArray(r)||!r.length){
+      box.innerHTML='<div style="font-size:12px;color:var(--t3);padding:12px;text-align:center;background:var(--s2);border-radius:var(--rb)">Aucune correspondance nette trouvée — cette transaction reste "à traiter". Vous pouvez l\'ignorer si elle est hors périmètre (virement interne, etc.).</div>';
+      return;
+    }
+    box.innerHTML=r.map(s=>{
+      const net=s.score>=80;
+      return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid ${net?'rgba(46,204,138,.3)':'var(--b1)'};border-radius:var(--rb);margin-bottom:8px">
+        <div>
+          <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${esc(s.libelle)}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${fmt(s.montant)} · score ${s.score}${s.raison?' · '+esc(s.raison):''}</div>
+        </div>
+        <button class="btn ${net?'bp':'bg2'} bs" onclick="confirmerRapprochement('${txId}','${s.cible_type}','${s.cible_id}')">Rapprocher</button>
+      </div>`;
+    }).join('');
+  }catch(e){
+    const box=document.getElementById('rapb-suggestions');
+    if(box)box.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur lors de la recherche de correspondances.</div>';
+  }
+}
+async function confirmerRapprochement(txId,cibleType,cibleId){
+  try{
+    const body={p_transaction_id:txId};
+    if(cibleType==='facture')body.p_facture_id=cibleId;else body.p_expense_id=cibleId;
+    const r=await sbFetch('rpc/fin_rapprocher_transaction',{method:'POST',body});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'rapprochement impossible.'),'er');return;}
+    toast(r.already_reconciled?'Déjà rapprochée.':'Transaction rapprochée.','ok');
+    closeModal();
+    loadRapprochementBancaire();
+  }catch(e){toast('Erreur lors du rapprochement.','er');}
+}
+async function ignorerTransactionBancaire(txId){
+  try{
+    const r=await sbFetch('rpc/fin_ignorer_transaction',{method:'POST',body:{p_transaction_id:txId}});
+    if(sbErr(r)){toast('Erreur.','er');return;}
+    toast('Transaction ignorée.','ok');
+    closeModal();
+    loadRapprochementBancaire();
+  }catch(e){toast('Erreur.','er');}
+}
+
+// ── Import CSV bancaire (provider 'csv_import') ──────────────────────────
+let _finCsvRows=[];
+function modalImporterCSVBancaire(){
+  openModal(`<div class="mh"><div class="mt">Importer un relevé bancaire (CSV)</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+  <div class="mb">
+    <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Export CSV Revolut Business (ou format équivalent avec colonnes Date/Montant/Description). Réimporter le même fichier ne crée jamais de doublon.</div>
+    <input type="file" id="finrapb-csv-input" accept=".csv,text/csv" style="margin-bottom:14px;font-size:12px;color:var(--t2)" onchange="_finCsvHandleFile(this)">
+    <div id="finrapb-csv-preview"></div>
+  </div>`);
+}
+function _finCsvHandleFile(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      _finCsvRows=_finParseCSV(String(e.target.result));
+      _finCsvPreview();
+    }catch(err){
+      const box=document.getElementById('finrapb-csv-preview');
+      if(box)box.innerHTML='<div style="color:var(--er);font-size:12px">Fichier illisible — vérifiez qu\'il s\'agit bien d\'un export CSV.</div>';
+    }
+  };
+  reader.readAsText(file);
+}
+// Parseur CSV volontairement simple mais robuste aux guillemets et aux 2 délimiteurs les plus
+// courants côté exports bancaires FR/EU (virgule ou point-virgule) — détecté sur l'en-tête.
+function _finParseCSV(text){
+  const lines=text.split(/\r\n|\n|\r/).filter(l=>l.length>0);
+  if(!lines.length)return[];
+  const delim=(lines[0].match(/;/g)||[]).length>=(lines[0].match(/,/g)||[]).length?';':',';
+  const parseLine=line=>{
+    const out=[];let cur='';let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(inQ){
+        if(c==='"'){if(line[i+1]==='"'){cur+='"';i++;}else inQ=false;}
+        else cur+=c;
+      }else{
+        if(c==='"')inQ=true;
+        else if(c===delim){out.push(cur);cur='';}
+        else cur+=c;
+      }
+    }
+    out.push(cur);
+    return out.map(s=>s.trim());
+  };
+  const header=parseLine(lines[0]).map(h=>h.toLowerCase());
+  const find=(...cands)=>{for(const c of cands){const i=header.indexOf(c);if(i>=0)return i;}return-1;};
+  const iDate=find('completed date','date','booking date','date operation',"date d'opération",'started date');
+  const iAmount=find('amount','montant');
+  const iCur=find('currency','devise');
+  const iDesc=find('description','libelle','libellé','reference','référence');
+  const iState=find('state','statut','status');
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const cols=parseLine(lines[i]);
+    if(cols.length<2)continue;
+    const rawDate=iDate>=0?cols[iDate]:'';
+    const rawAmount=iAmount>=0?cols[iAmount]:'';
+    if(!rawDate||!rawAmount)continue;
+    const state=iState>=0?(cols[iState]||'').toLowerCase():'';
+    if(state&&!['completed','terminé','terminée','ok',''].includes(state))continue;
+    let d=rawDate.slice(0,10);
+    if(/^\d{2}\/\d{2}\/\d{4}/.test(rawDate)){const p=rawDate.slice(0,10).split('/');d=p[2]+'-'+p[1]+'-'+p[0];}
+    const amount=parseFloat(rawAmount.replace(/\s/g,'').replace(',','.'));
+    if(!d||isNaN(amount))continue;
+    rows.push({booking_date:d,amount,currency:iCur>=0?(cols[iCur]||'EUR'):'EUR',description:iDesc>=0?cols[iDesc]:cols.join(' '),counterparty:iDesc>=0?cols[iDesc]:''});
+  }
+  return rows;
+}
+function _finCsvRowKey(row){
+  return(row.booking_date||'')+'|'+(row.amount||0)+'|'+String(row.description||'').slice(0,120);
+}
+function _finCsvPreview(){
+  const box=document.getElementById('finrapb-csv-preview');
+  if(!box)return;
+  if(!_finCsvRows.length){box.innerHTML='<div style="color:var(--er);font-size:12px">Aucune ligne exploitable trouvée dans ce fichier (colonnes attendues : date, montant, description).</div>';return;}
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  box.innerHTML=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">${_finCsvRows.length} ligne(s) détectée(s) :</div>
+  <div class="tw" style="max-height:240px;overflow-y:auto"><table><thead><tr><th>Date</th><th>Montant</th><th>Description</th></tr></thead><tbody>
+  ${_finCsvRows.slice(0,50).map(r=>`<tr><td>${r.booking_date}</td><td class="tm" style="color:${r.amount>=0?'var(--ok)':'var(--er)'}">${fmt(r.amount)}</td><td style="font-size:11.5px">${esc(r.description||'')}</td></tr>`).join('')}
+  </tbody></table></div>
+  ${_finCsvRows.length>50?`<div style="font-size:11px;color:var(--t3);margin-top:6px">+ ${_finCsvRows.length-50} autre(s) ligne(s) non affichée(s) (toutes seront importées).</div>`:''}
+  <button class="btn bp bs" style="margin-top:12px" onclick="_finConfirmerImportCSV()">Importer ${_finCsvRows.length} transaction(s)</button>`;
+}
+async function _finConfirmerImportCSV(){
+  if(!_finCsvRows.length)return;
+  const box=document.getElementById('finrapb-csv-preview');
+  if(box)box.innerHTML+='<div style="font-size:12px;color:var(--t3);margin-top:8px">Import en cours…</div>';
+  try{
+    const accountId='import-manuel';
+    const body=_finCsvRows.map(r=>({
+      provider:'csv_import',provider_account_id:accountId,provider_transaction_id:_finCsvRowKey(r),
+      booking_date:r.booking_date,amount:r.amount,currency:r.currency||'EUR',description:r.description||null,counterparty:r.counterparty||null,
+    }));
+    const r=await sbFetch('bank_transactions?on_conflict=provider,provider_account_id,provider_transaction_id',{
+      method:'POST',body,headers:{Prefer:'return=representation,resolution=ignore-duplicates'},
+    });
+    if(sbErr(r)){toast('Erreur : '+(r.message||'import impossible.'),'er');return;}
+    const nInserted=Array.isArray(r)?r.length:0;
+    logFinancialAudit('import_csv_bancaire','bank_transactions',null,null,null,{lignes_fichier:_finCsvRows.length,lignes_nouvelles:nInserted});
+    toast(nInserted+' nouvelle(s) transaction(s) importée(s)'+(_finCsvRows.length-nInserted>0?' ('+(_finCsvRows.length-nInserted)+' déjà connue(s), ignorée(s))':'')+'.','ok');
+    _finCsvRows=[];
+    closeModal();
+    loadRapprochementBancaire();
+  }catch(e){toast('Erreur lors de l\'import.','er');}
 }
 
 // ── Équipe (refonte 28/08/2026) — l'ancien hub à onglets (eqhubTab/
@@ -27951,7 +28598,10 @@ function closeMobFilter(){
 
 // ── More Menu ─────────────────────────────────────────────────────────────
 const MOB_MORE_ITEMS={
-  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
+  // Refonte Finance (28/08, nuit) : 5 anciens raccourcis (fin/résultat/rentabilité/
+  // dépenses/clôtures) remplacés par les 4 pages réelles + 1 secondaire, même patron que
+  // la sidebar desktop (cf. NAV['admin'] section "Finances & Documents").
+  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
