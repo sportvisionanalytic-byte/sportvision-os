@@ -7595,6 +7595,24 @@ async function sauvegarderLien(){
     const res=await sbFetch('media_liens',{method:'POST',body});
     if(res&&res[0]){
       await logMediaHistory(body.prestation_id,S.uid,'Lien ajouté','lien',res[0].id,null,nom);
+      // Avancement auto (28/08/2026, demande Fouka — "il met les rush triés
+      // dans un dossier" doit faire avancer le déroulé) : un lien de rush
+      // confirmé transféré signifie sans ambiguïté que le transfert est
+      // complet, on saute donc les 2 étapes légales d'un coup
+      // (production_terminée→médias_à_transférer→médias_complets, seule la
+      // chaîne à un saut à la fois est autorisée par le trigger). Best-effort,
+      // ignoré silencieusement si la prestation n'est pas dans l'état attendu.
+      if(body.prestation_id&&body.categorie==='rushs'&&body.transfert_confirme){
+        try{
+          const pres=await sbFetch('prestations?select=statut&id=eq.'+body.prestation_id);
+          if(pres?.[0]?.statut==='production_terminée'){
+            await sbFetch('prestations?id=eq.'+body.prestation_id,{method:'PATCH',body:{statut:'médias_à_transférer'}}).catch(()=>{});
+            await sbFetch('prestations?id=eq.'+body.prestation_id,{method:'PATCH',body:{statut:'médias_complets'}}).catch(()=>{});
+          }else if(pres?.[0]?.statut==='médias_à_transférer'){
+            await sbFetch('prestations?id=eq.'+body.prestation_id,{method:'PATCH',body:{statut:'médias_complets'}}).catch(()=>{});
+          }
+        }catch(e){}
+      }
       closeModal();
       toast('Lien enregistré','ok');
       if(S.view==='media'||S.view==='medias') loadProdMedias();
@@ -8090,6 +8108,17 @@ async function sauvegarderVersion(postprodId){
     const rStatut=await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'version_prete'}}).catch(()=>({code:'network_error'}));
     if(sbErr(rStatut))console.error('MAJ statut postprod échouée',rStatut);
     await logMediaHistory(pp.prestation_id,S.uid,'Version soumise','version',null,'—','V'+numero);
+    // Avancement auto (28/08/2026, demande Fouka) : un premier cut soumis
+    // signifie que le montage est réellement démarré — un seul saut
+    // (à_monter→montage_en_cours), volontairement PAS jusqu'à prêt_validation
+    // (une V1 n'est pas forcément prête, plusieurs versions/corrections
+    // peuvent suivre ; ce dernier saut reste une décision humaine consciente).
+    if(pp.prestation_id){
+      try{
+        const pres=await sbFetch('prestations?select=statut&id=eq.'+pp.prestation_id);
+        if(pres?.[0]?.statut==='à_monter')await sbFetch('prestations?id=eq.'+pp.prestation_id,{method:'PATCH',body:{statut:'montage_en_cours'}}).catch(()=>{});
+      }catch(e){}
+    }
     closeModal();
     toast(sbErr(rStatut)?'Version V'+numero+' soumise, mais le statut n\'a pas pu être synchronisé.':'Version V'+numero+' soumise','ok');
     loadProdPostprod();
