@@ -1073,6 +1073,10 @@ const VIEWS={
     </div>`,
 
   'admin.prodhub':()=>`
+    <div class="cd" id="prodhub-valider-card" style="margin-bottom:16px;border-color:rgba(240,68,94,.2);display:none">
+      <div class="cd-h"><div class="cd-t">⚠️ À valider avant planification</div><span id="prodhub-valider-nb" class="bd bn">—</span></div>
+      <div id="prodhub-valider" style="padding:14px 18px"></div>
+    </div>
     <div class="cd" style="margin-bottom:16px">
       <div class="cd-h"><div class="cd-t">Pipeline de production</div><button class="btn bg2 bs" onclick="switchView('pre')">Toutes les prestations</button></div>
       <div id="prodhub-pipeline" style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
@@ -6638,15 +6642,39 @@ async function loadProdHub(){
   const weekStart=ymdLocal(lun);
   const weekEnd=ymdLocal(dim);
 
-  let allPre=[],semainePre=[],kits=[],inc=[];
+  let allPre=[],semainePre=[],kits=[],inc=[],aValider=[];
   try{
-    [allPre,semainePre,kits,inc]=await Promise.all([
+    [allPre,semainePre,kits,inc,aValider]=await Promise.all([
       sbFetch('prestations?select=id,statut&order=date_prestation.asc&limit=500'),
       sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom))&date_prestation=gte.'+weekStart+'&date_prestation=lte.'+weekEnd+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc,heure_debut.asc'),
       sbFetch('kits?select=id,nom,statut&order=nom.asc'),
       sbFetch('incidents?select=id,type_incident,description,niveau,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
+      sbFetch('prestations?select=id,reference,type_prestation,date_prestation,clients(nom)&statut=eq.à_valider_production&order=date_prestation.asc').catch(()=>[]),
     ]);
   }catch(e){}
+
+  // À valider avant planification — "on valide, une fois validé le
+  // responsable production voit les infos" (28/08/2026, demande Fouka) :
+  // ce statut existait déjà (validerPrestation) mais n'était visible que
+  // dans un KPI du dashboard prod (loadProdDash), jamais sur cette page.
+  const elValiderCard=document.getElementById('prodhub-valider-card');
+  const elValider=document.getElementById('prodhub-valider');
+  const elValiderNb=document.getElementById('prodhub-valider-nb');
+  if(elValiderCard&&elValider){
+    const list=Array.isArray(aValider)?aValider:[];
+    elValiderCard.style.display=list.length?'':'none';
+    if(elValiderNb)elValiderNb.textContent=list.length||'0';
+    if(list.length){
+      elValider.innerHTML=list.map((p,i)=>{
+        const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'—';
+        return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 0;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer">
+          <span style="flex:1;font-size:13px;color:var(--t1)">${esc(p.clients?.nom||p.reference||'—')} — ${p.type_prestation||'—'}</span>
+          <span style="font-size:11px;color:var(--t3)">${d}</span>
+          <span style="font-size:11px;color:var(--ac)">›</span>
+        </div>`;
+      }).join('');
+    }
+  }
 
   // Pipeline de production — logique reprise telle quelle de l'ancien Accueil
   // (dash-prod, retiré lors de la refonte Admin V2 page 1/N) : groupes de
