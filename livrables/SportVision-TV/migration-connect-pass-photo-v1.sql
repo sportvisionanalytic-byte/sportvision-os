@@ -219,8 +219,8 @@ grant execute on function photo_album_list(uuid, uuid, text) to authenticated;
 -- ============================================================
 -- FIN. Résumé des actions manuelles requises après relecture :
 --
---   1. Exécuter ce fichier entier dans Supabase → SQL Editor (idempotent). PAS ENCORE EXÉCUTÉ au
---      moment d'écrire ce commentaire — à faire avant tout test réel.
+--   1. Déjà exécutée et vérifiée en base réelle le 28/08/2026 (voir l'en-tête) — idempotente si
+--      besoin de la rejouer.
 --
 --   2. Créer UN Price Stripe ponctuel (Dashboard Stripe → Product catalog, produit "SportVision
 --      Connect — Pass Photo", prix à définir par Fouka — décision commerciale, pas technique).
