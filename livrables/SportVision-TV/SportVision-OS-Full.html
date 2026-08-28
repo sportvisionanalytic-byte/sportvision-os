@@ -2017,10 +2017,11 @@ const VIEWS={
       <div><div class="sh-t">Mes médias</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Liens à transmettre après chaque mission</div></div>
       <button class="btn bp bs" onclick="modalAjouterLien(null)">+ Ajouter un lien</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">À transmettre</div><div class="fs-v" id="med-att" style="color:var(--er)">—</div></div>
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En vérification</div><div class="fs-v" id="med-verif" style="color:var(--wa)">—</div></div>
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Validés</div><div class="fs-v" id="med-done" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Corrections</div><div class="fs-v" id="med-corr" style="color:var(--er)">—</div></div>
     </div>
     <div id="medias-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -8310,8 +8311,8 @@ async function loadProdBriefings(){
 const ML_CAT={depot:'Dépôt',rushs:'Rushs',travail:'Travail',previsualisation:'Prévisualisation',final:'Final',livraison:'Livraison',bibliotheque:'Bibliothèque'};
 const ML_TYPE={photo:'Photo',video:'Vidéo',audio:'Audio',drone:'Drone',veo:'Veo',graphisme:'Graphisme',canva:'Canva',document:'Document',mixte:'Mixte',autre:'Autre'};
 const ML_FOURNISSEUR={google_drive:'Google Drive',dropbox:'Dropbox',onedrive:'OneDrive',wetransfer:'WeTransfer',swisstransfer:'SwissTransfer',canva:'Canva',frame_io:'Frame.io',vimeo:'Vimeo',youtube:'YouTube',galerie:'Galerie photo',perso:'Lien personnel',autre:'Autre'};
-const ML_STATUT={a_verifier:'À vérifier',valide:'Valide',acces_limite:'Accès limité',autorisation_requise:'Auth. requise',mdp_requis:'Mot de passe',expirant:'Expirant',expire:'Expiré',inaccessible:'Inaccessible',remplace:'Remplacé',archive:'Archivé'};
-const ML_STATUT_CLR={a_verifier:'var(--t3)',valide:'var(--ok)',acces_limite:'var(--wa)',autorisation_requise:'var(--wa)',mdp_requis:'#7C4DFF',expirant:'var(--er)',expire:'var(--er)',inaccessible:'var(--er)',remplace:'var(--t3)',archive:'var(--t3)'};
+const ML_STATUT={a_verifier:'À vérifier',valide:'Valide',acces_limite:'Accès limité',autorisation_requise:'Auth. requise',mdp_requis:'Mot de passe',expirant:'Expirant',expire:'Expiré',inaccessible:'Inaccessible',remplace:'Remplacé',archive:'Archivé',correction_demandee:'Correction demandée'};
+const ML_STATUT_CLR={a_verifier:'var(--t3)',valide:'var(--ok)',acces_limite:'var(--wa)',autorisation_requise:'var(--wa)',mdp_requis:'#7C4DFF',expirant:'var(--er)',expire:'var(--er)',inaccessible:'var(--er)',remplace:'var(--t3)',archive:'var(--t3)',correction_demandee:'var(--er)'};
 const PP_STATUT_LB={a_attribuer:'À attribuer',attribuee:'Attribuée',a_commencer:'À commencer',en_cours:'En cours',en_attente_elements:'En attente',premiere_version_prep:'Prép. V1',version_prete:'Version prête',a_valider_interne:'À valider',corrections_demandees:'Corrections',corrections_en_cours:'Corrections',prete_nouvelle_validation:'Nouvelle validation',validee_interne:'Validée',a_valider_client:'Valid. client',validee_client:'Validée client',prete_a_livrer:'Prête',livree:'Livrée',archivee:'Archivée',annulee:'Annulée'};
 const PP_STATUT_CLR={a_attribuer:'var(--er)',attribuee:'var(--wa)',a_commencer:'var(--wa)',en_cours:'#7C4DFF',en_attente_elements:'var(--t3)',premiere_version_prep:'#7C4DFF',version_prete:'var(--ok)',a_valider_interne:'var(--wa)',corrections_demandees:'var(--er)',corrections_en_cours:'var(--er)',prete_nouvelle_validation:'var(--wa)',validee_interne:'var(--ok)',a_valider_client:'var(--wa)',validee_client:'var(--ok)',prete_a_livrer:'var(--ok)',livree:'var(--ok)',archivee:'var(--t3)',annulee:'var(--t3)'};
 const LV_STATUT_LB={a_preparer:'À préparer',en_preparation:'En préparation',a_valider:'À valider',valide:'Validé',pret_a_livrer:'Prêt à livrer',livre:'Livré',consulte:'Consulté',lien_expirant:'Lien expirant',lien_expire:'Lien expiré',remplace:'Remplacé',archive:'Archivé'};
@@ -8599,6 +8600,7 @@ function renderMediaParPrestation(liens){
           <div style="display:flex;gap:4px;flex-shrink:0">
             <button onclick="event.stopPropagation();ouvrirLien('${encodeURIComponent(l.url)}')" aria-label="Ouvrir le lien" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button>
             ${l.statut==='a_verifier'?`<button onclick="event.stopPropagation();validerLienMedia('${l.id}')" aria-label="Valider ce lien" style="padding:4px 8px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:10px;cursor:pointer">✓</button>`:''}
+            ${l.statut==='a_verifier'?`<button onclick="event.stopPropagation();modalDemanderCorrection('${l.id}')" aria-label="Demander une correction" style="padding:4px 8px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);font-size:10px;cursor:pointer">🔁</button>`:''}
           </div>
         </div>`;
       }).join('')}
@@ -8684,6 +8686,46 @@ async function validerLienMedia(id){
     await logMediaHistory(null,S.uid,'Lien validé','lien',id,'a_verifier','valide');
     loadProdMedias();
   }catch(e){toast('Erreur validation','er');}
+}
+// Correction demandée (spec Photo/Vidéaste §21, 28/08) : au lieu de valider ou de
+// remplacer directement soi-même, prod/admin peut renvoyer un lien au photographe avec un
+// motif. Le lien passe en 'correction_demandee' (ajouté à la contrainte CHECK en base ce
+// jour) ; le photographe voit le motif dans "Mes médias" et corrige via ↺ Remplacer
+// (executerRemplacement), qui reste le même mécanisme que pour tout autre remplacement.
+async function modalDemanderCorrection(id){
+  let l=(_mediaLiens||[]).find(x=>x.id===id);
+  if(!l){
+    const d=await sbFetch('media_liens?select=id,nom,ajouteur_id,prestation_id&id=eq.'+id).catch(()=>null);
+    l=d&&d[0];
+  }
+  if(!l){toast('Lien introuvable','er');return;}
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">🔁 Demander une correction</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Motif *</label>
+        <textarea id="corr-motif" class="l-inp" style="height:70px;padding-top:10px;resize:none" placeholder="Photos floues, dossier incomplet, mauvais match…"></textarea></div>
+      <div id="corr-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="executerDemandeCorrection('${id}','${l.ajouteur_id||''}','${l.prestation_id||''}')">Envoyer</button>
+      </div>
+    </div>`);
+}
+async function executerDemandeCorrection(id,ajouteurId,prestationId){
+  const err=document.getElementById('corr-err');
+  const motif=(document.getElementById('corr-motif')?.value||'').trim();
+  if(!motif){err.textContent='Le motif est obligatoire.';return;}
+  err.textContent='En cours…';
+  const r=await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{statut:'correction_demandee',commentaire:motif,updated_at:new Date().toISOString()}});
+  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'opération impossible.');return;}
+  await logMediaHistory(prestationId||null,S.uid,'Correction demandée','lien',id,'a_verifier','correction_demandee');
+  if(ajouteurId){
+    await creerNotifSiActive(ajouteurId,'taches',{type:'correction_media',titre:'Correction demandée sur un lien',message:motif,lue:false,prestation_id:prestationId||null}).catch(()=>{});
+  }
+  closeModal();
+  toast('Correction demandée','warn');
+  if(S.view==='media') loadProdMedias();
+  if(S.view==='medias') loadPhotoMedias();
 }
 async function logMediaHistory(prestationId,auteurId,action,cibleType,cibleId,ancVal,nouvVal){
   try{
@@ -8866,6 +8908,7 @@ async function modalFicheLien(id){
     const clr=ML_STATUT_CLR[l.statut]||'var(--t3)';
     const lblSt=ML_STATUT[l.statut]||l.statut;
     const isProdAdmin=['admin','prod'].includes(S.role);
+    const isOwner=l.ajouteur_id===S.uid;
     const ajouteur=[l.ajouteur?.prenom,l.ajouteur?.nom].filter(Boolean).join(' ')||'—';
     const pNom=l.prestations?.reference||'Sans prestation';
     const cNom=esc(l.prestations?.clients?.nom||'');
@@ -8881,11 +8924,13 @@ async function modalFicheLien(id){
         </div>
         <span style="font-size:10px;font-weight:700;padding:3px 10px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};flex-shrink:0;white-space:nowrap">${lblSt}</span>
       </div>
+      ${l.statut==='correction_demandee'&&l.commentaire?`<div style="padding:10px 12px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rb);font-size:12px;color:var(--er);margin-bottom:12px"><b>Motif de la correction :</b> ${esc(l.commentaire)}</div>`:''}
       <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
         <button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:700;cursor:pointer">↗ Ouvrir</button>
         <button onclick="copierLien('${encodeURIComponent(l.url)}')" style="padding:7px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer">⎘ Copier</button>
         ${isProdAdmin&&l.statut==='a_verifier'?`<button onclick="validerLienMedia('${l.id}');closeModal()" style="padding:7px 14px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;cursor:pointer">✓ Valider</button>`:''}
-        ${isProdAdmin?`<button onclick="modalRemplacerLien('${l.id}')" style="padding:7px 14px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);color:var(--wa);font-size:12px;font-weight:600;cursor:pointer">↺ Remplacer</button>`:''}
+        ${isProdAdmin&&l.statut==='a_verifier'?`<button onclick="closeModal();modalDemanderCorrection('${l.id}')" style="padding:7px 14px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);font-size:12px;font-weight:600;cursor:pointer">🔁 Demander correction</button>`:''}
+        ${isProdAdmin||(isOwner&&l.statut==='correction_demandee')?`<button onclick="closeModal();modalRemplacerLien('${l.id}')" style="padding:7px 14px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);color:var(--wa);font-size:12px;font-weight:600;cursor:pointer">↺ Remplacer</button>`:''}
         ${isProdAdmin&&l.statut==='valide'?`<button onclick="closeModal();modalTagMediaBank('${l.id}')" style="padding:7px 14px;background:${l.is_media_bank?'rgba(245,165,36,.15)':'rgba(124,77,255,.1)'};border:1px solid ${l.is_media_bank?'rgba(245,165,36,.4)':'rgba(124,77,255,.25)'};border-radius:var(--rp);color:${l.is_media_bank?'var(--wa)':'#7C4DFF'};font-size:12px;font-weight:700;cursor:pointer">★ ${l.is_media_bank?'Media Bank':'Ajouter à la Media Bank'}</button>`:''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
@@ -9024,14 +9069,15 @@ async function loadPhotoMedias(){
   try{
     const [pres,liens]=await Promise.all([
       sbFetch('prestations_equipe_display?select=prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+S.uid+'&order=created_at.desc&limit=30').catch(()=>[]),
-      sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,transfert_confirme,prestation_id&ajouteur_id=eq.'+S.uid+'&order=created_at.desc&limit=100').catch(()=>[])
+      sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,commentaire,transfert_confirme,prestation_id&ajouteur_id=eq.'+S.uid+'&order=created_at.desc&limit=100').catch(()=>[])
     ]);
     const mesPres=(Array.isArray(pres)?pres:[]).map(e=>e.prestations).filter(Boolean);
     const mesLiens=Array.isArray(liens)?liens:[];
     const att=mesPres.filter(p=>['production_terminée','médias_à_transférer'].includes(p.statut)&&!mesLiens.find(l=>l.prestation_id===p.id&&l.transfert_confirme)).length;
     const verif=mesLiens.filter(l=>l.statut==='a_verifier').length;
     const ok=mesLiens.filter(l=>l.statut==='valide').length;
-    s('med-att',att); s('med-verif',verif); s('med-done',ok);
+    const corr=mesLiens.filter(l=>l.statut==='correction_demandee').length;
+    s('med-att',att); s('med-verif',verif); s('med-done',ok); s('med-corr',corr);
     if(!mesPres.length&&!mesLiens.length){
       el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📤</div><div style="font-size:13px">Aucun transfert en attente.</div></div>';
       return;
@@ -9056,14 +9102,19 @@ async function loadPhotoMedias(){
         ${pLiens.length?`<div style="display:flex;flex-direction:column;gap:5px">`+pLiens.map(l=>{
           const lclr=ML_STATUT_CLR[l.statut]||'var(--t3)';
           const llb=ML_STATUT[l.statut]||l.statut;
-          return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:6px">
+          const needsCorr=l.statut==='correction_demandee';
+          return`<div style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;background:${needsCorr?'rgba(240,68,94,.06)':'var(--s2)'};border:${needsCorr?'1px solid rgba(240,68,94,.2)':'none'};border-radius:6px">
+          <div style="display:flex;align-items:center;gap:8px">
             <span style="width:7px;height:7px;border-radius:50%;background:${lclr};flex-shrink:0"></span>
             <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.nom)}</div>
             <div style="font-size:10px;color:var(--t3)">${ML_TYPE[l.type_media]||'—'} · <span style="color:${lclr}">${llb}</span></div></div>
             <div style="display:flex;gap:4px;flex-shrink:0">
               <button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" aria-label="Ouvrir le lien" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button>
               <button onclick="copierLien('${encodeURIComponent(l.url)}')" aria-label="Copier le lien" style="padding:4px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:10px;cursor:pointer">⎘</button>
+              ${needsCorr?`<button onclick="modalRemplacerLien('${l.id}')" aria-label="Corriger ce lien" style="padding:4px 8px;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);font-size:10px;font-weight:700;cursor:pointer">↺ Corriger</button>`:''}
             </div>
+          </div>
+          ${needsCorr&&l.commentaire?`<div style="font-size:11px;color:var(--er);padding-left:15px">${esc(l.commentaire)}</div>`:''}
           </div>`;
         }).join('')+'</div>':`<div style="font-size:12px;color:var(--t3);font-style:italic">Aucun lien transmis pour cette prestation.</div>`}
       </div>`;
@@ -10331,6 +10382,10 @@ async function loadPhotoDash(){
     // ── Section "À faire" ──
     const now2=new Date();now2.setHours(0,0,0,0);
     const atfaire=[];
+    // Corrections demandées sur des médias déjà transmis (prioritaire — un client attend)
+    const corrLiens=await sbFetch('media_liens?select=id&ajouteur_id=eq.'+uid+'&statut=eq.correction_demandee').catch(()=>[]);
+    const nbCorr=Array.isArray(corrLiens)?corrLiens.length:0;
+    if(nbCorr)atfaire.push({ic:'🔁',label:nbCorr+' correction'+(nbCorr>1?'s':'')+' demandée'+(nbCorr>1?'s':''),sub:'Un lien transmis doit être corrigé',clr:'var(--er)',bg:'rgba(240,68,94,.08)',br:'rgba(240,68,94,.25)',action:'switchView("medias")',urgent:true});
     // Invitations en attente
     if(invitations.length)atfaire.push({ic:'📬',label:invitations.length+' invitation'+(invitations.length>1?'s':'')+' en attente',sub:'Répondre avant la date limite',clr:'var(--wa)',bg:'rgba(245,165,36,.08)',br:'rgba(245,165,36,.2)',action:'switchView("pre")',urgent:true});
     // Prestations prochaines sans confirmation (dans 0-3 jours)
