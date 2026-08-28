@@ -722,8 +722,9 @@ const NAV={
     {type:'sep',lb:'Communication'},
     {id:'commhub',lb:'Communication',ic:'msg'},
     {type:'sep',lb:'Équipe & RH'},
-    {id:'equipehub',lb:'Équipe',ic:'col'},
-    {id:'candidatures',lb:'Candidatures',ic:'col',modal:'modalCandidatures'},
+    {id:'equipeoverview',lb:"Vue d'ensemble",ic:'dash'},
+    {id:'equipehub',lb:'Collaborateurs',ic:'col'},
+    {id:'recrutement',lb:'Recrutement',ic:'col'},
     {type:'sep',lb:'Production'},
     {id:'prodhub',lb:'Production',ic:'pre'},
     {id:'kits',lb:'Kits',ic:'kits'},
@@ -756,6 +757,7 @@ const NAV={
     {id:'integrations',lb:'Intégrations',ic:'set'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
+    {id:'form',lb:'Centre de formation',ic:'form'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -1236,48 +1238,60 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Prestations</div><button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle prestation</button></div>
     <div id="pre-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
-  // Équipe (Admin V2) — fusionne Collaborateurs+Utilisateurs&accès (rôle/accès
-  // désormais dans modalModifierCollaborateur, voir ce commit) en un onglet,
-  // et regroupe Annuaire/Mon équipe/Grades & XP/Centre de formation en tabs
-  // au lieu de 6 entrées NAV séparées. _annuaireView()/loadAnnuaire() et
-  // _equipeEnDirectView()/loadEquipeEnDirect() restent PARTAGÉS avec
-  // sec/prod/photo/cm/compta/com (leurs propres entrées NAV/VIEWS existent
-  // indépendamment, inchangées) — on ne fait que les réutiliser ici tels
-  // quels pour l'admin, jamais les modifier. loadGrades()/loadAdminForm()
-  // et leurs sous-fonctions restent également inchangées, seuls leurs
-  // conteneurs (#grades-real, #admin-form-real) changent de page d'accueil.
+  // Équipe (refonte Équipe & RH, 28/08/2026) — "Collaborateurs" = ex-onglet
+  // "Équipe" du hub (rôle/accès dans modalModifierCollaborateur, inchangé).
+  // Voir le commentaire détaillé au-dessus de VIEWS['admin.equipeoverview']
+  // plus bas pour l'explication complète du passage de 6 entrées de menu
+  // à 3. _annuaireView()/loadAnnuaire() et _equipeEnDirectView()/
+  // loadEquipeEnDirect() restent PARTAGÉS avec sec/prod/photo/cm/compta/com
+  // (leurs propres entrées NAV/VIEWS existent indépendamment, inchangées) —
+  // admin ne les appelle plus depuis un onglet séparé, la fiche collaborateur
+  // (modalFicheCollaborateur) réutilise directement les mêmes tables pour
+  // ses nouveaux onglets Disponibilités/Documents/Matériel.
   'admin.equipehub':()=>`
-    <div class="sh"><div class="sh-t">Équipe</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Inviter</button></div>
-    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
-      <button id="eqhub-tab-roster" onclick="eqhubTab('roster')" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);border:1px solid var(--acc);background:var(--acc);color:#fff">Équipe</button>
-      <button id="eqhub-tab-annuaire" onclick="eqhubTab('annuaire')" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Annuaire</button>
-      <button id="eqhub-tab-dispo" onclick="eqhubTab('dispo')" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Disponibilité</button>
-      <button id="eqhub-tab-grades" onclick="eqhubTab('grades')" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Grades & XP</button>
-      <button id="eqhub-tab-form" onclick="eqhubTab('form')" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Formation</button>
+    <div class="sh"><div class="sh-t">Collaborateurs</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Inviter</button></div>
+    <div id="col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── Équipe & RH — refonte 28/08/2026 ──────────────────────────────────
+  // Le menu Équipe est passé de 5 onglets internes (Équipe/Annuaire/
+  // Disponibilité/Grades & XP/Formation) + 1 item modal-only (Candidatures)
+  // à 3 pages réelles : Vue d'ensemble (pilotage RH), Collaborateurs
+  // (ex-onglet "Équipe" = loadCollaborateurs, inchangé), Recrutement
+  // (pipeline complet, remplace modalCandidatures). Annuaire et
+  // Disponibilité (ex-onglets) sont couverts par Collaborateurs → fiche
+  // (modalFicheCollaborateur), qui gagne des onglets Disponibilités/
+  // Documents/Matériel lisant les mêmes tables. Grades & XP (classement
+  // global) est retiré (gamification non étendue, cf. spec) — les
+  // recommandations en attente apparaissent en alerte sur Vue d'ensemble
+  // et se traitent depuis la fiche du collaborateur concerné. La gestion
+  // du catalogue de formation (admin-form-real/afTab/loadAdminForm, ex-
+  // onglet "Formation") est un vrai module de gestion transverse (pas une
+  // donnée par collaborateur) : déplacé tel quel vers sa propre page
+  // 'admin.form' (nouvelle entrée NAV "Centre de formation", même
+  // fonctions inchangées) plutôt que supprimé.
+  'admin.equipeoverview':()=>`
+    <div class="sh"><div class="sh-t">Équipe — Vue d'ensemble</div></div>
+    <div id="eqov-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'admin.recrutement':()=>`
+    <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Candidatures reçues via le site — pipeline Nouveaux → Collaborateur</div></div></div>
+    <div id="recrut-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'admin.form':()=>`
+    <div class="sh"><div class="sh-t">Centre de formation</div></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+      <div class="kpi" style="--kl:var(--acc)"><div class="kpi-ey">Formations actives</div><div class="kpi-v" id="af-kpi-tot">—</div></div>
+      <div class="kpi" style="--kl:var(--ok)"><div class="kpi-ey">Completions</div><div class="kpi-v" id="af-kpi-done" style="color:var(--ok)">—</div></div>
+      <div class="kpi" style="--kl:var(--wa)"><div class="kpi-ey">En cours</div><div class="kpi-v" id="af-kpi-enc" style="color:var(--wa)">—</div></div>
+      <div class="kpi" style="--kl:#9C6FFF"><div class="kpi-ey">XP distribués</div><div class="kpi-v" id="af-kpi-xp" style="color:#9C6FFF">—</div></div>
     </div>
-    <div id="eqhub-panel-roster">
-      <div id="col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button id="af-tab-stats" onclick="afTab('stats')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--acc);background:var(--acc);color:#fff">Statistiques</button>
+      <button id="af-tab-sessions" onclick="afTab('sessions')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Sessions</button>
+      <button id="af-tab-certifs" onclick="afTab('certifs')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Certifications</button>
+      <button id="af-tab-catalogue" onclick="afTab('catalogue')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Gérer le catalogue</button>
     </div>
-    <div id="eqhub-panel-annuaire" style="display:none">${_annuaireView()}</div>
-    <div id="eqhub-panel-dispo" style="display:none">${_equipeEnDirectView()}</div>
-    <div id="eqhub-panel-grades" style="display:none">
-      <div id="grades-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
-    </div>
-    <div id="eqhub-panel-form" style="display:none">
-      <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
-        <div class="kpi" style="--kl:var(--acc)"><div class="kpi-ey">Formations actives</div><div class="kpi-v" id="af-kpi-tot">—</div></div>
-        <div class="kpi" style="--kl:var(--ok)"><div class="kpi-ey">Completions</div><div class="kpi-v" id="af-kpi-done" style="color:var(--ok)">—</div></div>
-        <div class="kpi" style="--kl:var(--wa)"><div class="kpi-ey">En cours</div><div class="kpi-v" id="af-kpi-enc" style="color:var(--wa)">—</div></div>
-        <div class="kpi" style="--kl:#9C6FFF"><div class="kpi-ey">XP distribués</div><div class="kpi-v" id="af-kpi-xp" style="color:#9C6FFF">—</div></div>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-        <button id="af-tab-stats" onclick="afTab('stats')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--acc);background:var(--acc);color:#fff">Statistiques</button>
-        <button id="af-tab-sessions" onclick="afTab('sessions')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Sessions</button>
-        <button id="af-tab-certifs" onclick="afTab('certifs')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Certifications</button>
-        <button id="af-tab-catalogue" onclick="afTab('catalogue')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Gérer le catalogue</button>
-      </div>
-      <div id="admin-form-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
-    </div>`,
+    <div id="admin-form-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'admin.kits':()=>_kitsViewShell('admin'),
 
@@ -3918,7 +3932,10 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='prodhub') await loadProdHub();
   if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
   if(role==='admin'&&view==='commhub') await loadCommHub();
-  if(role==='admin'&&view==='equipehub') await loadEquipeHub();
+  if(role==='admin'&&view==='equipeoverview') await loadEquipeOverview();
+  if(role==='admin'&&view==='equipehub') await loadCollaborateurs();
+  if(role==='admin'&&view==='recrutement') await loadRecrutement();
+  if(role==='admin'&&view==='form'){await loadAdminForm();}
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';await loadKits();}
   if(role==='admin'&&view==='dash') await loadAdminDash();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
@@ -5599,81 +5616,255 @@ async function ccsrReloadList(){
   }
 }
 
-// ── Candidatures de recrutement (28/08/2026) — recruitment_applications
-// n'avait aucune interface OS jusqu'ici (staff notifié par e-mail
-// uniquement, cf. commentaire d'en-tête de submit-recruitment-application).
-// Même patron que modalDemandesClubConnect ci-dessus : modale simple,
-// rechargée après chaque action, pas un écran dédié complet.
+// ── Recrutement (refonte Équipe & RH, 28/08/2026) — recruitment_applications
+// n'avait aucune interface OS jusqu'ici (staff notifié par e-mail uniquement,
+// cf. commentaire d'en-tête de submit-recruitment-application) puis un modal
+// minimal (modalCandidatures, statut nouveau/retenu/rejete). Remplacé par une
+// vraie page pipeline (NAV admin "Recrutement", switchView('recrutement')) à
+// 6 statuts (Nouveaux/À appeler/Entretien/Retenus/Refusés/Vivier), contrainte
+// CHECK ajoutée par migration-equipe-rh-refonte-28-08.sql (un seul enregistrement
+// existant avant cette migration, statut='nouveau', conservé tel quel).
+// "Créer le collaborateur" réutilise EXACTEMENT le même edge function que
+// modalInviterCollaborateur() (invite-collaborateur) — aucune réinvention du
+// mécanisme de création de compte — puis complète le profil avec les champs
+// déjà saisis par le candidat (ville, téléphone, véhicule, permis) pour éviter
+// toute ressaisie, et démarre l'onboarding : profiles.actif=false (même
+// mécanisme que la désactivation, déjà vérifié en prod) tant que la checklist
+// d'onboarding de la fiche (modalFicheCollaborateur) n'est pas complète.
 const CAND_POSTE_LB={
   les_deux:'Photo + Vidéo', photographe:'Photographe', videaste:'Vidéaste',
   community_manager:'Community Manager',
 };
 const CAND_ZONE_LB={idf:'Île-de-France',autre:'Autre région'};
-function modalCandidatures(){
-  openModal(`<div class="mh"><div class="mt">Candidatures</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
-    <div class="mb" id="cand-body" style="display:flex;flex-direction:column;gap:10px;min-height:120px;max-height:70vh;overflow:auto">
-      <div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>
-    </div>
-    <div class="mf"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
-  candReloadList();
-}
-async function candReloadList(){
-  const body=document.getElementById('cand-body');
-  if(!body)return;
-  body.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>';
+const CAND_POSTE_ROLE={les_deux:'photo',photographe:'photo',videaste:'photo',community_manager:'cm'};
+const RECRUT_STAGES=[
+  {key:'nouveau',lb:'Nouveaux'},
+  {key:'a_appeler',lb:'À appeler'},
+  {key:'entretien',lb:'Entretien'},
+  {key:'retenu',lb:'Retenus'},
+  {key:'refuse',lb:'Refusés'},
+  {key:'vivier',lb:'Vivier'},
+];
+let _recrutCache=[];
+async function loadRecrutement(){
+  const el=document.getElementById('recrut-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const data=await sbFetch('recruitment_applications?statut=eq.nouveau&select=id,poste,prenom,nom,email,telephone,ville,zone,experience_niveau,materiel,permis,vehicule,disponibilites,portfolio_url,cv_path,message,created_at&order=created_at.desc');
-    if(sbErr(data)){body.innerHTML='<div style="color:var(--er);font-size:12px;padding:8px">Erreur de chargement.</div>';return;}
-    if(!data||!data.length){
-      body.innerHTML='<div style="text-align:center;padding:36px;color:var(--t3);font-size:13px"><div style="font-size:28px;margin-bottom:8px;opacity:.3">📭</div>Aucune candidature à examiner.</div>';
-      return;
-    }
-    body.innerHTML=data.map(c=>{
-      const posteLb=CAND_POSTE_LB[c.poste]||c.poste||'—';
-      const zoneLb=c.ville?esc(c.ville):(CAND_ZONE_LB[c.zone]||c.zone||'—');
-      const tags=[
-        c.experience_niveau?esc(c.experience_niveau):null,
-        c.materiel==='oui'?'Matériel pro':null,
-        c.permis==='oui'?'Permis':null,
-        c.vehicule==='oui'?'Véhiculé':null,
-      ].filter(Boolean).map(t=>`<span style="font-size:10.5px;padding:2px 8px;border-radius:99px;background:var(--s2);border:1px solid var(--b1);color:var(--t2)">${t}</span>`).join(' ');
-      return `<div style="border:1px solid var(--b1);border-radius:var(--rb);padding:12px 14px;display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div>
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(c.prenom)} ${esc(c.nom)}</div>
-              <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--s2);border:1px solid var(--b1);color:var(--acc)">${esc(posteLb)}</span>
-            </div>
-            <div style="font-size:11.5px;color:var(--t3)">${zoneLb}${c.disponibilites?' · '+esc(c.disponibilites):''}</div>
-          </div>
-        </div>
-        <div style="font-size:12px;color:var(--t2)">${esc(c.email)} · ${esc(c.telephone||'—')}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px">${tags}</div>
-        ${c.message?`<div style="font-size:11.5px;color:var(--t3);background:var(--s2);border-radius:8px;padding:6px 10px;max-height:80px;overflow:auto">${esc(c.message)}</div>`:''}
-        <div style="font-size:10.5px;color:var(--t3)">Reçue le ${new Date(c.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:2px">
-          ${c.portfolio_url?`<a href="${c.portfolio_url.startsWith('http')?esc(c.portfolio_url):'https://'+esc(c.portfolio_url)}" target="_blank" rel="noopener" class="btn bg2 bs">Portfolio ↗</a>`:''}
-          ${c.cv_path?`<button class="btn bg2 bs" onclick="candVoirCv('${escJs(c.cv_path)}')">Voir le CV</button>`:''}
-          <button class="btn bp bs" onclick="candTraiter('${escJs(c.id)}','retenu')">Retenir</button>
-          <button class="btn bg2 bs" style="color:var(--er)" onclick="candTraiter('${escJs(c.id)}','rejete')">Rejeter</button>
-        </div>
-      </div>`;
-    }).join('');
-  }catch(e){
-    body.innerHTML='<div style="color:var(--er);font-size:12px;padding:8px">Erreur de chargement.</div>';
-  }
+    const data=await sbFetch('recruitment_applications?select=id,poste,prenom,nom,email,telephone,ville,zone,experience_niveau,materiel,permis,vehicule,disponibilites,portfolio_url,cv_path,message,statut,collaborateur_id,created_at&order=created_at.desc');
+    if(sbErr(data)){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er)">Erreur de chargement.</div>';return;}
+    _recrutCache=Array.isArray(data)?data:[];
+    renderRecrutement();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er)">Erreur de chargement.</div>';}
+}
+function renderRecrutement(){
+  const el=document.getElementById('recrut-real');
+  if(!el)return;
+  if(!_recrutCache.length){el.innerHTML='<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px"><div style="font-size:32px;margin-bottom:10px;opacity:.3">📭</div>Aucune candidature reçue pour le moment.</div>';return;}
+  el.innerHTML='<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:8px;align-items:flex-start">'+RECRUT_STAGES.map(st=>{
+    const items=_recrutCache.filter(c=>(c.statut||'nouveau')===st.key);
+    return `<div style="flex:0 0 300px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);padding:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:12.5px;font-weight:700;color:var(--t1);text-transform:uppercase;letter-spacing:.05em">${st.lb}</div>
+        <span style="font-size:11px;font-weight:700;color:var(--t3);background:var(--s1);border-radius:20px;padding:2px 8px">${items.length}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${items.length?items.map(c=>recrutCard(c,st.key)).join(''):'<div style="text-align:center;padding:16px;color:var(--t3);font-size:11.5px">Vide</div>'}
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+function recrutCard(c,stage){
+  const posteLb=CAND_POSTE_LB[c.poste]||c.poste||'—';
+  const zoneLb=c.ville?esc(c.ville):(CAND_ZONE_LB[c.zone]||c.zone||'—');
+  const tags=[
+    c.experience_niveau?esc(c.experience_niveau):null,
+    c.materiel==='oui'?'Matériel pro':null,
+    c.permis==='oui'?'Permis':null,
+    c.vehicule==='oui'?'Véhiculé':null,
+  ].filter(Boolean).map(t=>`<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--s1);border:1px solid var(--b1);color:var(--t2)">${t}</span>`).join(' ');
+  let actions='';
+  if(stage==='nouveau')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','a_appeler')">À appeler</button><button class="btn bg2 bs" style="color:var(--er)" onclick="recrutMove('${c.id}','refuse')">Refuser</button>`;
+  else if(stage==='a_appeler')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','entretien')">Entretien</button><button class="btn bg2 bs" style="color:var(--er)" onclick="recrutMove('${c.id}','refuse')">Refuser</button>`;
+  else if(stage==='entretien')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','retenu')">Retenir</button><button class="btn bg2 bs" style="color:var(--er)" onclick="recrutMove('${c.id}','refuse')">Refuser</button>`;
+  else if(stage==='retenu')actions=c.collaborateur_id?`<button class="btn bg2 bs" onclick="switchView('equipehub');setTimeout(()=>modalFicheCollaborateur('${c.collaborateur_id}'),300)">Voir la fiche</button>`:`<button class="btn bp bs" onclick="modalRecrutCreerCollaborateur('${c.id}')">+ Créer le collaborateur</button>`;
+  else if(stage==='refuse')actions=`<button class="btn bg2 bs" onclick="recrutMove('${c.id}','vivier')">→ Vivier</button>`;
+  else if(stage==='vivier')actions=`<button class="btn bg2 bs" onclick="recrutMove('${c.id}','nouveau')">Réexaminer</button>`;
+  return `<div style="background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:13px;font-weight:700;color:var(--t1)">${esc(c.prenom)} ${esc(c.nom)}</div>
+    <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--s2);border:1px solid var(--b1);color:var(--acc);width:fit-content">${esc(posteLb)}</span>
+    <div style="font-size:11px;color:var(--t3)">${zoneLb}${c.disponibilites?' · '+esc(c.disponibilites):''}</div>
+    <div style="font-size:11.5px;color:var(--t2)">${esc(c.email)}</div>
+    ${tags?`<div style="display:flex;flex-wrap:wrap;gap:4px">${tags}</div>`:''}
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+      ${c.portfolio_url?`<a href="${c.portfolio_url.startsWith('http')?esc(c.portfolio_url):'https://'+esc(c.portfolio_url)}" target="_blank" rel="noopener" class="btn bg2 bs">Portfolio ↗</a>`:''}
+      ${c.cv_path?`<button class="btn bg2 bs" onclick="candVoirCv('${escJs(c.cv_path)}')">CV</button>`:''}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px">${actions}</div>
+  </div>`;
 }
 async function candVoirCv(cvPath){
   const url=await sbSignedUrl('sportvision-media-prive',cvPath,3600);
   if(!url){toast('Impossible de générer le lien du CV.','er');return;}
   window.open(url,'_blank','noopener');
 }
-async function candTraiter(id,statut){
+async function recrutMove(id,statut){
   const r=await sbFetch('recruitment_applications?id=eq.'+id,{method:'PATCH',body:{statut}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
-  toast(statut==='retenu'?'Candidat retenu.':'Candidature rejetée.','ok');
-  await candReloadList();
+  const c=_recrutCache.find(x=>x.id===id);if(c)c.statut=statut;
+  renderRecrutement();
+  toast('Candidature mise à jour.','ok');
   if(typeof updateNavBadges==='function')updateNavBadges(S.role);
+}
+function modalRecrutCreerCollaborateur(id){
+  const c=_recrutCache.find(x=>x.id===id);
+  if(!c)return;
+  const defaultRole=CAND_POSTE_ROLE[c.poste]||'photo';
+  openModal(`<div class="mh"><div class="mt">Créer le collaborateur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:12px;color:var(--t3)">Identité, coordonnées, véhicule/permis et zone repris automatiquement depuis la candidature — rien à ressaisir.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Prénom</label><input id="rcc-prenom" class="l-inp" style="height:38px" value="${esc(c.prenom||'')}"></div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom</label><input id="rcc-nom" class="l-inp" style="height:38px" value="${esc(c.nom||'')}"></div>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Email</label><input id="rcc-email" type="email" class="l-inp" style="height:38px" value="${esc(c.email||'')}"></div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Rôle *</label>
+        <select id="rcc-role" class="l-inp" style="height:38px">
+          <option value="photo"${defaultRole==='photo'?' selected':''}>Photographe / Vidéaste</option>
+          <option value="cm"${defaultRole==='cm'?' selected':''}>Community Manager</option>
+          <option value="prod">Resp. Production</option>
+          <option value="sec">Secrétaire</option>
+          <option value="compta">Comptable</option>
+          <option value="com">Commercial</option>
+        </select>
+      </div>
+      <div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rb);padding:10px 14px;font-size:11.5px;color:var(--t2)">
+        Un e-mail d'invitation sera envoyé (même mécanisme que « + Inviter »). La fiche est créée en statut onboarding : l'accès à l'OS reste bloqué tant que la checklist n'est pas complète.
+      </div>
+      <div id="rcc-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="recrutCreerCollaborateur('${c.id}')">Créer et inviter</button>
+      </div>
+    </div>`);
+}
+async function recrutCreerCollaborateur(candId){
+  const c=_recrutCache.find(x=>x.id===candId);
+  if(!c)return;
+  const err=document.getElementById('rcc-err');
+  const prenom=document.getElementById('rcc-prenom').value.trim();
+  const nom=document.getElementById('rcc-nom').value.trim();
+  const email=document.getElementById('rcc-email').value.trim();
+  const role=document.getElementById('rcc-role').value;
+  if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
+  err.textContent='Création en cours…';
+  try{
+    const tok=localStorage.getItem('sv_tok');
+    const redirectTo=window.location.origin+window.location.pathname;
+    const r=await fetch(SB_URL+'/functions/v1/invite-collaborateur',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
+      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo})
+    });
+    const d=await r.json();
+    if(!r.ok||d.error){err.textContent=d.error||'Erreur.';return;}
+    const newId=d.user_id;
+    await sbFetch('profiles?id=eq.'+newId,{method:'PATCH',body:{
+      ville:c.ville||null,
+      telephone:c.telephone||null,
+      vehicule:c.vehicule==='oui',
+      permis:c.permis==='oui',
+      actif:false,
+      onboarding_started_at:new Date().toISOString(),
+    }}).catch(()=>{});
+    await sbFetch('recruitment_applications?id=eq.'+candId,{method:'PATCH',body:{statut:'retenu',collaborateur_id:newId}}).catch(()=>{});
+    closeModal();
+    toast('Collaborateur créé — onboarding démarré.','ok');
+    await loadRecrutement();
+    if(typeof updateNavBadges==='function')updateNavBadges(S.role);
+  }catch(e){err.textContent='Erreur réseau.';}
+}
+
+// ── Équipe — Vue d'ensemble (RH, 28/08/2026) ──────────────────────────────
+// Tableau de bord de pilotage rapide : KPI + alertes actionnables. Ne
+// recalcule rien — lit prestations_equipe/disponibilites/formation_*/
+// grade_recommendations/recruitment_applications déjà existantes.
+// Les formations "obligatoires" par rôle = les 3 universelles
+// (sv-culture/sv-securite/sv-comportement, cf. FORMATIONS_CATALOG) plus
+// photo-bases pour les rôles qui l'ont dans FORMATION_ROLE_MAP (photo,
+// admin) — seules formations effectivement marquées obligatoire:true dans
+// le catalogue existant, rien d'inventé.
+const EQOV_OBLIGATOIRE_UNIVERSAL=['sv-culture','sv-securite','sv-comportement'];
+function eqovFormationsRequises(role){
+  const req=EQOV_OBLIGATOIRE_UNIVERSAL.slice();
+  if((FORMATION_ROLE_MAP[role]||[]).includes('photo-bases'))req.push('photo-bases');
+  return req;
+}
+async function loadEquipeOverview(){
+  const el=document.getElementById('eqov-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const [profRaw,candRaw,recoRaw,inscrRaw]=await Promise.all([
+      sbFetch('profiles?select=id,prenom,nom,role,actif,onboarding_started_at').catch(()=>[]),
+      sbFetch('recruitment_applications?select=id&statut=in.(nouveau,a_appeler,entretien)').catch(()=>[]),
+      sbFetch('grade_recommendations?select=id,collaborateur_id,grade_actuel,grade_propose&statut=eq.en_attente').catch(()=>[]),
+      sbFetch('formation_inscriptions?select=collaborateur_id,formation_id,statut').catch(()=>[]),
+    ]);
+    const profiles=Array.isArray(profRaw)?profRaw:[];
+    const candidatures=Array.isArray(candRaw)?candRaw:[];
+    const recos=Array.isArray(recoRaw)?recoRaw:[];
+    const inscriptions=Array.isArray(inscrRaw)?inscrRaw:[];
+    const actifs=profiles.filter(p=>p.actif!==false);
+    const onboarding=profiles.filter(p=>p.actif===false&&p.onboarding_started_at);
+    // Formations obligatoires manquantes par collaborateur actif
+    const termineesByCollab={};
+    inscriptions.forEach(i=>{
+      if(i.statut==='terminee'){(termineesByCollab[i.collaborateur_id]||(termineesByCollab[i.collaborateur_id]=new Set())).add(i.formation_id);}
+    });
+    const formationRetard=actifs.map(p=>{
+      const requis=eqovFormationsRequises(p.role);
+      const faites=termineesByCollab[p.id]||new Set();
+      const manquantes=requis.filter(f=>!faites.has(f));
+      return{p,manquantes};
+    }).filter(x=>x.manquantes.length>0);
+    const kpi=(lbl,val,color)=>`<div class="kpi" style="--kl:${color||'var(--acc)'}"><div class="kpi-ey">${lbl}</div><div class="kpi-v" style="color:${color||'var(--t1)'}">${val}</div></div>`;
+    let html='<div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">'
+      +kpi('Collaborateurs actifs',actifs.length)
+      +kpi('En onboarding',onboarding.length,onboarding.length?'var(--wa)':undefined)
+      +kpi('Candidatures à traiter',candidatures.length,candidatures.length?'var(--acc)':undefined)
+      +kpi('Grades en attente de validation',recos.length,recos.length?'var(--wa)':undefined)
+      +'</div>';
+    const alerts=[];
+    recos.forEach(r=>{
+      const p=profiles.find(x=>x.id===r.collaborateur_id);
+      const nom=p?esc((p.prenom||'')+' '+(p.nom||'')):'Collaborateur';
+      const gA=SV_GRADES[r.grade_actuel]||SV_GRADES[0],gP=SV_GRADES[r.grade_propose]||null;
+      alerts.push({ic:'⭐',txt:`${nom} — recommandation de grade ${gA.nom} → ${gP?gP.nom:'—'}`,
+        actions:`<button class="btn bp bs" onclick="centreValiderGrade('${r.id}','valide');setTimeout(loadEquipeOverview,400)">Valider</button><button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade('${r.id}','refuse');setTimeout(loadEquipeOverview,400)">Refuser</button>`});
+    });
+    onboarding.forEach(p=>{
+      alerts.push({ic:'🚀',txt:`${esc((p.prenom||'')+' '+(p.nom||''))} — onboarding en cours`,
+        actions:`<button class="btn bg2 bs" onclick="switchView('equipehub');setTimeout(()=>modalFicheCollaborateur('${p.id}'),300)">Voir la fiche</button>`});
+    });
+    formationRetard.forEach(({p,manquantes})=>{
+      alerts.push({ic:'🎓',txt:`${esc((p.prenom||'')+' '+(p.nom||''))} — ${manquantes.length} formation${manquantes.length>1?'s':''} obligatoire${manquantes.length>1?'s':''} manquante${manquantes.length>1?'s':''}`,
+        actions:`<button class="btn bg2 bs" onclick="switchView('equipehub');setTimeout(()=>modalFicheCollaborateur('${p.id}'),300)">Voir la fiche</button>`});
+    });
+    if(candidatures.length){
+      alerts.push({ic:'🎯',txt:`${candidatures.length} candidature${candidatures.length>1?'s':''} en attente de traitement`,
+        actions:`<button class="btn bp bs" onclick="switchView('recrutement')">Ouvrir le pipeline</button>`});
+    }
+    html+='<div class="cd"><div class="cd-h"><div class="cd-t">Alertes & actions</div></div>'
+      +(alerts.length?'<div style="display:flex;flex-direction:column">'+alerts.map(a=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--b1)">
+        <span style="font-size:16px;flex-shrink:0">${a.ic}</span>
+        <div style="flex:1;min-width:0;font-size:12.5px;color:var(--t1)">${a.txt}</div>
+        <div style="display:flex;gap:6px;flex-shrink:0">${a.actions}</div>
+      </div>`).join('')+'</div>'
+        :'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune alerte — tout est à jour.</div>')
+      +'</div>';
+    el.innerHTML=html;
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 let _lienValidationDemandeClub='';
@@ -6498,11 +6689,9 @@ async function loadAdminDash(){
       elAct.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune activité récente.</div>';
     } else {
       const CAT_ICON={finance:'💰',communication:'📣',equipe:'👥',recrutement:'🎯',signature:'✍️'};
-      // recrutement pointe vers modalCandidatures() et non switchView : 'candidatures'
-      // est un item NAV modal-only (modal:'modalCandidatures'), pas une vraie vue —
-      // switchView('candidatures') afficherait un fallbackView vide (VIEWS['admin.candidatures']
-      // n'existe pas).
-      const CAT_ACTION={finance:"switchView('resultat')",communication:"switchView('planning')",equipe:"switchView('equipehub')",recrutement:'modalCandidatures()',signature:"switchView('contrats')"};
+      // recrutement pointe vers la page Recrutement (pipeline complet, refonte
+      // Équipe & RH du 28/08/2026) — remplace l'ancien modal-only modalCandidatures().
+      const CAT_ACTION={finance:"switchView('resultat')",communication:"switchView('planning')",equipe:"switchView('equipehub')",recrutement:"switchView('recrutement')",signature:"switchView('contrats')"};
       const relT=d=>{
         const diff=Math.floor((Date.now()-new Date(d))/60000);
         if(diff<1)return'à l\'instant';if(diff<60)return'il y a '+diff+'min';
@@ -6614,11 +6803,13 @@ async function loadAdminDash(){
       const nPh=(planSoumis||[]).length;
       if(nPh>0) items.push({ic:'📝',txt:`${nPh} planning${nPh>1?'s':''} CM à valider`,act:`modalPlanningsAValider()`});
     }catch(e){}
-    // Candidatures à examiner
+    // Candidatures à examiner — pointe vers la page Recrutement (pipeline
+    // complet, refonte Équipe & RH 28/08/2026), plus vers modalCandidatures()
+    // (retiré, remplacé par switchView('recrutement')).
     try{
-      const candNouveaux=await sbFetch('recruitment_applications?select=id&statut=eq.nouveau');
+      const candNouveaux=await sbFetch('recruitment_applications?select=id&statut=in.(nouveau,a_appeler,entretien)');
       const nCand=(candNouveaux||[]).length;
-      if(nCand>0) items.push({ic:'🎯',txt:`${nCand} candidature${nCand>1?'s':''} à examiner`,act:`modalCandidatures()`});
+      if(nCand>0) items.push({ic:'🎯',txt:`${nCand} candidature${nCand>1?'s':''} à examiner`,act:`switchView('recrutement')`});
     }catch(e){}
     if(elNb) elNb.textContent=items.length||'0';
     set('bnr-traiter',items.length||0);
@@ -21734,32 +21925,12 @@ async function majStatutFinancier(id,statut){
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
-// ── Équipe (Admin V2, page 6/N) — bascule d'onglet + chargement paresseux,
-// même patron que fceShowTab (fiche club, cf1b0e1). Les 5 onglets réutilisent
-// des écrans/fonctions déjà existants et inchangés (loadCollaborateurs,
-// _annuaireView/loadAnnuaire, _equipeEnDirectView/loadEquipeEnDirect,
-// loadGrades, loadAdminForm) — cette page ne fait que les regrouper sous un
-// même NAV id au lieu de 6.
-let _eqHubTab='roster';
-function eqhubTab(tab){
-  const on='border:1px solid var(--acc);background:var(--acc);color:#fff';
-  const off='border:1px solid var(--b1);background:var(--s2);color:var(--t2)';
-  _eqHubTab=tab;
-  ['roster','annuaire','dispo','grades','form'].forEach(t=>{
-    const b=document.getElementById('eqhub-tab-'+t);const p=document.getElementById('eqhub-panel-'+t);
-    if(b)b.style.cssText='padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);'+(t===tab?on:off);
-    if(p)p.style.display=t===tab?'':'none';
-  });
-  if(tab==='roster')loadCollaborateurs();
-  if(tab==='annuaire')loadAnnuaire('admin');
-  if(tab==='dispo')loadEquipeEnDirect();
-  if(tab==='grades')loadGrades();
-  if(tab==='form')loadAdminForm();
-}
-async function loadEquipeHub(){
-  eqhubTab(_eqHubTab||'roster');
-}
-
+// ── Équipe (refonte 28/08/2026) — l'ancien hub à onglets (eqhubTab/
+// loadEquipeHub, 5 onglets sous un même NAV id) est remplacé par 3 pages
+// réelles (Vue d'ensemble/Collaborateurs/Recrutement, cf. NAV admin et
+// VIEWS['admin.equipeoverview'|'equipehub'|'recrutement'] plus haut).
+// loadCollaborateurs() reste la même fonction qu'avant (onglet "Équipe"
+// d'origine), simplement appelée directement par le dispatcher désormais.
 async function loadCollaborateurs(){
   const el=document.getElementById('col-real');
   if(!el)return;
@@ -21908,18 +22079,38 @@ async function modalFicheCollaborateur(id){
   // remuneration — fermeture complète nécessiterait une vue dédiée sans
   // cette colonne, hors périmètre de ce correctif.
   const canSeeRem=['admin','prod','compta','expert_comptable','auditeur'].includes(myRole);
+  // Documents administratifs (contrat/RIB/justificatif) : accès strictement
+  // limité admin/compta côté RLS (policy cd_admin_compta_all,
+  // migration-equipe-rh-refonte-28-08.sql) — le contrôle UI ci-dessous n'est
+  // qu'un raccourci d'affichage, jamais la seule barrière.
+  const canSeeDocs=['admin','compta'].includes(myRole);
   const RLBL={admin:'Administrateur',sec:'Secrétaire',prod:'Resp. Production',photo:'Photographe',cm:'Community Manager',compta:'Comptable',com:'Commercial'};
   const RCLR={admin:'#366BFF',sec:'#00B8D4',prod:'#2ECC8A',photo:'#7C4DFF',cm:'#F5A524',compta:'#FF6B35',com:'#F0445E'};
   openModal('<div style="padding:32px;text-align:center;color:var(--t3)">Chargement de la fiche…</div>');
   try{
     const today=ymdLocal();
-    const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw]=await Promise.all([
+    const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw,dispoRangeRaw,kitResaRaw,docsRaw,gradeRecoRaw,clientsCmRaw]=await Promise.all([
       sbFetch('profiles?select=*&id=eq.'+id).catch(()=>[]),
       sbFetch('prestations_equipe_display?select=id,statut,remuneration,prestations(id,reference,date_prestation,statut,lieu,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=200').catch(()=>[]),
       sbFetch('collaborateur_certifications?select=*&collaborateur_id=eq.'+id).catch(()=>[]),
       sbFetch('xp_events?select=montant&collaborateur_id=eq.'+id).catch(()=>[]),
       sbFetch('disponibilites?select=*&collaborateur_id=eq.'+id+'&date=eq.'+today).catch(()=>[]),
       sbFetch('formation_inscriptions?select=*&collaborateur_id=eq.'+id+'&order=updated_at.desc').catch(()=>[]),
+      // Disponibilités des 14 prochains jours — nouvel onglet "Disponibilités"
+      // (réutilise la table disponibilites déjà utilisée par _equipeEnDirectView,
+      // filtrée sur CE collaborateur au lieu de tous — pas de duplication de logique).
+      sbFetch('disponibilites?select=date,statut,note&collaborateur_id=eq.'+id+'&date=gte.'+today+'&order=date.asc&limit=14').catch(()=>[]),
+      // Matériel — kit_reservations existant (module Kits), lu tel quel.
+      sbFetch('kit_reservations?select=id,statut,date_sortie,date_retour_prevue,date_retour_effective,kits(nom)&collaborateur_id=eq.'+id+'&order=date_sortie.desc.nullslast&limit=20').catch(()=>[]),
+      // Documents — table dédiée, RLS admin/compta (cf. migration ci-dessus).
+      sbFetch('collaborateur_documents?select=*&collaborateur_id=eq.'+id+'&order=created_at.desc').catch(()=>[]),
+      // Recommandation de grade en attente pour CE collaborateur (remplace
+      // l'ancien onglet global "Grades & XP", cf. loadEquipeOverview pour la
+      // vue transverse).
+      sbFetch('grade_recommendations?select=id,grade_actuel,grade_propose&collaborateur_id=eq.'+id+'&statut=eq.en_attente&order=created_at.desc&limit=1').catch(()=>[]),
+      // Clubs gérés — pour un CM, clients.cm_id est déjà la relation
+      // d'affectation club↔CM existante (pas de nouvelle table d'affectation).
+      sbFetch('clients?select=id,nom&cm_id=eq.'+id+'&order=nom.asc').catch(()=>[]),
     ]);
     const prof=(Array.isArray(profRaw)?profRaw:[])[0];
     if(!prof){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">Profil introuvable.</div>');return;}
@@ -21936,6 +22127,14 @@ async function modalFicheCollaborateur(id){
     const xpRaw=isPhotoProfile?await sbFetch('xp_events?select=montant&collaborateur_id=eq.'+id).catch(()=>xpRaw0):[];
     const xpTotal=(Array.isArray(xpRaw)?xpRaw:[]).reduce((s,e)=>s+(e.montant||0),0);
     const dispoRec=(Array.isArray(dispoRaw)?dispoRaw:[])[0];
+    // Profils "terrain" — Disponibilités/Matériel n'ont de sens que pour eux.
+    const isTerrainProfile=['photo','prod'].includes(prof.role);
+    const dispoRange=Array.isArray(dispoRangeRaw)?dispoRangeRaw:[];
+    const kitResas=Array.isArray(kitResaRaw)?kitResaRaw:[];
+    const docs=Array.isArray(docsRaw)?docsRaw:[];
+    const gradeReco=(Array.isArray(gradeRecoRaw)?gradeRecoRaw:[])[0]||null;
+    const clientsCm=Array.isArray(clientsCmRaw)?clientsCmRaw:[];
+    const enOnboarding=prof.actif===false&&!!prof.onboarding_started_at;
     const name=esc([prof.prenom,prof.nom].filter(Boolean).join(' ')||prof.role);
     const ini=((prof.prenom?.[0]||'')+(prof.nom?.[0]||'')).toUpperCase()||'?';
     const col=RCLR[prof.role]||'#366BFF';
@@ -21984,7 +22183,39 @@ async function modalFicheCollaborateur(id){
     });
     const remMonths=Object.entries(remByMonth).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,6);
     // Construire les contenus de chaque onglet
-    const T_OVERVIEW='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    // ── Onboarding (refonte 28/08/2026) — checklist calculée à la volée à
+    // partir de données déjà réelles, aucune nouvelle table de checklist :
+    // fiche_creee toujours vraie (le profil existe) ; rib_recu/contrat_signe
+    // lisent collaborateur_documents ; statut_confirme lit profiles.type_contrat ;
+    // formations_obligatoires lit formation_inscriptions vs eqovFormationsRequises
+    // (mêmes 4 formations marquées obligatoire:true dans FORMATIONS_CATALOG).
+    // Seul le flag "en onboarding" lui-même (actif=false ET onboarding_started_at
+    // renseigné) vient d'une vraie colonne — posée uniquement par le nouveau flux
+    // "Créer le collaborateur" (Recrutement), jamais par la désactivation
+    // ordinaire (confirmerDesactiverUser, inchangée).
+    const onbFormationsFaites=new Set(inscriptions.filter(i=>i.statut==='terminee').map(i=>i.formation_id));
+    const onbFormationsRequises=eqovFormationsRequises(prof.role);
+    const onbItems=[
+      {k:'fiche_creee',lb:'Fiche créée',done:true},
+      {k:'statut_confirme',lb:'Statut contractuel confirmé',done:!!prof.type_contrat},
+      {k:'rib_recu',lb:'RIB reçu',done:docs.some(d=>d.type==='rib'&&d.statut==='present')},
+      {k:'contrat_signe',lb:'Contrat signé',done:docs.some(d=>d.type==='contrat'&&d.statut==='present')},
+      {k:'formations',lb:'Formations obligatoires terminées',done:onbFormationsRequises.every(f=>onbFormationsFaites.has(f))},
+    ];
+    const onbDone=onbItems.filter(i=>i.done).length;
+    const onbPct=Math.round(onbDone/onbItems.length*100);
+    const onbComplete=onbDone===onbItems.length;
+    const T_ONBOARDING=enOnboarding?`<div style="background:rgba(245,165,36,.06);border:1px solid rgba(245,165,36,.25);border-radius:var(--rb);padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--t1)">🚀 Onboarding en cours — ${onbPct}%</div>
+        ${canManage?`<button class="btn bp bs"${onbComplete?'':' disabled style="opacity:.4;cursor:not-allowed"'} onclick="${onbComplete?`reactiverUser('${prof.id}');closeModal();`:''}">Activer le collaborateur</button>`:''}
+      </div>
+      <div style="height:6px;border-radius:3px;background:var(--b1);overflow:hidden;margin-bottom:10px"><div style="height:6px;border-radius:3px;width:${onbPct}%;background:var(--wa)"></div></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${onbItems.map(i=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:${i.done?'var(--t1)':'var(--t3)'}"><span>${i.done?'✅':'⬜'}</span>${i.lb}</div>`).join('')}
+      </div>
+    </div>`:'';
+    const T_OVERVIEW=T_ONBOARDING+'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
       +ic('Rôle principal',RLBL[prof.role]||prof.role)
       +ic('Disponibilité','<span style="color:'+DISPO_CLR[dispo]+';font-weight:600">'+(DISPO_LBL[dispo]||dispo)+'</span>')
       +(prof.email?ic('Email','<span style="word-break:break-all">'+prof.email+'</span>'):'')
@@ -21992,6 +22223,7 @@ async function modalFicheCollaborateur(id){
       +(prof.ville?ic('Ville',prof.ville+(prof.code_postal?' ('+prof.code_postal+')':'')):'')
       +(prof.adresse?ic('Adresse',prof.adresse):'')
       +(isPhotoProfile?ic('XP','<span style="color:var(--acc);font-weight:700">'+xpTotal.toLocaleString('fr-FR')+'</span>'):'')
+      +(prof.role==='cm'?ic('Clubs gérés',clientsCm.length?clientsCm.map(c=>esc(c.nom)).join(', '):'Aucun club affecté'):'')
       +ic('Prochaine mission',prochaine?(prochaine.prestations?.clients?.nom||'Mission')+' — '+fmtD(prochaine.prestations?.date_prestation):'Aucune planifiée')
       +'</div>';
     const T_MISSIONS=pres.length
@@ -22040,7 +22272,23 @@ async function modalFicheCollaborateur(id){
       +(isPhotoProfile?'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">XP total</div><div style="font-size:26px;font-weight:800;color:var(--acc)">'+xpTotal.toLocaleString('fr-FR')+'</div></div>':'')
       +(isPhotoProfile?'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Grade actuel</div><div style="font-size:18px;font-weight:800;color:'+grade.color+'">'+grade.ic+' '+grade.nom+'</div></div>':'')
       +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Certifications</div><div style="font-size:26px;font-weight:800;color:var(--t1)">'+certs.length+'</div></div>'
-      +'</div>';
+      +'</div>'
+      // Niveau opérateur (étoiles/grade) — historisé via grade_recommendations
+      // (chaque changement réel de profiles.grade y insère une ligne, cf.
+      // centreValidateGradeChange), donc jamais rétroactif sur les missions déjà
+      // réalisées : le barème appliqué à une mission passée reste celui figé au
+      // moment de prestations_equipe.remuneration, pas recalculé depuis le grade
+      // actuel. Remplace l'ancien onglet global "Grades & XP" : action ciblée sur
+      // CE collaborateur uniquement (cf. loadEquipeOverview pour la vue transverse).
+      +(isPhotoProfile&&canManage?(gradeReco
+        ?'<div style="margin-top:16px;background:rgba(245,165,36,.06);border:1px solid rgba(245,165,36,.25);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
+          +'<div style="font-size:12.5px;color:var(--t1)">⏳ Recommandation en attente : '+(SV_GRADES[gradeReco.grade_actuel]||SV_GRADES[0]).nom+' → '+(SV_GRADES[gradeReco.grade_propose]?.nom||'—')+'</div>'
+          +'<div style="display:flex;gap:6px;flex-shrink:0">'
+          +'<button class="btn bp bs" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'valide\');closeModal();setTimeout(()=>modalFicheCollaborateur(\''+id+'\'),400)">Valider</button>'
+          +'<button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'refuse\');closeModal();setTimeout(()=>modalFicheCollaborateur(\''+id+'\'),400)">Refuser</button>'
+          +'</div></div>'
+        :'<div style="margin-top:16px;text-align:right"><button class="btn bg2 bs" onclick="closeModal();centreModalChangerGrade(\''+id+'\',\''+escJs(prof.prenom||'')+'\',\''+escJs(prof.nom||'')+'\','+(prof.grade||0)+')">Changer le grade</button></div>'
+      ):'');
     const T_FORMATION=inscriptions.length
       ?'<div style="display:flex;flex-direction:column;gap:8px">'+inscriptions.map(ins=>{
           const s=ins.statut||'en_cours';
@@ -22074,7 +22322,47 @@ async function modalFicheCollaborateur(id){
         +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:13px;font-weight:700;color:var(--t1)">Total rémunérations</div><div style="font-size:15px;font-weight:800;color:var(--acc)">'+fmtE(totalRem)+'</div></div>'
         +'</div>'
       :'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Aucune rémunération enregistrée</div>';
-    window._svFicheTabs={overview:T_OVERVIEW,missions:T_MISSIONS,competences:T_COMPETENCES,performance:T_PERFORMANCE,formation:T_FORMATION,remunerations:T_REM};
+    // ── Disponibilités (14 prochains jours) — réutilise la table disponibilites
+    // et le vocabulaire disponible/sous_conditions/indisponible déjà utilisés
+    // par _equipeEnDirectView, filtrés sur CE collaborateur (pas de duplication
+    // de la grille "tous les collaborateurs", cf. commentaire de fetch plus haut).
+    const T_DISPO=dispoRange.length
+      ?'<div style="display:flex;flex-direction:column;gap:6px">'+dispoRange.map(d=>{
+          const st=d.statut||'disponible';
+          return'<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:8px">'
+            +'<div style="width:8px;height:8px;border-radius:50%;background:'+(DISPO_CLR[st]||'var(--t3)')+';flex-shrink:0"></div>'
+            +'<div style="flex:1;font-size:12.5px;color:var(--t1)">'+fmtD(d.date)+'</div>'
+            +'<span style="font-size:11px;font-weight:600;color:'+(DISPO_CLR[st]||'var(--t3)')+'">'+(DISPO_LBL[st]||st)+'</span>'
+            +(d.note?'<span style="font-size:11px;color:var(--t3);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(d.note)+'</span>':'')
+            +'</div>';
+        }).join('')+'</div>'
+      :'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Aucune disponibilité renseignée pour les 14 prochains jours — statut par défaut « disponible ».</div>';
+    // ── Documents — table collaborateur_documents (migration-equipe-rh-refonte-
+    // 28-08.sql), suivi de statut/metadata uniquement dans cette version (pas
+    // d'upload de fichier réel — aucune policy storage dédiée à un préfixe
+    // collaborateurs/ n'existe encore). RLS admin/compta déjà en place côté
+    // serveur (policy cd_admin_compta_all) — canSeeDocs n'est qu'un raccourci UI.
+    const DOC_TYPE_LBL={contrat:'Contrat',rib:'RIB',justificatif:'Justificatif',autre:'Autre'};
+    const T_DOCS=canSeeDocs?(
+      (docs.length?'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+docs.map(d=>
+        '<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:8px">'
+        +'<span style="font-size:16px;flex-shrink:0">'+(d.statut==='present'?'📄':'⬜')+'</span>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">'+esc(d.nom)+'</div><div style="font-size:11px;color:var(--t3)">'+(DOC_TYPE_LBL[d.type]||d.type)+(d.notes?' · '+esc(d.notes):'')+'</div></div>'
+        +'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:'+(d.statut==='present'?'rgba(46,204,138,.12)':'rgba(240,68,94,.12)')+';color:'+(d.statut==='present'?'var(--ok)':'var(--er)')+'">'+(d.statut==='present'?'Présent':'Manquant')+'</span>'
+        +(canManage?'<button class="btn bg2 bs" onclick="ficheDocSupprimer(\''+d.id+'\',\''+id+'\')">Retirer</button>':'')
+        +'</div>').join('')+'</div>':'<div style="text-align:center;padding:32px 24px;color:var(--t3);font-size:13px;margin-bottom:14px">Aucun document enregistré.</div>')
+      +(canManage?'<button class="btn bp bs" onclick="modalFicheDocAjouter(\''+id+'\')">+ Ajouter un document</button>':'')
+    ):'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Accès réservé admin/comptable.</div>';
+    // ── Matériel — résumé kit_reservations existant (module Kits), pas de
+    // duplication : lien vers l'écran Kits pour le détail/la gestion.
+    const T_MATERIEL=kitResas.length
+      ?'<div style="display:flex;flex-direction:column;gap:8px">'+kitResas.map(k=>
+          '<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:8px">'
+          +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">'+esc(k.kits?.nom||'Kit')+'</div><div style="font-size:11px;color:var(--t3)">Sortie '+fmtD(k.date_sortie)+(k.date_retour_effective?' · Retour '+fmtD(k.date_retour_effective):k.date_retour_prevue?' · Retour prévu '+fmtD(k.date_retour_prevue):'')+'</div></div>'
+          +'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.06);color:var(--t2);text-transform:capitalize">'+(k.statut||'—')+'</span>'
+          +'</div>').join('')+'<div style="margin-top:6px"><button class="btn bg2 bs" onclick="closeModal();switchView(\'kits\')">Voir le module Kits</button></div></div>'
+      :'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Aucun matériel réservé pour ce collaborateur.<br><button class="btn bg2 bs" style="margin-top:10px" onclick="closeModal();switchView(\'kits\')">Voir le module Kits</button></div>';
+    window._svFicheTabs={overview:T_OVERVIEW,missions:T_MISSIONS,competences:T_COMPETENCES,performance:T_PERFORMANCE,formation:T_FORMATION,remunerations:T_REM,dispo:T_DISPO,documents:T_DOCS,materiel:T_MATERIEL};
     window.ficheSwitch=function(tab){
       document.querySelectorAll('.sv-ftab').forEach(b=>{
         const on=b.dataset.tab===tab;
@@ -22088,10 +22376,13 @@ async function modalFicheCollaborateur(id){
     const TABS=[
       {id:'overview',lbl:'Vue d\'ensemble'},
       {id:'missions',lbl:'Missions'},
+      ...(isTerrainProfile?[{id:'dispo',lbl:'Disponibilités'}]:[]),
       {id:'competences',lbl:'Compétences'},
       {id:'performance',lbl:'Performance'},
       {id:'formation',lbl:'Formation'},
+      ...(isTerrainProfile?[{id:'materiel',lbl:'Matériel'}]:[]),
       ...(canSeeRem?[{id:'remunerations',lbl:'Rémunérations'}]:[]),
+      ...(canSeeDocs?[{id:'documents',lbl:'Documents'}]:[]),
     ];
     const tabsNav=TABS.map((t,i)=>'<button class="sv-ftab" data-tab="'+t.id+'" onclick="ficheSwitch(\''+t.id+'\')" style="padding:12px 16px;background:transparent;border:none;border-bottom:2px solid '+(i===0?'var(--acc)':'transparent')+';color:'+(i===0?'var(--t1)':'var(--t3)')+';font-size:12.5px;font-weight:'+(i===0?'700':'500')+';cursor:pointer;font-family:var(--ff);white-space:nowrap;transition:color .12s">'+t.lbl+'</button>').join('');
     const modifierBtn=canManage?'<button onclick="closeModal();setTimeout(()=>modalModifierCollaborateur((_colsCache||[]).findIndex(x=>x.id===\''+id+'\')),50)" style="padding:7px 15px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Modifier</button>':'';
@@ -22123,6 +22414,63 @@ async function modalFicheCollaborateur(id){
     const mw=document.querySelector('#sv-modal > div');
     if(mw){mw.style.width='min(720px,calc(100vw - 16px))';mw.style.padding='0';mw.style.overflow='hidden';const ob=mw.querySelector(':scope > button');if(ob)ob.style.display='none';}
   }catch(e){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">'+(e.message||'Impossible de charger la fiche.')+'</div>');}
+}
+
+// ── Documents collaborateur (onglet Documents de la fiche, 28/08/2026) ────
+// Metadata uniquement (nom/type/statut/notes) — pas d'upload de fichier réel
+// dans cette version (aucune policy storage dédiée à un préfixe collaborateurs/
+// n'existe encore sur le bucket sportvision-media-prive, hors budget de cette
+// session). RLS admin/compta déjà en place côté serveur (policy
+// cd_admin_compta_all, migration-equipe-rh-refonte-28-08.sql).
+function modalFicheDocAjouter(collabId){
+  openModal(`<div class="mh"><div class="mt">Ajouter un document</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type *</label>
+        <select id="fda-type" class="l-inp" style="height:38px">
+          <option value="contrat">Contrat</option>
+          <option value="rib">RIB</option>
+          <option value="justificatif">Justificatif</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom du document *</label>
+        <input id="fda-nom" class="l-inp" style="height:38px" placeholder="Ex. Contrat freelance 2026">
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut</label>
+        <select id="fda-statut" class="l-inp" style="height:38px">
+          <option value="present">Présent</option>
+          <option value="manquant">Manquant (à relancer)</option>
+        </select>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Notes</label>
+        <textarea id="fda-notes" class="l-inp" style="height:60px;resize:vertical" placeholder="Facultatif"></textarea>
+      </div>
+      <div id="fda-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="ficheDocAjouter('${collabId}')">Enregistrer</button>
+      </div>
+    </div>`);
+}
+async function ficheDocAjouter(collabId){
+  const err=document.getElementById('fda-err');
+  const nom=document.getElementById('fda-nom').value.trim();
+  const type=document.getElementById('fda-type').value;
+  const statut=document.getElementById('fda-statut').value;
+  const notes=document.getElementById('fda-notes').value.trim()||null;
+  if(!nom){err.textContent='Le nom du document est obligatoire.';return;}
+  const uid=localStorage.getItem('sv_uid');
+  const r=await sbFetch('collaborateur_documents',{method:'POST',body:{collaborateur_id:collabId,type,nom,statut,notes,uploaded_by:uid}});
+  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+  toast('Document ajouté.','ok');
+  closeModal();
+  setTimeout(()=>modalFicheCollaborateur(collabId),200);
+}
+async function ficheDocSupprimer(docId,collabId){
+  const r=await sbFetch('collaborateur_documents?id=eq.'+docId,{method:'DELETE'});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+  toast('Document retiré.','ok');
+  setTimeout(()=>modalFicheCollaborateur(collabId),150);
 }
 
 // ── RÉCUPÉRATION / PREMIÈRE DÉFINITION DE MOT DE PASSE
@@ -22597,6 +22945,10 @@ async function updateNavBadges(role){
       const inc=await sbFetch('incidents?select=id&cloture=eq.false');
       setBadge('incidents',(inc||[]).length,'nb-r');
       if(role==='admin')setBadge('pipeline',(await sbFetch('clients?select=id&statut=in.(prospect,qualifié)')||[]).length,'nb-o');
+    }
+    if(role==='admin'){
+      const cands=await sbFetch('recruitment_applications?select=id&statut=in.(nouveau,a_appeler,entretien)').catch(()=>[]);
+      setBadge('recrutement',(cands||[]).length,'nb-r');
     }
     if(role==='cm'){
       const prog=await sbFetch('contenus?select=id&statut=not.in.(publie,archive)');
@@ -24181,8 +24533,14 @@ async function reactiverUser(id){
   if(document.getElementById('col-real'))await loadCollaborateurs();
 }
 
-// ── GRADES & XP ─────────────────────────────────────────────────────────────
-async function loadGrades(){
+// ── GRADES & XP (ancien onglet hub, retiré le 28/08/2026 — le classement
+// global n'est plus affiché nulle part, cf. spec "pas de gamification XP
+// complexe" ; les recommandations en attente apparaissent désormais en
+// alerte sur equipeoverview et se valident/refusent depuis la fiche du
+// collaborateur concerné, cf. modalFicheCollaborateur). Fonction conservée
+// mais plus appelée par aucune vue — voir loadEquipeOverview() et le bloc
+// "Performance" de modalFicheCollaborateur pour le remplacement.
+async function loadGradesUnused_deprecated(){
   const d=document.getElementById('grades-real');
   const GRADES=GRADES_DEF;
   const [rProf,rRecos]=await Promise.all([
@@ -26374,7 +26732,7 @@ function closeMobFilter(){
 
 // ── More Menu ─────────────────────────────────────────────────────────────
 const MOB_MORE_ITEMS={
-  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipehub',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
+  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
