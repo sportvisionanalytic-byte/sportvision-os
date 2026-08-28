@@ -854,24 +854,23 @@ const NAV={
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
+  // Refonte Photo/Vidéaste (spec "Refonte Interface Photographe/Vidéaste", 28/08/2026) :
+  // menu ramené aux 7 entrées de la spec. Mode Jour J / Mes médias / Mes kits / Annuaire /
+  // Centre SportVision ne sont plus des pages permanentes du menu (ils restent de vraies
+  // vues, atteignables depuis le contexte : bouton sur la mission du jour, onglets de "Mes
+  // missions", lien dans Messagerie/Formation/Mon profil) — cf. §"Mode Jour J devient
+  // contextuel" et "À exclure du menu principal" de la spec.
   photo:[
     {type:'sep',lb:'Mes missions'},
-    {id:'dash',lb:'Tableau de bord',ic:'dash'},
-    {id:'pre',lb:'Mes prestations',ic:'pre'},
+    {id:'dash',lb:'Accueil',ic:'dash'},
+    {id:'pre',lb:'Mes missions',ic:'pre'},
     {id:'planning',lb:'Mon planning',ic:'cal'},
-    {id:'jourj',lb:'Mode Jour J',ic:'live'},
-    {type:'sep',lb:'Production'},
-    {id:'medias',lb:'Mes médias',ic:'img'},
-    {id:'kits',lb:'Mes kits',ic:'kits'},
     {type:'sep',lb:'Revenus & Progression'},
     {id:'revenus',lb:'Mes revenus',ic:'fin'},
-    {id:'form',lb:'Centre de formation',ic:'form'},
+    {id:'form',lb:'Formation',ic:'form'},
     {type:'sep',lb:'Communication'},
-    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
-    {type:'sep',lb:'Ressources'},
-    {id:'centre',lb:'Centre SportVision',ic:'help'},
-    {id:'set',lb:'Paramètres',ic:'set'},
+    {id:'set',lb:'Mon profil',ic:'set'},
   ],
   cm:[
     {type:'sep',lb:'Éditorial'},
@@ -934,16 +933,26 @@ const NAV={
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
+  // Refonte Commercial (spec "Refonte Interface Commercial", 28/08/2026) : le rôle
+  // recevait jusqu'ici 3 écrans admin non filtrés et sans rapport avec la vente
+  // (reservationsclubs/demandesclub/connectcomptes — mêmes fonctions que admin/sec, aucun
+  // cantonnement par portefeuille commercial, ajoutés à des dates différentes sans lien
+  // avec ce rôle) — retirés, conformément à la liste "À exclure" de la spec. "Prospects"
+  // (liste) et "Agenda" sont nouveaux (le Pipeline existant est un Kanban, pas une liste
+  // filtrable ; aucun agenda commercial n'existait). Devis/Objectifs restent accessibles
+  // (vrais sous-systèmes déjà construits, réutilisés tels quels) mais en écrans de détail
+  // secondaires, pour respecter le principe "5 entrées principales max" de la spec.
   com:[
     {type:'sep',lb:'Commercial'},
-    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
+    {id:'dash',lb:'Accueil',ic:'dash'},
+    {id:'prospects',lb:'Prospects',ic:'cli'},
     {id:'pipeline',lb:'Pipeline',ic:'pipe'},
+    {id:'agenda',lb:'Agenda',ic:'cal'},
+    {id:'commissions',lb:'Commissions',ic:'fin'},
+    {type:'sep',lb:'Ventes (détail)'},
     {id:'devis',lb:'Devis',ic:'doc'},
+    {id:'mesclients',lb:'Mes clients signés',ic:'cli'},
     {id:'objectifs',lb:'Objectifs',ic:'target'},
-    {id:'commissions',lb:'Mes commissions',ic:'fin'},
-    {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
-    {id:'demandesclub',lb:'Demandes Club+',ic:'cli',modal:'modalDemandesClubConnect'},
-    {id:'connectcomptes',lb:'Comptes Club+ / Connect',ic:'cli'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
@@ -1989,7 +1998,7 @@ const VIEWS={
   'prod.msg':()=>buildMsgShell(),
   'admin.msg':()=>buildMsgShell(),
   'sec.msg':()=>buildMsgShell(),
-  'photo.msg':()=>buildMsgShell(),
+  'photo.msg':()=>`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('annuaire')">👥 Annuaire équipe</button></div>`+buildMsgShell(),
   'cm.msg':()=>buildMsgShell(),
   'compta.msg':()=>buildMsgShell(),
   'com.msg':()=>buildMsgShell(),
@@ -2042,11 +2051,13 @@ const VIEWS={
     </div>`,
 
   'photo.pre':()=>`
-    <div class="sh"><div class="sh-t">Mes prestations</div></div>
-    <div style="display:flex;gap:8px;margin-bottom:13px" id="photo-pre-tabs">
+    <div class="sh"><div class="sh-t">Mes missions</div></div>
+    <div style="display:flex;gap:8px;margin-bottom:13px;overflow-x:auto;scrollbar-width:none" id="photo-pre-tabs">
       <button onclick="filterPhotoPre('')" class="btn bp bs" id="ppt-all" style="flex-shrink:0">Toutes</button>
-      <button onclick="filterPhotoPre('invitation_envoyée')" class="btn bg2 bs" id="ppt-inv" style="flex-shrink:0">📬 À confirmer</button>
-      <button onclick="filterPhotoPre('acceptée')" class="btn bg2 bs" id="ppt-acc" style="flex-shrink:0">✓ Confirmées</button>
+      <button onclick="filterPhotoPre('invitation_envoyée')" class="btn bg2 bs" id="ppt-prop" style="flex-shrink:0">📬 Proposées</button>
+      <button onclick="filterPhotoPre('upcoming')" class="btn bg2 bs" id="ppt-av" style="flex-shrink:0">📅 À venir</button>
+      <button onclick="filterPhotoPre('today')" class="btn bg2 bs" id="ppt-jj" style="flex-shrink:0">🔴 Jour J</button>
+      <button onclick="filterPhotoPre('delivery')" class="btn bg2 bs" id="ppt-liv" style="flex-shrink:0">📦 Livraison</button>
       <button onclick="filterPhotoPre('done')" class="btn bg2 bs" id="ppt-done" style="flex-shrink:0">🏁 Terminées</button>
     </div>
     <div id="photo-pre-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
@@ -2056,10 +2067,11 @@ const VIEWS={
       <div><div class="sh-t">Mes médias</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Liens à transmettre après chaque mission</div></div>
       <button class="btn bp bs" onclick="modalAjouterLien(null)">+ Ajouter un lien</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">À transmettre</div><div class="fs-v" id="med-att" style="color:var(--er)">—</div></div>
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En vérification</div><div class="fs-v" id="med-verif" style="color:var(--wa)">—</div></div>
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Validés</div><div class="fs-v" id="med-done" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Corrections</div><div class="fs-v" id="med-corr" style="color:var(--er)">—</div></div>
     </div>
     <div id="medias-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -2110,6 +2122,7 @@ const VIEWS={
     </div>`,
 
   'photo.form':()=>`
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('centre')">ℹ️ Centre SportVision</button></div>
     <div class="cd" style="margin-bottom:14px">
       <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
     </div>
@@ -2347,26 +2360,32 @@ const VIEWS={
     <div id="audit-log-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── COMMERCIAL ──────────────────────────
+  // Refonte 28/08 (spec Refonte Interface Commercial §3) : "qui dois-je contacter
+  // maintenant ?" — les 4 anciens KPI (Prospects/Qualifiés/Partenaires/Prestations, déjà
+  // visibles dans Pipeline) laissent place aux 6 KPI d'action de la spec, plus une liste de
+  // priorités concrète (au lieu de doublonner Pipeline/Devis en cartes muettes).
   'com.dash':()=>`
     <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="modalNouveauClient()">+ Prospect</button>
     </div>
-    <div class="kpi-g">
-      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="com-kpi-pr">—</div><span class="kpi-d dnt">à travailler</span></div>
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="com-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
-      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Partenaires</div><div class="kpi-v" id="com-kpi-cl">—</div><span class="kpi-d dnt">contrats actifs</span></div>
-      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('objectifs')"><div class="kpi-ey">Prestations ce mois</div><div class="kpi-v" id="com-kpi-pre">—</div><span class="kpi-d dnt">ce mois</span></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(6,1fr)">
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('agenda')"><div class="kpi-ey">À relancer</div><div class="kpi-v" id="com-kpi-relance">—</div><span class="kpi-d dnt">en retard ou aujourd'hui</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('agenda')"><div class="kpi-ey">Échéances 7j</div><div class="kpi-v" id="com-kpi-ech7">—</div><span class="kpi-d dnt">relances + devis</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('devis')"><div class="kpi-ey">Offres en attente</div><div class="kpi-v" id="com-kpi-off">—</div><span class="kpi-d dnt">devis envoyés</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('prospects')"><div class="kpi-ey">Opportunités chaudes</div><div class="kpi-v" id="com-kpi-chaud">—</div><span class="kpi-d dnt">score ≥ 70</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('mesclients')"><div class="kpi-ey">Gagnés ce mois</div><div class="kpi-v" id="com-kpi-gagne">—</div><span class="kpi-d dnt">devenus partenaires</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('commissions')"><div class="kpi-ey">Commissions à percevoir</div><div class="kpi-v" id="com-kpi-commadue" style="font-size:16px">—</div><span class="kpi-d dnt">dues + validées</span></div>
     </div>
-    <div class="g2">
+    <div class="cd" style="margin-top:13px"><div class="cd-h"><div class="cd-t">Priorités</div><button class="btn bg2 bs" onclick="switchView('agenda')">Voir l'agenda</button></div>
+      <div id="com-dash-prio"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div class="g2" style="margin-top:13px">
       <div class="cd"><div class="cd-h"><div class="cd-t">Pipeline prioritaire</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
         <div id="com-dash-pr"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Partenaires & Clients</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
-        <div id="com-dash-cl"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Devis en attente de réponse</div><button class="btn bg2 bs" onclick="switchView('devis')">Tous les devis</button></div>
+        <div id="com-dash-dev"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
-    </div>
-    <div class="cd" style="margin-top:13px"><div class="cd-h"><div class="cd-t">Devis en attente de réponse</div><button class="btn bg2 bs" onclick="switchView('devis')">Tous les devis</button></div>
-      <div id="com-dash-dev"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
   'com.devis':()=>`
@@ -2801,6 +2820,45 @@ const VIEWS={
     </div>
     <div id="mycommissions-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  // ── Prospects (liste filtrable, spec Refonte Commercial §4) — distincte du Pipeline
+  // (Kanban) : même donnée (`clients`), présentation différente, pour trouver vite un
+  // prospect précis plutôt que parcourir des colonnes.
+  'com.prospects':()=>`
+    <div class="sh"><div class="sh-t">Prospects</div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px">
+      <input id="pr-search" class="l-inp" style="height:36px;max-width:220px" placeholder="Nom, ville…" oninput="renderComProspects()">
+      <select id="pr-sport" class="l-inp" style="height:36px;width:auto" onchange="renderComProspects()"><option value="">Tous sports</option></select>
+      <select id="pr-statut" class="l-inp" style="height:36px;width:auto" onchange="renderComProspects()">
+        <option value="">Tous statuts</option>
+        <option value="prospect">Prospect</option>
+        <option value="qualifié">Qualifié</option>
+        <option value="devis_envoyé">Devis envoyé</option>
+        <option value="négociation">Négociation</option>
+      </select>
+      <select id="pr-temp" class="l-inp" style="height:36px;width:auto" onchange="renderComProspects()">
+        <option value="">Toute température</option>
+        <option value="chaud">Chaud (≥70)</option>
+        <option value="moyen">Moyen (30-69)</option>
+        <option value="long">Long terme (&lt;30)</option>
+      </select>
+    </div>
+    <div id="prospects-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── Agenda commercial (spec §9) — n'existait pas : agrège les relances (clients.
+  // prochaine_action/date_prochaine_action) et les échéances de devis. Les vrais
+  // rendez-vous (table `rendez_vous`) restent hors périmètre ici : réservés aujourd'hui aux
+  // demandes de RDV initiées par un client via le portail (RLS admin/sec uniquement) — pas
+  // un agenda de RDV commerciaux sortants. Voir commentaire dans loadComAgenda().
+  'com.agenda':()=>`
+    <div class="sh"><div><div class="sh-t">Agenda</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Relances et échéances d'offres à venir.</div></div></div>
+    <div id="agenda-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── Mes clients signés (spec §13) — vue commerciale légère, jamais Production/
+  // Livrables/Marge/Paiements équipe (voir "Non visible" de la spec).
+  'com.mesclients':()=>`
+    <div class="sh"><div class="sh-t">Mes clients signés</div></div>
+    <div id="mesclients-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   // ── RAPPORT MENSUEL ──────────────────────
   'admin.rapport':()=>`
     <div class="sh">
@@ -2863,7 +2921,7 @@ const VIEWS={
   // ── PARAMÈTRES (tous rôles non-admin) ───
   'sec.set':()=>_settingsView(),
   'prod.set':()=>_settingsView(),
-  'photo.set':()=>_settingsView(),
+  'photo.set':()=>`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('kits')">🎒 Mes kits assignés</button></div>`+_settingsView(),
   'cm.set':()=>_settingsView(),
   'compta.set':()=>_settingsView(),
   'com.set':()=>_settingsView(),
@@ -4249,7 +4307,7 @@ async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
   if((role==='admin'||role==='sec')&&view==='crmfullcom') await loadCrmFullCom();
   if((role==='admin'||role==='sec')&&view==='crmclubplus') await loadCrmClubPlus();
-  if((role==='admin'||role==='sec'||role==='com')&&view==='connectcomptes') await loadConnectComptes();
+  if((role==='admin'||role==='sec')&&view==='connectcomptes') await loadConnectComptes();
   if(role==='admin'&&view==='prodhub') await loadProdHub();
   if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
   if(role==='admin'&&view==='commhub') await loadCommHub();
@@ -4280,7 +4338,7 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='jourj') await loadJourJ();
   if(role==='sec'&&view==='dash') await loadSecDash();
   if(role==='sec'&&view==='demandes') await loadSecDemandes();
-  if(['admin','com','sec'].includes(role)&&view==='reservationsclubs'){await loadClubBookings();_rtCbkEnsure();}
+  if(['admin','sec'].includes(role)&&view==='reservationsclubs'){await loadClubBookings();_rtCbkEnsure();}
   if(['admin','sec','compta'].includes(role)&&view==='cotisations') await loadCotisations();
   if(role==='sec'&&view==='relances') await loadSecRelances();
   if(role==='sec'&&view==='contrats') await loadSecContrats();
@@ -4341,6 +4399,9 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='revenus') await loadPhotoRevenus();
   if(role==='com'&&view==='objectifs') await loadObjectifs();
   if(role==='com'&&view==='commissions') await loadMyCommissions();
+  if(role==='com'&&view==='prospects') await loadComProspects();
+  if(role==='com'&&view==='agenda') await loadComAgenda();
+  if(role==='com'&&view==='mesclients') await loadComMesClients();
   if(['com','admin','sec'].includes(role)&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
   if(role==='cm'&&view==='demandes'){await loadCmDemandes();await loadCmClubContentSubmissions();}
@@ -8325,8 +8386,8 @@ async function loadProdBriefings(){
 const ML_CAT={depot:'Dépôt',rushs:'Rushs',travail:'Travail',previsualisation:'Prévisualisation',final:'Final',livraison:'Livraison',bibliotheque:'Bibliothèque'};
 const ML_TYPE={photo:'Photo',video:'Vidéo',audio:'Audio',drone:'Drone',veo:'Veo',graphisme:'Graphisme',canva:'Canva',document:'Document',mixte:'Mixte',autre:'Autre'};
 const ML_FOURNISSEUR={google_drive:'Google Drive',dropbox:'Dropbox',onedrive:'OneDrive',wetransfer:'WeTransfer',swisstransfer:'SwissTransfer',canva:'Canva',frame_io:'Frame.io',vimeo:'Vimeo',youtube:'YouTube',galerie:'Galerie photo',perso:'Lien personnel',autre:'Autre'};
-const ML_STATUT={a_verifier:'À vérifier',valide:'Valide',acces_limite:'Accès limité',autorisation_requise:'Auth. requise',mdp_requis:'Mot de passe',expirant:'Expirant',expire:'Expiré',inaccessible:'Inaccessible',remplace:'Remplacé',archive:'Archivé'};
-const ML_STATUT_CLR={a_verifier:'var(--t3)',valide:'var(--ok)',acces_limite:'var(--wa)',autorisation_requise:'var(--wa)',mdp_requis:'#7C4DFF',expirant:'var(--er)',expire:'var(--er)',inaccessible:'var(--er)',remplace:'var(--t3)',archive:'var(--t3)'};
+const ML_STATUT={a_verifier:'À vérifier',valide:'Valide',acces_limite:'Accès limité',autorisation_requise:'Auth. requise',mdp_requis:'Mot de passe',expirant:'Expirant',expire:'Expiré',inaccessible:'Inaccessible',remplace:'Remplacé',archive:'Archivé',correction_demandee:'Correction demandée'};
+const ML_STATUT_CLR={a_verifier:'var(--t3)',valide:'var(--ok)',acces_limite:'var(--wa)',autorisation_requise:'var(--wa)',mdp_requis:'#7C4DFF',expirant:'var(--er)',expire:'var(--er)',inaccessible:'var(--er)',remplace:'var(--t3)',archive:'var(--t3)',correction_demandee:'var(--er)'};
 const PP_STATUT_LB={a_attribuer:'À attribuer',attribuee:'Attribuée',a_commencer:'À commencer',en_cours:'En cours',en_attente_elements:'En attente',premiere_version_prep:'Prép. V1',version_prete:'Version prête',a_valider_interne:'À valider',corrections_demandees:'Corrections',corrections_en_cours:'Corrections',prete_nouvelle_validation:'Nouvelle validation',validee_interne:'Validée',a_valider_client:'Valid. client',validee_client:'Validée client',prete_a_livrer:'Prête',livree:'Livrée',archivee:'Archivée',annulee:'Annulée'};
 const PP_STATUT_CLR={a_attribuer:'var(--er)',attribuee:'var(--wa)',a_commencer:'var(--wa)',en_cours:'#7C4DFF',en_attente_elements:'var(--t3)',premiere_version_prep:'#7C4DFF',version_prete:'var(--ok)',a_valider_interne:'var(--wa)',corrections_demandees:'var(--er)',corrections_en_cours:'var(--er)',prete_nouvelle_validation:'var(--wa)',validee_interne:'var(--ok)',a_valider_client:'var(--wa)',validee_client:'var(--ok)',prete_a_livrer:'var(--ok)',livree:'var(--ok)',archivee:'var(--t3)',annulee:'var(--t3)'};
 const LV_STATUT_LB={a_preparer:'À préparer',en_preparation:'En préparation',a_valider:'À valider',valide:'Validé',pret_a_livrer:'Prêt à livrer',livre:'Livré',consulte:'Consulté',lien_expirant:'Lien expirant',lien_expire:'Lien expiré',remplace:'Remplacé',archive:'Archivé'};
@@ -8614,6 +8675,7 @@ function renderMediaParPrestation(liens){
           <div style="display:flex;gap:4px;flex-shrink:0">
             <button onclick="event.stopPropagation();ouvrirLien('${encodeURIComponent(l.url)}')" aria-label="Ouvrir le lien" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button>
             ${l.statut==='a_verifier'?`<button onclick="event.stopPropagation();validerLienMedia('${l.id}')" aria-label="Valider ce lien" style="padding:4px 8px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:10px;cursor:pointer">✓</button>`:''}
+            ${l.statut==='a_verifier'?`<button onclick="event.stopPropagation();modalDemanderCorrection('${l.id}')" aria-label="Demander une correction" style="padding:4px 8px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);font-size:10px;cursor:pointer">🔁</button>`:''}
           </div>
         </div>`;
       }).join('')}
@@ -8699,6 +8761,46 @@ async function validerLienMedia(id){
     await logMediaHistory(null,S.uid,'Lien validé','lien',id,'a_verifier','valide');
     loadProdMedias();
   }catch(e){toast('Erreur validation','er');}
+}
+// Correction demandée (spec Photo/Vidéaste §21, 28/08) : au lieu de valider ou de
+// remplacer directement soi-même, prod/admin peut renvoyer un lien au photographe avec un
+// motif. Le lien passe en 'correction_demandee' (ajouté à la contrainte CHECK en base ce
+// jour) ; le photographe voit le motif dans "Mes médias" et corrige via ↺ Remplacer
+// (executerRemplacement), qui reste le même mécanisme que pour tout autre remplacement.
+async function modalDemanderCorrection(id){
+  let l=(_mediaLiens||[]).find(x=>x.id===id);
+  if(!l){
+    const d=await sbFetch('media_liens?select=id,nom,ajouteur_id,prestation_id&id=eq.'+id).catch(()=>null);
+    l=d&&d[0];
+  }
+  if(!l){toast('Lien introuvable','er');return;}
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">🔁 Demander une correction</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Motif *</label>
+        <textarea id="corr-motif" class="l-inp" style="height:70px;padding-top:10px;resize:none" placeholder="Photos floues, dossier incomplet, mauvais match…"></textarea></div>
+      <div id="corr-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="executerDemandeCorrection('${id}','${l.ajouteur_id||''}','${l.prestation_id||''}')">Envoyer</button>
+      </div>
+    </div>`);
+}
+async function executerDemandeCorrection(id,ajouteurId,prestationId){
+  const err=document.getElementById('corr-err');
+  const motif=(document.getElementById('corr-motif')?.value||'').trim();
+  if(!motif){err.textContent='Le motif est obligatoire.';return;}
+  err.textContent='En cours…';
+  const r=await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{statut:'correction_demandee',commentaire:motif,updated_at:new Date().toISOString()}});
+  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'opération impossible.');return;}
+  await logMediaHistory(prestationId||null,S.uid,'Correction demandée','lien',id,'a_verifier','correction_demandee');
+  if(ajouteurId){
+    await creerNotifSiActive(ajouteurId,'taches',{type:'correction_media',titre:'Correction demandée sur un lien',message:motif,lue:false,prestation_id:prestationId||null}).catch(()=>{});
+  }
+  closeModal();
+  toast('Correction demandée','warn');
+  if(S.view==='media') loadProdMedias();
+  if(S.view==='medias') loadPhotoMedias();
 }
 async function logMediaHistory(prestationId,auteurId,action,cibleType,cibleId,ancVal,nouvVal){
   try{
@@ -8881,6 +8983,7 @@ async function modalFicheLien(id){
     const clr=ML_STATUT_CLR[l.statut]||'var(--t3)';
     const lblSt=ML_STATUT[l.statut]||l.statut;
     const isProdAdmin=['admin','prod'].includes(S.role);
+    const isOwner=l.ajouteur_id===S.uid;
     const ajouteur=[l.ajouteur?.prenom,l.ajouteur?.nom].filter(Boolean).join(' ')||'—';
     const pNom=l.prestations?.reference||'Sans prestation';
     const cNom=esc(l.prestations?.clients?.nom||'');
@@ -8896,11 +8999,13 @@ async function modalFicheLien(id){
         </div>
         <span style="font-size:10px;font-weight:700;padding:3px 10px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};flex-shrink:0;white-space:nowrap">${lblSt}</span>
       </div>
+      ${l.statut==='correction_demandee'&&l.commentaire?`<div style="padding:10px 12px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rb);font-size:12px;color:var(--er);margin-bottom:12px"><b>Motif de la correction :</b> ${esc(l.commentaire)}</div>`:''}
       <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
         <button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:700;cursor:pointer">↗ Ouvrir</button>
         <button onclick="copierLien('${encodeURIComponent(l.url)}')" style="padding:7px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer">⎘ Copier</button>
         ${isProdAdmin&&l.statut==='a_verifier'?`<button onclick="validerLienMedia('${l.id}');closeModal()" style="padding:7px 14px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;cursor:pointer">✓ Valider</button>`:''}
-        ${isProdAdmin?`<button onclick="modalRemplacerLien('${l.id}')" style="padding:7px 14px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);color:var(--wa);font-size:12px;font-weight:600;cursor:pointer">↺ Remplacer</button>`:''}
+        ${isProdAdmin&&l.statut==='a_verifier'?`<button onclick="closeModal();modalDemanderCorrection('${l.id}')" style="padding:7px 14px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);font-size:12px;font-weight:600;cursor:pointer">🔁 Demander correction</button>`:''}
+        ${isProdAdmin||(isOwner&&l.statut==='correction_demandee')?`<button onclick="closeModal();modalRemplacerLien('${l.id}')" style="padding:7px 14px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);color:var(--wa);font-size:12px;font-weight:600;cursor:pointer">↺ Remplacer</button>`:''}
         ${isProdAdmin&&l.statut==='valide'?`<button onclick="closeModal();modalTagMediaBank('${l.id}')" style="padding:7px 14px;background:${l.is_media_bank?'rgba(245,165,36,.15)':'rgba(124,77,255,.1)'};border:1px solid ${l.is_media_bank?'rgba(245,165,36,.4)':'rgba(124,77,255,.25)'};border-radius:var(--rp);color:${l.is_media_bank?'var(--wa)':'#7C4DFF'};font-size:12px;font-weight:700;cursor:pointer">★ ${l.is_media_bank?'Media Bank':'Ajouter à la Media Bank'}</button>`:''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
@@ -9039,14 +9144,15 @@ async function loadPhotoMedias(){
   try{
     const [pres,liens]=await Promise.all([
       sbFetch('prestations_equipe_display?select=prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+S.uid+'&order=created_at.desc&limit=30').catch(()=>[]),
-      sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,transfert_confirme,prestation_id&ajouteur_id=eq.'+S.uid+'&order=created_at.desc&limit=100').catch(()=>[])
+      sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,commentaire,transfert_confirme,prestation_id&ajouteur_id=eq.'+S.uid+'&order=created_at.desc&limit=100').catch(()=>[])
     ]);
     const mesPres=(Array.isArray(pres)?pres:[]).map(e=>e.prestations).filter(Boolean);
     const mesLiens=Array.isArray(liens)?liens:[];
     const att=mesPres.filter(p=>['production_terminée','médias_à_transférer'].includes(p.statut)&&!mesLiens.find(l=>l.prestation_id===p.id&&l.transfert_confirme)).length;
     const verif=mesLiens.filter(l=>l.statut==='a_verifier').length;
     const ok=mesLiens.filter(l=>l.statut==='valide').length;
-    s('med-att',att); s('med-verif',verif); s('med-done',ok);
+    const corr=mesLiens.filter(l=>l.statut==='correction_demandee').length;
+    s('med-att',att); s('med-verif',verif); s('med-done',ok); s('med-corr',corr);
     if(!mesPres.length&&!mesLiens.length){
       el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📤</div><div style="font-size:13px">Aucun transfert en attente.</div></div>';
       return;
@@ -9071,14 +9177,19 @@ async function loadPhotoMedias(){
         ${pLiens.length?`<div style="display:flex;flex-direction:column;gap:5px">`+pLiens.map(l=>{
           const lclr=ML_STATUT_CLR[l.statut]||'var(--t3)';
           const llb=ML_STATUT[l.statut]||l.statut;
-          return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:6px">
+          const needsCorr=l.statut==='correction_demandee';
+          return`<div style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;background:${needsCorr?'rgba(240,68,94,.06)':'var(--s2)'};border:${needsCorr?'1px solid rgba(240,68,94,.2)':'none'};border-radius:6px">
+          <div style="display:flex;align-items:center;gap:8px">
             <span style="width:7px;height:7px;border-radius:50%;background:${lclr};flex-shrink:0"></span>
             <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.nom)}</div>
             <div style="font-size:10px;color:var(--t3)">${ML_TYPE[l.type_media]||'—'} · <span style="color:${lclr}">${llb}</span></div></div>
             <div style="display:flex;gap:4px;flex-shrink:0">
               <button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" aria-label="Ouvrir le lien" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button>
               <button onclick="copierLien('${encodeURIComponent(l.url)}')" aria-label="Copier le lien" style="padding:4px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:10px;cursor:pointer">⎘</button>
+              ${needsCorr?`<button onclick="modalRemplacerLien('${l.id}')" aria-label="Corriger ce lien" style="padding:4px 8px;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);font-size:10px;font-weight:700;cursor:pointer">↺ Corriger</button>`:''}
             </div>
+          </div>
+          ${needsCorr&&l.commentaire?`<div style="font-size:11px;color:var(--er);padding-left:15px">${esc(l.commentaire)}</div>`:''}
           </div>`;
         }).join('')+'</div>':`<div style="font-size:12px;color:var(--t3);font-style:italic">Aucun lien transmis pour cette prestation.</div>`}
       </div>`;
@@ -10289,6 +10400,10 @@ async function loadPhotoDash(){
     // ── Section "À faire" ──
     const now2=new Date();now2.setHours(0,0,0,0);
     const atfaire=[];
+    // Corrections demandées sur des médias déjà transmis (prioritaire — un client attend)
+    const corrLiens=await sbFetch('media_liens?select=id&ajouteur_id=eq.'+uid+'&statut=eq.correction_demandee').catch(()=>[]);
+    const nbCorr=Array.isArray(corrLiens)?corrLiens.length:0;
+    if(nbCorr)atfaire.push({ic:'🔁',label:nbCorr+' correction'+(nbCorr>1?'s':'')+' demandée'+(nbCorr>1?'s':''),sub:'Un lien transmis doit être corrigé',clr:'var(--er)',bg:'rgba(240,68,94,.08)',br:'rgba(240,68,94,.25)',action:'switchView("medias")',urgent:true});
     // Invitations en attente
     if(invitations.length)atfaire.push({ic:'📬',label:invitations.length+' invitation'+(invitations.length>1?'s':'')+' en attente',sub:'Répondre avant la date limite',clr:'var(--wa)',bg:'rgba(245,165,36,.08)',br:'rgba(245,165,36,.2)',action:'switchView("pre")',urgent:true});
     // Prestations prochaines sans confirmation (dans 0-3 jours)
@@ -10497,11 +10612,11 @@ async function loadPhotoMesPrestations(){
 
 function filterPhotoPre(statut){
   _photoPreFilter=statut;
-  ['all','inv','acc','done'].forEach(k=>{
+  ['all','prop','av','jj','liv','done'].forEach(k=>{
     const b=document.getElementById('ppt-'+k);
     if(b){b.className='btn bg2 bs';}
   });
-  const idMap={'':'all','invitation_envoyée':'inv','acceptée':'acc','done':'done'};
+  const idMap={'':'all','invitation_envoyée':'prop','upcoming':'av','today':'jj','delivery':'liv','done':'done'};
   const active=document.getElementById('ppt-'+(idMap[statut]||'all'));
   if(active)active.className='btn bp bs';
   renderPhotoPre();
@@ -10510,8 +10625,12 @@ function filterPhotoPre(statut){
 function renderPhotoPre(){
   const el=document.getElementById('photo-pre-real');
   if(!el)return;
+  const today=ymdLocal();
   let rows=_photoPreData;
   if(_photoPreFilter==='done') rows=rows.filter(d=>['livrée','clôturée','payée'].includes(d.prestations?.statut));
+  else if(_photoPreFilter==='delivery') rows=rows.filter(d=>d.prestations&&!['livrée','clôturée','payée'].includes(d.prestations.statut)&&d.prestations.date_prestation&&d.prestations.date_prestation<today);
+  else if(_photoPreFilter==='today') rows=rows.filter(d=>d.prestations&&d.prestations.date_prestation===today&&!['livrée','clôturée','payée'].includes(d.prestations.statut));
+  else if(_photoPreFilter==='upcoming') rows=rows.filter(d=>d.statut==='acceptée'&&d.prestations&&d.prestations.date_prestation&&d.prestations.date_prestation>today);
   else if(_photoPreFilter) rows=rows.filter(d=>d.statut===_photoPreFilter);
   if(!rows.length){
     el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation dans cette catégorie.</div>';
@@ -10547,7 +10666,7 @@ function renderPhotoPre(){
           ${row.statut==='invitation_envoyée'?`<div style="display:flex;flex-direction:column;gap:5px" onclick="event.stopPropagation()">
             <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px">✓ Accepter</button>
             <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
-          </div>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
+          </div>`:(p.date_prestation===today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();switchView('jourj')" style="padding:10px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">🔴 Jour J</button>`:(p.date_prestation<today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();switchView('medias')" style="padding:10px 14px;font-size:12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">📦 Livrer</button>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
         </div>
       </div>
     </div>`;
@@ -19960,21 +20079,59 @@ async function sauvegarderStats(){
 }
 
 // ── Dashboard commercial ──────────────────────────────────────────────────────
+// Statuts actifs du pipeline (ni gagné ni perdu) — utilisé par le dashboard, Prospects et
+// l'Agenda pour rester cohérents entre eux sur "qu'est-ce qu'une opportunité active ?".
+const COM_STATUTS_ACTIFS=['prospect','qualifié','devis_envoyé','négociation'];
+
 async function loadComDash(){
   try{
     const now=new Date();
+    const today=ymdLocal();
+    const in7=ymdLocal(new Date(now.getTime()+7*86400000));
     const m0=ymdLocal(new Date(now.getFullYear(),now.getMonth(),1));
     const m1=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,0));
-    const [clients,preMois]=await Promise.all([
-      sbFetch('clients?select=id,nom,statut,type_client,sport,ville,created_at,score_priorite&order=created_at.desc&limit=100'),
+    const uid=localStorage.getItem('sv_uid');
+    const [clients,preMois,devisEnAttente,commADue]=await Promise.all([
+      sbFetch('clients?select=id,nom,statut,type_client,sport,ville,created_at,updated_at,score_priorite,prochaine_action,date_prochaine_action&order=created_at.desc&limit=300'),
       sbFetch(`prestations?select=id&date_prestation=gte.${m0}&date_prestation=lte.${m1}&statut=not.in.(annulée,refusée)`),
+      sbFetch('devis?select=id,numero,statut,client_id,total_ttc,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&order=date_expiration.asc&limit=200'),
+      sbFetch('commissions?select=montant_commission,statut&commercial_id=eq.'+uid+'&statut=in.(calculee,validee)').catch(()=>[]),
     ]);
     const list=clients||[];
     _clientsCache=list;
-    const s1=document.getElementById('com-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
-    const s2=document.getElementById('com-kpi-q');if(s2)s2.textContent=list.filter(c=>c.statut==='qualifié').length;
-    const s3=document.getElementById('com-kpi-cl');if(s3)s3.textContent=list.filter(c=>['partenaire','client'].includes(c.statut)).length;
-    const s4=document.getElementById('com-kpi-pre');if(s4)s4.textContent=(preMois||[]).length;
+    const devis=devisEnAttente||[];
+    _devisCache=devis;
+
+    // Priorités (spec §3) : relance en retard/aujourd'hui, opportunité chaude sans prochaine
+    // action, contrat proche renouvellement (approximé : aucune colonne de renouvellement
+    // n'existe sur `clients` aujourd'hui — non affiché plutôt qu'une date inventée).
+    const enRetardOuJour=list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&c.date_prochaine_action&&c.date_prochaine_action<=today);
+    const chaudesSansAction=list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&(c.score_priorite||0)>=70&&!c.date_prochaine_action);
+    const echeance7j=list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&c.date_prochaine_action&&c.date_prochaine_action>today&&c.date_prochaine_action<=in7).length
+      +devis.filter(d=>d.date_expiration&&d.date_expiration>today&&d.date_expiration<=in7).length;
+    const gagnesMois=list.filter(c=>['client','partenaire'].includes(c.statut)&&c.updated_at&&c.updated_at>=m0);
+    const commADueTotal=(commADue||[]).reduce((s,c)=>s+(Number(c.montant_commission)||0),0);
+
+    const setKpi=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+    setKpi('com-kpi-relance',enRetardOuJour.length);
+    setKpi('com-kpi-ech7',echeance7j);
+    setKpi('com-kpi-off',devis.length);
+    setKpi('com-kpi-chaud',list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&(c.score_priorite||0)>=70).length);
+    setKpi('com-kpi-gagne',gagnesMois.length);
+    setKpi('com-kpi-commadue',commADueTotal.toLocaleString('fr-FR')+' €');
+
+    const prio=document.getElementById('com-dash-prio');
+    if(prio){
+      const items=[
+        ...enRetardOuJour.map(c=>({c,txt:c.date_prochaine_action<today?'Relance en retard':'Relance aujourd\'hui',clr:'var(--er)'})),
+        ...chaudesSansAction.map(c=>({c,txt:'Opportunité chaude sans prochaine action',clr:'var(--wa)'})),
+      ].slice(0,8);
+      prio.innerHTML=items.length?'<div class="cd-b">'+items.map(({c,txt,clr})=>{const i=list.indexOf(c);return`
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
+          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div><div style="font-size:11px;color:${clr}">${txt}</div></div>
+        </div>`;}).join('')+'</div>':
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Rien d\'urgent — beau travail.</div>';
+    }
     const ep=document.getElementById('com-dash-pr');
     if(ep){
       const prox=list.filter(c=>['prospect','qualifié','devis_envoyé','négociation'].includes(c.statut)).sort((a,b)=>(b.score_priorite||0)-(a.score_priorite||0)).slice(0,5);
@@ -19987,24 +20144,12 @@ async function loadComDash(){
         </div>`;}).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun prospect. Ajoutez des contacts via le Pipeline.</div>';
     }
-    const ec=document.getElementById('com-dash-cl');
-    if(ec){
-      const clients_signes=list.filter(c=>['partenaire','client'].includes(c.statut)).slice(0,5);
-      ec.innerHTML=clients_signes.length?'<div class="cd-b">'+clients_signes.map(c=>{const i=list.indexOf(c);return`
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
-          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div><div style="font-size:11px;color:var(--t3)">${esc([c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—')}</div></div>
-          <span class="bd ${c.statut==='partenaire'?'bn':'ba'}" style="font-size:10px"><span class="bd-d"></span>${c.statut==='partenaire'?'Partenaire':'Client'}</span>
-        </div>`;}).join('')+'</div>':
-        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client signé pour l\'instant.</div>';
-    }
     const ed=document.getElementById('com-dash-dev');
     if(ed){
       try{
-        const devs=await sbFetch('devis?select=id,numero,statut,client_id,total_ttc,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&order=date_expiration.asc&limit=5');
-        _devisCache=devs||[];
+        const devs=devis.slice(0,5);
         const s_lbl={envoyé:'Envoyé',en_attente:'En attente'};
         const s_cls={envoyé:'bw',en_attente:'bl'};
-        const today=ymdLocal();
         ed.innerHTML=devs&&devs.length?'<div class="cd-b">'+devs.map((d,i)=>{
           const exp=d.date_expiration;
           const expFmt=exp?new Date(exp).toLocaleDateString('fr-FR'):'—';
@@ -20019,6 +20164,130 @@ async function loadComDash(){
       }catch(e){ed.innerHTML='';}
     }
   }catch(e){console.error('loadComDash',e);}
+}
+
+// ── Prospects (liste filtrable) ─────────────────────────────────────────────
+let _prospectsCache=[];
+async function loadComProspects(){
+  const el=document.getElementById('prospects-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,nom_contact,prenom_contact,prochaine_action,date_prochaine_action,score_priorite,created_by,created_at&order=score_priorite.desc.nullslast,created_at.desc&limit=300');
+    _prospectsCache=(data||[]).filter(c=>COM_STATUTS_ACTIFS.includes(c.statut));
+    _clientsCache=data||[];
+    const sportSel=document.getElementById('pr-sport');
+    if(sportSel&&sportSel.options.length<=1){
+      const sports=[...new Set(_prospectsCache.map(c=>c.sport).filter(Boolean))].sort();
+      sportSel.innerHTML='<option value="">Tous sports</option>'+sports.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    }
+    renderComProspects();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function _prospectTemp(score){
+  const s=score||0;
+  if(s>=70)return'chaud';
+  if(s>=30)return'moyen';
+  return'long';
+}
+function renderComProspects(){
+  const el=document.getElementById('prospects-real');
+  if(!el)return;
+  const q=((document.getElementById('pr-search')||{}).value||'').toLowerCase();
+  const sport=(document.getElementById('pr-sport')||{}).value||'';
+  const statut=(document.getElementById('pr-statut')||{}).value||'';
+  const temp=(document.getElementById('pr-temp')||{}).value||'';
+  const today=ymdLocal();
+  const filtered=_prospectsCache.filter(c=>{
+    if(q&&!c.nom.toLowerCase().includes(q)&&!(c.ville||'').toLowerCase().includes(q))return false;
+    if(sport&&c.sport!==sport)return false;
+    if(statut&&c.statut!==statut)return false;
+    if(temp&&_prospectTemp(c.score_priorite)!==temp)return false;
+    return true;
+  });
+  if(!filtered.length){el.innerHTML='<div style="padding:30px;color:var(--t3);text-align:center;font-size:13px">Aucun prospect ne correspond à ces filtres.</div>';return;}
+  const statLb={prospect:'Prospect',qualifié:'Qualifié',devis_envoyé:'Devis envoyé',négociation:'Négociation'};
+  const statCls={prospect:'bw',qualifié:'bb',devis_envoyé:'bl',négociation:'bw'};
+  el.innerHTML='<div class="cd"><div class="cd-b">'+filtered.map(c=>{
+    const i=_clientsCache.indexOf(c);
+    const late=c.date_prochaine_action&&c.date_prochaine_action<today;
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(c.nom)}${c.score_priorite?` <span style="font-size:9px;font-weight:700;color:#F5A524">${c.score_priorite}/100</span>`:''}</div>
+        <div style="font-size:11px;color:var(--t3)">${esc([c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—')}</div>
+        ${c.prochaine_action?`<div style="font-size:10.5px;margin-top:2px;color:${late?'var(--er)':'var(--acc)'}">⚡ ${esc(c.prochaine_action)}${c.date_prochaine_action?' · '+new Date(c.date_prochaine_action).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}</div>`:''}
+      </div>
+      <span class="bd ${statCls[c.statut]||'bw'}" style="font-size:10px;flex-shrink:0"><span class="bd-d"></span>${statLb[c.statut]||c.statut}</span>
+    </div>`;}).join('')+'</div></div>';
+}
+
+// ── Agenda commercial ────────────────────────────────────────────────────────
+// N'existait pas avant le 28/08 (spec Refonte Interface Commercial §9). Agrège deux sources
+// déjà réelles : les relances (clients.prochaine_action/date_prochaine_action) et les
+// échéances de devis (devis.date_expiration). Les vrais RDV (table `rendez_vous`) ne sont
+// PAS inclus ici : cette table sert aujourd'hui aux demandes de RDV initiées par un client
+// via le portail, réservée côté RLS à admin/sec — les inclure nécessiterait une vraie
+// décision produit (élargir l'accès, ou créer un objet RDV commercial distinct), pas fait
+// silencieusement ici.
+async function loadComAgenda(){
+  const el=document.getElementById('agenda-real');
+  if(!el)return;
+  try{
+    const [clients,devisData]=await Promise.all([
+      sbFetch('clients?select=id,nom,statut,prochaine_action,date_prochaine_action&date_prochaine_action=not.is.null&order=date_prochaine_action.asc&limit=200'),
+      sbFetch('devis?select=id,numero,statut,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&date_expiration=not.is.null&order=date_expiration.asc&limit=200'),
+    ]);
+    _clientsCache=clients||[];
+    const today=ymdLocal();
+    const items=[
+      ...(clients||[]).filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)).map(c=>({date:c.date_prochaine_action,type:'Relance',txt:c.prochaine_action||c.nom,sub:c.nom,onclick:`modalModifierClient(${(clients||[]).indexOf(c)})`})),
+      ...(devisData||[]).map(d=>({date:d.date_expiration,type:'Échéance devis',txt:`${d.numero||'Devis'} — ${d.clients?.nom||'—'}`,sub:'Expire',onclick:`switchView('devis')`})),
+    ].filter(it=>it.date).sort((a,b)=>a.date<b.date?-1:1);
+    if(!items.length){el.innerHTML='<div style="padding:30px;color:var(--t3);text-align:center;font-size:13px">Rien de planifié pour le moment.</div>';return;}
+    const groups={};
+    items.forEach(it=>{const k=it.date<today?'retard':(it.date===today?'aujourd\'hui':(it.date<=ymdLocal(new Date(Date.now()+7*86400000))?'7jours':'plustard'));(groups[k]=groups[k]||[]).push(it);});
+    const secLb={retard:'En retard',"aujourd'hui":"Aujourd'hui",'7jours':'Cette semaine','plustard':'Plus tard'};
+    const secClr={retard:'var(--er)',"aujourd'hui":'var(--wa)','7jours':'var(--acc)','plustard':'var(--t3)'};
+    el.innerHTML=['retard',"aujourd'hui",'7jours','plustard'].filter(k=>groups[k]&&groups[k].length).map(k=>`
+      <div class="cd" style="margin-bottom:13px">
+        <div class="cd-h"><div class="cd-t" style="color:${secClr[k]}">${secLb[k]} (${groups[k].length})</div></div>
+        <div class="cd-b">${groups[k].map(it=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="${it.onclick}">
+            <span class="bd bw" style="font-size:9px;flex-shrink:0">${it.type}</span>
+            <div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--t1)">${esc(it.txt)}</div></div>
+            <div style="font-size:11px;color:var(--t3)">${new Date(it.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div>
+          </div>`).join('')}</div>
+      </div>`).join('');
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Mes clients signés (vue commerciale légère) ─────────────────────────────
+async function loadComMesClients(){
+  const el=document.getElementById('mesclients-real');
+  if(!el)return;
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    const [clients,commData]=await Promise.all([
+      sbFetch('clients?select=id,nom,type_client,statut,ville,nom_contact,prenom_contact,telephone,email,created_at&statut=in.(client,partenaire)&order=updated_at.desc&limit=200'),
+      sbFetch('commissions?select=montant_commission,statut,prestations(client_id)&commercial_id=eq.'+uid).catch(()=>[]),
+    ]);
+    _clientsCache=clients||[];
+    const commByClient={};
+    (commData||[]).forEach(c=>{const cid=c.prestations?.client_id;if(!cid)return;commByClient[cid]=(commByClient[cid]||0)+(Number(c.montant_commission)||0);});
+    const list=clients||[];
+    if(!list.length){el.innerHTML='<div style="padding:30px;color:var(--t3);text-align:center;font-size:13px">Aucun client signé pour le moment.</div>';return;}
+    el.innerHTML='<div class="cd"><div class="cd-b">'+list.map(c=>{
+      const i=_clientsCache.indexOf(c);
+      const contact=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||c.email||c.telephone||'—';
+      const comm=commByClient[c.id];
+      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(c.nom)}</div>
+          <div style="font-size:11px;color:var(--t3)">${esc([c.type_client,c.ville].filter(Boolean).join(' · ')||'—')} · ${esc(contact)}</div>
+        </div>
+        <span class="bd ${c.statut==='partenaire'?'bn':'ba'}" style="font-size:10px;flex-shrink:0"><span class="bd-d"></span>${c.statut==='partenaire'?'Partenaire':'Client'}</span>
+        ${comm?`<div style="font-size:12px;color:var(--ok);font-weight:600;flex-shrink:0">${comm.toLocaleString('fr-FR')} €</div>`:''}
+      </div>`;}).join('')+'</div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── Dashboard comptable ───────────────────────────────────────────────────────
@@ -25066,7 +25335,7 @@ async function updateNavBadges(role){
       const prospects=await sbFetch('clients?select=id&statut=in.(prospect,qualifié)');
       setBadge('pipeline',(prospects||[]).length,'nb-o');
     }
-    if(['admin','sec','com'].includes(role)){
+    if(['admin','sec'].includes(role)){
       // Demandes d'ouverture Club+ à traiter (7 types de structure) — migration-connect-v78-
       // signup-unifie-clubplus.sql. RLS déjà limitée au staff admin/sec/com (même garde que la
       // policy), ce fetch échoue silencieusement (catch) pour tout autre rôle.
@@ -25315,8 +25584,11 @@ const BNAV_ITEMS={
   admin:['dash','pre','planning','fin'],
   sec:  ['dash','demandes','pre','relances'],
   prod: ['dash','jourj','pre','planning'],
-  photo:['dash','jourj','pre','medias'],
-  com:  ['dash','crm','pipeline','devis'],
+  // photo/com (28/08) : alignées sur les NAV.photo/NAV.com refondues — 'jourj'/'medias'
+  // (photo) et 'crm' (com, jamais une vue réelle : VIEWS ne définit pas 'com.crm') sont
+  // sortis du menu principal, cf. commentaires NAV ci-dessus.
+  photo:['dash','pre','planning','revenus'],
+  com:  ['dash','prospects','pipeline','agenda'],
   compta:['dash','factures','impayes','rapprochement'],
   cm:   ['dash','cal','contenus','publications'],
 };
@@ -25986,6 +26258,7 @@ const VIEW_CTA={
   'cm.contenus':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'com.dash':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
   'com.pipeline':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
+  'com.prospects':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
   'com.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'cm.publications':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'admin.rapport':{t:'Exporter CSV',fn:'exportRapportCSV'},
@@ -28872,9 +29145,9 @@ const MOB_MORE_ITEMS={
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'agendasec',lb:'Agenda',ic:'📅',sub:'RDV & rappels'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'docrh',lb:'Documents',ic:'📁',sub:'Pièces'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
-  photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
+  photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
-  com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
+  com:[{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'mesclients',lb:'Mes clients signés',ic:'🤝',sub:'Portefeuille gagné'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
 };
 function openMobMore(){
   const el=document.getElementById('mob-more-overlay');
