@@ -11575,6 +11575,13 @@ async function modalEquipePrestation(prestationId,ref){
     <div id="eq-liste" style="min-height:60px;margin-bottom:16px"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
     <div style="background:var(--s2);border-radius:var(--rb);padding:14px;display:flex;flex-direction:column;gap:10px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">Ajouter un collaborateur</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <select id="eq-f-zone" class="l-inp" style="height:32px;font-size:11.5px" onchange="filtrerOperateursEquipe()"><option value="">Toutes zones</option></select>
+        <select id="eq-f-niveau" class="l-inp" style="height:32px;font-size:11.5px" onchange="filtrerOperateursEquipe()">
+          <option value="">Niveau min.</option><option value="1">★+</option><option value="2">★★+</option><option value="3">★★★+</option><option value="4">★★★★+</option>
+        </select>
+        <select id="eq-f-materiel" class="l-inp" style="height:32px;font-size:11.5px" onchange="filtrerOperateursEquipe()"><option value="">Matériel indifférent</option><option value="oui">Matériel perso</option><option value="non">Sans matériel</option></select>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><select id="eq-col" class="l-inp" style="height:36px" onchange="majSuggestionRem()"><option value="">— Choisir —</option></select>
           <div id="eq-rem-suggest" style="font-size:10.5px;color:var(--t3);margin-top:4px"></div></div>
@@ -11615,29 +11622,57 @@ async function modalEquipePrestation(prestationId,ref){
   // affecter quelqu'un exigeait de deviner ou vérifier ailleurs qui était
   // déjà chargé. Tri photo/cm (rôles terrain) en tête, moins chargé d'abord.
   Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role,niveau_operateur&order=nom.asc'),
+    sbFetch('profiles?select=id,prenom,nom,role,niveau_operateur,zone,materiel_personnel&order=nom.asc'),
     sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation,statut)&statut=eq.acceptée&prestations.date_prestation=gte.'+ymdLocal()+'&prestations.statut=not.in.(annulée,refusée)').catch(()=>[]),
   ]).then(([data,chargeRaw])=>{
-    const sel=document.getElementById('eq-col');
-    if(!sel||!data)return;
-    const charge={};
-    (Array.isArray(chargeRaw)?chargeRaw:[]).forEach(c=>{charge[c.collaborateur_id]=(charge[c.collaborateur_id]||0)+1;});
-    const rolePoids={photo:0,cm:0};
-    const sorted=[...data].sort((a,b)=>{
-      const pa=rolePoids[a.role]??1,pb=rolePoids[b.role]??1;
-      if(pa!==pb)return pa-pb;
-      return (charge[a.id]||0)-(charge[b.id]||0);
-    });
-    sorted.forEach(p=>{
-      _eqNiveauMap[p.id]=p.niveau_operateur||null;
-      const o=document.createElement('option');o.value=p.id;
-      const n=charge[p.id]||0;
-      o.textContent=([p.prenom,p.nom].filter(Boolean).join(' ')||p.role)+' — '+(p.role||'')+' · '+n+' mission'+(n>1?'s':'')+' à venir';
-      sel.appendChild(o);
-    });
+    if(!data)return;
+    _eqCharge={};
+    (Array.isArray(chargeRaw)?chargeRaw:[]).forEach(c=>{_eqCharge[c.collaborateur_id]=(_eqCharge[c.collaborateur_id]||0)+1;});
+    _eqOperateursCache=data;
+    data.forEach(p=>{_eqNiveauMap[p.id]=p.niveau_operateur||null;});
+    const zoneSel=document.getElementById('eq-f-zone');
+    if(zoneSel){
+      const zones=[...new Set(data.map(p=>p.zone).filter(Boolean))].sort();
+      zoneSel.innerHTML='<option value="">Toutes zones</option>'+zones.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join('');
+    }
+    renderOperateursSelect(data);
   });
 }
 let _eqNiveauMap={};
+let _eqOperateursCache=[];
+let _eqCharge={};
+// Filtres de pertinence (spec §11/§19 "Affectation opérateur"/"Recherche opérateur") :
+// zone, niveau minimum, matériel personnel. Sport/formation obligatoire non filtrables
+// ici — aucune colonne dédiée sur profiles pour ces deux critères (recherché, absente),
+// pas simulé avec une donnée qui n'existe pas.
+function renderOperateursSelect(list){
+  const sel=document.getElementById('eq-col');
+  if(!sel)return;
+  const cur=sel.value;
+  const rolePoids={photo:0,cm:0};
+  const sorted=[...list].sort((a,b)=>{
+    const pa=rolePoids[a.role]??1,pb=rolePoids[b.role]??1;
+    if(pa!==pb)return pa-pb;
+    return (_eqCharge[a.id]||0)-(_eqCharge[b.id]||0);
+  });
+  sel.innerHTML='<option value="">— Choisir —</option>'+sorted.map(p=>{
+    const n=_eqCharge[p.id]||0;
+    const zoneTag=p.zone?' · '+p.zone:'';
+    const lb=([p.prenom,p.nom].filter(Boolean).join(' ')||p.role)+' — '+(p.role||'')+zoneTag+' · '+n+' mission'+(n>1?'s':'')+' à venir';
+    return `<option value="${p.id}"${p.id===cur?' selected':''}>${esc(lb)}</option>`;
+  }).join('');
+}
+function filtrerOperateursEquipe(){
+  const zone=document.getElementById('eq-f-zone')?.value||'';
+  const niveauMin=Number(document.getElementById('eq-f-niveau')?.value||0);
+  const materiel=document.getElementById('eq-f-materiel')?.value||'';
+  const list=_eqOperateursCache.filter(p=>
+    (!zone||p.zone===zone)&&
+    (!niveauMin||(p.niveau_operateur||0)>=niveauMin)&&
+    (!materiel||(materiel==='oui'?!!p.materiel_personnel:!p.materiel_personnel))
+  );
+  renderOperateursSelect(list);
+}
 async function majFormatMission(prestationId){
   const format=document.getElementById('eq-format')?.value;
   if(!format)return;
