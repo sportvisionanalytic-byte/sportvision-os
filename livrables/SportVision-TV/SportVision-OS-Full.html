@@ -383,6 +383,38 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   .kb{-webkit-overflow-scrolling:touch}
 }
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* ── POLISH PREMIUM (29/08/2026, passe UI/UX globale) ──────────────────────
+   Composants partagés uniquement — même logique métier, même markup, juste
+   l'état visuel/transition. Modifier ces classes propage l'effet à tout
+   l'OS sans toucher aux ~200 vues individuelles. Easing/durées alignées sur
+   les patterns mobiles déjà en place (#mob-filter-panel, #mob-action-sheet :
+   cubic-bezier(.4,0,.2,1), ~250-280ms). */
+#sv-modal{opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+#sv-modal.on{opacity:1;visibility:visible;pointer-events:auto}
+#sv-modal>div{transform:scale(.96) translateY(10px);transition:transform .22s cubic-bezier(.4,0,.2,1)}
+#sv-modal.on>div{transform:scale(1) translateY(0)}
+.kpi,.cd,.fs{transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}
+.kpi:hover,.fs:hover{border-color:var(--b2);transform:translateY(-2px)}
+.cd:hover{border-color:var(--b2)}
+.btn{position:relative;transition:opacity .12s,transform .1s,box-shadow .18s}
+.bp:hover{box-shadow:0 4px 20px rgba(14,165,255,.28)}
+.btn:disabled,.btn.loading{opacity:.55;cursor:not-allowed;pointer-events:none}
+.btn.loading{color:transparent!important}
+.btn.loading::after{content:'';position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:btnspin .6s linear infinite}
+.bg2.loading::after{border-color:rgba(255,255,255,.15);border-top-color:var(--t1)}
+@keyframes btnspin{to{transform:rotate(360deg)}}
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
+.toast-i{display:flex;align-items:center;gap:9px;padding:12px 16px;border-radius:11px;background:var(--s1);border:1px solid var(--b2);color:var(--t1);font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.45);max-width:340px;opacity:0;transform:translateX(16px) scale(.97);transition:opacity .22s cubic-bezier(.4,0,.2,1),transform .22s cubic-bezier(.4,0,.2,1)}
+.toast-i.on{opacity:1;transform:translateX(0) scale(1)}
+.toast-i.out{opacity:0;transform:translateX(16px) scale(.97)}
+.toast-ic{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:#fff}
+.toast-ok .toast-ic{background:var(--ok)}
+.toast-warn .toast-ic{background:var(--wa)}
+.toast-error .toast-ic{background:var(--er)}
+.skel{position:relative;overflow:hidden;background:var(--s1);border-radius:var(--rb)}
+.skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.045),transparent);animation:skelshim 1.4s ease-in-out infinite}
+@keyframes skelshim{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 /* iOS safe area pour le contenu de l'app shell */
 @supports(padding-bottom:env(safe-area-inset-bottom)){
@@ -573,7 +605,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 </div>
 
 <!-- MODAL -->
-<div id="sv-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center">
+<div id="sv-modal" style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center;pointer-events:none">
   <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:28px;width:min(540px,calc(100vw - 24px));max-height:90dvh;overflow-y:auto;position:relative">
     <button onclick="closeModal()" aria-label="Fermer" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1">✕</button>
     <div id="sv-modal-ct"></div>
@@ -874,29 +906,30 @@ const NAV={
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Mon profil',ic:'set'},
   ],
+  // Refonte CM (spec "Refonte Interface Community Management", 29/08/2026) : menu
+  // ramené aux 5 entrées principales de la spec ("le menu doit rester court, la
+  // puissance vit dans les fiches Structure"). briefs/mediabank/videoscm/publications/
+  // rapports/msgclients/annuaire/centre ne sont plus des pages permanentes — ce sont de
+  // vraies vues, atteignables depuis le contexte (Structure, liens dans Messagerie/
+  // Formation) — même patron que la refonte Photo du 28/08. cal+planningmensuel
+  // fusionnés dans "Planning" (2 onglets Production/Editorial, cf. spec §14 : "Le menu
+  // global peut s'appeler Planning avec deux onglets"). Pour un Responsable CM
+  // (cm_niveau_autonomie='responsable'), renderSidebarNav() insère "Pilotage CM" et
+  // "Performances" au rendu (cf. juste après cette définition) — pas dans ce tableau
+  // statique, puisque le niveau d'autonomie n'est connu qu'après connexion.
   cm:[
-    {type:'sep',lb:'Éditorial'},
-    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
-    {id:'demandes',lb:'Demandes reçues',ic:'doc'},
-    {id:'briefs',lb:'Briefs production',ic:'pre'},
-    {id:'cal',lb:'Calendrier éditorial',ic:'cal'},
-    {id:'planningmensuel',lb:'Planning mensuel',ic:'cal'},
+    {type:'sep',lb:'Mes structures'},
+    {id:'dash',lb:'Accueil',ic:'dash'},
+    {id:'clients',lb:'Mes structures',ic:'cli'},
+    {id:'planning',lb:'Planning',ic:'cal'},
+    {id:'demandes',lb:'Demandes',ic:'doc'},
     {id:'contenus',lb:'Contenus',ic:'pre'},
-    {id:'mediabank',lb:'Media Bank',ic:'med'},
-    {id:'videoscm',lb:'Vidéos à valider',ic:'prod'},
-    {id:'publications',lb:'Publications',ic:'pub'},
-    {id:'analytics',lb:'Analytics',ic:'fin'},
-    {id:'charge',lb:'Ma charge',ic:'col'},
-    {id:'rapports',lb:'Rapports clients',ic:'doc'},
-    {type:'sep',lb:'Communication'},
-    {id:'clients',lb:'Mes clients',ic:'cli'},
-    {id:'msgclients',lb:'Messages clients',ic:'msg'},
-    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
-    {id:'msg',lb:'Messagerie',ic:'msg'},
+    {type:'sep',lb:'Suivi'},
+    {id:'revenus',lb:'Mes revenus',ic:'fin'},
     {type:'sep',lb:'Ressources'},
-    {id:'form',lb:'Centre de formation',ic:'form'},
-    {id:'centre',lb:'Centre SportVision',ic:'help'},
-    {id:'set',lb:'Paramètres',ic:'set'},
+    {id:'form',lb:'Formation',ic:'form'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
+    {id:'set',lb:'Mon profil',ic:'set'},
   ],
   compta:[
     {type:'sep',lb:'Pilotage'},
@@ -1264,41 +1297,18 @@ const VIEWS={
     </div>
     <div id="jourj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
-  'cm.cal':()=>`
-    <div class="sh">
-      <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn bg2 bs" onclick="calPrev()" aria-label="Période précédente">‹</button>
-        <div class="sh-t" id="cal-title">Calendrier</div>
-        <button class="btn bg2 bs" onclick="calNext()" aria-label="Période suivante">›</button>
-      </div>
-      <button class="btn bp bs" onclick="modalNouveauContenu()">+ Contenu</button>
+  // cm.cal/cm.planningmensuel fusionnés dans cm.planning (2 onglets Production/
+  // Editorial, spec Refonte CM §14) — gabarits conservés ici tels quels (juste extraits
+  // en fonctions _cmPlanningEditoTpl/_cmPlanningProdTpl) car setPlanningTab() les réutilise
+  // directement sans dupliquer le HTML. loadCmCal()/loadCmPlanningMensuel() ne sont pas
+  // touchées, seuls leurs points d'entrée (nav/dispatch) changent.
+  'cm.planning':()=>`
+    <div class="sh"><div class="sh-t">Planning</div></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="pt-production" class="btn bp bs" onclick="setPlanningTab('production')">Production</button>
+      <button id="pt-editorial" class="btn bg2 bs" onclick="setPlanningTab('editorial')">Éditorial</button>
     </div>
-    <div class="g3" style="margin-bottom:13px">
-      <div class="fs"><div class="fs-l">Prestations cette semaine</div><div class="fs-v" id="cal-kpi-pre" style="color:var(--ac)">—</div></div>
-      <div class="fs"><div class="fs-l">Contenus programmés</div><div class="fs-v" id="cal-kpi-prog">—</div></div>
-      <div class="fs"><div class="fs-l">Publiés ce mois</div><div class="fs-v" id="cal-kpi-pub" style="color:var(--ok)">—</div></div>
-    </div>
-    <div id="cal-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
-
-  'cm.planningmensuel':()=>`
-    <div class="sh">
-      <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn bg2 bs" onclick="pmPrev()" aria-label="Mois précédent">‹</button>
-        <div class="sh-t" id="pm-title">Planning mensuel</div>
-        <button class="btn bg2 bs" onclick="pmNext()" aria-label="Mois suivant">›</button>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn bg2 bs" onclick="modalNouvellePresence()">+ Présence</button>
-        <button class="btn bp bs" id="pm-send-btn" onclick="pmEnvoyerProduction()">Envoyer à la production</button>
-      </div>
-    </div>
-    <div id="pm-client-select" style="margin-bottom:13px"></div>
-    <div class="g3" style="margin-bottom:13px">
-      <div class="fs"><div class="fs-l">Présences ce mois</div><div class="fs-v" id="pm-kpi-total" style="color:var(--ac)">—</div></div>
-      <div class="fs"><div class="fs-l">Alertes (≤14j sans mission)</div><div class="fs-v" id="pm-kpi-alert" style="color:var(--wa)">—</div></div>
-      <div class="fs"><div class="fs-l">Missions créées</div><div class="fs-v" id="pm-kpi-missions" style="color:var(--ok)">—</div></div>
-    </div>
-    <div id="pm-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="planning-body"></div>`,
 
   'compta.factures':()=>`
     <div class="sh"><div class="sh-t">Factures</div>
@@ -1946,6 +1956,7 @@ const VIEWS={
     <div id="form-real"></div>`,
 
   'cm.form':()=>`
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('centre')">ℹ️ Centre SportVision</button></div>
     <div class="cd" style="margin-bottom:14px">
       <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
     </div>
@@ -2014,7 +2025,7 @@ const VIEWS={
   'admin.msg':()=>buildMsgShell(),
   'sec.msg':()=>buildMsgShell(),
   'photo.msg':()=>`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('annuaire')">👥 Annuaire équipe</button></div>`+buildMsgShell(),
-  'cm.msg':()=>buildMsgShell(),
+  'cm.msg':()=>`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('annuaire')">👥 Annuaire équipe</button></div>`+buildMsgShell(),
   'compta.msg':()=>buildMsgShell(),
   'com.msg':()=>buildMsgShell(),
 
@@ -2155,7 +2166,7 @@ const VIEWS={
     <div class="kpi-g">
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('contenus')"><div class="kpi-ey">Contenus en attente</div><div class="kpi-v" id="cm-kpi-cl">—</div><span class="kpi-d dnt">à valider/publier</span></div>
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('contenus')"><div class="kpi-ey">Contenus en retard</div><div class="kpi-v" id="cm-kpi-pre">—</div><span class="kpi-d dnt">date dépassée</span></div>
-      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('cal')"><div class="kpi-ey">Prestations à venir (14j)</div><div class="kpi-v" id="cm-kpi-soon">—</div><span class="kpi-d dnt">à préparer</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Prestations à venir (14j)</div><div class="kpi-v" id="cm-kpi-soon">—</div><span class="kpi-d dnt">à préparer</span></div>
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('msg')"><div class="kpi-ey">Messages non lus</div><div class="kpi-v" id="cm-kpi-pr">—</div><span class="kpi-d dnt">messagerie</span></div>
     </div>
     <div class="g2">
@@ -2199,6 +2210,13 @@ const VIEWS={
 
   'cm.contenus':()=>`
     <div class="sh"><div class="sh-t">Contenus</div><button class="btn bp bs" onclick="modalNouveauContenu()">+ Nouveau</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px">
+      <button class="btn bg2 bs" onclick="switchView('mediabank')">⭐ Media Bank</button>
+      <button class="btn bg2 bs" onclick="switchView('videoscm')">🎬 Vidéos à valider</button>
+      <button class="btn bg2 bs" onclick="switchView('publications')">📤 Publications</button>
+      <button class="btn bg2 bs" onclick="switchView('rapports')">📄 Rapports clients</button>
+      ${_myCmAutonomie!=='responsable'?`<button class="btn bg2 bs" onclick="switchView('analytics')">📊 Performances</button>`:''}
+    </div>
     <div class="g4" style="margin-bottom:13px">
       <div class="fs"><div class="fs-l">Brouillons</div><div class="fs-v" id="cnt-kpi-draft">—</div></div>
       <div class="fs"><div class="fs-l">Corrections</div><div class="fs-v" id="cnt-kpi-corr" style="color:var(--er)">—</div></div>
@@ -2213,12 +2231,24 @@ const VIEWS={
     <div id="cmvid-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.analytics':()=>`
-    <div class="sh"><div class="sh-t">Analytics</div><button class="btn bg2 bs" onclick="modalSaisirStats()">Saisir stats</button></div>
+    <div class="sh"><div class="sh-t">Performances</div><button class="btn bg2 bs" onclick="modalSaisirStats()">Saisir stats</button></div>
+    <div class="cd" style="margin-bottom:13px">
+      <div style="padding:14px 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:200px"><label class="fl">Structure</label><select id="an-client-select" class="fi" onchange="loadCmAnalytics()"><option value="">Toutes mes structures</option></select></div>
+        <div><label class="fl">Période</label><select id="an-periode-select" class="fi" onchange="loadCmAnalytics()">
+          <option value="7j">7 derniers jours</option>
+          <option value="30j" selected>30 derniers jours</option>
+          <option value="3m">3 derniers mois</option>
+          <option value="saison">Saison en cours</option>
+        </select></div>
+      </div>
+    </div>
     <div class="kpi-g">
       <div class="kpi" style="--kl:#E1306C"><div class="kpi-ey">Instagram · Reach</div><div class="kpi-v" id="an-ig-reach">—</div><span class="kpi-d dnt" id="an-ig-s" title="Saisi manuellement, pas synchronisé automatiquement">✍️ saisi manuellement</span></div>
       <div class="kpi" style="--kl:#1877F2"><div class="kpi-ey">Facebook · Portée</div><div class="kpi-v" id="an-fb-reach">—</div><span class="kpi-d dnt" id="an-fb-s" title="Saisi manuellement, pas synchronisé automatiquement">✍️ saisi manuellement</span></div>
       <div class="kpi" style="--kl:#FF0000"><div class="kpi-ey">YouTube · Vues</div><div class="kpi-v" id="an-yt-views">—</div><span class="kpi-d dnt" id="an-yt-s" title="Saisi manuellement, pas synchronisé automatiquement">✍️ saisi manuellement</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Contenus publiés</div><div class="kpi-v" id="an-pub">—</div><span class="kpi-d dnt" title="Calculé depuis les contenus réellement publiés dans l'OS">✓ données réelles (OS)</span></div>
+      <div class="kpi" style="--kl:#8B5CF6"><div class="kpi-ey">Interactions</div><div class="kpi-v" id="an-interactions">—</div><span class="kpi-d dnt" title="Somme des engagements saisis manuellement, tous contenus et plateformes confondus">✍️ saisi manuellement</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Contenus publiés</div><div class="kpi-v" id="an-pub">—</div><span class="kpi-d dnt" title="Calculé depuis les contenus réellement publiés dans l'OS, sur la période et la structure sélectionnées">✓ données réelles (OS)</span></div>
     </div>
     <div class="g2">
       <div class="cd"><div class="cd-h"><div class="cd-t">Contenus par plateforme</div></div>
@@ -2227,6 +2257,9 @@ const VIEWS={
       <div class="cd"><div class="cd-h"><div class="cd-t">Prestations couvertes ce mois</div></div>
         <div id="an-pre-mois"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
       </div>
+    </div>
+    <div class="cd" style="margin-top:16px"><div class="cd-h"><div class="cd-t">Top contenus</div></div>
+      <div id="an-top"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
     </div>`,
 
   'cm.charge':()=>`
@@ -2246,12 +2279,37 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Rapports clients</div></div>
     <div class="cd" style="margin-bottom:16px">
       <div style="padding:16px 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-        <div style="flex:1;min-width:200px"><label class="fl">Client</label><select id="rap-client" class="fi"><option value="">Chargement…</option></select></div>
+        <div style="flex:1;min-width:200px"><label class="fl">Client</label><select id="rap-client" class="fi" onchange="_loadRapportHistory()"><option value="">Chargement…</option></select></div>
         <div><label class="fl">Mois</label><input type="month" id="rap-mois" class="fi" value="${new Date().toISOString().slice(0,7)}"></div>
         <button class="btn bp" onclick="genererRapportClient()">Générer</button>
       </div>
     </div>
-    <div id="rap-result"></div>`,
+    <div id="rap-result"></div>
+    <div class="cd" style="margin-top:16px"><div class="cd-h"><div class="cd-t">Historique des rapports</div></div>
+      <div id="rap-history"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
+
+  // Mes revenus CM (spec Refonte CM §47-48) : vue personnelle en lecture seule, alimentée
+  // par Finance (employee_costs) — aucun calcul côté frontend, aucun accès aux revenus des
+  // autres CM ni au détail Finance globale.
+  'cm.revenus':()=>`
+    <div class="sh"><div class="sh-t">Mes revenus</div></div>
+    <div id="cmrev-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // Pilotage CM (Responsable uniquement, spec §43-46) : vue d'exception et de charge —
+  // CM/Juniors actifs, structures en retard, demandes Club+ non prises, tutorat.
+  'cm.pilotage':()=>`
+    <div class="sh"><div class="sh-t">Pilotage CM</div></div>
+    <div id="pilotage-kpis" class="g4" style="margin-bottom:16px"></div>
+    <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Équipe CM</div></div>
+      <div id="pilotage-equipe"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Structures</div></div>
+      <div id="pilotage-structures"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">File Club+ générale</div><span style="font-size:11px;color:var(--t3)">Demandes non affiliées à un CM Full Com</span></div>
+      <div id="pilotage-clubplus"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
 
   // ── COMPTABLE ───────────────────────────
   'compta.dash':()=>`
@@ -2983,7 +3041,7 @@ function _settingsView(){
 
 // ── FALLBACK VIEW ────────────────────────
 function fallbackView(role,view){
-  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',documents:'Centre documentaire',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Analytics',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs',avoirs:'Avoirs & remises',contrats:'Contrats',connectcomptes:'Connect',crmfullcom:'Full Com',crmclubplus:'Club+'};
+  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',documents:'Centre documentaire',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Performances',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs',avoirs:'Avoirs & remises',contrats:'Contrats',connectcomptes:'Connect',crmfullcom:'Full Com',crmclubplus:'Club+'};
   return`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:14px;color:var(--t3);text-align:center">
     <div style="font-size:44px;opacity:.2">📋</div>
     <div style="font-size:15px;font-weight:650;color:var(--t2)">${labels[view]||view}</div>
@@ -3847,13 +3905,20 @@ async function sbSignedUrl(bucket, path, expiresIn){
 }
 
 // ── MODAL ────────────────────────────────
+let _modalCloseTimer=null;
 function openModal(html){
+  if(_modalCloseTimer){clearTimeout(_modalCloseTimer);_modalCloseTimer=null;}
   document.getElementById('sv-modal-ct').innerHTML=html;
-  document.getElementById('sv-modal').style.display='flex';
+  const m=document.getElementById('sv-modal');
+  requestAnimationFrame(()=>m.classList.add('on'));
 }
 function closeModal(){
-  document.getElementById('sv-modal').style.display='none';
-  document.getElementById('sv-modal-ct').innerHTML='';
+  const m=document.getElementById('sv-modal');
+  m.classList.remove('on');
+  _modalCloseTimer=setTimeout(()=>{
+    document.getElementById('sv-modal-ct').innerHTML='';
+    _modalCloseTimer=null;
+  },220);
 }
 function copier(txt){
   if(!txt)return;
@@ -3874,12 +3939,25 @@ function confirmerAction(msg,onConfirm){
     </div>`);
 }
 function toast(msg,type='error'){
+  const typeCls=type==='ok'?'toast-ok':type==='warn'?'toast-warn':'toast-error';
+  const icon=type==='ok'?'✓':type==='warn'?'!':'✕';
+  let wrap=document.getElementById('toast-wrap');
+  if(!wrap){
+    wrap=document.createElement('div');
+    wrap.id='toast-wrap';
+    wrap.className='toast-wrap';
+    document.body.appendChild(wrap);
+  }
   const t=document.createElement('div');
-  const bg=type==='ok'?'rgba(46,204,138,.96)':type==='warn'?'rgba(245,165,36,.96)':'rgba(240,68,94,.96)';
-  t.style.cssText=`position:fixed;bottom:24px;right:24px;z-index:9999;padding:11px 18px;border-radius:8px;background:${bg};color:#fff;font-size:13px;font-weight:500;box-shadow:0 4px 24px rgba(0,0,0,.45);max-width:320px;transition:opacity .3s;pointer-events:none`;
-  t.textContent=msg;
-  document.body.appendChild(t);
-  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),320);},3200);
+  t.className='toast-i '+typeCls;
+  t.innerHTML=`<span class="toast-ic">${icon}</span><span>${esc(msg)}</span>`;
+  wrap.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('on'));
+  setTimeout(()=>{
+    t.classList.remove('on');
+    t.classList.add('out');
+    setTimeout(()=>t.remove(),240);
+  },3200);
 }
 
 // ── FORMULAIRE NOUVELLE PRESTATION ───────
@@ -4424,6 +4502,9 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='clients') await loadCmClients();
   if(role==='cm'&&view==='cal') await loadCmCal();
   if(role==='cm'&&view==='planningmensuel') await loadCmPlanningMensuel();
+  if(role==='cm'&&view==='planning') setPlanningTab(_planningTab||'production');
+  if(role==='cm'&&view==='pilotage') await loadCmPilotage();
+  if(role==='cm'&&view==='revenus') await loadCmRevenus();
   if(role==='cm'&&view==='contenus') await loadCmContenus();
   if(role==='cm'&&view==='videoscm') await loadCmVideosAValider();
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
@@ -5471,7 +5552,7 @@ function modalModifierClient(idx){
   const c=_clientsCache[idx];
   if(!c)return;
   const canEdit=S.role!=='cm';
-  const canAssignCm=S.role==='admin'||(S.role==='cm'&&_myNiveauCm==='cm_lead');
+  const canAssignCm=S.role==='admin'||(S.role==='cm'&&(_myNiveauCm==='cm_lead'||_myCmAutonomie==='responsable'));
   const ro=canEdit?'':'disabled';
   // Périmètre Secrétaire (28/08/2026, spec refonte §19 "Fiche Full Com - vue
   // Secrétaire", masqué : Rentabilité, Rushs, Media Bank, Planning éditorial
@@ -19040,40 +19121,60 @@ const DEMANDE_NEXT={
   terminee:[],refusee:[],
 };
 
+// Spec Refonte CM §30-31 (29/08) : distingue "mes demandes" (structure déjà affiliée à
+// un CM, ou déjà prise en charge par quelqu'un) de la "file Club+ générale" (aucun CM
+// affecté au club ET personne ne l'a encore prise — club_requests.taken_by est déjà la
+// colonne prévue pour ça, jamais exploitée côté UI jusqu'ici). Le partage n'utilise pas
+// clients.cm_id directement (qui ne distingue pas Full Com de Club+ standard) : un club
+// sans aucune affiliation CM active est traité comme "pool".
+function _renderDemandeRow(d,showPrendre){
+  const stLbl=DEMANDE_STATUT_LBL[d.status]||d.status;
+  const stCls=DEMANDE_STATUT_CLS[d.status]||'bn';
+  const nextActions=DEMANDE_NEXT[d.status]||[];
+  const clientNom=d.clubs?.clients?.nom;
+  const clubNom=d.clubs?.nom;
+  return`<tr>
+    <td class="tp" title="${clubNom&&clubNom!==clientNom?'Nom Club+ : '+esc(clubNom):''}">${esc(clientNom||clubNom||'—')}</td>
+    <td title="${esc(d.detail||'')}">${esc(d.type||'—')}</td>
+    <td>${esc(d.team||'—')}</td>
+    <td>${d.urgency==='haute'?'<span style="color:var(--er);font-weight:600">Haute</span>':'Normale'}</td>
+    <td class="tm">${d.credits_reserved||0}</td>
+    <td><span class="bd ${stCls}"><span class="bd-d"></span>${stLbl}</span></td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+      ${showPrendre?`<button class="btn bp bs" onclick="prendreEnChargeDemande('${d.id}')">Prendre en charge</button>`:nextActions.map(a=>`<button class="btn bg2 bs" onclick="avancerDemande('${d.id}','${a.st}')">${a.lb}</button>`).join('')}
+      ${!showPrendre&&d.clubs?.portail_client_id?`<button class="btn bp bs" onclick="creerContenuDepuisDemande('${d.clubs.portail_client_id}','${escJs(d.type||'Demande')}')" title="Créer un contenu à partir de cette demande">+ Contenu</button>`:''}
+    </td>
+  </tr>`;
+}
 async function loadCmDemandes(){
   const el=document.getElementById('dem-list');
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   if(!el)return;
   try{
-    const data=await sbFetch('club_requests?select=id,type,team,status,urgency,detail,credits_reserved,created_at,clubs(nom,portail_client_id,clients(nom))&order=created_at.desc&limit=200');
+    const [data,affils]=await Promise.all([
+      sbFetch('club_requests?select=id,type,team,status,urgency,detail,credits_reserved,created_at,taken_by,clubs(nom,portail_client_id,clients(nom,cm_id))&order=created_at.desc&limit=200'),
+      sbFetch('client_affiliations?select=client_id&status=eq.actif&role_on_client=in.(cm_principal,cm_secondaire,cm_junior)').catch(()=>[]),
+    ]);
     const list=Array.isArray(data)?data:[];
+    const affiliatedClientIds=new Set((Array.isArray(affils)?affils:[]).map(a=>a.client_id));
+    const isPoolCandidate=d=>{
+      const cid=d.clubs?.portail_client_id;
+      const hasCm=(cid&&(affiliatedClientIds.has(cid)||d.clubs?.clients?.cm_id))||false;
+      return !hasCm&&!d.taken_by;
+    };
+    const pool=list.filter(isPoolCandidate);
+    const mine=list.filter(d=>!isPoolCandidate(d));
     set('dem-kpi-nouv',list.filter(d=>d.status==='recues').length);
     set('dem-kpi-enc',list.filter(d=>['en_traitement','info_manquante'].includes(d.status)).length);
     set('dem-kpi-urg',list.filter(d=>d.urgency==='haute'&&!['terminee','refusee'].includes(d.status)).length);
     if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📥</div><div>Aucune demande reçue pour l\'instant.</div></div>';return;}
-    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Client</th><th>Type</th><th>Équipe</th><th>Urgence</th><th>Crédits</th><th>Statut</th><th></th></tr></thead><tbody>'+
-      list.map(d=>{
-        const stLbl=DEMANDE_STATUT_LBL[d.status]||d.status;
-        const stCls=DEMANDE_STATUT_CLS[d.status]||'bn';
-        const nextActions=DEMANDE_NEXT[d.status]||[];
-        // Nom client (vocabulaire cohérent avec le reste de l'espace CM) en
-        // priorité ; le nom auto-déclaré côté Club+ (potentiellement
-        // différent) reste visible en tooltip pour traçabilité.
-        const clientNom=d.clubs?.clients?.nom;
-        const clubNom=d.clubs?.nom;
-        return`<tr>
-          <td class="tp" title="${clubNom&&clubNom!==clientNom?'Nom Club+ : '+esc(clubNom):''}">${esc(clientNom||clubNom||'—')}</td>
-          <td title="${esc(d.detail||'')}">${esc(d.type||'—')}</td>
-          <td>${esc(d.team||'—')}</td>
-          <td>${d.urgency==='haute'?'<span style="color:var(--er);font-weight:600">Haute</span>':'Normale'}</td>
-          <td class="tm">${d.credits_reserved||0}</td>
-          <td><span class="bd ${stCls}"><span class="bd-d"></span>${stLbl}</span></td>
-          <td style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
-            ${nextActions.map(a=>`<button class="btn bg2 bs" onclick="avancerDemande('${d.id}','${a.st}')">${a.lb}</button>`).join('')}
-            ${d.clubs?.portail_client_id?`<button class="btn bp bs" onclick="creerContenuDepuisDemande('${d.clubs.portail_client_id}','${escJs(d.type||'Demande')}')" title="Créer un contenu à partir de cette demande">+ Contenu</button>`:''}
-          </td>
-        </tr>`;
-      }).join('')+'</tbody></table></div></div>';
+    const tableHead='<tr><th>Client</th><th>Type</th><th>Équipe</th><th>Urgence</th><th>Crédits</th><th>Statut</th><th></th></tr>';
+    el.innerHTML=(mine.length?`<div class="cd" style="margin-bottom:14px"><div class="cd-h"><div class="cd-t">Mes demandes</div></div><div class="tw"><table><thead>${tableHead}</thead><tbody>`+
+      mine.map(d=>_renderDemandeRow(d,false)).join('')+'</tbody></table></div></div>':'')+
+      `<div class="cd"><div class="cd-h"><div class="cd-t">File Club+ générale</div><span style="font-size:11px;color:var(--t3)">Non affiliées à un CM — ouvertes au pool</span></div>`+
+      (pool.length?`<div class="tw"><table><thead>${tableHead}</thead><tbody>`+pool.map(d=>_renderDemandeRow(d,true)).join('')+'</tbody></table></div>':
+      '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune demande en attente dans la file générale.</div>')+
+      '</div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';console.error(e);}
 }
 
@@ -19081,6 +19182,12 @@ async function avancerDemande(id,statut){
   const r=await sbFetch('rpc/staff_update_club_request_status',{method:'POST',body:{p_request_id:id,p_status:statut}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
   toast('Demande mise à jour.','ok');
+  loadCmDemandes();
+}
+async function prendreEnChargeDemande(id){
+  const r=await sbFetch('rpc/claim_club_request',{method:'POST',body:{p_request_id:id}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'prise en charge impossible.'),'er');return;}
+  toast('Demande prise en charge.','ok');
   loadCmDemandes();
 }
 
@@ -19247,28 +19354,105 @@ async function loadCmClients(){
     el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🏟️</div><div>Cette page ne s\'applique pas à votre profil (CM SportVision interne).</div></div>';
     return;
   }
+  const ROLE_ON_CLIENT_LBL={cm_principal:'Principal',cm_secondaire:'Secondaire',cm_junior:'Junior (assisté)',lead_cm:'Lead'};
   try{
-    const rows=await _cmVisibleClients(true);
+    const uid=localStorage.getItem('sv_uid');
+    const [rows,affilRaw]=await Promise.all([
+      _cmVisibleClients(true),
+      sbFetch('client_affiliations?select=client_id,role_on_client&user_id=eq.'+uid+'&status=eq.actif&role_on_client=in.(cm_principal,cm_secondaire,cm_junior,lead_cm)').catch(()=>[]),
+    ]);
+    _cmClientsCache=rows;
+    const affilByClient={};
+    (Array.isArray(affilRaw)?affilRaw:[]).forEach(a=>{affilByClient[a.client_id]=a.role_on_client;});
     set('cmc-kpi-actifs',rows.filter(c=>['client','partenaire'].includes(c.statut)).length);
     set('cmc-kpi-prospects',rows.filter(c=>['prospect','qualifié'].includes(c.statut)).length);
     set('cmc-kpi-tot',rows.length);
-    el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Client / Organisation</th><th>Type</th><th>Offre</th><th>Sport</th><th>Ville</th><th>Contact</th></tr></thead><tbody>'+
+    el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Structure</th><th>Mon rôle</th><th>Type</th><th>Offre</th><th>Sport</th><th>Ville</th></tr></thead><tbody>'+
       rows.map(cl=>{
-        const emailBtn=cl.email?`<span onclick="copier('${escJs(cl.email)}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${esc(cl.email)}</span>`:'—';
-        const telBtn=cl.telephone?`<span onclick="copier('${escJs(cl.telephone)}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${esc(cl.telephone)}</span>`:'';
-        return`<tr>
+        const role=affilByClient[cl.id]?ROLE_ON_CLIENT_LBL[affilByClient[cl.id]]:(cl.offre?'Portefeuille':'—');
+        return`<tr style="cursor:pointer" onclick="modalFicheStructureCm('${cl.id}')">
           <td class="tp">${esc(cl.nom||'—')}</td>
+          <td><span class="bd bw"><span class="bd-d"></span>${role}</span></td>
           <td>${cl.type_client||'—'}</td>
           <td>${cl.offre?`<span class="bd ${cl.offre==='club_plus'?'ba':'bb'}"><span class="bd-d"></span>${CONTRAT_TYPES_LB[cl.offre]||cl.offre}</span>`:'—'}</td>
           <td>${esc(cl.sport||'—')}</td>
           <td>${esc(cl.ville||'—')}</td>
-          <td style="font-size:12px">${emailBtn}${telBtn}</td>
         </tr>`;}).join('')+
       '</tbody></table></div>':
-      '<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🏟️</div><div>Aucun client visible pour l\'instant.</div></div>';
+      '<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🏟️</div><div>Aucune structure visible pour l\'instant.</div></div>';
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table clients/contrats non disponible.</div>';console.error(e);}
 }
+let _cmClientsCache=[];
+// Fiche Structure (spec §12-14) : résumé + accès rapide, réutilise les vues déjà
+// filtrables (Planning/Contenus/Demandes) plutôt que dupliquer leurs données —
+// "les onglets d'une structure sont des vues filtrées des objets globaux".
+function modalFicheStructureCm(clientId){
+  const cl=(_cmClientsCache||[]).find(c=>c.id===clientId);
+  if(!cl){toast('Structure introuvable','er');return;}
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">${esc(cl.nom||'—')}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${cl.type_client||'—'}${cl.offre?' · '+(CONTRAT_TYPES_LB[cl.offre]||cl.offre):''}${cl.sport?' · '+esc(cl.sport):''}${cl.ville?' · '+esc(cl.ville):''}</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${cl.email?`<div style="font-size:13px;color:var(--t2)">✉️ <span onclick="copier('${escJs(cl.email)}')" style="cursor:pointer;color:var(--acc)">${esc(cl.email)}</span></div>`:''}
+      ${cl.telephone?`<div style="font-size:13px;color:var(--t2)">📞 <span onclick="copier('${escJs(cl.telephone)}')" style="cursor:pointer;color:var(--acc)">${esc(cl.telephone)}</span></div>`:''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">
+      <button class="btn bg2 bs" onclick="closeModal();switchView('planning')">📅 Planning</button>
+      <button class="btn bg2 bs" onclick="closeModal();switchView('contenus')">✍️ Contenus</button>
+      <button class="btn bg2 bs" onclick="closeModal();switchView('demandes')">📥 Demandes</button>
+      <button class="btn bg2 bs" onclick="closeModal();switchView('mediabank')">⭐ Médiathèque</button>
+      <button class="btn bg2 bs" onclick="closeModal();_analyticsPreselectClient='${cl.id}';switchView('analytics')">📊 Performances</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+}
 
+function _cmPlanningEditoTpl(){
+  return`<div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="calPrev()" aria-label="Période précédente">‹</button>
+        <div class="sh-t" id="cal-title">Calendrier</div>
+        <button class="btn bg2 bs" onclick="calNext()" aria-label="Période suivante">›</button>
+      </div>
+      <button class="btn bp bs" onclick="modalNouveauContenu()">+ Contenu</button>
+    </div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Prestations cette semaine</div><div class="fs-v" id="cal-kpi-pre" style="color:var(--ac)">—</div></div>
+      <div class="fs"><div class="fs-l">Contenus programmés</div><div class="fs-v" id="cal-kpi-prog">—</div></div>
+      <div class="fs"><div class="fs-l">Publiés ce mois</div><div class="fs-v" id="cal-kpi-pub" style="color:var(--ok)">—</div></div>
+    </div>
+    <div id="cal-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+function _cmPlanningProdTpl(){
+  return`<div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="pmPrev()" aria-label="Mois précédent">‹</button>
+        <div class="sh-t" id="pm-title">Planning mensuel</div>
+        <button class="btn bg2 bs" onclick="pmNext()" aria-label="Mois suivant">›</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bg2 bs" onclick="modalNouvellePresence()">+ Présence</button>
+        <button class="btn bp bs" id="pm-send-btn" onclick="pmEnvoyerProduction()">Envoyer à la production</button>
+      </div>
+    </div>
+    <div id="pm-client-select" style="margin-bottom:13px"></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Présences ce mois</div><div class="fs-v" id="pm-kpi-total" style="color:var(--ac)">—</div></div>
+      <div class="fs"><div class="fs-l">Alertes (≤14j sans mission)</div><div class="fs-v" id="pm-kpi-alert" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Missions créées</div><div class="fs-v" id="pm-kpi-missions" style="color:var(--ok)">—</div></div>
+    </div>
+    <div id="pm-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+let _planningTab='production';
+function setPlanningTab(tab){
+  _planningTab=tab;
+  const bp=document.getElementById('pt-production'),be=document.getElementById('pt-editorial');
+  if(bp)bp.className='btn '+(tab==='production'?'bp':'bg2')+' bs';
+  if(be)be.className='btn '+(tab==='editorial'?'bp':'bg2')+' bs';
+  const body=document.getElementById('planning-body');
+  if(!body)return;
+  if(tab==='production'){body.innerHTML=_cmPlanningProdTpl();loadCmPlanningMensuel();}
+  else{body.innerHTML=_cmPlanningEditoTpl();loadCmCal();}
+}
 async function loadCmCal(){
   const el=document.getElementById('cal-real');
   const titleEl=document.getElementById('cal-title');
@@ -20116,7 +20300,7 @@ async function modalEditContenu(id){
   const plats=['Instagram','YouTube','Facebook','TikTok','Twitter/X'];
   const types=['Vidéo','Photo','Story','Reel','Article','Post'];
   const uid=localStorage.getItem('sv_uid');
-  const canDelete=info.cm_id===uid||S.role==='admin'||(S.role==='cm'&&_myNiveauCm==='cm_lead');
+  const canDelete=info.cm_id===uid||S.role==='admin'||(S.role==='cm'&&(_myNiveauCm==='cm_lead'||_myCmAutonomie==='responsable'));
   const next=CONTENU_NEXT[info.statut];
   const canCorrections=['a_valider_interne','a_valider_client'].includes(info.statut);
   openModal(`<div class="mh"><div class="mt">Modifier contenu</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
@@ -20139,6 +20323,7 @@ async function modalEditContenu(id){
         <div class="fg"><label class="fl">Sponsor</label><input type="text" id="cte-spo" class="fi" value="${esc(info.sponsor||'')}"></div>
       </div>
       <div class="fg"><label class="fl">Statut actuel</label><div><span class="bd ${(CONTENU_STATUTS[info.statut]||CONTENU_STATUTS.brouillon).cls}"><span class="bd-d"></span>${(CONTENU_STATUTS[info.statut]||CONTENU_STATUTS.brouillon).lb}</span></div></div>
+      ${['programme','publie'].includes(info.statut)?`<div class="fg"><label class="fl">Référence Metricool (si programmé/publié via Metricool)</label><input type="text" id="cte-metricool" class="fi" placeholder="ID de la publication Metricool" value="${esc(info.publication_external_id||'')}"></div>`:''}
       <div id="cte-hist"></div>
     </div>
     <div class="mf" style="flex-wrap:wrap;gap:8px">
@@ -20176,11 +20361,17 @@ async function sauvegarderContenu(id){
   const legende=(document.getElementById('cte-leg')?.value||'').trim();
   const hashtags=(document.getElementById('cte-hash')?.value||'').trim();
   const sponsor=(document.getElementById('cte-spo')?.value||'').trim();
+  // Metricool optionnel (spec Refonte CM §23/§40) : l'OS accepte publication directe OU
+  // Metricool sans imposer l'un ou l'autre — le champ n'existe que si le contenu est
+  // programmé/publié (cf. modalEditContenu), absent sinon.
+  const metricoolEl=document.getElementById('cte-metricool');
+  const metricoolRef=metricoolEl?metricoolEl.value.trim():null;
   try{
     const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{
       titre:ti,client_id:clientId||null,plateforme:pl,type_contenu:ty,date_prevue:dt||null,
       hook:hook||null,cta:cta||null,legende:legende||null,hashtags:hashtags||null,sponsor:sponsor||null,
-      updated_at:new Date().toISOString()
+      updated_at:new Date().toISOString(),
+      ...(metricoolEl?{publication_external_id:metricoolRef||null,publication_provider:metricoolRef?'metricool':'manuel'}:{})
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
     _logAudit('contenu_modifie','contenu',id,{titre:ti});
@@ -20226,40 +20417,74 @@ async function loadCmPublications(){
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
-// ── CM — Analytics ────────────────────────────────────────────────────────────
+// ── CM — Analytics (Performances) ───────────────────────────────────────────
+// Préselection de structure depuis modalFicheStructureCm() (bouton "📊
+// Performances") : posée juste avant switchView('analytics'), lue puis
+// remise à null au premier chargement pour ne pas polluer les visites
+// suivantes de l'écran.
+let _analyticsPreselectClient=null;
+// Spec Refonte CM §39 : pas de notion de saison sportive réutilisable
+// ailleurs dans le fichier (clubs.saison est un texte libre du type
+// "2026-2027", pas une plage de dates) — convention sport amateur France
+// assumée ici : 1er juillet → 30 juin.
+function _analyticsPeriodeRange(periode){
+  const now=new Date();
+  const end=ymdLocal(new Date(now.getFullYear(),now.getMonth(),now.getDate()+1));
+  if(periode==='7j'){
+    return{start:ymdLocal(new Date(now.getFullYear(),now.getMonth(),now.getDate()-7)),end};
+  }
+  if(periode==='3m'){
+    return{start:ymdLocal(new Date(now.getFullYear(),now.getMonth()-3,now.getDate())),end};
+  }
+  if(periode==='saison'){
+    const anneeDebut=now.getMonth()>=6?now.getFullYear():now.getFullYear()-1;
+    return{start:ymdLocal(new Date(anneeDebut,6,1)),end};
+  }
+  return{start:ymdLocal(new Date(now.getFullYear(),now.getMonth(),now.getDate()-30)),end};
+}
 async function loadCmAnalytics(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const selClient=document.getElementById('an-client-select');
+  const selPeriode=document.getElementById('an-periode-select');
+  if(selClient&&!selClient.dataset.loaded){
+    const clients=await _cmVisibleClients();
+    selClient.innerHTML='<option value="">Toutes mes structures</option>'+clients.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+    selClient.dataset.loaded='1';
+    if(_analyticsPreselectClient){
+      selClient.value=_analyticsPreselectClient;
+      _analyticsPreselectClient=null;
+    }
+  }
+  const clientId=selClient?.value||'';
+  const periode=selPeriode?.value||'30j';
+  const{start,end}=_analyticsPeriodeRange(periode);
   const now=new Date();
   const mStart=ymdLocal(new Date(now.getFullYear(),now.getMonth(),1));
-  const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
   try{
-    const [pubTotal,byPlat,pubMois]=await Promise.all([
-      sbFetch('contenus?select=id&statut=eq.publie'),
-      sbFetch('contenus?select=plateforme&statut=eq.publie&limit=200'),
-      sbFetch('contenus?select=id,plateforme&statut=eq.publie&date_publication=gte.'+mStart+'&date_publication=lt.'+mNext+'&limit=200'),
-    ]);
-    set('an-pub',(pubTotal||[]).length);
+    let q='contenus?select=id,titre,plateforme,client_id,date_publication,clients(nom)&statut=eq.publie&date_publication=gte.'+start+'&date_publication=lt.'+end+'&limit=500';
+    if(clientId)q+='&client_id=eq.'+clientId;
+    const contenusPeriode=await sbFetch(q);
+    const contenus=Array.isArray(contenusPeriode)?contenusPeriode:[];
+    set('an-pub',contenus.length);
     // Portée/Engagement/Vues : saisies manuellement par le CM, PAR CONTENU
     // (table contenu_stats — Phase 5 du plan, migration-cm-contenu-stats.sql).
     // Remplace l'ancien stockage localStorage (sv_an_stats) : 3 chiffres
     // globaux jamais partagés entre CM, jamais persistés côté serveur.
-    // Changement de granularité assumé : chaque tuile agrège maintenant les
-    // stats saisies sur les contenus publiés CE MOIS pour la plateforme
-    // concernée (Instagram→portée, Facebook→portée, YouTube→vues), plutôt
-    // qu'un unique champ libre. Si aucun contenu de la plateforme n'a de
-    // stats saisies, la tuile affiche "—" — jamais 0 comme si c'était une
-    // vraie mesure à zéro.
-    const contenusMois=Array.isArray(pubMois)?pubMois:[];
-    const idsMois=contenusMois.map(c=>c.id);
-    let statsMois=[];
-    if(idsMois.length){
-      try{statsMois=await sbFetch('contenu_stats?select=contenu_id,portee,engagement,vues&contenu_id=in.('+idsMois.join(',')+')')||[];}catch(e){statsMois=[];}
+    // Chaque tuile agrège les stats saisies sur les contenus publiés dans la
+    // période/structure filtrées (Instagram→portée, Facebook→portée,
+    // YouTube→vues, Interactions→engagement toutes plateformes confondues).
+    // Si aucun contenu concerné n'a de stats saisies, la tuile affiche "—"
+    // — jamais 0 comme si c'était une vraie mesure à zéro.
+    const ids=contenus.map(c=>c.id);
+    let stats=[];
+    if(ids.length){
+      try{stats=await sbFetch('contenu_stats?select=contenu_id,portee,engagement,vues&contenu_id=in.('+ids.join(',')+')')||[];}catch(e){stats=[];}
     }
     const statsByContenu={};
-    (Array.isArray(statsMois)?statsMois:[]).forEach(s=>{statsByContenu[s.contenu_id]=s;});
+    (Array.isArray(stats)?stats:[]).forEach(s=>{statsByContenu[s.contenu_id]=s;});
     const sumParPlateforme=(plateforme,champ)=>{
       let total=0,saisi=false;
-      contenusMois.filter(c=>c.plateforme===plateforme).forEach(c=>{
+      contenus.filter(c=>c.plateforme===plateforme).forEach(c=>{
         const s=statsByContenu[c.id];
         if(s&&s[champ]!==null&&s[champ]!==undefined){total+=Number(s[champ]);saisi=true;}
       });
@@ -20271,12 +20496,18 @@ async function loadCmAnalytics(){
     set('an-ig-reach',igReach!==null?igReach.toLocaleString('fr-FR'):'—');
     set('an-fb-reach',fbReach!==null?fbReach.toLocaleString('fr-FR'):'—');
     set('an-yt-views',ytViews!==null?ytViews.toLocaleString('fr-FR'):'—');
-    // By platform breakdown
+    let interTotal=0,interSaisi=false;
+    contenus.forEach(c=>{
+      const s=statsByContenu[c.id];
+      if(s&&s.engagement!==null&&s.engagement!==undefined){interTotal+=Number(s.engagement);interSaisi=true;}
+    });
+    set('an-interactions',interSaisi?interTotal.toLocaleString('fr-FR'):'—');
+    // By platform breakdown (même filtre période/structure que les KPI ci-dessus)
     const platMap={};
-    (byPlat||[]).forEach(c=>{const pl=c.plateforme||'Autre';platMap[pl]=(platMap[pl]||0)+1;});
+    contenus.forEach(c=>{const pl=c.plateforme||'Autre';platMap[pl]=(platMap[pl]||0)+1;});
     const elPlat=document.getElementById('an-by-plat');
     if(elPlat){
-      if(!Object.keys(platMap).length){elPlat.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune publication enregistrée dans l\'OS.</div>';}
+      if(!Object.keys(platMap).length){elPlat.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune publication sur la période sélectionnée.</div>';}
       else{
         const total=Object.values(platMap).reduce((s,n)=>s+n,0);
         elPlat.innerHTML='<div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px">'+
@@ -20288,7 +20519,40 @@ async function loadCmAnalytics(){
           }).join('')+'</div>';
       }
     }
-    // Prestations ce mois
+    // Top contenus : les contenus de la période/structure filtrées classés
+    // par somme (portée+vues+engagement) saisie, top 5. Un contenu sans
+    // aucune stats saisie n'est pas classable, il est exclu du classement
+    // plutôt que de lui attribuer un score de 0 (pas une vraie mesure).
+    const elTop=document.getElementById('an-top');
+    if(elTop){
+      const classes=contenus.map(c=>{
+        const s=statsByContenu[c.id];
+        if(!s)return null;
+        const portee=s.portee!==null&&s.portee!==undefined?Number(s.portee):null;
+        const vues=s.vues!==null&&s.vues!==undefined?Number(s.vues):null;
+        const engagement=s.engagement!==null&&s.engagement!==undefined?Number(s.engagement):null;
+        if(portee===null&&vues===null&&engagement===null)return null;
+        const score=(portee||0)+(vues||0)+(engagement||0);
+        return{...c,portee,vues,engagement,score};
+      }).filter(Boolean).sort((a,b)=>b.score-a.score).slice(0,5);
+      if(!classes.length){elTop.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun contenu avec des statistiques saisies sur la période sélectionnée.</div>';}
+      else{
+        elTop.innerHTML=classes.map(c=>{
+          const parts=[];
+          if(c.portee!==null)parts.push('Portée '+c.portee.toLocaleString('fr-FR'));
+          if(c.vues!==null)parts.push('Vues '+c.vues.toLocaleString('fr-FR'));
+          if(c.engagement!==null)parts.push('Interactions '+c.engagement.toLocaleString('fr-FR'));
+          return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="modalDetailById('${c.id}')">
+            <div><div style="font-size:13px;color:var(--t1)">${esc(c.titre)}</div><div style="font-size:11px;color:var(--t3)">${esc(c.clients?.nom||'SportVision')} · ${esc(c.plateforme||'—')}</div></div>
+            <span style="font-size:11px;color:var(--t2);text-align:right">${parts.join(' · ')}</span>
+          </div>`;
+        }).join('');
+      }
+    }
+    // Prestations couvertes ce mois : indicateur secondaire déjà présent
+    // avant cette refonte, volontairement laissé sur le mois calendaire en
+    // cours (hors scope §39 filtres/KPI) plutôt que rebranché sur la période
+    // choisie, pour ne pas dupliquer le rapport mensuel traité en parallèle.
     const elPre=document.getElementById('an-pre-mois');
     if(elPre){
       const data=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&date_prestation=gte.'+mStart+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=20');
@@ -20392,18 +20656,111 @@ async function _renderChargeEquipe(wrap){
   }catch(e){listEl.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
+// ── CM — Pilotage (Responsable CM, spec §43-46) ─────────────────────────────────
+// "Une vue d'exception et de charge, pas un tableau de bord vaniteux" — réutilise
+// _renderChargeEquipe (équipe) et les mêmes sources que loadCmDemandes/loadCmClients,
+// pas de nouvelle table de reporting.
+async function loadCmPilotage(){
+  const kpisEl=document.getElementById('pilotage-kpis');
+  const equipeEl=document.getElementById('pilotage-equipe');
+  const structEl=document.getElementById('pilotage-structures');
+  const clubplusEl=document.getElementById('pilotage-clubplus');
+  if(!kpisEl)return;
+  try{
+    const [cms,juniors,clients,demandesOuvertes,rapportsPrets]=await Promise.all([
+      sbFetch('profiles?select=id&role=eq.cm').catch(()=>[]),
+      sbFetch('profiles?select=id&role=eq.cm&cm_niveau_autonomie=eq.junior').catch(()=>[]),
+      sbFetch('clients?select=id,cm_id&statut=in.(client,partenaire)').catch(()=>[]),
+      sbFetch('club_requests?select=id&status=in.(recues,en_traitement)').catch(()=>[]),
+      sbFetch('monthly_reports?select=id&statut=eq.pret').catch(()=>[]),
+    ]);
+    const nbCms=(cms||[]).length,nbJuniors=(juniors||[]).length;
+    const nbStruct=(clients||[]).length;
+    const nbSansCm=(clients||[]).filter(c=>!c.cm_id).length;
+    kpisEl.innerHTML=[
+      {lb:'CM actifs',v:nbCms},
+      {lb:'Juniors',v:nbJuniors},
+      {lb:'Structures',v:nbStruct},
+      {lb:'Demandes Club+ ouvertes',v:(demandesOuvertes||[]).length},
+      {lb:'Rapports à envoyer',v:(rapportsPrets||[]).length},
+    ].map(k=>`<div class="fs"><div class="fs-l">${k.lb}</div><div class="fs-v">${k.v}</div></div>`).join('');
+    if(nbSansCm)kpisEl.innerHTML+=`<div class="fs" style="border-color:rgba(240,68,94,.25);grid-column:span 4"><div class="fs-l" style="color:var(--er)">⚠ ${nbSansCm} structure${nbSansCm>1?'s':''} sans CM affecté</div></div>`;
+  }catch(e){kpisEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
+  if(equipeEl)await _renderChargeEquipe(equipeEl);
+  if(structEl){
+    try{
+      const [clients,affils]=await Promise.all([
+        sbFetch('clients?select=id,nom,cm_id,statut&statut=in.(client,partenaire)&order=nom.asc').catch(()=>[]),
+        sbFetch('client_affiliations?select=client_id,user_id,role_on_client,profiles!user_id(prenom,nom)&status=eq.actif&role_on_client=in.(cm_principal,cm_secondaire,cm_junior)').catch(()=>[]),
+      ]);
+      const affilByClient={};
+      (Array.isArray(affils)?affils:[]).forEach(a=>{
+        if(!affilByClient[a.client_id])affilByClient[a.client_id]=[];
+        affilByClient[a.client_id].push(a);
+      });
+      const list=Array.isArray(clients)?clients:[];
+      structEl.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Structure</th><th>CM affectés</th></tr></thead><tbody>'+
+        list.map(c=>{
+          const affs=affilByClient[c.id]||[];
+          const names=affs.length?affs.map(a=>esc([a.profiles?.prenom,a.profiles?.nom].filter(Boolean).join(' ')||'—')+' ('+(a.role_on_client==='cm_principal'?'P':a.role_on_client==='cm_secondaire'?'S':'J')+')').join(', '):(c.cm_id?'<span style="color:var(--wa)">Affecté (legacy, non détaillé)</span>':'<span style="color:var(--er)">— Non affecté</span>');
+          return`<tr><td class="tp">${esc(c.nom||'—')}</td><td style="font-size:12px">${names}</td></tr>`;
+        }).join('')+'</tbody></table></div>':
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune structure active.</div>';
+    }catch(e){structEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
+  }
+  if(clubplusEl){
+    try{
+      const reqs=await sbFetch('club_requests?select=id,type,team,status,urgency,created_at,clubs(nom)&status=in.(recues,en_traitement)&order=created_at.desc&limit=50').catch(()=>[]);
+      const list=Array.isArray(reqs)?reqs:[];
+      clubplusEl.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Club</th><th>Type</th><th>Urgence</th><th>Statut</th></tr></thead><tbody>'+
+        list.map(d=>`<tr><td class="tp">${esc(d.clubs?.nom||'—')}</td><td>${esc(d.type||'—')}</td><td>${d.urgency==='haute'?'<span style="color:var(--er)">Haute</span>':'Normale'}</td><td>${DEMANDE_STATUT_LBL[d.status]||d.status}</td></tr>`).join('')+
+        '</tbody></table></div><div style="margin-top:10px"><button class="btn bg2 bs" onclick="switchView(\'demandes\')">Voir toutes les demandes →</button></div>':
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune demande en attente.</div>';
+    }catch(e){clubplusEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
+  }
+}
+
+// ── CM — Mes revenus (spec §47-48) : lecture seule depuis Finance (employee_costs),
+// aucun calcul frontend, aucun accès aux revenus des autres CM.
+async function loadCmRevenus(){
+  const el=document.getElementById('cmrev-real');
+  if(!el)return;
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    const r=await sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct&collaborateur_id=eq.'+uid).catch(()=>[]);
+    const ec=(Array.isArray(r)?r:[])[0];
+    if(!ec){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">💶</div><div>Aucune rémunération enregistrée dans Finance pour votre profil pour l\'instant.</div></div>';
+      return;
+    }
+    const total=(ec.salaire_brut_mensuel||0)*(1+(ec.charges_patronales_pct||0)/100);
+    el.innerHTML=`<div class="cd"><div style="padding:20px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Rémunération mensuelle</div>
+      <div style="font-size:28px;font-weight:800;color:var(--t1)">${(ec.salaire_brut_mensuel||0).toLocaleString('fr-FR')} € <span style="font-size:13px;font-weight:500;color:var(--t3)">brut / mois</span></div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Source : Finance (employee_costs) — non modifiable ici.</div>
+    </div></div>`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
 // ── CM — Rapports clients ─────────────────────────────────────────────────────
 // Résumé mensuel généré depuis les contenus réels de l'OS (pas de saisie
 // manuelle, contrairement à Analytics). L'accès au client sélectionnable
 // vient de _cmVisibleClients() (même règle de périmètre que partout ailleurs
 // côté CM) ; les contenus interrogés restent scopés par contenus_select.
+//
+// Cycle de vie persisté (spec §41-42, migration-cm-monthly-reports.sql) :
+// Brouillon (généré) -> Prêt (relu par le CM) -> Envoyé (transmis au club,
+// horodatage serveur). "À générer" n'a pas de ligne en base, c'est
+// l'absence de rapport pour (client_id, mois).
+const MONTHLY_REPORT_STATUT_LBL={brouillon:'Brouillon',pret:'Prêt',envoye:'Envoyé'};
+const MONTHLY_REPORT_STATUT_CLS={brouillon:'bw',pret:'bb',envoye:'ba'};
 let _rapportTexteActuel='';
 async function loadCmRapports(){
   const sel=document.getElementById('rap-client');
   if(!sel)return;
   const clients=await _cmVisibleClients();
-  sel.innerHTML=clients.length?clients.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join(''):'<option value="">Aucun client</option>';
+  sel.innerHTML='<option value="">Tous les clients</option>'+(clients.length?clients.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join(''):'');
   document.getElementById('rap-result').innerHTML='';
+  await _loadRapportHistory();
 }
 
 function copierRapport(){
@@ -20411,6 +20768,52 @@ function copierRapport(){
   navigator.clipboard.writeText(_rapportTexteActuel).then(()=>toast('Rapport copié dans le presse-papier.','ok')).catch(()=>{
     const ta=document.createElement('textarea');ta.value=_rapportTexteActuel;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Rapport copié.','ok');
   });
+}
+
+function _rapportActionsHtml(id,statut){
+  const btns=['<button class="btn bg2" onclick="copierRapport()">Copier le résumé</button>'];
+  if(statut==='brouillon')btns.push(`<button class="btn bp" onclick="marquerRapportPret('${id}')">Marquer prêt</button>`);
+  else if(statut==='pret')btns.push(`<button class="btn bp" onclick="marquerRapportEnvoye('${id}')">Marquer envoyé</button>`);
+  return `<div id="rap-actions" data-id="${id}" style="display:flex;gap:8px;flex-wrap:wrap">${btns.join('')}</div>`;
+}
+
+async function marquerRapportPret(id){
+  const r=await sbFetch('monthly_reports?id=eq.'+id,{method:'PATCH',body:{statut:'pret'}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  toast('Rapport marqué prêt.','ok');
+  const actions=document.getElementById('rap-actions');
+  if(actions&&actions.dataset.id===id)actions.outerHTML=_rapportActionsHtml(id,'pret');
+  await _loadRapportHistory();
+}
+
+async function marquerRapportEnvoye(id){
+  const uid=localStorage.getItem('sv_uid');
+  const r=await sbFetch('monthly_reports?id=eq.'+id+'&statut=eq.pret',{method:'PATCH',body:{statut:'envoye',envoye_at:new Date().toISOString(),envoye_par:uid}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  toast('Rapport marqué envoyé.','ok');
+  const actions=document.getElementById('rap-actions');
+  if(actions&&actions.dataset.id===id)actions.outerHTML=_rapportActionsHtml(id,'envoye');
+  await _loadRapportHistory();
+}
+
+async function _loadRapportHistory(){
+  const el=document.getElementById('rap-history');
+  if(!el)return;
+  const clientId=document.getElementById('rap-client')?.value;
+  el.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const data=await sbFetch('monthly_reports?select=id,mois,statut,genere_at,envoye_at,clients(nom)&order=mois.desc,genere_at.desc&limit=100'+(clientId?'&client_id=eq.'+clientId:''));
+    const list=Array.isArray(data)?data:[];
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Client</th><th>Mois</th><th>Statut</th><th>Généré le</th><th>Envoyé le</th><th></th></tr></thead><tbody>'+
+      list.map(r=>{
+        const cls=MONTHLY_REPORT_STATUT_CLS[r.statut]||'bn';
+        const lbl=MONTHLY_REPORT_STATUT_LBL[r.statut]||r.statut;
+        const action=r.statut==='brouillon'?`<button class="btn bg2 bs" onclick="marquerRapportPret('${r.id}')">Marquer prêt</button>`:
+          r.statut==='pret'?`<button class="btn bg2 bs" onclick="marquerRapportEnvoye('${r.id}')">Marquer envoyé</button>`:'';
+        return `<tr><td class="tp">${esc(r.clients?.nom||'—')}</td><td>${esc(r.mois)}</td><td><span class="bd ${cls}"><span class="bd-d"></span>${esc(lbl)}</span></td><td style="font-size:12px;color:var(--t3)">${r.genere_at?new Date(r.genere_at).toLocaleDateString('fr-FR'):'—'}</td><td style="font-size:12px;color:var(--t3)">${r.envoye_at?new Date(r.envoye_at).toLocaleDateString('fr-FR'):'—'}</td><td>${action}</td></tr>`;
+      }).join('')+'</tbody></table></div>':
+      '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucun rapport généré.</div>';
+  }catch(e){el.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
 }
 
 async function genererRapportClient(){
@@ -20452,7 +20855,7 @@ async function genererRapportClient(){
         <div class="cd-h"><div class="cd-t">En cours / à venir</div></div>
         <div>${enCours.map(c=>{const st=CONTENU_STATUTS[c.statut]||CONTENU_STATUTS.brouillon;const retard=c.date_prevue&&c.date_prevue<today;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bd)"><span>${esc(c.titre)}</span><span style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--t3)">${retard?'<span style="color:var(--er);font-weight:600">En retard</span>':''}<span class="bd ${st.cls}"><span class="bd-d"></span>${st.lb}</span></span></div>`;}).join('')}</div>
       </div>`:''}
-      <button class="btn bg2" onclick="copierRapport()">Copier le résumé</button>`;
+      <div id="rap-actions"><button class="btn bg2" onclick="copierRapport()">Copier le résumé</button></div>`;
     let t=`Rapport ${clientNom} — ${moisLabel}\n\nPublications du mois : ${pub.length}\n`;
     Object.entries(parPlat).forEach(([pl,n])=>{t+='  - '+pl+' : '+n+'\n';});
     t+='\nDétail :\n';
@@ -20460,6 +20863,11 @@ async function genererRapportClient(){
     t+='\nEn cours de production : '+enCours.length+'\n';
     if(enRetard.length)t+='Dont en retard : '+enRetard.length+'\n';
     _rapportTexteActuel=t;
+    const uid=localStorage.getItem('sv_uid');
+    const rep=await sbFetch('monthly_reports?on_conflict=client_id,mois',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:{client_id:clientId,cm_id:uid,mois,statut:'brouillon',contenu_texte:t,genere_at:new Date().toISOString(),envoye_at:null,envoye_par:null}});
+    const repId=Array.isArray(rep)?rep[0]?.id:null;
+    if(repId)document.getElementById('rap-actions').outerHTML=_rapportActionsHtml(repId,'brouillon');
+    await _loadRapportHistory();
   }catch(e){resEl.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de génération.</div>';console.error(e);}
 }
 
@@ -24833,7 +25241,7 @@ async function loadCollaborateurs(){
   try{
     const _colRole=localStorage.getItem('sv_role');
     const _colFilter=_colRole==='prod'?'&role=in.(photo,cm)':'';
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie'+_colFilter+'&order=role.asc,nom.asc');
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie,cm_pool_clubplus_general'+_colFilter+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
@@ -24907,6 +25315,10 @@ async function modalModifierCollaborateur(idx){
               <option value="junior"${t.cm_niveau_autonomie==='junior'?' selected':''}>CM Junior — publication soumise à un tuteur</option>
               <option value="responsable"${t.cm_niveau_autonomie==='responsable'?' selected':''}>Responsable CM — supervision de tout le pôle</option>
             </select>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12.5px;color:var(--t1)">
+              <input type="checkbox" ${t.cm_pool_clubplus_general?'checked':''} onchange="changerCmPoolClubPlus('${t.id}',this.checked)">
+              Membre du pool Club+ général (peut prendre en charge les demandes non affiliées à un CM Full Com)
+            </label>
           </div>
           <div style="margin-top:10px">
             ${isInactif?`<button class="btn bg2 bs" onclick="reactiverUser('${t.id}')">↺ Réactiver l'accès</button>`:`<button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerDesactiverUser('${t.id}','${escJs(t.prenom||'')}','${escJs(t.nom||'')}')">⛔ Désactiver l'accès</button>`}
@@ -25559,7 +25971,7 @@ const DEMO_ROUTE_MAP={
   'encaissements':{role:'admin',view:'encaissements',label:'Encaissements Stripe'},
   'clotures':{role:'admin',view:'clotures',label:'Clôtures mensuelles'},
   'fec':{role:'admin',view:'fec',label:'Export FEC'},
-  'analytics':{role:'cm',view:'analytics',label:'Analytics (CM)'},
+  'analytics':{role:'cm',view:'analytics',label:'Performances (CM)'},
 };
 // Slugs demandés explicitement dans le master prompt d'audit qui N'ONT PAS d'écran réel
 // correspondant dans l'OS — on ne les fabrique pas (consigne explicite), on le dit.
@@ -25734,7 +26146,19 @@ async function envoyerResetMdp(){
 // notamment) — chaque grand axe (séparateur NAV) devient une section qu'on
 // peut replier, avec l'état mémorisé par rôle dans localStorage.
 function renderSidebarNav(role,activeId){
-  const nav=NAV[role]||[];
+  let nav=NAV[role]||[];
+  // Responsable CM (spec Refonte CM §8) : mêmes pages que le CM, plus une couche de
+  // pilotage — insérée ici (au rendu, pas dans NAV.cm statique) car cm_niveau_autonomie
+  // n'est connu qu'après connexion (cf. fetch dans goApp()). _myCmAutonomie undefined =
+  // pas encore chargé = rendu sans la couche pilotage, sidebar re-rendue dès que
+  // goApp() a la vraie valeur.
+  if(role==='cm'&&_myCmAutonomie==='responsable'){
+    nav=[...nav];
+    const iDash=nav.findIndex(n=>n.id==='dash');
+    if(iDash!==-1)nav.splice(iDash+1,0,{id:'pilotage',lb:'Pilotage CM',ic:'team'});
+    const iContenus=nav.findIndex(n=>n.id==='contenus');
+    if(iContenus!==-1)nav.splice(iContenus+1,0,{id:'analytics',lb:'Performances',ic:'fin'});
+  }
   let collapsedSet;
   try{collapsedSet=new Set(JSON.parse(localStorage.getItem('sv_nav_collapsed_'+role)||'[]'));}catch(e){collapsedSet=new Set();}
   let html='<div class="nav">',inGroup=false,groupIdx=-1;
@@ -25809,7 +26233,7 @@ function goApp(role){
   // Charge le vrai profil et met à jour les badges
   const uid=localStorage.getItem('sv_uid');
   if(uid){
-    sbFetch('profiles?select=prenom,nom,niveau_cm&id=eq.'+uid).then(data=>{
+    sbFetch('profiles?select=prenom,nom,niveau_cm,cm_niveau_autonomie&id=eq.'+uid).then(data=>{
       if(data&&data[0]){
         const p=data[0];
         const name=[p.prenom,p.nom].filter(Boolean).join(' ');
@@ -25820,6 +26244,10 @@ function goApp(role){
         const bj=document.getElementById('dash-bonjour');
         if(bj&&p.prenom)bj.textContent='Bonjour '+p.prenom;
         _myNiveauCm=p.niveau_cm||null;
+        if(role==='cm'){
+          _myCmAutonomie=p.cm_niveau_autonomie||'autonome';
+          document.getElementById('sb-nav').innerHTML=renderSidebarNav(role,S.view);
+        }
       }
     }).catch(()=>{});
   }
@@ -26163,7 +26591,9 @@ const BNAV_ITEMS={
   photo:['dash','pre','planning','revenus'],
   com:  ['dash','prospects','pipeline','agenda'],
   compta:['dash','factures','impayes','rapprochement'],
-  cm:   ['dash','cal','contenus','publications'],
+  // cm (29/08, refonte CM) : cal/publications retirés (fusionnés dans Planning/
+  // contextuels), alignés sur NAV.cm refondue.
+  cm:   ['dash','clients','planning','contenus'],
 };
 
 function renderBottomNav(){
@@ -26834,6 +27264,7 @@ const VIEW_CTA={
   'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.cal':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.planningmensuel':{t:'+ Présence',fn:'modalNouvellePresence'},
+  'cm.planning':{t:'+ Contenu',fn:'modalNouveauContenu'},
   'cm.contenus':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'com.dash':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
   'com.pipeline':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
@@ -27474,6 +27905,11 @@ async function changerCmAutonomie(id,niveau){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{cm_niveau_autonomie:niveau}});
   if(sbErr(r)){toast('Erreur changement de niveau d\'autonomie','er');return;}
   toast('Niveau d\'autonomie mis à jour','ok');
+}
+async function changerCmPoolClubPlus(id,actif){
+  const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{cm_pool_clubplus_general:actif}});
+  if(sbErr(r)){toast('Erreur changement du pool Club+','er');return;}
+  toast(actif?'Ajouté au pool Club+ général':'Retiré du pool Club+ général','ok');
 }
 
 // Remplace l'ancien "Supprimer" (DELETE sur profiles), qui échouait en
@@ -29733,7 +30169,11 @@ const MOB_MORE_ITEMS={
   prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
-  cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
+  // 29/08 (refonte CM) : aligné sur NAV.cm refondue — demandes/briefs sortent (déjà
+  // dans BNAV ou accessibles depuis Demandes), mediabank/publications/analytics/charge/
+  // rapports/msgclients/annuaire/centre restent de vraies vues, atteignables ici plutôt
+  // que noyées dans le menu principal (même patron que photo/com du 28-29/08).
+  cm:[{id:'demandes',lb:'Demandes',ic:'📥',sub:'Reçues + Club+'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'videoscm',lb:'Vidéos à valider',ic:'🎬',sub:'Full Communication'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Performances',ic:'📊',sub:'Statistiques'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'revenus',lb:'Mes revenus',ic:'💶',sub:'Finance'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   com:[{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'mesclients',lb:'Mes clients signés',ic:'🤝',sub:'Portefeuille gagné'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
 };
 function openMobMore(){
