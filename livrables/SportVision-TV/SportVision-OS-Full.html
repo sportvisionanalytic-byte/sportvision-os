@@ -8122,7 +8122,13 @@ async function computeATraiterItems(roleFilter){
     // Base prestations réutilisée pour 4 signaux (missions urgentes, kit à attribuer,
     // livraison à valider, facture en retard) — même select que preRaw de loadProdDash,
     // + statut_financier ajouté pour éviter une 5e requête séparée.
-    safe(sbFetch('prestations?select=id,statut,statut_financier,reference,type_prestation,date_prestation,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,materiel_personnel))')),
+    // limit=1000 + order (audit pagination 29/08) : cette requête était auparavant sans
+    // limite ni tri, donc potentiellement la table prestations entière à chaque chargement
+    // de l'écran "À traiter". Toutes les règles ci-dessous ne portent que sur des missions
+    // actives/récentes (fenêtres 3j/7j, statut='livrée') : un tri par date décroissante avec
+    // un plafond large ne change aucun résultat métier tant que la table reste sous 1000
+    // lignes, et borne le payload une fois qu'elle le dépassera.
+    safe(sbFetch('prestations?select=id,statut,statut_financier,reference,type_prestation,date_prestation,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,materiel_personnel))&order=date_prestation.desc.nullslast&limit=1000')),
     safe(sbFetch('kit_reservations?select=id,kit_id,prestation_id,statut,prestations(date_prestation,reference,clients(nom))&statut=in.(pré_réservé,réservé,sorti,en_prestation,à_récupérer,à_retourner)')),
     safe(sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.mission_refusee&lue=eq.false&order=created_at.desc&limit=10')),
     safe(sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.changement_planning_cm&lue=eq.false&order=created_at.desc&limit=10')),
@@ -8215,8 +8221,15 @@ async function computeATraiterItems(roleFilter){
     prod:['production','urgence'],
     cm:['client','communication'],
     com:['commercial'],
+    // 'compta' ajouté à l'audit du 29/08 : absent jusqu'ici, un futur appel avec
+    // roleFilter='compta' serait tombé dans le cas "rôle non mappé" ci-dessous.
+    compta:['finance'],
   };
-  return roleFilter&&ROLE_SCOPE[roleFilter]?items.filter(it=>ROLE_SCOPE[roleFilter].includes(it.type)):items;
+  if(!roleFilter)return items; // admin (et tout appel sans filtre) : vue transverse complète, par construction.
+  // Rôle non reconnu dans ROLE_SCOPE : échec fermé (aucun item) plutôt qu'échec ouvert
+  // (tous les items, comme le ferait `ROLE_SCOPE[roleFilter]||items`) — évite qu'un rôle
+  // oublié dans ce mapping ne voie par erreur les signaux de tous les autres rôles.
+  return items.filter(it=>(ROLE_SCOPE[roleFilter]||[]).includes(it.type));
 }
 
 async function loadATraiter(){
@@ -8488,7 +8501,10 @@ async function loadProdDash(){
   const in7=new Date();in7.setDate(in7.getDate()+7);const in7s=ymdLocal(in7);
   try{
     const [preRaw,incRaw,profRaw,mediaCorrRaw,kitResRaw,notifCmRaw,notifRefusRaw]=await Promise.all([
-      sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,source,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,role,materiel_personnel))'),
+      // limit=1000 + order (audit pagination 29/08) : idem computeATraiterItems ci-dessous —
+      // ce select était sans limite ni tri, potentiellement toute la table prestations sur
+      // chaque chargement du Dashboard Production.
+      sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,source,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,role,materiel_personnel))&order=date_prestation.desc.nullslast&limit=1000'),
       sbFetch('incidents?select=id,type_incident,description,niveau,cloture,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
       sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=nom.asc'),
       // §3/§4 : "Corrections en cours" (media_liens.statut='correction_demandee', posé par
@@ -31055,6 +31071,22 @@ const SV_INTEGRATIONS=[
     partialNote:'Supabase est connecté. Les buckets de stockage doivent être configurés dans le dashboard Supabase.',
     docsUrl:'https://supabase.com/docs/guides/storage',
     fields:[],
+  },
+  {
+    // Ajouté audit 29/08 : Google Drive est le stockage opérationnel principal des rushs/
+    // livrables (Centre Médias / Media Bank, media_liens.fournisseur), mais n'apparaissait
+    // dans aucun inventaire d'intégrations — invisible pour qui vérifie l'état réel des
+    // connecteurs externes depuis cet écran.
+    id:'google-drive',
+    name:'Google Drive',
+    icon:'📁',
+    category:'Documents',
+    description:'Stockage opérationnel principal des rushs et livrables : liens Drive (et Dropbox/OneDrive/WeTransfer) collés manuellement dans le Centre Médias / Media Bank — aucun fichier dupliqué dans Supabase Storage.',
+    enables:['Lien de dossier par mission (Centre Médias)','Media Bank cross-club (liens taggés)'],
+    status:'partial',
+    partialNote:'Fonctionne aujourd\'hui par collage manuel d\'un lien (aucune connexion API/OAuth Google Drive) : pas de vérification automatique que le lien est valide ou encore accessible, pas de création de dossier automatique, pas de synchronisation des permissions de partage. Une intégration API permettrait de créer le dossier et de vérifier la validité du lien depuis l\'OS.',
+    docsUrl:'https://developers.google.com/drive',
+    fields:[{label:'Client ID',key:'GDRIVE_CLIENT_ID'},{label:'Client Secret',key:'GDRIVE_CLIENT_SECRET'}],
   },
   {
     id:'telephony',
