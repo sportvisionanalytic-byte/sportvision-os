@@ -1209,21 +1209,21 @@ const VIEWS={
     </div>
     <div class="cd" style="margin-bottom:16px">
       <div class="cd-h"><div class="cd-t">Pipeline de production</div><button class="btn bg2 bs" onclick="switchView('pre')">Toutes les prestations</button></div>
-      <div id="prodhub-pipeline" style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
+      <div id="prodhub-pipeline" style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px"><div class="skel" style="height:66px;border-radius:8px"></div><div class="skel" style="height:66px;border-radius:8px"></div><div class="skel" style="height:66px;border-radius:8px"></div></div>
     </div>
     <div class="g32">
       <div class="cd">
         <div class="cd-h"><div class="cd-t">Cette semaine — équipe &amp; terrain</div><button class="btn bg2 bs" onclick="switchView('planning')">Planning →</button></div>
-        <div id="prodhub-semaine"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        <div id="prodhub-semaine">${_prodSkelRows(3,56)}</div>
       </div>
       <div class="cd">
         <div class="cd-h"><div class="cd-t">Kits utilisés</div><button class="btn bg2 bs" onclick="switchView('kits')">Inventaire</button></div>
-        <div id="prodhub-kits"><div style="padding:16px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
+        <div id="prodhub-kits">${_prodSkelRows(3,44)}</div>
       </div>
     </div>
     <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Incidents ouverts</div><button class="btn bg2 bs" onclick="switchView('incidents')">Voir tout</button></div>
-      <div id="prodhub-incidents"><div style="padding:16px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
+      <div id="prodhub-incidents">${_prodSkelRows(2,44)}</div>
     </div>`,
 
   'admin.planning':()=>`
@@ -1428,7 +1428,7 @@ const VIEWS={
   // ses nouveaux onglets Disponibilités/Documents/Matériel.
   'admin.equipehub':()=>`
     <div class="sh"><div class="sh-t">Collaborateurs</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Inviter</button></div>
-    <div id="col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="col-real" style="min-height:200px">${_adminEqSkelCards(6)}</div>`,
 
   // ── Équipe & RH — refonte 28/08/2026 ──────────────────────────────────
   // Le menu Équipe est passé de 5 onglets internes (Équipe/Annuaire/
@@ -1449,7 +1449,7 @@ const VIEWS={
   // fonctions inchangées) plutôt que supprimé.
   'admin.equipeoverview':()=>`
     <div class="sh"><div class="sh-t">Équipe — Vue d'ensemble</div></div>
-    <div id="eqov-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="eqov-real">${_adminEqSkel(3)}</div>`,
 
   // Moteur global "À traiter" (spec §14-21, 29/08/2026) — voir le commentaire détaillé
   // au-dessus de computeATraiterItems() pour l'architecture (calcul live, pas de nouvelle
@@ -1471,7 +1471,7 @@ const VIEWS={
 
   'admin.recrutement':()=>`
     <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Candidatures reçues via le site — pipeline Nouveaux → Collaborateur</div></div></div>
-    <div id="recrut-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="recrut-real">${_recrutSkel()}</div>`,
 
   // 28/08/2026 : Recrutement ouvert à 'sec' (spec refonte Secrétaire §24
   // "Recrutement - pipeline" — préqualification/appels, la Direction valide
@@ -6797,10 +6797,19 @@ const RECRUT_STAGES=[
   {key:'vivier',lb:'Vivier'},
 ];
 let _recrutCache=[];
+// Skeleton kanban (colonnes) — passe polish premium Admin Équipe/Production
+// (29/08/2026). Reprend le même gabarit que le skeleton déjà en place sur
+// VIEWS['sec.recrutement'] (3 colonnes 300px), factorisé ici en fonction
+// dédiée pour que loadRecrutement() (partagée admin/sec) l'affiche pendant
+// le fetch au lieu du texte "Chargement…" qui écrasait immédiatement le
+// skeleton statique du template au premier rendu.
+function _recrutSkel(){
+  return `<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:8px">${Array(3).fill('<div class="skel" style="flex:0 0 300px;height:220px;border-radius:12px"></div>').join('')}</div>`;
+}
 async function loadRecrutement(){
   const el=document.getElementById('recrut-real');
   if(!el)return;
-  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML=_recrutSkel();
   try{
     const data=await sbFetch('recruitment_applications?select=id,poste,prenom,nom,email,telephone,ville,zone,experience_niveau,materiel,permis,vehicule,disponibilites,portfolio_url,cv_path,message,statut,collaborateur_id,created_at&order=created_at.desc');
     if(sbErr(data)){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er)">Erreur de chargement.</div>';return;}
@@ -6954,10 +6963,20 @@ function eqovFormationsRequises(role){
   if((FORMATION_ROLE_MAP[role]||[]).includes('photo-bases'))req.push('photo-bases');
   return req;
 }
+// Skeleton scopé Admin Équipe (passe polish premium, 29/08/2026) — 4 tuiles
+// KPI + n lignes d'alertes, réutilise uniquement la classe .skel partagée
+// (shimmer déjà défini dans le bloc <style> commun, pas touché ici).
+function _adminEqSkel(n){
+  let out='<div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">';
+  for(let i=0;i<4;i++)out+='<div class="skel" style="height:66px;border-radius:var(--rc)"></div>';
+  out+='</div><div class="cd" style="padding:0;overflow:hidden">';
+  for(let i=0;i<(n||3);i++)out+=`<div class="skel" style="height:52px;border-radius:0;${i<(n||3)-1?'border-bottom:1px solid var(--b1)':''}"></div>`;
+  return out+'</div>';
+}
 async function loadEquipeOverview(){
   const el=document.getElementById('eqov-real');
   if(!el)return;
-  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML=_adminEqSkel(3);
   try{
     const [profRaw,candRaw,recoRaw,inscrRaw]=await Promise.all([
       sbFetch('profiles?select=id,prenom,nom,role,actif,onboarding_started_at').catch(()=>[]),
@@ -6989,32 +7008,41 @@ async function loadEquipeOverview(){
       +kpi('Candidatures à traiter',candidatures.length,candidatures.length?'var(--acc)':undefined)
       +kpi('Grades en attente de validation',recos.length,recos.length?'var(--wa)':undefined)
       +'</div>';
+    // Sévérité visuelle par type d'alerte — même patron que SEV_CLR/SEV_BG du
+    // dashboard Admin (cf. loadAdminDash) : bordure gauche + fond teinté.
+    // Formation obligatoire manquante = urgent (conformité), grade en attente
+    // = important (décision à prendre), onboarding/candidatures = normal
+    // (informatif, pas bloquant).
     const alerts=[];
     recos.forEach(r=>{
       const p=profiles.find(x=>x.id===r.collaborateur_id);
       const nom=p?esc((p.prenom||'')+' '+(p.nom||'')):'Collaborateur';
       const gA=SV_GRADES[r.grade_actuel]||SV_GRADES[0],gP=SV_GRADES[r.grade_propose]||null;
-      alerts.push({ic:'⭐',txt:`${nom} — recommandation de grade ${gA.nom} → ${gP?gP.nom:'—'}`,
+      alerts.push({ic:'⭐',sev:'important',txt:`${nom} — recommandation de grade ${gA.nom} → ${gP?gP.nom:'—'}`,
         actions:`<button class="btn bp bs" onclick="centreValiderGrade('${r.id}','valide');setTimeout(loadEquipeOverview,400)">Valider</button><button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade('${r.id}','refuse');setTimeout(loadEquipeOverview,400)">Refuser</button>`});
     });
-    onboarding.forEach(p=>{
-      alerts.push({ic:'🚀',txt:`${esc((p.prenom||'')+' '+(p.nom||''))} — onboarding en cours`,
+    formationRetard.forEach(({p,manquantes})=>{
+      alerts.push({ic:'🎓',sev:'urgent',txt:`${esc((p.prenom||'')+' '+(p.nom||''))} — ${manquantes.length} formation${manquantes.length>1?'s':''} obligatoire${manquantes.length>1?'s':''} manquante${manquantes.length>1?'s':''}`,
         actions:`<button class="btn bg2 bs" onclick="switchView('equipehub');setTimeout(()=>modalFicheCollaborateur('${p.id}'),300)">Voir la fiche</button>`});
     });
-    formationRetard.forEach(({p,manquantes})=>{
-      alerts.push({ic:'🎓',txt:`${esc((p.prenom||'')+' '+(p.nom||''))} — ${manquantes.length} formation${manquantes.length>1?'s':''} obligatoire${manquantes.length>1?'s':''} manquante${manquantes.length>1?'s':''}`,
+    onboarding.forEach(p=>{
+      alerts.push({ic:'🚀',sev:'normal',txt:`${esc((p.prenom||'')+' '+(p.nom||''))} — onboarding en cours`,
         actions:`<button class="btn bg2 bs" onclick="switchView('equipehub');setTimeout(()=>modalFicheCollaborateur('${p.id}'),300)">Voir la fiche</button>`});
     });
     if(candidatures.length){
-      alerts.push({ic:'🎯',txt:`${candidatures.length} candidature${candidatures.length>1?'s':''} en attente de traitement`,
+      alerts.push({ic:'🎯',sev:'normal',txt:`${candidatures.length} candidature${candidatures.length>1?'s':''} en attente de traitement`,
         actions:`<button class="btn bp bs" onclick="switchView('recrutement')">Ouvrir le pipeline</button>`});
     }
+    const EQOV_SEV_CLR={urgent:'var(--er)',important:'var(--wa)',normal:'var(--t3)'};
+    const EQOV_SEV_BG={urgent:'rgba(240,68,94,.05)',important:'rgba(245,165,36,.04)',normal:'transparent'};
     html+='<div class="cd"><div class="cd-h"><div class="cd-t">Alertes & actions</div></div>'
-      +(alerts.length?'<div style="display:flex;flex-direction:column">'+alerts.map(a=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--b1)">
+      +(alerts.length?'<div style="display:flex;flex-direction:column">'+alerts.map(a=>{
+        const clr=EQOV_SEV_CLR[a.sev||'normal'],bg=EQOV_SEV_BG[a.sev||'normal'];
+        return`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--b1);border-left:2px solid ${clr};background:${bg};transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='${bg}'">
         <span style="font-size:16px;flex-shrink:0">${a.ic}</span>
         <div style="flex:1;min-width:0;font-size:12.5px;color:var(--t1)">${a.txt}</div>
         <div style="display:flex;gap:6px;flex-shrink:0">${a.actions}</div>
-      </div>`).join('')+'</div>'
+      </div>`;}).join('')+'</div>'
         :'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune alerte — tout est à jour.</div>')
       +'</div>';
     el.innerHTML=html;
@@ -8334,7 +8362,7 @@ async function loadProdHub(){
     if(list.length){
       elValider.innerHTML=list.map((p,i)=>{
         const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'—';
-        return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 0;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer">
+        return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
           <span style="flex:1;font-size:13px;color:var(--t1)">${esc(p.clients?.nom||p.reference||'—')} — ${p.type_prestation||'—'}</span>
           <span style="font-size:11px;color:var(--t3)">${d}</span>
           <span style="font-size:11px;color:var(--ac)">›</span>
@@ -8361,7 +8389,7 @@ async function loadProdHub(){
     elPipe.innerHTML=stages.map(s=>{
       const n=pre.filter(p=>s.sts.includes(p.statut)).length;
       const stsJson=escJs(JSON.stringify(s.sts));
-      return`<div style="background:var(--c2);border-radius:8px;padding:10px 12px;text-align:center;border-top:2px solid ${s.col};cursor:${n>0?'pointer':'default'}" onclick="${n>0?`_preFiltre='';_preStatutsFiltre=JSON.parse('${stsJson}');switchView('pre')`:''}">
+      return`<div style="background:var(--c2);border-radius:8px;padding:10px 12px;text-align:center;border-top:2px solid ${s.col};cursor:${n>0?'pointer':'default'};transition:transform .15s,box-shadow .15s" onclick="${n>0?`_preFiltre='';_preStatutsFiltre=JSON.parse('${stsJson}');switchView('pre')`:''}" ${n>0?`onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,.18)'" onmouseout="this.style.transform='';this.style.boxShadow=''"`:''}>
         <div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:${n>0?s.col:'var(--t3)'}">${n}</div>
         <div style="font-size:10px;color:var(--t3);margin-top:3px;white-space:nowrap">${s.lb}</div>
       </div>`;
@@ -8415,12 +8443,19 @@ async function loadProdHub(){
     if(!list.length){
       elInc.innerHTML='<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Aucun incident ouvert.</div>';
     } else {
-      elInc.innerHTML=list.map((i,idx)=>`<div onclick="switchView('incidents')" style="display:flex;align-items:center;gap:10px;padding:9px 16px;${idx<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
-        <div style="width:7px;height:7px;border-radius:50%;background:${i.niveau==='critique'?'var(--er)':i.niveau==='important'?'var(--wa)':'var(--t3)'};flex-shrink:0"></div>
+      // Sévérité visuelle — même patron que SEV_CLR/SEV_BG du dashboard Admin
+      // (cf. loadAdminDash) : bordure gauche + fond légèrement teinté par ligne.
+      const INC_SEV_BG={critique:'rgba(240,68,94,.05)',important:'rgba(245,165,36,.04)'};
+      elInc.innerHTML=list.map((i,idx)=>{
+        const cls=i.niveau==='critique'?'er':i.niveau==='important'?'wa':'t3';
+        const bg=INC_SEV_BG[i.niveau]||'transparent';
+        return`<div onclick="switchView('incidents')" style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-left:2px solid var(--${cls});background:${bg};${idx<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='${bg}'">
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--${cls});flex-shrink:0"></div>
         <div style="flex:1;min-width:0;font-size:12.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.type_incident||(i.description?i.description.slice(0,40):'')||'—')}</div>
         <div style="font-size:11px;color:var(--t3);flex-shrink:0">${esc(i.prestations?.clients?.nom||i.prestations?.reference||'—')}</div>
         <div style="font-size:10.5px;color:var(--t3);flex-shrink:0">${i.created_at?new Date(i.created_at).toLocaleDateString('fr-FR'):'—'}</div>
-      </div>`).join('');
+      </div>`;
+      }).join('');
     }
   }
 }
@@ -26436,9 +26471,21 @@ async function _finConfirmerImportCSV(){
 // VIEWS['admin.equipeoverview'|'equipehub'|'recrutement'] plus haut).
 // loadCollaborateurs() reste la même fonction qu'avant (onglet "Équipe"
 // d'origine), simplement appelée directement par le dispatcher désormais.
+// Skeleton scopé Admin Équipe/Collaborateurs (passe polish premium, 29/08/2026) —
+// mêmes proportions que la grille de cartes réelle (avatar rond + libellés).
+function _adminEqSkelCards(n){
+  let out='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:13px">';
+  for(let i=0;i<(n||6);i++)out+=`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px">
+    <div class="skel" style="width:50px;height:50px;border-radius:50%"></div>
+    <div class="skel" style="width:70%;height:13px;border-radius:4px"></div>
+    <div class="skel" style="width:45%;height:10px;border-radius:4px"></div>
+  </div>`;
+  return out+'</div>';
+}
 async function loadCollaborateurs(){
   const el=document.getElementById('col-real');
   if(!el)return;
+  el.innerHTML=_adminEqSkelCards(6);
   try{
     const _colRole=localStorage.getItem('sv_role');
     const _colFilter=_colRole==='prod'?'&role=in.(photo,cm)':'';
