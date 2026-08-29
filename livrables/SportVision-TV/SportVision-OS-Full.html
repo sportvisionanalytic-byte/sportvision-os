@@ -19570,25 +19570,83 @@ const AUDIT_ACTION_LBL={contenu_cree:'Création',contenu_statut_change:'Changeme
 // ── CM — Contenus ─────────────────────────────────────────────────────────────
 // Statuts contenus : tableau + bouton "étape suivante" (même pattern que
 // crmAvancerStatut/crmNext pour clients.statut) — pas de Kanban drag-and-drop.
+// Refonte 29/08 (spec Refonte CM, non-objectif #1 et §20/§22/§34/critère #4-5) : le
+// pipeline standard passait AVANT par a_valider_interne PUIS a_valider_client — un
+// vrai workflow de validation client systématique sur chaque publication, alors que
+// la spec l'interdit explicitement ("Le client ne valide pas chaque contenu"). Les deux
+// anciens statuts restent dans la contrainte CHECK (lignes existantes non cassées) mais
+// sortent du flux normal ; seul le Junior garde une étape de validation, par son tuteur
+// (a_valider_tuteur), imposée aussi côté base (trigger protect_junior_content_publication).
 const CONTENU_STATUTS={
-  brouillon:{lb:'Brouillon',cls:'bn'},
+  brouillon:{lb:'Idée / à créer',cls:'bn'},
   a_valider_interne:{lb:'Vérif. interne',cls:'bw'},
   a_valider_client:{lb:'Validation client',cls:'bw'},
+  a_valider_tuteur:{lb:'À valider (tuteur)',cls:'bw'},
   corrections:{lb:'Corrections',cls:'br'},
+  pret:{lb:'Prêt',cls:'bb'},
   valide:{lb:'Validé',cls:'bb'},
   programme:{lb:'Programmé',cls:'bb'},
   publie:{lb:'Publié',cls:'ba'},
   archive:{lb:'Archivé',cls:'bn'},
 };
+// Flux standard (CM autonome / Responsable / admin) — sans étape de validation.
 const CONTENU_NEXT={
-  brouillon:{st:'a_valider_interne',lb:'→ Vérification interne'},
-  a_valider_interne:{st:'a_valider_client',lb:'→ Validation client'},
-  a_valider_client:{st:'valide',lb:'✓ Valider'},
+  brouillon:{st:'pret',lb:'✓ Marquer prêt'},
+  pret:{st:'programme',lb:'→ Programmer'},
   valide:{st:'programme',lb:'→ Programmer'},
   programme:{st:'publie',lb:'✓ Publier'},
   publie:{st:'archive',lb:'→ Archiver'},
   corrections:{st:'brouillon',lb:'→ Reprendre en brouillon'},
 };
+// Flux Junior sur SON PROPRE contenu — passe par le tuteur au lieu de publier seul.
+const CONTENU_NEXT_JUNIOR_OWN={
+  brouillon:{st:'a_valider_tuteur',lb:'→ Soumettre au tuteur'},
+  corrections:{st:'a_valider_tuteur',lb:'→ Resoumettre au tuteur'},
+  pret:{st:'programme',lb:'→ Programmer'},
+  programme:{st:'publie',lb:'✓ Publier'},
+  publie:{st:'archive',lb:'→ Archiver'},
+  // a_valider_tuteur : aucun bouton pour le Junior lui-même, doit attendre le tuteur.
+};
+// Actions du tuteur sur un contenu Junior en attente de validation.
+async function tuteurValiderContenu(id){
+  const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{statut:'pret',valide_par:localStorage.getItem('sv_uid'),valide_at:new Date().toISOString(),updated_at:new Date().toISOString()}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'validation impossible.'),'er');return;}
+  _logAudit('contenu_statut_change','contenu',id,{statut:'pret',action:'validation_tuteur'});
+  toast('Contenu validé.','ok');
+  loadViewData(S.role,S.view);
+}
+function modalCorrigerContenuJunior(id){
+  openModal(`<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">Demander une correction</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Commentaire *</label>
+        <textarea id="corr-cnt-motif" class="l-inp" style="height:80px;padding-top:10px;resize:none" placeholder="Ce qui doit être corrigé…"></textarea></div>
+      <div id="corr-cnt-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="executerCorrigerContenuJunior('${id}')">Envoyer</button>
+      </div>
+    </div>`);
+}
+async function executerCorrigerContenuJunior(id){
+  const err=document.getElementById('corr-cnt-err');
+  const motif=(document.getElementById('corr-cnt-motif')?.value||'').trim();
+  if(!motif){err.textContent='Le commentaire est obligatoire.';return;}
+  const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{statut:'corrections',commentaire_validation:motif,updated_at:new Date().toISOString()}});
+  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'opération impossible.');return;}
+  _logAudit('contenu_statut_change','contenu',id,{statut:'corrections',action:'correction_tuteur'});
+  closeModal();
+  toast('Correction demandée.','warn');
+  loadViewData(S.role,S.view);
+}
+let _myCmTutees=undefined; // Set des junior_id dont je suis le tuteur actif
+async function _ensureMyCmTutees(){
+  if(_myCmTutees!==undefined)return _myCmTutees;
+  try{
+    const r=await sbFetch('cm_tutorships?select=junior_id&tuteur_id=eq.'+localStorage.getItem('sv_uid')+'&statut=eq.actif').catch(()=>[]);
+    _myCmTutees=new Set((Array.isArray(r)?r:[]).map(t=>t.junior_id));
+  }catch(e){_myCmTutees=new Set();}
+  return _myCmTutees;
+}
 
 // Clients visibles par le CM courant — utilisée à la fois pour peupler les
 // select de création/édition de contenu (colonnes minimales) et par
@@ -19615,7 +19673,12 @@ async function loadCmContenus(){
   if(!el)return;
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   try{
-    const data=await sbFetch('contenus?select=id,titre,statut,plateforme,type_contenu,date_prevue,clients(nom)&order=updated_at.desc&limit=100');
+    const uid=localStorage.getItem('sv_uid');
+    const [data,myTier,tutees]=await Promise.all([
+      sbFetch('contenus?select=id,titre,statut,plateforme,type_contenu,date_prevue,cm_id,commentaire_validation,clients(nom)&order=updated_at.desc&limit=100'),
+      _ensureMyCmAutonomie(),
+      _ensureMyCmTutees(),
+    ]);
     _contenuCache=Array.isArray(data)?data:[];
     const draft=_contenuCache.filter(c=>c.statut==='brouillon').length;
     const corr=_contenuCache.filter(c=>c.statut==='corrections').length;
@@ -19628,16 +19691,24 @@ async function loadCmContenus(){
     el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Titre</th><th>Client</th><th>Plateforme</th><th>Type</th><th>Date prévue</th><th>Statut</th><th></th></tr></thead><tbody>'+
       _contenuCache.map(c=>{
         const st=CONTENU_STATUTS[c.statut]||CONTENU_STATUTS.brouillon;
-        const next=CONTENU_NEXT[c.statut];
+        const isMine=c.cm_id===uid;
+        const isMyTutee=tutees.has(c.cm_id);
+        let actions='';
+        if(c.statut==='a_valider_tuteur'&&(isMyTutee||['admin'].includes(S.role)||myTier==='responsable')){
+          actions=`<button class="btn bp bs" onclick="tuteurValiderContenu('${c.id}')">✓ Valider</button><button class="btn bg2 bs" style="color:var(--er)" onclick="modalCorrigerContenuJunior('${c.id}')">Corriger</button>`;
+        }else{
+          const next=(isMine&&myTier==='junior')?CONTENU_NEXT_JUNIOR_OWN[c.statut]:CONTENU_NEXT[c.statut];
+          actions=next?`<button class="btn bg2 bs" onclick="avancerContenu('${c.id}','${next.st}')">${next.lb}</button>`:'';
+        }
         return`<tr>
-          <td class="tp">${esc(c.titre)}</td>
+          <td class="tp">${esc(c.titre)}${c.commentaire_validation&&c.statut==='corrections'?`<div style="font-size:11px;color:var(--er);margin-top:3px">${esc(c.commentaire_validation)}</div>`:''}</td>
           <td>${c.clients?.nom?esc(c.clients.nom):'<span style="color:var(--t3)">SportVision</span>'}</td>
           <td>${esc(c.plateforme||'—')}</td>
           <td>${esc(c.type_contenu||'—')}</td>
           <td>${c.date_prevue?new Date(c.date_prevue).toLocaleDateString('fr-FR'):'—'}</td>
           <td><span class="bd ${st.cls}"><span class="bd-d"></span>${st.lb}</span></td>
           <td style="display:flex;gap:4px">
-            ${next?`<button class="btn bg2 bs" onclick="avancerContenu('${c.id}','${next.st}')">${next.lb}</button>`:''}
+            ${actions}
             <button class="btn bg2 bs" onclick="modalEditContenu('${c.id}')">Modifier</button>
           </td>
         </tr>`;
@@ -24637,7 +24708,7 @@ async function loadCollaborateurs(){
   try{
     const _colRole=localStorage.getItem('sv_role');
     const _colFilter=_colRole==='prod'?'&role=in.(photo,cm)':'';
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm'+_colFilter+'&order=role.asc,nom.asc');
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie'+_colFilter+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
@@ -24693,16 +24764,24 @@ async function modalModifierCollaborateur(idx){
           <div style="font-size:12px;font-weight:650;color:var(--t1);margin-bottom:10px">Rôle &amp; accès</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div><label style="${lbl}">Rôle</label>
-              <select id="fco-role" class="l-inp" style="height:38px" onchange="changerRoleUser('${t.id}',this.value);document.getElementById('fco-niveaucm-wrap').style.display=this.value==='cm'?'block':'none'">
+              <select id="fco-role" class="l-inp" style="height:38px" onchange="changerRoleUser('${t.id}',this.value);document.getElementById('fco-niveaucm-wrap').style.display=this.value==='cm'?'block':'none';document.getElementById('fco-autonomiecm-wrap').style.display=this.value==='cm'?'block':'none'">
                 ${Object.entries(ROLE_LABELS_FULL).map(([k,v])=>`<option value="${k}"${t.role===k?' selected':''}>${v}</option>`).join('')}
               </select>
             </div>
-            <div id="fco-niveaucm-wrap" style="display:${t.role==='cm'?'block':'none'}"><label style="${lbl}">Palier CM</label>
+            <div id="fco-niveaucm-wrap" style="display:${t.role==='cm'?'block':'none'}"><label style="${lbl}">Palier CM (spécialisation)</label>
               <select class="l-inp" style="height:38px" onchange="changerNiveauCmUser('${t.id}',this.value)">
                 <option value=""${!t.niveau_cm?' selected':''}>Non classé</option>
                 ${Object.entries(CM_NIVEAU_LBL).map(([k,v])=>`<option value="${k}"${t.niveau_cm===k?' selected':''}>${v}</option>`).join('')}
               </select>
             </div>
+          </div>
+          <div id="fco-autonomiecm-wrap" style="display:${t.role==='cm'?'block':'none'};margin-top:10px">
+            <label style="${lbl}">Niveau d'autonomie (rémunération/permissions — spec Refonte CM 29/08, distinct du palier ci-dessus)</label>
+            <select class="l-inp" style="height:38px" onchange="changerCmAutonomie('${t.id}',this.value)">
+              <option value="autonome"${!t.cm_niveau_autonomie||t.cm_niveau_autonomie==='autonome'?' selected':''}>CM (autonome)</option>
+              <option value="junior"${t.cm_niveau_autonomie==='junior'?' selected':''}>CM Junior — publication soumise à un tuteur</option>
+              <option value="responsable"${t.cm_niveau_autonomie==='responsable'?' selected':''}>Responsable CM — supervision de tout le pôle</option>
+            </select>
           </div>
           <div style="margin-top:10px">
             ${isInactif?`<button class="btn bg2 bs" onclick="reactiverUser('${t.id}')">↺ Réactiver l'accès</button>`:`<button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerDesactiverUser('${t.id}','${escJs(t.prenom||'')}','${escJs(t.nom||'')}')">⛔ Désactiver l'accès</button>`}
@@ -25270,6 +25349,20 @@ async function _ensureMyNiveauCm(){
     _myNiveauCm=r?.[0]?.niveau_cm||null;
   }catch(e){_myNiveauCm=null;}
   return _myNiveauCm;
+}
+// Niveau d'autonomie CM (spec Refonte CM, 29/08) : Junior/Autonome/Responsable —
+// DISTINCT de niveau_cm ci-dessus (qui reste la spécialisation de portefeuille :
+// Full Com/Club+ Studio/Événement/interne). null = non classé, traité comme 'autonome'
+// (comportement historique par défaut, cf. profiles_cm_niveau_autonomie_check).
+let _myCmAutonomie=undefined;
+async function _ensureMyCmAutonomie(){
+  if(_myCmAutonomie!==undefined)return _myCmAutonomie;
+  const uid=localStorage.getItem('sv_uid');
+  try{
+    const r=await sbFetch('profiles?select=cm_niveau_autonomie&id=eq.'+uid);
+    _myCmAutonomie=r?.[0]?.cm_niveau_autonomie||'autonome';
+  }catch(e){_myCmAutonomie='autonome';}
+  return _myCmAutonomie;
 }
 // Rôle démo → profil DEMO_DATA.profiles correspondant (id différent du nom de rôle pour photo,
 // qui a deux profils factices — demo-photo1 sert de "moi" par défaut).
@@ -27245,6 +27338,11 @@ async function changerNiveauCmUser(id,niveau){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{niveau_cm:niveau||null}});
   if(sbErr(r)){toast('Erreur changement de niveau CM','er');return;}
   toast('Niveau CM mis à jour','ok');
+}
+async function changerCmAutonomie(id,niveau){
+  const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{cm_niveau_autonomie:niveau}});
+  if(sbErr(r)){toast('Erreur changement de niveau d\'autonomie','er');return;}
+  toast('Niveau d\'autonomie mis à jour','ok');
 }
 
 // Remplace l'ancien "Supprimer" (DELETE sur profiles), qui échouait en
