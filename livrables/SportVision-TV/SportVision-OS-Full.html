@@ -406,6 +406,11 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 .btn{position:relative;transition:opacity .12s,transform .1s,box-shadow .18s}
 .bp:hover{box-shadow:0 4px 20px rgba(14,165,255,.28)}
 .btn:disabled,.btn.loading{opacity:.55;cursor:not-allowed;pointer-events:none}
+/* Anti-double-clic générique : le verrou pose data-sv-busy sur l'élément
+   déclencheur. Sur un .btn le style :disabled existant suffit ; l'attribut sert
+   aux déclencheurs qui n'ont pas de propriété `disabled` (div/a/tr cliquables). */
+[data-sv-busy]{pointer-events:none}
+a[data-sv-busy],[data-sv-busy]:not(.btn):not(button){opacity:.55;cursor:progress}
 .btn.loading{color:transparent!important}
 .btn.loading::after{content:'';position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:btnspin .6s linear infinite}
 .bg2.loading::after{border-color:rgba(255,255,255,.15);border-top-color:var(--t1)}
@@ -32381,6 +32386,109 @@ async function loadMobileComDash(ct){
     ct.innerHTML=html;
   }catch(e){ct.innerHTML=`<div style="padding:32px;color:var(--er);text-align:center;font-size:13px">Erreur de chargement.</div>`;}
 }
+
+// ── ANTI-DOUBLE-CLIC GÉNÉRIQUE ───────────────────────────────────────────────
+// Dette technique relevée par l'audit du 29/08 (§11) : seules ~20 fonctions
+// étaient protégées à la main contre le double-clic (btn.disabled=true, puis
+// remise à false à recopier dans CHAQUE branche de sortie), alors que 157
+// handlers onclick lancent réellement une mutation. Répéter l'idiome 157 fois,
+// c'est en oublier une branche sur deux. On enveloppe donc ici, une seule fois,
+// toutes les fonctions async globales.
+//
+// Le verrou ne s'arme que si l'appel est bien l'invocation DIRECTE d'un handler
+// inline : il faut qu'un clic soit en cours de dispatch (window.event) ET que
+// l'attribut onclick de l'élément déclencheur appelle nommément cette fonction.
+// Sans cette double condition, un helper async appelé en boucle depuis un
+// handler verrait ses appels suivants avalés comme autant de « deuxièmes
+// clics », ce qui casserait la boucle. C'est aussi ce qui rend la récursion et
+// les appels internes transparents au verrou.
+//
+// Les fonctions déjà protégées à la main sont exclues : leur garde est écrite,
+// testée, et gère son propre libellé de bouton ; superposer les deux ne ferait
+// que brouiller l'état du bouton.
+const _SV_GUARD_SKIP=new Set(['doLogin','creerPrestation','creerClient',
+  'genererLienActivationClubPlus','genererLienCreationOrg','recrutCreerCollaborateur',
+  'envoyerTraitementDemandeClub','creerAccesCmAgency','creerMembreCmAgency',
+  'confirmerLivraison','ajouterMembreEquipe','_sendContratEmailConfirm','creerDevis',
+  'sauvegarderDevis','_sendDevisEmailConfirm','_sendFactureEmailConfirm','envoyerMessage',
+  'toutPayerCollab','marquerPayeRem','comptaConfirmerAcompte','comptaConfirmerImpaye',
+  'secConfirmerPaye','validerProduction','saveRealisation','sauvegarderContrat','jourJAction']);
+
+// Filet de sécurité : si une promesse ne se règle jamais (requête qui pend,
+// exception avalée ailleurs), le bouton serait mort jusqu'au rechargement.
+const _SV_GUARD_MAX_MS=30000;
+// Le spinner n'apparaît qu'au-delà de ce délai : une mutation qui répond en
+// 80 ms ne doit pas produire un flash de spinner.
+const _SV_GUARD_SPIN_MS=120;
+
+function _svGuardTrigger(re){
+  const ev=window.event;
+  if(!ev||ev.type!=='click')return null;
+  let el=ev.target;
+  while(el&&el.nodeType===1){
+    const code=el.getAttribute&&el.getAttribute('onclick');
+    if(code)return re.test(code)?el:null;
+    el=el.parentElement;
+  }
+  return null;
+}
+function _svGuardLock(el){
+  el.__svBusy=true;
+  el.__svEvent=window.event;
+  el.setAttribute('data-sv-busy','1');
+  el.setAttribute('aria-busy','true');
+  const wasDisabled='disabled' in el?!!el.disabled:null;
+  if(wasDisabled!==null)el.disabled=true;
+  const spin=el.classList&&el.classList.contains('btn')&&!el.classList.contains('loading')
+    ?setTimeout(()=>el.classList.add('loading'),_SV_GUARD_SPIN_MS):null;
+  let done=false;
+  const release=()=>{
+    if(done)return;done=true;
+    clearTimeout(kill);if(spin!==null){clearTimeout(spin);el.classList.remove('loading');}
+    el.__svBusy=false;
+    el.__svEvent=null;
+    el.removeAttribute('data-sv-busy');
+    el.removeAttribute('aria-busy');
+    if(wasDisabled!==null)el.disabled=wasDisabled;
+  };
+  const kill=setTimeout(release,_SV_GUARD_MAX_MS);
+  return release;
+}
+function _svGuardWrap(name,orig){
+  const re=new RegExp('(^|[^A-Za-z0-9_$.])'+name.replace(/[$]/g,'\\$&')+'\\s*\\(');
+  const w=function(){
+    const el=_svGuardTrigger(re);
+    if(!el)return orig.apply(this,arguments);      // appel interne : rien à verrouiller
+    if(el.__svBusy){
+      // Verrou déjà posé sur ce déclencheur. Si c'est le MÊME événement, on est
+      // dans un appel imbriqué du même dispatch (récursion synchrone, ou deux
+      // appels dans le même attribut onclick) : laisser passer, sinon on se
+      // bloquerait soi-même. Si c'est un autre événement, c'est un vrai
+      // deuxième clic : on l'ignore.
+      return el.__svEvent===window.event?orig.apply(this,arguments):undefined;
+    }
+    const release=_svGuardLock(el);
+    let r;
+    try{r=orig.apply(this,arguments);}catch(e){release();throw e;}
+    if(r&&typeof r.then==='function')return r.then(v=>{release();return v;},e=>{release();throw e;});
+    release();
+    return r;
+  };
+  w.__svGuarded=true;w.__svOrig=orig;
+  return w;
+}
+(function _svInstallGuards(){
+  let n=0;
+  for(const k of Object.getOwnPropertyNames(window)){
+    if(_SV_GUARD_SKIP.has(k))continue;
+    let v;try{v=window[k];}catch(e){continue;}
+    if(typeof v!=='function'||v.__svGuarded)continue;
+    let ctor;try{ctor=v.constructor&&v.constructor.name;}catch(e){continue;}
+    if(ctor!=='AsyncFunction')continue;             // seules les mutations async sont concernées
+    try{window[k]=_svGuardWrap(k,v);n++;}catch(e){}
+  }
+  window.__svGuardCount=n;
+})();
 
 // Désactiver tout service worker existant (évite les interférences avec Supabase)
 if('serviceWorker' in navigator){
