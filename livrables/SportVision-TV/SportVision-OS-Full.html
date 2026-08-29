@@ -1293,14 +1293,14 @@ const VIEWS={
     </div>
     <div class="g32" style="margin-top:12px">
       <div class="cd"><div class="cd-h"><div class="cd-t">Prestations à venir (14j)</div><button class="btn bg2 bs" onclick="switchView('pre')">Toutes</button></div>
-        <div id="sec-dash-pre"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        <div id="sec-dash-pre"><div style="display:flex;flex-direction:column;gap:6px;padding:2px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:34px;border-radius:8px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:34px;border-radius:8px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:34px;border-radius:8px"></div></div></div>
       </div>
       <div>
         <div class="cd"><div class="cd-h"><div class="cd-t">Dossiers incomplets</div><button class="btn bg2 bs" onclick="switchView('pre')">Voir</button></div>
-          <div id="sec-dash-incomplets"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+          <div id="sec-dash-incomplets"><div style="display:flex;flex-direction:column;gap:6px;padding:2px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:28px;border-radius:8px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:28px;border-radius:8px"></div></div></div>
         </div>
         <div class="cd" style="margin-top:12px"><div class="cd-h"><div class="cd-t">Clients récents</div><button class="btn bg2 bs" onclick="switchView('crm')">CRM</button></div>
-          <div id="sec-dash-clients"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+          <div id="sec-dash-clients"><div style="display:flex;flex-direction:column;gap:6px;padding:2px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:28px;border-radius:8px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:28px;border-radius:8px"></div></div></div>
         </div>
       </div>
     </div>`,
@@ -1442,7 +1442,7 @@ const VIEWS={
   // la décision finale via le pipeline lui-même, pas un accès distinct).
   'sec.recrutement':()=>`
     <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Candidatures reçues via le site — pipeline Nouveaux → Collaborateur</div></div></div>
-    <div id="recrut-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="recrut-real"><div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:8px"><div class="skel" style="background:rgba(255,255,255,.05);flex:0 0 300px;height:220px;border-radius:12px"></div><div class="skel" style="background:rgba(255,255,255,.05);flex:0 0 300px;height:220px;border-radius:12px"></div><div class="skel" style="background:rgba(255,255,255,.05);flex:0 0 300px;height:220px;border-radius:12px"></div></div></div>`,
 
   'admin.form':()=>`
     <div class="sh"><div class="sh-t">Centre de formation</div></div>
@@ -1709,7 +1709,7 @@ const VIEWS={
 
   'sec.taches':()=>`
     <div class="sh"><div class="sh-t">Tâches</div><button class="btn bp bs" onclick="modalNouvelleTache()">+ Tâche</button></div>
-    <div id="taches-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="taches-real"><div style="display:flex;flex-direction:column;gap:8px;padding:4px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div></div></div>`,
 
   'sec.docs':()=>_documentsView('sec'),
 
@@ -1732,7 +1732,7 @@ const VIEWS={
       <button onclick="filterAgendaSec('termine')" class="btn bg2 bs" id="ag-f-termine" style="flex-shrink:0;font-size:11px">Terminés</button>
       <button onclick="filterAgendaSec('all')" class="btn bg2 bs" id="ag-f-all" style="flex-shrink:0;font-size:11px">Tous</button>
     </div>
-    <div id="agenda-sec-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="agenda-sec-real"><div style="display:flex;flex-direction:column;gap:8px;padding:4px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div></div></div>`,
 
   // ── DOCUMENTS (pièces RH/client/Club+/avenants/recrutement) ──────────────
   // 28/08/2026, spec refonte Secrétaire §28-29 : vue secretariat_documents
@@ -1756,7 +1756,7 @@ const VIEWS={
       <button onclick="filterDocRh('valide')" class="btn bg2 bs" id="dr-f-valide" style="flex-shrink:0;font-size:11px">Complets</button>
       <button onclick="filterDocRh('all')" class="btn bg2 bs" id="dr-f-all" style="flex-shrink:0;font-size:11px">Tous</button>
     </div>
-    <div id="docrh-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="docrh-real"><div style="display:flex;flex-direction:column;gap:8px;padding:4px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div></div></div>`,
 
   // ── PRODUCTION ──────────────────────────
   // Refonte Responsable Production (§3 "Dashboard Accueil" + §4 "Bloc À traiter", 29/08) :
@@ -2589,7 +2589,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterSecDemandesSource('clubplus')" id="dems-f-clubplus">Club+</button>
       <button class="btn bg2 bs" onclick="filterSecDemandesSource('interne')" id="dems-f-interne">Interne</button>
     </div>
-    <div id="sec-demandes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="sec-demandes-real"><div style="display:flex;flex-direction:column;gap:8px;padding:4px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div></div></div>`,
 
   'sec.reservationsclubs':()=>_clubBookingsView(),
   'admin.reservationsclubs':()=>_clubBookingsView(),
@@ -2609,7 +2609,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterSecRelances('solde')" id="rel-f-solde">Soldes</button>
       <button class="btn bg2 bs" onclick="filterSecRelances('retard')" id="rel-f-retard">En retard</button>
     </div>
-    <div id="sec-relances-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="sec-relances-real"><div style="display:flex;flex-direction:column;gap:8px;padding:4px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div></div></div>`,
 
   'sec.contrats':()=>`
     <div class="sh"><div class="sh-t">Contrats & abonnements</div><div style="display:flex;gap:8px"><button class="btn bg2 bs" onclick="switchView('abonnements')">Abonnements</button><button class="btn bp bs" onclick="modalNouveauContrat()">+ Contrat</button></div></div>
@@ -2618,7 +2618,7 @@ const VIEWS={
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À signer</div><div class="fs-v" id="cnt-kpi-sign" style="color:var(--wa)">—</div></div>
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Expirés</div><div class="fs-v" id="cnt-kpi-exp" style="color:var(--er)">—</div></div>
     </div>
-    <div id="sec-contrats-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="sec-contrats-real"><div style="display:flex;flex-direction:column;gap:8px;padding:4px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div></div></div>`,
 
   'sec.abonnements':()=>`
     <div class="sh"><div class="sh-t">Abonnements clubs</div></div>
@@ -2627,7 +2627,7 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Renouvellements (30j)</div><div class="fs-v" id="abo-kpi-ren" style="color:var(--wa)">—</div></div>
       <div class="fs"><div class="fs-l">CA mensuel récurrent</div><div class="fs-v" id="abo-kpi-ca">—</div></div>
     </div>
-    <div id="sec-abonnements-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="sec-abonnements-real"><div style="display:flex;flex-direction:column;gap:8px;padding:4px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div></div></div>`,
 
   // Cotisations Connect (financement collectif de prestations, migration-
   // connect-v50/v51 du 14/08/2026) : jamais visible côté OS jusqu'ici alors
@@ -2653,7 +2653,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterSecLivraisons('envoyee')" id="liv-f-envoyee">Envoyées</button>
       <button class="btn bg2 bs" onclick="filterSecLivraisons('attente')" id="liv-f-attente">En attente</button>
     </div>
-    <div id="sec-livraisons-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="sec-livraisons-real"><div style="display:flex;flex-direction:column;gap:8px;padding:4px 0"><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div><div class="skel" style="background:rgba(255,255,255,.05);height:42px;border-radius:10px"></div></div></div>`,
 
   'sec.rapports':()=>`
     <div class="sh">
@@ -11841,14 +11841,19 @@ function renderDocRhList(){
   let list=_docRhData;
   if(_docRhFilter!=='all')list=list.filter(d=>d.statut_affichage===_docRhFilter);
   if(!list.length){
-    el.innerHTML='<div class="cd"><div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:10px;color:var(--t3)"><div style="font-size:40px;opacity:.15">📁</div><div style="font-size:13px">Rien ici pour ce filtre.</div></div></div>';
+    const msg=_docRhData.length?'Rien ici pour ce filtre.':'Aucune pièce à suivre pour le moment.';
+    el.innerHTML=`<div class="cd"><div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:10px;color:var(--t3)"><div style="font-size:40px;opacity:.15">📁</div><div style="font-size:13px">${msg}</div></div></div>`;
     return;
   }
   const stC={manquant:'br',a_valider:'bw',expire_bientot:'bw',valide:'ba'};
   const stLbl={manquant:'Manquant',a_valider:'À valider',expire_bientot:'Expire bientôt',valide:'Complet'};
+  // Sévérité perceptible sans noyer l'écran (même patron que le bloc "À traiter"
+  // du dashboard secrétaire/admin) : bordure gauche teintée par statut, les
+  // pièces manquantes ressortent immédiatement sans que toute la ligne soit rouge.
+  const stBorder={manquant:'var(--er)',a_valider:'var(--wa)',expire_bientot:'var(--wa)',valide:'transparent'};
   el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+list.map((d,i)=>{
     const ech=d.date_echeance?new Date(d.date_echeance).toLocaleDateString('fr-FR'):null;
-    return`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;${i<list.length-1?'border-bottom:1px solid var(--b1)':''}">
+    return`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-left:2px solid ${stBorder[d.statut_affichage]||'transparent'};${i<list.length-1?'border-bottom:1px solid var(--b1)':''}">
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(d.nom)} <span style="font-weight:400;color:var(--t3)">— ${esc(d.proprietaire_label||'—')}</span></div>
         <div style="font-size:11px;color:var(--t3);margin-top:2px">${DOCRH_CAT_LBL[d.categorie]||d.categorie}${ech?' · échéance '+ech:''}</div>
@@ -23338,18 +23343,21 @@ async function loadSecDash(){
     set('sec-kpi-docmanq',(Array.isArray(docsManqRaw)?docsManqRaw:[]).length);
     set('sec-kpi-rdvauj',(Array.isArray(rdvAujRaw)?rdvAujRaw:[]).length);
 
-    // Bloc priorité
+    // Bloc priorité — hiérarchie de sévérité visuelle (icône + bordure + fond
+    // légèrement teinté par item, pas toute la carte en rouge), même patron que
+    // le bloc "À traiter" du Dashboard admin (dash-traiter, voir loadAdminDash).
     const prioItems=[];
-    if(demandes>0)prioItems.push({lbl:`${demandes} demande${demandes>1?'s':''} en attente de traitement`,cls:'er',view:'demandes'});
-    if(acomptes>0)prioItems.push({lbl:`${acomptes} acompte${acomptes>1?'s':''} à relancer`,cls:'wa',view:'relances'});
-    if(livraisons>0)prioItems.push({lbl:`${livraisons} livraison${livraisons>1?'s':''} prête${livraisons>1?'s':''} à envoyer`,cls:'ok',view:'livraisons'});
+    if(demandes>0)prioItems.push({ic:'📥',lbl:`${demandes} demande${demandes>1?'s':''} en attente de traitement`,cls:'er',sev:'urgent',view:'demandes'});
+    if(acomptes>0)prioItems.push({ic:'💳',lbl:`${acomptes} acompte${acomptes>1?'s':''} à relancer`,cls:'wa',sev:'important',view:'relances'});
+    if(livraisons>0)prioItems.push({ic:'📦',lbl:`${livraisons} livraison${livraisons>1?'s':''} prête${livraisons>1?'s':''} à envoyer`,cls:'ok',sev:'normal',view:'livraisons'});
     const prioEl=document.getElementById('sec-dash-priorite');
     const prioReal=document.getElementById('sec-dash-priorite-real');
     if(prioEl&&prioReal){
       if(prioItems.length>0){
         prioEl.style.display='';
-        prioReal.innerHTML=prioItems.map(it=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.04)">
-          <div style="font-size:13px;color:var(--${it.cls})">${it.lbl}</div>
+        const SEV_BG={urgent:'rgba(240,68,94,.05)',important:'rgba(245,165,36,.04)',normal:'rgba(46,204,138,.04)'};
+        prioReal.innerHTML=prioItems.map(it=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.04);border-left:2px solid var(--${it.cls});background:${SEV_BG[it.sev]};transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='${SEV_BG[it.sev]}'">
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--${it.cls})"><span style="font-size:15px;flex-shrink:0">${it.ic}</span>${it.lbl}</div>
           <button class="btn bg2 bs" onclick="switchView('${it.view}')">Traiter</button>
         </div>`).join('');
       } else prioEl.style.display='none';
@@ -23372,7 +23380,7 @@ async function loadSecDash(){
           <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
           <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
         </tr>`).join('')+'</tbody></table></div>':
-        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation dans les 14 prochains jours.</div>';
+        '<div style="padding:28px 16px;text-align:center;color:var(--t3)"><div style="font-size:24px;margin-bottom:6px;opacity:.3">📅</div><div style="font-size:12.5px">Aucune prestation dans les 14 prochains jours.</div></div>';
     }
 
     // Dossiers incomplets
@@ -23384,7 +23392,7 @@ async function loadSecDash(){
         <div style="font-size:11px;color:var(--wa);margin-top:2px">${SL[p.statut]||p.statut}</div></div>
         <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
       </div>`).join(''):
-      '<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun dossier incomplet.</div>';
+      '<div style="padding:20px 16px;text-align:center;color:var(--t3)"><div style="font-size:22px;margin-bottom:5px;opacity:.3">✅</div><div style="font-size:12.5px">Aucun dossier incomplet. Tout est en ordre.</div></div>';
     }
 
     const ec=document.getElementById('sec-dash-clients');
@@ -23399,7 +23407,7 @@ async function loadSecDash(){
           <td><span class="bd ${scc[c.statut]||'bw'}"><span class="bd-d"></span>${scl[c.statut]||c.statut}</span></td>
           <td><button class="btn bg2 bs" onclick="modalModifierClientById('${c.id}')">Ouvrir</button></td>
         </tr>`).join('')+'</tbody></table></div>':
-        '<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun client pour l\'instant.</div>';
+        '<div style="padding:20px 16px;text-align:center;color:var(--t3)"><div style="font-size:22px;margin-bottom:5px;opacity:.3">👥</div><div style="font-size:12.5px">Aucun client pour l\'instant.</div></div>';
     }
   }catch(e){console.error('loadSecDash',e);}
 }
@@ -23508,7 +23516,11 @@ function renderSecDemandes(){
   let list=_secDemData;
   if(_secDemFilter!=='all')list=list.filter(r=>r.bucket===_secDemFilter);
   if(_secDemSourceFilter!=='all')list=list.filter(r=>r.source===_secDemSourceFilter);
-  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune demande dans cette catégorie.</div>';return;}
+  if(!list.length){
+    const msg=_secDemData.length?'Aucune demande ne correspond à ce filtre.':'Aucune demande pour le moment. Les nouvelles demandes (Vitrine, Connect, Club+) apparaîtront ici automatiquement.';
+    el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📥</div><div style="font-size:13px;max-width:360px;text-align:center">${msg}</div></div>`;
+    return;
+  }
   const openAction=r=>{
     if(r.kind==='prestation')return `onclick="modalDetailById('${r.id}')"`;
     if(r.kind==='club_booking')return `onclick="modalReservationClub('${r.id}')"`;
@@ -23665,7 +23677,11 @@ function renderClubBookings(){
   if(_cbkFilter==='attente')list=list.filter(b=>['recue','qualifiee'].includes(b.status));
   else if(_cbkFilter==='cours')list=list.filter(b=>['confirmee','operateur_affecte','mission_realisee'].includes(b.status));
   else if(_cbkFilter==='livrees')list=list.filter(b=>b.status==='livree');
-  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune réservation dans cette catégorie.</div>';return;}
+  if(!list.length){
+    const msg=_cbkData.length?'Aucune réservation ne correspond à ce filtre.':'Aucune réservation de club pour le moment. Les nouvelles demandes apparaîtront ici.';
+    el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🏟️</div><div style="font-size:13px;max-width:360px;text-align:center">${msg}</div></div>`;
+    return;
+  }
   el.innerHTML='<div class="tw"><table><thead><tr><th>Club</th><th>Prestation</th><th>Équipe</th><th>Date</th><th>Tarif indicatif</th><th>Statut</th><th></th></tr></thead><tbody>'+
     list.map(b=>`<tr>
       <td class="tp">${esc(b.clubs?.nom||'—')}</td>
@@ -23764,7 +23780,11 @@ function renderSecRelances(){
       return d<now&&p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut);
     });
   }
-  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune relance pour ce filtre.</div>';return;}
+  if(!list.length){
+    const msg=_secRelData.length?'Aucune relance ne correspond à ce filtre.':'Aucune relance à faire. Tous les paiements sont à jour.';
+    el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">💳</div><div style="font-size:13px;max-width:360px;text-align:center">${msg}</div></div>`;
+    return;
+  }
   el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date</th><th>Statut financier</th><th></th></tr></thead><tbody>'+
     list.slice(0,30).map(p=>{
       // Même garde que loadFinances (~ligne 18035, canPayer) : une prestation
@@ -23818,7 +23838,7 @@ async function loadSecContrats(){
           <button class="btn bp bs" onclick="envoyerContratParEmail('${c.id}')" title="Envoyer au client par e-mail">✉</button>
         </td>
       </tr>`).join('')+'</tbody></table></div>':
-      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun contrat pour l\'instant.</div>';
+      '<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📄</div><div style="font-size:13px">Aucun contrat pour l\'instant. Un contrat créé depuis un devis accepté apparaîtra ici.</div></div>';
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table contrats non disponible (migration requise).</div>';console.error(e);}
 }
 
@@ -23843,7 +23863,7 @@ async function loadSecAbonnements(){
         <td>${c.renouvellement_auto?'<span style="color:var(--ok);font-size:11px;font-weight:600">Auto</span>':'<span style="color:var(--t3);font-size:11px">Manuel</span>'}</td>
         <td><span class="bd ${c.statut==='actif'?'ba':'bw'}"><span class="bd-d"></span>${c.statut}</span></td>
       </tr>`).join('')+'</tbody></table></div>':
-      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun abonnement actif.</div>';
+      '<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🔄</div><div style="font-size:13px">Aucun abonnement actif pour le moment.</div></div>';
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table contrats non disponible (migration requise).</div>';console.error(e);}
 }
 
@@ -23872,7 +23892,11 @@ function renderSecLivraisons(){
   if(_secLivrFilter==='prete')list=list.filter(p=>['prête_validation','prête_à_livrer','prêt_validation'].includes(p.statut));
   else if(_secLivrFilter==='envoyee')list=list.filter(p=>p.statut==='livrée');
   else if(_secLivrFilter==='attente')list=list.filter(p=>['médias_complets','montage_en_cours','à_monter'].includes(p.statut));
-  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune livraison dans cette catégorie.</div>';return;}
+  if(!list.length){
+    const msg=_secLivrData.length?'Aucune livraison ne correspond à ce filtre.':'Aucune livraison en attente. Les prestations prêtes à livrer apparaîtront ici.';
+    el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📦</div><div style="font-size:13px;max-width:360px;text-align:center">${msg}</div></div>`;
+    return;
+  }
   el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
     list.slice(0,30).map(p=>`<tr>
       <td class="tm">${p.reference||'—'}</td>
