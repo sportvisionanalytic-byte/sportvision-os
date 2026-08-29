@@ -24544,7 +24544,7 @@ async function loadCollaborateurs(){
   try{
     const _colRole=localStorage.getItem('sv_role');
     const _colFilter=_colRole==='prod'?'&role=in.(photo,cm)':'';
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm'+_colFilter+'&order=role.asc,nom.asc');
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie'+_colFilter+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
@@ -24600,16 +24600,24 @@ async function modalModifierCollaborateur(idx){
           <div style="font-size:12px;font-weight:650;color:var(--t1);margin-bottom:10px">Rôle &amp; accès</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div><label style="${lbl}">Rôle</label>
-              <select id="fco-role" class="l-inp" style="height:38px" onchange="changerRoleUser('${t.id}',this.value);document.getElementById('fco-niveaucm-wrap').style.display=this.value==='cm'?'block':'none'">
+              <select id="fco-role" class="l-inp" style="height:38px" onchange="changerRoleUser('${t.id}',this.value);document.getElementById('fco-niveaucm-wrap').style.display=this.value==='cm'?'block':'none';document.getElementById('fco-autonomiecm-wrap').style.display=this.value==='cm'?'block':'none'">
                 ${Object.entries(ROLE_LABELS_FULL).map(([k,v])=>`<option value="${k}"${t.role===k?' selected':''}>${v}</option>`).join('')}
               </select>
             </div>
-            <div id="fco-niveaucm-wrap" style="display:${t.role==='cm'?'block':'none'}"><label style="${lbl}">Palier CM</label>
+            <div id="fco-niveaucm-wrap" style="display:${t.role==='cm'?'block':'none'}"><label style="${lbl}">Palier CM (spécialisation)</label>
               <select class="l-inp" style="height:38px" onchange="changerNiveauCmUser('${t.id}',this.value)">
                 <option value=""${!t.niveau_cm?' selected':''}>Non classé</option>
                 ${Object.entries(CM_NIVEAU_LBL).map(([k,v])=>`<option value="${k}"${t.niveau_cm===k?' selected':''}>${v}</option>`).join('')}
               </select>
             </div>
+          </div>
+          <div id="fco-autonomiecm-wrap" style="display:${t.role==='cm'?'block':'none'};margin-top:10px">
+            <label style="${lbl}">Niveau d'autonomie (rémunération/permissions — spec Refonte CM 29/08, distinct du palier ci-dessus)</label>
+            <select class="l-inp" style="height:38px" onchange="changerCmAutonomie('${t.id}',this.value)">
+              <option value="autonome"${!t.cm_niveau_autonomie||t.cm_niveau_autonomie==='autonome'?' selected':''}>CM (autonome)</option>
+              <option value="junior"${t.cm_niveau_autonomie==='junior'?' selected':''}>CM Junior — publication soumise à un tuteur</option>
+              <option value="responsable"${t.cm_niveau_autonomie==='responsable'?' selected':''}>Responsable CM — supervision de tout le pôle</option>
+            </select>
           </div>
           <div style="margin-top:10px">
             ${isInactif?`<button class="btn bg2 bs" onclick="reactiverUser('${t.id}')">↺ Réactiver l'accès</button>`:`<button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerDesactiverUser('${t.id}','${escJs(t.prenom||'')}','${escJs(t.nom||'')}')">⛔ Désactiver l'accès</button>`}
@@ -27166,6 +27174,11 @@ async function changerNiveauCmUser(id,niveau){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{niveau_cm:niveau||null}});
   if(sbErr(r)){toast('Erreur changement de niveau CM','er');return;}
   toast('Niveau CM mis à jour','ok');
+}
+async function changerCmAutonomie(id,niveau){
+  const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{cm_niveau_autonomie:niveau}});
+  if(sbErr(r)){toast('Erreur changement de niveau d\'autonomie','er');return;}
+  toast('Niveau d\'autonomie mis à jour','ok');
 }
 
 // Remplace l'ancien "Supprimer" (DELETE sur profiles), qui échouait en
