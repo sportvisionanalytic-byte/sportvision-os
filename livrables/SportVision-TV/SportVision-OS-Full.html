@@ -2232,12 +2232,15 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Rapports clients</div></div>
     <div class="cd" style="margin-bottom:16px">
       <div style="padding:16px 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-        <div style="flex:1;min-width:200px"><label class="fl">Client</label><select id="rap-client" class="fi"><option value="">Chargement…</option></select></div>
+        <div style="flex:1;min-width:200px"><label class="fl">Client</label><select id="rap-client" class="fi" onchange="_loadRapportHistory()"><option value="">Chargement…</option></select></div>
         <div><label class="fl">Mois</label><input type="month" id="rap-mois" class="fi" value="${new Date().toISOString().slice(0,7)}"></div>
         <button class="btn bp" onclick="genererRapportClient()">Générer</button>
       </div>
     </div>
-    <div id="rap-result"></div>`,
+    <div id="rap-result"></div>
+    <div class="cd" style="margin-top:16px"><div class="cd-h"><div class="cd-t">Historique des rapports</div></div>
+      <div id="rap-history"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
 
   // Mes revenus CM (spec Refonte CM §47-48) : vue personnelle en lecture seule, alimentée
   // par Finance (employee_costs) — aucun calcul côté frontend, aucun accès aux revenus des
@@ -20427,11 +20430,12 @@ async function loadCmPilotage(){
   const clubplusEl=document.getElementById('pilotage-clubplus');
   if(!kpisEl)return;
   try{
-    const [cms,juniors,clients,demandesOuvertes]=await Promise.all([
+    const [cms,juniors,clients,demandesOuvertes,rapportsPrets]=await Promise.all([
       sbFetch('profiles?select=id&role=eq.cm').catch(()=>[]),
       sbFetch('profiles?select=id&role=eq.cm&cm_niveau_autonomie=eq.junior').catch(()=>[]),
       sbFetch('clients?select=id,cm_id&statut=in.(client,partenaire)').catch(()=>[]),
       sbFetch('club_requests?select=id&status=in.(recues,en_traitement)').catch(()=>[]),
+      sbFetch('monthly_reports?select=id&statut=eq.pret').catch(()=>[]),
     ]);
     const nbCms=(cms||[]).length,nbJuniors=(juniors||[]).length;
     const nbStruct=(clients||[]).length;
@@ -20441,6 +20445,7 @@ async function loadCmPilotage(){
       {lb:'Juniors',v:nbJuniors},
       {lb:'Structures',v:nbStruct},
       {lb:'Demandes Club+ ouvertes',v:(demandesOuvertes||[]).length},
+      {lb:'Rapports à envoyer',v:(rapportsPrets||[]).length},
     ].map(k=>`<div class="fs"><div class="fs-l">${k.lb}</div><div class="fs-v">${k.v}</div></div>`).join('');
     if(nbSansCm)kpisEl.innerHTML+=`<div class="fs" style="border-color:rgba(240,68,94,.25);grid-column:span 4"><div class="fs-l" style="color:var(--er)">⚠ ${nbSansCm} structure${nbSansCm>1?'s':''} sans CM affecté</div></div>`;
   }catch(e){kpisEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
@@ -20504,13 +20509,21 @@ async function loadCmRevenus(){
 // manuelle, contrairement à Analytics). L'accès au client sélectionnable
 // vient de _cmVisibleClients() (même règle de périmètre que partout ailleurs
 // côté CM) ; les contenus interrogés restent scopés par contenus_select.
+//
+// Cycle de vie persisté (spec §41-42, migration-cm-monthly-reports.sql) :
+// Brouillon (généré) -> Prêt (relu par le CM) -> Envoyé (transmis au club,
+// horodatage serveur). "À générer" n'a pas de ligne en base, c'est
+// l'absence de rapport pour (client_id, mois).
+const MONTHLY_REPORT_STATUT_LBL={brouillon:'Brouillon',pret:'Prêt',envoye:'Envoyé'};
+const MONTHLY_REPORT_STATUT_CLS={brouillon:'bw',pret:'bb',envoye:'ba'};
 let _rapportTexteActuel='';
 async function loadCmRapports(){
   const sel=document.getElementById('rap-client');
   if(!sel)return;
   const clients=await _cmVisibleClients();
-  sel.innerHTML=clients.length?clients.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join(''):'<option value="">Aucun client</option>';
+  sel.innerHTML='<option value="">Tous les clients</option>'+(clients.length?clients.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join(''):'');
   document.getElementById('rap-result').innerHTML='';
+  await _loadRapportHistory();
 }
 
 function copierRapport(){
@@ -20518,6 +20531,52 @@ function copierRapport(){
   navigator.clipboard.writeText(_rapportTexteActuel).then(()=>toast('Rapport copié dans le presse-papier.','ok')).catch(()=>{
     const ta=document.createElement('textarea');ta.value=_rapportTexteActuel;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Rapport copié.','ok');
   });
+}
+
+function _rapportActionsHtml(id,statut){
+  const btns=['<button class="btn bg2" onclick="copierRapport()">Copier le résumé</button>'];
+  if(statut==='brouillon')btns.push(`<button class="btn bp" onclick="marquerRapportPret('${id}')">Marquer prêt</button>`);
+  else if(statut==='pret')btns.push(`<button class="btn bp" onclick="marquerRapportEnvoye('${id}')">Marquer envoyé</button>`);
+  return `<div id="rap-actions" data-id="${id}" style="display:flex;gap:8px;flex-wrap:wrap">${btns.join('')}</div>`;
+}
+
+async function marquerRapportPret(id){
+  const r=await sbFetch('monthly_reports?id=eq.'+id,{method:'PATCH',body:{statut:'pret'}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  toast('Rapport marqué prêt.','ok');
+  const actions=document.getElementById('rap-actions');
+  if(actions&&actions.dataset.id===id)actions.outerHTML=_rapportActionsHtml(id,'pret');
+  await _loadRapportHistory();
+}
+
+async function marquerRapportEnvoye(id){
+  const uid=localStorage.getItem('sv_uid');
+  const r=await sbFetch('monthly_reports?id=eq.'+id+'&statut=eq.pret',{method:'PATCH',body:{statut:'envoye',envoye_at:new Date().toISOString(),envoye_par:uid}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  toast('Rapport marqué envoyé.','ok');
+  const actions=document.getElementById('rap-actions');
+  if(actions&&actions.dataset.id===id)actions.outerHTML=_rapportActionsHtml(id,'envoye');
+  await _loadRapportHistory();
+}
+
+async function _loadRapportHistory(){
+  const el=document.getElementById('rap-history');
+  if(!el)return;
+  const clientId=document.getElementById('rap-client')?.value;
+  el.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const data=await sbFetch('monthly_reports?select=id,mois,statut,genere_at,envoye_at,clients(nom)&order=mois.desc,genere_at.desc&limit=100'+(clientId?'&client_id=eq.'+clientId:''));
+    const list=Array.isArray(data)?data:[];
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Client</th><th>Mois</th><th>Statut</th><th>Généré le</th><th>Envoyé le</th><th></th></tr></thead><tbody>'+
+      list.map(r=>{
+        const cls=MONTHLY_REPORT_STATUT_CLS[r.statut]||'bn';
+        const lbl=MONTHLY_REPORT_STATUT_LBL[r.statut]||r.statut;
+        const action=r.statut==='brouillon'?`<button class="btn bg2 bs" onclick="marquerRapportPret('${r.id}')">Marquer prêt</button>`:
+          r.statut==='pret'?`<button class="btn bg2 bs" onclick="marquerRapportEnvoye('${r.id}')">Marquer envoyé</button>`:'';
+        return `<tr><td class="tp">${esc(r.clients?.nom||'—')}</td><td>${esc(r.mois)}</td><td><span class="bd ${cls}"><span class="bd-d"></span>${esc(lbl)}</span></td><td style="font-size:12px;color:var(--t3)">${r.genere_at?new Date(r.genere_at).toLocaleDateString('fr-FR'):'—'}</td><td style="font-size:12px;color:var(--t3)">${r.envoye_at?new Date(r.envoye_at).toLocaleDateString('fr-FR'):'—'}</td><td>${action}</td></tr>`;
+      }).join('')+'</tbody></table></div>':
+      '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucun rapport généré.</div>';
+  }catch(e){el.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
 }
 
 async function genererRapportClient(){
@@ -20559,7 +20618,7 @@ async function genererRapportClient(){
         <div class="cd-h"><div class="cd-t">En cours / à venir</div></div>
         <div>${enCours.map(c=>{const st=CONTENU_STATUTS[c.statut]||CONTENU_STATUTS.brouillon;const retard=c.date_prevue&&c.date_prevue<today;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bd)"><span>${esc(c.titre)}</span><span style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--t3)">${retard?'<span style="color:var(--er);font-weight:600">En retard</span>':''}<span class="bd ${st.cls}"><span class="bd-d"></span>${st.lb}</span></span></div>`;}).join('')}</div>
       </div>`:''}
-      <button class="btn bg2" onclick="copierRapport()">Copier le résumé</button>`;
+      <div id="rap-actions"><button class="btn bg2" onclick="copierRapport()">Copier le résumé</button></div>`;
     let t=`Rapport ${clientNom} — ${moisLabel}\n\nPublications du mois : ${pub.length}\n`;
     Object.entries(parPlat).forEach(([pl,n])=>{t+='  - '+pl+' : '+n+'\n';});
     t+='\nDétail :\n';
@@ -20567,6 +20626,11 @@ async function genererRapportClient(){
     t+='\nEn cours de production : '+enCours.length+'\n';
     if(enRetard.length)t+='Dont en retard : '+enRetard.length+'\n';
     _rapportTexteActuel=t;
+    const uid=localStorage.getItem('sv_uid');
+    const rep=await sbFetch('monthly_reports?on_conflict=client_id,mois',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:{client_id:clientId,cm_id:uid,mois,statut:'brouillon',contenu_texte:t,genere_at:new Date().toISOString(),envoye_at:null,envoye_par:null}});
+    const repId=Array.isArray(rep)?rep[0]?.id:null;
+    if(repId)document.getElementById('rap-actions').outerHTML=_rapportActionsHtml(repId,'brouillon');
+    await _loadRapportHistory();
   }catch(e){resEl.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de génération.</div>';console.error(e);}
 }
 
