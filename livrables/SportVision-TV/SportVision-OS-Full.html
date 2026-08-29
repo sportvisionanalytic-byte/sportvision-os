@@ -611,7 +611,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 </div>
 
 <!-- MODAL -->
-<div id="sv-modal" style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center;pointer-events:none">
+<div id="sv-modal" role="dialog" aria-modal="true" style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center;pointer-events:none">
   <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:28px;width:min(540px,calc(100vw - 24px));max-height:90dvh;overflow-y:auto;position:relative">
     <button onclick="closeModal()" aria-label="Fermer" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1">✕</button>
     <div id="sv-modal-ct"></div>
@@ -649,7 +649,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
       <div class="sb-logo" style="position:relative">
         <div class="sb-ico"><svg width="26" height="26" viewBox="0 0 40 40" fill="none"><defs><linearGradient id="sg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8B2BFF"/><stop offset="50%" stop-color="#2A56FF"/><stop offset="100%" stop-color="#00C4FF"/></linearGradient></defs><path d="M30,8 C30,8 10,8 10,16 C10,20.5 20,21 20,21 C20,21 30,21.5 30,26 C30,35 10,35 10,35" stroke="url(#sg1)" stroke-width="5" stroke-linecap="round" fill="none"/><polygon points="17,17.5 17,24.5 25,21" fill="white" opacity=".95"/></svg></div>
         <div class="sb-txt"><span class="sb-n">SportVision OS</span><span class="sb-s">Elkana Group</span></div>
-        <button class="mob-sb-close" onclick="closeMobNav()" style="display:none;margin-left:auto;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--b1);cursor:pointer;color:var(--t2);align-items:center;justify-content:center;flex-shrink:0">
+        <button class="mob-sb-close" onclick="closeMobNav()" title="Fermer le menu" aria-label="Fermer le menu" style="display:none;margin-left:auto;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--b1);cursor:pointer;color:var(--t2);align-items:center;justify-content:center;flex-shrink:0">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1l12 12M13 1L1 13"/></svg>
         </button>
       </div>
@@ -4074,11 +4074,33 @@ function renderTrend(el,current,previous){
 
 // ── MODAL ────────────────────────────────
 let _modalCloseTimer=null;
+// Audit QA nocturne (29/08) : les modales (composant partagé #sv-modal, ~200
+// appels via openModal() dans tout l'OS) ne piégeaient pas le focus clavier —
+// Tab pouvait sortir vers les boutons de la page derrière, aucun focus initial
+// à l'ouverture, aucune restauration à la fermeture. Corrigé ici une seule
+// fois car openModal/closeModal sont partagés par toutes les modales, comme
+// les classes CSS de la passe polish premium du même jour.
+let _modalPrevFocus=null;
+function _modalFocusEls(){
+  const ct=document.getElementById('sv-modal-ct');
+  if(!ct)return[];
+  return Array.from(ct.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])'))
+    .filter(el=>!el.disabled&&el.offsetParent!==null);
+}
+function _modalFocusFirst(){
+  const els=_modalFocusEls();
+  if(els.length){els[0].focus();}
+  else{
+    const ct=document.getElementById('sv-modal-ct');
+    if(ct){ct.setAttribute('tabindex','-1');ct.focus();}
+  }
+}
 function openModal(html){
   if(_modalCloseTimer){clearTimeout(_modalCloseTimer);_modalCloseTimer=null;}
+  _modalPrevFocus=document.activeElement;
   document.getElementById('sv-modal-ct').innerHTML=html;
   const m=document.getElementById('sv-modal');
-  requestAnimationFrame(()=>m.classList.add('on'));
+  requestAnimationFrame(()=>{m.classList.add('on');_modalFocusFirst();});
 }
 function closeModal(){
   const m=document.getElementById('sv-modal');
@@ -4087,6 +4109,10 @@ function closeModal(){
     document.getElementById('sv-modal-ct').innerHTML='';
     _modalCloseTimer=null;
   },220);
+  if(_modalPrevFocus&&document.contains(_modalPrevFocus)&&typeof _modalPrevFocus.focus==='function'){
+    _modalPrevFocus.focus();
+  }
+  _modalPrevFocus=null;
 }
 function copier(txt){
   if(!txt)return;
@@ -27420,6 +27446,20 @@ if(DEMO_MODE){
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();if(S.screen==='app')openSearch();}
   if(e.key==='Escape'){closeModal();}
+  // Piège de focus : tant qu'une modale est ouverte, Tab/Shift+Tab reste
+  // cantonné à ses éléments focusables (cf. commentaire sur openModal/closeModal).
+  if(e.key==='Tab'){
+    const m=document.getElementById('sv-modal');
+    if(m&&m.classList.contains('on')){
+      const els=_modalFocusEls();
+      if(els.length){
+        const first=els[0],last=els[els.length-1],act=document.activeElement;
+        if(e.shiftKey&&act===first){e.preventDefault();last.focus();}
+        else if(!e.shiftKey&&act===last){e.preventDefault();first.focus();}
+        else if(!m.contains(act)){e.preventDefault();first.focus();}
+      }
+    }
+  }
 });
 
 function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.getElementById('s-'+id).classList.add('on')}
@@ -29587,11 +29627,16 @@ function _centreView(){
       .cnav-item{flex-shrink:0;border-left:none;border-bottom:3px solid transparent;padding:10px 14px;font-size:12px}
       .cnav-item.on{border-bottom-color:var(--acc);border-left-color:transparent;background:rgba(14,165,255,.07)}
       #centre-main{padding:16px}
+      /* Audit QA nocturne (29/08) : #centre-sidenav passe en ligne horizontale
+         scrollable sur mobile (même patron que #photo-pre-tabs) — sans largeur
+         fixe ici, ce wrapper se faisait écraser par flex-shrink jusqu'à ~26px,
+         rendant la recherche invisible/inutilisable. */
+      #centre-search-wrap{flex-shrink:0;width:150px}
     }
   </style>
   <div id="centre-layout">
     <div id="centre-sidenav">
-      <div style="padding:10px 14px 2px">
+      <div id="centre-search-wrap" style="padding:10px 14px 2px">
         <input type="search" class="fi" id="centre-sq" placeholder="Rechercher…" style="height:30px;font-size:12px" oninput="centreSearchAll(this.value)">
       </div>
       ${_centreNavHtml(isAdmin)}
