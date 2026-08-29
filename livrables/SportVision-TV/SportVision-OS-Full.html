@@ -1125,6 +1125,18 @@ function _cmSkel(n,h){
   return '<div style="display:flex;flex-direction:column;gap:8px">'+Array.from({length:n||3}).map(()=>`<div class="skel" style="height:${h||16}px;border-radius:8px;background:rgba(255,255,255,.06)"></div>`).join('')+'</div>';
 }
 
+// Squelette de chargement scopé Finance (polish premium, écrans admin.fin/finrevenus/
+// findepenses/finequipe + compta.*) — même patron que _cmSkel, dédié pour rester dans le
+// périmètre de cet agent (pas de partage/modification du helper CM ni des autres écrans).
+// _finSkelRows : lignes façon tableau (utilisé dans les conteneurs -real des vues Finance).
+// _finSkelKpi : cartes KPI façon .fs, pour les bandeaux chiffrés le temps du premier calcul.
+function _finSkelRows(n,h){
+  return '<div style="display:flex;flex-direction:column;gap:8px;padding:2px 0">'+Array.from({length:n||4}).map(()=>`<div class="skel" style="height:${h||40}px;border-radius:10px;background:rgba(255,255,255,.06)"></div>`).join('')+'</div>';
+}
+function _finSkelKpi(n){
+  return Array.from({length:n||3}).map(()=>'<div class="skel" style="height:56px;border-radius:12px;background:rgba(255,255,255,.06)"></div>').join('');
+}
+
 // ── VIEW RENDERERS ────────────────────────
 const VIEWS={
   'admin.dash':()=>`
@@ -1393,7 +1405,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterComptaFactures('partiellement_payee')" id="cptf-f-partiel">Part. payées</button>
       <button class="btn bg2 bs" onclick="filterComptaFactures('en_retard')" id="cptf-f-retard">En retard</button>
     </div>
-    <div id="compta-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="compta-real">${_finSkelRows(4,40)}</div>`,
 
   'com.pipeline':()=>_buildPipelineShell('Pipeline'),
   'admin.pipeline':()=>_buildPipelineShell('Pipeline commercial'),
@@ -1517,7 +1529,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="switchView('finrapports')">Rapports & exports →</button>
     </div>
     <div class="cd"><div class="cd-h"><div class="cd-t">Prestations avec montant</div></div>
-      <div id="fin-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="fin-real">${_finSkelRows(5,44)}</div>
     </div>`,
 
   // ── Refonte Finance (28/08, nuit) : Revenus/Dépenses/Équipe/Rapports & exports ──
@@ -1552,7 +1564,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterFinRevenusSource('passphoto')" id="finrevs-f-passphoto">Pass Photo</button>
       <button class="btn bg2 bs" onclick="filterFinRevenusSource('agent')" id="finrevs-f-agent">Agent</button>
     </div>
-    <div id="finrevenus-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="finrevenus-real">${_finSkelRows(6,44)}</div>`,
 
   'admin.findepenses':()=>`
     <div class="sh"><div><div class="sh-t">Dépenses</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Charges fournisseurs et récurrentes de l'entreprise</div></div>
@@ -1581,7 +1593,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterFinDepensesCat('sous_traitance')" id="findepc-f-sous_traitance">Sous-traitance</button>
       <button class="btn bg2 bs" onclick="filterFinDepensesCat('autre')" id="findepc-f-autre">Autres</button>
     </div>
-    <div id="findepenses-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="findepenses-real">${_finSkelRows(6,44)}</div>`,
 
   'admin.finequipe':()=>`
     <div class="sh"><div><div class="sh-t">Équipe — Paiements</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Ce que l'entreprise doit à son équipe : missions, salaires, remboursements, commissions — distinct des fiches collaborateurs (menu Équipe & RH)</div></div></div>
@@ -1604,7 +1616,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterFinEquipeType('frais')" id="fineqt-f-frais">Remboursement</button>
       <button class="btn bg2 bs" onclick="filterFinEquipeType('commission')" id="fineqt-f-commission">Commission</button>
     </div>
-    <div id="finequipe-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="finequipe-real">${_finSkelRows(6,44)}</div>`,
 
   'admin.finrapports':()=>`
     <div class="sh"><div class="sh-t">Rapports & exports</div></div>
@@ -2435,23 +2447,23 @@ const VIEWS={
     <div class="g32" style="margin-top:12px">
       <div class="cd">
         <div class="cd-h"><div class="cd-t">Dernières factures</div><button class="btn bg2 bs" onclick="switchView('factures')">Toutes</button></div>
-        <div id="cptd-factures-real"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        <div id="cptd-factures-real">${_finSkelRows(3,36)}</div>
       </div>
       <div>
         <div class="cd">
           <div class="cd-h"><div class="cd-t">Encaissements récents</div></div>
-          <div id="cptd-enc-real"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+          <div id="cptd-enc-real">${_finSkelRows(2,32)}</div>
         </div>
         <div class="cd" style="margin-top:12px">
           <div class="cd-h"><div class="cd-t">Prochaines échéances</div><button class="btn bg2 bs" onclick="switchView('impayes')">Voir</button></div>
-          <div id="cptd-ech-real"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+          <div id="cptd-ech-real">${_finSkelRows(2,32)}</div>
         </div>
       </div>
     </div>`,
 
   'compta.paiements':()=>`
     <div class="sh"><div class="sh-t">Paiements collaborateurs</div></div>
-    <div id="paiements-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="paiements-real">${_finSkelRows(5,36)}</div>`,
 
   'compta.export':()=>`
     <div class="sh"><div class="sh-t">Export comptable</div></div>
@@ -2511,7 +2523,7 @@ const VIEWS={
     </div>
     <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Historique des exports générés</div></div>
-      <div id="fec-historique-real"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="fec-historique-real">${_finSkelRows(2,48)}</div>
     </div>`,
 
   'compta.audit':()=>`
@@ -2531,7 +2543,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterAuditLog('vendors')" id="aud-f-vendors">Fournisseurs</button>
       <button class="btn bg2 bs" onclick="filterAuditLog('pcg_mapping')" id="aud-f-pcg_mapping">Comptes PCG</button>
     </div>
-    <div id="audit-log-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="audit-log-real">${_finSkelRows(5,36)}</div>`,
 
   // ── COMMERCIAL ──────────────────────────
   // Refonte 28/08 (spec Refonte Interface Commercial §3) : "qui dois-je contacter
@@ -2758,7 +2770,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterRapprochementBancaire('ignoree')" id="rapb-f-ignoree">Ignorées</button>
       <button class="btn bg2 bs" onclick="filterRapprochementBancaire('all')" id="rapb-f-all">Toutes</button>
     </div>
-    <div id="rapb-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="rapb-real">${_finSkelRows(5,36)}</div>`,
 
   'compta.acomptes':()=>`
     <div class="sh"><div class="sh-t">Acomptes clients</div></div>
@@ -2773,7 +2785,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterComptaAcomptes('encaisse')" id="ac-f-encaisse">Encaissés</button>
       <button class="btn bg2 bs" onclick="filterComptaAcomptes('retard')" id="ac-f-retard">En retard</button>
     </div>
-    <div id="compta-acomptes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="compta-acomptes-real">${_finSkelRows(5,36)}</div>`,
 
   'compta.impayes':()=>`
     <div class="sh"><div class="sh-t">Impayés</div></div>
@@ -2782,7 +2794,7 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Nombre de dossiers</div><div class="fs-v" id="imp-kpi-nb">—</div></div>
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En retard +30 jours</div><div class="fs-v" id="imp-kpi-rel" style="color:var(--wa)">—</div></div>
     </div>
-    <div id="compta-impayes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="compta-impayes-real">${_finSkelRows(5,36)}</div>`,
 
   'compta.avoirs':()=>`
     <div class="sh"><div class="sh-t">Avoirs & remises</div></div>
@@ -2791,7 +2803,7 @@ const VIEWS={
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Montant total avoirs</div><div class="fs-v" id="av-kpi-tot" style="color:var(--er)">—</div></div>
       <div class="fs"><div class="fs-l">Remises accordées</div><div class="fs-v" id="av-kpi-rem">—</div></div>
     </div>
-    <div id="compta-avoirs-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="compta-avoirs-real">${_finSkelRows(5,36)}</div>`,
 
   // Ledger des paiements Stripe (table `paiements`, alimentée par les webhooks —
   // migration-portail-v1.sql) : jusqu'ici jamais affichée nulle part dans l'OS,
@@ -2806,7 +2818,7 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Paiements réussis</div><div class="fs-v" id="enc-kpi-nb">—</div></div>
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En attente</div><div class="fs-v" id="enc-kpi-att" style="color:var(--wa)">—</div></div>
     </div>
-    <div id="compta-encaissements-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="compta-encaissements-real">${_finSkelRows(5,36)}</div>`,
 
   'compta.documents':()=>_documentsView('compta'),
 
@@ -2828,10 +2840,10 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterComptaDepenses('sous_traitance')" id="dep-f-sous_traitance">Sous-traitance</button>
       <button class="btn bg2 bs" onclick="filterComptaDepenses('autre')" id="dep-f-autre">Autres</button>
     </div>
-    <div id="compta-depenses-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div id="compta-depenses-real">${_finSkelRows(5,36)}</div>
     <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Fournisseurs</div></div>
-      <div id="compta-fournisseurs-real"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="compta-fournisseurs-real">${_finSkelRows(2,40)}</div>
     </div>
     <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Prochaines échéances</div></div>
@@ -2852,7 +2864,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterComptaFrais('materiel')" id="fra-f-materiel">Matériel</button>
       <button class="btn bg2 bs" onclick="filterComptaFrais('attente')" id="fra-f-attente">En attente</button>
     </div>
-    <div id="compta-frais-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="compta-frais-real">${_finSkelRows(5,36)}</div>`,
 
   'compta.rem':()=>`
     <div class="sh"><div class="sh-t">Rémunérations collaborateurs</div></div>
@@ -2866,7 +2878,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterComptaRem('en_attente')" id="crem-f-en_attente">En attente</button>
       <button class="btn bg2 bs" onclick="filterComptaRem('paye')" id="crem-f-paye">Payés</button>
     </div>
-    <div id="compta-rem-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="compta-rem-real">${_finSkelRows(5,36)}</div>`,
 
   'compta.rentabilite':()=>`
     <div class="sh"><div class="sh-t">Analyse de rentabilité</div><div class="sh-a" style="display:flex;gap:8px">${['admin','compta'].includes(S.role)?`<button class="btn bg2 bs" onclick="modalReglagesCoutsIndirects()">⚙ Réglages coûts indirects</button>`:''}<button class="btn bg2 bs" onclick="exportCSV('rentabilite-missions')">Export CSV</button></div></div>
@@ -2879,11 +2891,11 @@ const VIEWS={
     </div>
     <div class="cd">
       <div class="cd-h"><div class="cd-t">Rentabilité par mission (ce mois)</div></div>
-      <div id="compta-rent-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="compta-rent-real">${_finSkelRows(5,36)}</div>
     </div>
     <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Rentabilité par client (6 derniers mois)</div></div>
-      <div id="compta-rent-client"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="compta-rent-client">${_finSkelRows(2,48)}</div>
     </div>`,
 
   'compta.resultat':()=>`
@@ -2899,7 +2911,7 @@ const VIEWS={
     <div class="cd">
       <div class="cd-h"><div class="cd-t">Tendance missions sur 6 mois</div></div>
       <div style="font-size:11.5px;color:var(--t3);padding:0 0 8px 0">CA et coûts liés aux missions uniquement — hors masse salariale et commissions (KPIs ci-dessus, mois en cours seulement, la paie n'étant pas historisée par mois).</div>
-      <div id="res-tendance-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="res-tendance-real">${_finSkelRows(4,40)}</div>
     </div>`,
 
   'compta.budgets':()=>`
@@ -2920,11 +2932,11 @@ const VIEWS={
       <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Résultat run-rate mensuel</div><div class="kpi-v" id="bud-kpi-res" style="font-size:18px">—</div><span class="kpi-d dnt">point de départ des projections</span></div>
     </div>
     <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:13px" id="bud-cards">
-      <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div>
+      ${_finSkelKpi(4)}
     </div>
     <div class="cd">
       <div class="cd-h"><div class="cd-t">Comparaison mensuelle</div><div style="display:flex;gap:6px" id="bud-scenario-pills"></div></div>
-      <div id="bud-table-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="bud-table-real">${_finSkelRows(5,36)}</div>
     </div>`,
 
   'compta.commissions':()=>`
@@ -2934,7 +2946,7 @@ const VIEWS={
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Payées ce mois</div><div class="fs-v" id="com-kpi-payees" style="color:var(--ok)">—</div></div>
       <div class="fs"><div class="fs-l">En attente de validation</div><div class="fs-v" id="com-kpi-attente">—</div></div>
     </div>
-    <div id="commissions-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="commissions-real">${_finSkelRows(5,36)}</div>`,
 
   'compta.immobilisations':()=>`
     <div class="sh"><div><div class="sh-t">Immobilisations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Matériel de valeur (caméras, drones, ordinateurs…) avec amortissement linéaire estimé — à confirmer avec ton expert-comptable</div></div></div>
@@ -2943,7 +2955,7 @@ const VIEWS={
       <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Amortissements cumulés</div><div class="kpi-v" id="immo-kpi-amort" style="font-size:18px">—</div><span class="kpi-d dnt">estimation linéaire</span></div>
       <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Valeur nette comptable</div><div class="kpi-v" id="immo-kpi-vnc" style="font-size:18px">—</div><span class="kpi-d dnt">brut - amortissements</span></div>
     </div>
-    <div id="immobilisations-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="immobilisations-real">${_finSkelRows(5,36)}</div>`,
 
   'compta.clotures':()=>`
     <div class="sh"><div class="sh-t">Clôtures mensuelles</div></div>
@@ -2952,7 +2964,7 @@ const VIEWS={
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En cours</div><div class="fs-v" id="clo-kpi-enc" style="color:var(--wa)">—</div></div>
       <div class="fs"><div class="fs-l">Mois courant</div><div class="fs-v" id="clo-kpi-cur" style="color:var(--acc)">—</div></div>
     </div>
-    <div id="compta-clotures-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="compta-clotures-real">${_finSkelRows(5,36)}</div>`,
 
   'compta.tva':()=>`
     <div class="sh"><div><div class="sh-t">TVA & provisions</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Estimation de pilotage interne</div></div></div>
@@ -2978,7 +2990,7 @@ const VIEWS={
     ${['admin','compta'].includes(S.role)?`<div style="display:flex;justify-content:flex-end;margin-bottom:13px"><button class="btn bp bs" onclick="provisionnerTva()">Provisionner ce mois</button></div>`:''}
     <div class="cd">
       <div class="cd-h"><div class="cd-t">Historique des provisions</div></div>
-      <div id="tva-historique-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="tva-historique-real">${_finSkelRows(4,40)}</div>
     </div>`,
 
   'com.objectifs':()=>`
@@ -21933,6 +21945,11 @@ async function loadComptaDash(){
     const remAtt=(Array.isArray(remAttData)?remAttData:[]).reduce((s,r)=>s+(r.remuneration||0),0);
     const marge=enc-charges;
 
+    // NB : pas d'animateNumber ici — fmt() n'impose pas maximumFractionDigits:0 (contrairement
+    // aux écrans Revenus/Dépenses/Équipe), donc ces totaux peuvent légitimement afficher des
+    // centimes ; animateNumber arrondit systématiquement (Math.round) et changerait le montant
+    // affiché pour toute somme non entière — inacceptable sur un écran financier. On garde
+    // l'affichage instantané, fidèle au calcul, plutôt que de risquer un montant tronqué.
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
     set('cptd-enc',fmt(enc));set('cptd-imp',fmt(imp));set('cptd-acomp',fmt(acomp));
     set('cptd-charges',fmt(charges));set('cptd-nb',String(nbFact));
@@ -22082,11 +22099,14 @@ async function loadComptaImpayes(){
     el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date presta.</th><th>Échéance facture</th><th>Statut fin.</th><th></th></tr></thead><tbody>'+
       list.map(p=>{
         const f=factByPrestation[p.id];
+        const late=isEnRetard(p);
         const echLbl=f?.date_echeance
           ?new Date(f.date_echeance).toLocaleDateString('fr-FR')+(f.statut==='en_retard'||new Date(f.date_echeance)<now?' <span style="color:var(--er);font-weight:700">(retard)</span>':'')
           :'<span style="color:var(--t3);font-size:11px">facture non émise</span>';
-        return `<tr>
-        <td class="tm">${p.reference||'—'}</td>
+        // Sévérité : dossiers effectivement en retard (isEnRetard) surlignés — même patron que
+        // SEV_CLR/SEV_BG du dashboard Admin, en inline sur la ligne.
+        return `<tr style="${late?'background:rgba(240,68,94,.06)':''}">
+        <td class="tm" style="${late?'border-left:2px solid var(--er)':''}">${p.reference||'—'}</td>
         <td class="tp">${esc(p.clients?.nom||'—')}</td>
         <td class="tm" style="font-weight:700;color:var(--er)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
@@ -22098,7 +22118,7 @@ async function loadComptaImpayes(){
           <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
         </div></td>
       </tr>`;}).join('')+'</tbody></table></div>':
-      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun impayé en ce moment.</div>';
+      '<div style="display:flex;flex-direction:column;align-items:center;padding:40px;gap:8px;color:var(--t3)"><div style="font-size:32px;opacity:.25">✅</div><div style="font-size:13px">Aucun impayé en ce moment.</div></div>';
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
 }
 
@@ -22737,6 +22757,10 @@ async function sauvegarderCoutsIndirects(){
 
 async function loadComptaResultat(){
   const elTend=document.getElementById('res-tendance-real');
+  // NB : pas d'animateNumber ici — fmt() n'impose pas maximumFractionDigits:0, ces totaux
+  // peuvent légitimement afficher des centimes ; animateNumber arrondit systématiquement
+  // (Math.round) et changerait le montant affiché pour toute somme non entière — inacceptable
+  // sur le compte de résultat. Affichage instantané, fidèle au calcul.
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
   const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
   try{
@@ -24820,7 +24844,7 @@ function renderComptaFactures(){
   const el=document.getElementById('compta-real');if(!el)return;
   let list=_comptaFactData;
   if(_comptaFactFilter!=='all')list=list.filter(f=>f.statut===_comptaFactFilter);
-  if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune facture dans cette catégorie.</div>';return;}
+  if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📄</div><div>Aucune facture dans cette catégorie.</div></div>';return;}
   const sf_cls={'payee':'ba','partiellement_payee':'bb','emise':'bw','en_retard':'bl','annulee':'bn','brouillon':'bn','remboursee':'bn'};
   const sf_lbl={'payee':'Payée','partiellement_payee':'Part. payée','emise':'Émise','en_retard':'En retard','annulee':'Annulée','brouillon':'Brouillon','remboursee':'Remboursée'};
   el.innerHTML='<div class="tw"><table><thead><tr><th>N° facture</th><th>Client</th><th>Prestation</th><th>Émise le</th><th>Échéance</th><th>Montant TTC</th><th>Statut</th><th></th></tr></thead><tbody>'+
@@ -24828,8 +24852,9 @@ function renderComptaFactures(){
       const canPayer=['emise','partiellement_payee','en_retard'].includes(f.statut);
       const mailSuj=`Relance paiement — ${f.numero||'SportVision'}`;
       const mailBody=`Bonjour,%0A%0AVotre facture ${f.numero||''} (${f.montant_ttc?f.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision`;
-      return`<tr>
-        <td class="tm">${esc(f.numero||'—')}</td>
+      const late=f.statut==='en_retard';
+      return`<tr style="${late?'background:rgba(240,68,94,.045)':''}">
+        <td class="tm" style="${late?'border-left:2px solid var(--er)':''}">${esc(f.numero||'—')}</td>
         <td class="tp">${esc(f.clients?.nom||'—')}</td>
         <td>${esc(f.prestations?.reference||'—')}${f.prestations?.type_prestation?' — '+esc(f.prestations.type_prestation):''}</td>
         <td>${f.date_emission?new Date(f.date_emission).toLocaleDateString('fr-FR'):'—'}</td>
@@ -25744,12 +25769,13 @@ async function loadFinResumeP_L(){
     const charges=coutsMissions+masseSalariale+commissionsMois+chargesGen;
     const marge=revenu-charges;
     const revenusClubs=(Array.isArray(contratsActifs)?contratsActifs:[]).reduce((s,c)=>s+(c.montant_mensuel||0),0);
-    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
-    const set=(id,v,clr)=>{const e=document.getElementById(id);if(e){e.textContent=v;if(clr)e.style.color=clr;}};
-    set('fin-ca-ht-mois',fmt(revenu));
-    set('fin-charges-mois',fmt(charges));
-    set('fin-marge-mois',fmt(marge),marge>=0?'var(--ok)':'var(--er)');
-    set('fin-revenus-clubs',fmt(revenusClubs));
+    // Bandeau KPI de tête (chargé une seule fois par ouverture de l'écran, pas de filtre ici)
+    // — comptage animé façon dashboard Admin (animateNumber, déjà partagé/inchangé).
+    const set=(id,v,clr)=>{const e=document.getElementById(id);if(e){animateNumber(e,v,{suffix:' €'});if(clr)e.style.color=clr;}};
+    set('fin-ca-ht-mois',revenu);
+    set('fin-charges-mois',charges);
+    set('fin-marge-mois',marge,marge>=0?'var(--ok)':'var(--er)');
+    set('fin-revenus-clubs',revenusClubs);
   }catch(e){}
 }
 async function loadFinances(){
@@ -25774,10 +25800,10 @@ async function loadFinances(){
       if(['facturée','partiellement_payée'].includes(p.statut_financier))att+=m;
     });
     const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
-    const s1=document.getElementById('fin-ca-enc');if(s1)s1.innerHTML=fmt(enc);
+    const s1=document.getElementById('fin-ca-enc');if(s1)animateNumber(s1,enc,{suffix:' €'});
     const s2=document.getElementById('fin-ca-total');if(s2)s2.innerHTML=fmt(total);
-    const s3=document.getElementById('fin-en-attente');if(s3)s3.innerHTML=fmt(att);
-    if(list.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">💶</div><div>Aucune prestation avec montant renseigné.</div></div>';return;}
+    const s3=document.getElementById('fin-en-attente');if(s3)animateNumber(s3,att,{suffix:' €'});
+    if(list.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.25">💶</div><div>Aucune prestation avec montant renseigné.</div><div style="font-size:11.5px;max-width:320px;text-align:center">Les montants apparaîtront ici dès qu\'une prestation aura un montant TTC renseigné.</div></div>';return;}
     // ── Mini charts — 6 derniers mois ──
     const now2=new Date();
     const months6=Array.from({length:6},(_,i)=>{const d=new Date(now2.getFullYear(),now2.getMonth()-5+i,1);return{key:d.toISOString().slice(0,7),lb:d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'})};});
@@ -25824,8 +25850,13 @@ async function loadFinances(){
         const sl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','non_facturée':'Non facturée','en_préparation':'En préparation','en_retard':'En retard','annulée':'Annulée'}[sf]||sf;
         const canFacturer=['non_facturée','en_préparation'].includes(sf);
         const canPayer=['facturée','partiellement_payée','en_retard'].includes(sf);
-        return `<tr>
-          <td class="tm">${p.reference||'—'}</td>
+        // Sévérité visuelle : bordure gauche + fond teinté sur les lignes en retard, même
+        // patron que SEV_CLR/SEV_BG du dashboard Admin (cf. loadAdminDash) — inline sur la
+        // ligne (le bloc <style> partagé n'est pas touché).
+        const rowSev=sf==='en_retard'?'background:rgba(240,68,94,.045)':'';
+        const rowBorder=sf==='en_retard'?'border-left:2px solid var(--er)':'';
+        return `<tr style="${rowSev}">
+          <td class="tm" style="${rowBorder}">${p.reference||'—'}</td>
           <td class="tp">${esc(p.clients?.nom||'—')}</td>
           <td>${p.type_prestation||'—'}</td>
           <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
@@ -25882,10 +25913,12 @@ async function majStatutFinancier(id,statut){
 let _finrevCache=[];
 let _finrevFiltre='all';
 let _finrevSourceFiltre='all';
+let _finrevKpiAnimated=false;
 async function loadFinRevenus(){
   const el=document.getElementById('finrevenus-real');
   if(!el)return;
-  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML=_finSkelRows(6,44);
+  _finrevKpiAnimated=false;
   try{
     const [factures,contrats]=await Promise.all([
       sbFetch('factures?select=id,numero,client_id,prestation_id,montant_ht,montant_ttc,montant_paye,statut,date_emission,date_echeance,clients(nom),prestations(source,type_prestation)&order=date_emission.desc&limit=500'),
@@ -25936,9 +25969,21 @@ function renderFinRevenus(){
     if(['emise','partiellement_payee','en_retard'].includes(f.statut))att+=reste;
     if(f.statut==='en_retard')retard+=reste;
   });
-  const s1=document.getElementById('finrev-kpi-enc');if(s1)s1.textContent=fmt(enc);
-  const s2=document.getElementById('finrev-kpi-att');if(s2)s2.textContent=fmt(att);
-  const s3=document.getElementById('finrev-kpi-retard');if(s3)s3.textContent=fmt(retard);
+  const s1=document.getElementById('finrev-kpi-enc'),s2=document.getElementById('finrev-kpi-att'),s3=document.getElementById('finrev-kpi-retard');
+  // Ces 3 totaux ne dépendent d'aucun filtre (calculés sur _finrevCache entier) — animer à
+  // chaque clic de filtre rejouerait l'animation sur une valeur inchangée, d'où le garde-fou
+  // _finrevKpiAnimated : compte animé une seule fois par chargement de la page, mise à jour
+  // instantanée ensuite (cf. animateNumber/renderTrend déjà utilisés sur le dashboard Admin).
+  if(!_finrevKpiAnimated){
+    if(s1)animateNumber(s1,enc,{suffix:' €'});
+    if(s2)animateNumber(s2,att,{suffix:' €'});
+    if(s3)animateNumber(s3,retard,{suffix:' €'});
+    _finrevKpiAnimated=true;
+  }else{
+    if(s1)s1.textContent=fmt(enc);
+    if(s2)s2.textContent=fmt(att);
+    if(s3)s3.textContent=fmt(retard);
+  }
   let list=_finrevCache;
   if(_finrevFiltre==='encaisser')list=list.filter(f=>['emise','partiellement_payee'].includes(f.statut));
   else if(_finrevFiltre==='payee')list=list.filter(f=>f.statut==='payee');
@@ -25949,15 +25994,19 @@ function renderFinRevenus(){
   const stClr={brouillon:'bn',emise:'bw',partiellement_payee:'bw',payee:'ba',en_retard:'bb',annulee:'bn',remboursee:'bn'};
   if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">💶</div><div>Aucune facture pour ce filtre.</div>'+(['passphoto','agent'].includes(_finrevSourceFiltre)?'<div style="font-size:11.5px;max-width:360px;text-align:center">Normal : le Pass Photo et les abonnements Agent sont facturés directement via Stripe sans créer de ligne `factures` (choix produit du 14/08 et du 21/08) — cette source restera vide tant que ce choix n\'est pas revu.</div>':'')+'</div>';return;}
   el.innerHTML='<div class="tw"><table><thead><tr><th>Numéro</th><th>Client</th><th>Source</th><th>Montant TTC</th><th>Payé</th><th>Statut</th><th>Échéance</th></tr></thead><tbody>'+
-    list.map(f=>`<tr>
-      <td class="tm">${esc(f.numero||'—')}</td>
+    list.map(f=>{
+      // Sévérité : facture en retard mise en évidence (bordure + fond), même patron que
+      // SEV_CLR/SEV_BG du dashboard Admin, appliqué ici en inline sur la ligne du tableau.
+      const late=f.statut==='en_retard';
+      return`<tr style="${late?'background:rgba(240,68,94,.045)':''}">
+      <td class="tm" style="${late?'border-left:2px solid var(--er)':''}">${esc(f.numero||'—')}</td>
       <td class="tp">${esc(f.clients?.nom||'—')}</td>
       <td><span class="bd bn"><span class="bd-d"></span>${srcLb[f._source]||f._source}</span></td>
       <td class="tm" style="color:var(--t1);font-weight:600">${fmt(f.montant_ttc)}</td>
       <td class="tm">${fmt(f.montant_paye)}</td>
       <td><span class="bd ${stClr[f.statut]||'bw'}"><span class="bd-d"></span>${stLb[f.statut]||f.statut}</span></td>
       <td>${f.date_echeance?new Date(f.date_echeance).toLocaleDateString('fr-FR'):'—'}</td>
-    </tr>`).join('')+
+    </tr>`;}).join('')+
   '</tbody></table></div>';
 }
 
@@ -25965,10 +26014,12 @@ function renderFinRevenus(){
 let _findepCache=[];
 let _findepFiltre='all';
 let _findepCatFiltre='all';
+let _findepKpiAnimated=false;
 async function loadFinDepenses(){
   const el=document.getElementById('findepenses-real');
   if(!el)return;
-  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML=_finSkelRows(6,44);
+  _findepKpiAnimated=false;
   // Génère silencieusement les échéances récurrentes dues à chaque ouverture de la page —
   // idempotent (index unique source_expense_id+periode_recurrence côté DB), donc sans risque
   // si l'utilisateur recharge la page plusieurs fois. Pas un vrai cron : cf. rapport de fin de
@@ -25999,7 +26050,12 @@ function renderFinDepenses(){
   const moisTotal=_findepCache.filter(d=>d.date_depense&&d.date_depense.slice(0,7)===mStart).reduce((s,d)=>s+(d.montant_ttc||0),0);
   const recurrentes=_findepCache.filter(d=>d.recurrence&&d.recurrence!=='ponctuelle'&&!d.source_expense_id);
   const prochaine=recurrentes.filter(d=>d.date_prochaine_echeance).sort((a,b)=>a.date_prochaine_echeance<b.date_prochaine_echeance?-1:1)[0];
-  const s1=document.getElementById('findep-kpi-mois');if(s1)s1.textContent=fmt(moisTotal);
+  const s1=document.getElementById('findep-kpi-mois');
+  // Seul ce KPI est une somme numérique animable (recur = décompte, prochaine = date texte) ;
+  // même garde-fou qu'ailleurs sur cette page : anime une fois par chargement, pas à chaque clic
+  // de filtre (ces totaux ne dépendent pas des filtres, calculés sur _findepCache entier).
+  if(!_findepKpiAnimated){if(s1)animateNumber(s1,moisTotal,{suffix:' €'});_findepKpiAnimated=true;}
+  else if(s1)s1.textContent=fmt(moisTotal);
   const s2=document.getElementById('findep-kpi-recur');if(s2)s2.textContent=recurrentes.length;
   const s3=document.getElementById('findep-kpi-prochaine');if(s3)s3.textContent=prochaine?new Date(prochaine.date_prochaine_echeance).toLocaleDateString('fr-FR')+(prochaine.date_prochaine_echeance<=now.toISOString().slice(0,10)?' (due)':''):'—';
   let list=_findepCache;
@@ -26035,10 +26091,12 @@ async function genererDepensesRecurrentes(){
 let _fineqCache=[];
 let _fineqFiltre='apayer';
 let _fineqTypeFiltre='all';
+let _fineqKpiAnimated=false;
 async function loadFinEquipe(){
   const el=document.getElementById('finequipe-real');
   if(!el)return;
-  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML=_finSkelRows(6,44);
+  _fineqKpiAnimated=false;
   try{
     const [missions,salaires,frais,commissions]=await Promise.all([
       sbFetch('prestations_equipe?select=id,collaborateur_id,remuneration,statut,statut_paiement,date_paiement,profiles(nom,prenom),prestations(reference,date_prestation)&statut=eq.acceptée&remuneration=not.is.null&order=date_paiement.desc.nullslast&limit=500'),
@@ -26087,9 +26145,20 @@ function renderFinEquipe(){
   const aPayer=_fineqCache.filter(x=>x.statut==='apayer').reduce((s,x)=>s+x.montant,0)+_fineqCache.filter(x=>x.statut==='recurrent').reduce((s,x)=>s+x.montant,0);
   const payeMois=_fineqCache.filter(x=>x.statut==='paye'&&x.date&&x.date.slice(0,7)===mStart).reduce((s,x)=>s+x.montant,0);
   const hist=_fineqCache.filter(x=>x.statut!=='recurrent').reduce((s,x)=>s+x.montant,0);
-  const s1=document.getElementById('fineq-kpi-att');if(s1)s1.textContent=fmt(aPayer);
-  const s2=document.getElementById('fineq-kpi-paye');if(s2)s2.textContent=fmt(payeMois);
-  const s3=document.getElementById('fineq-kpi-hist');if(s3)s3.textContent=fmt(hist);
+  const s1=document.getElementById('fineq-kpi-att'),s2=document.getElementById('fineq-kpi-paye'),s3=document.getElementById('fineq-kpi-hist');
+  // Même garde-fou que Revenus/Dépenses : ces 3 totaux ne dépendent pas des filtres
+  // (statut/type), animer une seule fois par chargement évite de rejouer l'animation à chaque
+  // clic de filtre sur une valeur qui n'a pas changé.
+  if(!_fineqKpiAnimated){
+    if(s1)animateNumber(s1,aPayer,{suffix:' €'});
+    if(s2)animateNumber(s2,payeMois,{suffix:' €'});
+    if(s3)animateNumber(s3,hist,{suffix:' €'});
+    _fineqKpiAnimated=true;
+  }else{
+    if(s1)s1.textContent=fmt(aPayer);
+    if(s2)s2.textContent=fmt(payeMois);
+    if(s3)s3.textContent=fmt(hist);
+  }
   let list=_fineqCache;
   if(_fineqFiltre==='apayer')list=list.filter(x=>x.statut==='apayer'||x.statut==='recurrent');
   else if(_fineqFiltre==='payee')list=list.filter(x=>x.statut==='paye');
@@ -26124,7 +26193,7 @@ let _rapbFiltre='a_traiter';
 async function loadRapprochementBancaire(){
   const el=document.getElementById('rapb-real');
   if(!el)return;
-  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML=_finSkelRows(5,36);
   try{
     const data=await sbFetch('bank_transactions?select=id,provider,booking_date,amount,currency,description,counterparty,status,matched_facture_id,matched_expense_id&order=booking_date.desc&limit=500');
     if(sbErr(data)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
