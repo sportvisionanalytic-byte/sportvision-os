@@ -1113,11 +1113,11 @@ const VIEWS={
           <div style="font-size:11px;color:var(--t3)">Clubs actifs <span style="color:var(--t3)">/ objectif 5</span></div>
         </div>
         <div style="cursor:pointer" onclick="switchView('resultat')">
-          <div style="font-size:26px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums" id="bnr-ca">—</div>
+          <div style="display:flex;align-items:baseline;gap:7px"><div style="font-size:26px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums" id="bnr-ca">—</div><span id="bnr-ca-trend"></span></div>
           <div style="font-size:11px;color:var(--t3)">CA HT ce mois</div>
         </div>
         <div style="cursor:pointer" onclick="_preFiltre='';_preStatutsFiltre=null;_preDateFiltre='week';switchView('pre')">
-          <div style="font-size:26px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums" id="bnr-semaine">—</div>
+          <div style="display:flex;align-items:baseline;gap:7px"><div style="font-size:26px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums" id="bnr-semaine">—</div><span id="bnr-semaine-trend"></span></div>
           <div style="font-size:11px;color:var(--t3)">Missions cette semaine</div>
         </div>
         <div>
@@ -3902,6 +3902,37 @@ async function sbSignedUrl(bucket, path, expiresIn){
     const d=await res.json();
     return d.signedURL?SB_URL+'/storage/v1'+d.signedURL:null;
   }catch(e){return null;}
+}
+
+// ── KPI : comptage animé + tendance (spec polish UI §4/§29) ───────────────
+// Usage volontairement ciblé (bandeau Accueil pour l'instant, pas les ~100
+// autres tuiles KPI de l'OS) : une animation rejouée à chaque render sur un
+// tableau chargé souvent deviendrait fatigante plutôt que premium — voir
+// avertissement explicite de la spec ("ne pas rejouer inutilement").
+function animateNumber(el,to,opts){
+  if(!el)return;
+  const o=opts||{};
+  const suffix=o.suffix||'';
+  const duration=220;
+  const from=0;
+  const start=performance.now();
+  const fmt=n=>Math.round(n).toLocaleString('fr-FR')+suffix;
+  function step(now){
+    const p=Math.min(1,(now-start)/duration);
+    const eased=1-Math.pow(1-p,3);
+    el.textContent=fmt(from+(to-from)*eased);
+    if(p<1)requestAnimationFrame(step);
+  }
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=fmt(to);return;}
+  requestAnimationFrame(step);
+}
+function renderTrend(el,current,previous){
+  if(!el)return;
+  if(previous===null||previous===undefined){el.innerHTML='';return;}
+  const diff=current-previous;
+  if(diff===0){el.innerHTML=`<span style="font-size:11px;font-weight:600;color:var(--t3)">= vs période précédente</span>`;return;}
+  const up=diff>0;
+  el.innerHTML=`<span style="font-size:11px;font-weight:700;color:${up?'var(--ok)':'var(--er)'}">${up?'↑':'↓'} ${up?'+':''}${diff.toLocaleString('fr-FR')}</span>`;
 }
 
 // ── MODAL ────────────────────────────────
@@ -7607,6 +7638,10 @@ async function loadAdminDash(){
   const weekStart=ymdLocal(lun);
   const weekEnd=ymdLocal(dim);
   const in7=new Date(now);in7.setDate(in7.getDate()+6);const in7s=ymdLocal(in7);
+  // Bornes des périodes précédentes, pour les tendances du bandeau (spec polish UI §4).
+  const prevMonthStart=ymdLocal(new Date(now.getFullYear(),now.getMonth()-1,1));
+  const prevWeekStart=ymdLocal(new Date(lun.getTime()-7*86400000));
+  const prevWeekEnd=ymdLocal(new Date(lun.getTime()-86400000));
 
   // Bonjour header
   const bj=document.getElementById('dash-bonjour');
@@ -7616,27 +7651,32 @@ async function loadAdminDash(){
   }
 
   // Fetch all data in parallel
-  let semainePre=[],allInc=[],rentabMois=[],activite=[];
+  let semainePre=[],allInc=[],rentabMois=[],activite=[],rentabMoisPrec=[],semainePrec=[];
   try{
-    [semainePre,allInc,rentabMois,activite]=await Promise.all([
+    [semainePre,allInc,rentabMois,activite,rentabMoisPrec,semainePrec]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,date_prestation,heure_debut,type_prestation,clients(nom)&date_prestation=gte.'+weekStart+'&date_prestation=lte.'+weekEnd+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc,heure_debut.asc'),
       sbFetch('incidents?select=id&cloture=eq.false'),
       // CA HT du mois — même vue et même calcul que le compte de résultat
       // officiel (loadComptaResultat), pas une approximation TTC locale.
       sbFetch('v_rentabilite_missions?select=revenu_ht&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext),
       sbFetch('activity_log?select=id,categorie,titre,description,created_at&order=created_at.desc&limit=5').catch(()=>[]),
+      sbFetch('v_rentabilite_missions?select=revenu_ht&date_prestation=gte.'+prevMonthStart+'&date_prestation=lt.'+mStart).catch(()=>[]),
+      sbFetch('prestations?select=id&date_prestation=gte.'+prevWeekStart+'&date_prestation=lte.'+prevWeekEnd+'&statut=not.in.(annulée,refusée)').catch(()=>[]),
     ]);
   }catch(e){}
 
   const semaine=Array.isArray(semainePre)?semainePre:[];
   const incOuverts=(allInc||[]).length;
 
-  // CA HT du mois
+  // CA HT du mois — comptage animé + tendance vs mois précédent (spec polish UI §4/§29)
   const caM=(Array.isArray(rentabMois)?rentabMois:[]).reduce((s,p)=>s+(p.revenu_ht||0),0);
-  set('bnr-ca',caM.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €');
+  const caMPrec=(Array.isArray(rentabMoisPrec)?rentabMoisPrec:[]).reduce((s,p)=>s+(p.revenu_ht||0),0);
+  animateNumber(document.getElementById('bnr-ca'),caM,{suffix:' €'});
+  renderTrend(document.getElementById('bnr-ca-trend'),Math.round(caM),caMPrec?Math.round(caMPrec):null);
 
-  // Missions cette semaine
-  set('bnr-semaine',semaine.length);
+  // Missions cette semaine — idem, vs semaine précédente
+  animateNumber(document.getElementById('bnr-semaine'),semaine.length);
+  renderTrend(document.getElementById('bnr-semaine-trend'),semaine.length,Array.isArray(semainePrec)?semainePrec.length:null);
 
   // Cette semaine — calendrier compact (Lun→Dim)
   const elSem=document.getElementById('dash-semaine');
@@ -7739,7 +7779,7 @@ async function loadAdminDash(){
       if(n>=5)objFunnel.innerHTML='<span style="font-size:12px;font-weight:700;color:var(--ok)">Objectif atteint !</span>';
     }
     // Màj bannière clubs actifs (inclure partenaire)
-    set('bnr-clubs',n);
+    animateNumber(document.getElementById('bnr-clubs'),n);
   }catch(e){}
 
   // À traiter
@@ -7750,17 +7790,17 @@ async function loadAdminDash(){
     // Factures en retard
     try{
       const enRetard=await sbFetch('prestations?select=id,reference,clients(nom)&statut_financier=eq.en_retard&limit=10');
-      (enRetard||[]).forEach(p=>items.push({ic:'🔴',txt:`Facture en retard — ${esc(p.clients?.nom||p.reference||'?')}`,act:`modalDetailById('${p.id}')`}));
+      (enRetard||[]).forEach(p=>items.push({ic:'🔴',sev:'urgent',txt:`Facture en retard — ${esc(p.clients?.nom||p.reference||'?')}`,act:`modalDetailById('${p.id}')`}));
     }catch(e){}
     // Incidents ouverts
-    if(incOuverts>0) items.push({ic:'⚠️',txt:`${incOuverts} incident${incOuverts>1?'s':''} ouvert${incOuverts>1?'s':''}`,act:`switchView('incidents')`});
+    if(incOuverts>0) items.push({ic:'⚠️',sev:'important',txt:`${incOuverts} incident${incOuverts>1?'s':''} ouvert${incOuverts>1?'s':''}`,act:`switchView('incidents')`});
     // Devis arrivant à expiration
     try{
       const devisExp=await sbFetch(`devis?select=id,numero,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&date_expiration=lte.${in7s}&order=date_expiration.asc&limit=5`);
       (devisExp||[]).forEach(d=>{
         const exp=d.date_expiration?new Date(d.date_expiration).toLocaleDateString('fr-FR'):'?';
         const isExpired=d.date_expiration&&d.date_expiration<today;
-        items.push({ic:'📋',txt:`Devis ${isExpired?'expiré':'expire le '+exp} — ${esc(d.clients?.nom||d.numero||'?')}`,act:`switchView('devis')`});
+        items.push({ic:'📋',sev:isExpired?'urgent':'important',txt:`Devis ${isExpired?'expiré':'expire le '+exp} — ${esc(d.clients?.nom||d.numero||'?')}`,act:`switchView('devis')`});
       });
     }catch(e){}
     // Prestations confirmées cette semaine sans équipe (fenêtre 7 jours,
@@ -7771,7 +7811,7 @@ async function loadAdminDash(){
         const equipeIds=await sbFetch('prestations_equipe_display?select=prestation_id');
         const withTeam=new Set((equipeIds||[]).map(e=>e.prestation_id));
         sansEquipe.filter(p=>!withTeam.has(p.id)).slice(0,3).forEach(p=>{
-          items.push({ic:'👥',txt:`Sans équipe cette semaine — ${esc(p.clients?.nom||p.reference||'?')}`,act:`modalDetailById('${p.id}')`});
+          items.push({ic:'👥',sev:'urgent',txt:`Sans équipe cette semaine — ${esc(p.clients?.nom||p.reference||'?')}`,act:`modalDetailById('${p.id}')`});
         });
       }
     }catch(e){}
@@ -7779,7 +7819,7 @@ async function loadAdminDash(){
     try{
       const planSoumis=await sbFetch('plannings_hebdo?select=id&statut=eq.soumis');
       const nPh=(planSoumis||[]).length;
-      if(nPh>0) items.push({ic:'📝',txt:`${nPh} planning${nPh>1?'s':''} CM à valider`,act:`modalPlanningsAValider()`});
+      if(nPh>0) items.push({ic:'📝',sev:'normal',txt:`${nPh} planning${nPh>1?'s':''} CM à valider`,act:`modalPlanningsAValider()`});
     }catch(e){}
     // Candidatures à examiner — pointe vers la page Recrutement (pipeline
     // complet, refonte Équipe & RH 28/08/2026), plus vers modalCandidatures()
@@ -7787,18 +7827,25 @@ async function loadAdminDash(){
     try{
       const candNouveaux=await sbFetch('recruitment_applications?select=id&statut=in.(nouveau,a_appeler,entretien)');
       const nCand=(candNouveaux||[]).length;
-      if(nCand>0) items.push({ic:'🎯',txt:`${nCand} candidature${nCand>1?'s':''} à examiner`,act:`switchView('recrutement')`});
+      if(nCand>0) items.push({ic:'🎯',sev:'normal',txt:`${nCand} candidature${nCand>1?'s':''} à examiner`,act:`switchView('recrutement')`});
     }catch(e){}
     if(elNb) elNb.textContent=items.length||'0';
-    set('bnr-traiter',items.length||0);
+    animateNumber(document.getElementById('bnr-traiter'),items.length||0);
+    // Sévérité perceptible sans noyer l'écran (spec polish UI §6) : bordure +
+    // fond légèrement teinté par item, pas toute la carte en rouge/orange.
+    const SEV_CLR={urgent:'var(--er)',important:'var(--wa)',normal:'var(--t3)'};
+    const SEV_BG={urgent:'rgba(240,68,94,.05)',important:'rgba(245,165,36,.04)',normal:'transparent'};
     if(!items.length){
-      elTraiter.innerHTML='<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Rien à traiter pour l\'instant.</div>';
+      elTraiter.innerHTML='<div style="padding:28px 16px;text-align:center;color:var(--t3)"><div style="font-size:26px;margin-bottom:6px">🎉</div><div style="font-size:13px">Rien à traiter — tout est sous contrôle.</div></div>';
     } else {
-      elTraiter.innerHTML=items.map(it=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="${it.act}">
-        <span style="font-size:16px">${it.ic}</span>
+      items.sort((a,b)=>({urgent:0,important:1,normal:2}[a.sev||'normal'])-({urgent:0,important:1,normal:2}[b.sev||'normal']));
+      elTraiter.innerHTML=items.map(it=>{
+        const clr=SEV_CLR[it.sev||'normal'];
+        return`<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--bd);border-left:2px solid ${clr};background:${SEV_BG[it.sev||'normal']};cursor:pointer;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='${SEV_BG[it.sev||'normal']}'" onclick="${it.act}">
+        <span style="font-size:16px;flex-shrink:0">${it.ic}</span>
         <div style="flex:1;font-size:13px">${it.txt}</div>
         <span style="font-size:11px;color:var(--ac)">›</span>
-      </div>`).join('');
+      </div>`;}).join('');
     }
   }
 }
