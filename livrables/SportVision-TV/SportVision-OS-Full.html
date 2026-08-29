@@ -815,6 +815,9 @@ const NAV={
     // volontairement hors des 6 items primaires (Accueil/Clubs-Clients/Production/Communication/
     // Équipe/Finance), donc dans sa propre section "Secondaire" plutôt que dans "Opérations".
     {id:'calglobal',lb:'Calendrier global',ic:'cal'},
+    // Alias de sec.docrh (audit 29/08) : jusqu'ici invisible pour admin alors
+    // que la vue secretariat_documents l'autorise déjà côté base.
+    {id:'docrh',lb:'Documents (pièces RH)',ic:'doc'},
     {type:'sep',lb:'Espace'},
     // Moteur global "À traiter" (spec §14-21, 29/08/2026) : en secondaire (§3 de la spec),
     // pas dans "Opérations" — c'est un centre transverse de suivi, pas un flux de travail
@@ -3091,6 +3094,13 @@ const VIEWS={
   'compta.set':()=>_settingsView(),
   'com.set':()=>_settingsView(),
 };
+// Alias admin → sec.docrh : audit Matériel & Kits du 29/08 a confirmé que
+// secretariat_documents (vue derrière loadDocRh) autorise déjà 'admin' dans
+// CHACUNE de ses branches UNION (voir pg_get_viewdef), donc aucun changement
+// RLS n'est nécessaire — seul l'accès depuis le rôle admin manquait côté OS.
+// Même fonction réutilisée telle quelle (pattern déjà utilisé pour
+// admin.cmagency/sec.cmagency, admin.connectcomptes/sec.connectcomptes...).
+VIEWS['admin.docrh']=VIEWS['sec.docrh'];
 
 function _settingsView(){
   return`
@@ -4669,7 +4679,7 @@ async function loadViewData(role,view){
   if(role==='sec'&&view==='taches') await loadTaches();
   if((['admin','compta','expert_comptable'].includes(role)&&view==='documents')||((role==='sec'||role==='admin'||_isComptaLike)&&view==='docs')) await loadDocuments(role);
   if(role==='sec'&&view==='agendasec') await loadAgendaSec();
-  if(role==='sec'&&view==='docrh') await loadDocRh();
+  if((role==='sec'||role==='admin')&&view==='docrh') await loadDocRh();
   if(_isComptaLike&&view==='rapprochement') await loadRapprochementBancaire();
   if(view==='set') await loadSettings();
   if(role==='admin'&&view==='rapport'){_rapportOffset=0;await loadRapport();}
@@ -13403,40 +13413,54 @@ function kitsModalSignalerIncident(materielId,materielNom){
     </div>`);
 }
 
+// Écrit l'incident matériel + fait basculer le statut du matériel/kit concerné
+// via la RPC SECURITY DEFINER report_materiel_incident plutôt qu'un POST+PATCH
+// direct : la RLS de materiel_incidents (materiel_incidents_access) n'autorise
+// que admin/prod en écriture directe, mais le Mode Jour J (submitIncidentJJ)
+// est utilisé par des rôles de terrain (photo/cm/com...) sans ce droit. Cette
+// RPC est le point d'entrée commun aux deux flux — vérifié en RLS réelle avec
+// un compte jetable rôle 'photo' le 29/08 (INSERT direct rejeté 403, RPC OK).
+async function reportMaterielIncidentRPC(opts){
+  return sbFetch('rpc/report_materiel_incident',{method:'POST',body:{
+    p_materiel_id:opts.materielId||null,
+    p_kit_id:opts.kitId||null,
+    p_prestation_id:opts.prestationId||null,
+    p_kit_reservation_id:opts.kitReservationId||null,
+    p_type_incident:opts.typeIncident||'autre',
+    p_description:opts.description,
+    p_gravite:opts.gravite||'mineur',
+    p_impact_prestation:opts.impactPrestation||null,
+    p_action_immediate:opts.actionImmediate||null,
+  }});
+}
+async function notifierIncidentCritique(materielOuKitId,desc){
+  const prods=await sbFetch('profiles?select=id&role=in.(admin,prod)').catch(()=>[]);
+  for(const p of (prods||[])){
+    await creerNotifSiActive(p.id,'materiel',{
+      type:'incident_critique',priorite:'haute',titre:'Incident critique matériel',
+      message:'Incident critique matériel signalé : '+desc.slice(0,80),
+      source_type:'materiels',source_id:materielOuKitId,
+    });
+  }
+}
 async function kitsIncidentSubmit(materielId){
   const desc=document.getElementById('inc-desc')?.value.trim();
   if(!desc){toast('La description est obligatoire.','er');return;}
   const gravite=document.getElementById('inc-grav')?.value||'mineur';
   try{
-    const uid=localStorage.getItem('sv_uid');
     const mat=_matCache.find(m=>m.id===materielId);
-    const r=await sbFetch('materiel_incidents',{method:'POST',body:{
-      materiel_id:materielId,
-      kit_id:mat?.kit_id||null,
-      collaborateur_id:uid,
-      type_incident:document.getElementById('inc-type')?.value||'autre',
-      description:desc,
-      gravite,
-      impact_prestation:document.getElementById('inc-impact')?.value||null,
-      action_immediate:document.getElementById('inc-action')?.value||null,
-      statut:'ouvert',
-    }});
+    const r=await reportMaterielIncidentRPC({
+      materielId,kitId:mat?.kit_id||null,
+      typeIncident:document.getElementById('inc-type')?.value||'autre',
+      description:desc,gravite,
+      impactPrestation:document.getElementById('inc-impact')?.value||null,
+      actionImmediate:document.getElementById('inc-action')?.value||null,
+    });
     if(sbErr(r)){toast('Erreur : '+(r.message||'déclaration impossible.'),'er');return;}
-    // Bloquer le matériel si critique
-    const newStatut=gravite==='critique'?'endommage':'fonctionnel_reserve';
-    const rMat=await sbFetch('materiels?id=eq.'+materielId,{method:'PATCH',body:{statut:newStatut}}).catch(()=>({code:'network_error'}));
-    if(sbErr(rMat))toast('Incident déclaré, mais le statut du matériel n\'a pas pu être mis à jour — vérifiez-le manuellement.','wa');
     // Notifier prod + admin si critique
     if(gravite==='critique'){
       await dispatchSVEvent('prestation.confirmed',{prestation_id:null}).catch(()=>{});
-      const prods=await sbFetch('profiles?select=id&role=in.(admin,prod)').catch(()=>[]);
-      for(const p of (prods||[])){
-        await creerNotifSiActive(p.id,'materiel',{
-          type:'incident_critique',priorite:'haute',titre:'Incident critique matériel',
-          message:'Incident critique matériel signalé : '+desc.slice(0,80),
-          source_type:'materiels',source_id:materielId,
-        });
-      }
+      await notifierIncidentCritique(materielId,desc);
     }
     closeModal();toast('Incident déclaré.','ok');kitsLoadAll();
   }catch(e){toast('Erreur lors de la déclaration.','er');}
@@ -31358,11 +31382,19 @@ async function jourJAction(prestationId,newStatut,btn){
     await enterJourJ(prestationId);
   }catch(e){toast('Erreur mise à jour.','er');btn.disabled=false;}
 }
-function modalSignalerIncidentJJ(prestationId){
+// Liste les kits actuellement attribués à cette prestation (via kit_reservations)
+// pour permettre de préciser optionnellement le matériel concerné par
+// l'incident — jusqu'ici submitIncidentJJ n'écrivait que dans `incidents`
+// (texte libre), jamais dans materiel_incidents, donc aucun signalement
+// depuis le terrain ne faisait basculer le statut d'un kit/matériel.
+async function modalSignalerIncidentJJ(prestationId){
+  const kitsAttr=await sbFetch('kit_reservations?select=id,kit_id,kits(nom)&prestation_id=eq.'+prestationId+'&statut=not.in.(retourné)').catch(()=>[]);
+  const opts=(Array.isArray(kitsAttr)?kitsAttr:[]).filter(k=>k.kit_id);
   openModal(`<div class="mh"><div class="mt">Signaler un incident</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Description</label><textarea id="jj-inc-desc" class="fi" style="height:80px" placeholder="Décrivez l'incident…"></textarea></div>
       <div class="fg"><label class="fl">Niveau</label><select id="jj-inc-niv" class="fi"><option value="mineur">Mineur</option><option value="important">Important</option><option value="critique">Critique</option></select></div>
+      ${opts.length?`<div class="fg"><label class="fl">Matériel concerné (optionnel)</label><select id="jj-inc-kit" class="fi"><option value="">— Aucun matériel spécifique —</option>${opts.map(o=>`<option value="${o.kit_id}" data-resa="${o.id}">${esc(o.kits?.nom||'Kit')}</option>`).join('')}</select></div>`:''}
       <div id="jj-inc-err" style="color:var(--er);font-size:12px;min-height:14px"></div>
     </div>
     <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="submitIncidentJJ('${prestationId}')">Envoyer</button></div>`);
@@ -31373,9 +31405,25 @@ async function submitIncidentJJ(prestationId){
   const err=document.getElementById('jj-inc-err');
   if(!desc){if(err)err.textContent='Décrivez l\'incident.';return;}
   const uid=localStorage.getItem('sv_uid');
+  const kitSel=document.getElementById('jj-inc-kit');
+  const kitId=kitSel?.value||null;
+  const resaId=kitId?(kitSel.selectedOptions[0]?.dataset.resa||null):null;
   try{
     const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,description:desc,niveau:niv,declare_par:uid,cloture:false,date_incident:ymdLocal()}});
     if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'déclaration impossible.');return;}
+    // Si un kit a été précisé, on crée AUSSI la ligne materiel_incidents
+    // (même RPC que le module Kits — voir reportMaterielIncidentRPC) pour que
+    // le statut du kit bascule automatiquement en cas d'incident critique.
+    // Best-effort : un échec ici ne doit pas empêcher la fermeture du modal,
+    // l'incident générique est déjà enregistré dans `incidents`.
+    if(kitId){
+      const rMat=await reportMaterielIncidentRPC({
+        kitId,prestationId,kitReservationId:resaId,
+        typeIncident:'autre',description:desc,gravite:niv,
+      }).catch(()=>({code:'network_error'}));
+      if(sbErr(rMat)){toast('Incident signalé, mais le lien matériel n\'a pas pu être créé.','wa');}
+      else if(niv==='critique'){await notifierIncidentCritique(kitId,desc);}
+    }
     closeModal();toast('Incident signalé.','ok');
   }catch(e){if(err)err.textContent='Erreur lors de la déclaration.';}
 }
