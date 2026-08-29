@@ -809,6 +809,12 @@ const NAV={
     {id:'audit',lb:"Journal d'audit",ic:'check',hidden:true},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin',hidden:true},
     {id:'documents',lb:'Centre documentaire',ic:'doc',hidden:true},
+    {type:'sep',lb:'Secondaire'},
+    // Calendrier global (§22-27, nuit du 29/08) : vue Direction qui AGRÈGE les calendriers
+    // déjà existants (Planning missions, Planning CM, Agenda Secrétaire...) sans les remplacer —
+    // volontairement hors des 6 items primaires (Accueil/Clubs-Clients/Production/Communication/
+    // Équipe/Finance), donc dans sa propre section "Secondaire" plutôt que dans "Opérations".
+    {id:'calglobal',lb:'Calendrier global',ic:'cal'},
     {type:'sep',lb:'Espace'},
     // Moteur global "À traiter" (spec §14-21, 29/08/2026) : en secondaire (§3 de la spec),
     // pas dans "Opérations" — c'est un centre transverse de suivi, pas un flux de travail
@@ -1201,6 +1207,40 @@ const VIEWS={
       </div>
     </div>
     <div id="planning-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── Calendrier global (§22-27, Direction) ──────────────────────────────────
+  // Vue qui AGRÈGE (v_calendar_global) : Missions Production, Présences Full Com,
+  // RDV commerciaux/clients, Rappels Secrétariat, Échéances contrats, Sessions de
+  // formation, Indisponibilités. Ne remplace aucun des calendriers métier existants
+  // (Planning missions, planning CM, Agenda Secrétaire...) — chacun garde sa vue
+  // spécialisée (§26), celle-ci est un "en plus" pour la Direction. Pas d'édition
+  // inline (§23) : un clic ouvre l'objet dans son module d'origine.
+  'admin.calglobal':()=>`
+    <div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="calGlobalPrev()" aria-label="Période précédente">‹</button>
+        <div class="sh-t" id="calglobal-title">Calendrier global</div>
+        <button class="btn bg2 bs" onclick="calGlobalNext()" aria-label="Période suivante">›</button>
+        <button class="btn bg2 bs" onclick="calGlobalToday()">Aujourd'hui</button>
+      </div>
+      <div style="display:flex;border:1px solid var(--b1);border-radius:var(--rp);overflow:hidden">
+        <button id="cg-view-mois" onclick="setCalGlobalView('mois')" style="padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);background:var(--acc);border:none;color:#fff">Mois</button>
+        <button id="cg-view-semaine" onclick="setCalGlobalView('semaine')" style="padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);background:transparent;border:none;color:var(--t3)">Semaine</button>
+        <button id="cg-view-agenda" onclick="setCalGlobalView('agenda')" style="padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);background:transparent;border:none;color:var(--t3)">Agenda</button>
+      </div>
+    </div>
+    <div class="cd" style="margin-bottom:12px">
+      <div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <input type="text" id="cg-f-q" class="fi" placeholder="Rechercher club, titre…" style="max-width:200px" oninput="applyCalGlobalFilters()">
+        <select id="cg-f-type" class="fi" style="max-width:170px" onchange="applyCalGlobalFilters()"><option value="">Tous les types</option></select>
+        <select id="cg-f-pole" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous les pôles</option></select>
+        <select id="cg-f-statut" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous statuts</option></select>
+        <select id="cg-f-sport" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous sports</option></select>
+        <select id="cg-f-collab" class="fi" style="max-width:180px" onchange="applyCalGlobalFilters()"><option value="">Tous les collaborateurs</option></select>
+        <span style="font-size:11px;color:var(--t3);margin-left:auto" id="cg-f-count"></span>
+      </div>
+    </div>
+    <div id="calglobal-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'admin.crm':()=>`
     <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
@@ -3499,7 +3539,23 @@ const DEMO_DATA=(function(){
     {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Lucas',nom:'Martin',email:'lucas.martin@gmail.com',ville:'Fontainebleau',club_nom:'FC Fontainebleau',created_at:iso(inDays(-8)),sport:'Football',poste:'Milieu',categorie:'U17'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,paiements,devis,contrats,clubs,club_bookings,club_credit_transactions,club_requests,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
+  // Calendrier global (Admin, §22-27) — données synthétiques indépendantes de la vue SQL réelle
+  // (demoQuery ne rejoue pas le UNION, il lit juste cette clé telle quelle). Un jeu volontairement
+  // varié : les 6 display_type principaux + un conflit exprès (deux missions le même jour pour
+  // demo-photo1) pour vérifier l'indicateur de conflit (§25) en mode démo.
+  const v_calendar_global=[
+    {source_type:'prestation',source_id:'demo-pre-1',starts_at:today+'T14:00:00Z',ends_at:today+'T16:00:00Z',display_type:'mission',statut:'confirmée',titre:'SV-DEMO-0001',club_nom:'FC Fontainebleau',sport:'Football',pole:'production',responsible_user_id:'demo-prod',responsible_nom:'Yanis Costa'},
+    {source_type:'prestation',source_id:'demo-pre-2',starts_at:inDays(2)+'T10:00:00Z',ends_at:inDays(2)+'T12:30:00Z',display_type:'mission',statut:'équipe_affectée',titre:'SV-DEMO-0002',club_nom:'US Varennes',sport:'Football',pole:'production',responsible_user_id:'demo-photo1',responsible_nom:'Lisa Girard'},
+    {source_type:'prestation',source_id:'demo-pre-conflit',starts_at:inDays(2)+'T15:00:00Z',ends_at:inDays(2)+'T17:00:00Z',display_type:'mission',statut:'planifiée',titre:'SV-DEMO-0099',club_nom:'Rugby Club Sénonais',sport:'Rugby',pole:'production',responsible_user_id:'demo-photo1',responsible_nom:'Lisa Girard'},
+    {source_type:'presence_fullcom',source_id:'demo-pp-1',starts_at:inDays(3)+'T18:00:00Z',ends_at:null,display_type:'presence',statut:'prevu',titre:'Seniors A vs Melun',club_nom:'FC Exemple',sport:null,pole:'communication',responsible_user_id:'demo-cm',responsible_nom:'Alice Roche'},
+    {source_type:'rendez_vous',source_id:'demo-rdv-1',starts_at:inDays(1)+'T11:00:00Z',ends_at:null,display_type:'rdv_commercial',statut:'a_confirmer',titre:'Présentation offre Club+',club_nom:'Basket Nemours',sport:'Basketball',pole:'commercial',responsible_user_id:'demo-com',responsible_nom:'Nora Aziz'},
+    {source_type:'agenda_sec',source_id:'demo-ag-1',starts_at:inDays(-1)+'T09:00:00Z',ends_at:null,display_type:'relance',statut:'a_faire',titre:'Relancer acompte US Varennes',club_nom:'US Varennes',sport:null,pole:'secretariat',responsible_user_id:'demo-sec',responsible_nom:'Inès Faure'},
+    {source_type:'agenda_sec',source_id:'demo-ag-2',starts_at:today+'T17:00:00Z',ends_at:null,display_type:'rappel',statut:'a_faire',titre:'Rappeler le Rugby Club Sénonais',club_nom:'Rugby Club Sénonais',sport:null,pole:'secretariat',responsible_user_id:'demo-sec',responsible_nom:'Inès Faure'},
+    {source_type:'contrat',source_id:'demo-contrat-1',starts_at:inDays(20)+'T00:00:00Z',ends_at:null,display_type:'echeance_contrat',statut:'actif',titre:'Échéance contrat — full_communication',club_nom:'FC Exemple',sport:'Football',pole:'clients',responsible_user_id:'demo-admin',responsible_nom:'Camille Bernard'},
+    {source_type:'formation_session',source_id:'demo-fs-1',starts_at:inDays(5)+'T18:30:00Z',ends_at:inDays(5)+'T20:30:00Z',display_type:'formation',statut:'planifiee',titre:'Session — Bases photo sportive',club_nom:null,sport:null,pole:'formation',responsible_user_id:'demo-admin',responsible_nom:'Camille Bernard'},
+    {source_type:'disponibilite',source_id:'demo-dispo-1',starts_at:inDays(2)+'T00:00:00Z',ends_at:inDays(3)+'T00:00:00Z',display_type:'indisponibilite',statut:'indisponible',titre:'Indisponible',club_nom:null,sport:null,pole:'rh',responsible_user_id:'demo-photo2',responsible_nom:'Karim Belhadj'},
+  ];
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,paiements,devis,contrats,clubs,club_bookings,club_credit_transactions,club_requests,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications,v_calendar_global};
 })();
 
 function _demoParseSelect(sel){
@@ -4434,6 +4490,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='dash') await loadAdminDash();
   if(role==='admin'&&view==='atraiter') await loadATraiter();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
+  if(role==='admin'&&view==='calglobal'){_cgDate=new Date();await loadCalGlobal();}
   if(role==='prod'&&view==='dash') await loadProdDash();
   if(role==='prod'&&view==='pre') await loadProdPrestations();
   if(role==='prod'&&view==='planning'){_prodPlanTab='semaine';await loadProdPlanning();}
@@ -24939,6 +24996,347 @@ async function loadPlanning(){
 }
 function planningPrev(){_planningDate=new Date(_planningDate.getFullYear(),_planningDate.getMonth()-1,1);loadPlanning();}
 function planningNext(){_planningDate=new Date(_planningDate.getFullYear(),_planningDate.getMonth()+1,1);loadPlanning();}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CALENDRIER GLOBAL (Direction, §22-27) — agrège v_calendar_global, n'édite rien.
+// Chaque événement reste modifiable UNIQUEMENT dans son module source (§23 "pas
+// d'édition universelle") ; ce calendrier ouvre l'objet au bon endroit au clic.
+// ══════════════════════════════════════════════════════════════════════════
+let _cgDate=new Date();
+let _cgViewMode='mois'; // 'mois' | 'semaine' | 'agenda'
+let _cgRawData=[]; // items bruts de la période visible (avant filtres)
+
+const CAL_GLOBAL_TYPE_LBL={
+  mission:'Mission',presence:'Présence Full Com',rdv_commercial:'RDV commercial',
+  rdv_interne:'RDV interne (agenda)',relance:'Relance',rappel:'Rappel',
+  echeance_admin:'Échéance admin',echeance_contrat:'Échéance contrat',
+  formation:'Formation',indisponibilite:'Indisponibilité',recrutement:'Recrutement (appel)',
+};
+const CAL_GLOBAL_TYPE_COLOR={
+  mission:'#366BFF',presence:'#00B8D4',rdv_commercial:'#2ECC8A',rdv_interne:'#7C4DFF',
+  relance:'#F5A524',rappel:'#8891A8',echeance_admin:'#F0445E',echeance_contrat:'#F0445E',
+  formation:'#8B2BFF',indisponibilite:'#4E5870',recrutement:'#00C4FF',
+};
+const CAL_GLOBAL_POLE_LBL={
+  production:'Production',communication:'Communication',commercial:'Commercial',
+  secretariat:'Secrétariat',clients:'Clients',formation:'Formation',rh:'RH',recrutement:'Recrutement',
+};
+
+function setCalGlobalView(mode){
+  _cgViewMode=mode;
+  ['mois','semaine','agenda'].forEach(m=>{
+    const b=document.getElementById('cg-view-'+m);
+    if(b){b.style.background=m===mode?'var(--acc)':'transparent';b.style.color=m===mode?'#fff':'var(--t3)';}
+  });
+  loadCalGlobal();
+}
+function calGlobalToday(){_cgDate=new Date();loadCalGlobal();}
+function _cgPeriodBounds(){
+  if(_cgViewMode==='semaine'){
+    const d=_cgDate,dow=d.getDay(),offset=(dow+6)%7; // semaine Lundi→Dimanche
+    const start=new Date(d.getFullYear(),d.getMonth(),d.getDate()-offset);
+    const end=new Date(start.getFullYear(),start.getMonth(),start.getDate()+6);
+    return{start,end};
+  }
+  // 'mois' et 'agenda' partagent la même période (le mois courant) — seul le rendu diffère.
+  return{start:new Date(_cgDate.getFullYear(),_cgDate.getMonth(),1),end:new Date(_cgDate.getFullYear(),_cgDate.getMonth()+1,0)};
+}
+function calGlobalPrev(){
+  if(_cgViewMode==='semaine')_cgDate=new Date(_cgDate.getFullYear(),_cgDate.getMonth(),_cgDate.getDate()-7);
+  else _cgDate=new Date(_cgDate.getFullYear(),_cgDate.getMonth()-1,1);
+  loadCalGlobal();
+}
+function calGlobalNext(){
+  if(_cgViewMode==='semaine')_cgDate=new Date(_cgDate.getFullYear(),_cgDate.getMonth(),_cgDate.getDate()+7);
+  else _cgDate=new Date(_cgDate.getFullYear(),_cgDate.getMonth()+1,1);
+  loadCalGlobal();
+}
+
+async function loadCalGlobal(){
+  const el=document.getElementById('calglobal-real');
+  const title=document.getElementById('calglobal-title');
+  if(!el)return;
+  const{start,end}=_cgPeriodBounds();
+  const moisLbl=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  if(title){
+    title.textContent=_cgViewMode==='semaine'
+      ?`Calendrier global — ${start.getDate()} ${moisLbl[start.getMonth()].slice(0,3)} → ${end.getDate()} ${moisLbl[end.getMonth()].slice(0,3)} ${end.getFullYear()}`
+      :`Calendrier global — ${moisLbl[_cgDate.getMonth()]} ${_cgDate.getFullYear()}`;
+  }
+  // Marge de ±1 jour pour ne jamais perdre un événement proche d'un fuseau horaire à la
+  // frontière de la période (starts_at est un timestamptz, la vue déjà convertie côté SQL) —
+  // le regroupement par jour ci-dessous utilise ensuite ymdLocal() sur la vraie date locale, donc
+  // un événement rendu par la marge mais hors période n'apparaît dans aucune cellule/colonne.
+  const debut=ymdLocal(new Date(start.getFullYear(),start.getMonth(),start.getDate()-1));
+  const fin=ymdLocal(new Date(end.getFullYear(),end.getMonth(),end.getDate()+1));
+  try{
+    const data=await sbFetch(`v_calendar_global?select=*&starts_at=gte.${debut}&starts_at=lte.${fin}T23:59:59&order=starts_at.asc`);
+    _cgRawData=Array.isArray(data)?data:[];
+  }catch(e){_cgRawData=[];el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
+  populateCalGlobalFilters();
+  applyCalGlobalFilters();
+}
+
+function populateCalGlobalFilters(){
+  const distinct=(key)=>[...new Set(_cgRawData.map(r=>r[key]).filter(v=>v!=null&&v!==''))].sort();
+  const fill=(id,values,lblMap)=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML=`<option value="">${sel.dataset.allLabel||'Tous'}</option>`;
+    values.forEach(v=>{
+      const opt=document.createElement('option');
+      opt.value=v;opt.textContent=(lblMap&&lblMap[v])||v;
+      sel.appendChild(opt);
+    });
+    if(values.includes(cur))sel.value=cur;
+  };
+  fill('cg-f-type',distinct('display_type'),CAL_GLOBAL_TYPE_LBL);
+  fill('cg-f-pole',distinct('pole'),CAL_GLOBAL_POLE_LBL);
+  fill('cg-f-statut',distinct('statut'),null);
+  fill('cg-f-sport',distinct('sport'),null);
+  fill('cg-f-collab',distinct('responsible_nom'),null);
+}
+
+function applyCalGlobalFilters(){
+  const q=(document.getElementById('cg-f-q')?.value||'').trim().toLowerCase();
+  const type=document.getElementById('cg-f-type')?.value||'';
+  const pole=document.getElementById('cg-f-pole')?.value||'';
+  const statut=document.getElementById('cg-f-statut')?.value||'';
+  const sport=document.getElementById('cg-f-sport')?.value||'';
+  const collab=document.getElementById('cg-f-collab')?.value||'';
+  let list=_cgRawData;
+  if(q)list=list.filter(r=>(r.titre||'').toLowerCase().includes(q)||(r.club_nom||'').toLowerCase().includes(q));
+  if(type)list=list.filter(r=>r.display_type===type);
+  if(pole)list=list.filter(r=>r.pole===pole);
+  if(statut)list=list.filter(r=>r.statut===statut);
+  if(sport)list=list.filter(r=>r.sport===sport);
+  if(collab)list=list.filter(r=>r.responsible_nom===collab);
+  const countEl=document.getElementById('cg-f-count');
+  if(countEl)countEl.textContent=list.length+' événement'+(list.length>1?'s':'')+' affiché'+(list.length>1?'s':'');
+  renderCalGlobal(list);
+}
+
+// Détection de conflit de planning — même principe que la vérification faite avant
+// confirmation d'affectation dans ajouterMembreEquipe() (~L11835, cf. son commentaire
+// "Détection de conflit de planning avant confirmation") : un même collaborateur
+// (responsible_user_id) présent sur 2+ événements le même jour local. Avertissement
+// visuel seulement, jamais bloquant, même philosophie que l'existant — le staff garde
+// la main, deux événements courts le même jour peuvent être parfaitement légitimes.
+function computeCalGlobalConflicts(list){
+  const byKey={};
+  list.forEach(r=>{
+    if(!r.responsible_user_id||!r.starts_at)return;
+    const key=r.responsible_user_id+'|'+ymdLocal(new Date(r.starts_at));
+    (byKey[key]=byKey[key]||[]).push(r);
+  });
+  const conflictIds=new Set();
+  Object.values(byKey).forEach(arr=>{if(arr.length>1)arr.forEach(r=>conflictIds.add(r.source_type+':'+r.source_id));});
+  return conflictIds;
+}
+
+function renderCalGlobal(list){
+  if(_cgViewMode==='semaine')renderCalGlobalWeek(list);
+  else if(_cgViewMode==='agenda')renderCalGlobalAgenda(list);
+  else renderCalGlobalMonth(list);
+}
+
+function renderCalGlobalMonth(list){
+  const el=document.getElementById('calglobal-real');
+  if(!el)return;
+  const yr=_cgDate.getFullYear(),mo=_cgDate.getMonth();
+  const jours=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const nbDays=new Date(yr,mo+1,0).getDate();
+  const firstDow=new Date(yr,mo,1).getDay();
+  const today=ymdLocal();
+  const byDay={};
+  list.forEach(r=>{if(!r.starts_at)return;const k=ymdLocal(new Date(r.starts_at));(byDay[k]=byDay[k]||[]).push(r);});
+  const conflicts=computeCalGlobalConflicts(list);
+  const startPad=firstDow;
+  const totalCells=Math.ceil((nbDays+startPad)/7)*7;
+  const grid=`<style>
+    .cg-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--b1);border-radius:var(--rb);overflow:hidden}
+    .cg-cal-hd{background:var(--s1);padding:6px 0;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)}
+    .cg-cal-cell{background:var(--s1);min-height:92px;padding:6px}
+    .cg-cal-cell.today{background:rgba(14,165,255,.06);box-shadow:inset 0 0 0 2px rgba(14,165,255,.25)}
+    .cg-cal-cell.we{background:rgba(255,255,255,.015)}
+    .cg-cal-cell.empty{background:rgba(0,0,0,.3)}
+    .cg-cal-dn{font-size:13px;font-weight:700;color:var(--t2);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+    .cg-cal-cell.today .cg-cal-dn{color:var(--acc)}
+    .cg-cal-ev{font-size:10px;padding:2px 5px;border-radius:3px;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+    .cg-cal-more{font-size:10px;color:var(--t3);margin-top:2px}
+  </style>
+  <div class="cg-cal">
+    ${jours.map(j=>`<div class="cg-cal-hd">${j}</div>`).join('')}
+    ${Array.from({length:totalCells},(_,i)=>{
+      const dayNum=i-startPad+1;
+      if(dayNum<1||dayNum>nbDays)return'<div class="cg-cal-cell empty"></div>';
+      const key=`${yr}-${String(mo+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+      const dow=(startPad+dayNum-1)%7;
+      const isWE=dow===0||dow===6;
+      const isToday=key===today;
+      const evs=byDay[key]||[];
+      const evHtml=evs.slice(0,4).map(r=>{
+        const clr=CAL_GLOBAL_TYPE_COLOR[r.display_type]||'#6B7CFF';
+        const isConf=conflicts.has(r.source_type+':'+r.source_id);
+        const lbl=(r.club_nom?r.club_nom+' — ':'')+(r.titre||CAL_GLOBAL_TYPE_LBL[r.display_type]||'Événement');
+        return`<div class="cg-cal-ev" style="background:${clr}cc${isConf?';outline:2px solid var(--er)':''}" onclick="event.stopPropagation();modalCalGlobalItem('${r.source_type}','${r.source_id}')" title="${esc(lbl)}${isConf?' — ⚠ Conflit de planning':''}">${isConf?'⚠ ':''}${esc(lbl.slice(0,26))}</div>`;
+      }).join('');
+      const more=evs.length>4?`<div class="cg-cal-more">+${evs.length-4} autres</div>`:'';
+      return`<div class="cg-cal-cell${isToday?' today':''}${isWE?' we':''}">
+        <div class="cg-cal-dn"><span>${dayNum}</span>${evs.length?`<span style="font-size:9px;color:var(--t3)">${evs.length}</span>`:''}</div>
+        ${evHtml}${more}
+      </div>`;
+    }).join('')}
+  </div>`;
+  el.innerHTML=grid;
+}
+
+function renderCalGlobalWeek(list){
+  const el=document.getElementById('calglobal-real');
+  if(!el)return;
+  const{start}=_cgPeriodBounds();
+  const jours=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const today=ymdLocal();
+  const byDay={};
+  list.forEach(r=>{if(!r.starts_at)return;const k=ymdLocal(new Date(r.starts_at));(byDay[k]=byDay[k]||[]).push(r);});
+  const conflicts=computeCalGlobalConflicts(list);
+  let cols='';
+  for(let i=0;i<7;i++){
+    const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+    const key=ymdLocal(d);
+    const isToday=key===today;
+    const evs=(byDay[key]||[]).slice().sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+    cols+=`<div style="flex:1;min-width:150px;border-right:1px solid var(--b1)">
+      <div style="padding:8px;text-align:center;background:${isToday?'rgba(14,165,255,.08)':'var(--s1)'};border-bottom:1px solid var(--b1)">
+        <div style="font-size:9px;text-transform:uppercase;color:var(--t3)">${jours[i]}</div>
+        <div style="font-size:16px;font-weight:700;color:${isToday?'var(--acc)':'var(--t1)'}">${d.getDate()}</div>
+      </div>
+      <div style="padding:6px;display:flex;flex-direction:column;gap:5px;min-height:220px">
+        ${evs.map(r=>{
+          const clr=CAL_GLOBAL_TYPE_COLOR[r.display_type]||'#6B7CFF';
+          const isConf=conflicts.has(r.source_type+':'+r.source_id);
+          const h=new Date(r.starts_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+          return`<div style="background:${clr}22;border-left:3px solid ${clr};border-radius:0 6px 6px 0;padding:5px 8px;cursor:pointer${isConf?';outline:2px solid var(--er)':''}" onclick="modalCalGlobalItem('${r.source_type}','${r.source_id}')" title="${esc(r.titre||'')}">
+            <div style="font-size:10px;color:var(--t3)">${h}${isConf?' ⚠':''}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.titre||CAL_GLOBAL_TYPE_LBL[r.display_type]||'—')}</div>
+            ${r.club_nom?`<div style="font-size:10px;color:var(--t3)">${esc(r.club_nom)}</div>`:''}
+          </div>`;
+        }).join('')}
+        ${!evs.length?'<div style="font-size:11px;color:var(--t3);text-align:center;padding-top:10px">—</div>':''}
+      </div>
+    </div>`;
+  }
+  el.innerHTML=`<div class="cd" style="display:flex;overflow-x:auto">${cols}</div>`;
+}
+
+function renderCalGlobalAgenda(list){
+  const el=document.getElementById('calglobal-real');
+  if(!el)return;
+  const conflicts=computeCalGlobalConflicts(list);
+  const byDay={};
+  list.forEach(r=>{if(!r.starts_at)return;const k=ymdLocal(new Date(r.starts_at));(byDay[k]=byDay[k]||[]).push(r);});
+  const days=Object.keys(byDay).sort();
+  if(!days.length){el.innerHTML='<div class="cd"><div style="padding:60px;text-align:center;color:var(--t3);font-size:13px">Aucun événement sur cette période pour ces filtres.</div></div>';return;}
+  const today=ymdLocal();
+  let html='';
+  days.forEach(key=>{
+    const d=new Date(key+'T00:00:00');
+    const isToday=key===today;
+    const evs=byDay[key].slice().sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+    html+=`<div class="cd" style="margin-bottom:10px">
+      <div class="cd-h"><div class="cd-t" style="${isToday?'color:var(--acc)':''}">${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}${isToday?" · Aujourd'hui":''}</div></div>
+      <div style="padding:6px 0">
+        ${evs.map(r=>{
+          const clr=CAL_GLOBAL_TYPE_COLOR[r.display_type]||'#6B7CFF';
+          const isConf=conflicts.has(r.source_type+':'+r.source_id);
+          const h=new Date(r.starts_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+          return`<div style="display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;border-left:3px solid ${clr}" onclick="modalCalGlobalItem('${r.source_type}','${r.source_id}')">
+            <div style="width:44px;flex-shrink:0;font-size:11px;color:var(--t3);font-weight:600">${h}</div>
+            <span style="width:8px;height:8px;border-radius:50%;background:${clr};flex-shrink:0"></span>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(r.titre||CAL_GLOBAL_TYPE_LBL[r.display_type]||'—')}${isConf?' <span style="color:var(--er)">⚠ Conflit</span>':''}</div>
+              <div style="font-size:11px;color:var(--t2)">${CAL_GLOBAL_TYPE_LBL[r.display_type]||r.display_type}${r.club_nom?' · '+esc(r.club_nom):''}${r.responsible_nom?' · '+esc(r.responsible_nom):''}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ── Clic sur un événement : ouvre l'objet dans SON module source (§23, pas d'édition
+// universelle). Réutilise les modales déjà existantes quand elles existent (prestations,
+// contrats, sessions de formation, fiche collaborateur) ; pour les 3 sources sans modale
+// par identifiant dédiée en contexte Admin (rendez_vous, secretariat_agenda_events,
+// planned_presences), une fiche de lecture minimale + actions rapides existantes.
+async function modalCalGlobalItem(sourceType,sourceId){
+  if(sourceType==='prestation'){modalDetailById(sourceId);return;}
+  if(sourceType==='contrat'){modalEditerContrat(sourceId);return;}
+  if(sourceType==='formation_session'){modalGererPresences(sourceId);return;}
+  if(sourceType==='disponibilite'){
+    const item=_cgRawData.find(r=>r.source_type==='disponibilite'&&r.source_id===sourceId);
+    if(item&&item.responsible_user_id)modalFicheCollaborateur(item.responsible_user_id);
+    else toast('Collaborateur introuvable.','er');
+    return;
+  }
+  if(sourceType==='rendez_vous'){_modalCalGlobalRdv(sourceId);return;}
+  if(sourceType==='agenda_sec'){_modalCalGlobalAgendaSec(sourceId);return;}
+  if(sourceType==='presence_fullcom'){_modalCalGlobalPresence(sourceId);return;}
+  toast("Type d'événement non pris en charge.",'er');
+}
+
+function _modalCalGlobalRdv(id){
+  const item=_cgRawData.find(r=>r.source_type==='rendez_vous'&&r.source_id===id);
+  if(!item){toast('Rendez-vous introuvable dans la période affichée.','er');return;}
+  const d=new Date(item.starts_at);
+  openModal(`<div class="mh"><div class="mt">${esc(item.titre||'Rendez-vous')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;color:var(--t3)">Client</div><div style="font-size:14px;color:var(--t1)">${esc(item.club_nom||'—')}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Date</div><div style="font-size:14px;color:var(--t1)">${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Statut</div><div style="font-size:14px;color:var(--t1)">${esc((typeof RDV_CL_LBL!=='undefined'&&RDV_CL_LBL[item.statut])||item.statut)}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:10px">Géré depuis l'écran <b>Rendez-vous clients</b>.</div>
+    </div>
+    <div class="mf">
+      ${item.statut==='a_confirmer'?`<button class="btn bp" onclick="closeModal();confirmerRdvClient('${id}')">Confirmer</button><button class="btn bg2" onclick="closeModal();annulerRdvClient('${id}')">Annuler</button>`:''}
+      ${item.statut==='confirme'?`<button class="btn bp" onclick="closeModal();marquerRealiseRdvClient('${id}')">Marquer réalisé</button><button class="btn bg2" onclick="closeModal();annulerRdvClient('${id}')">Annuler</button>`:''}
+      <button class="btn bg2" onclick="closeModal();switchView('rdvclients')">Voir tous les RDV</button>
+    </div>`);
+}
+
+function _modalCalGlobalAgendaSec(id){
+  const item=_cgRawData.find(r=>r.source_type==='agenda_sec'&&r.source_id===id);
+  if(!item){toast('Événement introuvable dans la période affichée.','er');return;}
+  const d=new Date(item.starts_at);
+  openModal(`<div class="mh"><div class="mt">${esc(item.titre||'Événement agenda')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;color:var(--t3)">Type</div><div style="font-size:14px;color:var(--t1)">${esc(CAL_GLOBAL_TYPE_LBL[item.display_type]||item.display_type)}</div>
+      ${item.club_nom?`<div style="font-size:12px;color:var(--t3);margin-top:6px">Client</div><div style="font-size:14px;color:var(--t1)">${esc(item.club_nom)}</div>`:''}
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Date</div><div style="font-size:14px;color:var(--t1)">${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Statut</div><div style="font-size:14px;color:var(--t1)">${esc(item.statut||'')}</div>
+      ${item.responsible_nom?`<div style="font-size:12px;color:var(--t3);margin-top:6px">Assigné à</div><div style="font-size:14px;color:var(--t1)">${esc(item.responsible_nom)}</div>`:''}
+      <div style="font-size:11px;color:var(--t3);margin-top:10px">Géré depuis l'écran <b>Agenda</b> du Secrétariat.</div>
+    </div>
+    <div class="mf">
+      ${item.statut!=='termine'?`<button class="btn bp" onclick="closeModal();terminerEvenementAgenda('${id}')">Marquer terminé</button><button class="btn bg2" onclick="closeModal();reporterEvenementAgenda('${id}')">Reporter</button>`:''}
+    </div>`);
+}
+
+function _modalCalGlobalPresence(id){
+  const item=_cgRawData.find(r=>r.source_type==='presence_fullcom'&&r.source_id===id);
+  if(!item){toast('Présence introuvable dans la période affichée.','er');return;}
+  const d=new Date(item.starts_at);
+  openModal(`<div class="mh"><div class="mt">${esc(item.titre||'Présence Full Com')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;color:var(--t3)">Club</div><div style="font-size:14px;color:var(--t1)">${esc(item.club_nom||'—')}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Date</div><div style="font-size:14px;color:var(--t1)">${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Statut</div><div style="font-size:14px;color:var(--t1)">${esc(item.statut||'')}</div>
+      ${item.responsible_nom?`<div style="font-size:12px;color:var(--t3);margin-top:6px">CM référent</div><div style="font-size:14px;color:var(--t1)">${esc(item.responsible_nom)}</div>`:''}
+      <div style="font-size:11px;color:var(--t3);margin-top:10px">Gérée depuis le <b>Planning éditorial</b> du Community Manager — édition non disponible ici (§23 : pas d'édition universelle depuis le calendrier global).</div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+}
 
 // ── Finances admin ───────────────────────────────────────────────────────────
 // Résumé P&L du mois (CA HT/Charges/Marge nette) — même calcul que le compte
