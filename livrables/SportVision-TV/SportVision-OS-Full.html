@@ -1619,6 +1619,22 @@ const VIEWS={
         </div>`).join('')}
     </div>
     <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Barèmes opérateurs — rémunération missions</div></div>
+      <div style="padding:12px 18px 4px;font-size:12px;color:var(--t3)">Lecture seule : valeurs telles qu'utilisées par le calcul automatique de rémunération (computeMissionPay). Ces barèmes sont actuellement en dur dans le code de SportVision OS, pas en base — toute modification demande une intervention développeur, pas d'édition possible depuis cet écran.</div>
+      <div style="padding:6px 18px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)">Taux de base par niveau opérateur</div>
+      ${Object.entries(OPERATOR_BASE_RATES).map(([niveau,taux])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div style="font-size:13px;color:var(--t1)">${niveauStars(Number(niveau))}</div>
+          <span style="font-size:12px;font-weight:700;color:var(--t2)">${taux.toLocaleString('fr-FR')} € / mission standard</span>
+        </div>`).join('')}
+      <div style="padding:12px 18px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)">Coefficients par format de mission</div>
+      ${Object.entries(MISSION_MULTIPLIERS).map(([format,mult])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div style="font-size:13px;color:var(--t1)">${MISSION_FORMAT_LABELS[format]||format}</div>
+          <span style="font-size:12px;font-weight:700;color:var(--t2);font-family:monospace">×${mult}</span>
+        </div>`).join('')}
+    </div>
+    <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Google Agenda</div></div>
       <div style="padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px">
         <div style="font-size:13px;color:var(--t2)">Sur chaque prestation dans le planning, un bouton <b>📅 Google Agenda</b> permet de l'ajouter en un clic sans aucun compte.</div>
