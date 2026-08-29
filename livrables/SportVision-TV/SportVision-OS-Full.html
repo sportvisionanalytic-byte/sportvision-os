@@ -809,7 +809,17 @@ const NAV={
     {id:'audit',lb:"Journal d'audit",ic:'check',hidden:true},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin',hidden:true},
     {id:'documents',lb:'Centre documentaire',ic:'doc',hidden:true},
+    {type:'sep',lb:'Secondaire'},
+    // Calendrier global (§22-27, nuit du 29/08) : vue Direction qui AGRÈGE les calendriers
+    // déjà existants (Planning missions, Planning CM, Agenda Secrétaire...) sans les remplacer —
+    // volontairement hors des 6 items primaires (Accueil/Clubs-Clients/Production/Communication/
+    // Équipe/Finance), donc dans sa propre section "Secondaire" plutôt que dans "Opérations".
+    {id:'calglobal',lb:'Calendrier global',ic:'cal'},
     {type:'sep',lb:'Espace'},
+    // Moteur global "À traiter" (spec §14-21, 29/08/2026) : en secondaire (§3 de la spec),
+    // pas dans "Opérations" — c'est un centre transverse de suivi, pas un flux de travail
+    // quotidien comme Tableau de bord/Planning/Prestations.
+    {id:'atraiter',lb:'À traiter',ic:'alert'},
     {id:'integrations',lb:'Intégrations',ic:'set'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
@@ -1198,6 +1208,40 @@ const VIEWS={
     </div>
     <div id="planning-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  // ── Calendrier global (§22-27, Direction) ──────────────────────────────────
+  // Vue qui AGRÈGE (v_calendar_global) : Missions Production, Présences Full Com,
+  // RDV commerciaux/clients, Rappels Secrétariat, Échéances contrats, Sessions de
+  // formation, Indisponibilités. Ne remplace aucun des calendriers métier existants
+  // (Planning missions, planning CM, Agenda Secrétaire...) — chacun garde sa vue
+  // spécialisée (§26), celle-ci est un "en plus" pour la Direction. Pas d'édition
+  // inline (§23) : un clic ouvre l'objet dans son module d'origine.
+  'admin.calglobal':()=>`
+    <div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="calGlobalPrev()" aria-label="Période précédente">‹</button>
+        <div class="sh-t" id="calglobal-title">Calendrier global</div>
+        <button class="btn bg2 bs" onclick="calGlobalNext()" aria-label="Période suivante">›</button>
+        <button class="btn bg2 bs" onclick="calGlobalToday()">Aujourd'hui</button>
+      </div>
+      <div style="display:flex;border:1px solid var(--b1);border-radius:var(--rp);overflow:hidden">
+        <button id="cg-view-mois" onclick="setCalGlobalView('mois')" style="padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);background:var(--acc);border:none;color:#fff">Mois</button>
+        <button id="cg-view-semaine" onclick="setCalGlobalView('semaine')" style="padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);background:transparent;border:none;color:var(--t3)">Semaine</button>
+        <button id="cg-view-agenda" onclick="setCalGlobalView('agenda')" style="padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);background:transparent;border:none;color:var(--t3)">Agenda</button>
+      </div>
+    </div>
+    <div class="cd" style="margin-bottom:12px">
+      <div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <input type="text" id="cg-f-q" class="fi" placeholder="Rechercher club, titre…" style="max-width:200px" oninput="applyCalGlobalFilters()">
+        <select id="cg-f-type" class="fi" style="max-width:170px" onchange="applyCalGlobalFilters()"><option value="">Tous les types</option></select>
+        <select id="cg-f-pole" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous les pôles</option></select>
+        <select id="cg-f-statut" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous statuts</option></select>
+        <select id="cg-f-sport" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous sports</option></select>
+        <select id="cg-f-collab" class="fi" style="max-width:180px" onchange="applyCalGlobalFilters()"><option value="">Tous les collaborateurs</option></select>
+        <span style="font-size:11px;color:var(--t3);margin-left:auto" id="cg-f-count"></span>
+      </div>
+    </div>
+    <div id="calglobal-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   'admin.crm':()=>`
     <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
     <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
@@ -1370,6 +1414,24 @@ const VIEWS={
   'admin.equipeoverview':()=>`
     <div class="sh"><div class="sh-t">Équipe — Vue d'ensemble</div></div>
     <div id="eqov-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // Moteur global "À traiter" (spec §14-21, 29/08/2026) — voir le commentaire détaillé
+  // au-dessus de computeATraiterItems() pour l'architecture (calcul live, pas de nouvelle
+  // table de faits) et les limites assumées de chaque règle du §18.
+  'admin.atraiter':()=>`
+    <div class="sh"><div><div class="sh-t">À traiter</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Vue transverse — tous les signaux qui nécessitent une action, tous rôles confondus</div></div>
+      <button class="btn bg2 bs" id="atr-showall-btn" onclick="atraiterToggleShowAll()">Voir résolus/ignorés</button>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:var(--er)"><div class="kpi-ey">Ouverts</div><div class="kpi-v" id="atr-kpi-ouvert" style="color:var(--er)">—</div></div>
+      <div class="kpi" style="--kl:var(--acc)"><div class="kpi-ey">En cours</div><div class="kpi-v" id="atr-kpi-encours" style="color:var(--acc)">—</div></div>
+      <div class="kpi" style="--kl:var(--wa)"><div class="kpi-ey">En attente</div><div class="kpi-v" id="atr-kpi-attente" style="color:var(--wa)">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn bg2 bs" data-atr-type-f="all" onclick="atraiterFilterType('all')" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
+      ${Object.entries(ATRAITER_TYPES).map(([k,m])=>`<button class="btn bg2 bs" data-atr-type-f="${k}" onclick="atraiterFilterType('${k}')">${m.lb}</button>`).join('')}
+    </div>
+    <div id="atraiter-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'admin.recrutement':()=>`
     <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Candidatures reçues via le site — pipeline Nouveaux → Collaborateur</div></div></div>
@@ -1554,6 +1616,22 @@ const VIEWS={
         <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
           <div><div style="font-size:13px;color:var(--t1);font-weight:500">${n}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${d}</div></div>
           <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2);font-family:monospace">${r}</span>
+        </div>`).join('')}
+    </div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Barèmes opérateurs — rémunération missions</div></div>
+      <div style="padding:12px 18px 4px;font-size:12px;color:var(--t3)">Lecture seule : valeurs telles qu'utilisées par le calcul automatique de rémunération (computeMissionPay). Ces barèmes sont actuellement en dur dans le code de SportVision OS, pas en base — toute modification demande une intervention développeur, pas d'édition possible depuis cet écran.</div>
+      <div style="padding:6px 18px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)">Taux de base par niveau opérateur</div>
+      ${Object.entries(OPERATOR_BASE_RATES).map(([niveau,taux])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div style="font-size:13px;color:var(--t1)">${niveauStars(Number(niveau))}</div>
+          <span style="font-size:12px;font-weight:700;color:var(--t2)">${taux.toLocaleString('fr-FR')} € / mission standard</span>
+        </div>`).join('')}
+      <div style="padding:12px 18px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)">Coefficients par format de mission</div>
+      ${Object.entries(MISSION_MULTIPLIERS).map(([format,mult])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div style="font-size:13px;color:var(--t1)">${MISSION_FORMAT_LABELS[format]||format}</div>
+          <span style="font-size:12px;font-weight:700;color:var(--t2);font-family:monospace">×${mult}</span>
         </div>`).join('')}
     </div>
     <div class="cd" style="margin-top:13px">
@@ -3477,7 +3555,23 @@ const DEMO_DATA=(function(){
     {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Lucas',nom:'Martin',email:'lucas.martin@gmail.com',ville:'Fontainebleau',club_nom:'FC Fontainebleau',created_at:iso(inDays(-8)),sport:'Football',poste:'Milieu',categorie:'U17'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,paiements,devis,contrats,clubs,club_bookings,club_credit_transactions,club_requests,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
+  // Calendrier global (Admin, §22-27) — données synthétiques indépendantes de la vue SQL réelle
+  // (demoQuery ne rejoue pas le UNION, il lit juste cette clé telle quelle). Un jeu volontairement
+  // varié : les 6 display_type principaux + un conflit exprès (deux missions le même jour pour
+  // demo-photo1) pour vérifier l'indicateur de conflit (§25) en mode démo.
+  const v_calendar_global=[
+    {source_type:'prestation',source_id:'demo-pre-1',starts_at:today+'T14:00:00Z',ends_at:today+'T16:00:00Z',display_type:'mission',statut:'confirmée',titre:'SV-DEMO-0001',club_nom:'FC Fontainebleau',sport:'Football',pole:'production',responsible_user_id:'demo-prod',responsible_nom:'Yanis Costa'},
+    {source_type:'prestation',source_id:'demo-pre-2',starts_at:inDays(2)+'T10:00:00Z',ends_at:inDays(2)+'T12:30:00Z',display_type:'mission',statut:'équipe_affectée',titre:'SV-DEMO-0002',club_nom:'US Varennes',sport:'Football',pole:'production',responsible_user_id:'demo-photo1',responsible_nom:'Lisa Girard'},
+    {source_type:'prestation',source_id:'demo-pre-conflit',starts_at:inDays(2)+'T15:00:00Z',ends_at:inDays(2)+'T17:00:00Z',display_type:'mission',statut:'planifiée',titre:'SV-DEMO-0099',club_nom:'Rugby Club Sénonais',sport:'Rugby',pole:'production',responsible_user_id:'demo-photo1',responsible_nom:'Lisa Girard'},
+    {source_type:'presence_fullcom',source_id:'demo-pp-1',starts_at:inDays(3)+'T18:00:00Z',ends_at:null,display_type:'presence',statut:'prevu',titre:'Seniors A vs Melun',club_nom:'FC Exemple',sport:null,pole:'communication',responsible_user_id:'demo-cm',responsible_nom:'Alice Roche'},
+    {source_type:'rendez_vous',source_id:'demo-rdv-1',starts_at:inDays(1)+'T11:00:00Z',ends_at:null,display_type:'rdv_commercial',statut:'a_confirmer',titre:'Présentation offre Club+',club_nom:'Basket Nemours',sport:'Basketball',pole:'commercial',responsible_user_id:'demo-com',responsible_nom:'Nora Aziz'},
+    {source_type:'agenda_sec',source_id:'demo-ag-1',starts_at:inDays(-1)+'T09:00:00Z',ends_at:null,display_type:'relance',statut:'a_faire',titre:'Relancer acompte US Varennes',club_nom:'US Varennes',sport:null,pole:'secretariat',responsible_user_id:'demo-sec',responsible_nom:'Inès Faure'},
+    {source_type:'agenda_sec',source_id:'demo-ag-2',starts_at:today+'T17:00:00Z',ends_at:null,display_type:'rappel',statut:'a_faire',titre:'Rappeler le Rugby Club Sénonais',club_nom:'Rugby Club Sénonais',sport:null,pole:'secretariat',responsible_user_id:'demo-sec',responsible_nom:'Inès Faure'},
+    {source_type:'contrat',source_id:'demo-contrat-1',starts_at:inDays(20)+'T00:00:00Z',ends_at:null,display_type:'echeance_contrat',statut:'actif',titre:'Échéance contrat — full_communication',club_nom:'FC Exemple',sport:'Football',pole:'clients',responsible_user_id:'demo-admin',responsible_nom:'Camille Bernard'},
+    {source_type:'formation_session',source_id:'demo-fs-1',starts_at:inDays(5)+'T18:30:00Z',ends_at:inDays(5)+'T20:30:00Z',display_type:'formation',statut:'planifiee',titre:'Session — Bases photo sportive',club_nom:null,sport:null,pole:'formation',responsible_user_id:'demo-admin',responsible_nom:'Camille Bernard'},
+    {source_type:'disponibilite',source_id:'demo-dispo-1',starts_at:inDays(2)+'T00:00:00Z',ends_at:inDays(3)+'T00:00:00Z',display_type:'indisponibilite',statut:'indisponible',titre:'Indisponible',club_nom:null,sport:null,pole:'rh',responsible_user_id:'demo-photo2',responsible_nom:'Karim Belhadj'},
+  ];
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,paiements,devis,contrats,clubs,club_bookings,club_credit_transactions,club_requests,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications,v_calendar_global};
 })();
 
 function _demoParseSelect(sel){
@@ -4441,7 +4535,9 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='form'){await loadAdminForm();}
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';await loadKits();}
   if(role==='admin'&&view==='dash') await loadAdminDash();
+  if(role==='admin'&&view==='atraiter') await loadATraiter();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
+  if(role==='admin'&&view==='calglobal'){_cgDate=new Date();await loadCalGlobal();}
   if(role==='prod'&&view==='dash') await loadProdDash();
   if(role==='prod'&&view==='pre') await loadProdPrestations();
   if(role==='prod'&&view==='planning'){_prodPlanTab='semaine';await loadProdPlanning();}
@@ -7848,6 +7944,308 @@ async function loadAdminDash(){
       </div>`;}).join('');
     }
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MOTEUR GLOBAL "À TRAITER" (spec §14-21, nuit du 29/08/2026)
+// ══════════════════════════════════════════════════════════════════════════
+// Choix d'architecture (Option A de la mission) : PAS de nouvelle table de faits
+// `action_items` alimentée par des triggers Postgres (ce que §14 "EVENT → RULE → ACTION
+// ITEM" suggère dans son sens le plus littéral). Cet écran calcule les items EN LIVE, à
+// chaque chargement, en réutilisant TELS QUELS les filtres déjà utilisés par les écrans
+// existants qui détectaient chacun de leur côté un sous-ensemble de ces signaux
+// (dash-traiter du Dashboard admin plus haut, le bloc "À traiter" de loadProdDash
+// construit ce soir, l'Inbox de loadSecDemandes, docrh, loadAdminDash) — chaque bloc
+// ci-dessous indique sa source. Un vrai moteur de règles configurable + triggers de
+// fermeture automatique aurait demandé de repenser la table `notifications` existante et
+// de couvrir la RLS de bout en bout pour chaque événement du §18 : hors de portée d'une
+// nuit sans risquer une régression sur les écrans qui dépendent déjà de ces mêmes tables.
+//
+// Résolution automatique (§19) : pas de champ resolved_at à mettre à jour quelque part —
+// chaque item est recalculé à chaque chargement depuis sa condition source ; dès que la
+// condition disparaît (mission assignée, planning envoyé, devis accepté, paiement
+// confirmé...), l'item n'apparaît simplement plus au prochain calcul. C'est la
+// résolution automatique demandée par la spec, obtenue par construction (calcul live),
+// sans avoir à la coder explicitement.
+//
+// Persistance manuelle (§16) : la table légère `atraiter_overrides`
+// (migration-atraiter-overrides.sql) stocke UNIQUEMENT les changements d'état qu'un
+// humain a faits à la main (Prendre en charge / Mettre en attente / Résoudre / Ignorer)
+// — un calcul live ne peut évidemment pas les connaître. Clé déterministe
+// item_key = "type|source_table|source_id" : la même situation métier retombe toujours
+// sur la même ligne d'override d'une session à l'autre. Si la condition source disparaît
+// pendant qu'un override existe, l'override devient simplement orphelin (jamais nettoyé
+// automatiquement ce soir — coût négligeable, pas de job de purge prévu).
+//
+// Limites assumées et documentées plutôt que devinées :
+// - "Club+ demande non prise >4h ouvrées" (§18) utilise 4 heures CALENDAIRES, pas des
+//   heures ouvrées au sens strict — aucune notion de calendrier ouvré (jours fériés,
+//   horaires de bureau) n'existe ailleurs dans le schéma ; en inventer une pour ce seul
+//   item aurait été disproportionné pour ce soir.
+// - "Système / intégration" (§15) n'a aujourd'hui aucun signal détectable
+//   automatiquement (pas de table de suivi des échecs d'intégration/webhooks) :
+//   catégorie définie dans ATRAITER_TYPES mais qui restera toujours vide tant qu'un tel
+//   suivi n'existe pas — volontairement pas de faux signal inventé pour la remplir.
+// - "Full Com à 14j sans planning" (§18) : un client Full Communication actif est
+//   considéré "couvert" dès qu'une plannings_hebdo (soumis OU déjà validé) existe avec
+//   semaine_debut dans les 14 prochains jours. Ne détecte pas une semaine couverte
+//   partiellement (ex. planning soumis mais refusé puis jamais resoumis) — cf. le motif
+//   de refus déjà visible ailleurs (loadCmPlanningMensuel) pour ce cas plus fin.
+
+const ATRAITER_TYPES={
+  urgence:{lb:'Urgence',color:'var(--er)'},
+  client:{lb:'Client',color:'#00B8D4'},
+  production:{lb:'Production',color:'#2ECC8A'},
+  communication:{lb:'Communication',color:'#F5A524'},
+  finance:{lb:'Finance',color:'#FF6B35'},
+  equipe:{lb:'Équipe / RH',color:'#7C4DFF'},
+  commercial:{lb:'Commercial',color:'#366BFF'},
+  document:{lb:'Document',color:'#9AA5B1'},
+  systeme:{lb:'Système / intégration',color:'#9AA5B1'},
+};
+const ATRAITER_STATUTS={
+  ouvert:{lb:'Ouvert',bg:'rgba(240,68,94,.12)',fg:'var(--er)'},
+  en_cours:{lb:'En cours',bg:'rgba(54,107,255,.12)',fg:'var(--acc)'},
+  en_attente:{lb:'En attente',bg:'rgba(245,165,36,.12)',fg:'var(--wa)'},
+  resolu:{lb:'Résolu',bg:'rgba(46,204,138,.12)',fg:'var(--ok)'},
+  ignore:{lb:'Ignoré',bg:'rgba(255,255,255,.06)',fg:'var(--t3)'},
+};
+let _atraiterRawItems=[];
+let _atraiterOverrides=new Map();
+let _atraiterTypeFilter='all';
+let _atraiterShowAll=false;
+
+// Calcule tous les items EN LIVE (lecture seule). roleFilter optionnel (§17) : restreint
+// aux types pertinents pour un métier donné (ex. 'sec' → client/commercial/document/
+// equipe). Sans roleFilter (admin) → tout, aucune restriction de type.
+async function computeATraiterItems(roleFilter){
+  const today=ymdLocal();
+  const now=new Date();
+  const d=(n)=>{const x=new Date();x.setDate(x.getDate()+n);return ymdLocal(x);};
+  const in3s=d(3), in7s=d(7), in14s=d(14), cutoff5s=d(-5);
+  const cutoff4h=new Date(now.getTime()-4*3600*1000).toISOString();
+  const items=[];
+  const add=(type,niveau,titre,texte,action,roleResp,sourceType,sourceId,createdAt)=>{
+    items.push({key:`${type}|${sourceType}|${sourceId}`,type,niveau,titre,texte,action,roleResp,createdAt:createdAt||null});
+  };
+  const safe=async(p)=>{try{const r=await p;return Array.isArray(r)?r:[];}catch(e){return [];}};
+
+  const [
+    pre,kitRes,notifRefus,notifCm,inc,
+    facturesRetard,paiementsEchoues,
+    devisExp,devisSansReponse,
+    docsRh,candidatures,planSoumis,
+    fcContrats,fcPlannings,
+    cbreq,ccsr,cbk,mreq,cst,
+  ]=await Promise.all([
+    // Base prestations réutilisée pour 4 signaux (missions urgentes, kit à attribuer,
+    // livraison à valider, facture en retard) — même select que preRaw de loadProdDash,
+    // + statut_financier ajouté pour éviter une 5e requête séparée.
+    safe(sbFetch('prestations?select=id,statut,statut_financier,reference,type_prestation,date_prestation,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,materiel_personnel))')),
+    safe(sbFetch('kit_reservations?select=id,kit_id,prestation_id,statut,prestations(date_prestation,reference,clients(nom))&statut=in.(pré_réservé,réservé,sorti,en_prestation,à_récupérer,à_retourner)')),
+    safe(sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.mission_refusee&lue=eq.false&order=created_at.desc&limit=10')),
+    safe(sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.changement_planning_cm&lue=eq.false&order=created_at.desc&limit=10')),
+    safe(sbFetch('incidents?select=id,type_incident,description,niveau,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&niveau=eq.critique&order=created_at.desc&limit=10')),
+    safe(sbFetch('prestations?select=id,reference,clients(nom)&statut_financier=eq.en_retard&limit=20')),
+    safe(sbFetch('paiements?select=id,montant,client:clients(nom),created_at&statut=eq.echoue&order=created_at.desc&limit=20')),
+    safe(sbFetch(`devis?select=id,numero,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&date_expiration=lte.${in7s}&order=date_expiration.asc&limit=10`)),
+    safe(sbFetch(`devis?select=id,numero,date_envoi,clients(nom)&statut=eq.envoyé&date_envoi=lte.${cutoff5s}&order=date_envoi.asc&limit=10`)),
+    safe(sbFetch('secretariat_documents?select=id,categorie,nom,proprietaire_label,statut_affichage,date_echeance&statut_affichage=in.(manquant,a_valider,expire_bientot)&order=date_echeance.asc.nullslast&limit=30')),
+    safe(sbFetch('recruitment_applications?select=id,nom,prenom,created_at&statut=in.(nouveau,a_appeler,entretien)&order=created_at.asc&limit=20')),
+    safe(sbFetch('plannings_hebdo?select=id,client_id,semaine_debut,clients(nom)&statut=eq.soumis&order=semaine_debut.asc&limit=20')),
+    safe(sbFetch('contrats?select=client_id,clients(id,nom)&type_contrat=eq.full_communication&statut=eq.actif')),
+    safe(sbFetch(`plannings_hebdo?select=client_id&semaine_debut=gte.${today}&semaine_debut=lte.${in14s}&statut=in.(soumis,valide)`)),
+    safe(sbFetch('club_requests?select=id,club_id,type,team,urgency,created_at,taken_by,clubs(nom)&status=eq.recues&order=created_at.asc&limit=50')),
+    safe(sbFetch('connect_clubplus_signup_requests?select=id,club_nom,organization_type,created_at&statut=eq.a_traiter&order=created_at.asc&limit=20')),
+    safe(sbFetch('club_bookings?select=id,club_id,service_label,event_date,created_at,clubs(nom)&status=in.(recue,qualifiee)&order=created_at.asc&limit=20')),
+    safe(sbFetch('membership_requests?select=id,club_id,created_at,clubs(nom),club_teams(name)&statut=in.(a_verifier,autorisation_manquante,en_attente_parent,pret_a_valider,transferee_admin)&order=created_at.asc&limit=20')),
+    safe(sbFetch('club_support_tickets?select=id,club_id,subject,created_at,clubs(nom)&status=in.(ouvert,en_cours)&order=created_at.asc&limit=20')),
+  ]);
+
+  // ── Production ────────────────────────────────────────────────────────
+  const PROD_ACTIVE_ST=['confirmée','à_planifier','planifiée','équipe_affectée','prête'];
+  // Urgence Production (§18 "Mission <72h sans opérateur") : fenêtre stricte à 3 jours —
+  // même critère "aucun membre acceptée" que missionsAAttribuer de loadProdDash, mais
+  // resserré (loadProdDash reste volontairement sur 7j, un signal d'anticipation, pas une
+  // urgence à ce niveau transverse).
+  pre.filter(p=>PROD_ACTIVE_ST.includes(p.statut)&&p.date_prestation&&p.date_prestation>=today&&p.date_prestation<=in3s
+    &&!(p.prestations_equipe||[]).some(e=>e.statut==='acceptée'))
+    .forEach(p=>add('urgence','urgent','Mission sans opérateur (<72h)',`${p.clients?.nom||p.reference||'—'} — ${p.type_prestation||'—'}`,`modalDetailById('${p.id}')`,'prod','prestations',p.id,p.date_prestation));
+  // Kit à attribuer : opérateur affecté sans matériel perso ET sans réservation de kit —
+  // même règle que loadProdDash (missions7j), fenêtre 7j (moins urgent qu'une mission sans
+  // opérateur du tout).
+  pre.filter(p=>p.date_prestation&&p.date_prestation>=today&&p.date_prestation<=in7s
+    &&(p.prestations_equipe||[]).some(e=>e.statut==='acceptée'&&!e.collaborateur?.materiel_personnel&&!kitRes.some(r=>r.prestation_id===p.id)))
+    .forEach(p=>add('production','important','Kit à attribuer',`${p.clients?.nom||p.reference||'—'} (opérateur sans matériel perso)`,`switchView('kits')`,'prod','prestations',p.id,p.date_prestation));
+  // Conflit matériel : >1 réservation active sur le même kit le même jour (même
+  // regroupement que loadProdDash).
+  const kitConflitMap=new Map();
+  kitRes.forEach(r=>{const dd=r.prestations?.date_prestation;if(!dd)return;const key=r.kit_id+'|'+dd;if(!kitConflitMap.has(key))kitConflitMap.set(key,[]);kitConflitMap.get(key).push(r);});
+  [...kitConflitMap.entries()].filter(([,g])=>g.length>1).forEach(([key,g])=>{
+    add('production','important','Conflit matériel',`${g.length} réservations sur le même kit — ${g[0].prestations?.clients?.nom||g[0].prestations?.reference||'—'}`,`switchView('kits')`,'prod','kit_reservations',key,g[0].prestations?.date_prestation);
+  });
+  notifRefus.forEach(n=>add('production','important','Opérateur a refusé',n.prestations?.clients?.nom||n.message||'—',n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
+  notifCm.forEach(n=>add('production','important','Mission modifiée par le CM',n.prestations?.clients?.nom||n.message||'—',n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
+  // Livraison soumise → à valider (§18) : statut='livrée' = seul statut que
+  // validate_production() sait faire transitionner (même règle que loadProdDash).
+  pre.filter(p=>p.statut==='livrée').forEach(p=>add('production','normal','Livraison à valider',p.clients?.nom||p.reference||'—',`modalDetailById('${p.id}')`,'prod','prestations',p.id,p.date_prestation));
+  inc.forEach(al=>add('urgence','urgent','Incident critique',al.type_incident||al.description?.slice(0,60)||'—',`switchView('incidents')`,'prod','incidents',al.id,al.created_at));
+
+  // ── Finance ───────────────────────────────────────────────────────────
+  facturesRetard.forEach(p=>add('finance','urgent','Facture en retard',p.clients?.nom||p.reference||'—',`modalDetailById('${p.id}')`,'compta','prestations',p.id));
+  paiementsEchoues.forEach(pm=>add('finance','urgent','Paiement échoué',`${pm.client?.nom||'—'} — ${(pm.montant||0).toLocaleString('fr-FR')} €`,`switchView('encaissements')`,'compta','paiements',pm.id,pm.created_at));
+
+  // ── Commercial ────────────────────────────────────────────────────────
+  devisExp.forEach(dv=>{
+    const isExpired=dv.date_expiration&&dv.date_expiration<today;
+    add('commercial','important',isExpired?'Devis expiré':'Devis arrive à expiration',dv.clients?.nom||dv.numero||'—',`switchView('devis')`,'com','devis',dv.id,dv.date_expiration);
+  });
+  // Devis envoyé >5j sans réponse (§18, règle explicite) — cutoff5s calculé plus haut.
+  devisSansReponse.forEach(dv=>add('commercial','important','Devis sans réponse (>5j)',dv.clients?.nom||dv.numero||'—',`switchView('devis')`,'com','devis',dv.id,dv.date_envoi));
+
+  // ── Équipe / RH ───────────────────────────────────────────────────────
+  candidatures.forEach(c=>add('equipe','normal','Candidature à examiner',[c.prenom,c.nom].filter(Boolean).join(' ')||'—',`switchView('recrutement')`,'sec','recruitment_applications',c.id,c.created_at));
+
+  // ── Document ──────────────────────────────────────────────────────────
+  // secretariat_documents.statut_affichage est déjà calculé côté base (vue documentaire,
+  // migration-documents-rh-v2-vue-secretariat.sql) — aucun recalcul ici, juste un filtre.
+  const DOC_LBL={manquant:'Document manquant',a_valider:'Document à valider',expire_bientot:'Document expire bientôt'};
+  docsRh.forEach(doc=>add('document','normal',DOC_LBL[doc.statut_affichage]||'Document à traiter',`${doc.proprietaire_label||'—'} — ${doc.nom||doc.categorie||'—'}`,`switchView('docrh')`,'sec','secretariat_documents',doc.id,doc.date_echeance));
+
+  // ── Communication ─────────────────────────────────────────────────────
+  planSoumis.forEach(p=>add('communication','normal','Planning CM à valider',p.clients?.nom||'—',`modalPlanningsAValider()`,'admin','plannings_hebdo',p.id));
+  // Full Com à 14j sans planning (§18) — cf. limite documentée en en-tête de section.
+  const fcCovered=new Set(fcPlannings.map(p=>p.client_id));
+  fcContrats.filter(c=>!fcCovered.has(c.client_id)).forEach(c=>add('communication','important','Planning à envoyer (Full Com, 14j)',c.clients?.nom||'—',`switchView('planningmensuel')`,'cm','contrats',c.client_id));
+
+  // ── Client (Club+) ────────────────────────────────────────────────────
+  // Demande non prise >4h (§18, règle explicite) : même requête que loadSecDemandes/
+  // loadCmDemandes (status='recues'), filtre client-side ajouté sur taken_by+ancienneté —
+  // "heures ouvrées" approximé en heures calendaires, cf. limite documentée en en-tête.
+  cbreq.filter(r=>!r.taken_by&&r.created_at&&r.created_at<=cutoff4h)
+    .forEach(r=>add('client','urgent','Demande Club+ non prise (>4h)',`${r.clubs?.nom||'—'}${r.team?' — '+r.team:''}`,`modalClubRequestApercu('${r.id}')`,'cm','club_requests',r.id,r.created_at));
+  ccsr.forEach(r=>add('client','normal','Ouverture Club+ à traiter',r.club_nom||'—',`modalDemandesClubConnect()`,'sec','connect_clubplus_signup_requests',r.id,r.created_at));
+  cbk.forEach(b=>add('client','normal','Réservation club à traiter',b.clubs?.nom||b.service_label||'—',`modalReservationClub('${b.id}')`,'sec','club_bookings',b.id,b.created_at));
+  mreq.forEach(r=>add('client','normal',"Demande d'adhésion à traiter",r.clubs?.nom||'—',`modalMembershipRequestApercu('${r.id}')`,'sec','membership_requests',r.id,r.created_at));
+  cst.forEach(t=>add('client','normal','Ticket support à traiter',`${t.clubs?.nom||'—'}${t.subject?' — '+t.subject:''}`,`modalSupportTicketApercu('${t.id}')`,'sec','club_support_tickets',t.id,t.created_at));
+
+  const ROLE_SCOPE={
+    sec:['client','commercial','document','equipe'],
+    prod:['production','urgence'],
+    cm:['client','communication'],
+    com:['commercial'],
+  };
+  return roleFilter&&ROLE_SCOPE[roleFilter]?items.filter(it=>ROLE_SCOPE[roleFilter].includes(it.type)):items;
+}
+
+async function loadATraiter(){
+  const el=document.getElementById('atraiter-real');
+  if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const [items,overridesRaw]=await Promise.all([
+      computeATraiterItems(),
+      sbFetch('atraiter_overrides?select=item_key,statut').catch(()=>[]),
+    ]);
+    _atraiterRawItems=items;
+    _atraiterOverrides=new Map((Array.isArray(overridesRaw)?overridesRaw:[]).map(o=>[o.item_key,{statut:o.statut}]));
+    renderATraiter();
+  }catch(e){
+    console.error('loadATraiter',e);
+    if(el)el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+function renderATraiter(){
+  const el=document.getElementById('atraiter-real');if(!el)return;
+  let list=_atraiterRawItems.map(it=>{
+    const ov=_atraiterOverrides.get(it.key);
+    return {...it,statut:ov?ov.statut:'ouvert'};
+  });
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  set('atr-kpi-ouvert',list.filter(x=>x.statut==='ouvert').length);
+  set('atr-kpi-encours',list.filter(x=>x.statut==='en_cours').length);
+  set('atr-kpi-attente',list.filter(x=>x.statut==='en_attente').length);
+
+  if(!_atraiterShowAll)list=list.filter(x=>!['resolu','ignore'].includes(x.statut));
+  if(_atraiterTypeFilter!=='all')list=list.filter(x=>x.type===_atraiterTypeFilter);
+
+  if(!list.length){
+    el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Rien à traiter pour l\'instant.</div>';
+    return;
+  }
+  const TYPE_ORDER=['urgence','client','production','communication','finance','equipe','commercial','document','systeme'];
+  const NIVEAU_ORDER={urgent:0,important:1,normal:2};
+  list.sort((a,b)=>(NIVEAU_ORDER[a.niveau]??2)-(NIVEAU_ORDER[b.niveau]??2));
+  let html='';
+  TYPE_ORDER.forEach(type=>{
+    const groupItems=list.filter(x=>x.type===type);
+    if(!groupItems.length)return;
+    const meta=ATRAITER_TYPES[type];
+    html+=`<div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:8px;margin:0 0 8px 2px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${meta.color};flex-shrink:0"></div>
+        <div style="font-size:12.5px;font-weight:700;color:var(--t1);text-transform:uppercase;letter-spacing:.3px">${meta.lb}</div>
+        <div style="font-size:11px;color:var(--t3)">${groupItems.length}</div>
+      </div>
+      <div class="cd" style="padding:0">
+        ${groupItems.map((it,i)=>{
+          const sm=ATRAITER_STATUTS[it.statut];
+          const niveauColor=it.niveau==='urgent'?'var(--er)':it.niveau==='important'?'var(--wa)':'var(--t3)';
+          const kSafe=escJs(it.key),tSafe=escJs(it.type),titreSafe=escJs(it.titre);
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;${i<groupItems.length-1?'border-bottom:1px solid var(--b1)':''}">
+            <div style="width:6px;height:6px;border-radius:50%;background:${niveauColor};flex-shrink:0"></div>
+            <div style="flex:1;min-width:180px;cursor:pointer" onclick="${it.action}">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(it.titre)}</div>
+              <div style="font-size:11.5px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(it.texte)}</div>
+            </div>
+            <span class="bd" style="background:${sm.bg};color:${sm.fg};flex-shrink:0">${sm.lb}</span>
+            <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap">
+              ${it.statut==='ouvert'?`<button title="Prendre en charge" style="padding:4px 8px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:6px;color:var(--acc);font-size:10.5px;cursor:pointer" onclick="atraiterSetStatut('${kSafe}','${tSafe}','${titreSafe}','en_cours')">Prendre</button>`:''}
+              ${['ouvert','en_cours'].includes(it.statut)?`<button title="Mettre en attente" style="padding:4px 8px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:6px;color:var(--wa);font-size:10.5px;cursor:pointer" onclick="atraiterSetStatut('${kSafe}','${tSafe}','${titreSafe}','en_attente')">Attente</button>`:''}
+              ${it.statut!=='resolu'?`<button title="Marquer résolu" style="padding:4px 8px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:10.5px;cursor:pointer" onclick="atraiterSetStatut('${kSafe}','${tSafe}','${titreSafe}','resolu')">Résolu</button>`:''}
+              ${it.statut!=='ignore'?`<button title="Ignorer" style="padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:6px;color:var(--t3);font-size:10.5px;cursor:pointer" onclick="atraiterSetStatut('${kSafe}','${tSafe}','${titreSafe}','ignore')">Ignorer</button>`:''}
+              ${['resolu','ignore'].includes(it.statut)?`<button title="Rouvrir" style="padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:6px;color:var(--t3);font-size:10.5px;cursor:pointer" onclick="atraiterSetStatut('${kSafe}','${tSafe}','${titreSafe}','ouvert')">Rouvrir</button>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// Persiste (ou supprime, pour 'ouvert' = retour à l'état calculé par défaut) l'état
+// manuel d'un item dans atraiter_overrides. Upsert sur item_key (clé déterministe
+// type|source_table|source_id) : rejouer la même action sur le même item écrase
+// simplement la ligne précédente, idempotent par construction.
+async function atraiterSetStatut(key,type,titre,statut){
+  if(statut==='ouvert'){
+    await sbFetch('atraiter_overrides?item_key=eq.'+encodeURIComponent(key),{method:'DELETE'});
+    _atraiterOverrides.delete(key);
+  } else {
+    const uid=localStorage.getItem('sv_uid');
+    const body={item_key:key,type,titre,statut,user_id:uid||null};
+    const r=await sbFetch('atraiter_overrides?on_conflict=item_key',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible'),'er');return;}
+    _atraiterOverrides.set(key,{statut});
+  }
+  toast('Mis à jour.','ok');
+  renderATraiter();
+}
+function atraiterFilterType(t){
+  _atraiterTypeFilter=t;
+  document.querySelectorAll('[data-atr-type-f]').forEach(b=>{
+    const on=b.dataset.atrTypeF===t;
+    b.style.background=on?'rgba(54,107,255,.15)':'';
+    b.style.color=on?'var(--acc)':'';
+  });
+  renderATraiter();
+}
+function atraiterToggleShowAll(){
+  _atraiterShowAll=!_atraiterShowAll;
+  const btn=document.getElementById('atr-showall-btn');
+  if(btn)btn.textContent=_atraiterShowAll?'Masquer résolus/ignorés':'Voir résolus/ignorés';
+  renderATraiter();
 }
 
 async function loadProdHub(){
@@ -11986,6 +12384,32 @@ async function ajouterMembreEquipe(prestationId,ref){
         }
       }
     }catch(e){}
+    // Gate de qualification (spec §47 "gates de qualification" du Centre de formation) :
+    // avertissement seulement, jamais bloquant — même philosophie que le conflit de planning
+    // ci-dessus (décision fondateur 2026-08-06), le staff garde la main. Réutilise
+    // eqovFormationsRequises (déjà la source unique de vérité côté loadEquipeOverview, §51)
+    // plutôt que de dupliquer une nouvelle logique de formations "requises pour une mission".
+    // Limité à admin/prod : la policy RLS fi_own_read (formation_inscriptions) n'autorise la
+    // lecture des inscriptions d'autrui qu'à ces deux rôles — pour 'sec' (qui a aussi accès à
+    // cette modale, cf. ligne ~4778) la requête reviendrait vide par filtrage RLS et ferait
+    // croire à tort qu'aucune formation n'est jamais terminée. Vérifié en base (pg_policy),
+    // pas de migration RLS ce soir pour rester sur un changement net et testable.
+    try{
+      const colProfile=(S.role==='admin'||S.role==='prod')?_eqOperateursCache.find(p=>p.id===colId):null;
+      const requis=colProfile?eqovFormationsRequises(colProfile.role):[];
+      if(requis.length){
+        const insc=await sbFetch('formation_inscriptions?select=formation_id&collaborateur_id=eq.'+colId+'&statut=eq.terminee').catch(()=>[]);
+        const faites=new Set((Array.isArray(insc)?insc:[]).map(i=>i.formation_id));
+        const manquantes=requis.filter(fid=>!faites.has(fid)).map(fid=>FORMATIONS_CATALOG.find(f=>f.id===fid)?.titre||fid);
+        if(manquantes.length){
+          const nomCol=colProfile.prenom||'Ce collaborateur';
+          if(!confirm('⚠️ '+nomCol+' n\'a pas terminé '+(manquantes.length>1?'les formations obligatoires suivantes : ':'la formation obligatoire suivante : ')+manquantes.join(', ')+'.\n\nConfirmer quand même cette affectation ?')){
+            if(btn)btn.disabled=false;
+            return;
+          }
+        }
+      }
+    }catch(e){}
     const equipeBody={prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,notes:notes||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null};
     // Snapshot du calcul (niveau/base/coefficient) uniquement quand le montant final
     // correspond bien à la suggestion automatique — un montant ajusté à la main par
@@ -15816,6 +16240,21 @@ function _renderMsgContacts(myUid){
 function _escMsgHtml(s){
   return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+// Pièces jointes (spec §56) : la messagerie interne n'a ni upload ni table dédiée — audit
+// confirmé, aucune table/colonne "attachments" nulle part. Conformément à la spec ("lien Drive
+// plutôt que re-upload massif"), le seul manque net et sans risque à combler est que les liens
+// collés dans un message restaient jusqu'ici du texte brut non cliquable. Auto-linkification
+// uniquement — pas d'upload, pas de nouvelle table, rien de lourd.
+function _linkifyMsgHtml(raw){
+  const parts=(raw||'').split(/(https?:\/\/[^\s]+)/g);
+  return parts.map(p=>{
+    if(!/^https?:\/\//.test(p))return _escMsgHtml(p);
+    const trailMatch=p.match(/[)\].,;:!?'"]+$/);
+    const trail=trailMatch?trailMatch[0]:'';
+    const href=trail?p.slice(0,-trail.length):p;
+    return `<a href="${_escMsgHtml(href)}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">${_escMsgHtml(href)}</a>${_escMsgHtml(trail)}`;
+  }).join('');
+}
 
 async function _renderMsgConv(myUid){
   const el=document.getElementById('msg-list');
@@ -15867,7 +16306,7 @@ async function _renderMsgConv(myUid){
         <div style="max-width:68%;display:flex;flex-direction:column;gap:2px;align-items:${isMe?'flex-end':'flex-start'}">
           ${!isMe&&isTeam?`<div style="font-size:10px;color:var(--t3);margin-left:3px">${name}</div>`:''}
           <div style="display:flex;align-items:center;gap:5px;${isMe?'flex-direction:row-reverse':''}">
-            <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.07)'};padding:9px 13px;border-radius:${isMe?'16px 16px 4px 16px':'16px 16px 16px 4px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.45;word-break:break-word">${_escMsgHtml(m.contenu)}</div>
+            <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.07)'};padding:9px 13px;border-radius:${isMe?'16px 16px 4px 16px':'16px 16px 16px 4px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.45;word-break:break-word">${_linkifyMsgHtml(m.contenu)}</div>
             <div class="msg-acts" style="opacity:0;transition:opacity .15s;display:flex;gap:3px">
               <button onclick="msgReplyTo('${msgTxt}')" title="Répondre" style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.07);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center" title="Répondre">↩</button>
               <button onclick="msgCrTache('${msgTxt}')" title="Créer une tâche" style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.07);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">✓</button>
@@ -18182,7 +18621,9 @@ async function loadAdminForm(){
   try{
     const [ins,profiles]=await Promise.all([
       sbFetch('formation_inscriptions?select=id,formation_id,statut,xp_gagnes,enrolled_at,completed_at,collaborateur_id,profiles(id,prenom,nom,role)&order=completed_at.desc.nullslast,enrolled_at.desc&limit=500').catch(()=>[]),
-      sbFetch('profiles?select=id,prenom,nom,role&order=nom.asc&limit=100').catch(()=>[]),
+      // cm_niveau_autonomie ajouté (spec §51 "Juniors en progression") pour repérer les CM Junior
+      // sans requête supplémentaire — champ déjà utilisé ailleurs (module CM, ligne ~24768).
+      sbFetch('profiles?select=id,prenom,nom,role,cm_niveau_autonomie&order=nom.asc&limit=100').catch(()=>[]),
     ]);
     const insList=ins||[];const profList=profiles||[];
     const done=insList.filter(i=>i.statut==='terminee').length;
@@ -18216,6 +18657,30 @@ function loadAdminFormStats(){
     const pi=insList.filter(i=>i.collaborateur_id===p.id);
     cStats[p.id]={...p,terminees:pi.filter(i=>i.statut==='terminee').length,enc:pi.filter(i=>i.statut==='en_cours').length,xp:pi.reduce((s,i)=>s+(i.xp_gagnes||0),0),oblManq:FORMATIONS_CATALOG.filter(f=>f.obligatoire&&!pi.find(i=>i.formation_id===f.id&&i.statut==='terminee')).length};
   });
+  // Parcours par rôle (spec §51 "Reporting Formation" — Parcours par rôle) : agrège ce qui
+  // existe déjà (FORMATION_ROLE_MAP + formation_inscriptions) plutôt que de recalculer une
+  // nouvelle notion de "parcours" — le parcours d'un rôle = les 3 formations universelles +
+  // les formations qui lui sont assignées dans FORMATION_ROLE_MAP.
+  const roleAgg={};
+  profList.forEach(p=>{
+    const role=p.role||'—';
+    const parcoursIds=[...new Set([...EQOV_OBLIGATOIRE_UNIVERSAL,...(FORMATION_ROLE_MAP[role]||[])])];
+    if(!parcoursIds.length)return;
+    if(!roleAgg[role])roleAgg[role]={nb:0,sumPct:0,parcoursLen:parcoursIds.length};
+    const pi=insList.filter(i=>i.collaborateur_id===p.id);
+    const termCount=parcoursIds.filter(fid=>pi.find(i=>i.formation_id===fid&&i.statut==='terminee')).length;
+    roleAgg[role].nb++;
+    roleAgg[role].sumPct+=parcoursIds.length?termCount/parcoursIds.length*100:0;
+  });
+  // Juniors CM en progression (spec §51) : profiles.cm_niveau_autonomie==='junior' déjà utilisé
+  // par le module CM/tutorat (voir CM_NIVEAU_LBL, cm_tutorships) — ici uniquement leur avancement
+  // dans le parcours de formation CM, pas leur file de contenus à valider (module séparé).
+  const cmParcoursIds=[...new Set([...EQOV_OBLIGATOIRE_UNIVERSAL,...(FORMATION_ROLE_MAP.cm||[])])];
+  const juniors=profList.filter(p=>p.role==='cm'&&p.cm_niveau_autonomie==='junior').map(p=>{
+    const pi=insList.filter(i=>i.collaborateur_id===p.id);
+    const term=cmParcoursIds.filter(fid=>pi.find(i=>i.formation_id===fid&&i.statut==='terminee')).length;
+    return{...p,term,total:cmParcoursIds.length,xp:pi.reduce((s,i)=>s+(i.xp_gagnes||0),0)};
+  });
   const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
   el.innerHTML=`
     <div class="cd" style="margin-bottom:12px">
@@ -18233,6 +18698,18 @@ function loadAdminFormStats(){
       </tbody></table></div>
     </div>
     <div class="cd" style="margin-bottom:12px">
+      <div class="cd-h"><div class="cd-t">Parcours par rôle</div></div>
+      <div class="tw"><table><thead><tr><th>Rôle</th><th>Collaborateurs</th><th>Formations du parcours</th><th>Complétion moyenne</th></tr></thead><tbody>
+        ${Object.entries(roleAgg).map(([role,a])=>{const moy=a.nb?Math.round(a.sumPct/a.nb):0;return`<tr>
+          <td class="tm">${ROLE_LABELS[role]||role}</td>
+          <td class="tm">${a.nb}</td>
+          <td class="tm">${a.parcoursLen}</td>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="pg" style="width:50px;display:inline-flex"><div class="pg-f" style="width:${moy}%;background:${moy===100?'var(--ok)':moy>50?'var(--acc)':'var(--wa)'}"></div></div><span style="font-size:11.5px">${moy}%</span></div></td>
+        </tr>`;}).join('')}
+        ${!Object.keys(roleAgg).length?`<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:20px">Aucun rôle avec un parcours de formation défini.</td></tr>`:''}
+      </tbody></table></div>
+    </div>
+    <div class="cd" style="margin-bottom:12px">
       <div class="cd-h"><div class="cd-t">Collaborateurs — Progression formations</div></div>
       <div class="tw"><table><thead><tr><th>Collaborateur</th><th>Rôle</th><th>Terminées</th><th>En cours</th><th>XP formations</th><th>Oblig. manquantes</th></tr></thead><tbody>
         ${profList.map(p=>{const cs=cStats[p.id]||{};return`<tr>
@@ -18245,6 +18722,16 @@ function loadAdminFormStats(){
         </tr>`;}).join('')}
       </tbody></table></div>
     </div>
+    ${juniors.length?`<div class="cd" style="margin-bottom:12px">
+      <div class="cd-h"><div class="cd-t">Juniors CM en progression (${juniors.length})</div></div>
+      <div class="tw"><table><thead><tr><th>Junior</th><th>Formations terminées</th><th>XP formations</th></tr></thead><tbody>
+        ${juniors.map(j=>{const pct=j.total?Math.round(j.term/j.total*100):0;return`<tr>
+          <td class="tm">${esc(j.prenom||'')} ${esc(j.nom||'')}</td>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="pg" style="width:50px;display:inline-flex"><div class="pg-f" style="width:${pct}%;background:${pct===100?'var(--ok)':pct>50?'var(--acc)':'var(--wa)'}"></div></div><span style="font-size:11.5px">${j.term}/${j.total} · ${pct}%</span></div></td>
+          <td class="tm" style="color:#9C6FFF">${j.xp.toLocaleString('fr-FR')} XP</td>
+        </tr>`;}).join('')}
+      </tbody></table></div>
+    </div>`:''}
     <div class="cd">
       <div class="cd-h"><div class="cd-t">Activité récente</div></div>
       <div>
@@ -24572,6 +25059,347 @@ async function loadPlanning(){
 }
 function planningPrev(){_planningDate=new Date(_planningDate.getFullYear(),_planningDate.getMonth()-1,1);loadPlanning();}
 function planningNext(){_planningDate=new Date(_planningDate.getFullYear(),_planningDate.getMonth()+1,1);loadPlanning();}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CALENDRIER GLOBAL (Direction, §22-27) — agrège v_calendar_global, n'édite rien.
+// Chaque événement reste modifiable UNIQUEMENT dans son module source (§23 "pas
+// d'édition universelle") ; ce calendrier ouvre l'objet au bon endroit au clic.
+// ══════════════════════════════════════════════════════════════════════════
+let _cgDate=new Date();
+let _cgViewMode='mois'; // 'mois' | 'semaine' | 'agenda'
+let _cgRawData=[]; // items bruts de la période visible (avant filtres)
+
+const CAL_GLOBAL_TYPE_LBL={
+  mission:'Mission',presence:'Présence Full Com',rdv_commercial:'RDV commercial',
+  rdv_interne:'RDV interne (agenda)',relance:'Relance',rappel:'Rappel',
+  echeance_admin:'Échéance admin',echeance_contrat:'Échéance contrat',
+  formation:'Formation',indisponibilite:'Indisponibilité',recrutement:'Recrutement (appel)',
+};
+const CAL_GLOBAL_TYPE_COLOR={
+  mission:'#366BFF',presence:'#00B8D4',rdv_commercial:'#2ECC8A',rdv_interne:'#7C4DFF',
+  relance:'#F5A524',rappel:'#8891A8',echeance_admin:'#F0445E',echeance_contrat:'#F0445E',
+  formation:'#8B2BFF',indisponibilite:'#4E5870',recrutement:'#00C4FF',
+};
+const CAL_GLOBAL_POLE_LBL={
+  production:'Production',communication:'Communication',commercial:'Commercial',
+  secretariat:'Secrétariat',clients:'Clients',formation:'Formation',rh:'RH',recrutement:'Recrutement',
+};
+
+function setCalGlobalView(mode){
+  _cgViewMode=mode;
+  ['mois','semaine','agenda'].forEach(m=>{
+    const b=document.getElementById('cg-view-'+m);
+    if(b){b.style.background=m===mode?'var(--acc)':'transparent';b.style.color=m===mode?'#fff':'var(--t3)';}
+  });
+  loadCalGlobal();
+}
+function calGlobalToday(){_cgDate=new Date();loadCalGlobal();}
+function _cgPeriodBounds(){
+  if(_cgViewMode==='semaine'){
+    const d=_cgDate,dow=d.getDay(),offset=(dow+6)%7; // semaine Lundi→Dimanche
+    const start=new Date(d.getFullYear(),d.getMonth(),d.getDate()-offset);
+    const end=new Date(start.getFullYear(),start.getMonth(),start.getDate()+6);
+    return{start,end};
+  }
+  // 'mois' et 'agenda' partagent la même période (le mois courant) — seul le rendu diffère.
+  return{start:new Date(_cgDate.getFullYear(),_cgDate.getMonth(),1),end:new Date(_cgDate.getFullYear(),_cgDate.getMonth()+1,0)};
+}
+function calGlobalPrev(){
+  if(_cgViewMode==='semaine')_cgDate=new Date(_cgDate.getFullYear(),_cgDate.getMonth(),_cgDate.getDate()-7);
+  else _cgDate=new Date(_cgDate.getFullYear(),_cgDate.getMonth()-1,1);
+  loadCalGlobal();
+}
+function calGlobalNext(){
+  if(_cgViewMode==='semaine')_cgDate=new Date(_cgDate.getFullYear(),_cgDate.getMonth(),_cgDate.getDate()+7);
+  else _cgDate=new Date(_cgDate.getFullYear(),_cgDate.getMonth()+1,1);
+  loadCalGlobal();
+}
+
+async function loadCalGlobal(){
+  const el=document.getElementById('calglobal-real');
+  const title=document.getElementById('calglobal-title');
+  if(!el)return;
+  const{start,end}=_cgPeriodBounds();
+  const moisLbl=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  if(title){
+    title.textContent=_cgViewMode==='semaine'
+      ?`Calendrier global — ${start.getDate()} ${moisLbl[start.getMonth()].slice(0,3)} → ${end.getDate()} ${moisLbl[end.getMonth()].slice(0,3)} ${end.getFullYear()}`
+      :`Calendrier global — ${moisLbl[_cgDate.getMonth()]} ${_cgDate.getFullYear()}`;
+  }
+  // Marge de ±1 jour pour ne jamais perdre un événement proche d'un fuseau horaire à la
+  // frontière de la période (starts_at est un timestamptz, la vue déjà convertie côté SQL) —
+  // le regroupement par jour ci-dessous utilise ensuite ymdLocal() sur la vraie date locale, donc
+  // un événement rendu par la marge mais hors période n'apparaît dans aucune cellule/colonne.
+  const debut=ymdLocal(new Date(start.getFullYear(),start.getMonth(),start.getDate()-1));
+  const fin=ymdLocal(new Date(end.getFullYear(),end.getMonth(),end.getDate()+1));
+  try{
+    const data=await sbFetch(`v_calendar_global?select=*&starts_at=gte.${debut}&starts_at=lte.${fin}T23:59:59&order=starts_at.asc`);
+    _cgRawData=Array.isArray(data)?data:[];
+  }catch(e){_cgRawData=[];el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
+  populateCalGlobalFilters();
+  applyCalGlobalFilters();
+}
+
+function populateCalGlobalFilters(){
+  const distinct=(key)=>[...new Set(_cgRawData.map(r=>r[key]).filter(v=>v!=null&&v!==''))].sort();
+  const fill=(id,values,lblMap)=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML=`<option value="">${sel.dataset.allLabel||'Tous'}</option>`;
+    values.forEach(v=>{
+      const opt=document.createElement('option');
+      opt.value=v;opt.textContent=(lblMap&&lblMap[v])||v;
+      sel.appendChild(opt);
+    });
+    if(values.includes(cur))sel.value=cur;
+  };
+  fill('cg-f-type',distinct('display_type'),CAL_GLOBAL_TYPE_LBL);
+  fill('cg-f-pole',distinct('pole'),CAL_GLOBAL_POLE_LBL);
+  fill('cg-f-statut',distinct('statut'),null);
+  fill('cg-f-sport',distinct('sport'),null);
+  fill('cg-f-collab',distinct('responsible_nom'),null);
+}
+
+function applyCalGlobalFilters(){
+  const q=(document.getElementById('cg-f-q')?.value||'').trim().toLowerCase();
+  const type=document.getElementById('cg-f-type')?.value||'';
+  const pole=document.getElementById('cg-f-pole')?.value||'';
+  const statut=document.getElementById('cg-f-statut')?.value||'';
+  const sport=document.getElementById('cg-f-sport')?.value||'';
+  const collab=document.getElementById('cg-f-collab')?.value||'';
+  let list=_cgRawData;
+  if(q)list=list.filter(r=>(r.titre||'').toLowerCase().includes(q)||(r.club_nom||'').toLowerCase().includes(q));
+  if(type)list=list.filter(r=>r.display_type===type);
+  if(pole)list=list.filter(r=>r.pole===pole);
+  if(statut)list=list.filter(r=>r.statut===statut);
+  if(sport)list=list.filter(r=>r.sport===sport);
+  if(collab)list=list.filter(r=>r.responsible_nom===collab);
+  const countEl=document.getElementById('cg-f-count');
+  if(countEl)countEl.textContent=list.length+' événement'+(list.length>1?'s':'')+' affiché'+(list.length>1?'s':'');
+  renderCalGlobal(list);
+}
+
+// Détection de conflit de planning — même principe que la vérification faite avant
+// confirmation d'affectation dans ajouterMembreEquipe() (~L11835, cf. son commentaire
+// "Détection de conflit de planning avant confirmation") : un même collaborateur
+// (responsible_user_id) présent sur 2+ événements le même jour local. Avertissement
+// visuel seulement, jamais bloquant, même philosophie que l'existant — le staff garde
+// la main, deux événements courts le même jour peuvent être parfaitement légitimes.
+function computeCalGlobalConflicts(list){
+  const byKey={};
+  list.forEach(r=>{
+    if(!r.responsible_user_id||!r.starts_at)return;
+    const key=r.responsible_user_id+'|'+ymdLocal(new Date(r.starts_at));
+    (byKey[key]=byKey[key]||[]).push(r);
+  });
+  const conflictIds=new Set();
+  Object.values(byKey).forEach(arr=>{if(arr.length>1)arr.forEach(r=>conflictIds.add(r.source_type+':'+r.source_id));});
+  return conflictIds;
+}
+
+function renderCalGlobal(list){
+  if(_cgViewMode==='semaine')renderCalGlobalWeek(list);
+  else if(_cgViewMode==='agenda')renderCalGlobalAgenda(list);
+  else renderCalGlobalMonth(list);
+}
+
+function renderCalGlobalMonth(list){
+  const el=document.getElementById('calglobal-real');
+  if(!el)return;
+  const yr=_cgDate.getFullYear(),mo=_cgDate.getMonth();
+  const jours=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const nbDays=new Date(yr,mo+1,0).getDate();
+  const firstDow=new Date(yr,mo,1).getDay();
+  const today=ymdLocal();
+  const byDay={};
+  list.forEach(r=>{if(!r.starts_at)return;const k=ymdLocal(new Date(r.starts_at));(byDay[k]=byDay[k]||[]).push(r);});
+  const conflicts=computeCalGlobalConflicts(list);
+  const startPad=firstDow;
+  const totalCells=Math.ceil((nbDays+startPad)/7)*7;
+  const grid=`<style>
+    .cg-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--b1);border-radius:var(--rb);overflow:hidden}
+    .cg-cal-hd{background:var(--s1);padding:6px 0;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)}
+    .cg-cal-cell{background:var(--s1);min-height:92px;padding:6px}
+    .cg-cal-cell.today{background:rgba(14,165,255,.06);box-shadow:inset 0 0 0 2px rgba(14,165,255,.25)}
+    .cg-cal-cell.we{background:rgba(255,255,255,.015)}
+    .cg-cal-cell.empty{background:rgba(0,0,0,.3)}
+    .cg-cal-dn{font-size:13px;font-weight:700;color:var(--t2);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+    .cg-cal-cell.today .cg-cal-dn{color:var(--acc)}
+    .cg-cal-ev{font-size:10px;padding:2px 5px;border-radius:3px;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+    .cg-cal-more{font-size:10px;color:var(--t3);margin-top:2px}
+  </style>
+  <div class="cg-cal">
+    ${jours.map(j=>`<div class="cg-cal-hd">${j}</div>`).join('')}
+    ${Array.from({length:totalCells},(_,i)=>{
+      const dayNum=i-startPad+1;
+      if(dayNum<1||dayNum>nbDays)return'<div class="cg-cal-cell empty"></div>';
+      const key=`${yr}-${String(mo+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+      const dow=(startPad+dayNum-1)%7;
+      const isWE=dow===0||dow===6;
+      const isToday=key===today;
+      const evs=byDay[key]||[];
+      const evHtml=evs.slice(0,4).map(r=>{
+        const clr=CAL_GLOBAL_TYPE_COLOR[r.display_type]||'#6B7CFF';
+        const isConf=conflicts.has(r.source_type+':'+r.source_id);
+        const lbl=(r.club_nom?r.club_nom+' — ':'')+(r.titre||CAL_GLOBAL_TYPE_LBL[r.display_type]||'Événement');
+        return`<div class="cg-cal-ev" style="background:${clr}cc${isConf?';outline:2px solid var(--er)':''}" onclick="event.stopPropagation();modalCalGlobalItem('${r.source_type}','${r.source_id}')" title="${esc(lbl)}${isConf?' — ⚠ Conflit de planning':''}">${isConf?'⚠ ':''}${esc(lbl.slice(0,26))}</div>`;
+      }).join('');
+      const more=evs.length>4?`<div class="cg-cal-more">+${evs.length-4} autres</div>`:'';
+      return`<div class="cg-cal-cell${isToday?' today':''}${isWE?' we':''}">
+        <div class="cg-cal-dn"><span>${dayNum}</span>${evs.length?`<span style="font-size:9px;color:var(--t3)">${evs.length}</span>`:''}</div>
+        ${evHtml}${more}
+      </div>`;
+    }).join('')}
+  </div>`;
+  el.innerHTML=grid;
+}
+
+function renderCalGlobalWeek(list){
+  const el=document.getElementById('calglobal-real');
+  if(!el)return;
+  const{start}=_cgPeriodBounds();
+  const jours=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const today=ymdLocal();
+  const byDay={};
+  list.forEach(r=>{if(!r.starts_at)return;const k=ymdLocal(new Date(r.starts_at));(byDay[k]=byDay[k]||[]).push(r);});
+  const conflicts=computeCalGlobalConflicts(list);
+  let cols='';
+  for(let i=0;i<7;i++){
+    const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+    const key=ymdLocal(d);
+    const isToday=key===today;
+    const evs=(byDay[key]||[]).slice().sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+    cols+=`<div style="flex:1;min-width:150px;border-right:1px solid var(--b1)">
+      <div style="padding:8px;text-align:center;background:${isToday?'rgba(14,165,255,.08)':'var(--s1)'};border-bottom:1px solid var(--b1)">
+        <div style="font-size:9px;text-transform:uppercase;color:var(--t3)">${jours[i]}</div>
+        <div style="font-size:16px;font-weight:700;color:${isToday?'var(--acc)':'var(--t1)'}">${d.getDate()}</div>
+      </div>
+      <div style="padding:6px;display:flex;flex-direction:column;gap:5px;min-height:220px">
+        ${evs.map(r=>{
+          const clr=CAL_GLOBAL_TYPE_COLOR[r.display_type]||'#6B7CFF';
+          const isConf=conflicts.has(r.source_type+':'+r.source_id);
+          const h=new Date(r.starts_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+          return`<div style="background:${clr}22;border-left:3px solid ${clr};border-radius:0 6px 6px 0;padding:5px 8px;cursor:pointer${isConf?';outline:2px solid var(--er)':''}" onclick="modalCalGlobalItem('${r.source_type}','${r.source_id}')" title="${esc(r.titre||'')}">
+            <div style="font-size:10px;color:var(--t3)">${h}${isConf?' ⚠':''}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.titre||CAL_GLOBAL_TYPE_LBL[r.display_type]||'—')}</div>
+            ${r.club_nom?`<div style="font-size:10px;color:var(--t3)">${esc(r.club_nom)}</div>`:''}
+          </div>`;
+        }).join('')}
+        ${!evs.length?'<div style="font-size:11px;color:var(--t3);text-align:center;padding-top:10px">—</div>':''}
+      </div>
+    </div>`;
+  }
+  el.innerHTML=`<div class="cd" style="display:flex;overflow-x:auto">${cols}</div>`;
+}
+
+function renderCalGlobalAgenda(list){
+  const el=document.getElementById('calglobal-real');
+  if(!el)return;
+  const conflicts=computeCalGlobalConflicts(list);
+  const byDay={};
+  list.forEach(r=>{if(!r.starts_at)return;const k=ymdLocal(new Date(r.starts_at));(byDay[k]=byDay[k]||[]).push(r);});
+  const days=Object.keys(byDay).sort();
+  if(!days.length){el.innerHTML='<div class="cd"><div style="padding:60px;text-align:center;color:var(--t3);font-size:13px">Aucun événement sur cette période pour ces filtres.</div></div>';return;}
+  const today=ymdLocal();
+  let html='';
+  days.forEach(key=>{
+    const d=new Date(key+'T00:00:00');
+    const isToday=key===today;
+    const evs=byDay[key].slice().sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+    html+=`<div class="cd" style="margin-bottom:10px">
+      <div class="cd-h"><div class="cd-t" style="${isToday?'color:var(--acc)':''}">${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}${isToday?" · Aujourd'hui":''}</div></div>
+      <div style="padding:6px 0">
+        ${evs.map(r=>{
+          const clr=CAL_GLOBAL_TYPE_COLOR[r.display_type]||'#6B7CFF';
+          const isConf=conflicts.has(r.source_type+':'+r.source_id);
+          const h=new Date(r.starts_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+          return`<div style="display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;border-left:3px solid ${clr}" onclick="modalCalGlobalItem('${r.source_type}','${r.source_id}')">
+            <div style="width:44px;flex-shrink:0;font-size:11px;color:var(--t3);font-weight:600">${h}</div>
+            <span style="width:8px;height:8px;border-radius:50%;background:${clr};flex-shrink:0"></span>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(r.titre||CAL_GLOBAL_TYPE_LBL[r.display_type]||'—')}${isConf?' <span style="color:var(--er)">⚠ Conflit</span>':''}</div>
+              <div style="font-size:11px;color:var(--t2)">${CAL_GLOBAL_TYPE_LBL[r.display_type]||r.display_type}${r.club_nom?' · '+esc(r.club_nom):''}${r.responsible_nom?' · '+esc(r.responsible_nom):''}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ── Clic sur un événement : ouvre l'objet dans SON module source (§23, pas d'édition
+// universelle). Réutilise les modales déjà existantes quand elles existent (prestations,
+// contrats, sessions de formation, fiche collaborateur) ; pour les 3 sources sans modale
+// par identifiant dédiée en contexte Admin (rendez_vous, secretariat_agenda_events,
+// planned_presences), une fiche de lecture minimale + actions rapides existantes.
+async function modalCalGlobalItem(sourceType,sourceId){
+  if(sourceType==='prestation'){modalDetailById(sourceId);return;}
+  if(sourceType==='contrat'){modalEditerContrat(sourceId);return;}
+  if(sourceType==='formation_session'){modalGererPresences(sourceId);return;}
+  if(sourceType==='disponibilite'){
+    const item=_cgRawData.find(r=>r.source_type==='disponibilite'&&r.source_id===sourceId);
+    if(item&&item.responsible_user_id)modalFicheCollaborateur(item.responsible_user_id);
+    else toast('Collaborateur introuvable.','er');
+    return;
+  }
+  if(sourceType==='rendez_vous'){_modalCalGlobalRdv(sourceId);return;}
+  if(sourceType==='agenda_sec'){_modalCalGlobalAgendaSec(sourceId);return;}
+  if(sourceType==='presence_fullcom'){_modalCalGlobalPresence(sourceId);return;}
+  toast("Type d'événement non pris en charge.",'er');
+}
+
+function _modalCalGlobalRdv(id){
+  const item=_cgRawData.find(r=>r.source_type==='rendez_vous'&&r.source_id===id);
+  if(!item){toast('Rendez-vous introuvable dans la période affichée.','er');return;}
+  const d=new Date(item.starts_at);
+  openModal(`<div class="mh"><div class="mt">${esc(item.titre||'Rendez-vous')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;color:var(--t3)">Client</div><div style="font-size:14px;color:var(--t1)">${esc(item.club_nom||'—')}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Date</div><div style="font-size:14px;color:var(--t1)">${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Statut</div><div style="font-size:14px;color:var(--t1)">${esc((typeof RDV_CL_LBL!=='undefined'&&RDV_CL_LBL[item.statut])||item.statut)}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:10px">Géré depuis l'écran <b>Rendez-vous clients</b>.</div>
+    </div>
+    <div class="mf">
+      ${item.statut==='a_confirmer'?`<button class="btn bp" onclick="closeModal();confirmerRdvClient('${id}')">Confirmer</button><button class="btn bg2" onclick="closeModal();annulerRdvClient('${id}')">Annuler</button>`:''}
+      ${item.statut==='confirme'?`<button class="btn bp" onclick="closeModal();marquerRealiseRdvClient('${id}')">Marquer réalisé</button><button class="btn bg2" onclick="closeModal();annulerRdvClient('${id}')">Annuler</button>`:''}
+      <button class="btn bg2" onclick="closeModal();switchView('rdvclients')">Voir tous les RDV</button>
+    </div>`);
+}
+
+function _modalCalGlobalAgendaSec(id){
+  const item=_cgRawData.find(r=>r.source_type==='agenda_sec'&&r.source_id===id);
+  if(!item){toast('Événement introuvable dans la période affichée.','er');return;}
+  const d=new Date(item.starts_at);
+  openModal(`<div class="mh"><div class="mt">${esc(item.titre||'Événement agenda')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;color:var(--t3)">Type</div><div style="font-size:14px;color:var(--t1)">${esc(CAL_GLOBAL_TYPE_LBL[item.display_type]||item.display_type)}</div>
+      ${item.club_nom?`<div style="font-size:12px;color:var(--t3);margin-top:6px">Client</div><div style="font-size:14px;color:var(--t1)">${esc(item.club_nom)}</div>`:''}
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Date</div><div style="font-size:14px;color:var(--t1)">${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Statut</div><div style="font-size:14px;color:var(--t1)">${esc(item.statut||'')}</div>
+      ${item.responsible_nom?`<div style="font-size:12px;color:var(--t3);margin-top:6px">Assigné à</div><div style="font-size:14px;color:var(--t1)">${esc(item.responsible_nom)}</div>`:''}
+      <div style="font-size:11px;color:var(--t3);margin-top:10px">Géré depuis l'écran <b>Agenda</b> du Secrétariat.</div>
+    </div>
+    <div class="mf">
+      ${item.statut!=='termine'?`<button class="btn bp" onclick="closeModal();terminerEvenementAgenda('${id}')">Marquer terminé</button><button class="btn bg2" onclick="closeModal();reporterEvenementAgenda('${id}')">Reporter</button>`:''}
+    </div>`);
+}
+
+function _modalCalGlobalPresence(id){
+  const item=_cgRawData.find(r=>r.source_type==='presence_fullcom'&&r.source_id===id);
+  if(!item){toast('Présence introuvable dans la période affichée.','er');return;}
+  const d=new Date(item.starts_at);
+  openModal(`<div class="mh"><div class="mt">${esc(item.titre||'Présence Full Com')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;color:var(--t3)">Club</div><div style="font-size:14px;color:var(--t1)">${esc(item.club_nom||'—')}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Date</div><div style="font-size:14px;color:var(--t1)">${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Statut</div><div style="font-size:14px;color:var(--t1)">${esc(item.statut||'')}</div>
+      ${item.responsible_nom?`<div style="font-size:12px;color:var(--t3);margin-top:6px">CM référent</div><div style="font-size:14px;color:var(--t1)">${esc(item.responsible_nom)}</div>`:''}
+      <div style="font-size:11px;color:var(--t3);margin-top:10px">Gérée depuis le <b>Planning éditorial</b> du Community Manager — édition non disponible ici (§23 : pas d'édition universelle depuis le calendrier global).</div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+}
 
 // ── Finances admin ───────────────────────────────────────────────────────────
 // Résumé P&L du mois (CA HT/Charges/Marge nette) — même calcul que le compte
