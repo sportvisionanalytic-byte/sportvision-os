@@ -2199,12 +2199,24 @@ const VIEWS={
     <div id="cmvid-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.analytics':()=>`
-    <div class="sh"><div class="sh-t">Analytics</div><button class="btn bg2 bs" onclick="modalSaisirStats()">Saisir stats</button></div>
+    <div class="sh"><div class="sh-t">Performances</div><button class="btn bg2 bs" onclick="modalSaisirStats()">Saisir stats</button></div>
+    <div class="cd" style="margin-bottom:13px">
+      <div style="padding:14px 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:200px"><label class="fl">Structure</label><select id="an-client-select" class="fi" onchange="loadCmAnalytics()"><option value="">Toutes mes structures</option></select></div>
+        <div><label class="fl">Période</label><select id="an-periode-select" class="fi" onchange="loadCmAnalytics()">
+          <option value="7j">7 derniers jours</option>
+          <option value="30j" selected>30 derniers jours</option>
+          <option value="3m">3 derniers mois</option>
+          <option value="saison">Saison en cours</option>
+        </select></div>
+      </div>
+    </div>
     <div class="kpi-g">
       <div class="kpi" style="--kl:#E1306C"><div class="kpi-ey">Instagram · Reach</div><div class="kpi-v" id="an-ig-reach">—</div><span class="kpi-d dnt" id="an-ig-s" title="Saisi manuellement, pas synchronisé automatiquement">✍️ saisi manuellement</span></div>
       <div class="kpi" style="--kl:#1877F2"><div class="kpi-ey">Facebook · Portée</div><div class="kpi-v" id="an-fb-reach">—</div><span class="kpi-d dnt" id="an-fb-s" title="Saisi manuellement, pas synchronisé automatiquement">✍️ saisi manuellement</span></div>
       <div class="kpi" style="--kl:#FF0000"><div class="kpi-ey">YouTube · Vues</div><div class="kpi-v" id="an-yt-views">—</div><span class="kpi-d dnt" id="an-yt-s" title="Saisi manuellement, pas synchronisé automatiquement">✍️ saisi manuellement</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Contenus publiés</div><div class="kpi-v" id="an-pub">—</div><span class="kpi-d dnt" title="Calculé depuis les contenus réellement publiés dans l'OS">✓ données réelles (OS)</span></div>
+      <div class="kpi" style="--kl:#8B5CF6"><div class="kpi-ey">Interactions</div><div class="kpi-v" id="an-interactions">—</div><span class="kpi-d dnt" title="Somme des engagements saisis manuellement, tous contenus et plateformes confondus">✍️ saisi manuellement</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Contenus publiés</div><div class="kpi-v" id="an-pub">—</div><span class="kpi-d dnt" title="Calculé depuis les contenus réellement publiés dans l'OS, sur la période et la structure sélectionnées">✓ données réelles (OS)</span></div>
     </div>
     <div class="g2">
       <div class="cd"><div class="cd-h"><div class="cd-t">Contenus par plateforme</div></div>
@@ -2213,6 +2225,9 @@ const VIEWS={
       <div class="cd"><div class="cd-h"><div class="cd-t">Prestations couvertes ce mois</div></div>
         <div id="an-pre-mois"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
       </div>
+    </div>
+    <div class="cd" style="margin-top:16px"><div class="cd-h"><div class="cd-t">Top contenus</div></div>
+      <div id="an-top"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
     </div>`,
 
   'cm.charge':()=>`
@@ -2994,7 +3009,7 @@ function _settingsView(){
 
 // ── FALLBACK VIEW ────────────────────────
 function fallbackView(role,view){
-  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',documents:'Centre documentaire',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Analytics',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs',avoirs:'Avoirs & remises',contrats:'Contrats',connectcomptes:'Connect',crmfullcom:'Full Com',crmclubplus:'Club+'};
+  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',documents:'Centre documentaire',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Performances',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs',avoirs:'Avoirs & remises',contrats:'Contrats',connectcomptes:'Connect',crmfullcom:'Full Com',crmclubplus:'Club+'};
   return`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:14px;color:var(--t3);text-align:center">
     <div style="font-size:44px;opacity:.2">📋</div>
     <div style="font-size:15px;font-weight:650;color:var(--t2)">${labels[view]||view}</div>
@@ -19245,6 +19260,7 @@ function modalFicheStructureCm(clientId){
       <button class="btn bg2 bs" onclick="closeModal();switchView('contenus')">✍️ Contenus</button>
       <button class="btn bg2 bs" onclick="closeModal();switchView('demandes')">📥 Demandes</button>
       <button class="btn bg2 bs" onclick="closeModal();switchView('mediabank')">⭐ Médiathèque</button>
+      <button class="btn bg2 bs" onclick="closeModal();_analyticsPreselectClient='${cl.id}';switchView('analytics')">📊 Performances</button>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
 }
@@ -20260,40 +20276,74 @@ async function loadCmPublications(){
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
-// ── CM — Analytics ────────────────────────────────────────────────────────────
+// ── CM — Analytics (Performances) ───────────────────────────────────────────
+// Préselection de structure depuis modalFicheStructureCm() (bouton "📊
+// Performances") : posée juste avant switchView('analytics'), lue puis
+// remise à null au premier chargement pour ne pas polluer les visites
+// suivantes de l'écran.
+let _analyticsPreselectClient=null;
+// Spec Refonte CM §39 : pas de notion de saison sportive réutilisable
+// ailleurs dans le fichier (clubs.saison est un texte libre du type
+// "2026-2027", pas une plage de dates) — convention sport amateur France
+// assumée ici : 1er juillet → 30 juin.
+function _analyticsPeriodeRange(periode){
+  const now=new Date();
+  const end=ymdLocal(new Date(now.getFullYear(),now.getMonth(),now.getDate()+1));
+  if(periode==='7j'){
+    return{start:ymdLocal(new Date(now.getFullYear(),now.getMonth(),now.getDate()-7)),end};
+  }
+  if(periode==='3m'){
+    return{start:ymdLocal(new Date(now.getFullYear(),now.getMonth()-3,now.getDate())),end};
+  }
+  if(periode==='saison'){
+    const anneeDebut=now.getMonth()>=6?now.getFullYear():now.getFullYear()-1;
+    return{start:ymdLocal(new Date(anneeDebut,6,1)),end};
+  }
+  return{start:ymdLocal(new Date(now.getFullYear(),now.getMonth(),now.getDate()-30)),end};
+}
 async function loadCmAnalytics(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const selClient=document.getElementById('an-client-select');
+  const selPeriode=document.getElementById('an-periode-select');
+  if(selClient&&!selClient.dataset.loaded){
+    const clients=await _cmVisibleClients();
+    selClient.innerHTML='<option value="">Toutes mes structures</option>'+clients.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+    selClient.dataset.loaded='1';
+    if(_analyticsPreselectClient){
+      selClient.value=_analyticsPreselectClient;
+      _analyticsPreselectClient=null;
+    }
+  }
+  const clientId=selClient?.value||'';
+  const periode=selPeriode?.value||'30j';
+  const{start,end}=_analyticsPeriodeRange(periode);
   const now=new Date();
   const mStart=ymdLocal(new Date(now.getFullYear(),now.getMonth(),1));
-  const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
   try{
-    const [pubTotal,byPlat,pubMois]=await Promise.all([
-      sbFetch('contenus?select=id&statut=eq.publie'),
-      sbFetch('contenus?select=plateforme&statut=eq.publie&limit=200'),
-      sbFetch('contenus?select=id,plateforme&statut=eq.publie&date_publication=gte.'+mStart+'&date_publication=lt.'+mNext+'&limit=200'),
-    ]);
-    set('an-pub',(pubTotal||[]).length);
+    let q='contenus?select=id,titre,plateforme,client_id,date_publication,clients(nom)&statut=eq.publie&date_publication=gte.'+start+'&date_publication=lt.'+end+'&limit=500';
+    if(clientId)q+='&client_id=eq.'+clientId;
+    const contenusPeriode=await sbFetch(q);
+    const contenus=Array.isArray(contenusPeriode)?contenusPeriode:[];
+    set('an-pub',contenus.length);
     // Portée/Engagement/Vues : saisies manuellement par le CM, PAR CONTENU
     // (table contenu_stats — Phase 5 du plan, migration-cm-contenu-stats.sql).
     // Remplace l'ancien stockage localStorage (sv_an_stats) : 3 chiffres
     // globaux jamais partagés entre CM, jamais persistés côté serveur.
-    // Changement de granularité assumé : chaque tuile agrège maintenant les
-    // stats saisies sur les contenus publiés CE MOIS pour la plateforme
-    // concernée (Instagram→portée, Facebook→portée, YouTube→vues), plutôt
-    // qu'un unique champ libre. Si aucun contenu de la plateforme n'a de
-    // stats saisies, la tuile affiche "—" — jamais 0 comme si c'était une
-    // vraie mesure à zéro.
-    const contenusMois=Array.isArray(pubMois)?pubMois:[];
-    const idsMois=contenusMois.map(c=>c.id);
-    let statsMois=[];
-    if(idsMois.length){
-      try{statsMois=await sbFetch('contenu_stats?select=contenu_id,portee,engagement,vues&contenu_id=in.('+idsMois.join(',')+')')||[];}catch(e){statsMois=[];}
+    // Chaque tuile agrège les stats saisies sur les contenus publiés dans la
+    // période/structure filtrées (Instagram→portée, Facebook→portée,
+    // YouTube→vues, Interactions→engagement toutes plateformes confondues).
+    // Si aucun contenu concerné n'a de stats saisies, la tuile affiche "—"
+    // — jamais 0 comme si c'était une vraie mesure à zéro.
+    const ids=contenus.map(c=>c.id);
+    let stats=[];
+    if(ids.length){
+      try{stats=await sbFetch('contenu_stats?select=contenu_id,portee,engagement,vues&contenu_id=in.('+ids.join(',')+')')||[];}catch(e){stats=[];}
     }
     const statsByContenu={};
-    (Array.isArray(statsMois)?statsMois:[]).forEach(s=>{statsByContenu[s.contenu_id]=s;});
+    (Array.isArray(stats)?stats:[]).forEach(s=>{statsByContenu[s.contenu_id]=s;});
     const sumParPlateforme=(plateforme,champ)=>{
       let total=0,saisi=false;
-      contenusMois.filter(c=>c.plateforme===plateforme).forEach(c=>{
+      contenus.filter(c=>c.plateforme===plateforme).forEach(c=>{
         const s=statsByContenu[c.id];
         if(s&&s[champ]!==null&&s[champ]!==undefined){total+=Number(s[champ]);saisi=true;}
       });
@@ -20305,12 +20355,18 @@ async function loadCmAnalytics(){
     set('an-ig-reach',igReach!==null?igReach.toLocaleString('fr-FR'):'—');
     set('an-fb-reach',fbReach!==null?fbReach.toLocaleString('fr-FR'):'—');
     set('an-yt-views',ytViews!==null?ytViews.toLocaleString('fr-FR'):'—');
-    // By platform breakdown
+    let interTotal=0,interSaisi=false;
+    contenus.forEach(c=>{
+      const s=statsByContenu[c.id];
+      if(s&&s.engagement!==null&&s.engagement!==undefined){interTotal+=Number(s.engagement);interSaisi=true;}
+    });
+    set('an-interactions',interSaisi?interTotal.toLocaleString('fr-FR'):'—');
+    // By platform breakdown (même filtre période/structure que les KPI ci-dessus)
     const platMap={};
-    (byPlat||[]).forEach(c=>{const pl=c.plateforme||'Autre';platMap[pl]=(platMap[pl]||0)+1;});
+    contenus.forEach(c=>{const pl=c.plateforme||'Autre';platMap[pl]=(platMap[pl]||0)+1;});
     const elPlat=document.getElementById('an-by-plat');
     if(elPlat){
-      if(!Object.keys(platMap).length){elPlat.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune publication enregistrée dans l\'OS.</div>';}
+      if(!Object.keys(platMap).length){elPlat.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune publication sur la période sélectionnée.</div>';}
       else{
         const total=Object.values(platMap).reduce((s,n)=>s+n,0);
         elPlat.innerHTML='<div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px">'+
@@ -20322,7 +20378,40 @@ async function loadCmAnalytics(){
           }).join('')+'</div>';
       }
     }
-    // Prestations ce mois
+    // Top contenus : les contenus de la période/structure filtrées classés
+    // par somme (portée+vues+engagement) saisie, top 5. Un contenu sans
+    // aucune stats saisie n'est pas classable, il est exclu du classement
+    // plutôt que de lui attribuer un score de 0 (pas une vraie mesure).
+    const elTop=document.getElementById('an-top');
+    if(elTop){
+      const classes=contenus.map(c=>{
+        const s=statsByContenu[c.id];
+        if(!s)return null;
+        const portee=s.portee!==null&&s.portee!==undefined?Number(s.portee):null;
+        const vues=s.vues!==null&&s.vues!==undefined?Number(s.vues):null;
+        const engagement=s.engagement!==null&&s.engagement!==undefined?Number(s.engagement):null;
+        if(portee===null&&vues===null&&engagement===null)return null;
+        const score=(portee||0)+(vues||0)+(engagement||0);
+        return{...c,portee,vues,engagement,score};
+      }).filter(Boolean).sort((a,b)=>b.score-a.score).slice(0,5);
+      if(!classes.length){elTop.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun contenu avec des statistiques saisies sur la période sélectionnée.</div>';}
+      else{
+        elTop.innerHTML=classes.map(c=>{
+          const parts=[];
+          if(c.portee!==null)parts.push('Portée '+c.portee.toLocaleString('fr-FR'));
+          if(c.vues!==null)parts.push('Vues '+c.vues.toLocaleString('fr-FR'));
+          if(c.engagement!==null)parts.push('Interactions '+c.engagement.toLocaleString('fr-FR'));
+          return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="modalDetailById('${c.id}')">
+            <div><div style="font-size:13px;color:var(--t1)">${esc(c.titre)}</div><div style="font-size:11px;color:var(--t3)">${esc(c.clients?.nom||'SportVision')} · ${esc(c.plateforme||'—')}</div></div>
+            <span style="font-size:11px;color:var(--t2);text-align:right">${parts.join(' · ')}</span>
+          </div>`;
+        }).join('');
+      }
+    }
+    // Prestations couvertes ce mois : indicateur secondaire déjà présent
+    // avant cette refonte, volontairement laissé sur le mois calendaire en
+    // cours (hors scope §39 filtres/KPI) plutôt que rebranché sur la période
+    // choisie, pour ne pas dupliquer le rapport mensuel traité en parallèle.
     const elPre=document.getElementById('an-pre-mois');
     if(elPre){
       const data=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&date_prestation=gte.'+mStart+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=20');
@@ -25741,7 +25830,7 @@ const DEMO_ROUTE_MAP={
   'encaissements':{role:'admin',view:'encaissements',label:'Encaissements Stripe'},
   'clotures':{role:'admin',view:'clotures',label:'Clôtures mensuelles'},
   'fec':{role:'admin',view:'fec',label:'Export FEC'},
-  'analytics':{role:'cm',view:'analytics',label:'Analytics (CM)'},
+  'analytics':{role:'cm',view:'analytics',label:'Performances (CM)'},
 };
 // Slugs demandés explicitement dans le master prompt d'audit qui N'ONT PAS d'écran réel
 // correspondant dans l'OS — on ne les fabrique pas (consigne explicite), on le dit.
