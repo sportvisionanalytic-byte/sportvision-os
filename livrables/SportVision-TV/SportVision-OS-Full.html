@@ -1261,20 +1261,20 @@ const VIEWS={
 
   'admin.crm':()=>`
     <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
-    <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="crm-real" style="min-height:200px">${_crmSkelRows(7)}</div>`,
 
   // ── Module Full Com (refonte nav 28/08) : clients avec contrat full_communication,
   // réutilise _clientsCache/loadClients + _offreDuClient déjà en place (22/08) plutôt que
   // de dupliquer la requête — cf. renderFullComTable ci-dessous.
   'admin.crmfullcom':()=>`
     <div class="sh"><div class="sh-t">Full Com</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
-    <div id="crmfullcom-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="crmfullcom-real" style="min-height:200px">${_crmSkelRows(6,[70,50,50,60,70,60,40])}</div>`,
 
   // ── Module Club+ (refonte nav 28/08) : tous les workspaces `clubs`, indépendamment du
   // CRM `clients` — cf. renderClubsPlusTable/loadCrmClubPlus.
   'admin.crmclubplus':()=>`
     <div class="sh"><div class="sh-t">Club+</div></div>
-    <div id="crmclubplus-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="crmclubplus-real" style="min-height:200px">${_crmSkelRows(6,[70,50,60,60,50,40])}</div>`,
 
   // ── Accès délégués Agence CM ↔ Club (plan Tier C § Phase 3 « Accompagnement », 10/08/2026) ──
   'admin.cmagency':()=>_cmAgencyAccessView(),
@@ -5109,6 +5109,15 @@ function _buildPipelineShell(titre){
   </div>
   <div id="pipeline-real">${_comSkelKanban(5)}</div>`;
 }
+// Skeleton table CRM/Clients admin (vue "tous les clients", distincte du pipeline) : reprend
+// la structure réelle de renderClientsTable/renderFullComTable/renderClubsPlusTable (onglets +
+// barre recherche + table à colonnes) pour éviter un flash de mise en page au chargement.
+function _crmSkelRows(n,cols){
+  const c=cols||[70,90,50,60,60,70,80,80,60,40];
+  return`<div style="display:flex;gap:6px;margin-bottom:10px">${Array.from({length:4}).map(()=>'<div class="skel" style="width:110px;height:26px;border-radius:20px"></div>').join('')}</div>
+  <div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px"><div class="skel" style="width:240px;height:34px;border-radius:8px"></div><div class="skel" style="width:160px;height:34px;border-radius:8px"></div></div>
+  <div class="tw"><table><tbody>${Array.from({length:n||6}).map(()=>`<tr>${c.map((w,i)=>`<td>${w<0?'':`<div class="skel" style="height:${i===1||i===7?'18':'13'}px;width:${Math.abs(w)}%;border-radius:${i===1||i===7?'20':'6'}px"></div>`}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
 async function loadClients(){
   const el=document.getElementById('crm-real');
   if(!el)return;
@@ -5237,6 +5246,7 @@ async function loadCrmFullCom(){
     const data=await sbFetch('clients?select=id,nom,statut,statut_relation,etape_pipeline,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect,logo_url,division,adresse,code_postal,cm_id,contrats(id,type_contrat,statut,created_at)&order=created_at.desc&limit=300');
     if(sbErr(data)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
     _fullComCache=(Array.isArray(data)?data:[]).filter(c=>_offreDuClient(c)==='full_communication');
+    if(!_fullComCache.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📡</div><div>Aucun client Full Communication pour le moment.</div></div>';return;}
     renderFullComTable();
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
@@ -5435,7 +5445,7 @@ async function modalFicheClubPlus(clubId){
       </div>
     </div>
     <div id="cfp-panel-equipes" style="display:none">
-      <div id="cfp-equipes-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+      <div id="cfp-equipes-list">${_cmSkel(2,28)}</div>
     </div>
     <div id="cfp-panel-demandes" style="display:none">
       <div style="font-size:12.5px;color:var(--t2);margin-bottom:10px">Les demandes (réservations, requêtes Club+) de ce club sont gérées dans les écrans dédiés existants, pas dupliqués ici.</div>
@@ -5449,7 +5459,7 @@ async function modalFicheClubPlus(clubId){
       <button class="btn bp bs" onclick="closeModal();switchView('mediabank')">Ouvrir Media Bank</button>
     </div>
     <div id="cfp-panel-users" style="display:none">
-      <div id="cfp-users-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+      <div id="cfp-users-list">${_cmSkel(3,22)}</div>
     </div>
     <div id="cfp-panel-gestion" style="display:none">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
@@ -5461,7 +5471,7 @@ async function modalFicheClubPlus(clubId){
       ${club.clients?.nom?`<button class="btn bg2 bs" onclick="closeModal();_openFicheFullCom('${club.portail_client_id}')">Ouvrir la fiche client Full Com liée</button>`:''}
       <div class="cd" style="margin-top:16px">
         <div class="cd-h"><div class="cd-t">Rentabilité</div></div>
-        <div id="cfp-rentabilite" style="padding:14px 16px"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+        <div id="cfp-rentabilite" style="padding:14px 16px">${_cmSkel(1,40)}</div>
       </div>
     </div>
   </div>`);
@@ -5508,7 +5518,7 @@ async function cfpLoadRentabilite(club){
 async function cfpLoadEquipes(clubId){
   const el=document.getElementById('cfp-equipes-list');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(2,28);
   try{
     const data=await sbFetch('club_teams?select=id,name&club_id=eq.'+clubId+'&order=name.asc');
     const list=Array.isArray(data)?data:[];
@@ -5519,7 +5529,7 @@ const CLUBMEMBER_ROLE_LBL={admin:'Admin',president:'Président',secretaire:'Secr
 async function cfpLoadUsers(clubId){
   const el=document.getElementById('cfp-users-list');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(3,22);
   try{
     const data=await sbFetch('club_members?select=id,prenom,nom,telephone,role,status,created_at&club_id=eq.'+clubId+'&order=created_at.asc');
     const list=Array.isArray(data)?data:[];
@@ -5717,7 +5727,7 @@ function modalModifierClient(idx){
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Modifier le client</div>
     <div style="font-size:12px;color:var(--t3);margin-bottom:8px">${esc(c.nom)}</div>
-    <div id="fce-hero-info" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"></div>
+    <div id="fce-hero-info" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"><div class="skel" style="width:180px;height:22px;border-radius:20px;background:rgba(255,255,255,.06)"></div><div class="skel" style="width:150px;height:22px;border-radius:20px;background:rgba(255,255,255,.06)"></div></div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;align-items:center;gap:14px">
         <div id="fce-logo-preview" style="width:64px;height:64px;border-radius:12px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
@@ -5729,7 +5739,7 @@ function modalModifierClient(idx){
           <span id="fce-logo-status" style="font-size:11px;color:var(--t3);margin-left:8px"></span>
         </div>
       </div>
-      ${canAssignCm?`<div><label style="${lbl}">CM assigné</label><div id="fce-cmassign" style="font-size:12px;color:var(--t3)">Chargement…</div></div>`:''}
+      ${canAssignCm?`<div><label style="${lbl}">CM assigné</label><div id="fce-cmassign">${_cmSkel(1,32)}</div></div>`:''}
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px">
         <div><label style="${lbl}">Nom *</label>
           <input id="fce-nom" type="text" class="l-inp" value="${esc(c.nom)}" style="height:38px" ${ro}>
@@ -5785,7 +5795,7 @@ function modalModifierClient(idx){
       </div>
       <div id="fce-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div id="fce-parcours" style="border-top:1px solid var(--b1);padding-top:14px;margin-top:2px">
-        <div style="font-size:12px;color:var(--t3)">Chargement du parcours…</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${Array.from({length:4}).map(()=>'<div class="skel" style="width:100px;height:24px;border-radius:999px;background:rgba(255,255,255,.06)"></div>').join('')}</div>
       </div>
       <div id="fce-tabs" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
         <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
@@ -5799,40 +5809,40 @@ function modalModifierClient(idx){
         </div>
         <div id="fce-panel-resume" style="display:none">
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Organigramme</div>
-          <div id="fce-organigramme-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div id="fce-organigramme-list">${_cmSkel(2,22)}</div>
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Suivi contacts</div>
-          <div id="fce-contacts-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+          <div id="fce-contacts-list">${_cmSkel(2,22)}</div>
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Équipe affectée</div>
-          <div id="fce-equipe-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div id="fce-equipe-list">${_cmSkel(2,28)}</div>
         </div>
         <div id="fce-panel-club" style="display:none">
-          <div id="fce-club-content"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div id="fce-club-content">${_cmSkel(3,28)}</div>
         </div>
         <div id="fce-panel-comm" style="display:none">
-          <div id="fce-comm-content"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div id="fce-comm-content">${_cmSkel(3,28)}</div>
         </div>
         <div id="fce-panel-pres">
-          <div id="fce-hist"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+          <div id="fce-hist">${_cmSkel(3,34)}</div>
         </div>
         <div id="fce-panel-biblio" style="display:none">
           <div style="font-size:12.5px;color:var(--t2);margin-bottom:10px">Les médias de production de ce client sont gérés dans Media Bank, pas dupliqués ici.</div>
-          <div id="fce-medias-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+          <div id="fce-medias-list">${_cmSkel(2,22)}</div>
           <button class="btn bp bs" style="margin-top:12px" onclick="closeModal();switchView('mediabank')">Ouvrir Media Bank</button>
         </div>
         <div id="fce-panel-finance" style="display:none">
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Contrats</div>
-          <div id="fce-contrats-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div id="fce-contrats-list">${_cmSkel(2,22)}</div>
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Devis</div>
-          <div id="fce-devis-finance-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div id="fce-devis-finance-list">${_cmSkel(2,22)}</div>
           <div style="${secHideTabs};font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Rentabilité</div>
-          <div id="fce-rentabilite" style="${secHideTabs}"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div id="fce-rentabilite" style="${secHideTabs}">${_cmSkel(1,40)}</div>
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Crédits Connect / Club+</div>
-          <div id="fce-credits" style="font-size:11.5px;color:var(--t3)">Chargement…</div>
+          <div id="fce-credits">${_cmSkel(1,18)}</div>
           <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Statut Club+</div>
-          <div id="fce-clubplus-statut" style="font-size:11.5px;color:var(--t3)">Chargement…</div>
+          <div id="fce-clubplus-statut">${_cmSkel(1,18)}</div>
         </div>
         <div id="fce-panel-docs" style="display:none">
-          <div id="fce-docs-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div id="fce-docs-list">${_cmSkel(2,22)}</div>
         </div>
       </div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:12px">
@@ -5956,7 +5966,7 @@ async function chargerFceHeroInfo(clientId){
 async function loadClientClubIdentite(clientId){
   const el=document.getElementById('fce-club-content');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(3,28);
   try{
     let club=await sbFetch('clubs?select=id,nom,saison,logo_url,ecusson_url,couleur_primaire,couleur_secondaire&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>null);
     club=(Array.isArray(club)&&club.length)?club[0]:null;
@@ -6010,7 +6020,7 @@ async function loadClientClubPlusStatut(clientId){
 async function loadClientContrats(clientId){
   const el=document.getElementById('fce-contrats-list');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(2,22);
   try{
     const data=await sbFetch('contrats?select=id,type_contrat,statut,signature_statut,montant_mensuel,date_debut,date_fin&client_id=eq.'+clientId+'&order=created_at.desc');
     const list=Array.isArray(data)?data:[];
@@ -6037,7 +6047,7 @@ async function loadClientContrats(clientId){
 async function loadClientDevisFinance(clientId){
   const el=document.getElementById('fce-devis-finance-list');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(2,22);
   try{
     const data=await sbFetch('devis?select=id,numero,statut,total_ttc,created_at&client_id=eq.'+clientId+'&order=created_at.desc&limit=20');
     const list=Array.isArray(data)?data:[];
@@ -6056,7 +6066,7 @@ async function loadClientDevisFinance(clientId){
 async function loadClientRentabilite(clientId){
   const el=document.getElementById('fce-rentabilite');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(1,40);
   try{
     const data=await sbFetch('v_rentabilite_missions?select=revenu_ht,marge_nette&client_id=eq.'+clientId+'&limit=500');
     const list=Array.isArray(data)?data:[];
@@ -6078,7 +6088,7 @@ async function loadClientRentabilite(clientId){
 async function loadClientDocuments(clientId){
   const el=document.getElementById('fce-docs-list');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(2,22);
   try{
     const [contratsD,devisD,avoirsD]=await Promise.all([
       sbFetch('contrats?select=id,type_contrat,statut,signature_statut,created_at&client_id=eq.'+clientId+'&order=created_at.desc').catch(()=>[]),
@@ -6123,7 +6133,7 @@ async function loadClientDocuments(clientId){
 async function loadClientCommunication(clientId){
   const el=document.getElementById('fce-comm-content');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(3,28);
   try{
     const [plannings,contenus]=await Promise.all([
       sbFetch('plannings_hebdo?select=id,semaine_debut,statut,cm_id&client_id=eq.'+clientId+'&order=semaine_debut.desc&limit=8'),
@@ -6440,7 +6450,7 @@ async function uploaderLogoClient(clientId){
 async function loadClientOrganigramme(clientId){
   const el=document.getElementById('fce-organigramme-list');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(2,22);
   try{
     const data=await sbFetch('client_organigramme?select=id,role,prenom,nom,email,telephone&client_id=eq.'+clientId+'&order=created_at.asc');
     const list=Array.isArray(data)?data:[];
@@ -7570,7 +7580,7 @@ const AFFIL_ROLE_LBL={cm_principal:'CM principal',cm_secondaire:'CM secondaire',
 async function loadClientEquipe(clientId){
   const el=document.getElementById('fce-equipe-list');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(2,28);
   try{
     const data=await sbFetch('client_affiliations?select=id,role_on_client,is_primary,status,end_date,profiles(prenom,nom)&client_id=eq.'+clientId+'&order=is_primary.desc,role_on_client.asc');
     const list=Array.isArray(data)?data:[];
@@ -7589,7 +7599,7 @@ async function loadClientEquipe(clientId){
 async function loadClientMedias(clientId){
   const el=document.getElementById('fce-medias-list');
   if(!el)return;
-  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  el.innerHTML=_cmSkel(2,22);
   const pres=await sbFetch('prestations?select=id&client_id=eq.'+clientId+'&limit=200').catch(()=>[]);
   const preIds=(Array.isArray(pres)?pres:[]).map(p=>p.id);
   if(!preIds.length){
@@ -7616,7 +7626,7 @@ async function loadClientMedias(clientId){
 
 async function loadClientContacts(clientId){
   const el=document.getElementById('fce-contacts-list');if(!el)return;
-  el.innerHTML='<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML=_cmSkel(2,22);
   try{
     const data=await sbFetch('client_contacts?select=id,type,resultat,note,next_action,next_action_date,created_at,auteur:profiles(prenom,nom)&client_id=eq.'+clientId+'&order=created_at.desc&limit=50');
     const list=Array.isArray(data)?data:[];
