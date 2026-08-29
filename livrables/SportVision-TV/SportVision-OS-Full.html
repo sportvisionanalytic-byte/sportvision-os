@@ -22909,12 +22909,14 @@ async function loadComptaBudgets(){
     const runRateCA=sum3(byMonthCA);
     const runRateCharges=sum3(byMonthCharges)+masseSalariale+sum3(byMonthCom)+sum3(byMonthChargesGen);
     _budgetsData={scenarios:Array.isArray(scenarios)?scenarios:[],runRateCA,runRateCharges,ready:true};
-    const fmt=n=>Math.round(n||0).toLocaleString('fr-FR')+' €';
-    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
-    set('bud-kpi-ca',fmt(runRateCA));
-    set('bud-kpi-ch',fmt(runRateCharges));
+    // Ici (contrairement au Résultat/Rentabilité/TVA), fmt() applique Math.round avant
+    // toLocaleString — ce sont des run-rates projetés, pas des montants réels au centime —
+    // donc animateNumber (qui arrondit aussi) ne tronque rien : sûr à animer, une fois par
+    // chargement (pas à chaque bascule d'horizon/scénario, qui ne touche pas ces 3 KPIs).
+    animateNumber(document.getElementById('bud-kpi-ca'),runRateCA,{suffix:' €'});
+    animateNumber(document.getElementById('bud-kpi-ch'),runRateCharges,{suffix:' €'});
     const resEl=document.getElementById('bud-kpi-res');
-    if(resEl){const res=runRateCA-runRateCharges;resEl.textContent=fmt(res);resEl.style.color=res>=0?'var(--ok)':'var(--er)';}
+    if(resEl){const res=runRateCA-runRateCharges;animateNumber(resEl,res,{suffix:' €'});resEl.style.color=res>=0?'var(--ok)':'var(--er)';}
     budgetsRenderCards();
     const pillsEl=document.getElementById('bud-scenario-pills');
     if(pillsEl){
@@ -23387,12 +23389,24 @@ async function loadComptaClotures(){
     set('clo-kpi-clos',nbClotures);
     set('clo-kpi-enc',encours>0?encours.toLocaleString('fr-FR')+' €':'0 €');
     set('clo-kpi-cur',months[months.length-1].label);
-    el.innerHTML='<div class="tw"><table><thead><tr><th>Mois</th><th>Statut</th><th>CA encaissé</th><th>Prestations</th><th>Actions</th></tr></thead><tbody>'+
-      months.map(m=>{
+    // Retard de clôture : mois consécutifs restés ouverts avant le mois en cours (qui est
+    // normalement encore ouvert). Même calcul que loadExpertComptableDash — dupliqué ici pour
+    // que la personne qui clôture réellement (pas seulement la vue de synthèse expert-comptable)
+    // voie aussi le signal.
+    const openFlags=months.map(m=>periodsByKey[m.key]!=='cloturee');
+    let maxConsecOpen=0,streak=0;
+    for(let i=0;i<months.length-1;i++){
+      if(openFlags[i]){streak++;maxConsecOpen=Math.max(maxConsecOpen,streak);}else streak=0;
+    }
+    const retard=maxConsecOpen>=2;
+    el.innerHTML=(retard?`<div style="padding:10px 17px;margin-bottom:10px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rb);font-size:12.5px;color:var(--er)">⚠ Plusieurs mois consécutifs sont restés ouverts — retard probable de clôture.</div>`:'')+
+      '<div class="tw"><table><thead><tr><th>Mois</th><th>Statut</th><th>CA encaissé</th><th>Prestations</th><th>Actions</th></tr></thead><tbody>'+
+      months.map((m,i)=>{
         const cloturee=periodsByKey[m.key]==='cloturee';
-        return `<tr>
-        <td style="font-weight:${m.current?700:400};color:${m.current?'var(--acc)':'var(--t1)'}">${m.label}</td>
-        <td><span class="bd ${cloturee?'ba':'bb'}"><span class="bd-d"></span>${cloturee?'Clôturé':'Ouvert'}</span></td>
+        const alerte=!cloturee&&i<months.length-1&&retard;
+        return `<tr style="${alerte?'background:rgba(240,68,94,.05)':''}">
+        <td style="font-weight:${m.current?700:400};color:${m.current?'var(--acc)':'var(--t1)'};${alerte?'border-left:2px solid var(--er)':''}">${m.label}</td>
+        <td><span class="bd ${cloturee?'ba':(alerte?'br':'bb')}"><span class="bd-d"></span>${cloturee?'Clôturé':(alerte?'Ouvert (retard)':'Ouvert')}</span></td>
         <td class="tm" style="font-weight:600">${fmt(byMonth[m.key]?.ca)}</td>
         <td class="tm">${byMonth[m.key]?.nb||'—'}</td>
         <td style="display:flex;gap:6px">
