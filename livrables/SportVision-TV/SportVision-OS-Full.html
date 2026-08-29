@@ -11591,8 +11591,20 @@ async function modalEquipePrestation(prestationId,ref){
       <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="ajouterMembreEquipe('${prestationId}','${ref}')">+ Ajouter</button></div>
     </div>
     <div id="eq-err" style="font-size:12px;color:var(--er);margin-top:8px;min-height:14px"></div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin:18px 0 8px">Matériel (spec §20-22)</div>
+    <div id="eq-kits-liste" style="min-height:30px;margin-bottom:12px"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div style="background:var(--s2);border-radius:var(--rb);padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">Attribuer un kit</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <select id="eq-kit-col" class="l-inp" style="height:36px"><option value="">— Opérateur —</option></select>
+        <select id="eq-kit-id" class="l-inp" style="height:36px"><option value="">— Kit disponible —</option></select>
+      </div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="attribuerKitPrestation('${prestationId}','${ref}')">+ Attribuer</button></div>
+      <div id="eq-kit-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+    </div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
   await chargerEquipe(prestationId,ref);
+  await chargerKitsPrestation(prestationId,ref);
   sbFetch('prestations?id=eq.'+prestationId+'&select=format_mission').then(d=>{
     const f=document.getElementById('eq-format');
     if(f&&d?.[0]?.format_mission)f.value=d[0].format_mission;
@@ -11674,6 +11686,80 @@ async function chargerEquipe(prestationId,ref){
     }).join('');
   }catch(e){el.innerHTML='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';}
 }
+
+// Attribution de kit depuis la fiche mission (spec §20-22, 29/08) : le Responsable
+// Production attribue les kits SportVision aux opérateurs qui n'ont pas leur matériel
+// personnel adapté — "ne pas attribuer systématiquement un kit à tout le monde" (§20). Le
+// menu déroulant ne propose QUE les kits statut='disponible' (§21 "propose uniquement les
+// kits compatibles et libres") : impossible de sélectionner un kit déjà engagé, ce qui
+// prévient le conflit à la source plutôt que de le détecter après coup (§22 "conflits
+// forts doivent bloquer la confirmation" — ici, le kit indisponible n'apparaît simplement
+// pas dans la liste).
+async function chargerKitsPrestation(prestationId,ref){
+  const el=document.getElementById('eq-kits-liste');
+  const selCol=document.getElementById('eq-kit-col');
+  const selKit=document.getElementById('eq-kit-id');
+  if(!el)return;
+  try{
+    const [resaRaw,equipeRaw,kitsRaw]=await Promise.all([
+      // FK explicite obligatoire : kit_reservations a 3 colonnes vers profiles
+      // (collaborateur_id/created_by/responsable_id), PostgREST refuse l'embed ambigu sinon
+      // (PGRST201, trouvé en testant en RLS réelle avant de considérer ce code fini).
+      sbFetch('kit_reservations?select=id,statut,kits(nom,type_kit),collaborateur:profiles!kit_reservations_collaborateur_id_fkey(prenom,nom)&prestation_id=eq.'+prestationId+'&statut=not.in.(retourné)'),
+      sbFetch('prestations_equipe_display?select=collaborateur_id,collaborateur:profiles(prenom,nom)&prestation_id=eq.'+prestationId+'&statut=eq.acceptée'),
+      sbFetch('kits?select=id,nom,type_kit&statut=eq.disponible&order=nom.asc'),
+    ]);
+    const resa=Array.isArray(resaRaw)?resaRaw:[];
+    if(!resa.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:4px 0">Aucun kit attribué.</div>';}
+    else{
+      el.innerHTML=resa.map(r=>{
+        const nom=[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||'—';
+        return`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+          <span style="flex:1;font-size:12.5px;color:var(--t1)">${esc(r.kits?.nom||'Kit')} <span style="color:var(--t3)">→ ${esc(nom)}</span></span>
+          <button onclick="libererKitPrestation('${r.id}','${prestationId}','${ref}')" style="padding:4px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Libérer</button>
+        </div>`;
+      }).join('');
+    }
+    if(selCol){
+      selCol.innerHTML='<option value="">— Opérateur —</option>'+(Array.isArray(equipeRaw)?equipeRaw:[]).map(e=>
+        `<option value="${e.collaborateur_id}">${esc([e.collaborateur?.prenom,e.collaborateur?.nom].filter(Boolean).join(' ')||'—')}</option>`).join('');
+    }
+    if(selKit){
+      selKit.innerHTML='<option value="">— Kit disponible —</option>'+(Array.isArray(kitsRaw)?kitsRaw:[]).map(k=>
+        `<option value="${k.id}">${esc(k.nom)}${k.type_kit?' ('+esc(k.type_kit)+')':''}</option>`).join('');
+    }
+  }catch(e){if(el)el.innerHTML='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';}
+}
+async function attribuerKitPrestation(prestationId,ref){
+  const err=document.getElementById('eq-kit-err');
+  const colId=document.getElementById('eq-kit-col')?.value;
+  const kitId=document.getElementById('eq-kit-id')?.value;
+  if(!colId||!kitId){err.textContent='Sélectionne un opérateur et un kit.';return;}
+  err.textContent='Attribution…';
+  try{
+    const date=await sbFetch('prestations?id=eq.'+prestationId+'&select=date_prestation');
+    const r=await sbFetch('kit_reservations',{method:'POST',body:{
+      kit_id:kitId,prestation_id:prestationId,collaborateur_id:colId,statut:'réservé',
+      date_sortie:date?.[0]?.date_prestation||null,responsable_id:S.uid,created_by:S.uid,
+    }});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'attribution impossible.');return;}
+    await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'réservé'}}).catch(()=>{});
+    err.textContent='';
+    toast('Kit attribué.','ok');
+    chargerKitsPrestation(prestationId,ref);
+  }catch(e){err.textContent='Erreur lors de l\'attribution.';}
+}
+async function libererKitPrestation(reservationId,prestationId,ref){
+  try{
+    const resa=await sbFetch('kit_reservations?id=eq.'+reservationId+'&select=kit_id');
+    const r=await sbFetch('kit_reservations?id=eq.'+reservationId,{method:'PATCH',body:{statut:'retourné',date_retour_effective:new Date().toISOString()}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'libération impossible.'),'er');return;}
+    if(resa?.[0]?.kit_id)await sbFetch('kits?id=eq.'+resa[0].kit_id,{method:'PATCH',body:{statut:'disponible'}}).catch(()=>{});
+    toast('Kit libéré.','ok');
+    chargerKitsPrestation(prestationId,ref);
+  }catch(e){toast('Erreur lors de la libération.','er');}
+}
+
 function modifierRemunerationMembre(equipeId,prestationId,ref,current){
   const v=prompt('Rémunération (€) pour ce collaborateur :',current||'');
   if(v===null)return;
