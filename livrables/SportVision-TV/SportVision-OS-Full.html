@@ -778,6 +778,10 @@ const NAV={
     {id:'rapport',lb:'Rapport mensuel',ic:'fin',hidden:true},
     {id:'documents',lb:'Centre documentaire',ic:'doc',hidden:true},
     {type:'sep',lb:'Espace'},
+    // Moteur global "À traiter" (spec §14-21, 29/08/2026) : en secondaire (§3 de la spec),
+    // pas dans "Opérations" — c'est un centre transverse de suivi, pas un flux de travail
+    // quotidien comme Tableau de bord/Planning/Prestations.
+    {id:'atraiter',lb:'À traiter',ic:'alert'},
     {id:'integrations',lb:'Intégrations',ic:'set'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
@@ -1338,6 +1342,24 @@ const VIEWS={
   'admin.equipeoverview':()=>`
     <div class="sh"><div class="sh-t">Équipe — Vue d'ensemble</div></div>
     <div id="eqov-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // Moteur global "À traiter" (spec §14-21, 29/08/2026) — voir le commentaire détaillé
+  // au-dessus de computeATraiterItems() pour l'architecture (calcul live, pas de nouvelle
+  // table de faits) et les limites assumées de chaque règle du §18.
+  'admin.atraiter':()=>`
+    <div class="sh"><div><div class="sh-t">À traiter</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Vue transverse — tous les signaux qui nécessitent une action, tous rôles confondus</div></div>
+      <button class="btn bg2 bs" id="atr-showall-btn" onclick="atraiterToggleShowAll()">Voir résolus/ignorés</button>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:var(--er)"><div class="kpi-ey">Ouverts</div><div class="kpi-v" id="atr-kpi-ouvert" style="color:var(--er)">—</div></div>
+      <div class="kpi" style="--kl:var(--acc)"><div class="kpi-ey">En cours</div><div class="kpi-v" id="atr-kpi-encours" style="color:var(--acc)">—</div></div>
+      <div class="kpi" style="--kl:var(--wa)"><div class="kpi-ey">En attente</div><div class="kpi-v" id="atr-kpi-attente" style="color:var(--wa)">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn bg2 bs" data-atr-type-f="all" onclick="atraiterFilterType('all')" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
+      ${Object.entries(ATRAITER_TYPES).map(([k,m])=>`<button class="btn bg2 bs" data-atr-type-f="${k}" onclick="atraiterFilterType('${k}')">${m.lb}</button>`).join('')}
+    </div>
+    <div id="atraiter-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'admin.recrutement':()=>`
     <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Candidatures reçues via le site — pipeline Nouveaux → Collaborateur</div></div></div>
@@ -4340,6 +4362,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='form'){await loadAdminForm();}
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';await loadKits();}
   if(role==='admin'&&view==='dash') await loadAdminDash();
+  if(role==='admin'&&view==='atraiter') await loadATraiter();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='prod'&&view==='dash') await loadProdDash();
   if(role==='prod'&&view==='pre') await loadProdPrestations();
@@ -7731,6 +7754,308 @@ async function loadAdminDash(){
       </div>`).join('');
     }
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MOTEUR GLOBAL "À TRAITER" (spec §14-21, nuit du 29/08/2026)
+// ══════════════════════════════════════════════════════════════════════════
+// Choix d'architecture (Option A de la mission) : PAS de nouvelle table de faits
+// `action_items` alimentée par des triggers Postgres (ce que §14 "EVENT → RULE → ACTION
+// ITEM" suggère dans son sens le plus littéral). Cet écran calcule les items EN LIVE, à
+// chaque chargement, en réutilisant TELS QUELS les filtres déjà utilisés par les écrans
+// existants qui détectaient chacun de leur côté un sous-ensemble de ces signaux
+// (dash-traiter du Dashboard admin plus haut, le bloc "À traiter" de loadProdDash
+// construit ce soir, l'Inbox de loadSecDemandes, docrh, loadAdminDash) — chaque bloc
+// ci-dessous indique sa source. Un vrai moteur de règles configurable + triggers de
+// fermeture automatique aurait demandé de repenser la table `notifications` existante et
+// de couvrir la RLS de bout en bout pour chaque événement du §18 : hors de portée d'une
+// nuit sans risquer une régression sur les écrans qui dépendent déjà de ces mêmes tables.
+//
+// Résolution automatique (§19) : pas de champ resolved_at à mettre à jour quelque part —
+// chaque item est recalculé à chaque chargement depuis sa condition source ; dès que la
+// condition disparaît (mission assignée, planning envoyé, devis accepté, paiement
+// confirmé...), l'item n'apparaît simplement plus au prochain calcul. C'est la
+// résolution automatique demandée par la spec, obtenue par construction (calcul live),
+// sans avoir à la coder explicitement.
+//
+// Persistance manuelle (§16) : la table légère `atraiter_overrides`
+// (migration-atraiter-overrides.sql) stocke UNIQUEMENT les changements d'état qu'un
+// humain a faits à la main (Prendre en charge / Mettre en attente / Résoudre / Ignorer)
+// — un calcul live ne peut évidemment pas les connaître. Clé déterministe
+// item_key = "type|source_table|source_id" : la même situation métier retombe toujours
+// sur la même ligne d'override d'une session à l'autre. Si la condition source disparaît
+// pendant qu'un override existe, l'override devient simplement orphelin (jamais nettoyé
+// automatiquement ce soir — coût négligeable, pas de job de purge prévu).
+//
+// Limites assumées et documentées plutôt que devinées :
+// - "Club+ demande non prise >4h ouvrées" (§18) utilise 4 heures CALENDAIRES, pas des
+//   heures ouvrées au sens strict — aucune notion de calendrier ouvré (jours fériés,
+//   horaires de bureau) n'existe ailleurs dans le schéma ; en inventer une pour ce seul
+//   item aurait été disproportionné pour ce soir.
+// - "Système / intégration" (§15) n'a aujourd'hui aucun signal détectable
+//   automatiquement (pas de table de suivi des échecs d'intégration/webhooks) :
+//   catégorie définie dans ATRAITER_TYPES mais qui restera toujours vide tant qu'un tel
+//   suivi n'existe pas — volontairement pas de faux signal inventé pour la remplir.
+// - "Full Com à 14j sans planning" (§18) : un client Full Communication actif est
+//   considéré "couvert" dès qu'une plannings_hebdo (soumis OU déjà validé) existe avec
+//   semaine_debut dans les 14 prochains jours. Ne détecte pas une semaine couverte
+//   partiellement (ex. planning soumis mais refusé puis jamais resoumis) — cf. le motif
+//   de refus déjà visible ailleurs (loadCmPlanningMensuel) pour ce cas plus fin.
+
+const ATRAITER_TYPES={
+  urgence:{lb:'Urgence',color:'var(--er)'},
+  client:{lb:'Client',color:'#00B8D4'},
+  production:{lb:'Production',color:'#2ECC8A'},
+  communication:{lb:'Communication',color:'#F5A524'},
+  finance:{lb:'Finance',color:'#FF6B35'},
+  equipe:{lb:'Équipe / RH',color:'#7C4DFF'},
+  commercial:{lb:'Commercial',color:'#366BFF'},
+  document:{lb:'Document',color:'#9AA5B1'},
+  systeme:{lb:'Système / intégration',color:'#9AA5B1'},
+};
+const ATRAITER_STATUTS={
+  ouvert:{lb:'Ouvert',bg:'rgba(240,68,94,.12)',fg:'var(--er)'},
+  en_cours:{lb:'En cours',bg:'rgba(54,107,255,.12)',fg:'var(--acc)'},
+  en_attente:{lb:'En attente',bg:'rgba(245,165,36,.12)',fg:'var(--wa)'},
+  resolu:{lb:'Résolu',bg:'rgba(46,204,138,.12)',fg:'var(--ok)'},
+  ignore:{lb:'Ignoré',bg:'rgba(255,255,255,.06)',fg:'var(--t3)'},
+};
+let _atraiterRawItems=[];
+let _atraiterOverrides=new Map();
+let _atraiterTypeFilter='all';
+let _atraiterShowAll=false;
+
+// Calcule tous les items EN LIVE (lecture seule). roleFilter optionnel (§17) : restreint
+// aux types pertinents pour un métier donné (ex. 'sec' → client/commercial/document/
+// equipe). Sans roleFilter (admin) → tout, aucune restriction de type.
+async function computeATraiterItems(roleFilter){
+  const today=ymdLocal();
+  const now=new Date();
+  const d=(n)=>{const x=new Date();x.setDate(x.getDate()+n);return ymdLocal(x);};
+  const in3s=d(3), in7s=d(7), in14s=d(14), cutoff5s=d(-5);
+  const cutoff4h=new Date(now.getTime()-4*3600*1000).toISOString();
+  const items=[];
+  const add=(type,niveau,titre,texte,action,roleResp,sourceType,sourceId,createdAt)=>{
+    items.push({key:`${type}|${sourceType}|${sourceId}`,type,niveau,titre,texte,action,roleResp,createdAt:createdAt||null});
+  };
+  const safe=async(p)=>{try{const r=await p;return Array.isArray(r)?r:[];}catch(e){return [];}};
+
+  const [
+    pre,kitRes,notifRefus,notifCm,inc,
+    facturesRetard,paiementsEchoues,
+    devisExp,devisSansReponse,
+    docsRh,candidatures,planSoumis,
+    fcContrats,fcPlannings,
+    cbreq,ccsr,cbk,mreq,cst,
+  ]=await Promise.all([
+    // Base prestations réutilisée pour 4 signaux (missions urgentes, kit à attribuer,
+    // livraison à valider, facture en retard) — même select que preRaw de loadProdDash,
+    // + statut_financier ajouté pour éviter une 5e requête séparée.
+    safe(sbFetch('prestations?select=id,statut,statut_financier,reference,type_prestation,date_prestation,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,materiel_personnel))')),
+    safe(sbFetch('kit_reservations?select=id,kit_id,prestation_id,statut,prestations(date_prestation,reference,clients(nom))&statut=in.(pré_réservé,réservé,sorti,en_prestation,à_récupérer,à_retourner)')),
+    safe(sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.mission_refusee&lue=eq.false&order=created_at.desc&limit=10')),
+    safe(sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.changement_planning_cm&lue=eq.false&order=created_at.desc&limit=10')),
+    safe(sbFetch('incidents?select=id,type_incident,description,niveau,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&niveau=eq.critique&order=created_at.desc&limit=10')),
+    safe(sbFetch('prestations?select=id,reference,clients(nom)&statut_financier=eq.en_retard&limit=20')),
+    safe(sbFetch('paiements?select=id,montant,client:clients(nom),created_at&statut=eq.echoue&order=created_at.desc&limit=20')),
+    safe(sbFetch(`devis?select=id,numero,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&date_expiration=lte.${in7s}&order=date_expiration.asc&limit=10`)),
+    safe(sbFetch(`devis?select=id,numero,date_envoi,clients(nom)&statut=eq.envoyé&date_envoi=lte.${cutoff5s}&order=date_envoi.asc&limit=10`)),
+    safe(sbFetch('secretariat_documents?select=id,categorie,nom,proprietaire_label,statut_affichage,date_echeance&statut_affichage=in.(manquant,a_valider,expire_bientot)&order=date_echeance.asc.nullslast&limit=30')),
+    safe(sbFetch('recruitment_applications?select=id,nom,prenom,created_at&statut=in.(nouveau,a_appeler,entretien)&order=created_at.asc&limit=20')),
+    safe(sbFetch('plannings_hebdo?select=id,client_id,semaine_debut,clients(nom)&statut=eq.soumis&order=semaine_debut.asc&limit=20')),
+    safe(sbFetch('contrats?select=client_id,clients(id,nom)&type_contrat=eq.full_communication&statut=eq.actif')),
+    safe(sbFetch(`plannings_hebdo?select=client_id&semaine_debut=gte.${today}&semaine_debut=lte.${in14s}&statut=in.(soumis,valide)`)),
+    safe(sbFetch('club_requests?select=id,club_id,type,team,urgency,created_at,taken_by,clubs(nom)&status=eq.recues&order=created_at.asc&limit=50')),
+    safe(sbFetch('connect_clubplus_signup_requests?select=id,club_nom,organization_type,created_at&statut=eq.a_traiter&order=created_at.asc&limit=20')),
+    safe(sbFetch('club_bookings?select=id,club_id,service_label,event_date,created_at,clubs(nom)&status=in.(recue,qualifiee)&order=created_at.asc&limit=20')),
+    safe(sbFetch('membership_requests?select=id,club_id,created_at,clubs(nom),club_teams(name)&statut=in.(a_verifier,autorisation_manquante,en_attente_parent,pret_a_valider,transferee_admin)&order=created_at.asc&limit=20')),
+    safe(sbFetch('club_support_tickets?select=id,club_id,subject,created_at,clubs(nom)&status=in.(ouvert,en_cours)&order=created_at.asc&limit=20')),
+  ]);
+
+  // ── Production ────────────────────────────────────────────────────────
+  const PROD_ACTIVE_ST=['confirmée','à_planifier','planifiée','équipe_affectée','prête'];
+  // Urgence Production (§18 "Mission <72h sans opérateur") : fenêtre stricte à 3 jours —
+  // même critère "aucun membre acceptée" que missionsAAttribuer de loadProdDash, mais
+  // resserré (loadProdDash reste volontairement sur 7j, un signal d'anticipation, pas une
+  // urgence à ce niveau transverse).
+  pre.filter(p=>PROD_ACTIVE_ST.includes(p.statut)&&p.date_prestation&&p.date_prestation>=today&&p.date_prestation<=in3s
+    &&!(p.prestations_equipe||[]).some(e=>e.statut==='acceptée'))
+    .forEach(p=>add('urgence','urgent','Mission sans opérateur (<72h)',`${p.clients?.nom||p.reference||'—'} — ${p.type_prestation||'—'}`,`modalDetailById('${p.id}')`,'prod','prestations',p.id,p.date_prestation));
+  // Kit à attribuer : opérateur affecté sans matériel perso ET sans réservation de kit —
+  // même règle que loadProdDash (missions7j), fenêtre 7j (moins urgent qu'une mission sans
+  // opérateur du tout).
+  pre.filter(p=>p.date_prestation&&p.date_prestation>=today&&p.date_prestation<=in7s
+    &&(p.prestations_equipe||[]).some(e=>e.statut==='acceptée'&&!e.collaborateur?.materiel_personnel&&!kitRes.some(r=>r.prestation_id===p.id)))
+    .forEach(p=>add('production','important','Kit à attribuer',`${p.clients?.nom||p.reference||'—'} (opérateur sans matériel perso)`,`switchView('kits')`,'prod','prestations',p.id,p.date_prestation));
+  // Conflit matériel : >1 réservation active sur le même kit le même jour (même
+  // regroupement que loadProdDash).
+  const kitConflitMap=new Map();
+  kitRes.forEach(r=>{const dd=r.prestations?.date_prestation;if(!dd)return;const key=r.kit_id+'|'+dd;if(!kitConflitMap.has(key))kitConflitMap.set(key,[]);kitConflitMap.get(key).push(r);});
+  [...kitConflitMap.entries()].filter(([,g])=>g.length>1).forEach(([key,g])=>{
+    add('production','important','Conflit matériel',`${g.length} réservations sur le même kit — ${g[0].prestations?.clients?.nom||g[0].prestations?.reference||'—'}`,`switchView('kits')`,'prod','kit_reservations',key,g[0].prestations?.date_prestation);
+  });
+  notifRefus.forEach(n=>add('production','important','Opérateur a refusé',n.prestations?.clients?.nom||n.message||'—',n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
+  notifCm.forEach(n=>add('production','important','Mission modifiée par le CM',n.prestations?.clients?.nom||n.message||'—',n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
+  // Livraison soumise → à valider (§18) : statut='livrée' = seul statut que
+  // validate_production() sait faire transitionner (même règle que loadProdDash).
+  pre.filter(p=>p.statut==='livrée').forEach(p=>add('production','normal','Livraison à valider',p.clients?.nom||p.reference||'—',`modalDetailById('${p.id}')`,'prod','prestations',p.id,p.date_prestation));
+  inc.forEach(al=>add('urgence','urgent','Incident critique',al.type_incident||al.description?.slice(0,60)||'—',`switchView('incidents')`,'prod','incidents',al.id,al.created_at));
+
+  // ── Finance ───────────────────────────────────────────────────────────
+  facturesRetard.forEach(p=>add('finance','urgent','Facture en retard',p.clients?.nom||p.reference||'—',`modalDetailById('${p.id}')`,'compta','prestations',p.id));
+  paiementsEchoues.forEach(pm=>add('finance','urgent','Paiement échoué',`${pm.client?.nom||'—'} — ${(pm.montant||0).toLocaleString('fr-FR')} €`,`switchView('encaissements')`,'compta','paiements',pm.id,pm.created_at));
+
+  // ── Commercial ────────────────────────────────────────────────────────
+  devisExp.forEach(dv=>{
+    const isExpired=dv.date_expiration&&dv.date_expiration<today;
+    add('commercial','important',isExpired?'Devis expiré':'Devis arrive à expiration',dv.clients?.nom||dv.numero||'—',`switchView('devis')`,'com','devis',dv.id,dv.date_expiration);
+  });
+  // Devis envoyé >5j sans réponse (§18, règle explicite) — cutoff5s calculé plus haut.
+  devisSansReponse.forEach(dv=>add('commercial','important','Devis sans réponse (>5j)',dv.clients?.nom||dv.numero||'—',`switchView('devis')`,'com','devis',dv.id,dv.date_envoi));
+
+  // ── Équipe / RH ───────────────────────────────────────────────────────
+  candidatures.forEach(c=>add('equipe','normal','Candidature à examiner',[c.prenom,c.nom].filter(Boolean).join(' ')||'—',`switchView('recrutement')`,'sec','recruitment_applications',c.id,c.created_at));
+
+  // ── Document ──────────────────────────────────────────────────────────
+  // secretariat_documents.statut_affichage est déjà calculé côté base (vue documentaire,
+  // migration-documents-rh-v2-vue-secretariat.sql) — aucun recalcul ici, juste un filtre.
+  const DOC_LBL={manquant:'Document manquant',a_valider:'Document à valider',expire_bientot:'Document expire bientôt'};
+  docsRh.forEach(doc=>add('document','normal',DOC_LBL[doc.statut_affichage]||'Document à traiter',`${doc.proprietaire_label||'—'} — ${doc.nom||doc.categorie||'—'}`,`switchView('docrh')`,'sec','secretariat_documents',doc.id,doc.date_echeance));
+
+  // ── Communication ─────────────────────────────────────────────────────
+  planSoumis.forEach(p=>add('communication','normal','Planning CM à valider',p.clients?.nom||'—',`modalPlanningsAValider()`,'admin','plannings_hebdo',p.id));
+  // Full Com à 14j sans planning (§18) — cf. limite documentée en en-tête de section.
+  const fcCovered=new Set(fcPlannings.map(p=>p.client_id));
+  fcContrats.filter(c=>!fcCovered.has(c.client_id)).forEach(c=>add('communication','important','Planning à envoyer (Full Com, 14j)',c.clients?.nom||'—',`switchView('planningmensuel')`,'cm','contrats',c.client_id));
+
+  // ── Client (Club+) ────────────────────────────────────────────────────
+  // Demande non prise >4h (§18, règle explicite) : même requête que loadSecDemandes/
+  // loadCmDemandes (status='recues'), filtre client-side ajouté sur taken_by+ancienneté —
+  // "heures ouvrées" approximé en heures calendaires, cf. limite documentée en en-tête.
+  cbreq.filter(r=>!r.taken_by&&r.created_at&&r.created_at<=cutoff4h)
+    .forEach(r=>add('client','urgent','Demande Club+ non prise (>4h)',`${r.clubs?.nom||'—'}${r.team?' — '+r.team:''}`,`modalClubRequestApercu('${r.id}')`,'cm','club_requests',r.id,r.created_at));
+  ccsr.forEach(r=>add('client','normal','Ouverture Club+ à traiter',r.club_nom||'—',`modalDemandesClubConnect()`,'sec','connect_clubplus_signup_requests',r.id,r.created_at));
+  cbk.forEach(b=>add('client','normal','Réservation club à traiter',b.clubs?.nom||b.service_label||'—',`modalReservationClub('${b.id}')`,'sec','club_bookings',b.id,b.created_at));
+  mreq.forEach(r=>add('client','normal',"Demande d'adhésion à traiter",r.clubs?.nom||'—',`modalMembershipRequestApercu('${r.id}')`,'sec','membership_requests',r.id,r.created_at));
+  cst.forEach(t=>add('client','normal','Ticket support à traiter',`${t.clubs?.nom||'—'}${t.subject?' — '+t.subject:''}`,`modalSupportTicketApercu('${t.id}')`,'sec','club_support_tickets',t.id,t.created_at));
+
+  const ROLE_SCOPE={
+    sec:['client','commercial','document','equipe'],
+    prod:['production','urgence'],
+    cm:['client','communication'],
+    com:['commercial'],
+  };
+  return roleFilter&&ROLE_SCOPE[roleFilter]?items.filter(it=>ROLE_SCOPE[roleFilter].includes(it.type)):items;
+}
+
+async function loadATraiter(){
+  const el=document.getElementById('atraiter-real');
+  if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const [items,overridesRaw]=await Promise.all([
+      computeATraiterItems(),
+      sbFetch('atraiter_overrides?select=item_key,statut').catch(()=>[]),
+    ]);
+    _atraiterRawItems=items;
+    _atraiterOverrides=new Map((Array.isArray(overridesRaw)?overridesRaw:[]).map(o=>[o.item_key,{statut:o.statut}]));
+    renderATraiter();
+  }catch(e){
+    console.error('loadATraiter',e);
+    if(el)el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+function renderATraiter(){
+  const el=document.getElementById('atraiter-real');if(!el)return;
+  let list=_atraiterRawItems.map(it=>{
+    const ov=_atraiterOverrides.get(it.key);
+    return {...it,statut:ov?ov.statut:'ouvert'};
+  });
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  set('atr-kpi-ouvert',list.filter(x=>x.statut==='ouvert').length);
+  set('atr-kpi-encours',list.filter(x=>x.statut==='en_cours').length);
+  set('atr-kpi-attente',list.filter(x=>x.statut==='en_attente').length);
+
+  if(!_atraiterShowAll)list=list.filter(x=>!['resolu','ignore'].includes(x.statut));
+  if(_atraiterTypeFilter!=='all')list=list.filter(x=>x.type===_atraiterTypeFilter);
+
+  if(!list.length){
+    el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Rien à traiter pour l\'instant.</div>';
+    return;
+  }
+  const TYPE_ORDER=['urgence','client','production','communication','finance','equipe','commercial','document','systeme'];
+  const NIVEAU_ORDER={urgent:0,important:1,normal:2};
+  list.sort((a,b)=>(NIVEAU_ORDER[a.niveau]??2)-(NIVEAU_ORDER[b.niveau]??2));
+  let html='';
+  TYPE_ORDER.forEach(type=>{
+    const groupItems=list.filter(x=>x.type===type);
+    if(!groupItems.length)return;
+    const meta=ATRAITER_TYPES[type];
+    html+=`<div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:8px;margin:0 0 8px 2px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${meta.color};flex-shrink:0"></div>
+        <div style="font-size:12.5px;font-weight:700;color:var(--t1);text-transform:uppercase;letter-spacing:.3px">${meta.lb}</div>
+        <div style="font-size:11px;color:var(--t3)">${groupItems.length}</div>
+      </div>
+      <div class="cd" style="padding:0">
+        ${groupItems.map((it,i)=>{
+          const sm=ATRAITER_STATUTS[it.statut];
+          const niveauColor=it.niveau==='urgent'?'var(--er)':it.niveau==='important'?'var(--wa)':'var(--t3)';
+          const kSafe=escJs(it.key),tSafe=escJs(it.type),titreSafe=escJs(it.titre);
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;${i<groupItems.length-1?'border-bottom:1px solid var(--b1)':''}">
+            <div style="width:6px;height:6px;border-radius:50%;background:${niveauColor};flex-shrink:0"></div>
+            <div style="flex:1;min-width:180px;cursor:pointer" onclick="${it.action}">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(it.titre)}</div>
+              <div style="font-size:11.5px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(it.texte)}</div>
+            </div>
+            <span class="bd" style="background:${sm.bg};color:${sm.fg};flex-shrink:0">${sm.lb}</span>
+            <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap">
+              ${it.statut==='ouvert'?`<button title="Prendre en charge" style="padding:4px 8px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:6px;color:var(--acc);font-size:10.5px;cursor:pointer" onclick="atraiterSetStatut('${kSafe}','${tSafe}','${titreSafe}','en_cours')">Prendre</button>`:''}
+              ${['ouvert','en_cours'].includes(it.statut)?`<button title="Mettre en attente" style="padding:4px 8px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:6px;color:var(--wa);font-size:10.5px;cursor:pointer" onclick="atraiterSetStatut('${kSafe}','${tSafe}','${titreSafe}','en_attente')">Attente</button>`:''}
+              ${it.statut!=='resolu'?`<button title="Marquer résolu" style="padding:4px 8px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:10.5px;cursor:pointer" onclick="atraiterSetStatut('${kSafe}','${tSafe}','${titreSafe}','resolu')">Résolu</button>`:''}
+              ${it.statut!=='ignore'?`<button title="Ignorer" style="padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:6px;color:var(--t3);font-size:10.5px;cursor:pointer" onclick="atraiterSetStatut('${kSafe}','${tSafe}','${titreSafe}','ignore')">Ignorer</button>`:''}
+              ${['resolu','ignore'].includes(it.statut)?`<button title="Rouvrir" style="padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:6px;color:var(--t3);font-size:10.5px;cursor:pointer" onclick="atraiterSetStatut('${kSafe}','${tSafe}','${titreSafe}','ouvert')">Rouvrir</button>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// Persiste (ou supprime, pour 'ouvert' = retour à l'état calculé par défaut) l'état
+// manuel d'un item dans atraiter_overrides. Upsert sur item_key (clé déterministe
+// type|source_table|source_id) : rejouer la même action sur le même item écrase
+// simplement la ligne précédente, idempotent par construction.
+async function atraiterSetStatut(key,type,titre,statut){
+  if(statut==='ouvert'){
+    await sbFetch('atraiter_overrides?item_key=eq.'+encodeURIComponent(key),{method:'DELETE'});
+    _atraiterOverrides.delete(key);
+  } else {
+    const uid=localStorage.getItem('sv_uid');
+    const body={item_key:key,type,titre,statut,user_id:uid||null};
+    const r=await sbFetch('atraiter_overrides?on_conflict=item_key',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible'),'er');return;}
+    _atraiterOverrides.set(key,{statut});
+  }
+  toast('Mis à jour.','ok');
+  renderATraiter();
+}
+function atraiterFilterType(t){
+  _atraiterTypeFilter=t;
+  document.querySelectorAll('[data-atr-type-f]').forEach(b=>{
+    const on=b.dataset.atrTypeF===t;
+    b.style.background=on?'rgba(54,107,255,.15)':'';
+    b.style.color=on?'var(--acc)':'';
+  });
+  renderATraiter();
+}
+function atraiterToggleShowAll(){
+  _atraiterShowAll=!_atraiterShowAll;
+  const btn=document.getElementById('atr-showall-btn');
+  if(btn)btn.textContent=_atraiterShowAll?'Masquer résolus/ignorés':'Voir résolus/ignorés';
+  renderATraiter();
 }
 
 async function loadProdHub(){
