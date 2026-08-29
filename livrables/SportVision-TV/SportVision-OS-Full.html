@@ -1262,6 +1262,7 @@ const VIEWS={
         <select id="cg-f-collab" class="fi" style="max-width:180px" onchange="applyCalGlobalFilters()"><option value="">Tous les collaborateurs</option></select>
         <span style="font-size:11px;color:var(--t3);margin-left:auto" id="cg-f-count"></span>
       </div>
+      <div id="cg-legend" style="padding:0 14px;display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <div id="calglobal-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -25474,6 +25475,25 @@ function populateCalGlobalFilters(){
   fill('cg-f-statut',distinct('statut'),null);
   fill('cg-f-sport',distinct('sport'),null);
   fill('cg-f-collab',distinct('responsible_nom'),null);
+  // Légende couleurs (polish premium) : seuls les types réellement présents sur la période
+  // affichée, cliquables pour filtrer — évite d'avoir à survoler chaque événement (11 types
+  // possibles, cf. CAL_GLOBAL_TYPE_COLOR) pour comprendre le code couleur de l'agrégat.
+  const legendEl=document.getElementById('cg-legend');
+  if(legendEl){
+    const types=distinct('display_type');
+    legendEl.style.paddingBottom=types.length?'12px':'0';
+    legendEl.innerHTML=types.map(t=>{
+      const clr=CAL_GLOBAL_TYPE_COLOR[t]||'#6B7CFF';
+      return`<span class="bd" data-type="${t}" onclick="_cgLegendFilter('${t}')" style="cursor:pointer;background:${clr}14;color:${clr};border:1px solid ${clr}30;transition:background .15s,border-color .15s,box-shadow .15s" title="Filtrer sur ${esc(CAL_GLOBAL_TYPE_LBL[t]||t)}"><span style="width:7px;height:7px;border-radius:50%;background:${clr};flex-shrink:0"></span>${esc(CAL_GLOBAL_TYPE_LBL[t]||t)}</span>`;
+    }).join('');
+  }
+}
+
+function _cgLegendFilter(type){
+  const sel=document.getElementById('cg-f-type');
+  if(!sel)return;
+  sel.value=sel.value===type?'':type;
+  applyCalGlobalFilters();
 }
 
 function applyCalGlobalFilters(){
@@ -25492,6 +25512,11 @@ function applyCalGlobalFilters(){
   if(collab)list=list.filter(r=>r.responsible_nom===collab);
   const countEl=document.getElementById('cg-f-count');
   if(countEl)countEl.textContent=list.length+' événement'+(list.length>1?'s':'')+' affiché'+(list.length>1?'s':'');
+  document.querySelectorAll('#cg-legend .bd').forEach(ch=>{
+    const t=ch.dataset.type,clr=CAL_GLOBAL_TYPE_COLOR[t]||'#6B7CFF',active=t===type;
+    ch.style.background=clr+(active?'26':'14');ch.style.borderColor=clr+(active?'80':'30');
+    ch.style.boxShadow=active?`0 0 0 1px ${clr}40`:'';
+  });
   renderCalGlobal(list);
 }
 
