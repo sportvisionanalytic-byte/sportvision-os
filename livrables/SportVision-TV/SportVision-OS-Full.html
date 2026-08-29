@@ -11858,6 +11858,32 @@ async function ajouterMembreEquipe(prestationId,ref){
         }
       }
     }catch(e){}
+    // Gate de qualification (spec §47 "gates de qualification" du Centre de formation) :
+    // avertissement seulement, jamais bloquant — même philosophie que le conflit de planning
+    // ci-dessus (décision fondateur 2026-08-06), le staff garde la main. Réutilise
+    // eqovFormationsRequises (déjà la source unique de vérité côté loadEquipeOverview, §51)
+    // plutôt que de dupliquer une nouvelle logique de formations "requises pour une mission".
+    // Limité à admin/prod : la policy RLS fi_own_read (formation_inscriptions) n'autorise la
+    // lecture des inscriptions d'autrui qu'à ces deux rôles — pour 'sec' (qui a aussi accès à
+    // cette modale, cf. ligne ~4778) la requête reviendrait vide par filtrage RLS et ferait
+    // croire à tort qu'aucune formation n'est jamais terminée. Vérifié en base (pg_policy),
+    // pas de migration RLS ce soir pour rester sur un changement net et testable.
+    try{
+      const colProfile=(S.role==='admin'||S.role==='prod')?_eqOperateursCache.find(p=>p.id===colId):null;
+      const requis=colProfile?eqovFormationsRequises(colProfile.role):[];
+      if(requis.length){
+        const insc=await sbFetch('formation_inscriptions?select=formation_id&collaborateur_id=eq.'+colId+'&statut=eq.terminee').catch(()=>[]);
+        const faites=new Set((Array.isArray(insc)?insc:[]).map(i=>i.formation_id));
+        const manquantes=requis.filter(fid=>!faites.has(fid)).map(fid=>FORMATIONS_CATALOG.find(f=>f.id===fid)?.titre||fid);
+        if(manquantes.length){
+          const nomCol=colProfile.prenom||'Ce collaborateur';
+          if(!confirm('⚠️ '+nomCol+' n\'a pas terminé '+(manquantes.length>1?'les formations obligatoires suivantes : ':'la formation obligatoire suivante : ')+manquantes.join(', ')+'.\n\nConfirmer quand même cette affectation ?')){
+            if(btn)btn.disabled=false;
+            return;
+          }
+        }
+      }
+    }catch(e){}
     const equipeBody={prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,notes:notes||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null};
     // Snapshot du calcul (niveau/base/coefficient) uniquement quand le montant final
     // correspond bien à la suggestion automatique — un montant ajusté à la main par
@@ -15688,6 +15714,21 @@ function _renderMsgContacts(myUid){
 function _escMsgHtml(s){
   return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+// Pièces jointes (spec §56) : la messagerie interne n'a ni upload ni table dédiée — audit
+// confirmé, aucune table/colonne "attachments" nulle part. Conformément à la spec ("lien Drive
+// plutôt que re-upload massif"), le seul manque net et sans risque à combler est que les liens
+// collés dans un message restaient jusqu'ici du texte brut non cliquable. Auto-linkification
+// uniquement — pas d'upload, pas de nouvelle table, rien de lourd.
+function _linkifyMsgHtml(raw){
+  const parts=(raw||'').split(/(https?:\/\/[^\s]+)/g);
+  return parts.map(p=>{
+    if(!/^https?:\/\//.test(p))return _escMsgHtml(p);
+    const trailMatch=p.match(/[)\].,;:!?'"]+$/);
+    const trail=trailMatch?trailMatch[0]:'';
+    const href=trail?p.slice(0,-trail.length):p;
+    return `<a href="${_escMsgHtml(href)}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">${_escMsgHtml(href)}</a>${_escMsgHtml(trail)}`;
+  }).join('');
+}
 
 async function _renderMsgConv(myUid){
   const el=document.getElementById('msg-list');
@@ -15739,7 +15780,7 @@ async function _renderMsgConv(myUid){
         <div style="max-width:68%;display:flex;flex-direction:column;gap:2px;align-items:${isMe?'flex-end':'flex-start'}">
           ${!isMe&&isTeam?`<div style="font-size:10px;color:var(--t3);margin-left:3px">${name}</div>`:''}
           <div style="display:flex;align-items:center;gap:5px;${isMe?'flex-direction:row-reverse':''}">
-            <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.07)'};padding:9px 13px;border-radius:${isMe?'16px 16px 4px 16px':'16px 16px 16px 4px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.45;word-break:break-word">${_escMsgHtml(m.contenu)}</div>
+            <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.07)'};padding:9px 13px;border-radius:${isMe?'16px 16px 4px 16px':'16px 16px 16px 4px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.45;word-break:break-word">${_linkifyMsgHtml(m.contenu)}</div>
             <div class="msg-acts" style="opacity:0;transition:opacity .15s;display:flex;gap:3px">
               <button onclick="msgReplyTo('${msgTxt}')" title="Répondre" style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.07);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center" title="Répondre">↩</button>
               <button onclick="msgCrTache('${msgTxt}')" title="Créer une tâche" style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.07);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">✓</button>
@@ -18054,7 +18095,9 @@ async function loadAdminForm(){
   try{
     const [ins,profiles]=await Promise.all([
       sbFetch('formation_inscriptions?select=id,formation_id,statut,xp_gagnes,enrolled_at,completed_at,collaborateur_id,profiles(id,prenom,nom,role)&order=completed_at.desc.nullslast,enrolled_at.desc&limit=500').catch(()=>[]),
-      sbFetch('profiles?select=id,prenom,nom,role&order=nom.asc&limit=100').catch(()=>[]),
+      // cm_niveau_autonomie ajouté (spec §51 "Juniors en progression") pour repérer les CM Junior
+      // sans requête supplémentaire — champ déjà utilisé ailleurs (module CM, ligne ~24768).
+      sbFetch('profiles?select=id,prenom,nom,role,cm_niveau_autonomie&order=nom.asc&limit=100').catch(()=>[]),
     ]);
     const insList=ins||[];const profList=profiles||[];
     const done=insList.filter(i=>i.statut==='terminee').length;
@@ -18088,6 +18131,30 @@ function loadAdminFormStats(){
     const pi=insList.filter(i=>i.collaborateur_id===p.id);
     cStats[p.id]={...p,terminees:pi.filter(i=>i.statut==='terminee').length,enc:pi.filter(i=>i.statut==='en_cours').length,xp:pi.reduce((s,i)=>s+(i.xp_gagnes||0),0),oblManq:FORMATIONS_CATALOG.filter(f=>f.obligatoire&&!pi.find(i=>i.formation_id===f.id&&i.statut==='terminee')).length};
   });
+  // Parcours par rôle (spec §51 "Reporting Formation" — Parcours par rôle) : agrège ce qui
+  // existe déjà (FORMATION_ROLE_MAP + formation_inscriptions) plutôt que de recalculer une
+  // nouvelle notion de "parcours" — le parcours d'un rôle = les 3 formations universelles +
+  // les formations qui lui sont assignées dans FORMATION_ROLE_MAP.
+  const roleAgg={};
+  profList.forEach(p=>{
+    const role=p.role||'—';
+    const parcoursIds=[...new Set([...EQOV_OBLIGATOIRE_UNIVERSAL,...(FORMATION_ROLE_MAP[role]||[])])];
+    if(!parcoursIds.length)return;
+    if(!roleAgg[role])roleAgg[role]={nb:0,sumPct:0,parcoursLen:parcoursIds.length};
+    const pi=insList.filter(i=>i.collaborateur_id===p.id);
+    const termCount=parcoursIds.filter(fid=>pi.find(i=>i.formation_id===fid&&i.statut==='terminee')).length;
+    roleAgg[role].nb++;
+    roleAgg[role].sumPct+=parcoursIds.length?termCount/parcoursIds.length*100:0;
+  });
+  // Juniors CM en progression (spec §51) : profiles.cm_niveau_autonomie==='junior' déjà utilisé
+  // par le module CM/tutorat (voir CM_NIVEAU_LBL, cm_tutorships) — ici uniquement leur avancement
+  // dans le parcours de formation CM, pas leur file de contenus à valider (module séparé).
+  const cmParcoursIds=[...new Set([...EQOV_OBLIGATOIRE_UNIVERSAL,...(FORMATION_ROLE_MAP.cm||[])])];
+  const juniors=profList.filter(p=>p.role==='cm'&&p.cm_niveau_autonomie==='junior').map(p=>{
+    const pi=insList.filter(i=>i.collaborateur_id===p.id);
+    const term=cmParcoursIds.filter(fid=>pi.find(i=>i.formation_id===fid&&i.statut==='terminee')).length;
+    return{...p,term,total:cmParcoursIds.length,xp:pi.reduce((s,i)=>s+(i.xp_gagnes||0),0)};
+  });
   const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
   el.innerHTML=`
     <div class="cd" style="margin-bottom:12px">
@@ -18105,6 +18172,18 @@ function loadAdminFormStats(){
       </tbody></table></div>
     </div>
     <div class="cd" style="margin-bottom:12px">
+      <div class="cd-h"><div class="cd-t">Parcours par rôle</div></div>
+      <div class="tw"><table><thead><tr><th>Rôle</th><th>Collaborateurs</th><th>Formations du parcours</th><th>Complétion moyenne</th></tr></thead><tbody>
+        ${Object.entries(roleAgg).map(([role,a])=>{const moy=a.nb?Math.round(a.sumPct/a.nb):0;return`<tr>
+          <td class="tm">${ROLE_LABELS[role]||role}</td>
+          <td class="tm">${a.nb}</td>
+          <td class="tm">${a.parcoursLen}</td>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="pg" style="width:50px;display:inline-flex"><div class="pg-f" style="width:${moy}%;background:${moy===100?'var(--ok)':moy>50?'var(--acc)':'var(--wa)'}"></div></div><span style="font-size:11.5px">${moy}%</span></div></td>
+        </tr>`;}).join('')}
+        ${!Object.keys(roleAgg).length?`<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:20px">Aucun rôle avec un parcours de formation défini.</td></tr>`:''}
+      </tbody></table></div>
+    </div>
+    <div class="cd" style="margin-bottom:12px">
       <div class="cd-h"><div class="cd-t">Collaborateurs — Progression formations</div></div>
       <div class="tw"><table><thead><tr><th>Collaborateur</th><th>Rôle</th><th>Terminées</th><th>En cours</th><th>XP formations</th><th>Oblig. manquantes</th></tr></thead><tbody>
         ${profList.map(p=>{const cs=cStats[p.id]||{};return`<tr>
@@ -18117,6 +18196,16 @@ function loadAdminFormStats(){
         </tr>`;}).join('')}
       </tbody></table></div>
     </div>
+    ${juniors.length?`<div class="cd" style="margin-bottom:12px">
+      <div class="cd-h"><div class="cd-t">Juniors CM en progression (${juniors.length})</div></div>
+      <div class="tw"><table><thead><tr><th>Junior</th><th>Formations terminées</th><th>XP formations</th></tr></thead><tbody>
+        ${juniors.map(j=>{const pct=j.total?Math.round(j.term/j.total*100):0;return`<tr>
+          <td class="tm">${esc(j.prenom||'')} ${esc(j.nom||'')}</td>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="pg" style="width:50px;display:inline-flex"><div class="pg-f" style="width:${pct}%;background:${pct===100?'var(--ok)':pct>50?'var(--acc)':'var(--wa)'}"></div></div><span style="font-size:11.5px">${j.term}/${j.total} · ${pct}%</span></div></td>
+          <td class="tm" style="color:#9C6FFF">${j.xp.toLocaleString('fr-FR')} XP</td>
+        </tr>`;}).join('')}
+      </tbody></table></div>
+    </div>`:''}
     <div class="cd">
       <div class="cd-h"><div class="cd-t">Activité récente</div></div>
       <div>
