@@ -18962,40 +18962,60 @@ const DEMANDE_NEXT={
   terminee:[],refusee:[],
 };
 
+// Spec Refonte CM §30-31 (29/08) : distingue "mes demandes" (structure déjà affiliée à
+// un CM, ou déjà prise en charge par quelqu'un) de la "file Club+ générale" (aucun CM
+// affecté au club ET personne ne l'a encore prise — club_requests.taken_by est déjà la
+// colonne prévue pour ça, jamais exploitée côté UI jusqu'ici). Le partage n'utilise pas
+// clients.cm_id directement (qui ne distingue pas Full Com de Club+ standard) : un club
+// sans aucune affiliation CM active est traité comme "pool".
+function _renderDemandeRow(d,showPrendre){
+  const stLbl=DEMANDE_STATUT_LBL[d.status]||d.status;
+  const stCls=DEMANDE_STATUT_CLS[d.status]||'bn';
+  const nextActions=DEMANDE_NEXT[d.status]||[];
+  const clientNom=d.clubs?.clients?.nom;
+  const clubNom=d.clubs?.nom;
+  return`<tr>
+    <td class="tp" title="${clubNom&&clubNom!==clientNom?'Nom Club+ : '+esc(clubNom):''}">${esc(clientNom||clubNom||'—')}</td>
+    <td title="${esc(d.detail||'')}">${esc(d.type||'—')}</td>
+    <td>${esc(d.team||'—')}</td>
+    <td>${d.urgency==='haute'?'<span style="color:var(--er);font-weight:600">Haute</span>':'Normale'}</td>
+    <td class="tm">${d.credits_reserved||0}</td>
+    <td><span class="bd ${stCls}"><span class="bd-d"></span>${stLbl}</span></td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+      ${showPrendre?`<button class="btn bp bs" onclick="prendreEnChargeDemande('${d.id}')">Prendre en charge</button>`:nextActions.map(a=>`<button class="btn bg2 bs" onclick="avancerDemande('${d.id}','${a.st}')">${a.lb}</button>`).join('')}
+      ${!showPrendre&&d.clubs?.portail_client_id?`<button class="btn bp bs" onclick="creerContenuDepuisDemande('${d.clubs.portail_client_id}','${escJs(d.type||'Demande')}')" title="Créer un contenu à partir de cette demande">+ Contenu</button>`:''}
+    </td>
+  </tr>`;
+}
 async function loadCmDemandes(){
   const el=document.getElementById('dem-list');
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   if(!el)return;
   try{
-    const data=await sbFetch('club_requests?select=id,type,team,status,urgency,detail,credits_reserved,created_at,clubs(nom,portail_client_id,clients(nom))&order=created_at.desc&limit=200');
+    const [data,affils]=await Promise.all([
+      sbFetch('club_requests?select=id,type,team,status,urgency,detail,credits_reserved,created_at,taken_by,clubs(nom,portail_client_id,clients(nom,cm_id))&order=created_at.desc&limit=200'),
+      sbFetch('client_affiliations?select=client_id&status=eq.actif&role_on_client=in.(cm_principal,cm_secondaire,cm_junior)').catch(()=>[]),
+    ]);
     const list=Array.isArray(data)?data:[];
+    const affiliatedClientIds=new Set((Array.isArray(affils)?affils:[]).map(a=>a.client_id));
+    const isPoolCandidate=d=>{
+      const cid=d.clubs?.portail_client_id;
+      const hasCm=(cid&&(affiliatedClientIds.has(cid)||d.clubs?.clients?.cm_id))||false;
+      return !hasCm&&!d.taken_by;
+    };
+    const pool=list.filter(isPoolCandidate);
+    const mine=list.filter(d=>!isPoolCandidate(d));
     set('dem-kpi-nouv',list.filter(d=>d.status==='recues').length);
     set('dem-kpi-enc',list.filter(d=>['en_traitement','info_manquante'].includes(d.status)).length);
     set('dem-kpi-urg',list.filter(d=>d.urgency==='haute'&&!['terminee','refusee'].includes(d.status)).length);
     if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📥</div><div>Aucune demande reçue pour l\'instant.</div></div>';return;}
-    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Client</th><th>Type</th><th>Équipe</th><th>Urgence</th><th>Crédits</th><th>Statut</th><th></th></tr></thead><tbody>'+
-      list.map(d=>{
-        const stLbl=DEMANDE_STATUT_LBL[d.status]||d.status;
-        const stCls=DEMANDE_STATUT_CLS[d.status]||'bn';
-        const nextActions=DEMANDE_NEXT[d.status]||[];
-        // Nom client (vocabulaire cohérent avec le reste de l'espace CM) en
-        // priorité ; le nom auto-déclaré côté Club+ (potentiellement
-        // différent) reste visible en tooltip pour traçabilité.
-        const clientNom=d.clubs?.clients?.nom;
-        const clubNom=d.clubs?.nom;
-        return`<tr>
-          <td class="tp" title="${clubNom&&clubNom!==clientNom?'Nom Club+ : '+esc(clubNom):''}">${esc(clientNom||clubNom||'—')}</td>
-          <td title="${esc(d.detail||'')}">${esc(d.type||'—')}</td>
-          <td>${esc(d.team||'—')}</td>
-          <td>${d.urgency==='haute'?'<span style="color:var(--er);font-weight:600">Haute</span>':'Normale'}</td>
-          <td class="tm">${d.credits_reserved||0}</td>
-          <td><span class="bd ${stCls}"><span class="bd-d"></span>${stLbl}</span></td>
-          <td style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
-            ${nextActions.map(a=>`<button class="btn bg2 bs" onclick="avancerDemande('${d.id}','${a.st}')">${a.lb}</button>`).join('')}
-            ${d.clubs?.portail_client_id?`<button class="btn bp bs" onclick="creerContenuDepuisDemande('${d.clubs.portail_client_id}','${escJs(d.type||'Demande')}')" title="Créer un contenu à partir de cette demande">+ Contenu</button>`:''}
-          </td>
-        </tr>`;
-      }).join('')+'</tbody></table></div></div>';
+    const tableHead='<tr><th>Client</th><th>Type</th><th>Équipe</th><th>Urgence</th><th>Crédits</th><th>Statut</th><th></th></tr>';
+    el.innerHTML=(mine.length?`<div class="cd" style="margin-bottom:14px"><div class="cd-h"><div class="cd-t">Mes demandes</div></div><div class="tw"><table><thead>${tableHead}</thead><tbody>`+
+      mine.map(d=>_renderDemandeRow(d,false)).join('')+'</tbody></table></div></div>':'')+
+      `<div class="cd"><div class="cd-h"><div class="cd-t">File Club+ générale</div><span style="font-size:11px;color:var(--t3)">Non affiliées à un CM — ouvertes au pool</span></div>`+
+      (pool.length?`<div class="tw"><table><thead>${tableHead}</thead><tbody>`+pool.map(d=>_renderDemandeRow(d,true)).join('')+'</tbody></table></div>':
+      '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune demande en attente dans la file générale.</div>')+
+      '</div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';console.error(e);}
 }
 
@@ -19003,6 +19023,12 @@ async function avancerDemande(id,statut){
   const r=await sbFetch('rpc/staff_update_club_request_status',{method:'POST',body:{p_request_id:id,p_status:statut}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
   toast('Demande mise à jour.','ok');
+  loadCmDemandes();
+}
+async function prendreEnChargeDemande(id){
+  const r=await sbFetch('rpc/claim_club_request',{method:'POST',body:{p_request_id:id}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'prise en charge impossible.'),'er');return;}
+  toast('Demande prise en charge.','ok');
   loadCmDemandes();
 }
 
@@ -24914,7 +24940,7 @@ async function loadCollaborateurs(){
   try{
     const _colRole=localStorage.getItem('sv_role');
     const _colFilter=_colRole==='prod'?'&role=in.(photo,cm)':'';
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie'+_colFilter+'&order=role.asc,nom.asc');
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie,cm_pool_clubplus_general'+_colFilter+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
@@ -24988,6 +25014,10 @@ async function modalModifierCollaborateur(idx){
               <option value="junior"${t.cm_niveau_autonomie==='junior'?' selected':''}>CM Junior — publication soumise à un tuteur</option>
               <option value="responsable"${t.cm_niveau_autonomie==='responsable'?' selected':''}>Responsable CM — supervision de tout le pôle</option>
             </select>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12.5px;color:var(--t1)">
+              <input type="checkbox" ${t.cm_pool_clubplus_general?'checked':''} onchange="changerCmPoolClubPlus('${t.id}',this.checked)">
+              Membre du pool Club+ général (peut prendre en charge les demandes non affiliées à un CM Full Com)
+            </label>
           </div>
           <div style="margin-top:10px">
             ${isInactif?`<button class="btn bg2 bs" onclick="reactiverUser('${t.id}')">↺ Réactiver l'accès</button>`:`<button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerDesactiverUser('${t.id}','${escJs(t.prenom||'')}','${escJs(t.nom||'')}')">⛔ Désactiver l'accès</button>`}
@@ -27574,6 +27604,11 @@ async function changerCmAutonomie(id,niveau){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{cm_niveau_autonomie:niveau}});
   if(sbErr(r)){toast('Erreur changement de niveau d\'autonomie','er');return;}
   toast('Niveau d\'autonomie mis à jour','ok');
+}
+async function changerCmPoolClubPlus(id,actif){
+  const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{cm_pool_clubplus_general:actif}});
+  if(sbErr(r)){toast('Erreur changement du pool Club+','er');return;}
+  toast(actif?'Ajouté au pool Club+ général':'Retiré du pool Club+ général','ok');
 }
 
 // Remplace l'ancien "Supprimer" (DELETE sur profiles), qui échouait en
