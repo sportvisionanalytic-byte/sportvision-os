@@ -1852,6 +1852,7 @@ const VIEWS={
   'prod.livr':()=>`
     <div class="sh" style="margin-bottom:14px">
       <div><div class="sh-t">Livraisons</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Contrôler avant toute diffusion</div></div>
+      <button class="btn bg2 bs" onclick="switchView('mediabank')">⭐ Media Bank</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
       <button onclick="filterProdLivrMission('a_valider')" class="btn bp bs" id="plivm-a_valider" style="flex-shrink:0;font-size:11px">À valider</button>
@@ -4444,7 +4445,7 @@ async function loadViewData(role,view){
   // et à l'admin (même mécanisme que VIEWS['admin.mediabank']=tplMediaBank
   // plus bas — admin a accès en lecture à toute la banque, comme les autres
   // écrans CM déjà consultables depuis 'Communication').
-  if((role==='cm'||role==='admin')&&view==='mediabank') await loadCmMediaBank();
+  if(['cm','admin','prod'].includes(role)&&view==='mediabank') await loadCmMediaBank();
   if(role==='photo'&&view==='medias') await loadPhotoMedias();
   if(role==='photo'&&view==='kits') await loadPhotoKits();
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
@@ -11585,6 +11586,13 @@ async function modalEquipePrestation(prestationId,ref){
     <div id="eq-liste" style="min-height:60px;margin-bottom:16px"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
     <div style="background:var(--s2);border-radius:var(--rb);padding:14px;display:flex;flex-direction:column;gap:10px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">Ajouter un collaborateur</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <select id="eq-f-zone" class="l-inp" style="height:32px;font-size:11.5px" onchange="filtrerOperateursEquipe()"><option value="">Toutes zones</option></select>
+        <select id="eq-f-niveau" class="l-inp" style="height:32px;font-size:11.5px" onchange="filtrerOperateursEquipe()">
+          <option value="">Niveau min.</option><option value="1">★+</option><option value="2">★★+</option><option value="3">★★★+</option><option value="4">★★★★+</option>
+        </select>
+        <select id="eq-f-materiel" class="l-inp" style="height:32px;font-size:11.5px" onchange="filtrerOperateursEquipe()"><option value="">Matériel indifférent</option><option value="oui">Matériel perso</option><option value="non">Sans matériel</option></select>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><select id="eq-col" class="l-inp" style="height:36px" onchange="majSuggestionRem()"><option value="">— Choisir —</option></select>
           <div id="eq-rem-suggest" style="font-size:10.5px;color:var(--t3);margin-top:4px"></div></div>
@@ -11602,8 +11610,20 @@ async function modalEquipePrestation(prestationId,ref){
       <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="ajouterMembreEquipe('${prestationId}','${ref}')">+ Ajouter</button></div>
     </div>
     <div id="eq-err" style="font-size:12px;color:var(--er);margin-top:8px;min-height:14px"></div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin:18px 0 8px">Matériel (spec §20-22)</div>
+    <div id="eq-kits-liste" style="min-height:30px;margin-bottom:12px"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div style="background:var(--s2);border-radius:var(--rb);padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">Attribuer un kit</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <select id="eq-kit-col" class="l-inp" style="height:36px"><option value="">— Opérateur —</option></select>
+        <select id="eq-kit-id" class="l-inp" style="height:36px"><option value="">— Kit disponible —</option></select>
+      </div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="attribuerKitPrestation('${prestationId}','${ref}')">+ Attribuer</button></div>
+      <div id="eq-kit-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+    </div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
   await chargerEquipe(prestationId,ref);
+  await chargerKitsPrestation(prestationId,ref);
   sbFetch('prestations?id=eq.'+prestationId+'&select=format_mission').then(d=>{
     const f=document.getElementById('eq-format');
     if(f&&d?.[0]?.format_mission)f.value=d[0].format_mission;
@@ -11613,29 +11633,57 @@ async function modalEquipePrestation(prestationId,ref){
   // affecter quelqu'un exigeait de deviner ou vérifier ailleurs qui était
   // déjà chargé. Tri photo/cm (rôles terrain) en tête, moins chargé d'abord.
   Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role,niveau_operateur&order=nom.asc'),
+    sbFetch('profiles?select=id,prenom,nom,role,niveau_operateur,zone,materiel_personnel&order=nom.asc'),
     sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation,statut)&statut=eq.acceptée&prestations.date_prestation=gte.'+ymdLocal()+'&prestations.statut=not.in.(annulée,refusée)').catch(()=>[]),
   ]).then(([data,chargeRaw])=>{
-    const sel=document.getElementById('eq-col');
-    if(!sel||!data)return;
-    const charge={};
-    (Array.isArray(chargeRaw)?chargeRaw:[]).forEach(c=>{charge[c.collaborateur_id]=(charge[c.collaborateur_id]||0)+1;});
-    const rolePoids={photo:0,cm:0};
-    const sorted=[...data].sort((a,b)=>{
-      const pa=rolePoids[a.role]??1,pb=rolePoids[b.role]??1;
-      if(pa!==pb)return pa-pb;
-      return (charge[a.id]||0)-(charge[b.id]||0);
-    });
-    sorted.forEach(p=>{
-      _eqNiveauMap[p.id]=p.niveau_operateur||null;
-      const o=document.createElement('option');o.value=p.id;
-      const n=charge[p.id]||0;
-      o.textContent=([p.prenom,p.nom].filter(Boolean).join(' ')||p.role)+' — '+(p.role||'')+' · '+n+' mission'+(n>1?'s':'')+' à venir';
-      sel.appendChild(o);
-    });
+    if(!data)return;
+    _eqCharge={};
+    (Array.isArray(chargeRaw)?chargeRaw:[]).forEach(c=>{_eqCharge[c.collaborateur_id]=(_eqCharge[c.collaborateur_id]||0)+1;});
+    _eqOperateursCache=data;
+    data.forEach(p=>{_eqNiveauMap[p.id]=p.niveau_operateur||null;});
+    const zoneSel=document.getElementById('eq-f-zone');
+    if(zoneSel){
+      const zones=[...new Set(data.map(p=>p.zone).filter(Boolean))].sort();
+      zoneSel.innerHTML='<option value="">Toutes zones</option>'+zones.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join('');
+    }
+    renderOperateursSelect(data);
   });
 }
 let _eqNiveauMap={};
+let _eqOperateursCache=[];
+let _eqCharge={};
+// Filtres de pertinence (spec §11/§19 "Affectation opérateur"/"Recherche opérateur") :
+// zone, niveau minimum, matériel personnel. Sport/formation obligatoire non filtrables
+// ici — aucune colonne dédiée sur profiles pour ces deux critères (recherché, absente),
+// pas simulé avec une donnée qui n'existe pas.
+function renderOperateursSelect(list){
+  const sel=document.getElementById('eq-col');
+  if(!sel)return;
+  const cur=sel.value;
+  const rolePoids={photo:0,cm:0};
+  const sorted=[...list].sort((a,b)=>{
+    const pa=rolePoids[a.role]??1,pb=rolePoids[b.role]??1;
+    if(pa!==pb)return pa-pb;
+    return (_eqCharge[a.id]||0)-(_eqCharge[b.id]||0);
+  });
+  sel.innerHTML='<option value="">— Choisir —</option>'+sorted.map(p=>{
+    const n=_eqCharge[p.id]||0;
+    const zoneTag=p.zone?' · '+p.zone:'';
+    const lb=([p.prenom,p.nom].filter(Boolean).join(' ')||p.role)+' — '+(p.role||'')+zoneTag+' · '+n+' mission'+(n>1?'s':'')+' à venir';
+    return `<option value="${p.id}"${p.id===cur?' selected':''}>${esc(lb)}</option>`;
+  }).join('');
+}
+function filtrerOperateursEquipe(){
+  const zone=document.getElementById('eq-f-zone')?.value||'';
+  const niveauMin=Number(document.getElementById('eq-f-niveau')?.value||0);
+  const materiel=document.getElementById('eq-f-materiel')?.value||'';
+  const list=_eqOperateursCache.filter(p=>
+    (!zone||p.zone===zone)&&
+    (!niveauMin||(p.niveau_operateur||0)>=niveauMin)&&
+    (!materiel||(materiel==='oui'?!!p.materiel_personnel:!p.materiel_personnel))
+  );
+  renderOperateursSelect(list);
+}
 async function majFormatMission(prestationId){
   const format=document.getElementById('eq-format')?.value;
   if(!format)return;
@@ -11685,6 +11733,80 @@ async function chargerEquipe(prestationId,ref){
     }).join('');
   }catch(e){el.innerHTML='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';}
 }
+
+// Attribution de kit depuis la fiche mission (spec §20-22, 29/08) : le Responsable
+// Production attribue les kits SportVision aux opérateurs qui n'ont pas leur matériel
+// personnel adapté — "ne pas attribuer systématiquement un kit à tout le monde" (§20). Le
+// menu déroulant ne propose QUE les kits statut='disponible' (§21 "propose uniquement les
+// kits compatibles et libres") : impossible de sélectionner un kit déjà engagé, ce qui
+// prévient le conflit à la source plutôt que de le détecter après coup (§22 "conflits
+// forts doivent bloquer la confirmation" — ici, le kit indisponible n'apparaît simplement
+// pas dans la liste).
+async function chargerKitsPrestation(prestationId,ref){
+  const el=document.getElementById('eq-kits-liste');
+  const selCol=document.getElementById('eq-kit-col');
+  const selKit=document.getElementById('eq-kit-id');
+  if(!el)return;
+  try{
+    const [resaRaw,equipeRaw,kitsRaw]=await Promise.all([
+      // FK explicite obligatoire : kit_reservations a 3 colonnes vers profiles
+      // (collaborateur_id/created_by/responsable_id), PostgREST refuse l'embed ambigu sinon
+      // (PGRST201, trouvé en testant en RLS réelle avant de considérer ce code fini).
+      sbFetch('kit_reservations?select=id,statut,kits(nom,type_kit),collaborateur:profiles!kit_reservations_collaborateur_id_fkey(prenom,nom)&prestation_id=eq.'+prestationId+'&statut=not.in.(retourné)'),
+      sbFetch('prestations_equipe_display?select=collaborateur_id,collaborateur:profiles(prenom,nom)&prestation_id=eq.'+prestationId+'&statut=eq.acceptée'),
+      sbFetch('kits?select=id,nom,type_kit&statut=eq.disponible&order=nom.asc'),
+    ]);
+    const resa=Array.isArray(resaRaw)?resaRaw:[];
+    if(!resa.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:4px 0">Aucun kit attribué.</div>';}
+    else{
+      el.innerHTML=resa.map(r=>{
+        const nom=[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||'—';
+        return`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+          <span style="flex:1;font-size:12.5px;color:var(--t1)">${esc(r.kits?.nom||'Kit')} <span style="color:var(--t3)">→ ${esc(nom)}</span></span>
+          <button onclick="libererKitPrestation('${r.id}','${prestationId}','${ref}')" style="padding:4px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Libérer</button>
+        </div>`;
+      }).join('');
+    }
+    if(selCol){
+      selCol.innerHTML='<option value="">— Opérateur —</option>'+(Array.isArray(equipeRaw)?equipeRaw:[]).map(e=>
+        `<option value="${e.collaborateur_id}">${esc([e.collaborateur?.prenom,e.collaborateur?.nom].filter(Boolean).join(' ')||'—')}</option>`).join('');
+    }
+    if(selKit){
+      selKit.innerHTML='<option value="">— Kit disponible —</option>'+(Array.isArray(kitsRaw)?kitsRaw:[]).map(k=>
+        `<option value="${k.id}">${esc(k.nom)}${k.type_kit?' ('+esc(k.type_kit)+')':''}</option>`).join('');
+    }
+  }catch(e){if(el)el.innerHTML='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';}
+}
+async function attribuerKitPrestation(prestationId,ref){
+  const err=document.getElementById('eq-kit-err');
+  const colId=document.getElementById('eq-kit-col')?.value;
+  const kitId=document.getElementById('eq-kit-id')?.value;
+  if(!colId||!kitId){err.textContent='Sélectionne un opérateur et un kit.';return;}
+  err.textContent='Attribution…';
+  try{
+    const date=await sbFetch('prestations?id=eq.'+prestationId+'&select=date_prestation');
+    const r=await sbFetch('kit_reservations',{method:'POST',body:{
+      kit_id:kitId,prestation_id:prestationId,collaborateur_id:colId,statut:'réservé',
+      date_sortie:date?.[0]?.date_prestation||null,responsable_id:S.uid,created_by:S.uid,
+    }});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'attribution impossible.');return;}
+    await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'réservé'}}).catch(()=>{});
+    err.textContent='';
+    toast('Kit attribué.','ok');
+    chargerKitsPrestation(prestationId,ref);
+  }catch(e){err.textContent='Erreur lors de l\'attribution.';}
+}
+async function libererKitPrestation(reservationId,prestationId,ref){
+  try{
+    const resa=await sbFetch('kit_reservations?id=eq.'+reservationId+'&select=kit_id');
+    const r=await sbFetch('kit_reservations?id=eq.'+reservationId,{method:'PATCH',body:{statut:'retourné',date_retour_effective:new Date().toISOString()}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'libération impossible.'),'er');return;}
+    if(resa?.[0]?.kit_id)await sbFetch('kits?id=eq.'+resa[0].kit_id,{method:'PATCH',body:{statut:'disponible'}}).catch(()=>{});
+    toast('Kit libéré.','ok');
+    chargerKitsPrestation(prestationId,ref);
+  }catch(e){toast('Erreur lors de la libération.','er');}
+}
+
 function modifierRemunerationMembre(equipeId,prestationId,ref,current){
   const v=prompt('Rémunération (€) pour ce collaborateur :',current||'');
   if(v===null)return;
@@ -26260,6 +26382,12 @@ if(NAV['cm']) VIEWS['cm.msgclients']=tplMsgClients;
 // écrans CM de Communication, cf. NAV.admin 'mediabank' juste après 'commhub').
 if(NAV['cm']) VIEWS['cm.mediabank']=tplMediaBank;
 if(NAV['admin']) VIEWS['admin.mediabank']=tplMediaBank;
+// Refonte Responsable Production §2 "Accès contextuels" (29/08) : "Media Bank via
+// Livraisons / Bibliothèque" — le tag ★ (modalTagMediaBank) était déjà accessible à prod
+// (isProdAdmin l'inclut déjà), seul l'écran de consultation manquait pour ce rôle. Pas de
+// nouvelle entrée dans NAV.prod (hors des 5 écrans du critère §52.1) — atteint depuis
+// Livraisons (bouton ajouté ci-dessous) et depuis switchView('mediabank') en direct.
+if(NAV['prod']) VIEWS['prod.mediabank']=tplMediaBank;
 // Tableau de bord dédié à l'expert-comptable : quelqu'un qui vient
 // ponctuellement vérifier/exporter, pas au quotidien — donc pas le dashboard
 // générique de compta (loadComptaDash), mais une vraie vue de synthèse :
@@ -29702,7 +29830,7 @@ const MOB_MORE_ITEMS={
   // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
   // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
   // (jourj/planning/brief/incidents/media/rem/frais) qui n'ont plus de case dans NAV.prod.
-  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
+  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   // 29/08 (refonte CM) : aligné sur NAV.cm refondue — demandes/briefs sortent (déjà
