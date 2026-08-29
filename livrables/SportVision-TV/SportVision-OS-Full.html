@@ -2394,7 +2394,7 @@ const VIEWS={
     <div class="cd" style="margin-bottom:16px">
       <div style="padding:16px 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <div style="flex:1;min-width:200px"><label class="fl">Client</label><select id="rap-client" class="fi" onchange="_loadRapportHistory()"><option value="">Chargement…</option></select></div>
-        <div><label class="fl">Mois</label><input type="month" id="rap-mois" class="fi" value="${new Date().toISOString().slice(0,7)}"></div>
+        <div><label class="fl">Mois</label><input type="month" id="rap-mois" class="fi" value="${ymdLocal().slice(0,7)}"></div>
         <button class="btn bp" onclick="genererRapportClient()">Générer</button>
       </div>
     </div>
@@ -4836,7 +4836,7 @@ function renderPreTable(){
         <td class="tp">${esc(p.clients?.nom||'—')}</td>
         <td>${p.type_prestation||'—'}</td>
         <td style="font-size:11px;color:var(--t3)">${SOURCE_PRE_LBL[p.source]||p.source||'—'}</td>
-        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td class="tm">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>${S.role==='prod'&&_missionPreteMap[p.id]?' <span class="bd ba" title="Opérateur confirmé, brief rempli, lieu/horaire ok, kit ok, aucun incident ouvert" style="font-size:9.5px"><span class="bd-d"></span>✓ PRÊTE</span>':''}</td>
         <td><span class="bd ${SF_CLS[p.statut_financier]||'bn'}" style="font-size:10px"><span class="bd-d"></span>${SF_LBL[p.statut_financier]||'—'}</span></td>
@@ -5974,7 +5974,7 @@ async function chargerFceHeroInfo(clientId){
     }else{
       clubChip=chip('Club+ non activé','bn');
     }
-    const preChip=pre?chip('Prochaine présence · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})+(pre.type_prestation?' ('+esc(pre.type_prestation)+')':''),'bb'):chip('Aucune présence programmée','bw');
+    const preChip=pre?chip('Prochaine présence · '+new Date(pre.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})+(pre.type_prestation?' ('+esc(pre.type_prestation)+')':''),'bb'):chip('Aucune présence programmée','bw');
     el.innerHTML=clubChip+preChip;
   }catch(e){el.innerHTML='';}
 }
@@ -7590,7 +7590,7 @@ async function chargerPresByClient(clientId){
   el.innerHTML=`<div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Prestations (${pres.length})</div>`+
   `<div style="display:flex;flex-direction:column;gap:4px">`+
   pres.map(p=>{
-    const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+    const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
     const st=p.statut||'';
     const stLb=st.replace(/_/g,' ');
     const cls=stC[st]||'bn';
@@ -8379,7 +8379,7 @@ async function loadProdHub(){
     if(elValiderNb)elValiderNb.textContent=list.length||'0';
     if(list.length){
       elValider.innerHTML=list.map((p,i)=>{
-        const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'—';
+        const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'—';
         return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
           <span style="flex:1;font-size:13px;color:var(--t1)">${esc(p.clients?.nom||p.reference||'—')} — ${p.type_prestation||'—'}</span>
           <span style="font-size:11px;color:var(--t3)">${d}</span>
@@ -8422,7 +8422,7 @@ async function loadProdHub(){
       elSem.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation planifiée cette semaine.</div>';
     } else {
       elSem.innerHTML=list.map((p,i)=>{
-        const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'}):'—';
+        const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'}):'—';
         const h=p.heure_debut?p.heure_debut.slice(0,5):'--:--';
         const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').map(e=>esc([e.collaborateur?.prenom,e.collaborateur?.nom].filter(Boolean).join(' '))).filter(Boolean);
         const equipeHtml=equipe.length?`<span style="font-size:11px;color:var(--t3)">${equipe.join(', ')}</span>`:'<span class="bd bl"><span class="bd-d"></span>Sans équipe</span>';
@@ -10601,7 +10601,7 @@ async function modalPrepLivraison(livrableId){
             <option value="manuel">Remise manuelle</option>
           </select></div>
         <div><label style="${L}">Date d'envoi</label>
-          <input id="liv-date" type="date" class="l-inp" style="height:38px" value="${new Date().toISOString().split('T')[0]}"></div>
+          <input id="liv-date" type="date" class="l-inp" style="height:38px" value="${ymdLocal()}"></div>
       </div>
       <div id="liv-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -10626,7 +10626,7 @@ async function confirmerLivraison(livrableId){
       destinataire_email:email,
       message:document.getElementById('liv-msg')?.value?.trim()||null,
       moyen_envoi:document.getElementById('liv-moyen')?.value||'email',
-      date_envoi:document.getElementById('liv-date')?.value||new Date().toISOString().split('T')[0],
+      date_envoi:document.getElementById('liv-date')?.value||ymdLocal(),
       expediteur_id:S.uid,
       statut:'envoyee'
     }});
@@ -10727,7 +10727,7 @@ function renderProdRemList(){
         <td>${esc(col.role||r.fonction||'—')}</td>
         <td class="tm">${pre.reference||'—'}${preAnnulee?` <span title="Mission ${pre.statut} après engagement du paiement — à vérifier avant toute action" style="color:var(--er);font-size:10px;font-weight:700">⚠ ${pre.statut}</span>`:''}</td>
         <td>${esc(pre.clients?.nom||'—')}</td>
-        <td>${pre.date_prestation?new Date(pre.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td>${pre.date_prestation?new Date(pre.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td class="tm" style="font-weight:700;color:var(--ok)">${r.remuneration?r.remuneration.toLocaleString('fr-FR')+' €':'—'}</td>
         <td><span class="bd ${payStatClr}"><span class="bd-d"></span>${payLbl}</span></td>
         <td>${actions}</td>
@@ -10939,7 +10939,7 @@ async function loadProdRapport(type){
             <td class="tm">${p.reference||'—'}</td>
             <td class="tp">${esc(p.clients?.nom||'—')}</td>
             <td>${p.type_prestation||'—'}</td>
-            <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+            <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
             <td class="tm">${(p.prestations_equipe||[]).length} pers.</td>
             <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
             <td><span class="bd ${SC[p.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
@@ -11211,7 +11211,7 @@ async function loadPhotoDash(){
     const actives=data.filter(d=>d.statut!=='refusée'&&d.prestations&&d.prestations.statut!=='annulée');
     const prestations=actives.map(d=>d.prestations).filter(Boolean);
     const now=new Date();now.setHours(0,0,0,0);
-    const futures=actives.filter(d=>d.prestations?.date_prestation&&new Date(d.prestations.date_prestation)>=now);
+    const futures=actives.filter(d=>d.prestations?.date_prestation&&new Date(d.prestations.date_prestation+'T12:00:00')>=now);
     const totalRem=actives.reduce((s,d)=>s+(d.remuneration||0),0);
     // XP total = source de vérité unique (profiles.xp : missions réalisées + formations + bonus quiz + attributions manuelles)
     const prXp=await sbFetch('profiles?select=xp,grade&id=eq.'+uid).catch(()=>[]);
@@ -11229,7 +11229,7 @@ async function loadPhotoDash(){
     // Sous-titre dynamique
     const sub=document.getElementById('photo-dash-sub');
     const todayCount=actives.filter(d=>d.prestations?.date_prestation===ymdLocal()).length;
-    if(sub){if(todayCount>0)sub.textContent='Tu as '+todayCount+' prestation'+(todayCount>1?'s':'')+" aujourd'hui.";else if(futures.length>0){const np=futures[0].prestations;const nd=np.date_prestation?new Date(np.date_prestation).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'';sub.textContent='Prochaine mission : '+nd;}else sub.textContent='Aucune mission planifiée.';}
+    if(sub){if(todayCount>0)sub.textContent='Tu as '+todayCount+' prestation'+(todayCount>1?'s':'')+" aujourd'hui.";else if(futures.length>0){const np=futures[0].prestations;const nd=np.date_prestation?new Date(np.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'';sub.textContent='Prochaine mission : '+nd;}else sub.textContent='Aucune mission planifiée.';}
     // ── Section "À faire" ──
     const now2=new Date();now2.setHours(0,0,0,0);
     const atfaire=[];
@@ -11272,7 +11272,7 @@ async function loadPhotoDash(){
       const nextRow=futures[0];
       if(nextRow){
         const p=nextRow.prestations;
-        const d=p.date_prestation?new Date(p.date_prestation):null;
+        const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00'):null;
         const dateStr=d?d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'—';
         const hdeb=nextRow.heure_rdv||p.heure_debut||'—';
         const hfin=p.heure_fin||'—';
@@ -11323,7 +11323,7 @@ async function loadPhotoDash(){
           const byP={};
           kArr.forEach(k=>{const pid=k.prestation_id;if(!byP[pid])byP[pid]={pre:k.prestations,kits:[]};byP[pid].kits.push(k);});
           kitReal.innerHTML=Object.values(byP).map(({pre,kits})=>{
-            const ds=pre?.date_prestation?new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+            const ds=pre?.date_prestation?new Date(pre.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
             return`<div style="padding:10px 16px 14px"><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">${esc(pre?.clients?.nom||pre?.reference||'—')} · ${ds}</div>${kits.map(k=>{const ic=KIT_IC[k.kits?.type_kit]||'📦';const st=KIT_ST[k.statut]||{lb:k.statut,bg:'rgba(136,145,168,.1)',br:'rgba(136,145,168,.2)',tx:'var(--t3)'};return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border:1px solid ${st.br};border-radius:10px;margin-bottom:4px"><span style="font-size:20px">${ic}</span><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(k.kits?.nom||'Kit')}</div><div style="font-size:11px;color:var(--t3);margin-top:1px">${k.kits?.type_kit||'—'}</div></div><span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:${st.bg};color:${st.tx};border:1px solid ${st.br};white-space:nowrap">${st.lb}</span></div>`;}).join('')}</div>`;
           }).join('<div style="height:1px;background:rgba(255,255,255,.05);margin:0 16px"></div>');
         }else{kitCard.style.display='none';}
@@ -11339,7 +11339,7 @@ async function loadPhotoDash(){
         if(elInvNb)elInvNb.textContent=invitations.length;
         elInv.innerHTML=invitations.map(row=>{
           const p=row.prestations;
-          const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+          const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
           return`<div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.04)">
             <div style="flex:1;cursor:pointer;min-width:0" onclick="modalDetailById('${p.id}')">
               <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.clients?.nom||'—')} — ${p.type_prestation||'—'}</div>
@@ -11475,7 +11475,7 @@ function renderPhotoPre(){
   const iCl={'invitation_envoyée':'bb','acceptée':'ba','refusée':'bb'};
   el.innerHTML=rows.map(row=>{
     const p=row.prestations;
-    const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'—';
+    const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'—';
     const hdeb=row.heure_rdv||p.heure_debut;
     return`<div class="cd" style="margin-bottom:10px;cursor:pointer" onclick="modalDetailById('${p.id}')">
       <div style="padding:14px 18px">
@@ -11692,7 +11692,7 @@ async function submitDisponibiliteSousConditions(){
   const note=JSON.stringify({conditions,jours:joursSelec,horaires:{de:hDeb,a:hFin}});
   closeModal();
   const uid=localStorage.getItem('sv_uid');
-  const today=new Date().toISOString().split('T')[0];
+  const today=ymdLocal();
   // localStorage + toast de succès étaient posés avant même de savoir si
   // l'écriture réseau avait réussi (jamais vérifiée) — la prod, qui lit cette
   // table pour savoir qui est réellement disponible, pouvait donc continuer à
@@ -11718,7 +11718,7 @@ async function submitDisponibiliteSousConditions(){
 async function setDisponibilite(statut){
   closeModal();
   const uid=localStorage.getItem('sv_uid');
-  const today=new Date().toISOString().split('T')[0];
+  const today=ymdLocal();
   let ok=false;
   if(uid){
     const r=await sbFetch('disponibilites?on_conflict=collaborateur_id,date',{
@@ -11760,7 +11760,7 @@ async function loadRapprochement(){
           <td class="tm">${p.reference||'—'}</td>
           <td class="tp">${esc(p.clients?.nom||'—')}</td>
           <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
           <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
           <td><div style="display:flex;gap:4px;justify-content:flex-end">
             ${canPayer?`<button onclick="majStatutFinancier('${p.id}','payée')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">Payée ✓</button>`:''}
@@ -11792,7 +11792,7 @@ async function loadDocs(){
       const sf_lbl={'facturée':'Facturée','partiellement_payée':'Part. payée','payée':'Payée','en_retard':'En retard'};
       const ct_cls=p.contrat_signe?'ba':'bw';
       const ct_lbl=p.contrat_signe?'Signé':'À signer';
-      rows.push({ref:p.reference,client:p.clients?.nom||'—',type:p.contrat_signe?'Contrat signé':'Contrat',st_cls:ct_cls,st_lbl:ct_lbl,date:p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—',onclick:`modalDetailById('${p.id}')`});
+      rows.push({ref:p.reference,client:p.clients?.nom||'—',type:p.contrat_signe?'Contrat signé':'Contrat',st_cls:ct_cls,st_lbl:ct_lbl,date:p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—',onclick:`modalDetailById('${p.id}')`});
     });
     if(!rows.length){
       el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucun document. Les devis et contrats apparaîtront ici.</div></div>';
@@ -12944,7 +12944,7 @@ async function kitsRenderControles(){
             <div style="flex:1">
               <div style="font-size:13.5px;font-weight:700;color:var(--t1)">${esc(c.kits?.nom||'Kit')}</div>
               <div style="font-size:12px;color:var(--t2);margin-top:2px">${typeLabel}${_isManager&&respo?' · '+respo:''}</div>
-              ${pre?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(pre.clients?.nom||'—')} · ${pre.reference||''}${pre.date_prestation?' · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>`:''}
+              ${pre?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(pre.clients?.nom||'—')} · ${pre.reference||''}${pre.date_prestation?' · '+new Date(pre.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>`:''}
             </div>
             <div style="text-align:right">
               <div style="font-size:11px;font-weight:700;color:${stColor}">${c.statut==='valide'?'✓ Validé':c.statut==='bloquant'?'⚠ Bloquant':'En cours'}</div>
@@ -13107,7 +13107,7 @@ async function kitsOpenFiche(kitId){
           return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:8px">
             <div style="flex:1">
               <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${esc(pre?.clients?.nom||'—')}</div>
-              <div style="font-size:11px;color:var(--t3)">${pre?.reference||''}${pre?.date_prestation?' · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>
+              <div style="font-size:11px;color:var(--t3)">${pre?.reference||''}${pre?.date_prestation?' · '+new Date(pre.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>
             </div>
             <span class="kbadge" style="background:${rst.bg};border:1px solid ${rst.br};color:${rst.tx}">${rst.lb}</span>
           </div>`;
@@ -13373,7 +13373,7 @@ async function kitsModalAttribuer(kitId){
       <div class="fg"><label class="fl">Prestation</label>
         <select id="attr-pre" class="fi">
           <option value="">— Prestation —</option>
-          ${(Array.isArray(prests)?prests:[]).map(p=>`<option value="${p.id}">${esc(p.clients?.nom||'—')} · ${p.reference||''} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):''}</option>`).join('')}
+          ${(Array.isArray(prests)?prests:[]).map(p=>`<option value="${p.id}">${esc(p.clients?.nom||'—')} · ${p.reference||''} · ${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):''}</option>`).join('')}
         </select>
       </div>
       <div class="fg"><label class="fl">Responsable du kit</label>
@@ -15780,7 +15780,7 @@ async function loadObjectifs(){
           pm.map(p=>`<tr>
             <td class="tm">${p.reference||'—'}</td>
             <td class="tp">${esc(p.clients?.nom||'—')}</td>
-            <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+            <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
             <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
             <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
             <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
@@ -15932,13 +15932,13 @@ function renderPhotoRevenus(){
   const chartEl=document.getElementById('rev-chart');
   if(chartEl){
     const months=[];
-    for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({key:d.toISOString().slice(0,7),label:d.toLocaleDateString('fr-FR',{month:'short'})});}
+    for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({key:ymdLocal(d).slice(0,7),label:d.toLocaleDateString('fr-FR',{month:'short'})});}
     const byMonth={};_revAllData.forEach(r=>{const m=(r.prestations?.date_prestation||'').slice(0,7);byMonth[m]=(byMonth[m]||0)+(r.remuneration||0);});
     const vals=months.map(m=>byMonth[m.key]||0);
     const maxVal=Math.max(...vals,1);
     chartEl.innerHTML=months.map((m,i)=>{
       const h=Math.max(4,Math.round((vals[i]/maxVal)*66));
-      const isCurrent=m.key===now.toISOString().slice(0,7);
+      const isCurrent=m.key===ymdLocal(now).slice(0,7);
       return`<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
         <div style="width:100%;border-radius:3px 3px 0 0;height:${h}px;background:${isCurrent?'var(--acc)':'rgba(255,255,255,.15)'}"></div>
         <div style="font-size:9px;color:var(--t3);text-transform:uppercase">${m.label}</div>
@@ -15960,7 +15960,7 @@ function renderPhotoRevenus(){
         <td class="tm">${p.reference||'—'}</td>
         <td class="tp">${esc(p.clients?.nom||'—')}</td>
         <td>${p.type_prestation||'—'}</td>
-        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td class="tm" style="color:var(--t1);font-weight:600">${r.remuneration?r.remuneration.toLocaleString('fr-FR')+' €':'—'}</td>
         <td><span class="bd ${payCl}"><span class="bd-d"></span>${payLabel}</span></td>
         <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
@@ -16033,7 +16033,7 @@ async function loadCmDash(){
         <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalDetailById('${p.id}')">
           <div style="width:8px;height:8px;border-radius:50%;background:var(--acc);flex-shrink:0"></div>
           <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${esc(p.clients?.nom||'—')} · ${p.type_prestation||'—'}</div>
-            <div style="font-size:11px;color:var(--t3)">${p.reference} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</div>
+            <div style="font-size:11px;color:var(--t3)">${p.reference} · ${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</div>
           </div>
           <span style="font-size:11px;color:var(--acc)">›</span>
         </div>`).join('')+'</div>':
@@ -16230,7 +16230,7 @@ async function modalSignalerIncident(){
     const sel=document.getElementById('inc-pre');
     if(sel){
       sel.innerHTML='<option value="">Aucune (incident général)</option>'+
-        (pres||[]).map(p=>`<option value="${p.id}">${p.reference||'?'} · ${esc(p.clients?.nom||'—')} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</option>`).join('');
+        (pres||[]).map(p=>`<option value="${p.id}">${p.reference||'?'} · ${esc(p.clients?.nom||'—')} · ${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</option>`).join('');
     }
   }catch(e){}
 }
@@ -19982,7 +19982,7 @@ async function loadCmBriefs(){
           <td class="tp">${esc(p.clients?.nom||'—')}</td>
           <td style="max-width:220px" title="${esc(p.description_besoin||'')}">${esc((p.description_besoin||'—').slice(0,60))}</td>
           <td style="max-width:220px" title="${esc(p.livrables_demandes||'')}">${esc((p.livrables_demandes||'—').slice(0,60))}</td>
-          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
           <td>${esc(p.lieu||'—')}</td>
           <td><span class="bd ${stCls}"><span class="bd-d"></span>${stLbl}</span></td>
           <td>${p.briefing_vu_at?'<span style="color:var(--ok)">✓ '+new Date(p.briefing_vu_at).toLocaleDateString('fr-FR')+'</span>':'<span style="color:var(--t3)">Pas encore</span>'}</td>
@@ -20181,7 +20181,7 @@ async function loadCmCal(){
   const days=getWeekDates(_calWeekOffset);
   const start=ymdLocal(days[0]);
   const end=ymdLocal(days[6]);
-  const mStart=new Date().toISOString().slice(0,7)+'-01';
+  const mStart=ymdLocal().slice(0,7)+'-01';
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   if(titleEl){const ds=days[0].toLocaleDateString('fr-FR',{day:'numeric',month:'short'});const de=days[6].toLocaleDateString('fr-FR',{day:'numeric',month:'short'});titleEl.textContent='Semaine du '+ds+' au '+de;}
   try{
@@ -21303,7 +21303,7 @@ async function loadCmAnalytics(){
       const data=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&date_prestation=gte.'+mStart+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=20');
       if(!data||!data.length){elPre.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation ce mois.</div>';}
       else{elPre.innerHTML=data.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="modalDetailById('${p.id}')">
-        <div><div style="font-size:13px;color:var(--t1)">${esc(p.clients?.nom||'—')}</div><div style="font-size:11px;color:var(--t3)">${new Date(p.date_prestation).toLocaleDateString('fr-FR')}</div></div>
+        <div><div style="font-size:13px;color:var(--t1)">${esc(p.clients?.nom||'—')}</div><div style="font-size:11px;color:var(--t3)">${new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR')}</div></div>
         <span style="font-size:10px;font-family:monospace;color:var(--acc)">${p.reference} ›</span>
       </div>`).join('');}
     }
@@ -22128,7 +22128,7 @@ function renderComptaAcomptes(){
       <td class="tp">${esc(p.clients?.nom||'—')}</td>
       <td class="tm">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
       <td class="tm" style="font-weight:600;color:var(--wa)">${p.acompte_montant?p.acompte_montant.toLocaleString('fr-FR')+' €':'—'}</td>
-      <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+      <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
       <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">
         ${p.statut_financier!=='partiellement_payée'?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="comptaEncaisserAcompte('${p.id}')">✓ Encaissé</button>`:''}
@@ -22165,11 +22165,16 @@ async function loadComptaImpayes(){
       const prev=factByPrestation[f.prestation_id];
       if(!prev||(f.date_echeance||'')<(prev.date_echeance||''))factByPrestation[f.prestation_id]=f;
     });
-    const now=new Date();const now30=new Date();now30.setDate(now30.getDate()-30);
+    // Comparaisons en chaînes 'YYYY-MM-DD' (pas de Date-vs-Date) : date_echeance/date_prestation
+    // sont des colonnes `date` sans heure — les comparer à un `new Date()` qui, lui, embarque
+    // l'heure courante déclarait une facture "en retard" dès ~2h du matin le jour même de son
+    // échéance (minuit UTC de la date < l'instant présent), pas seulement le lendemain.
+    const todayS=ymdLocal();
+    const now30S=(()=>{const d=new Date();d.setDate(d.getDate()-30);return ymdLocal(d);})();
     const isEnRetard=p=>{
       const f=factByPrestation[p.id];
-      if(f)return f.statut==='en_retard'||(!!f.date_echeance&&new Date(f.date_echeance)<now);
-      return !!p.date_prestation&&new Date(p.date_prestation)<now30;
+      if(f)return f.statut==='en_retard'||(!!f.date_echeance&&f.date_echeance<todayS);
+      return !!p.date_prestation&&p.date_prestation<now30S;
     };
     const enRetard=list.filter(isEnRetard).length;
     const tot=list.reduce((s,p)=>s+(p.montant_ttc||0),0);
@@ -22180,7 +22185,7 @@ async function loadComptaImpayes(){
         const f=factByPrestation[p.id];
         const late=isEnRetard(p);
         const echLbl=f?.date_echeance
-          ?new Date(f.date_echeance).toLocaleDateString('fr-FR')+(f.statut==='en_retard'||new Date(f.date_echeance)<now?' <span style="color:var(--er);font-weight:700">(retard)</span>':'')
+          ?new Date(f.date_echeance+'T12:00:00').toLocaleDateString('fr-FR')+(f.statut==='en_retard'||f.date_echeance<todayS?' <span style="color:var(--er);font-weight:700">(retard)</span>':'')
           :'<span style="color:var(--t3);font-size:11px">facture non émise</span>';
         // Sévérité : dossiers effectivement en retard (isEnRetard) surlignés — même patron que
         // SEV_CLR/SEV_BG du dashboard Admin, en inline sur la ligne.
@@ -22188,7 +22193,7 @@ async function loadComptaImpayes(){
         <td class="tm" style="${late?'border-left:2px solid var(--er)':''}">${p.reference||'—'}</td>
         <td class="tp">${esc(p.clients?.nom||'—')}</td>
         <td class="tm" style="font-weight:700;color:var(--er)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td style="font-size:11.5px">${echLbl}</td>
         <td><span class="bd bw"><span class="bd-d"></span>${p.statut_financier}</span></td>
         <td><div style="display:flex;gap:5px;flex-wrap:wrap">
@@ -22492,7 +22497,7 @@ function renderComptaRem(){
       <div class="tw" style="margin-top:2px"><table><thead><tr><th>Prestation</th><th>Date</th><th>Rémunération</th><th>Statut</th><th></th></tr></thead><tbody>
         ${g.items.map(r=>{const preAnnulee=['annulée','refusée'].includes(r.prestations?.statut);return`<tr${preAnnulee?' style="background:rgba(240,68,94,.05)"':''}>
           <td class="tm">${r.prestations?.reference||'—'}${preAnnulee?` <span title="Mission ${r.prestations.statut} après engagement du paiement — à vérifier avant toute action" style="color:var(--er);font-size:10px;font-weight:700">⚠ ${r.prestations.statut}</span>`:''}</td>
-          <td>${r.prestations?.date_prestation?new Date(r.prestations.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td>${r.prestations?.date_prestation?new Date(r.prestations.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
           <td class="tm" style="font-weight:600">${fmt(r.remuneration)}</td>
           <td><span class="bd ${r.statut_paiement==='payé'?'ba':'bw'}"><span class="bd-d"></span>${r.statut_paiement==='payé'?'Payé':'En attente'}</span></td>
           <td>${r.statut_paiement!=='payé'?`<button id="rem-btn-${r.id}" onclick="marquerPayeRem('${r.id}',this)" style="padding:4px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:11px;cursor:pointer">Payer</button>`:'<span style="font-size:11px;color:var(--ok)">✓</span>'}</td>
@@ -22935,7 +22940,7 @@ async function loadComptaBudgets(){
     // Agrégation par mois calendaire ('YYYY-MM'), moyenne sur les 3 mois
     // attendus (même si une mission/commission manque un mois, on divise
     // quand même par 3 — c'est bien un run-rate glissant sur 3 mois).
-    const moisAttendus=[1,2,3].map(i=>{const d=new Date(now.getFullYear(),now.getMonth()-i,1);return d.toISOString().slice(0,7);});
+    const moisAttendus=[1,2,3].map(i=>{const d=new Date(now.getFullYear(),now.getMonth()-i,1);return ymdLocal(d).slice(0,7);});
     const byMonthCA={},byMonthCharges={},byMonthCom={},byMonthChargesGen={};
     (Array.isArray(missions)?missions:[]).forEach(p=>{
       const m=(p.date_prestation||'').slice(0,7);
@@ -23785,7 +23790,7 @@ async function loadSecDash(){
     if(ep){
       const prochaines=(pres||[]).filter(p=>{
         if(!p.date_prestation)return false;
-        const d=new Date(p.date_prestation);
+        const d=new Date(p.date_prestation+'T12:00:00');
         return d>=now&&d<=in14;
       }).slice(0,8);
       ep.innerHTML=prochaines.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
@@ -23793,7 +23798,7 @@ async function loadSecDash(){
           <td class="tm">${p.reference||'—'}</td>
           <td class="tp">${esc(p.clients?.nom||'—')}</td>
           <td>${p.type_prestation||'—'}</td>
-          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
           <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
           <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
         </tr>`).join('')+'</tbody></table></div>':
@@ -24171,7 +24176,7 @@ async function loadSecRelances(){
     const now2=new Date();
     const acomptes=_secRelData.filter(p=>p.statut==='en_attente_acompte').length;
     const soldes=_secRelData.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payée').length;
-    const enRetardRel=_secRelData.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now2&&p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut)).length;
+    const enRetardRel=_secRelData.filter(p=>p.date_prestation&&new Date(p.date_prestation+'T12:00:00')<now2&&p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut)).length;
     const montantAtt=_secRelData.filter(p=>p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     set('rel-kpi-acomp',acomptes);set('rel-kpi-solde',soldes);set('rel-kpi-retard',enRetardRel);
@@ -24193,7 +24198,7 @@ function renderSecRelances(){
     const now=new Date();
     list=list.filter(p=>{
       if(!p.date_prestation)return false;
-      const d=new Date(p.date_prestation);
+      const d=new Date(p.date_prestation+'T12:00:00');
       return d<now&&p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut);
     });
   }
@@ -24213,11 +24218,11 @@ function renderSecRelances(){
       <td class="tm">${p.reference||'—'}</td>
       <td class="tp">${esc(p.clients?.nom||'—')}</td>
       <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-      <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+      <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
       <td><span class="bd ${SC[p.statut_financier]||'bw'}"><span class="bd-d"></span>${SL[p.statut_financier]||p.statut_financier||'—'}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">
         ${canPayer?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secMarquerPaye('${p.id}')">✓ Payé</button>`:''}
-        ${p.clients?.email?`<a href="mailto:${esc(p.clients.email)}?subject=Relance paiement — ${p.reference||'SportVision'}&body=Bonjour,%0A%0ANotre prestation ${p.reference||''} du ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):''} (${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);font-size:11px;cursor:pointer;text-decoration:none;white-space:nowrap">✉ Relancer</a>`:''}
+        ${p.clients?.email?`<a href="mailto:${esc(p.clients.email)}?subject=Relance paiement — ${p.reference||'SportVision'}&body=Bonjour,%0A%0ANotre prestation ${p.reference||''} du ${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):''} (${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);font-size:11px;cursor:pointer;text-decoration:none;white-space:nowrap">✉ Relancer</a>`:''}
         <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
       </div></td>
     </tr>`;}).join('')+'</tbody></table></div>';
@@ -24265,9 +24270,9 @@ async function loadSecAbonnements(){
   try{
     const data=await sbFetch('contrats?select=id,type_contrat,statut,montant_mensuel,frequence,date_fin,renouvellement_auto,clients(nom)&type_contrat=in.(full_communication,club_plus)&order=date_fin.asc&limit=100');
     const list=Array.isArray(data)?data:[];
-    const now=new Date();const in30=new Date(now);in30.setDate(in30.getDate()+30);
+    const in30S=ymdLocal(new Date(Date.now()+30*86400000));
     const kact=list.filter(c=>c.statut==='actif').length;
-    const kren=list.filter(c=>c.statut==='actif'&&c.date_fin&&new Date(c.date_fin)<=in30).length;
+    const kren=list.filter(c=>c.statut==='actif'&&c.date_fin&&c.date_fin<=in30S).length;
     const kca=list.filter(c=>c.statut==='actif').reduce((s,c)=>s+(c.montant_mensuel||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     set('abo-kpi-act',kact);set('abo-kpi-ren',kren);set('abo-kpi-ca',kca.toLocaleString('fr-FR')+' €');
@@ -24276,7 +24281,7 @@ async function loadSecAbonnements(){
         <td class="tp">${esc(c.clients?.nom||'—')}</td>
         <td>${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—'}</td>
         <td class="tm" style="font-weight:600">${c.montant_mensuel?c.montant_mensuel.toLocaleString('fr-FR')+' €':'—'}</td>
-        <td ${c.date_fin&&new Date(c.date_fin)<=in30?'style="color:var(--wa);font-weight:600"':''}>${c.date_fin?new Date(c.date_fin).toLocaleDateString('fr-FR'):'—'}</td>
+        <td ${c.date_fin&&c.date_fin<=in30S?'style="color:var(--wa);font-weight:600"':''}>${c.date_fin?new Date(c.date_fin+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td>${c.renouvellement_auto?'<span style="color:var(--ok);font-size:11px;font-weight:600">Auto</span>':'<span style="color:var(--t3);font-size:11px">Manuel</span>'}</td>
         <td><span class="bd ${c.statut==='actif'?'ba':'bw'}"><span class="bd-d"></span>${c.statut}</span></td>
       </tr>`).join('')+'</tbody></table></div>':
@@ -24319,7 +24324,7 @@ function renderSecLivraisons(){
       <td class="tm">${p.reference||'—'}</td>
       <td class="tp">${esc(p.clients?.nom||'—')}</td>
       <td>${p.type_prestation||'—'}</td>
-      <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+      <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
       <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">
         ${['prête_validation','prête_à_livrer','prêt_validation'].includes(p.statut)?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secMarquerLivre('${p.id}')">📤 Livrer</button>`:''}
@@ -24573,7 +24578,7 @@ async function loadSecRapports(){
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--b1)">
             <div style="flex:1;min-width:0">
               <div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.reference||'—'} — ${esc(p.clients?.nom||'?')}</div>
-              <div style="font-size:10.5px;color:var(--t3)">${p.type_prestation||'—'} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—'}</div>
+              <div style="font-size:10.5px;color:var(--t3)">${p.type_prestation||'—'} · ${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—'}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
               <span style="font-size:12px;font-weight:700;color:var(--ok)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</span>
@@ -24823,7 +24828,7 @@ async function loadJourJ(){
         html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--acc);text-transform:uppercase;margin:${todayMissions.length?'16px':'0'} 0 10px">À venir (7 jours)</div>`;
         upcoming.forEach(row=>{
           const p=row.prestations;
-          const dDate=new Date(p.date_prestation);
+          const dDate=new Date(p.date_prestation+'T12:00:00');
           const diff=Math.ceil((dDate-now)/(1000*60*60*24));
           const diffTxt=diff===1?'Demain':`Dans ${diff} jours`;
           const rdv=(row.heure_rdv||p.heure_rdv||p.heure_debut||'').slice(0,5);
@@ -25015,7 +25020,7 @@ async function loadKanban(){
     _kanbanCache=data||[];
     const now=new Date();const in7=new Date(now);in7.setDate(in7.getDate()+7);
     const active=_kanbanCache.filter(p=>!['clôturée','payée','livrée','facturée','partiellement_payée'].includes(p.statut)).length;
-    const soon=_kanbanCache.filter(p=>{if(!p.date_prestation)return false;const d=new Date(p.date_prestation);return d>=now&&d<=in7;}).length;
+    const soon=_kanbanCache.filter(p=>{if(!p.date_prestation)return false;const d=new Date(p.date_prestation+'T12:00:00');return d>=now&&d<=in7;}).length;
     const done=_kanbanCache.filter(p=>['livrée','payée','facturée','partiellement_payée','clôturée'].includes(p.statut)).length;
     const s1=document.getElementById('kbn-pre');if(s1)s1.textContent=active;
     const s2=document.getElementById('kbn-soon');if(s2)s2.textContent=soon;
@@ -25028,7 +25033,7 @@ async function loadKanban(){
           <div class="kb-ref">${c.reference||'—'}</div>
           <div class="kb-cn">${esc(c.clients?.nom||'—')}</div>
           <div class="kb-ty">${c.type_prestation||'—'}</div>
-          ${c.date_prestation?`<div style="font-size:10px;color:var(--t3);margin-top:4px">${new Date(c.date_prestation).toLocaleDateString('fr-FR')}</div>`:''}
+          ${c.date_prestation?`<div style="font-size:10px;color:var(--t3);margin-top:4px">${new Date(c.date_prestation+'T12:00:00').toLocaleDateString('fr-FR')}</div>`:''}
         </div>`;
       }).join(''):`<div style="padding:16px;text-align:center;color:var(--t3);font-size:11px;opacity:.5">—</div>`;
       return `<div class="kb-col"><div class="kb-head" style="border-top:2px solid ${col.clr}"><span class="kb-ht">${col.lb}</span><span class="kb-cnt">${cards.length}</span></div><div class="kb-body">${rows}</div></div>`;
@@ -25062,7 +25067,7 @@ async function modalDetailById(id){
 // ── Modale briefing photo — lecture seule ────────────────────────────────────
 function modalPhotoBriefing(p){
   if(!p)return;
-  const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'—';
+  const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'—';
   const rdv=(p.heure_rdv||p.heure_debut||'').slice(0,5);
   const hasBrief=p.description_besoin||p.livrables_demandes;
   const decBtn=p._equipeId?`<button class="btn bp" onclick="closeModal();modalDeclarerHeures('${p._equipeId}','${escJs(p.reference||'')}')" >Déclarer mes heures</button>`:'';
@@ -25381,6 +25386,7 @@ async function _chargerHistoriqueProdFiche(prestationId){
 // ── Planning secrétaire ──────────────────────────────────────────────────────
 let _planningDate=new Date();
 let _planningViewMode='cal'; // 'cal' | 'list'
+let _planningRawData=null,_planningRawKey=null;
 function setPlanningView(mode){
   _planningViewMode=mode;
   const cBtn=document.getElementById('plan-view-cal');
@@ -25403,7 +25409,12 @@ async function loadPlanning(){
   const debut=ymdLocal(new Date(yr,mo,1));
   const fin=ymdLocal(new Date(yr,mo+1,0));
   try{
-    const data=await sbFetch(`prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,clients(nom)&date_prestation=gte.${debut}&date_prestation=lte.${fin}&statut=not.in.(annulée,refusée)&order=date_prestation.asc`);
+    // Basculer Calendrier/Liste (setPlanningView) ne change ni le mois ni les données —
+    // réutiliser le fetch déjà en cache pour ce mois plutôt que de relire toute la table
+    // à chaque clic sur le toggle de vue.
+    const key=debut+'|'+fin;
+    const data=(_planningRawData&&_planningRawKey===key)?_planningRawData:await sbFetch(`prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,clients(nom)&date_prestation=gte.${debut}&date_prestation=lte.${fin}&statut=not.in.(annulée,refusée)&order=date_prestation.asc`);
+    _planningRawData=data;_planningRawKey=key;
     const byDay={};
     (data||[]).forEach(p=>{if(p.date_prestation){const k=p.date_prestation.slice(0,10);if(!byDay[k])byDay[k]=[];byDay[k].push(p);}});
     const today=ymdLocal();
@@ -25936,7 +25947,7 @@ async function loadFinances(){
     if(list.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.25">💶</div><div>Aucune prestation avec montant renseigné.</div><div style="font-size:11.5px;max-width:320px;text-align:center">Les montants apparaîtront ici dès qu\'une prestation aura un montant TTC renseigné.</div></div>';return;}
     // ── Mini charts — 6 derniers mois ──
     const now2=new Date();
-    const months6=Array.from({length:6},(_,i)=>{const d=new Date(now2.getFullYear(),now2.getMonth()-5+i,1);return{key:d.toISOString().slice(0,7),lb:d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'})};});
+    const months6=Array.from({length:6},(_,i)=>{const d=new Date(now2.getFullYear(),now2.getMonth()-5+i,1);return{key:ymdLocal(d).slice(0,7),lb:d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'})};});
     const byMonth={};
     list.forEach(p=>{if(!p.date_prestation)return;const mk=p.date_prestation.slice(0,7);if(!byMonth[mk])byMonth[mk]={enc:0,att:0};const m=p.montant_ttc||0;if(p.statut_financier==='payée')byMonth[mk].enc+=m;else if(['facturée','partiellement_payée'].includes(p.statut_financier))byMonth[mk].att+=m;});
     const chartData=months6.map(m=>({lb:m.lb,enc:byMonth[m.key]?.enc||0,att:byMonth[m.key]?.att||0}));
@@ -25989,7 +26000,7 @@ async function loadFinances(){
           <td class="tm" style="${rowBorder}">${p.reference||'—'}</td>
           <td class="tp">${esc(p.clients?.nom||'—')}</td>
           <td>${p.type_prestation||'—'}</td>
-          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
           <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
           <td><span class="bd ${sc}"><span class="bd-d"></span>${sl}</span></td>
           <td><div style="display:flex;gap:4px;justify-content:flex-end">
@@ -26176,7 +26187,7 @@ function renderFinDepenses(){
   const el=document.getElementById('findepenses-real');
   if(!el)return;
   const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
-  const now=new Date();const mStart=now.toISOString().slice(0,7);
+  const now=new Date();const mStart=ymdLocal(now).slice(0,7);
   const moisTotal=_findepCache.filter(d=>d.date_depense&&d.date_depense.slice(0,7)===mStart).reduce((s,d)=>s+(d.montant_ttc||0),0);
   const recurrentes=_findepCache.filter(d=>d.recurrence&&d.recurrence!=='ponctuelle'&&!d.source_expense_id);
   const prochaine=recurrentes.filter(d=>d.date_prochaine_echeance).sort((a,b)=>a.date_prochaine_echeance<b.date_prochaine_echeance?-1:1)[0];
@@ -26187,7 +26198,7 @@ function renderFinDepenses(){
   if(!_findepKpiAnimated){if(s1)animateNumber(s1,moisTotal,{suffix:' €'});_findepKpiAnimated=true;}
   else if(s1)s1.textContent=fmt(moisTotal);
   const s2=document.getElementById('findep-kpi-recur');if(s2)s2.textContent=recurrentes.length;
-  const s3=document.getElementById('findep-kpi-prochaine');if(s3)s3.textContent=prochaine?new Date(prochaine.date_prochaine_echeance).toLocaleDateString('fr-FR')+(prochaine.date_prochaine_echeance<=now.toISOString().slice(0,10)?' (due)':''):'—';
+  const s3=document.getElementById('findep-kpi-prochaine');if(s3)s3.textContent=prochaine?new Date(prochaine.date_prochaine_echeance).toLocaleDateString('fr-FR')+(prochaine.date_prochaine_echeance<=ymdLocal(now)?' (due)':''):'—';
   let list=_findepCache;
   if(_findepFiltre==='payee')list=list.filter(d=>['payee','comptabilisee'].includes(d.statut));
   else if(_findepFiltre!=='all')list=list.filter(d=>d.statut===_findepFiltre);
@@ -26271,7 +26282,7 @@ function renderFinEquipe(){
   const el=document.getElementById('finequipe-real');
   if(!el)return;
   const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
-  const now=new Date();const mStart=now.toISOString().slice(0,7);
+  const now=new Date();const mStart=ymdLocal(now).slice(0,7);
   const aPayer=_fineqCache.filter(x=>x.statut==='apayer').reduce((s,x)=>s+x.montant,0)+_fineqCache.filter(x=>x.statut==='recurrent').reduce((s,x)=>s+x.montant,0);
   const payeMois=_fineqCache.filter(x=>x.statut==='paye'&&x.date&&x.date.slice(0,7)===mStart).reduce((s,x)=>s+x.montant,0);
   const hist=_fineqCache.filter(x=>x.statut!=='recurrent').reduce((s,x)=>s+x.montant,0);
@@ -27738,7 +27749,7 @@ async function runSearch(q){
         label:'Prestations',icon:'📋',
         rows:(pre||[]).map(p=>({
           title:p.reference||'—',
-          sub:(p.clients?.nom||'')+(p.date_prestation?' · '+new Date(p.date_prestation).toLocaleDateString('fr-FR'):''),
+          sub:(p.clients?.nom||'')+(p.date_prestation?' · '+new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):''),
           action:`closeModal();modalDetailById('${p.id}')`,
           badge:SL[p.statut]||p.statut,
           badgeCls:SC[p.statut]||'bw',
@@ -28724,7 +28735,7 @@ async function loadRapport(){
   const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
   const now=new Date();
   const targetDate=new Date(now.getFullYear(),now.getMonth()+_rapportOffset,1);
-  const mStart=targetDate.toISOString().slice(0,7)+'-01';
+  const mStart=ymdLocal(targetDate).slice(0,7)+'-01';
   const mEnd=ymdLocal(new Date(targetDate.getFullYear(),targetDate.getMonth()+1,0));
   const mLabel=targetDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
   const titleEl=document.getElementById('rapport-titre');
@@ -28809,7 +28820,7 @@ async function exportRapportCSV(){
   const titleEl=document.getElementById('rapport-titre');
   const now=new Date();
   const targetDate=new Date(now.getFullYear(),now.getMonth()+_rapportOffset,1);
-  const mStart=targetDate.toISOString().slice(0,7)+'-01';
+  const mStart=ymdLocal(targetDate).slice(0,7)+'-01';
   const mEnd=ymdLocal(new Date(targetDate.getFullYear(),targetDate.getMonth()+1,0));
   const data=await sbFetch('prestations?select=reference,date_prestation,type_prestation,lieu,montant_ht,montant_ttc,tva_pct,statut_financier,clients(nom)&date_prestation=gte.'+mStart+'&date_prestation=lte.'+mEnd+'&order=date_prestation.asc');
   const list=Array.isArray(data)?data:[];
@@ -28829,7 +28840,7 @@ async function exportRapportCSV(){
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;
-  a.download='rapport-'+(targetDate.toISOString().slice(0,7))+'.csv';
+  a.download='rapport-'+(ymdLocal(targetDate).slice(0,7))+'.csv';
   a.click();URL.revokeObjectURL(url);
   toast('Export CSV téléchargé','ok');
 }
@@ -28856,10 +28867,14 @@ async function loadContrats(){
   // faisait pas — l'écran Contrats plantait (ReferenceError) dès qu'un contrat avait une
   // date_debut, c'est-à-dire quasiment toujours. L'audit externe ne l'avait pas vu car il ne
   // lit que la page statique, jamais l'exécution JS réelle de cet écran.
-  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
-  const now=new Date(),in30=new Date(now);in30.setDate(in30.getDate()+30);
+  const fd=s=>s?new Date(s+'T12:00:00').toLocaleDateString('fr-FR'):'—'; // date_debut/date_fin (contrats) sont des colonnes `date`
+  // Comparaisons en chaînes 'YYYY-MM-DD' : date_fin est une colonne `date` sans heure. La
+  // comparer à `new Date()` (qui embarque l'heure courante) faisait disparaître de "expire
+  // bientôt" les contrats finissant le jour même dès ~2h du matin (minuit UTC de date_fin
+  // < l'instant présent) — trouvé lors de l'audit calendriers/dates du 29/08.
+  const todayS=ymdLocal(),in30S=ymdLocal(new Date(Date.now()+30*86400000));
   const actifs=list.filter(c=>c.statut==='actif');
-  const expBientot=actifs.filter(c=>c.date_fin&&new Date(c.date_fin)<=in30&&new Date(c.date_fin)>=now);
+  const expBientot=actifs.filter(c=>c.date_fin&&c.date_fin<=in30S&&c.date_fin>=todayS);
   const caTotal=actifs.reduce((s,c)=>s+(c.montant_mensuel||0),0);
   const kpiAct=document.getElementById('ct-kpi-act');if(kpiAct)kpiAct.textContent=actifs.length;
   const kpiExp=document.getElementById('ct-kpi-exp');if(kpiExp)kpiExp.textContent=expBientot.length;
@@ -30943,7 +30958,7 @@ function _equipeEnDirectView(){
 let _equipeCache=[];
 
 async function loadEquipeEnDirect(){
-  const today=new Date().toISOString().split('T')[0];
+  const today=ymdLocal();
   const monthStart=today.slice(0,7)+'-01';
 
   // Fetch profiles + today's missions + month counts in parallel
@@ -31592,7 +31607,7 @@ async function mobSearch(q){
         html+=`<div class="mso-sec-ttl">Prestations</div>`;
         html+=(pres).map(p=>`<div class="mso-row" onclick="closeMobSearch();modalDetailById('${p.id}')">
           <div class="mso-row-ic">📅</div>
-          <div><div class="mso-row-t">${esc(p.clients?.nom||p.reference)}</div><div class="mso-row-s">${p.reference||'—'} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</div></div>
+          <div><div class="mso-row-t">${esc(p.clients?.nom||p.reference)}</div><div class="mso-row-s">${p.reference||'—'} · ${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</div></div>
         </div>`).join('');
       }
       res.innerHTML=html||'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat.</div>';
@@ -31630,7 +31645,7 @@ function exitJourJ(){document.getElementById('mob-jourj')?.classList.remove('on'
 function renderJourJ(){
   const p=_jjData;if(!p)return;
   const el=document.getElementById('mob-jourj');
-  const dateStr=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'—';
+  const dateStr=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'—';
   const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée');
   const act=JJ_STATUT_ACTION[p.statut];
   const rdv=(p.heure_rdv||p.heure_debut||'').slice(0,5);
@@ -31802,7 +31817,7 @@ async function loadMobilePhotoDash(ct){
       html+=`<div class="mc" style="border-color:rgba(54,107,255,.35);background:rgba(54,107,255,.06);margin-bottom:13px">
         <div class="mc-top">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--acc);margin-bottom:8px">${invitations.length} INVITATION${invitations.length>1?'S':''} EN ATTENTE</div>
-          ${invitations.slice(0,2).map(inv=>{const p=inv.prestations;const date=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+          ${invitations.slice(0,2).map(inv=>{const p=inv.prestations;const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
             <div><div style="font-size:14px;font-weight:600;color:var(--t1)">${esc(p.clients?.nom||'—')}</div><div style="font-size:12px;color:var(--t3)">${p.type_prestation||'—'} · ${date}</div></div>
             <!-- min-height/min-width:44px + gap:10px (au lieu de 6px) : accepter/refuser une
                  invitation de mission est une action engageante, deux boutons de 33px collés
@@ -31818,7 +31833,7 @@ async function loadMobilePhotoDash(ct){
     }
     if(prochaine){
       const p=prochaine.prestations;
-      const date=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'—';
+      const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'—';
       const rdv=(prochaine.heure_rdv||p.heure_debut||'').slice(0,5);
       html+=`<div class="mhero" style="margin-bottom:13px">
         <div class="mhero-label">PROCHAINE PRESTATION</div>
@@ -31845,7 +31860,7 @@ async function loadMobilePhotoDash(ct){
     html+=`<div class="ms-head"><div class="ms-title">Mes missions à venir</div><button class="ms-link" onclick="switchView('pre')">Toutes →</button></div>`;
     const liste=futures.slice(0,5);
     if(liste.length){
-      html+=liste.map(row=>{const p=row.prestations;const date=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';const rdv=(row.heure_rdv||p.heure_debut||'').slice(0,5);
+      html+=liste.map(row=>{const p=row.prestations;const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';const rdv=(row.heure_rdv||p.heure_debut||'').slice(0,5);
         return`<div class="mc" style="cursor:pointer">
           <div class="mc-top">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
@@ -31930,12 +31945,12 @@ async function loadMobileProdDash(ct){
     const prochaines=list.filter(p=>p.date_prestation>today&&!['livrée','clôturée'].includes(p.statut)).slice(0,5);
     if(prochaines.length){
       html+=`<div class="ms-head"><div class="ms-title">À venir</div><button class="ms-link" onclick="switchView('pre')">Tout voir →</button></div>`;
-      html+=prochaines.map(p=>{const date=new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});const eq=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length;
+      html+=prochaines.map(p=>{const date=new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'});const eq=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length;
         return`<div class="mc" onclick="modalDetailById('${p.id}')" style="cursor:pointer">
           <div class="mc-top" style="display:flex;align-items:center;gap:12px">
             <div style="width:44px;height:44px;border-radius:10px;background:rgba(54,107,255,.1);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
-              <div style="font-size:16px;font-weight:700;color:var(--acc)">${new Date(p.date_prestation).getDate()}</div>
-              <div style="font-size:9px;text-transform:uppercase;color:var(--t3)">${new Date(p.date_prestation).toLocaleDateString('fr-FR',{month:'short'})}</div>
+              <div style="font-size:16px;font-weight:700;color:var(--acc)">${new Date(p.date_prestation+'T12:00:00').getDate()}</div>
+              <div style="font-size:9px;text-transform:uppercase;color:var(--t3)">${new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{month:'short'})}</div>
             </div>
             <div style="flex:1;min-width:0">
               <div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.clients?.nom||'—')}</div>
@@ -32004,7 +32019,7 @@ async function loadMobileSecDash(ct){
     </div>`;
     if(demandes.length){
       html+=`<div class="ms-head"><div class="ms-title">Dernières demandes</div><button class="ms-link" onclick="switchView('demandes')">Voir →</button></div>`;
-      html+=demandes.slice(0,3).map(p=>{const date=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+      html+=demandes.slice(0,3).map(p=>{const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
         return`<div class="mc" onclick="modalDetailById('${p.id}')" style="cursor:pointer">
           <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
             <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.clients?.nom||'—')}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'} · ${date}</div></div>
@@ -32157,7 +32172,7 @@ async function loadMobileCmDash(ct){
     </div>`;
     if((preSoon||[]).length){
       html+=`<div class="ms-head"><div class="ms-title">Prochaines prestations</div></div>`;
-      html+=(preSoon||[]).map(p=>{const date=new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+      html+=(preSoon||[]).map(p=>{const date=new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
         return`<div class="mc" onclick="modalDetailById('${p.id}')" style="cursor:pointer">
           <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
             <div><div style="font-size:15px;font-weight:700;color:var(--t1)">${esc(p.clients?.nom||'—')}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'} · ${date}</div></div>
