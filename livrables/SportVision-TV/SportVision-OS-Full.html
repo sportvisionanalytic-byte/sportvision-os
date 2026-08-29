@@ -827,36 +827,33 @@ const NAV={
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
-  // 'budget' (CA/coûts/marge) retiré du nav prod le 28/08 (spec refonte Responsable
-  // Production §35 "Finance - ce que voit Production" : aucune donnée de rentabilité
-  // au Responsable Production). Vue et fonction loadProdBudget() supprimées avec le nav.
+  // Refonte Responsable Production (spec "Refonte Interface Responsable Production",
+  // 29/08/2026, §2 "Navigation cible" + critère d'acceptation §52.1) : nav ramené aux 5
+  // écrans opérationnels de la spec (Accueil/Missions/Livraisons/Équipe terrain/Matériel).
+  // 'budget' déjà retiré le 28/08 (§35 "Finance — ce que voit Production" : aucune donnée
+  // de rentabilité). Retirés ce soir : planning (devient l'onglet Calendrier de Missions,
+  // §10 "le calendrier est une vue de Missions, pas un module séparé"), jourj/brief/incidents
+  // (accès contextuel depuis la fiche mission, §2 "Accès contextuels" + §8/§24/§25 — actions
+  // "Ouvrir itinéraire"/"Modifier brief"/incident restent atteignables depuis la fiche),
+  // equipes/kanban/post (redondants avec les onglets du module Missions, §7 "À attribuer |
+  // Proposées | Confirmées | En cours | À livrer | Terminées"), media (accès contextuel
+  // "Bibliothèque via une mission ou un club"), rem/frais (suivi personnel, hors des 5 écrans
+  // listés par le critère d'acceptation — restent accessibles via Mon équipe/fiche perso),
+  // rapports (Finance, hors périmètre comme 'budget'), annuaire (doublon Équipe terrain, même
+  // retrait que sec/photo). Toutes les vues/fonctions/dispatch sont conservés (aucune donnée
+  // ni fonctionnalité supprimée), seul le nav change — cf. même principe que sec.rapports.
   prod:[
     {type:'sep',lb:'Opérations'},
-    {id:'dash',lb:'Tableau de bord',ic:'dash'},
-    {id:'pre',lb:'Prestations',ic:'pre'},
-    {id:'planning',lb:'Planning production',ic:'cal'},
-    {id:'jourj',lb:'Mode Jour J',ic:'live'},
-    {type:'sep',lb:'Équipe'},
-    {id:'equipe',lb:'Mon équipe',ic:'col'},
-    {id:'equipes',lb:'Affectations',ic:'col'},
-    {id:'rem',lb:'Rémunérations',ic:'fin'},
-    {id:'frais',lb:'Frais & km',ic:'fin'},
-    {type:'sep',lb:'Production'},
-    {id:'brief',lb:'Briefings',ic:'doc'},
-    {id:'kits',lb:'Kits & matériel',ic:'kits'},
-    {id:'media',lb:'Médias',ic:'med'},
-    {id:'post',lb:'Postproduction',ic:'kan'},
-    {id:'livr',lb:'Livrables',ic:'check'},
-    {type:'sep',lb:'Suivi'},
-    {id:'kanban',lb:'Kanban',ic:'kan'},
-    {id:'incidents',lb:'Incidents',ic:'alert'},
-    {id:'rapports',lb:'Rapports',ic:'doc'},
-    {id:'form',lb:'Centre de formation',ic:'form'},
-    {type:'sep',lb:'Communication'},
-    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
-    {id:'msg',lb:'Messagerie',ic:'msg'},
+    {id:'dash',lb:'Accueil',ic:'dash'},
+    {id:'pre',lb:'Missions',ic:'pre'},
+    {id:'livr',lb:'Livraisons',ic:'check'},
+    {type:'sep',lb:'Équipe & matériel'},
+    {id:'equipe',lb:'Équipe terrain',ic:'col'},
+    {id:'kits',lb:'Matériel',ic:'kits'},
     {type:'sep',lb:'Ressources'},
+    {id:'form',lb:'Centre de formation',ic:'form'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   // Refonte Photo/Vidéaste (spec "Refonte Interface Photographe/Vidéaste", 28/08/2026) :
@@ -1674,36 +1671,23 @@ const VIEWS={
     <div id="docrh-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── PRODUCTION ──────────────────────────
+  // Refonte Responsable Production (§3 "Dashboard Accueil" + §4 "Bloc À traiter", 29/08) :
+  // les 7 blocs de la spec remplacent l'ancien "Tour de contrôle" (KPI hétéroclites incluant
+  // rémunérations/kits déployés, hors du périmètre exact demandé). "Pas de KPI commerciaux"
+  // (§3) déjà respecté depuis le retrait de 'budget' le 28/08 — aucun CA/marge affiché ici.
   'prod.dash':()=>`
-    <div style="overflow-x:auto;scrollbar-width:none;margin-bottom:18px;-webkit-overflow-scrolling:touch">
-      <div style="display:flex;gap:8px;width:max-content;padding-bottom:2px">
-        <button onclick="switchView('jourj')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer">🔴 Mode Jour J</button>
-        <button onclick="switchView('pre')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">📋 Prestations</button>
-        <button onclick="switchView('equipes')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">👥 Affecter équipe</button>
-        <button onclick="switchView('kits')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">🎒 Kits</button>
-        <button onclick="switchView('brief')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">📄 Briefings</button>
-        <button onclick="modalSignalerIncident()" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">⚠ Incident</button>
-        <button onclick="switchView('planning')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">📅 Planning</button>
-      </div>
-    </div>
     <div style="margin-bottom:14px">
-      <div style="font-size:20px;font-weight:800;color:var(--t1)">Tour de contrôle</div>
-      <div style="font-size:12px;color:var(--t3);margin-top:2px">Centre de contrôle opérationnel SportVision</div>
+      <div style="font-size:20px;font-weight:800;color:var(--t1)">Accueil</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:2px">Quelles productions demandent mon attention maintenant ?</div>
     </div>
     <div class="kpi-g" style="margin-bottom:18px">
-      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">À valider</div><div class="kpi-v" id="prod-kpi-val" style="color:var(--er)">—</div><span class="kpi-d dnt">en attente prod</span></div>
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">À planifier</div><div class="kpi-v" id="prod-kpi-ap">—</div><span class="kpi-d dnt">confirmées</span></div>
-      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Planning mensuel CM</div><div class="kpi-v" id="prod-kpi-pmcm">—</div><span class="kpi-d dnt">sans équipe</span></div>
-      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Aujourd'hui</div><div class="kpi-v" id="prod-kpi-auj">—</div><span class="kpi-d dnt">productions</span></div>
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">En tournage</div><div class="kpi-v" id="prod-kpi-live">—</div><span class="kpi-d dnt">en direct</span></div>
-      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('post')"><div class="kpi-ey">En montage</div><div class="kpi-v" id="prod-kpi-mont">—</div><span class="kpi-d dnt">post-prod</span></div>
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('livr')"><div class="kpi-ey">Livrables</div><div class="kpi-v" id="prod-kpi-livr">—</div><span class="kpi-d dnt">à valider</span></div>
-      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('equipe')"><div class="kpi-ey">Collab. dispos</div><div class="kpi-v" id="prod-kpi-cd">—</div><span class="kpi-d dnt">ce jour</span></div>
-      <div class="kpi" style="--kl:#00B8D4;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Kits disponibles</div><div class="kpi-v" id="prod-kpi-kd">—</div><span class="kpi-d dnt">en stock</span></div>
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Kits déployés</div><div class="kpi-v" id="prod-kpi-kr">—</div><span class="kpi-d dnt">sortis</span></div>
-      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('media')"><div class="kpi-ey">Médias manquants</div><div class="kpi-v" id="prod-kpi-med">—</div><span class="kpi-d dnt">à transférer</span></div>
-      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('rem')"><div class="kpi-ey">Rémunérations</div><div class="kpi-v" id="prod-kpi-rem">—</div><span class="kpi-d dnt">à contrôler</span></div>
-      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('incidents')"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="prod-kpi-inc">—</div><span class="kpi-d dnt">à traiter</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Missions à attribuer</div><div class="kpi-v" id="prod-kpi-attrib" style="color:var(--er)">—</div><span class="kpi-d dnt">aucun opérateur confirmé</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Proposées sans réponse</div><div class="kpi-v" id="prod-kpi-propose">—</div><span class="kpi-d dnt">à relancer</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">7 prochains jours</div><div class="kpi-v" id="prod-kpi-7j">—</div><span class="kpi-d dnt">à couvrir</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('livr')"><div class="kpi-ey">Livraisons à valider</div><div class="kpi-v" id="prod-kpi-livval">—</div><span class="kpi-d dnt">à contrôler</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('media')"><div class="kpi-ey">Corrections en cours</div><div class="kpi-v" id="prod-kpi-correc">—</div><span class="kpi-d dnt">en attente opérateur</span></div>
+      <div class="kpi" style="--kl:#00B8D4;cursor:pointer" onclick="openNotifPanel()"><div class="kpi-ey">Changements CM</div><div class="kpi-v" id="prod-kpi-cm">—</div><span class="kpi-d dnt">impact à valider</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Conflits matériel</div><div class="kpi-v" id="prod-kpi-conflit" style="color:var(--er)">—</div><span class="kpi-d dnt">à résoudre</span></div>
     </div>
     <div id="prod-dash-priorite" style="margin-bottom:13px;display:none">
       <div class="cd" style="padding:0;overflow:hidden;border-left:3px solid var(--er)">
@@ -1782,19 +1766,28 @@ const VIEWS={
     <div id="incidents-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── PROD : PRESTATIONS ──────────────────────────────────────────────────────
+  // Refonte Responsable Production §7 "Module Missions" (29/08) : nav ramenée aux 6 onglets
+  // exacts de la spec (À attribuer | Proposées | Confirmées | En cours | À livrer |
+  // Terminées) — remplace les 7 filtres précédents (dont "Sans équipe", redondant avec "À
+  // attribuer", et "Post-prod" fondu dans "À livrer"). "Calendrier" (§10, "une vue de
+  // Missions, pas un module séparé") : bouton vers l'écran planning existant plutôt qu'un
+  // vrai bascule de contenu inline, pour ne pas dupliquer loadPlanningProd().
   'prod.pre':()=>`
     <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">Prestations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Toutes les prestations opérationnelles</div></div>
-      <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle</button>
+      <div><div class="sh-t">Missions</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Réceptionner, affecter, superviser, contrôler</div></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bg2 bs" onclick="switchView('planning')">📅 Calendrier</button>
+        <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle</button>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
       <button onclick="filterProdPre('all')" class="btn bp bs" id="ppf-all" style="flex-shrink:0;font-size:11px">Toutes</button>
-      <button onclick="filterProdPre('valider')" class="btn bg2 bs" id="ppf-val" style="flex-shrink:0;font-size:11px;border-color:rgba(240,68,94,.3);color:var(--er)">⚠ À valider</button>
-      <button onclick="filterProdPre('planifier')" class="btn bg2 bs" id="ppf-plan" style="flex-shrink:0;font-size:11px">À planifier</button>
-      <button onclick="filterProdPre('equipe')" class="btn bg2 bs" id="ppf-eq" style="flex-shrink:0;font-size:11px">Sans équipe</button>
-      <button onclick="filterProdPre('active')" class="btn bg2 bs" id="ppf-act" style="flex-shrink:0;font-size:11px">En production</button>
-      <button onclick="filterProdPre('postprod')" class="btn bg2 bs" id="ppf-post" style="flex-shrink:0;font-size:11px">Post-prod</button>
-      <button onclick="filterProdPre('done')" class="btn bg2 bs" id="ppf-done" style="flex-shrink:0;font-size:11px">Terminées</button>
+      <button onclick="filterProdPre('attribuer')" class="btn bg2 bs" id="ppf-attribuer" style="flex-shrink:0;font-size:11px;border-color:rgba(240,68,94,.3);color:var(--er)">À attribuer</button>
+      <button onclick="filterProdPre('proposees')" class="btn bg2 bs" id="ppf-proposees" style="flex-shrink:0;font-size:11px">Proposées</button>
+      <button onclick="filterProdPre('confirmees')" class="btn bg2 bs" id="ppf-confirmees" style="flex-shrink:0;font-size:11px">Confirmées</button>
+      <button onclick="filterProdPre('encours')" class="btn bg2 bs" id="ppf-encours" style="flex-shrink:0;font-size:11px">En cours</button>
+      <button onclick="filterProdPre('alivrer')" class="btn bg2 bs" id="ppf-alivrer" style="flex-shrink:0;font-size:11px">À livrer</button>
+      <button onclick="filterProdPre('terminees')" class="btn bg2 bs" id="ppf-terminees" style="flex-shrink:0;font-size:11px">Terminées</button>
     </div>
     <div id="prod-pre-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -7845,77 +7838,94 @@ async function loadProdDash(){
   const DONE_ST=['livrée','clôturée','annulée','refusée'];
   const RC={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
   const RL={'admin':'Admin','sec':'Secrétaire','prod':'Production','photo':'Photo/Vidéo','cm':'CM','compta':'Comptable','com':'Commercial'};
+  const in7=new Date();in7.setDate(in7.getDate()+7);const in7s=ymdLocal(in7);
   try{
-    const [preRaw,kitsRaw,incRaw,profRaw,remRaw]=await Promise.all([
-      sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,source,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,role))'),
-      sbFetch('kits?select=id,statut,nom,type_kit'),
+    const [preRaw,incRaw,profRaw,mediaCorrRaw,kitResRaw,notifCmRaw,notifRefusRaw]=await Promise.all([
+      sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,source,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,role,materiel_personnel))'),
       sbFetch('incidents?select=id,type_incident,description,niveau,cloture,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
       sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=nom.asc'),
-      sbFetch('prestations_equipe_display?select=remuneration,statut_paiement,prestations!inner(statut)&statut=eq.acceptée&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
+      // §3/§4 : "Corrections en cours" (media_liens.statut='correction_demandee', posé par
+      // os-photo le 28/08 — cf. commentaire de la migration correspondante) et "Livraison
+      // déposée" côté opérateur.
+      sbFetch('media_liens?select=id,prestation_id,nom,statut,prestations(reference,clients(nom))&statut=eq.correction_demandee').catch(()=>[]),
+      // Conflit matériel (§22) : même kit réservé sur 2 missions dont les dates se chevauchent.
+      // Simplification assumée (missions à la journée dans ce métier) : conflit = même kit_id,
+      // statut actif, même date_prestation. Un vrai chevauchement horaire multi-jour n'est pas
+      // modélisé ici faute de créneau horaire dédié sur kit_reservations.
+      sbFetch('kit_reservations?select=id,kit_id,prestation_id,statut,prestations(date_prestation,reference,clients(nom))&statut=in.(pré_réservé,réservé,sorti,en_prestation,à_récupérer,à_retourner)').catch(()=>[]),
+      // §16/§4 "Mission modifiée par le CM" : notification posée par
+      // migration-planning-cm-changement-a-examiner.sql (28/08) sur planned_presences→prestations.
+      sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.changement_planning_cm&lue=eq.false&order=created_at.desc&limit=10').catch(()=>[]),
+      // §4 "Opérateur a refusé" : notification posée dans le flux de refus d'affectation
+      // (creerNotifSiActive(..., 'mission_refusee', ...)).
+      sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.mission_refusee&lue=eq.false&order=created_at.desc&limit=10').catch(()=>[]),
     ]);
     const pre=Array.isArray(preRaw)?preRaw:[];
-    const kits=Array.isArray(kitsRaw)?kitsRaw:[];
     const inc=Array.isArray(incRaw)?incRaw:[];
     const prof=Array.isArray(profRaw)?profRaw:[];
-    // Cette KPI renvoie vers switchView('rem') (prod.rem / loadProdRemunerations) : elle
-    // doit compter exactement les mêmes lignes que cet écran, sinon le chiffre affiché ici
-    // ne correspond pas à ce que l'utilisateur voit en cliquant dessus. Avant ce correctif,
-    // la requête ne filtrait ni sur prestations_equipe.statut='acceptée' (elle sommait aussi
-    // les invitations en attente, refusées ou remplacées), ni sur le statut de la prestation
-    // liée (elle sommait aussi les missions annulées/refusées) — surestimant largement le
-    // montant "à contrôler". Même règle que loadProdRemunerations pour les missions
-    // annulées/refusées : exclue, sauf si déjà validée avant l'annulation.
-    const remAtt=(Array.isArray(remRaw)?remRaw:[]).filter(r=>!['annulée','refusée'].includes(r.prestations?.statut)||r.statut_paiement==='validé').reduce((s,r)=>s+(r.remuneration||0),0);
-    // KPIs
-    const VALIDER_ST=['à_valider_production'];
-    const aValider=pre.filter(p=>VALIDER_ST.includes(p.statut));
-    const aPlanifier=pre.filter(p=>PLAN_ST.includes(p.statut));
-    // Missions générées par le planning mensuel CM (migration-planning-mensuel-cm.sql,
-    // 28/08/2026) : ce sont déjà des lignes `prestations` normales au statut 'planifiée',
-    // donc elles apparaissent automatiquement dans l'écran Missions/Prestations existant
-    // (pas d'écran dédié). Ce compteur signale juste celles qui n'ont pas encore
-    // d'équipe affectée, pour que prod sache qu'il y a du nouveau à traiter.
-    const planningCmNouvelles=pre.filter(p=>p.source==='planning_mensuel_cm'&&p.statut==='planifiée');
+    const mediaCorr=Array.isArray(mediaCorrRaw)?mediaCorrRaw:[];
+    const kitRes=Array.isArray(kitResRaw)?kitResRaw:[];
+    const notifCm=Array.isArray(notifCmRaw)?notifCmRaw:[];
+    const notifRefus=Array.isArray(notifRefusRaw)?notifRefusRaw:[];
+    // KPIs (§3 "Dashboard Accueil" — 7 blocs exacts de la spec)
     const aujPres=pre.filter(p=>p.date_prestation===today&&!DONE_ST.includes(p.statut));
     const enTournage=pre.filter(p=>LIVE_ST.includes(p.statut));
-    const enMontage=pre.filter(p=>MONT_ST.includes(p.statut));
-    const aTransferer=pre.filter(p=>['médias_à_transférer','production_terminée'].includes(p.statut));
-    const livrablesAValider=pre.filter(p=>['prête_validation','prêt_validation'].includes(p.statut));
-    const kitsDispo=kits.filter(k=>k.statut==='disponible').length;
-    // Même liste de statuts que kitsRenderKitsGrid/kitsLoadAll ("Déployés" sur l'écran Kits) —
-    // il manquait à_récupérer et à_retourner ici, donc ce KPI et celui de l'écran Kits (vers
-    // lequel il pointe) pouvaient afficher deux chiffres différents pour la même réalité.
-    const kitsRes=kits.filter(k=>['réservé','pré_réservé','sorti','en_prestation','à_récupérer','à_retourner'].includes(k.statut)).length;
-    const todayAssigned=new Set(
-      pre.filter(p=>p.date_prestation===today&&!DONE_ST.includes(p.statut))
-         .flatMap(p=>(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').map(e=>e.collaborateur?.id))
-         .filter(Boolean)
-    );
     const collabs=prof.filter(p=>['photo','prod','cm'].includes(p.role));
-    const collabDispo=collabs.filter(p=>!todayAssigned.has(p.id)).length;
-    set('prod-kpi-val',aValider.length||'0');
-    set('prod-kpi-ap',aPlanifier.length);
-    set('prod-kpi-pmcm',planningCmNouvelles.length||'0');
-    set('prod-kpi-auj',aujPres.length);
-    set('prod-kpi-live',enTournage.length);
-    set('prod-kpi-mont',enMontage.length);
-    set('prod-kpi-livr',livrablesAValider.length||'0');
-    set('prod-kpi-cd',collabDispo+'/'+collabs.length);
-    set('prod-kpi-kd',kitsDispo);
-    set('prod-kpi-kr',kitsRes);
-    set('prod-kpi-med',aTransferer.length||'0');
-    set('prod-kpi-rem',remAtt>0?remAtt.toLocaleString('fr-FR')+' €':'0 €');
-    set('prod-kpi-inc',inc.length);
+    const todayAssigned=new Set(
+      aujPres.flatMap(p=>(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').map(e=>e.collaborateur?.id)).filter(Boolean)
+    );
+    // "Missions à attribuer" : au moins arrivée en phase production (à_valider_production
+    // exclu — elle appartient encore au commercial/secrétariat), pas encore d'opérateur
+    // accepté. "Proposées sans réponse" : au moins une invitation en attente, mais aucune
+    // acceptation — sous-ensemble disjoint du précédent (mission déjà "en cours d'attribution").
+    const PROD_ACTIVE_ST=['confirmée','à_planifier','planifiée','équipe_affectée','prête'];
+    const missionsAAttribuer=pre.filter(p=>PROD_ACTIVE_ST.includes(p.statut)
+      &&!(p.prestations_equipe||[]).some(e=>e.statut==='acceptée')
+      &&!(p.prestations_equipe||[]).some(e=>['invitation_envoyée','en_attente'].includes(e.statut)));
+    const missionsProposeesSansReponse=pre.filter(p=>PROD_ACTIVE_ST.includes(p.statut)
+      &&!(p.prestations_equipe||[]).some(e=>e.statut==='acceptée')
+      &&(p.prestations_equipe||[]).some(e=>['invitation_envoyée','en_attente'].includes(e.statut)));
+    const missions7j=pre.filter(p=>!DONE_ST.includes(p.statut)&&p.date_prestation&&p.date_prestation>=today&&p.date_prestation<=in7s);
+    // "Livraisons à valider" : uniquement statut='livrée' — c'est exactement (et seulement)
+    // ce que validate_production() sait faire transitionner vers 'clôturée' (voir sa
+    // définition : toute autre valeur lève une exception). Aligné sur la même règle que
+    // v_mission_prete pour ne jamais afficher un chiffre que l'action "Valider" ne peut pas
+    // réellement traiter.
+    const livraisonsAValider=pre.filter(p=>p.statut==='livrée');
+    // Conflit matériel : regrouper les réservations actives par (kit_id, date_prestation) —
+    // >1 réservation sur le même kit le même jour = conflit réel.
+    const kitConflitMap=new Map();
+    kitRes.forEach(r=>{
+      const d=r.prestations?.date_prestation;if(!d)return;
+      const key=r.kit_id+'|'+d;
+      if(!kitConflitMap.has(key))kitConflitMap.set(key,[]);
+      kitConflitMap.get(key).push(r);
+    });
+    const kitConflits=[...kitConflitMap.values()].filter(g=>g.length>1);
+    set('prod-kpi-attrib',missionsAAttribuer.length||'0');
+    set('prod-kpi-propose',missionsProposeesSansReponse.length||'0');
+    set('prod-kpi-7j',missions7j.length||'0');
+    set('prod-kpi-livval',livraisonsAValider.length||'0');
+    set('prod-kpi-correc',mediaCorr.length||'0');
+    set('prod-kpi-cm',notifCm.length||'0');
+    set('prod-kpi-conflit',kitConflits.length||'0');
     const nbInc=document.getElementById('prod-inc-nb');
     if(nbInc)nbInc.textContent=inc.length?inc.length+' alerte'+(inc.length>1?'s':''):'';
-    // Section "À traiter en priorité"
+    // Section "À traiter" (§4 — 6 catégories exactes de la spec : Urgent×2/Important×2/
+    // Qualité×1 avec signaux réels ; la 6e catégorie de la spec ("Correction : retour
+    // opérateur reçu") n'est pas distinguable de "Corrections en cours" avec le schéma
+    // actuel — aucun historique de statut sur media_liens pour détecter le moment précis
+    // du renvoi par l'opérateur — donc non dupliquée ici, déjà couverte par le KPI dédié.
     const prioItems=[];
-    aValider.forEach(p=>prioItems.push({lvl:'er',txt:`Valider prestation : ${esc(p.clients?.nom||'—')} — ${p.type_prestation||'—'}`,action:`modalDetailById('${p.id}')`}));
-    pre.filter(p=>!DONE_ST.includes(p.statut)&&p.date_prestation&&p.date_prestation<=today&&(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length===0)
-       .slice(0,3).forEach(p=>prioItems.push({lvl:'wa',txt:`Aucun collaborateur affecté : ${esc(p.clients?.nom||'—')}`,action:`modalDetailById('${p.id}')`}));
-    pre.filter(p=>['médias_à_transférer','production_terminée'].includes(p.statut)).slice(0,2)
-       .forEach(p=>prioItems.push({lvl:'wa',txt:`Médias non transférés : ${esc(p.clients?.nom||'—')}`,action:`switchView('media')`}));
-    livrablesAValider.slice(0,2).forEach(p=>prioItems.push({lvl:'wa',txt:`Livrable à valider : ${esc(p.clients?.nom||'—')}`,action:`modalDetailById('${p.id}')`}));
+    missions7j.filter(p=>!(p.prestations_equipe||[]).some(e=>e.statut==='acceptée')).slice(0,3)
+      .forEach(p=>prioItems.push({lvl:'er',txt:`Aucun opérateur (7j) : ${esc(p.clients?.nom||'—')} — ${p.type_prestation||'—'}`,action:`modalDetailById('${p.id}')`}));
+    missions7j.filter(p=>(p.prestations_equipe||[]).some(e=>e.statut==='acceptée'
+      &&!e.collaborateur?.materiel_personnel
+      &&!kitRes.some(r=>r.prestation_id===p.id))).slice(0,3)
+      .forEach(p=>prioItems.push({lvl:'er',txt:`Kit à attribuer : ${esc(p.clients?.nom||'—')} (opérateur sans matériel perso)`,action:`switchView('kits')`}));
+    notifRefus.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`Opérateur a refusé : ${esc(n.prestations?.clients?.nom||n.message||'—')}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
+    notifCm.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`Mission modifiée par le CM : ${esc(n.prestations?.clients?.nom||n.message||'—')}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
+    livraisonsAValider.slice(0,3).forEach(p=>prioItems.push({lvl:'ok',txt:`Livraison à valider : ${esc(p.clients?.nom||'—')}`,action:`modalDetailById('${p.id}')`}));
     inc.filter(al=>al.niveau==='critique').slice(0,2).forEach(al=>prioItems.push({lvl:'er',txt:`Incident critique : ${esc(al.type_incident||al.description?.slice(0,40)||'—')}`,action:`switchView('incidents')`}));
     const elPrio=document.getElementById('prod-dash-priorite');
     const elPrioNb=document.getElementById('prod-prio-nb');
@@ -8164,29 +8174,47 @@ let _prodPreFilter='all';
 
 function filterProdPre(f){
   _prodPreFilter=f;
-  ['all','valider','planifier','equipe','active','postprod','done'].forEach(id=>{
-    const b=document.getElementById('ppf-'+id.replace('valider','val').replace('planifier','plan').replace('equipe','eq').replace('active','act').replace('postprod','post').replace('done','done'));
+  ['all','attribuer','proposees','confirmees','encours','alivrer','terminees'].forEach(id=>{
+    const b=document.getElementById('ppf-'+id);
     if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
     if(b)b.style.fontSize='11px';
-    if(b&&f===id&&id==='valider'){b.style.borderColor='rgba(240,68,94,.3)';b.style.color='var(--er)';}
+    if(b&&f===id&&id==='attribuer'){b.style.borderColor='rgba(240,68,94,.3)';b.style.color='var(--er)';}
   });
   renderProdPreList();
+}
+
+// Regroupement en 6 états (spec §9 "États de mission") appliqué aux 32 valeurs réelles de
+// statut_prestation + prestations_equipe.statut — même découpage PROD_ACTIVE_ST/LIVE_ST que
+// loadProdDash() (§3/§4), gardé identique ici pour que les chiffres du dashboard et les
+// onglets Missions comptent exactement la même chose.
+const PROD_MISSION_ACTIVE_ST=['confirmée','à_planifier','planifiée','équipe_affectée','prête'];
+function prodMissionBucket(p){
+  const DONE_ST=['clôturée','annulée','refusée'];
+  const LIVE_ST=['production_démarrée','équipe_en_route','arrivée_sur_place'];
+  const POST_ST=['médias_à_transférer','production_terminée','médias_complets','à_monter','montage_en_cours'];
+  if(DONE_ST.includes(p.statut))return 'terminees';
+  if(p.statut==='livrée'||POST_ST.includes(p.statut))return 'alivrer';
+  if(LIVE_ST.includes(p.statut))return 'encours';
+  const accepte=(p.prestations_equipe||[]).some(e=>e.statut==='acceptée');
+  if(['équipe_affectée','prête'].includes(p.statut)&&accepte)return 'confirmees';
+  if(PROD_MISSION_ACTIVE_ST.includes(p.statut)&&!accepte){
+    const propose=(p.prestations_equipe||[]).some(e=>['invitation_envoyée','en_attente'].includes(e.statut));
+    return propose?'proposees':'attribuer';
+  }
+  // à_valider_production (commercial→prod) et statuts hors périmètre (demande_reçue…
+  // devis_accepté, en_attente_signature/acompte, documents_complets) : pas encore une
+  // mission opérationnelle au sens de cette spec — regroupés avec "à attribuer" pour rester
+  // visibles plutôt que silencieusement absents des 6 onglets.
+  return 'attribuer';
 }
 
 function renderProdPreList(){
   const el=document.getElementById('prod-pre-real');
   if(!el)return;
   const DONE_ST=['livrée','clôturée','annulée','refusée'];
-  const LIVE_ST=['production_démarrée','équipe_en_route','arrivée_sur_place'];
-  const POST_ST=['médias_à_transférer','production_terminée','médias_complets','à_monter','montage_en_cours','prête_validation','prêt_validation'];
   let list=_prodPreData;
-  if(_prodPreFilter==='valider') list=list.filter(p=>p.statut==='à_valider_production');
-  else if(_prodPreFilter==='planifier') list=list.filter(p=>['confirmée','planifiée'].includes(p.statut));
-  else if(_prodPreFilter==='equipe') list=list.filter(p=>!DONE_ST.includes(p.statut)&&(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length===0);
-  else if(_prodPreFilter==='active') list=list.filter(p=>LIVE_ST.includes(p.statut)||['équipe_affectée','prête'].includes(p.statut));
-  else if(_prodPreFilter==='postprod') list=list.filter(p=>POST_ST.includes(p.statut));
-  else if(_prodPreFilter==='done') list=list.filter(p=>DONE_ST.includes(p.statut));
-  else list=list.filter(p=>!DONE_ST.includes(p.statut));
+  if(_prodPreFilter!=='all') list=list.filter(p=>prodMissionBucket(p)===_prodPreFilter);
+  else list=list.filter(p=>prodMissionBucket(p)!=='terminees');
   if(!list.length){
     el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div style="font-size:13px">Aucune prestation dans ce filtre.</div></div>';
     return;
@@ -8225,8 +8253,8 @@ async function loadProdPrestations(){
     const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom))&order=date_prestation.desc&limit=100');
     _prodPreData=Array.isArray(raw)?raw:[];
     _prodPreFilter='all';
-    ['all','valider','planifier','equipe','active','postprod','done'].forEach(id=>{
-      const b=document.getElementById('ppf-'+id.replace('valider','val').replace('planifier','plan').replace('equipe','eq').replace('active','act').replace('postprod','post').replace('done','done'));
+    ['all','attribuer','proposees','confirmees','encours','alivrer','terminees'].forEach(id=>{
+      const b=document.getElementById('ppf-'+id);
       if(b)b.className='btn '+(id==='all'?'bp':'bg2')+' bs';
       if(b)b.style.fontSize='11px';
     });
@@ -25829,7 +25857,9 @@ function closeMobNav(){
 const BNAV_ITEMS={
   admin:['dash','pre','planning','fin'],
   sec:  ['dash','demandes','pre','relances'],
-  prod: ['dash','jourj','pre','planning'],
+  // 29/08 (refonte nav prod) : jourj/planning retirés du nav principal (contextuels / vue
+  // Calendrier de Missions), remplacés par les 4 écrans réellement présents dans NAV.prod.
+  prod: ['dash','pre','livr','equipe'],
   // photo/com (28/08) : alignées sur les NAV.photo/NAV.com refondues — 'jourj'/'medias'
   // (photo) et 'crm' (com, jamais une vue réelle : VIEWS ne définit pas 'com.crm') sont
   // sortis du menu principal, cf. commentaires NAV ci-dessus.
@@ -29389,7 +29419,10 @@ const MOB_MORE_ITEMS={
   // la sidebar desktop (cf. NAV['admin'] section "Finances & Documents").
   admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'agendasec',lb:'Agenda',ic:'📅',sub:'RDV & rappels'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'docrh',lb:'Documents',ic:'📁',sub:'Pièces'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
-  prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'}],
+  // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
+  // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
+  // (jourj/planning/brief/incidents/media/rem/frais) qui n'ont plus de case dans NAV.prod.
+  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
