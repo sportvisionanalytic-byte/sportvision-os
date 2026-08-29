@@ -1102,6 +1102,20 @@ function finBars(id,h){
   });
 }
 
+// Squelette de chargement scopé CM (polish premium, spec §21/§26/§9-13) — remplace le
+// texte "Chargement…" par des barres shimmer, réutilise la classe .skel déjà définie
+// dans le bloc CSS partagé (pas encore appliquée nulle part avant cette passe) sans
+// toucher ce bloc. N'affecte que la présentation pendant le chargement, jamais les
+// données une fois arrivées.
+function _cmSkel(n,h){
+  // Fond en surbrillance translucide plutôt que la valeur par défaut de .skel
+  // (var(--s1)) : cette classe est presque toujours utilisée ici à l'intérieur
+  // d'une carte .cd, qui a exactement le même fond var(--s1) — sans cette
+  // surcharge, les barres deviennent invisibles (aucun contraste), seul le
+  // reflet ::after clignoterait furtivement.
+  return '<div style="display:flex;flex-direction:column;gap:8px">'+Array.from({length:n||3}).map(()=>`<div class="skel" style="height:${h||16}px;border-radius:8px;background:rgba(255,255,255,.06)"></div>`).join('')+'</div>';
+}
+
 // ── VIEW RENDERERS ────────────────────────
 const VIEWS={
   'admin.dash':()=>`
@@ -2249,10 +2263,10 @@ const VIEWS={
     </div>
     <div class="g2">
       <div class="cd"><div class="cd-h"><div class="cd-t">À traiter</div></div>
-        <div id="cm-dash-pre"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        <div id="cm-dash-pre"><div style="padding:15px 19px">${_cmSkel(4,42)}</div></div>
       </div>
       <div class="cd"><div class="cd-h"><div class="cd-t">Prochaines prestations</div></div>
-        <div id="cm-dash-cl"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        <div id="cm-dash-cl"><div style="padding:15px 19px">${_cmSkel(4,42)}</div></div>
       </div>
     </div>`,
 
@@ -2263,10 +2277,10 @@ const VIEWS={
       <div class="fs"><div class="fs-l">En traitement</div><div class="fs-v" id="dem-kpi-enc">—</div></div>
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Urgentes</div><div class="fs-v" id="dem-kpi-urg" style="color:var(--er)">—</div></div>
     </div>
-    <div id="dem-list"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div id="dem-list">${_cmSkel(5,38)}</div>
     <div class="sh" style="margin-top:22px"><div class="sh-t" style="font-size:15px">Sponsors, créations &amp; actualités soumis par les clubs</div></div>
     <div style="font-size:11.5px;color:var(--t3);margin:-6px 0 12px">Ces éléments sont saisis directement par les clubs dans Connect (fiches sponsors, demandes de création, actualités/résultats) — lecture seule pour l'instant, la mise à jour de statut reste faite par le club.</div>
-    <div id="cm-clubcontent-list"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="cm-clubcontent-list">${_cmSkel(3,38)}</div>`,
 
   'cm.briefs':()=>`
     <div class="sh"><div class="sh-t">Briefs production</div><button class="btn bp" onclick="modalNouveauBriefCm()">+ Nouveau brief</button></div>
@@ -2284,7 +2298,7 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Prospects / qualifiés</div><div class="fs-v" id="cmc-kpi-prospects">—</div></div>
       <div class="fs"><div class="fs-l">Total visible</div><div class="fs-v" id="cmc-kpi-tot">—</div></div>
     </div>
-    <div id="cm-clients-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="cm-clients-real">${_cmSkel(5,40)}</div>`,
 
   'cm.contenus':()=>`
     <div class="sh"><div class="sh-t">Contenus</div><button class="btn bp bs" onclick="modalNouveauContenu()">+ Nouveau</button></div>
@@ -2301,7 +2315,7 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Programmés</div><div class="fs-v" id="cnt-kpi-prog" style="color:var(--ac)">—</div></div>
       <div class="fs"><div class="fs-l">Publiés</div><div class="fs-v" id="cnt-kpi-pub" style="color:var(--ok)">—</div></div>
     </div>
-    <div id="contenus-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="contenus-real">${_cmSkel(6,40)}</div>`,
 
   'cm.videoscm':()=>`
     <div class="sh"><div class="sh-t">Vidéos à valider</div></div>
@@ -2364,7 +2378,7 @@ const VIEWS={
     </div>
     <div id="rap-result"></div>
     <div class="cd" style="margin-top:16px"><div class="cd-h"><div class="cd-t">Historique des rapports</div></div>
-      <div id="rap-history"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="rap-history"><div style="padding:15px 19px">${_cmSkel(3,36)}</div></div>
     </div>`,
 
   // Mes revenus CM (spec Refonte CM §47-48) : vue personnelle en lecture seule, alimentée
@@ -2372,21 +2386,21 @@ const VIEWS={
   // autres CM ni au détail Finance globale.
   'cm.revenus':()=>`
     <div class="sh"><div class="sh-t">Mes revenus</div></div>
-    <div id="cmrev-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="cmrev-real"><div style="padding:4px">${_cmSkel(2,54)}</div></div>`,
 
   // Pilotage CM (Responsable uniquement, spec §43-46) : vue d'exception et de charge —
   // CM/Juniors actifs, structures en retard, demandes Club+ non prises, tutorat.
   'cm.pilotage':()=>`
     <div class="sh"><div class="sh-t">Pilotage CM</div></div>
-    <div id="pilotage-kpis" class="g4" style="margin-bottom:16px"></div>
+    <div id="pilotage-kpis" class="g4" style="margin-bottom:16px">${Array.from({length:5}).map(()=>'<div class="skel" style="height:76px;border-radius:12px"></div>').join('')}</div>
     <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Équipe CM</div></div>
-      <div id="pilotage-equipe"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="pilotage-equipe"><div style="padding:15px 19px">${_cmSkel(4,38)}</div></div>
     </div>
     <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Structures</div></div>
-      <div id="pilotage-structures"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="pilotage-structures"><div style="padding:15px 19px">${_cmSkel(4,38)}</div></div>
     </div>
     <div class="cd"><div class="cd-h"><div class="cd-t">File Club+ générale</div><span style="font-size:11px;color:var(--t3)">Demandes non affiliées à un CM Full Com</span></div>
-      <div id="pilotage-clubplus"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="pilotage-clubplus"><div style="padding:15px 19px">${_cmSkel(3,38)}</div></div>
     </div>`,
 
   // ── COMPTABLE ───────────────────────────
@@ -19582,7 +19596,7 @@ function _renderDemandeRow(d,showPrendre){
     <td class="tp" title="${clubNom&&clubNom!==clientNom?'Nom Club+ : '+esc(clubNom):''}">${esc(clientNom||clubNom||'—')}</td>
     <td title="${esc(d.detail||'')}">${esc(d.type||'—')}</td>
     <td>${esc(d.team||'—')}</td>
-    <td>${d.urgency==='haute'?'<span style="color:var(--er);font-weight:600">Haute</span>':'Normale'}</td>
+    <td>${d.urgency==='haute'?'<span class="bd bl"><span class="bd-d"></span>Haute</span>':'<span class="bd bn">Normale</span>'}</td>
     <td class="tm">${d.credits_reserved||0}</td>
     <td><span class="bd ${stCls}"><span class="bd-d"></span>${stLbl}</span></td>
     <td style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
@@ -19683,7 +19697,7 @@ async function loadCmClubContentSubmissions(){
     }
     if(nw.length){
       html+='<div class="cd" style="margin-bottom:12px"><div class="cd-h"><div class="cd-t">Actualités &amp; résultats ('+nw.length+')</div></div><div class="tw"><table><thead><tr><th>Club</th><th>Titre</th><th>Type</th><th>Équipe</th><th>Priorité</th><th>Auteur</th><th>Statut</th><th></th></tr></thead><tbody>'+
-        nw.map(n=>`<tr><td class="tp">${esc(n.clubs?.nom||'—')}</td><td>${esc(n.title||'—')}</td><td>${esc(n.type||'—')}</td><td>${esc(n.team||'—')}</td><td>${n.priority==='haute'?'<span style="color:var(--er);font-weight:600">Haute</span>':n.priority==='basse'?'Basse':'Normale'}</td><td>${esc(n.author_name||'—')}</td><td><span class="bd ${CM_NEWSROOM_STCLS[n.status]||'bn'}"><span class="bd-d"></span>${CM_NEWSROOM_STLBL[n.status]||n.status}</span></td><td style="display:flex;gap:4px;justify-content:flex-end">${(CM_NEWSROOM_NEXT[n.status]||[]).map(a=>`<button class="btn bg2 bs" onclick="avancerClubNewsroom('${n.id}','${a.st}')">${a.lb}</button>`).join('')}</td></tr>`).join('')+
+        nw.map(n=>`<tr><td class="tp">${esc(n.clubs?.nom||'—')}</td><td>${esc(n.title||'—')}</td><td>${esc(n.type||'—')}</td><td>${esc(n.team||'—')}</td><td>${n.priority==='haute'?'<span class="bd bl"><span class="bd-d"></span>Haute</span>':n.priority==='basse'?'<span class="bd bn">Basse</span>':'<span class="bd bn">Normale</span>'}</td><td>${esc(n.author_name||'—')}</td><td><span class="bd ${CM_NEWSROOM_STCLS[n.status]||'bn'}"><span class="bd-d"></span>${CM_NEWSROOM_STLBL[n.status]||n.status}</span></td><td style="display:flex;gap:4px;justify-content:flex-end">${(CM_NEWSROOM_NEXT[n.status]||[]).map(a=>`<button class="btn bg2 bs" onclick="avancerClubNewsroom('${n.id}','${a.st}')">${a.lb}</button>`).join('')}</td></tr>`).join('')+
         '</tbody></table></div></div>';
     }
     if(sp.length){
@@ -19831,22 +19845,52 @@ let _cmClientsCache=[];
 // Fiche Structure (spec §12-14) : résumé + accès rapide, réutilise les vues déjà
 // filtrables (Planning/Contenus/Demandes) plutôt que dupliquer leurs données —
 // "les onglets d'une structure sont des vues filtrées des objets globaux".
+// Fiche Structure — rendu "workspace client" (polish premium, spec §21/§26 : "profond,
+// structuré, agréable à consulter"). Aucune donnée nouvelle par rapport à la version
+// précédente : mêmes champs de `cl` (voir _cmVisibleClients), mêmes 5 accès rapides vers
+// les vues déjà filtrables — seule la présentation change (en-tête identité + badges,
+// contacts en chips, accès rapide en tuiles au lieu de boutons plats).
 function modalFicheStructureCm(clientId){
   const cl=(_cmClientsCache||[]).find(c=>c.id===clientId);
   if(!cl){toast('Structure introuvable','er');return;}
+  const initials=(cl.nom||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';
+  const AV_COLORS=['#366BFF','#7C4DFF','#F5A524','#2ECC8A','#00B8D4','#F0445E'];
+  const avColor=AV_COLORS[Math.abs([...String(cl.nom||'?')].reduce((h,c)=>h+c.charCodeAt(0),0))%AV_COLORS.length];
+  const badges=[
+    cl.type_client?`<span class="bd bn">${esc(cl.type_client)}</span>`:'',
+    cl.offre?`<span class="bd ${cl.offre==='club_plus'?'ba':'bb'}"><span class="bd-d"></span>${esc(CONTRAT_TYPES_LB[cl.offre]||cl.offre)}</span>`:'',
+    cl.sport?`<span class="bd bn">${esc(cl.sport)}</span>`:'',
+    cl.ville?`<span class="bd bn">📍 ${esc(cl.ville)}</span>`:'',
+  ].filter(Boolean).join('');
+  const chip=(ic,col,val)=>`<div onclick="copier('${escJs(val)}')" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;font-size:12.5px;color:var(--t2)" title="Copier">
+      <span style="width:22px;height:22px;border-radius:50%;background:${col}1f;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0">${ic}</span>${esc(val)}
+    </div>`;
+  const contacts=[
+    cl.email?chip('✉️','#0EA5FF',cl.email):'',
+    cl.telephone?chip('📞','#2ECC8A',cl.telephone):'',
+  ].filter(Boolean).join('');
+  const ACTIONS=[
+    {ic:'📅',lb:'Planning',col:'#366BFF',fn:"switchView('planning')"},
+    {ic:'✍️',lb:'Contenus',col:'#7C4DFF',fn:"switchView('contenus')"},
+    {ic:'📥',lb:'Demandes',col:'#F5A524',fn:"switchView('demandes')"},
+    {ic:'⭐',lb:'Médiathèque',col:'#00B8D4',fn:"switchView('mediabank')"},
+    {ic:'📊',lb:'Performances',col:'#2ECC8A',fn:`_analyticsPreselectClient='${cl.id}';switchView('analytics')`},
+  ];
   openModal(`
-    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">${esc(cl.nom||'—')}</div>
-    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${cl.type_client||'—'}${cl.offre?' · '+(CONTRAT_TYPES_LB[cl.offre]||cl.offre):''}${cl.sport?' · '+esc(cl.sport):''}${cl.ville?' · '+esc(cl.ville):''}</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${cl.email?`<div style="font-size:13px;color:var(--t2)">✉️ <span onclick="copier('${escJs(cl.email)}')" style="cursor:pointer;color:var(--acc)">${esc(cl.email)}</span></div>`:''}
-      ${cl.telephone?`<div style="font-size:13px;color:var(--t2)">📞 <span onclick="copier('${escJs(cl.telephone)}')" style="cursor:pointer;color:var(--acc)">${esc(cl.telephone)}</span></div>`:''}
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+      <div class="av" style="width:46px;height:46px;font-size:16px;background:${avColor};flex-shrink:0">${initials}</div>
+      <div style="min-width:0">
+        <div style="font-size:16.5px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(cl.nom||'—')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">${badges||'<span style="font-size:11.5px;color:var(--t3)">Aucune information complémentaire</span>'}</div>
+      </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">
-      <button class="btn bg2 bs" onclick="closeModal();switchView('planning')">📅 Planning</button>
-      <button class="btn bg2 bs" onclick="closeModal();switchView('contenus')">✍️ Contenus</button>
-      <button class="btn bg2 bs" onclick="closeModal();switchView('demandes')">📥 Demandes</button>
-      <button class="btn bg2 bs" onclick="closeModal();switchView('mediabank')">⭐ Médiathèque</button>
-      <button class="btn bg2 bs" onclick="closeModal();_analyticsPreselectClient='${cl.id}';switchView('analytics')">📊 Performances</button>
+    ${contacts?`<div style="display:flex;flex-direction:column;gap:6px;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--b1)">${contacts}</div>`:''}
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:9px">Accès rapide</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${ACTIONS.map(a=>`<div onclick="closeModal();${a.fn}" style="display:flex;align-items:center;gap:9px;padding:11px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;transition:border-color .15s,transform .12s" onmouseover="this.style.borderColor='${a.col}';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--b1)';this.style.transform='translateY(0)'">
+        <span style="width:26px;height:26px;border-radius:8px;background:${a.col}22;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">${a.ic}</span>
+        <span style="font-size:12.5px;font-weight:600;color:var(--t1)">${a.lb}</span>
+      </div>`).join('')}
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
 }
@@ -20331,11 +20375,15 @@ const AUDIT_ACTION_LBL={contenu_cree:'Création',contenu_statut_change:'Changeme
 // anciens statuts restent dans la contrainte CHECK (lignes existantes non cassées) mais
 // sortent du flux normal ; seul le Junior garde une étape de validation, par son tuteur
 // (a_valider_tuteur), imposée aussi côté base (trigger protect_junior_content_publication).
+// Couleurs distinctes par statut (polish premium) : a_valider_tuteur utilise 'bl'
+// (pastille pulsante, déjà le code visuel "attend une action" ailleurs dans l'OS —
+// ex. "Sans équipe", "En attente") pour ne plus se confondre avec les statuts de
+// validation interne/client (bw), vu que le workflow tuteur→junior est un cas à part.
 const CONTENU_STATUTS={
   brouillon:{lb:'Idée / à créer',cls:'bn'},
   a_valider_interne:{lb:'Vérif. interne',cls:'bw'},
   a_valider_client:{lb:'Validation client',cls:'bw'},
-  a_valider_tuteur:{lb:'À valider (tuteur)',cls:'bw'},
+  a_valider_tuteur:{lb:'À valider (tuteur)',cls:'bl'},
   corrections:{lb:'Corrections',cls:'br'},
   pret:{lb:'Prêt',cls:'bb'},
   valide:{lb:'Validé',cls:'bb'},
@@ -20594,7 +20642,7 @@ let _mediaBankCache=[];
 async function loadCmMediaBank(){
   const el=document.getElementById('mediabank-real');
   if(!el)return;
-  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">'+Array.from({length:8}).map(()=>'<div class="skel" style="height:118px;border-radius:var(--rc)"></div>').join('')+'</div>';
   try{
     const data=await sbFetch('media_liens?select=id,nom,url,media_bank_sport,media_bank_category,type_media,created_at,prestations(reference,clients(nom))&is_media_bank=eq.true&order=media_bank_sport.asc,media_bank_category.asc,created_at.desc&limit=300').catch(()=>null);
     _mediaBankCache=Array.isArray(data)?data:[];
@@ -20633,6 +20681,11 @@ function renderMediaBankCards(items){
     el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">⭐</div><div style="font-size:13px">Aucun média dans la Media Bank pour ce filtre.</div></div>';
     return;
   }
+  // Icônes/couleurs par type_media (polish premium, spec §20 "grille de médias
+  // premium") — purement décoratif, mêmes valeurs que ML_TYPE (media_liens) utilisées
+  // ailleurs dans l'OS, n'affecte aucune donnée ni aucun tri/filtre existant.
+  const MB_TYPE_IC={photo:'📷',video:'🎬',audio:'🎙️',drone:'🚁',veo:'🎥',graphisme:'🎨',canva:'🖌️',document:'📄',mixte:'🎞️',autre:'📎'};
+  const MB_TYPE_COL={photo:'#0EA5FF',video:'#7C4DFF',audio:'#F5A524',drone:'#00B8D4',veo:'#2ECC8A',graphisme:'#F0445E',canva:'#F0445E',document:'#8891A8',mixte:'#366BFF',autre:'#8891A8'};
   const groups={};
   items.forEach(i=>{
     const sport=i.media_bank_sport||'Sport non précisé';
@@ -20642,16 +20695,25 @@ function renderMediaBankCards(items){
   el.innerHTML=Object.entries(groups).map(([sport,list])=>`
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--acc);margin:14px 0 8px">${esc(sport)} · ${list.length}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
-      ${list.map(i=>`
-        <div class="cd" style="margin-bottom:0;padding:13px">
-          <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.nom)}</div>
-          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">${esc(i.media_bank_category||'—')}</div>
+      ${list.map(i=>{
+        const col=MB_TYPE_COL[i.type_media]||'#8891A8';
+        const ic=MB_TYPE_IC[i.type_media]||'⭐';
+        return`
+        <div class="cd" style="margin-bottom:0;padding:13px;transition:border-color .15s,transform .12s" onmouseover="this.style.borderColor='${col}';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--b1)';this.style.transform='translateY(0)'">
+          <div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:8px">
+            <span style="width:28px;height:28px;border-radius:8px;background:${col}22;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${ic}</span>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.nom)}</div>
+              ${i.media_bank_category?`<span class="bd bn" style="margin-top:4px">${esc(i.media_bank_category)}</span>`:''}
+            </div>
+          </div>
           <div style="font-size:10px;color:var(--t3);margin-bottom:10px">${i.prestations?.clients?.nom?esc(i.prestations.clients.nom)+' · ':''}${new Date(i.created_at).toLocaleDateString('fr-FR')}</div>
           <div style="display:flex;gap:6px">
             <button onclick="ouvrirLien('${encodeURIComponent(i.url)}')" style="flex:1;padding:6px 10px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗ Ouvrir</button>
             <button onclick="creerContenuDepuisMediaBank('${i.id}')" style="flex:1;padding:6px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer">+ Créer un contenu</button>
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>`).join('');
 }
 
@@ -21056,8 +21118,14 @@ async function loadCmCharge(){
   }catch(e){console.error('loadCmCharge',e);}
 }
 
-async function _renderChargeEquipe(wrap){
-  wrap.innerHTML=`<div class="cd"><div class="cd-h"><div class="cd-t">Charge de l'équipe</div></div><div id="ch-equipe-list"><div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div></div>`;
+// bare=true (polish premium) : n'ajoute pas sa propre carte/titre — utilisé par
+// loadCmPilotage où le conteneur est déjà encarté avec son propre titre ("Équipe CM"),
+// pour éviter une carte imbriquée avec un second titre en double. Comportement par
+// défaut (loadCmCharge, conteneur nu) inchangé.
+async function _renderChargeEquipe(wrap,bare){
+  wrap.innerHTML=bare
+    ?`<div id="ch-equipe-list">${_cmSkel(4,38)}</div>`
+    :`<div class="cd"><div class="cd-h"><div class="cd-t">Charge de l'équipe</div></div><div id="ch-equipe-list"><div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div></div>`;
   const listEl=document.getElementById('ch-equipe-list');
   if(!listEl)return;
   try{
@@ -21122,16 +21190,22 @@ async function loadCmPilotage(){
     const nbCms=(cms||[]).length,nbJuniors=(juniors||[]).length;
     const nbStruct=(clients||[]).length;
     const nbSansCm=(clients||[]).filter(c=>!c.cm_id).length;
+    const nbDem=(demandesOuvertes||[]).length,nbRap=(rapportsPrets||[]).length;
+    // Sévérité perceptible sans noyer l'écran, même code visuel que le dashboard Admin
+    // (bordure + couleur de valeur teintées, pas toute la tuile) : neutre à 0, ambre
+    // au-delà d'un seuil léger, rouge au-delà d'un seuil élevé (spec §26 "cockpit d'équipe").
+    const sevKpi=(v,warnAt,critAt)=>v<=0?{clr:'var(--t1)',bd:'var(--b1)'}:v>=critAt?{clr:'var(--er)',bd:'rgba(240,68,94,.25)'}:v>=warnAt?{clr:'var(--wa)',bd:'rgba(245,165,36,.25)'}:{clr:'var(--t1)',bd:'var(--b1)'};
+    const sDem=sevKpi(nbDem,3,8),sRap=sevKpi(nbRap,3,8);
     kpisEl.innerHTML=[
-      {lb:'CM actifs',v:nbCms},
-      {lb:'Juniors',v:nbJuniors},
-      {lb:'Structures',v:nbStruct},
-      {lb:'Demandes Club+ ouvertes',v:(demandesOuvertes||[]).length},
-      {lb:'Rapports à envoyer',v:(rapportsPrets||[]).length},
-    ].map(k=>`<div class="fs"><div class="fs-l">${k.lb}</div><div class="fs-v">${k.v}</div></div>`).join('');
+      {lb:'CM actifs',v:nbCms,clr:'var(--t1)',bd:'var(--b1)'},
+      {lb:'Juniors',v:nbJuniors,clr:'var(--t1)',bd:'var(--b1)'},
+      {lb:'Structures',v:nbStruct,clr:'var(--t1)',bd:'var(--b1)'},
+      {lb:'Demandes Club+ ouvertes',v:nbDem,clr:sDem.clr,bd:sDem.bd},
+      {lb:'Rapports à envoyer',v:nbRap,clr:sRap.clr,bd:sRap.bd},
+    ].map(k=>`<div class="fs" style="border-color:${k.bd}"><div class="fs-l">${k.lb}</div><div class="fs-v" style="color:${k.clr}">${k.v}</div></div>`).join('');
     if(nbSansCm)kpisEl.innerHTML+=`<div class="fs" style="border-color:rgba(240,68,94,.25);grid-column:span 4"><div class="fs-l" style="color:var(--er)">⚠ ${nbSansCm} structure${nbSansCm>1?'s':''} sans CM affecté</div></div>`;
   }catch(e){kpisEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
-  if(equipeEl)await _renderChargeEquipe(equipeEl);
+  if(equipeEl)await _renderChargeEquipe(equipeEl,true);
   if(structEl){
     try{
       const [clients,affils]=await Promise.all([
@@ -21147,7 +21221,7 @@ async function loadCmPilotage(){
       structEl.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Structure</th><th>CM affectés</th></tr></thead><tbody>'+
         list.map(c=>{
           const affs=affilByClient[c.id]||[];
-          const names=affs.length?affs.map(a=>esc([a.profiles?.prenom,a.profiles?.nom].filter(Boolean).join(' ')||'—')+' ('+(a.role_on_client==='cm_principal'?'P':a.role_on_client==='cm_secondaire'?'S':'J')+')').join(', '):(c.cm_id?'<span style="color:var(--wa)">Affecté (legacy, non détaillé)</span>':'<span style="color:var(--er)">— Non affecté</span>');
+          const names=affs.length?affs.map(a=>esc([a.profiles?.prenom,a.profiles?.nom].filter(Boolean).join(' ')||'—')+' ('+(a.role_on_client==='cm_principal'?'P':a.role_on_client==='cm_secondaire'?'S':'J')+')').join(', '):(c.cm_id?'<span class="bd bw"><span class="bd-d"></span>Affecté (legacy, non détaillé)</span>':'<span class="bd bl"><span class="bd-d"></span>Non affecté</span>');
           return`<tr><td class="tp">${esc(c.nom||'—')}</td><td style="font-size:12px">${names}</td></tr>`;
         }).join('')+'</tbody></table></div>':
         '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune structure active.</div>';
@@ -21158,7 +21232,7 @@ async function loadCmPilotage(){
       const reqs=await sbFetch('club_requests?select=id,type,team,status,urgency,created_at,clubs(nom)&status=in.(recues,en_traitement)&order=created_at.desc&limit=50').catch(()=>[]);
       const list=Array.isArray(reqs)?reqs:[];
       clubplusEl.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Club</th><th>Type</th><th>Urgence</th><th>Statut</th></tr></thead><tbody>'+
-        list.map(d=>`<tr><td class="tp">${esc(d.clubs?.nom||'—')}</td><td>${esc(d.type||'—')}</td><td>${d.urgency==='haute'?'<span style="color:var(--er)">Haute</span>':'Normale'}</td><td>${DEMANDE_STATUT_LBL[d.status]||d.status}</td></tr>`).join('')+
+        list.map(d=>`<tr><td class="tp">${esc(d.clubs?.nom||'—')}</td><td>${esc(d.type||'—')}</td><td>${d.urgency==='haute'?'<span class="bd bl"><span class="bd-d"></span>Haute</span>':'<span class="bd bn">Normale</span>'}</td><td><span class="bd ${DEMANDE_STATUT_CLS[d.status]||'bn'}"><span class="bd-d"></span>${DEMANDE_STATUT_LBL[d.status]||d.status}</span></td></tr>`).join('')+
         '</tbody></table></div><div style="margin-top:10px"><button class="btn bg2 bs" onclick="switchView(\'demandes\')">Voir toutes les demandes →</button></div>':
         '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune demande en attente.</div>';
     }catch(e){clubplusEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
@@ -21245,7 +21319,7 @@ async function _loadRapportHistory(){
   const el=document.getElementById('rap-history');
   if(!el)return;
   const clientId=document.getElementById('rap-client')?.value;
-  el.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML='<div style="padding:15px 19px">'+_cmSkel(3,36)+'</div>';
   try{
     const data=await sbFetch('monthly_reports?select=id,mois,statut,genere_at,envoye_at,clients(nom)&order=mois.desc,genere_at.desc&limit=100'+(clientId?'&client_id=eq.'+clientId:''));
     const list=Array.isArray(data)?data:[];
@@ -27470,11 +27544,11 @@ function tplMediaBank(){
         <div style="flex:1;min-width:140px"><label class="fl">Catégorie</label><select id="mb-filter-cat" class="fi" onchange="filterMediaBank()"><option value="">Toutes les catégories</option></select></div>
       </div>
     </div>
-    <div id="mediabank-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+    <div id="mediabank-real"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">${Array.from({length:8}).map(()=>'<div class="skel" style="height:118px;border-radius:var(--rc)"></div>').join('')}</div></div>`;
 }
 function tplMsgClients(){
   return `<div class="sh"><div class="sh-t">Messages clients</div></div>
-    <div id="msgcl-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+    <div id="msgcl-list" class="cd">${_cmSkel(4,40)}</div>`;
 }
 function tplRdvClients(){
   return `<div class="sh"><div class="sh-t">Rendez-vous clients</div></div>
