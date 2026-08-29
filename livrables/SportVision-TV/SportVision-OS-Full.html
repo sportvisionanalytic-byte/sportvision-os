@@ -1796,7 +1796,7 @@ const VIEWS={
             <div class="cd-t">📅 Prestations du jour</div>
             <button class="btn bg2 bs" onclick="switchView('planning')">Planning →</button>
           </div>
-          <div id="prod-a-planifier-real"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
+          <div id="prod-a-planifier-real">${_prodSkelRows(2,52)}</div>
         </div>
         <div class="cd" style="padding:0;overflow:hidden;border-left:3px solid var(--er)">
           <div class="cd-h">
@@ -1805,17 +1805,17 @@ const VIEWS={
               <div class="cd-t">Production en direct</div>
             </div>
           </div>
-          <div id="prod-live-real"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+          <div id="prod-live-real">${_prodSkelRows(1,80)}</div>
         </div>
       </div>
       <div>
         <div class="cd" style="margin-bottom:13px;padding:0;overflow:hidden">
           <div class="cd-h"><div class="cd-t">⚠ Alertes & incidents</div><span style="font-size:11px;font-weight:700;padding:2px 8px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:20px;color:var(--er)" id="prod-inc-nb"></span></div>
-          <div id="prod-alertes-real"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+          <div id="prod-alertes-real">${_prodSkelRows(2,48)}</div>
         </div>
         <div class="cd" style="padding:0;overflow:hidden">
           <div class="cd-h"><div class="cd-t">Équipe du jour</div><button class="btn bg2 bs" onclick="switchView('equipe')">Tous →</button></div>
-          <div id="prod-dash-team"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
+          <div id="prod-dash-team">${_prodSkelRows(3,50)}</div>
         </div>
       </div>
     </div>`,
@@ -1836,7 +1836,7 @@ const VIEWS={
       <button onclick="setProdPlanTab('equipe')" class="btn bg2 bs" id="pplt-eq" style="flex-shrink:0">Équipe</button>
       <button onclick="setProdPlanTab('kits')" class="btn bg2 bs" id="pplt-kits" style="flex-shrink:0">Kits</button>
     </div>
-    <div id="prod-plan-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="prod-plan-real"><div class="cd" style="padding:0;overflow:hidden">${_prodSkelRows(4,60)}</div></div>`,
 
 
   'prod.kits':()=>_kitsViewShell('prod'),
@@ -1877,7 +1877,7 @@ const VIEWS={
       <button onclick="filterProdPre('alivrer')" class="btn bg2 bs" id="ppf-alivrer" style="flex-shrink:0;font-size:11px">À livrer</button>
       <button onclick="filterProdPre('terminees')" class="btn bg2 bs" id="ppf-terminees" style="flex-shrink:0;font-size:11px">Terminées</button>
     </div>
-    <div id="prod-pre-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="prod-pre-real"><div class="cd" style="padding:0;overflow:hidden">${_prodSkelRows(5,64)}</div></div>`,
 
   // ── PROD : MODE JOUR J ──────────────────────────────────────────────────────
   'prod.jourj':()=>`
@@ -1969,7 +1969,7 @@ const VIEWS={
       <button onclick="filterProdLivrMission('a_corriger')" class="btn bg2 bs" id="plivm-a_corriger" style="flex-shrink:0;font-size:11px">À corriger</button>
       <button onclick="filterProdLivrMission('validees')" class="btn bg2 bs" id="plivm-validees" style="flex-shrink:0;font-size:11px">Validées</button>
     </div>
-    <div id="prod-livr-mission-real" style="margin-bottom:22px"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div id="prod-livr-mission-real" style="margin-bottom:22px">${_prodSkelCards(2)}</div>
     <div class="sh" style="margin-bottom:14px;padding-top:8px;border-top:1px solid var(--b1)">
       <div><div class="sh-t" style="font-size:15px">Détail par livrable</div><div style="font-size:11px;color:var(--t3);margin-top:2px">Suivi individuel (photos, rushs, vidéo finale…)</div></div>
     </div>
@@ -1985,7 +1985,7 @@ const VIEWS={
       <button onclick="filterProdLivr('pret')" class="btn bg2 bs" id="pliv-ok" style="flex-shrink:0;font-size:11px">Prêts à livrer</button>
       <button onclick="filterProdLivr('livre')" class="btn bg2 bs" id="pliv-lv" style="flex-shrink:0;font-size:11px">Livrés</button>
     </div>
-    <div id="prod-livr-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="prod-livr-real">${_prodSkelCards(3)}</div>`,
 
   // ── PROD : RÉMUNÉRATIONS ──────────────────────────────────────────────────
   'prod.rem':()=>`
@@ -8372,6 +8372,22 @@ async function loadProdHub(){
   }
 }
 
+// États de chargement travaillés (passe polish Responsable Production) : réutilise la
+// classe partagée .skel (shimmer, déjà définie dans le bloc <style> commun, pas encore
+// utilisée nulle part) plutôt que le texte "Chargement…" plat, pour les listes/cartes
+// prod. Scopé localement à ce rôle — pas d'ajout au bloc <style> partagé.
+function _prodSkelRows(n,h){
+  h=h||58;
+  let out='';
+  for(let i=0;i<(n||3);i++)out+=`<div class="skel" style="height:${h}px;border-radius:0;${i<n-1?'border-bottom:1px solid var(--b1)':''}"></div>`;
+  return out;
+}
+function _prodSkelCards(n){
+  let out='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">';
+  for(let i=0;i<(n||4);i++)out+='<div class="skel" style="height:120px;border-radius:var(--rc)"></div>';
+  return out+'</div>';
+}
+
 async function loadProdDash(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const today=ymdLocal();
@@ -8607,7 +8623,7 @@ async function loadProdPlanning(){
   const el=document.getElementById('prod-plan-real');
   const sub=document.getElementById('prod-plan-subtitle');
   if(!el)return;
-  el.innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">Chargement…</div>';
+  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+_prodSkelRows(4,60)+'</div>';
   const now=new Date();
   const tab=_prodPlanTab||'semaine';
   let start,end;
@@ -8670,8 +8686,8 @@ async function loadProdPlanning(){
       const isTod=d===ymdLocal(now);
       if(tab!=='jour'){
         const dateStr=dateObj.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
-        html+=`<div style="padding:8px 18px;background:var(--s2);border-bottom:1px solid var(--b1);border-top:${gi>0?'1px solid var(--b1)':'none'};display:flex;align-items:center;gap:8px">
-          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)">${dateStr}</span>
+        html+=`<div style="padding:8px 18px;background:${isTod?'rgba(54,107,255,.07)':'var(--s2)'};border-bottom:1px solid ${isTod?'rgba(54,107,255,.18)':'var(--b1)'};border-top:${gi>0?'1px solid var(--b1)':'none'};display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${isTod?'var(--acc)':'var(--t3)'}">${dateStr}</span>
           ${isTod?`<span style="font-size:9px;font-weight:800;padding:1px 6px;background:var(--acc);border-radius:20px;color:#fff">AUJOURD'HUI</span>`:''}
         </div>`;
       }
@@ -8764,6 +8780,11 @@ function renderProdPreList(){
   }
   const ST_LB={'à_valider_production':'⚠ À valider','confirmée':'Confirmée','planifiée':'Planifiée','équipe_affectée':'Équipe OK','prête':'Prête','production_démarrée':'En tournage','équipe_en_route':'En route','arrivée_sur_place':'Sur place','médias_à_transférer':'Post-prod','médias_complets':'Post-prod','à_monter':'À monter','montage_en_cours':'En montage','prête_validation':'À valider','prêt_validation':'À valider','livrée':'Livrée','clôturée':'Clôturée','annulée':'Annulée','refusée':'Refusée'};
   const ST_CLR={'à_valider_production':'var(--er)','confirmée':'var(--acc)','planifiée':'var(--acc)','équipe_affectée':'var(--wa)','prête':'var(--ok)','production_démarrée':'var(--er)','équipe_en_route':'var(--wa)','arrivée_sur_place':'var(--wa)','médias_à_transférer':'#7C4DFF','médias_complets':'#7C4DFF','à_monter':'#7C4DFF','montage_en_cours':'#7C4DFF','prête_validation':'var(--wa)','prêt_validation':'var(--wa)','livrée':'var(--ok)','clôturée':'var(--t3)'};
+  // Urgence visuelle (principe §7/§9 "les urgences doivent ressortir immédiatement") : une
+  // mission sans équipe à moins de 48h devient un signal fort (pastille pulsante, texte en
+  // gras rouge) plutôt qu'un simple avertissement discret identique quelle que soit l'échéance.
+  const todayYmd=ymdLocal();
+  const soonYmd=(()=>{const d=new Date();d.setDate(d.getDate()+2);return ymdLocal(d);})();
   el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+list.map((p,i)=>{
     const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}):'—';
     const heures=[(p.heure_debut||'').slice(0,5),(p.heure_fin||'').slice(0,5)].filter(Boolean).join('–')||'—';
@@ -8771,16 +8792,18 @@ function renderProdPreList(){
     const clr=ST_CLR[p.statut]||'var(--t3)';
     const lb=ST_LB[p.statut]||p.statut;
     const noEquipe=equipe.length===0&&!['livrée','clôturée','annulée','refusée'].includes(p.statut);
-    return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
-      <div style="width:4px;background:${clr};flex-shrink:0"></div>
+    const isUrgent=noEquipe&&p.date_prestation&&p.date_prestation<=soonYmd;
+    const barClr=isUrgent?'var(--er)':clr;
+    return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer;${isUrgent?'background:rgba(240,68,94,.045);':''}transition:background .15s ease" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background='${isUrgent?'rgba(240,68,94,.045)':''}'">
+      <div style="width:4px;background:${barClr};flex-shrink:0${isUrgent?';animation:prodPulse 1.8s ease-in-out infinite':''}"></div>
       <div style="width:60px;flex-shrink:0;padding:12px;border-right:1px solid var(--b1);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px">
-        <div style="font-size:11px;font-weight:700;color:var(--t1);text-align:center;line-height:1.2">${date}</div>
+        <div style="font-size:11px;font-weight:700;color:${isUrgent&&p.date_prestation===todayYmd?'var(--er)':'var(--t1)'};text-align:center;line-height:1.2">${date}</div>
         <div style="font-size:10px;color:var(--t3)">${heures}</div>
       </div>
       <div style="flex:1;min-width:0;padding:12px 14px">
         <div style="font-size:13.5px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.clients?.nom||'—')}</div>
         <div style="font-size:11.5px;color:var(--t2);margin-top:1px">${p.type_prestation||'—'} · ${esc(p.lieu||'—')}</div>
-        ${noEquipe?'<div style="font-size:10.5px;color:var(--wa);margin-top:3px">⚠ Aucun collaborateur affecté</div>':'<div style="font-size:10.5px;color:var(--t3);margin-top:3px">'+equipe.length+' collab. · <span style="font-family:monospace">'+( p.reference||'—')+'</span></div>'}
+        ${noEquipe?`<div style="font-size:10.5px;color:${isUrgent?'var(--er)':'var(--wa)'};font-weight:${isUrgent?'700':'400'};margin-top:3px;display:flex;align-items:center;gap:4px">${isUrgent?'<span style="width:5px;height:5px;border-radius:50%;background:var(--er);flex-shrink:0;animation:prodPulse 1.5s ease-in-out infinite"></span>':''}⚠ Aucun collaborateur affecté${isUrgent?' — urgent':''}</div>`:'<div style="font-size:10.5px;color:var(--t3);margin-top:3px">'+equipe.length+' collab. · <span style="font-family:monospace">'+( p.reference||'—')+'</span></div>'}
       </div>
       <div style="flex-shrink:0;padding:12px 14px;display:flex;align-items:center">
         <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
@@ -12108,11 +12131,13 @@ async function modalEquipePrestation(prestationId,ref){
         </select>
         <select id="eq-f-materiel" class="l-inp" style="height:32px;font-size:11.5px" onchange="filtrerOperateursEquipe()"><option value="">Matériel indifférent</option><option value="oui">Matériel perso</option><option value="non">Sans matériel</option></select>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><select id="eq-col" class="l-inp" style="height:36px" onchange="majSuggestionRem()"><option value="">— Choisir —</option></select>
-          <div id="eq-rem-suggest" style="font-size:10.5px;color:var(--t3);margin-top:4px"></div></div>
-        <div><input id="eq-fonc" type="text" class="l-inp" placeholder="Fonction (ex: photo)" style="height:36px"></div>
+      <div>
+        <label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:6px">Opérateur</label>
+        <select id="eq-col" onchange="majSuggestionRem()" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none"><option value="">— Choisir —</option></select>
+        <div id="eq-col-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:224px;overflow-y:auto;padding:2px 2px 4px"></div>
+        <div id="eq-rem-suggest" style="font-size:10.5px;color:var(--t3);margin-top:6px"></div>
       </div>
+      <div><input id="eq-fonc" type="text" class="l-inp" placeholder="Fonction (ex: photo)" style="height:36px"></div>
       <div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Consignes</label>
         <textarea id="eq-notes" class="l-inp" style="height:52px;padding-top:8px;resize:none" placeholder="Instructions pour ce collaborateur…"></textarea></div>
       <div style="display:grid;grid-template-columns:${canSetRem?'1fr 1fr':'1fr'};gap:10px">
@@ -12187,6 +12212,49 @@ function renderOperateursSelect(list){
     const lb=([p.prenom,p.nom].filter(Boolean).join(' ')||p.role)+' — '+(p.role||'')+zoneTag+' · '+n+' mission'+(n>1?'s':'')+' à venir';
     return `<option value="${p.id}"${p.id===cur?' selected':''}>${esc(lb)}</option>`;
   }).join('');
+  renderOperateursCards(sorted,cur);
+}
+// Cartes cliquables pour l'affectation d'opérateur (demande Fouka : "l'affectation ne doit
+// pas être un simple select basique"). Le <select id="eq-col"> ci-dessus reste la source de
+// vérité lue par ajouterMembreEquipe() — ces cartes ne font que le piloter visuellement, zéro
+// changement de logique de soumission.
+const _RC_EQCARD={admin:'#366BFF',sec:'#00B8D4',prod:'#2ECC8A',photo:'#7C4DFF',cm:'#F5A524',compta:'#FF6B35',com:'#F0445E'};
+function renderOperateursCards(list,curId){
+  const el=document.getElementById('eq-col-cards');
+  if(!el)return;
+  if(!list.length){
+    el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:18px 10px;color:var(--t3);font-size:12px">Aucun opérateur ne correspond à ces filtres.</div>';
+    return;
+  }
+  el.innerHTML=list.map(p=>{
+    const ini=((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase()||'?';
+    const name=esc([p.prenom,p.nom].filter(Boolean).join(' ')||p.role||'—');
+    const n=_eqCharge[p.id]||0;
+    const chargeClr=n===0?'var(--ok)':n<3?'var(--wa)':'var(--er)';
+    const stars=p.niveau_operateur?niveauStars(p.niveau_operateur):'';
+    const isSel=String(p.id)===String(curId)&&!!curId;
+    return`<div class="eq-op-card" data-opid="${p.id}" onclick="selectOperateurEquipe('${p.id}')"
+      onmouseover="if(this.getAttribute('data-opid')!==String(document.getElementById('eq-col').value))this.style.borderColor='var(--b2)'"
+      onmouseout="if(this.getAttribute('data-opid')!==String(document.getElementById('eq-col').value))this.style.borderColor='var(--b1)'"
+      style="cursor:pointer;padding:9px 6px;border:1.5px solid ${isSel?'var(--acc)':'var(--b1)'};border-radius:var(--rp);background:${isSel?'rgba(14,165,255,.09)':'var(--s2)'};display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;transition:border-color .15s ease,background .15s ease">
+      <div class="av" style="width:30px;height:30px;font-size:10.5px;background:${_RC_EQCARD[p.role]||'#366BFF'}">${ini}</div>
+      <div style="font-size:10.5px;font-weight:700;color:var(--t1);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${name}</div>
+      ${stars?`<div style="font-size:9px;color:var(--wa);letter-spacing:.02em">${stars}</div>`:''}
+      ${p.zone?`<div style="font-size:8.5px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">🗺 ${esc(p.zone)}</div>`:''}
+      <span style="font-size:8.5px;font-weight:700;padding:1px 6px;border-radius:20px;background:${chargeClr}22;border:1px solid ${chargeClr}55;color:${chargeClr};white-space:nowrap">${n?n+' mission'+(n>1?'s':''):'Libre'}</span>
+    </div>`;
+  }).join('');
+}
+function selectOperateurEquipe(id){
+  const sel=document.getElementById('eq-col');
+  if(!sel)return;
+  sel.value=id;
+  document.querySelectorAll('#eq-col-cards .eq-op-card').forEach(c=>{
+    const isSel=c.getAttribute('data-opid')===String(id);
+    c.style.borderColor=isSel?'var(--acc)':'var(--b1)';
+    c.style.background=isSel?'rgba(14,165,255,.09)':'var(--s2)';
+  });
+  majSuggestionRem();
 }
 function filtrerOperateursEquipe(){
   const zone=document.getElementById('eq-f-zone')?.value||'';
@@ -12423,6 +12491,7 @@ async function ajouterMembreEquipe(prestationId,ref){
     if(sbErr(rAdd)){err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');if(btn)btn.disabled=false;return;}
     creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
     document.getElementById('eq-col').value='';
+    document.querySelectorAll('#eq-col-cards .eq-op-card').forEach(c=>{c.style.borderColor='var(--b1)';c.style.background='var(--s2)';});
     document.getElementById('eq-fonc').value='';
     document.getElementById('eq-notes').value='';
     if(remEl)remEl.value='';
