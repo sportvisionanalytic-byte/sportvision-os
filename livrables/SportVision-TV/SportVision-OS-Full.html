@@ -4404,6 +4404,11 @@ async function creerClient(){
   }
   window._fcDoublonConfirme=false;
   err.textContent='Création...';
+  // Anti double-clic (audit routes/boutons 29/08) : même idiome que creerPrestation()
+  // juste au-dessus — ce bouton "Créer le client" n'avait aucune protection pendant
+  // l'appel réseau (un double-clic pouvait créer 2 clients + 2 contrats identiques).
+  const btn=document.querySelector('#sv-modal .mf .btn.bp, #sv-modal .btn.bp');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='Création…';}
   try{
     const r=await sbFetch('clients',{method:'POST',body:{
       nom,
@@ -4420,7 +4425,7 @@ async function creerClient(){
       origine_prospect:document.getElementById('fc-origine').value||null,
       created_by:localStorage.getItem('sv_uid')
     }});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Création impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Création impossible.');if(btn){btn.disabled=false;btn.textContent='Créer le client';}return;}
     const created=Array.isArray(r)&&r[0];
     // Offre sélectionnée au même écran (28/08/2026, demande Fouka) : évite
     // l'aller-retour "créer le client" puis "ouvrir Nouveau contrat" séparé
@@ -4447,7 +4452,7 @@ async function creerClient(){
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
     if(created&&offreType==='full_communication'&&dejaSigne)await lancerCascadeFullCom(created.id);
-  }catch(e){err.textContent='Erreur lors de la création.';}
+  }catch(e){err.textContent='Erreur lors de la création.';if(btn){btn.disabled=false;btn.textContent='Créer le client';}}
 }
 function fcToggleOffre(){
   const v=document.getElementById('fc-offre')?.value;
@@ -22554,17 +22559,22 @@ async function comptaEncaisserAcompte(id){
     </div>`);
 }
 async function comptaConfirmerAcompte(id){
+  // Anti double-clic (audit routes/boutons 29/08) : ce bouton "Confirmer" enregistre un
+  // encaissement financier réel (statut_financier + logFinancialAudit) sans aucune protection
+  // — même idiome que creerPrestation() (querySelector du bouton principal de la modale).
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='Confirmation…';}
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
       statut_financier:'partiellement_payée',
       date_paiement:document.getElementById('ac-date')?.value||null,
       mode_paiement:document.getElementById('ac-mode')?.value||null,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.acompte_montant||r?.[0]?.montant_ttc,{type:'acompte',mode_paiement:r?.[0]?.mode_paiement});
     _syncFactureApresAcompte(id,r?.[0]?.acompte_montant,r?.[0]?.mode_paiement);
     closeModal();toast('Acompte enregistré.','ok');loadComptaAcomptes();
-  }catch(e){toast('Erreur.','er');}
+  }catch(e){toast('Erreur.','er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}}
 }
 
 async function comptaMarquerPayeImpaye(id){
@@ -22589,17 +22599,21 @@ async function comptaMarquerPayeImpaye(id){
     </div>`);
 }
 async function comptaConfirmerImpaye(id){
+  // Anti double-clic (audit routes/boutons 29/08) : même correctif que comptaConfirmerAcompte
+  // ci-dessus, même risque (encaissement réel, aucune protection avant).
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='Confirmation…';}
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
       statut_financier:'payée',
       date_paiement:document.getElementById('imp-date')?.value||null,
       mode_paiement:document.getElementById('imp-mode')?.value||null,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{type:'impaye_regle',mode_paiement:r?.[0]?.mode_paiement});
     _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
     closeModal();toast('Paiement enregistré.','ok');loadComptaImpayes();
-  }catch(e){toast('Erreur.','er');}
+  }catch(e){toast('Erreur.','er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}}
 }
 
 async function comptaRembourserFrais(id,source){
@@ -24633,17 +24647,21 @@ async function secMarquerPaye(id){
 }
 
 async function secConfirmerPaye(id){
+  // Anti double-clic (audit routes/boutons 29/08) : même correctif que comptaConfirmerAcompte/
+  // comptaConfirmerImpaye (encaissement réel, aucune protection avant).
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='Confirmation…';}
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
       statut_financier:'payée',
       date_paiement:document.getElementById('paye-date')?.value||null,
       mode_paiement:document.getElementById('paye-mode')?.value||null,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'enregistrement impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(r.message||'enregistrement impossible.'),'er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{mode_paiement:r?.[0]?.mode_paiement});
     _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
     closeModal();toast('Paiement enregistré.','ok');loadSecRelances();
-  }catch(e){toast('Erreur lors de l\'enregistrement.','er');}
+  }catch(e){toast('Erreur lors de l\'enregistrement.','er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}}
 }
 
 // Corrigé (28/08/2026, demande Fouka) : ce bouton se contentait de passer
@@ -28057,7 +28075,13 @@ function tplExpertComptableDash(){
 // écrans compta tels quels (lecture seule imposée par RLS, pas de duplication
 // de template).
 ['expert_comptable','auditeur'].forEach(role=>{
-  ['dash','resultat','rentabilite','budgets','factures','avoirs','depenses','frais','rem','clotures','tva','audit','immobilisations'].forEach(v=>{
+  // 'set' ajouté (audit routes 29/08) : NAV.expert_comptable et NAV.auditeur
+  // listent tous deux 'set' ("Paramètres") en dernière entrée, mais aucun
+  // alias ni VIEWS['expert_comptable.set']/['auditeur.set'] n'existait — le
+  // clic tombait sur fallbackView() ("Module en cours de construction") au
+  // lieu de la page Paramètres, alors que compta/sec/prod/photo/cm/com y ont
+  // tous accès via _settingsView().
+  ['dash','resultat','rentabilite','budgets','factures','avoirs','depenses','frais','rem','clotures','tva','audit','immobilisations','set'].forEach(v=>{
     if(VIEWS['compta.'+v]) VIEWS[role+'.'+v]=VIEWS['compta.'+v];
   });
 });
@@ -28954,31 +28978,42 @@ async function sauvegarderContrat(){
   // désactivé. Le flux Youtrust réel (une fois réactivé) pose exactement les
   // deux mêmes champs dans le même appel, donc ceci ne le court-circuite pas.
   if(payload.statut==='actif'){payload.signature_statut='signee';payload.signature_confirmee_at=new Date().toISOString();}
-  let r=await sbFetch('contrats',{method:'POST',body:payload});
-  let descriptionNonEnregistree=false;
-  if(sbErr(r)&&/description/i.test(r.message||'')&&payload.description!==undefined){
-    // Colonne "description" pas encore migrée (migration-contrats-v3-description.sql
-    // EN ATTENTE d'exécution) : on retente sans elle plutôt que de bloquer la création
-    // du contrat. Le staff garde son texte dans le champ tant qu'il ne ferme pas la
-    // modale, mais il ne sera pas persisté avant l'exécution de la migration.
-    const {description,...payloadSansDescription}=payload;
-    r=await sbFetch('contrats',{method:'POST',body:payloadSansDescription});
-    descriptionNonEnregistree=!sbErr(r);
+  // Anti double-clic (audit routes/boutons 29/08) : "Créer le contrat" n'avait aucune
+  // protection (même idiome que creerClient/creerDevis) — try/catch ajouté dans la foulée
+  // (absent avant), sinon un vrai échec réseau (fetch qui throw, pas juste sbErr) laissait
+  // le bouton désactivé indéfiniment sans aucun message.
+  const btn=document.querySelector('#sv-modal .btn.bp');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='Création…';}
+  try{
+    let r=await sbFetch('contrats',{method:'POST',body:payload});
+    let descriptionNonEnregistree=false;
+    if(sbErr(r)&&/description/i.test(r.message||'')&&payload.description!==undefined){
+      // Colonne "description" pas encore migrée (migration-contrats-v3-description.sql
+      // EN ATTENTE d'exécution) : on retente sans elle plutôt que de bloquer la création
+      // du contrat. Le staff garde son texte dans le champ tant qu'il ne ferme pas la
+      // modale, mais il ne sera pas persisté avant l'exécution de la migration.
+      const {description,...payloadSansDescription}=payload;
+      r=await sbFetch('contrats',{method:'POST',body:payloadSansDescription});
+      descriptionNonEnregistree=!sbErr(r);
+    }
+    if(sbErr(r)){if(err){err.textContent='Erreur: '+(r.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}if(btn){btn.disabled=false;btn.textContent='Créer le contrat';}return;}
+    if(payload.statut==='actif'&&clientId){
+      try{
+        const cl=await sbFetch('clients?select=id,statut&id=eq.'+clientId);
+        if(cl&&cl[0]&&cl[0].statut!=='partenaire'){
+          const rCl=await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{statut:'partenaire'}});
+          if(sbErr(rCl))toast('Contrat créé, mais le statut du client n\'a pas pu être mis à jour en "partenaire".','wa');
+        }
+      }catch(e){}
+    }
+    closeModal();
+    toast(descriptionNonEnregistree?'Contrat créé — le périmètre n\'a pas pu être enregistré (migration-contrats-v3-description.sql non exécutée).':'Contrat créé',descriptionNonEnregistree?'wa':'ok');
+    await loadContrats();
+    if(payload.type_contrat==='full_communication'&&payload.statut==='actif')await lancerCascadeFullCom(clientId);
+  }catch(e){
+    if(err){err.textContent='Erreur réseau lors de la création.';err.style.display='block';}
+    if(btn){btn.disabled=false;btn.textContent='Créer le contrat';}
   }
-  if(sbErr(r)){if(err){err.textContent='Erreur: '+(r.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}return;}
-  if(payload.statut==='actif'&&clientId){
-    try{
-      const cl=await sbFetch('clients?select=id,statut&id=eq.'+clientId);
-      if(cl&&cl[0]&&cl[0].statut!=='partenaire'){
-        const rCl=await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{statut:'partenaire'}});
-        if(sbErr(rCl))toast('Contrat créé, mais le statut du client n\'a pas pu être mis à jour en "partenaire".','wa');
-      }
-    }catch(e){}
-  }
-  closeModal();
-  toast(descriptionNonEnregistree?'Contrat créé — le périmètre n\'a pas pu être enregistré (migration-contrats-v3-description.sql non exécutée).':'Contrat créé',descriptionNonEnregistree?'wa':'ok');
-  await loadContrats();
-  if(payload.type_contrat==='full_communication'&&payload.statut==='actif')await lancerCascadeFullCom(clientId);
 }
 
 async function modalContratFromDevis(devisId){
