@@ -874,29 +874,30 @@ const NAV={
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Mon profil',ic:'set'},
   ],
+  // Refonte CM (spec "Refonte Interface Community Management", 29/08/2026) : menu
+  // ramené aux 5 entrées principales de la spec ("le menu doit rester court, la
+  // puissance vit dans les fiches Structure"). briefs/mediabank/videoscm/publications/
+  // rapports/msgclients/annuaire/centre ne sont plus des pages permanentes — ce sont de
+  // vraies vues, atteignables depuis le contexte (Structure, liens dans Messagerie/
+  // Formation) — même patron que la refonte Photo du 28/08. cal+planningmensuel
+  // fusionnés dans "Planning" (2 onglets Production/Editorial, cf. spec §14 : "Le menu
+  // global peut s'appeler Planning avec deux onglets"). Pour un Responsable CM
+  // (cm_niveau_autonomie='responsable'), renderSidebarNav() insère "Pilotage CM" et
+  // "Performances" au rendu (cf. juste après cette définition) — pas dans ce tableau
+  // statique, puisque le niveau d'autonomie n'est connu qu'après connexion.
   cm:[
-    {type:'sep',lb:'Éditorial'},
-    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
-    {id:'demandes',lb:'Demandes reçues',ic:'doc'},
-    {id:'briefs',lb:'Briefs production',ic:'pre'},
-    {id:'cal',lb:'Calendrier éditorial',ic:'cal'},
-    {id:'planningmensuel',lb:'Planning mensuel',ic:'cal'},
+    {type:'sep',lb:'Mes structures'},
+    {id:'dash',lb:'Accueil',ic:'dash'},
+    {id:'clients',lb:'Mes structures',ic:'cli'},
+    {id:'planning',lb:'Planning',ic:'cal'},
+    {id:'demandes',lb:'Demandes',ic:'doc'},
     {id:'contenus',lb:'Contenus',ic:'pre'},
-    {id:'mediabank',lb:'Media Bank',ic:'med'},
-    {id:'videoscm',lb:'Vidéos à valider',ic:'prod'},
-    {id:'publications',lb:'Publications',ic:'pub'},
-    {id:'analytics',lb:'Analytics',ic:'fin'},
-    {id:'charge',lb:'Ma charge',ic:'col'},
-    {id:'rapports',lb:'Rapports clients',ic:'doc'},
-    {type:'sep',lb:'Communication'},
-    {id:'clients',lb:'Mes clients',ic:'cli'},
-    {id:'msgclients',lb:'Messages clients',ic:'msg'},
-    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
-    {id:'msg',lb:'Messagerie',ic:'msg'},
+    {type:'sep',lb:'Suivi'},
+    {id:'revenus',lb:'Mes revenus',ic:'fin'},
     {type:'sep',lb:'Ressources'},
-    {id:'form',lb:'Centre de formation',ic:'form'},
-    {id:'centre',lb:'Centre SportVision',ic:'help'},
-    {id:'set',lb:'Paramètres',ic:'set'},
+    {id:'form',lb:'Formation',ic:'form'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
+    {id:'set',lb:'Mon profil',ic:'set'},
   ],
   compta:[
     {type:'sep',lb:'Pilotage'},
@@ -1264,41 +1265,18 @@ const VIEWS={
     </div>
     <div id="jourj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
-  'cm.cal':()=>`
-    <div class="sh">
-      <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn bg2 bs" onclick="calPrev()" aria-label="Période précédente">‹</button>
-        <div class="sh-t" id="cal-title">Calendrier</div>
-        <button class="btn bg2 bs" onclick="calNext()" aria-label="Période suivante">›</button>
-      </div>
-      <button class="btn bp bs" onclick="modalNouveauContenu()">+ Contenu</button>
+  // cm.cal/cm.planningmensuel fusionnés dans cm.planning (2 onglets Production/
+  // Editorial, spec Refonte CM §14) — gabarits conservés ici tels quels (juste extraits
+  // en fonctions _cmPlanningEditoTpl/_cmPlanningProdTpl) car setPlanningTab() les réutilise
+  // directement sans dupliquer le HTML. loadCmCal()/loadCmPlanningMensuel() ne sont pas
+  // touchées, seuls leurs points d'entrée (nav/dispatch) changent.
+  'cm.planning':()=>`
+    <div class="sh"><div class="sh-t">Planning</div></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="pt-production" class="btn bp bs" onclick="setPlanningTab('production')">Production</button>
+      <button id="pt-editorial" class="btn bg2 bs" onclick="setPlanningTab('editorial')">Éditorial</button>
     </div>
-    <div class="g3" style="margin-bottom:13px">
-      <div class="fs"><div class="fs-l">Prestations cette semaine</div><div class="fs-v" id="cal-kpi-pre" style="color:var(--ac)">—</div></div>
-      <div class="fs"><div class="fs-l">Contenus programmés</div><div class="fs-v" id="cal-kpi-prog">—</div></div>
-      <div class="fs"><div class="fs-l">Publiés ce mois</div><div class="fs-v" id="cal-kpi-pub" style="color:var(--ok)">—</div></div>
-    </div>
-    <div id="cal-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
-
-  'cm.planningmensuel':()=>`
-    <div class="sh">
-      <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn bg2 bs" onclick="pmPrev()" aria-label="Mois précédent">‹</button>
-        <div class="sh-t" id="pm-title">Planning mensuel</div>
-        <button class="btn bg2 bs" onclick="pmNext()" aria-label="Mois suivant">›</button>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn bg2 bs" onclick="modalNouvellePresence()">+ Présence</button>
-        <button class="btn bp bs" id="pm-send-btn" onclick="pmEnvoyerProduction()">Envoyer à la production</button>
-      </div>
-    </div>
-    <div id="pm-client-select" style="margin-bottom:13px"></div>
-    <div class="g3" style="margin-bottom:13px">
-      <div class="fs"><div class="fs-l">Présences ce mois</div><div class="fs-v" id="pm-kpi-total" style="color:var(--ac)">—</div></div>
-      <div class="fs"><div class="fs-l">Alertes (≤14j sans mission)</div><div class="fs-v" id="pm-kpi-alert" style="color:var(--wa)">—</div></div>
-      <div class="fs"><div class="fs-l">Missions créées</div><div class="fs-v" id="pm-kpi-missions" style="color:var(--ok)">—</div></div>
-    </div>
-    <div id="pm-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="planning-body"></div>`,
 
   'compta.factures':()=>`
     <div class="sh"><div class="sh-t">Factures</div>
@@ -1945,6 +1923,7 @@ const VIEWS={
     <div id="form-real"></div>`,
 
   'cm.form':()=>`
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('centre')">ℹ️ Centre SportVision</button></div>
     <div class="cd" style="margin-bottom:14px">
       <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
     </div>
@@ -2013,7 +1992,7 @@ const VIEWS={
   'admin.msg':()=>buildMsgShell(),
   'sec.msg':()=>buildMsgShell(),
   'photo.msg':()=>`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('annuaire')">👥 Annuaire équipe</button></div>`+buildMsgShell(),
-  'cm.msg':()=>buildMsgShell(),
+  'cm.msg':()=>`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('annuaire')">👥 Annuaire équipe</button></div>`+buildMsgShell(),
   'compta.msg':()=>buildMsgShell(),
   'com.msg':()=>buildMsgShell(),
 
@@ -2154,7 +2133,7 @@ const VIEWS={
     <div class="kpi-g">
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('contenus')"><div class="kpi-ey">Contenus en attente</div><div class="kpi-v" id="cm-kpi-cl">—</div><span class="kpi-d dnt">à valider/publier</span></div>
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('contenus')"><div class="kpi-ey">Contenus en retard</div><div class="kpi-v" id="cm-kpi-pre">—</div><span class="kpi-d dnt">date dépassée</span></div>
-      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('cal')"><div class="kpi-ey">Prestations à venir (14j)</div><div class="kpi-v" id="cm-kpi-soon">—</div><span class="kpi-d dnt">à préparer</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Prestations à venir (14j)</div><div class="kpi-v" id="cm-kpi-soon">—</div><span class="kpi-d dnt">à préparer</span></div>
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('msg')"><div class="kpi-ey">Messages non lus</div><div class="kpi-v" id="cm-kpi-pr">—</div><span class="kpi-d dnt">messagerie</span></div>
     </div>
     <div class="g2">
@@ -2198,6 +2177,13 @@ const VIEWS={
 
   'cm.contenus':()=>`
     <div class="sh"><div class="sh-t">Contenus</div><button class="btn bp bs" onclick="modalNouveauContenu()">+ Nouveau</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px">
+      <button class="btn bg2 bs" onclick="switchView('mediabank')">⭐ Media Bank</button>
+      <button class="btn bg2 bs" onclick="switchView('videoscm')">🎬 Vidéos à valider</button>
+      <button class="btn bg2 bs" onclick="switchView('publications')">📤 Publications</button>
+      <button class="btn bg2 bs" onclick="switchView('rapports')">📄 Rapports clients</button>
+      ${_myCmAutonomie!=='responsable'?`<button class="btn bg2 bs" onclick="switchView('analytics')">📊 Performances</button>`:''}
+    </div>
     <div class="g4" style="margin-bottom:13px">
       <div class="fs"><div class="fs-l">Brouillons</div><div class="fs-v" id="cnt-kpi-draft">—</div></div>
       <div class="fs"><div class="fs-l">Corrections</div><div class="fs-v" id="cnt-kpi-corr" style="color:var(--er)">—</div></div>
@@ -2251,6 +2237,28 @@ const VIEWS={
       </div>
     </div>
     <div id="rap-result"></div>`,
+
+  // Mes revenus CM (spec Refonte CM §47-48) : vue personnelle en lecture seule, alimentée
+  // par Finance (employee_costs) — aucun calcul côté frontend, aucun accès aux revenus des
+  // autres CM ni au détail Finance globale.
+  'cm.revenus':()=>`
+    <div class="sh"><div class="sh-t">Mes revenus</div></div>
+    <div id="cmrev-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // Pilotage CM (Responsable uniquement, spec §43-46) : vue d'exception et de charge —
+  // CM/Juniors actifs, structures en retard, demandes Club+ non prises, tutorat.
+  'cm.pilotage':()=>`
+    <div class="sh"><div class="sh-t">Pilotage CM</div></div>
+    <div id="pilotage-kpis" class="g4" style="margin-bottom:16px"></div>
+    <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Équipe CM</div></div>
+      <div id="pilotage-equipe"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Structures</div></div>
+      <div id="pilotage-structures"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">File Club+ générale</div><span style="font-size:11px;color:var(--t3)">Demandes non affiliées à un CM Full Com</span></div>
+      <div id="pilotage-clubplus"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
 
   // ── COMPTABLE ───────────────────────────
   'compta.dash':()=>`
@@ -4423,6 +4431,9 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='clients') await loadCmClients();
   if(role==='cm'&&view==='cal') await loadCmCal();
   if(role==='cm'&&view==='planningmensuel') await loadCmPlanningMensuel();
+  if(role==='cm'&&view==='planning') setPlanningTab(_planningTab||'production');
+  if(role==='cm'&&view==='pilotage') await loadCmPilotage();
+  if(role==='cm'&&view==='revenus') await loadCmRevenus();
   if(role==='cm'&&view==='contenus') await loadCmContenus();
   if(role==='cm'&&view==='videoscm') await loadCmVideosAValider();
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
@@ -19036,28 +19047,104 @@ async function loadCmClients(){
     el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🏟️</div><div>Cette page ne s\'applique pas à votre profil (CM SportVision interne).</div></div>';
     return;
   }
+  const ROLE_ON_CLIENT_LBL={cm_principal:'Principal',cm_secondaire:'Secondaire',cm_junior:'Junior (assisté)',lead_cm:'Lead'};
   try{
-    const rows=await _cmVisibleClients(true);
+    const uid=localStorage.getItem('sv_uid');
+    const [rows,affilRaw]=await Promise.all([
+      _cmVisibleClients(true),
+      sbFetch('client_affiliations?select=client_id,role_on_client&user_id=eq.'+uid+'&status=eq.actif&role_on_client=in.(cm_principal,cm_secondaire,cm_junior,lead_cm)').catch(()=>[]),
+    ]);
+    _cmClientsCache=rows;
+    const affilByClient={};
+    (Array.isArray(affilRaw)?affilRaw:[]).forEach(a=>{affilByClient[a.client_id]=a.role_on_client;});
     set('cmc-kpi-actifs',rows.filter(c=>['client','partenaire'].includes(c.statut)).length);
     set('cmc-kpi-prospects',rows.filter(c=>['prospect','qualifié'].includes(c.statut)).length);
     set('cmc-kpi-tot',rows.length);
-    el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Client / Organisation</th><th>Type</th><th>Offre</th><th>Sport</th><th>Ville</th><th>Contact</th></tr></thead><tbody>'+
+    el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Structure</th><th>Mon rôle</th><th>Type</th><th>Offre</th><th>Sport</th><th>Ville</th></tr></thead><tbody>'+
       rows.map(cl=>{
-        const emailBtn=cl.email?`<span onclick="copier('${escJs(cl.email)}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${esc(cl.email)}</span>`:'—';
-        const telBtn=cl.telephone?`<span onclick="copier('${escJs(cl.telephone)}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${esc(cl.telephone)}</span>`:'';
-        return`<tr>
+        const role=affilByClient[cl.id]?ROLE_ON_CLIENT_LBL[affilByClient[cl.id]]:(cl.offre?'Portefeuille':'—');
+        return`<tr style="cursor:pointer" onclick="modalFicheStructureCm('${cl.id}')">
           <td class="tp">${esc(cl.nom||'—')}</td>
+          <td><span class="bd bw"><span class="bd-d"></span>${role}</span></td>
           <td>${cl.type_client||'—'}</td>
           <td>${cl.offre?`<span class="bd ${cl.offre==='club_plus'?'ba':'bb'}"><span class="bd-d"></span>${CONTRAT_TYPES_LB[cl.offre]||cl.offre}</span>`:'—'}</td>
           <td>${esc(cl.sport||'—')}</td>
           <td>${esc(cl.ville||'—')}</td>
-          <td style="font-size:12px">${emailBtn}${telBtn}</td>
         </tr>`;}).join('')+
       '</tbody></table></div>':
-      '<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🏟️</div><div>Aucun client visible pour l\'instant.</div></div>';
+      '<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🏟️</div><div>Aucune structure visible pour l\'instant.</div></div>';
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table clients/contrats non disponible.</div>';console.error(e);}
 }
+let _cmClientsCache=[];
+// Fiche Structure (spec §12-14) : résumé + accès rapide, réutilise les vues déjà
+// filtrables (Planning/Contenus/Demandes) plutôt que dupliquer leurs données —
+// "les onglets d'une structure sont des vues filtrées des objets globaux".
+function modalFicheStructureCm(clientId){
+  const cl=(_cmClientsCache||[]).find(c=>c.id===clientId);
+  if(!cl){toast('Structure introuvable','er');return;}
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">${esc(cl.nom||'—')}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${cl.type_client||'—'}${cl.offre?' · '+(CONTRAT_TYPES_LB[cl.offre]||cl.offre):''}${cl.sport?' · '+esc(cl.sport):''}${cl.ville?' · '+esc(cl.ville):''}</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${cl.email?`<div style="font-size:13px;color:var(--t2)">✉️ <span onclick="copier('${escJs(cl.email)}')" style="cursor:pointer;color:var(--acc)">${esc(cl.email)}</span></div>`:''}
+      ${cl.telephone?`<div style="font-size:13px;color:var(--t2)">📞 <span onclick="copier('${escJs(cl.telephone)}')" style="cursor:pointer;color:var(--acc)">${esc(cl.telephone)}</span></div>`:''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">
+      <button class="btn bg2 bs" onclick="closeModal();switchView('planning')">📅 Planning</button>
+      <button class="btn bg2 bs" onclick="closeModal();switchView('contenus')">✍️ Contenus</button>
+      <button class="btn bg2 bs" onclick="closeModal();switchView('demandes')">📥 Demandes</button>
+      <button class="btn bg2 bs" onclick="closeModal();switchView('mediabank')">⭐ Médiathèque</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+}
 
+function _cmPlanningEditoTpl(){
+  return`<div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="calPrev()" aria-label="Période précédente">‹</button>
+        <div class="sh-t" id="cal-title">Calendrier</div>
+        <button class="btn bg2 bs" onclick="calNext()" aria-label="Période suivante">›</button>
+      </div>
+      <button class="btn bp bs" onclick="modalNouveauContenu()">+ Contenu</button>
+    </div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Prestations cette semaine</div><div class="fs-v" id="cal-kpi-pre" style="color:var(--ac)">—</div></div>
+      <div class="fs"><div class="fs-l">Contenus programmés</div><div class="fs-v" id="cal-kpi-prog">—</div></div>
+      <div class="fs"><div class="fs-l">Publiés ce mois</div><div class="fs-v" id="cal-kpi-pub" style="color:var(--ok)">—</div></div>
+    </div>
+    <div id="cal-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+function _cmPlanningProdTpl(){
+  return`<div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="pmPrev()" aria-label="Mois précédent">‹</button>
+        <div class="sh-t" id="pm-title">Planning mensuel</div>
+        <button class="btn bg2 bs" onclick="pmNext()" aria-label="Mois suivant">›</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bg2 bs" onclick="modalNouvellePresence()">+ Présence</button>
+        <button class="btn bp bs" id="pm-send-btn" onclick="pmEnvoyerProduction()">Envoyer à la production</button>
+      </div>
+    </div>
+    <div id="pm-client-select" style="margin-bottom:13px"></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Présences ce mois</div><div class="fs-v" id="pm-kpi-total" style="color:var(--ac)">—</div></div>
+      <div class="fs"><div class="fs-l">Alertes (≤14j sans mission)</div><div class="fs-v" id="pm-kpi-alert" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Missions créées</div><div class="fs-v" id="pm-kpi-missions" style="color:var(--ok)">—</div></div>
+    </div>
+    <div id="pm-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+let _planningTab='production';
+function setPlanningTab(tab){
+  _planningTab=tab;
+  const bp=document.getElementById('pt-production'),be=document.getElementById('pt-editorial');
+  if(bp)bp.className='btn '+(tab==='production'?'bp':'bg2')+' bs';
+  if(be)be.className='btn '+(tab==='editorial'?'bp':'bg2')+' bs';
+  const body=document.getElementById('planning-body');
+  if(!body)return;
+  if(tab==='production'){body.innerHTML=_cmPlanningProdTpl();loadCmPlanningMensuel();}
+  else{body.innerHTML=_cmPlanningEditoTpl();loadCmCal();}
+}
 async function loadCmCal(){
   const el=document.getElementById('cal-real');
   const titleEl=document.getElementById('cal-title');
@@ -20179,6 +20266,89 @@ async function _renderChargeEquipe(wrap){
         <td><span class="bd ${r.niv.cls}"><span class="bd-d"></span>${r.niv.lb}</span></td>
       </tr>`).join('')+'</tbody></table></div>';
   }catch(e){listEl.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── CM — Pilotage (Responsable CM, spec §43-46) ─────────────────────────────────
+// "Une vue d'exception et de charge, pas un tableau de bord vaniteux" — réutilise
+// _renderChargeEquipe (équipe) et les mêmes sources que loadCmDemandes/loadCmClients,
+// pas de nouvelle table de reporting.
+async function loadCmPilotage(){
+  const kpisEl=document.getElementById('pilotage-kpis');
+  const equipeEl=document.getElementById('pilotage-equipe');
+  const structEl=document.getElementById('pilotage-structures');
+  const clubplusEl=document.getElementById('pilotage-clubplus');
+  if(!kpisEl)return;
+  try{
+    const [cms,juniors,clients,demandesOuvertes]=await Promise.all([
+      sbFetch('profiles?select=id&role=eq.cm').catch(()=>[]),
+      sbFetch('profiles?select=id&role=eq.cm&cm_niveau_autonomie=eq.junior').catch(()=>[]),
+      sbFetch('clients?select=id,cm_id&statut=in.(client,partenaire)').catch(()=>[]),
+      sbFetch('club_requests?select=id&status=in.(recues,en_traitement)').catch(()=>[]),
+    ]);
+    const nbCms=(cms||[]).length,nbJuniors=(juniors||[]).length;
+    const nbStruct=(clients||[]).length;
+    const nbSansCm=(clients||[]).filter(c=>!c.cm_id).length;
+    kpisEl.innerHTML=[
+      {lb:'CM actifs',v:nbCms},
+      {lb:'Juniors',v:nbJuniors},
+      {lb:'Structures',v:nbStruct},
+      {lb:'Demandes Club+ ouvertes',v:(demandesOuvertes||[]).length},
+    ].map(k=>`<div class="fs"><div class="fs-l">${k.lb}</div><div class="fs-v">${k.v}</div></div>`).join('');
+    if(nbSansCm)kpisEl.innerHTML+=`<div class="fs" style="border-color:rgba(240,68,94,.25);grid-column:span 4"><div class="fs-l" style="color:var(--er)">⚠ ${nbSansCm} structure${nbSansCm>1?'s':''} sans CM affecté</div></div>`;
+  }catch(e){kpisEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
+  if(equipeEl)await _renderChargeEquipe(equipeEl);
+  if(structEl){
+    try{
+      const [clients,affils]=await Promise.all([
+        sbFetch('clients?select=id,nom,cm_id,statut&statut=in.(client,partenaire)&order=nom.asc').catch(()=>[]),
+        sbFetch('client_affiliations?select=client_id,user_id,role_on_client,profiles!user_id(prenom,nom)&status=eq.actif&role_on_client=in.(cm_principal,cm_secondaire,cm_junior)').catch(()=>[]),
+      ]);
+      const affilByClient={};
+      (Array.isArray(affils)?affils:[]).forEach(a=>{
+        if(!affilByClient[a.client_id])affilByClient[a.client_id]=[];
+        affilByClient[a.client_id].push(a);
+      });
+      const list=Array.isArray(clients)?clients:[];
+      structEl.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Structure</th><th>CM affectés</th></tr></thead><tbody>'+
+        list.map(c=>{
+          const affs=affilByClient[c.id]||[];
+          const names=affs.length?affs.map(a=>esc([a.profiles?.prenom,a.profiles?.nom].filter(Boolean).join(' ')||'—')+' ('+(a.role_on_client==='cm_principal'?'P':a.role_on_client==='cm_secondaire'?'S':'J')+')').join(', '):(c.cm_id?'<span style="color:var(--wa)">Affecté (legacy, non détaillé)</span>':'<span style="color:var(--er)">— Non affecté</span>');
+          return`<tr><td class="tp">${esc(c.nom||'—')}</td><td style="font-size:12px">${names}</td></tr>`;
+        }).join('')+'</tbody></table></div>':
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune structure active.</div>';
+    }catch(e){structEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
+  }
+  if(clubplusEl){
+    try{
+      const reqs=await sbFetch('club_requests?select=id,type,team,status,urgency,created_at,clubs(nom)&status=in.(recues,en_traitement)&order=created_at.desc&limit=50').catch(()=>[]);
+      const list=Array.isArray(reqs)?reqs:[];
+      clubplusEl.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Club</th><th>Type</th><th>Urgence</th><th>Statut</th></tr></thead><tbody>'+
+        list.map(d=>`<tr><td class="tp">${esc(d.clubs?.nom||'—')}</td><td>${esc(d.type||'—')}</td><td>${d.urgency==='haute'?'<span style="color:var(--er)">Haute</span>':'Normale'}</td><td>${DEMANDE_STATUT_LBL[d.status]||d.status}</td></tr>`).join('')+
+        '</tbody></table></div><div style="margin-top:10px"><button class="btn bg2 bs" onclick="switchView(\'demandes\')">Voir toutes les demandes →</button></div>':
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune demande en attente.</div>';
+    }catch(e){clubplusEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
+  }
+}
+
+// ── CM — Mes revenus (spec §47-48) : lecture seule depuis Finance (employee_costs),
+// aucun calcul frontend, aucun accès aux revenus des autres CM.
+async function loadCmRevenus(){
+  const el=document.getElementById('cmrev-real');
+  if(!el)return;
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    const r=await sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct&collaborateur_id=eq.'+uid).catch(()=>[]);
+    const ec=(Array.isArray(r)?r:[])[0];
+    if(!ec){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">💶</div><div>Aucune rémunération enregistrée dans Finance pour votre profil pour l\'instant.</div></div>';
+      return;
+    }
+    const total=(ec.salaire_brut_mensuel||0)*(1+(ec.charges_patronales_pct||0)/100);
+    el.innerHTML=`<div class="cd"><div style="padding:20px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Rémunération mensuelle</div>
+      <div style="font-size:28px;font-weight:800;color:var(--t1)">${(ec.salaire_brut_mensuel||0).toLocaleString('fr-FR')} € <span style="font-size:13px;font-weight:500;color:var(--t3)">brut / mois</span></div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">Source : Finance (employee_costs) — non modifiable ici.</div>
+    </div></div>`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── CM — Rapports clients ─────────────────────────────────────────────────────
@@ -25523,7 +25693,19 @@ async function envoyerResetMdp(){
 // notamment) — chaque grand axe (séparateur NAV) devient une section qu'on
 // peut replier, avec l'état mémorisé par rôle dans localStorage.
 function renderSidebarNav(role,activeId){
-  const nav=NAV[role]||[];
+  let nav=NAV[role]||[];
+  // Responsable CM (spec Refonte CM §8) : mêmes pages que le CM, plus une couche de
+  // pilotage — insérée ici (au rendu, pas dans NAV.cm statique) car cm_niveau_autonomie
+  // n'est connu qu'après connexion (cf. fetch dans goApp()). _myCmAutonomie undefined =
+  // pas encore chargé = rendu sans la couche pilotage, sidebar re-rendue dès que
+  // goApp() a la vraie valeur.
+  if(role==='cm'&&_myCmAutonomie==='responsable'){
+    nav=[...nav];
+    const iDash=nav.findIndex(n=>n.id==='dash');
+    if(iDash!==-1)nav.splice(iDash+1,0,{id:'pilotage',lb:'Pilotage CM',ic:'team'});
+    const iContenus=nav.findIndex(n=>n.id==='contenus');
+    if(iContenus!==-1)nav.splice(iContenus+1,0,{id:'analytics',lb:'Performances',ic:'fin'});
+  }
   let collapsedSet;
   try{collapsedSet=new Set(JSON.parse(localStorage.getItem('sv_nav_collapsed_'+role)||'[]'));}catch(e){collapsedSet=new Set();}
   let html='<div class="nav">',inGroup=false,groupIdx=-1;
@@ -25598,7 +25780,7 @@ function goApp(role){
   // Charge le vrai profil et met à jour les badges
   const uid=localStorage.getItem('sv_uid');
   if(uid){
-    sbFetch('profiles?select=prenom,nom,niveau_cm&id=eq.'+uid).then(data=>{
+    sbFetch('profiles?select=prenom,nom,niveau_cm,cm_niveau_autonomie&id=eq.'+uid).then(data=>{
       if(data&&data[0]){
         const p=data[0];
         const name=[p.prenom,p.nom].filter(Boolean).join(' ');
@@ -25609,6 +25791,10 @@ function goApp(role){
         const bj=document.getElementById('dash-bonjour');
         if(bj&&p.prenom)bj.textContent='Bonjour '+p.prenom;
         _myNiveauCm=p.niveau_cm||null;
+        if(role==='cm'){
+          _myCmAutonomie=p.cm_niveau_autonomie||'autonome';
+          document.getElementById('sb-nav').innerHTML=renderSidebarNav(role,S.view);
+        }
       }
     }).catch(()=>{});
   }
@@ -25952,7 +26138,9 @@ const BNAV_ITEMS={
   photo:['dash','pre','planning','revenus'],
   com:  ['dash','prospects','pipeline','agenda'],
   compta:['dash','factures','impayes','rapprochement'],
-  cm:   ['dash','cal','contenus','publications'],
+  // cm (29/08, refonte CM) : cal/publications retirés (fusionnés dans Planning/
+  // contextuels), alignés sur NAV.cm refondue.
+  cm:   ['dash','clients','planning','contenus'],
 };
 
 function renderBottomNav(){
@@ -26617,6 +26805,7 @@ const VIEW_CTA={
   'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.cal':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.planningmensuel':{t:'+ Présence',fn:'modalNouvellePresence'},
+  'cm.planning':{t:'+ Contenu',fn:'modalNouveauContenu'},
   'cm.contenus':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'com.dash':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
   'com.pipeline':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
@@ -29516,7 +29705,11 @@ const MOB_MORE_ITEMS={
   prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
-  cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
+  // 29/08 (refonte CM) : aligné sur NAV.cm refondue — demandes/briefs sortent (déjà
+  // dans BNAV ou accessibles depuis Demandes), mediabank/publications/analytics/charge/
+  // rapports/msgclients/annuaire/centre restent de vraies vues, atteignables ici plutôt
+  // que noyées dans le menu principal (même patron que photo/com du 28-29/08).
+  cm:[{id:'demandes',lb:'Demandes',ic:'📥',sub:'Reçues + Club+'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'videoscm',lb:'Vidéos à valider',ic:'🎬',sub:'Full Communication'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Performances',ic:'📊',sub:'Statistiques'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'revenus',lb:'Mes revenus',ic:'💶',sub:'Finance'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   com:[{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'mesclients',lb:'Mes clients signés',ic:'🤝',sub:'Portefeuille gagné'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
 };
 function openMobMore(){
