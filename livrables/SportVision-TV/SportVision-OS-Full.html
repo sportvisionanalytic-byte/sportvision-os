@@ -5482,7 +5482,7 @@ function modalModifierClient(idx){
   const c=_clientsCache[idx];
   if(!c)return;
   const canEdit=S.role!=='cm';
-  const canAssignCm=S.role==='admin'||(S.role==='cm'&&_myNiveauCm==='cm_lead');
+  const canAssignCm=S.role==='admin'||(S.role==='cm'&&(_myNiveauCm==='cm_lead'||_myCmAutonomie==='responsable'));
   const ro=canEdit?'':'disabled';
   // Périmètre Secrétaire (28/08/2026, spec refonte §19 "Fiche Full Com - vue
   // Secrétaire", masqué : Rentabilité, Rushs, Media Bank, Planning éditorial
@@ -20140,7 +20140,7 @@ async function modalEditContenu(id){
   const plats=['Instagram','YouTube','Facebook','TikTok','Twitter/X'];
   const types=['Vidéo','Photo','Story','Reel','Article','Post'];
   const uid=localStorage.getItem('sv_uid');
-  const canDelete=info.cm_id===uid||S.role==='admin'||(S.role==='cm'&&_myNiveauCm==='cm_lead');
+  const canDelete=info.cm_id===uid||S.role==='admin'||(S.role==='cm'&&(_myNiveauCm==='cm_lead'||_myCmAutonomie==='responsable'));
   const next=CONTENU_NEXT[info.statut];
   const canCorrections=['a_valider_interne','a_valider_client'].includes(info.statut);
   openModal(`<div class="mh"><div class="mt">Modifier contenu</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
@@ -20163,6 +20163,7 @@ async function modalEditContenu(id){
         <div class="fg"><label class="fl">Sponsor</label><input type="text" id="cte-spo" class="fi" value="${esc(info.sponsor||'')}"></div>
       </div>
       <div class="fg"><label class="fl">Statut actuel</label><div><span class="bd ${(CONTENU_STATUTS[info.statut]||CONTENU_STATUTS.brouillon).cls}"><span class="bd-d"></span>${(CONTENU_STATUTS[info.statut]||CONTENU_STATUTS.brouillon).lb}</span></div></div>
+      ${['programme','publie'].includes(info.statut)?`<div class="fg"><label class="fl">Référence Metricool (si programmé/publié via Metricool)</label><input type="text" id="cte-metricool" class="fi" placeholder="ID de la publication Metricool" value="${esc(info.publication_external_id||'')}"></div>`:''}
       <div id="cte-hist"></div>
     </div>
     <div class="mf" style="flex-wrap:wrap;gap:8px">
@@ -20200,11 +20201,17 @@ async function sauvegarderContenu(id){
   const legende=(document.getElementById('cte-leg')?.value||'').trim();
   const hashtags=(document.getElementById('cte-hash')?.value||'').trim();
   const sponsor=(document.getElementById('cte-spo')?.value||'').trim();
+  // Metricool optionnel (spec Refonte CM §23/§40) : l'OS accepte publication directe OU
+  // Metricool sans imposer l'un ou l'autre — le champ n'existe que si le contenu est
+  // programmé/publié (cf. modalEditContenu), absent sinon.
+  const metricoolEl=document.getElementById('cte-metricool');
+  const metricoolRef=metricoolEl?metricoolEl.value.trim():null;
   try{
     const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{
       titre:ti,client_id:clientId||null,plateforme:pl,type_contenu:ty,date_prevue:dt||null,
       hook:hook||null,cta:cta||null,legende:legende||null,hashtags:hashtags||null,sponsor:sponsor||null,
-      updated_at:new Date().toISOString()
+      updated_at:new Date().toISOString(),
+      ...(metricoolEl?{publication_external_id:metricoolRef||null,publication_provider:metricoolRef?'metricool':'manuel'}:{})
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
     _logAudit('contenu_modifie','contenu',id,{titre:ti});
