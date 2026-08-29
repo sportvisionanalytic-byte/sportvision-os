@@ -1339,7 +1339,7 @@ const VIEWS={
         <button onclick="modalSignalerIncident()" style="padding:9px 13px;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer;font-size:12px;font-weight:700;min-height:44px;white-space:nowrap">⚠ Incident</button>
       </div>
     </div>
-    <div id="jourj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="jourj-real">${photoSkelCards(2)}</div>`,
 
   // cm.cal/cm.planningmensuel fusionnés dans cm.planning (2 onglets Production/
   // Editorial, spec Refonte CM §14) — gabarits conservés ici tels quels (juste extraits
@@ -2164,7 +2164,7 @@ const VIEWS={
       <button onclick="filterPhotoPre('delivery')" class="btn bg2 bs" id="ppt-liv" style="flex-shrink:0">📦 Livraison</button>
       <button onclick="filterPhotoPre('done')" class="btn bg2 bs" id="ppt-done" style="flex-shrink:0">🏁 Terminées</button>
     </div>
-    <div id="photo-pre-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="photo-pre-real">${photoSkelCards(4)}</div>`,
 
   'photo.medias':()=>`
     <div class="sh" style="margin-bottom:14px">
@@ -2177,7 +2177,7 @@ const VIEWS={
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Validés</div><div class="fs-v" id="med-done" style="color:var(--ok)">—</div></div>
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Corrections</div><div class="fs-v" id="med-corr" style="color:var(--er)">—</div></div>
     </div>
-    <div id="medias-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="medias-real">${photoSkelCards(3)}</div>`,
 
   'photo.kits':()=>`
     <div class="sh"><div class="sh-t">Mes kits assignés</div></div>
@@ -9542,12 +9542,44 @@ async function sauvegarderLien(){
           }
         }catch(e){}
       }
-      closeModal();
-      toast('Lien enregistré','ok');
+      // Rôle photo + transfert confirmé = fin de la mission pour le photographe,
+      // ça mérite mieux qu'un toast générique identique à n'importe quelle
+      // autre sauvegarde (cf. spec §23 "statut de livraison qui donne un
+      // sentiment d'accomplissement, pas juste 'envoyé'"). Comportement
+      // inchangé pour les autres rôles (prod notamment, qui utilise le même
+      // modal) pour ne pas déborder du scope de cette passe.
+      if(S.role==='photo'&&body.transfert_confirme) showTransfertAccompli(nom);
+      else{closeModal();toast('Lien enregistré','ok');}
       if(S.view==='media'||S.view==='medias') loadProdMedias();
       if(S.view==='medias') loadPhotoMedias();
     }else throw new Error();
   }catch(e){err.textContent='Erreur lors de l\'enregistrement.';}
+}
+
+// État de succès "accomplissement" affiché dans le modal après confirmation
+// d'un transfert par un photographe (voir sauvegarderLien ci-dessus). Purement
+// visuel : ne touche à aucune donnée, ferme le modal automatiquement.
+function showTransfertAccompli(nom){
+  const ct=document.getElementById('sv-modal-ct');
+  if(!ct){closeModal();toast('Lien enregistré','ok');return;}
+  ct.innerHTML=`<div style="padding:38px 26px;text-align:center">
+    <div id="ta-circle" style="width:72px;height:72px;margin:0 auto 18px;border-radius:50%;background:rgba(46,204,138,.12);border:2px solid var(--ok);display:flex;align-items:center;justify-content:center">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><path id="ta-path" d="M4 12l5 5L20 6" stroke="var(--ok)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div style="font-size:17px;font-weight:800;color:var(--t1);margin-bottom:6px">Transfert confirmé !</div>
+    <div style="font-size:13px;color:var(--t3);max-width:270px;margin:0 auto;line-height:1.5">« ${esc(nom)} » est en route vers la production. Bien joué, mission bouclée 🎬</div>
+  </div>`;
+  const circle=document.getElementById('ta-circle');
+  const path=document.getElementById('ta-path');
+  if(circle?.animate){
+    circle.animate([{transform:'scale(.4)',opacity:0},{transform:'scale(1.1)',opacity:1},{transform:'scale(1)'}],{duration:380,easing:'cubic-bezier(.34,1.56,.64,1)'});
+  }
+  if(path?.animate&&path.getTotalLength){
+    const len=path.getTotalLength();
+    path.style.strokeDasharray=len;path.style.strokeDashoffset=len;
+    path.animate([{strokeDashoffset:len},{strokeDashoffset:0}],{duration:320,delay:200,easing:'ease-out',fill:'forwards'});
+  }
+  setTimeout(closeModal,1500);
 }
 
 // ─── Modal — Fiche lien ────────────────────────────────────────────────────────
@@ -9711,12 +9743,22 @@ async function sauvegarderBibliotheque(){
   }catch(e){err.textContent='Erreur.';}
 }
 
+// Cartes skeleton (shimmer, classe .skel déjà définie dans le style partagé)
+// réutilisées pour les 3 écrans du rôle photo — évite le texte "Chargement…"
+// plat sur des listes qui prennent forcément la forme de cartes une fois
+// chargées.
+function photoSkelCards(n){
+  let h='';
+  for(let i=0;i<n;i++)h+='<div class="skel" style="height:64px;border-radius:12px;margin-bottom:10px"></div>';
+  return h;
+}
+
 // ─── Chargement photo.medias ──────────────────────────────────────────────────
 async function loadPhotoMedias(){
   const el=document.getElementById('medias-real');
   if(!el)return;
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML=photoSkelCards(3);
   try{
     const [pres,liens]=await Promise.all([
       sbFetch('prestations_equipe_display?select=prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+S.uid+'&order=created_at.desc&limit=30').catch(()=>[]),
@@ -9735,7 +9777,14 @@ async function loadPhotoMedias(){
     }
     const byPre={};
     mesLiens.forEach(l=>{if(l.prestation_id){if(!byPre[l.prestation_id])byPre[l.prestation_id]=[];byPre[l.prestation_id].push(l);}});
-    el.innerHTML=mesPres.map(p=>{
+    // Bandeau "à jour" : renforce le sentiment d'accomplissement une fois tout
+    // transmis (spec §23), plutôt que de laisser un écran neutre identique
+    // qu'il reste 0 ou 3 transferts en attente.
+    const okBanner=att===0&&mesPres.length?`<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;margin-bottom:12px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.22);border-radius:var(--rb)">
+      <span style="font-size:18px">✅</span>
+      <div><div style="font-size:13px;font-weight:700;color:var(--ok)">Tout est transmis</div><div style="font-size:11px;color:var(--t3);margin-top:1px">Aucun média en attente de transfert.</div></div>
+    </div>`:'';
+    el.innerHTML=okBanner+mesPres.map(p=>{
       const pLiens=byPre[p.id]||[];
       const needsTransfer=['production_terminée','médias_à_transférer'].includes(p.statut)&&!pLiens.find(l=>l.transfert_confirme);
       const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
