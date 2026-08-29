@@ -2528,14 +2528,14 @@ const VIEWS={
       <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('commissions')"><div class="kpi-ey">Commissions à percevoir</div><div class="kpi-v" id="com-kpi-commadue" style="font-size:16px">—</div><span class="kpi-d dnt">dues + validées</span></div>
     </div>
     <div class="cd" style="margin-top:13px"><div class="cd-h"><div class="cd-t">Priorités</div><button class="btn bg2 bs" onclick="switchView('agenda')">Voir l'agenda</button></div>
-      <div id="com-dash-prio"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div id="com-dash-prio">${_comSkelRows(3)}</div>
     </div>
     <div class="g2" style="margin-top:13px">
       <div class="cd"><div class="cd-h"><div class="cd-t">Pipeline prioritaire</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
-        <div id="com-dash-pr"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        <div id="com-dash-pr">${_comSkelRows(3)}</div>
       </div>
       <div class="cd"><div class="cd-h"><div class="cd-t">Devis en attente de réponse</div><button class="btn bg2 bs" onclick="switchView('devis')">Tous les devis</button></div>
-        <div id="com-dash-dev"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        <div id="com-dash-dev">${_comSkelRows(3)}</div>
       </div>
     </div>`,
 
@@ -2546,7 +2546,7 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Acceptés</div><div class="fs-v" id="dev-kpi-acc" style="color:var(--ok)">—</div></div>
       <div class="fs"><div class="fs-l">Refusés</div><div class="fs-v" id="dev-kpi-ref" style="color:var(--er)">—</div></div>
     </div>
-    <div id="devis-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="devis-real">${_comSkelCard(4)}</div>`,
   'admin.devis':()=>`
     <div class="sh"><div class="sh-t">Devis</div><button class="btn bp bs" onclick="modalNouveauDevis()">+ Nouveau devis</button></div>
     <div class="g3" style="margin-bottom:13px">
@@ -2960,7 +2960,7 @@ const VIEWS={
 
   'com.objectifs':()=>`
     <div class="sh"><div class="sh-t">Objectifs commerciaux</div></div>
-    <div id="obj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="obj-real">${_comSkelCard(4)}</div>`,
 
   'com.commissions':()=>`
     <div class="sh"><div class="sh-t">Mes commissions</div></div>
@@ -2969,7 +2969,7 @@ const VIEWS={
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Payées cette année</div><div class="fs-v" id="mycom-kpi-payees" style="color:var(--ok)">—</div></div>
       <div class="fs"><div class="fs-l">Total commissions</div><div class="fs-v" id="mycom-kpi-total">—</div></div>
     </div>
-    <div id="mycommissions-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="mycommissions-real">${_comSkelCard(4)}</div>`,
 
   // ── Prospects (liste filtrable, spec Refonte Commercial §4) — distincte du Pipeline
   // (Kanban) : même donnée (`clients`), présentation différente, pour trouver vite un
@@ -2987,13 +2987,13 @@ const VIEWS={
         <option value="négociation">Négociation</option>
       </select>
       <select id="pr-temp" class="l-inp" style="height:36px;width:auto" onchange="renderComProspects()">
-        <option value="">Toute température</option>
-        <option value="chaud">Chaud (≥70)</option>
-        <option value="moyen">Moyen (30-69)</option>
-        <option value="long">Long terme (&lt;30)</option>
+        <option value="">🌡️ Toute température</option>
+        <option value="chaud">🔥 Chaud (≥70)</option>
+        <option value="moyen">🌤️ Tiède (30-69)</option>
+        <option value="long">❄️ Froid (&lt;30)</option>
       </select>
     </div>
-    <div id="prospects-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="prospects-real">${_comSkelCard(5)}</div>`,
 
   // ── Agenda commercial (spec §9) — n'existait pas : agrège les relances (clients.
   // prochaine_action/date_prochaine_action) et les échéances de devis. Les vrais
@@ -3002,13 +3002,13 @@ const VIEWS={
   // un agenda de RDV commerciaux sortants. Voir commentaire dans loadComAgenda().
   'com.agenda':()=>`
     <div class="sh"><div><div class="sh-t">Agenda</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Relances et échéances d'offres à venir.</div></div></div>
-    <div id="agenda-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="agenda-real">${_comSkelCard(4)}</div>`,
 
   // ── Mes clients signés (spec §13) — vue commerciale légère, jamais Production/
   // Livrables/Marge/Paiements équipe (voir "Non visible" de la spec).
   'com.mesclients':()=>`
     <div class="sh"><div class="sh-t">Mes clients signés</div></div>
-    <div id="mesclients-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="mesclients-real">${_comSkelCard(4)}</div>`,
 
   // ── RAPPORT MENSUEL ──────────────────────
   'admin.rapport':()=>`
@@ -5083,7 +5083,7 @@ function _buildPipelineShell(titre){
       <button class="btn bp bs" onclick="modalNouveauClient()">+ Prospect</button>
     </div>
   </div>
-  <div id="pipeline-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+  <div id="pipeline-real">${_comSkelKanban(5)}</div>`;
 }
 async function loadClients(){
   const el=document.getElementById('crm-real');
@@ -16096,7 +16096,7 @@ function renderPipeline(){
     return`<div class="pip-card" onclick="modalModifierClient(${idx})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
         <div class="pip-cn">${esc(c.nom)}</div>
-        ${score>0?`<span title="Score de priorité (0-100, calculé automatiquement)" style="font-size:9px;font-weight:700;color:#F5A524;background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.3);border-radius:4px;padding:1px 5px;flex-shrink:0">${score}/100</span>`:''}
+        ${score>0?(()=>{const tm=TEMP_META[_prospectTemp(score)];return`<span title="Température ${tm.lb.toLowerCase()} — score de priorité ${score}/100" style="font-size:9px;font-weight:700;color:${tm.clr};background:${tm.bg};border:1px solid ${tm.clr}55;border-radius:4px;padding:1px 5px;flex-shrink:0;white-space:nowrap">${tm.ic} ${score}</span>`;})():''}
       </div>
       <div class="pip-det">${esc([c.sport,c.ville].filter(Boolean).join(' · ')||'—')}</div>
       ${lcHtml}
@@ -21425,25 +21425,32 @@ async function loadComDash(){
     const gagnesMois=list.filter(c=>['client','partenaire'].includes(c.statut)&&c.updated_at&&c.updated_at>=m0);
     const commADueTotal=(commADue||[]).reduce((s,c)=>s+(Number(c.montant_commission)||0),0);
 
-    const setKpi=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+    const setKpi=(id,val,opts)=>{const e=document.getElementById(id);if(e)animateNumber(e,val,opts);};
     setKpi('com-kpi-relance',enRetardOuJour.length);
     setKpi('com-kpi-ech7',echeance7j);
     setKpi('com-kpi-off',devis.length);
     setKpi('com-kpi-chaud',list.filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)&&(c.score_priorite||0)>=70).length);
     setKpi('com-kpi-gagne',gagnesMois.length);
-    setKpi('com-kpi-commadue',commADueTotal.toLocaleString('fr-FR')+' €');
+    setKpi('com-kpi-commadue',commADueTotal,{suffix:' €'});
 
+    // Priorités : même langage visuel que le moteur "À traiter" global (bordure +
+    // fond légèrement teinté par sévérité, icône, hover) plutôt qu'une simple ligne
+    // de texte coloré — cohérence avec le reste de l'OS (cf. SEV_CLR/SEV_BG).
     const prio=document.getElementById('com-dash-prio');
     if(prio){
+      const PRIO_CLR={urgent:'var(--er)',important:'var(--wa)'};
+      const PRIO_BG={urgent:'rgba(240,68,94,.05)',important:'rgba(245,165,36,.04)'};
       const items=[
-        ...enRetardOuJour.map(c=>({c,txt:c.date_prochaine_action<today?'Relance en retard':'Relance aujourd\'hui',clr:'var(--er)'})),
-        ...chaudesSansAction.map(c=>({c,txt:'Opportunité chaude sans prochaine action',clr:'var(--wa)'})),
+        ...enRetardOuJour.map(c=>({c,ic:c.date_prochaine_action<today?'⏰':'📅',txt:c.date_prochaine_action<today?'Relance en retard':'Relance aujourd\'hui',sev:c.date_prochaine_action<today?'urgent':'important'})),
+        ...chaudesSansAction.map(c=>({c,ic:'🔥',txt:'Opportunité chaude sans prochaine action',sev:'important'})),
       ].slice(0,8);
-      prio.innerHTML=items.length?'<div class="cd-b">'+items.map(({c,txt,clr})=>{const i=list.indexOf(c);return`
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
-          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div><div style="font-size:11px;color:${clr}">${txt}</div></div>
-        </div>`;}).join('')+'</div>':
-        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Rien d\'urgent — beau travail.</div>';
+      prio.innerHTML=items.length?items.map(({c,ic,txt,sev})=>{const i=list.indexOf(c);const clr=PRIO_CLR[sev];const bg=PRIO_BG[sev];return`
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.03);border-left:2px solid ${clr};background:${bg};cursor:pointer;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='${bg}'" onclick="modalModifierClient(${i})">
+          <span style="font-size:15px;flex-shrink:0">${ic}</span>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div><div style="font-size:11px;color:${clr}">${txt}</div></div>
+          <span style="font-size:11px;color:var(--t3)">›</span>
+        </div>`;}).join(''):
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">🎉 Rien d\'urgent — beau travail.</div>';
     }
     const ep=document.getElementById('com-dash-pr');
     if(ep){
@@ -21451,8 +21458,9 @@ async function loadComDash(){
       const scc={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw'};
       const scl={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis envoyé','négociation':'Négociation'};
       ep.innerHTML=prox.length?'<div class="cd-b">'+prox.map(c=>{const i=list.indexOf(c);return`
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
-          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div><div style="font-size:11px;color:var(--t3)">${esc([c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—')}</div></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.03);border-radius:6px;cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''" onclick="modalModifierClient(${i})">
+          ${_tempDot(c.score_priorite)}
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div><div style="font-size:11px;color:var(--t3)">${esc([c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—')}</div></div>
           <span class="bd ${scc[c.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${scl[c.statut]||c.statut}</span>
         </div>`;}).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun prospect. Ajoutez des contacts via le Pipeline.</div>';
@@ -21467,7 +21475,7 @@ async function loadComDash(){
           const exp=d.date_expiration;
           const expFmt=exp?new Date(exp).toLocaleDateString('fr-FR'):'—';
           const isExp=exp&&exp<today;
-          return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierDevis(${i})">
+          return`<div style="display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.03);border-radius:6px;cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''" onclick="modalModifierDevis(${i})">
             <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${d.numero||'—'} · ${esc(d.clients?.nom||'—')}</div>
               <div style="font-size:11px;color:${isExp?'var(--er)':'var(--t3)'}">Expire : ${expFmt}${d.total_ttc?' · '+d.total_ttc.toLocaleString('fr-FR')+' €':''}</div>
             </div>
@@ -21502,6 +21510,48 @@ function _prospectTemp(score){
   if(s>=30)return'moyen';
   return'long';
 }
+// Indicateur de température visuel (spec §24 Commercial : chaud/tiède/froid doit se
+// scanner d'un coup d'œil, pas un simple mot en texte plat) — dérivé du même
+// score_priorite que le filtre existant. Réutilisé par Prospects, le dashboard et le
+// Pipeline (buildCard) pour rester cohérent partout où une température est affichée.
+const TEMP_META={
+  chaud:{ic:'🔥',lb:'Chaud',clr:'var(--er)',bg:'rgba(240,68,94,.12)'},
+  moyen:{ic:'🌤️',lb:'Tiède',clr:'var(--wa)',bg:'rgba(245,165,36,.1)'},
+  long:{ic:'❄️',lb:'Froid',clr:'var(--acc)',bg:'rgba(54,107,255,.1)'},
+};
+function _tempBadge(score){
+  const m=TEMP_META[_prospectTemp(score)];
+  return`<span class="bd" style="background:${m.bg};color:${m.clr};flex-shrink:0" title="Score de priorité : ${score||0}/100">${m.ic} ${m.lb}</span>`;
+}
+function _tempDot(score){
+  const m=TEMP_META[_prospectTemp(score)];
+  return`<span style="width:7px;height:7px;border-radius:50%;background:${m.clr};flex-shrink:0" title="${m.lb} (${score||0}/100)"></span>`;
+}
+// Skeleton de chargement (classe .skel déjà définie dans le style partagé, shimmer prêt
+// mais jamais appliqué nulle part encore) — remplace le texte "Chargement…" par des blocs
+// qui esquissent la forme du contenu à venir (lignes de liste ou tuiles), pour un écran
+// commercial qui paraît vivant dès l'ouverture plutôt que figé sur un mot.
+// _comSkelRows : lignes nues, à utiliser dans un conteneur qui a déjà son propre .cd
+// (ex. le corps "Priorités" du dashboard). _comSkelCard : mêmes lignes, avec leur propre
+// carte .cd, pour les placeholders qui n'ont pas de carte ambiante autour d'eux.
+function _comSkelRows(n){
+  return Array.from({length:n||4}).map(()=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 4px">
+      <div class="skel" style="flex:1;height:32px;border-radius:8px"></div>
+      <div class="skel" style="width:64px;height:18px;border-radius:20px;flex-shrink:0"></div>
+    </div>`).join('');
+}
+function _comSkelCard(n){
+  return`<div class="cd"><div class="cd-b">${_comSkelRows(n)}</div></div>`;
+}
+function _comSkelKanban(cols){
+  return`<div class="pip">`+Array.from({length:cols||5}).map(()=>`
+    <div class="pip-col"><div class="pip-b" style="padding-top:10px">
+      <div class="skel" style="height:74px;border-radius:9px;margin-bottom:6px"></div>
+      <div class="skel" style="height:74px;border-radius:9px;margin-bottom:6px"></div>
+      <div class="skel" style="height:74px;border-radius:9px"></div>
+    </div></div>`).join('')+`</div>`;
+}
 function renderComProspects(){
   const el=document.getElementById('prospects-real');
   if(!el)return;
@@ -21523,13 +21573,16 @@ function renderComProspects(){
   el.innerHTML='<div class="cd"><div class="cd-b">'+filtered.map(c=>{
     const i=_clientsCache.indexOf(c);
     const late=c.date_prochaine_action&&c.date_prochaine_action<today;
-    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 10px;border-bottom:1px solid rgba(255,255,255,.03);border-left:2px solid ${late?'var(--er)':'transparent'};border-radius:6px;cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''" onclick="modalModifierClient(${i})">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(c.nom)}${c.score_priorite?` <span style="font-size:9px;font-weight:700;color:#F5A524">${c.score_priorite}/100</span>`:''}</div>
+        <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(c.nom)}</div>
         <div style="font-size:11px;color:var(--t3)">${esc([c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—')}</div>
-        ${c.prochaine_action?`<div style="font-size:10.5px;margin-top:2px;color:${late?'var(--er)':'var(--acc)'}">⚡ ${esc(c.prochaine_action)}${c.date_prochaine_action?' · '+new Date(c.date_prochaine_action).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}</div>`:''}
+        ${c.prochaine_action?`<div style="font-size:10.5px;margin-top:2px;color:${late?'var(--er)':'var(--acc)'}">${late?'⏰ En retard — ':'⚡ '}${esc(c.prochaine_action)}${c.date_prochaine_action?' · '+new Date(c.date_prochaine_action).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}</div>`:''}
       </div>
-      <span class="bd ${statCls[c.statut]||'bw'}" style="font-size:10px;flex-shrink:0"><span class="bd-d"></span>${statLb[c.statut]||c.statut}</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+        ${_tempBadge(c.score_priorite)}
+        <span class="bd ${statCls[c.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${statLb[c.statut]||c.statut}</span>
+      </div>
     </div>`;}).join('')+'</div></div>';
 }
 
@@ -21552,20 +21605,26 @@ async function loadComAgenda(){
     _clientsCache=clients||[];
     const today=ymdLocal();
     const items=[
-      ...(clients||[]).filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)).map(c=>({date:c.date_prochaine_action,type:'Relance',txt:c.prochaine_action||c.nom,sub:c.nom,onclick:`modalModifierClient(${(clients||[]).indexOf(c)})`})),
-      ...(devisData||[]).map(d=>({date:d.date_expiration,type:'Échéance devis',txt:`${d.numero||'Devis'} — ${d.clients?.nom||'—'}`,sub:'Expire',onclick:`switchView('devis')`})),
+      ...(clients||[]).filter(c=>COM_STATUTS_ACTIFS.includes(c.statut)).map(c=>({date:c.date_prochaine_action,type:'Relance',ic:'⚡',txt:c.prochaine_action||c.nom,sub:c.nom,onclick:`modalModifierClient(${(clients||[]).indexOf(c)})`})),
+      ...(devisData||[]).map(d=>({date:d.date_expiration,type:'Échéance devis',ic:'📄',txt:`${d.numero||'Devis'} — ${d.clients?.nom||'—'}`,sub:'Expire',onclick:`switchView('devis')`})),
     ].filter(it=>it.date).sort((a,b)=>a.date<b.date?-1:1);
     if(!items.length){el.innerHTML='<div style="padding:30px;color:var(--t3);text-align:center;font-size:13px">Rien de planifié pour le moment.</div>';return;}
     const groups={};
     items.forEach(it=>{const k=it.date<today?'retard':(it.date===today?'aujourd\'hui':(it.date<=ymdLocal(new Date(Date.now()+7*86400000))?'7jours':'plustard'));(groups[k]=groups[k]||[]).push(it);});
     const secLb={retard:'En retard',"aujourd'hui":"Aujourd'hui",'7jours':'Cette semaine','plustard':'Plus tard'};
     const secClr={retard:'var(--er)',"aujourd'hui":'var(--wa)','7jours':'var(--acc)','plustard':'var(--t3)'};
+    const secIc={retard:'⏰',"aujourd'hui":'📅','7jours':'🗓️','plustard':'🗓️'};
+    // Urgence perceptible d'un coup d'œil (même langage que le moteur "À traiter" global) :
+    // bordure gauche + badge type teintés par la couleur du groupe, pas juste le titre de
+    // section en couleur — "En retard" utilise en plus le badge pulsant .bl déjà présent
+    // ailleurs dans l'OS pour signaler une attention immédiate.
     el.innerHTML=['retard',"aujourd'hui",'7jours','plustard'].filter(k=>groups[k]&&groups[k].length).map(k=>`
       <div class="cd" style="margin-bottom:13px">
-        <div class="cd-h"><div class="cd-t" style="color:${secClr[k]}">${secLb[k]} (${groups[k].length})</div></div>
+        <div class="cd-h"><div class="cd-t" style="color:${secClr[k]}">${secIc[k]} ${secLb[k]} (${groups[k].length})</div></div>
         <div class="cd-b">${groups[k].map(it=>`
-          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="${it.onclick}">
-            <span class="bd bw" style="font-size:9px;flex-shrink:0">${it.type}</span>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid rgba(255,255,255,.03);border-left:2px solid ${secClr[k]};border-radius:6px;cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''" onclick="${it.onclick}">
+            <span style="font-size:14px;flex-shrink:0">${it.ic}</span>
+            <span class="bd ${k==='retard'?'bl':'bn'}" style="font-size:9px;flex-shrink:0">${it.type}</span>
             <div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--t1)">${esc(it.txt)}</div></div>
             <div style="font-size:11px;color:var(--t3)">${new Date(it.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div>
           </div>`).join('')}</div>
@@ -21592,7 +21651,7 @@ async function loadComMesClients(){
       const i=_clientsCache.indexOf(c);
       const contact=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||c.email||c.telephone||'—';
       const comm=commByClient[c.id];
-      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
+      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.03);border-radius:6px;cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''" onclick="modalModifierClient(${i})">
         <div style="flex:1;min-width:0">
           <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(c.nom)}</div>
           <div style="font-size:11px;color:var(--t3)">${esc([c.type_client,c.ville].filter(Boolean).join(' · ')||'—')} · ${esc(contact)}</div>
