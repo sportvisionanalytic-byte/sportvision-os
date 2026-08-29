@@ -21956,10 +21956,17 @@ async function loadComptaDash(){
     const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
     const [data,remData,fraisData,remAttData,depData]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,acompte_montant,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500'),
-      sbFetch('prestations_equipe_display?select=remuneration,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=remuneration,statut_paiement,prestations!inner(date_prestation,statut)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
       sbFetch('frais?select=montant&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext+'&statut=in.(validé,remboursé)').catch(()=>[]),
       sbFetch('prestations_equipe_display?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
-      sbFetch('expenses?select=montant_ttc&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext).catch(()=>[]),
+      // statut=in.(engagee,payee,comptabilisee) : exclut 'prevue' (dépense simplement
+      // planifiée, pas encore engagée), même filtre que toutes les autres lectures de
+      // charges réelles du module (loadComptaResultat, loadComptaRentabilite, loadComptaTva
+      // — cf. leurs appels sur `expenses`). Sans ce filtre, une dépense prévue mais jamais
+      // engagée gonflait "Charges du mois" et donc faussait "Marge brute" à la baisse alors
+      // qu'aucun argent n'a été ni ne sera forcément dépensé (audit finance/rémunération
+      // 29/08 — confusion dépense prévue ↔ charge réelle, bug confirmé et corrigé).
+      sbFetch('expenses?select=montant_ttc&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext+'&statut=in.(engagee,payee,comptabilisee)').catch(()=>[]),
     ]);
     const list=data||[];
     const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','non_facturée':'bn','en_retard':'br'};
@@ -21981,7 +21988,16 @@ async function loadComptaDash(){
     // assurance...) et ne montrait que rémunérations équipe + frais de
     // mission, ce qui la rendait trompeuse pour qui cherche son total de
     // charges réel.
-    const charges=(Array.isArray(remData)?remData:[]).reduce((s,r)=>s+(r.remuneration||0),0)
+    // Même règle que loadComptaRem (page Rémunérations) : une mission annulée/refusée
+    // ne doit pas faire apparaître une charge de rémunération, SAUF si le paiement était
+    // déjà validé/transmis/payé avant l'annulation (travail déjà effectué, somme due réelle).
+    // Sans ce filtre, une rémunération "acceptée" mais jamais payée sur une prestation
+    // annulée après coup gonflait "Charges du mois" et donc sous-estimait "Marge brute"
+    // pour de l'argent qui ne sera in fine jamais versé (audit finance/rémunération 29/08).
+    const remCharges=(Array.isArray(remData)?remData:[]).filter(r=>
+      !['annulée','refusée'].includes(r.prestations?.statut)||['validé','transmis_compta','payé'].includes(r.statut_paiement)
+    ).reduce((s,r)=>s+(r.remuneration||0),0);
+    const charges=remCharges
       +(Array.isArray(fraisData)?fraisData:[]).reduce((s,f)=>s+(f.montant||0),0)
       +(Array.isArray(depData)?depData:[]).reduce((s,d)=>s+(d.montant_ttc||0),0);
     const remAtt=(Array.isArray(remAttData)?remAttData:[]).reduce((s,r)=>s+(r.remuneration||0),0);
