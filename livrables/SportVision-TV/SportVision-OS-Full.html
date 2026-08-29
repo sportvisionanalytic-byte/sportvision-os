@@ -4340,7 +4340,7 @@ function modalNouveauClient(){
       <div id="fc-doublon-warn"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
         <button class="btn bg2" onclick="closeModal()">Annuler</button>
-        <button class="btn bp" onclick="creerClient()">Créer le client</button>
+        <button class="btn bp" id="fc-submit-btn" onclick="creerClient()">Créer le client</button>
       </div>
     </div>`);
   window._fcDoublonConfirme=false;
@@ -4380,31 +4380,41 @@ async function _chercherDoublonsClient(nom,ville){
   }catch(e){return[];}
 }
 async function creerClient(){
+  // Garde de ré-entrance (audit idempotence 29/08) : sans elle, un double-clic sur
+  // "Créer le client" (ou un double-clic rapide sur "Créer quand même") pouvait lancer
+  // deux appels concurrents à creerClient() — aucune contrainte UNIQUE en base sur
+  // `clients` ne couvre ce cas (la vérification anti-doublon ci-dessous est volontairement
+  // floue/nom+ville, donc pas modélisable en contrainte UNIQUE), d'où une garde applicative,
+  // même idiome que le bouton bp de creerPrestation() juste au-dessus.
+  if(window._fcCreating)return;
   const err=document.getElementById('fc-err');
   const warn=document.getElementById('fc-doublon-warn');
   const nom=document.getElementById('fc-nom').value.trim();
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  window._fcCreating=true;
+  const btn=document.getElementById('fc-submit-btn');
+  if(btn){btn.disabled=true;btn.textContent='Création…';}
   err.textContent='';
-  if(!window._fcDoublonConfirme){
-    err.textContent='Vérification des doublons…';
-    const doublons=await _chercherDoublonsClient(nom,document.getElementById('fc-ville')?.value);
-    err.textContent='';
-    if(doublons.length){
-      const lbl={client:'client',club:'club Club+'};
-      warn.innerHTML=`<div style="padding:12px 14px;background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.25);border-radius:var(--rb);margin-bottom:4px">
-        <div style="font-size:12.5px;color:var(--t1);font-weight:600;margin-bottom:6px">⚠ Un ${lbl[doublons[0].source]} similaire existe déjà</div>
-        <div style="font-size:12px;color:var(--t2);margin-bottom:10px">${doublons.slice(0,3).map(d=>esc(d.nom)+(d.ville?' · '+esc(d.ville):'')+' ('+lbl[d.source]+')').join(', ')}${doublons.length>3?' et '+(doublons.length-3)+' autre(s)':''} — voulez-vous quand même créer ce nouveau client ?</div>
-        <div style="display:flex;gap:10px">
-          <button class="btn bg2 bs" onclick="document.getElementById('fc-doublon-warn').innerHTML=''">Annuler</button>
-          <button class="btn bp bs" onclick="window._fcDoublonConfirme=true;creerClient()">Créer quand même</button>
-        </div>
-      </div>`;
-      return;
-    }
-  }
-  window._fcDoublonConfirme=false;
-  err.textContent='Création...';
   try{
+    if(!window._fcDoublonConfirme){
+      err.textContent='Vérification des doublons…';
+      const doublons=await _chercherDoublonsClient(nom,document.getElementById('fc-ville')?.value);
+      err.textContent='';
+      if(doublons.length){
+        const lbl={client:'client',club:'club Club+'};
+        warn.innerHTML=`<div style="padding:12px 14px;background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.25);border-radius:var(--rb);margin-bottom:4px">
+          <div style="font-size:12.5px;color:var(--t1);font-weight:600;margin-bottom:6px">⚠ Un ${lbl[doublons[0].source]} similaire existe déjà</div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:10px">${doublons.slice(0,3).map(d=>esc(d.nom)+(d.ville?' · '+esc(d.ville):'')+' ('+lbl[d.source]+')').join(', ')}${doublons.length>3?' et '+(doublons.length-3)+' autre(s)':''} — voulez-vous quand même créer ce nouveau client ?</div>
+          <div style="display:flex;gap:10px">
+            <button class="btn bg2 bs" onclick="document.getElementById('fc-doublon-warn').innerHTML=''">Annuler</button>
+            <button class="btn bp bs" onclick="window._fcDoublonConfirme=true;creerClient()">Créer quand même</button>
+          </div>
+        </div>`;
+        return;
+      }
+    }
+    window._fcDoublonConfirme=false;
+    err.textContent='Création...';
     const r=await sbFetch('clients',{method:'POST',body:{
       nom,
       type_client:document.getElementById('fc-type').value,
@@ -4448,6 +4458,10 @@ async function creerClient(){
     updateNavBadges(S.role);
     if(created&&offreType==='full_communication'&&dejaSigne)await lancerCascadeFullCom(created.id);
   }catch(e){err.textContent='Erreur lors de la création.';}
+  finally{
+    window._fcCreating=false;
+    if(btn){btn.disabled=false;btn.textContent='Créer le client';}
+  }
 }
 function fcToggleOffre(){
   const v=document.getElementById('fc-offre')?.value;
@@ -6904,7 +6918,7 @@ function modalRecrutCreerCollaborateur(id){
       <div id="rcc-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
         <button class="btn bg2" onclick="closeModal()">Annuler</button>
-        <button class="btn bp" onclick="recrutCreerCollaborateur('${c.id}')">Créer et inviter</button>
+        <button class="btn bp" id="rcc-submit-btn" onclick="recrutCreerCollaborateur('${c.id}')">Créer et inviter</button>
       </div>
     </div>`);
 }
@@ -6917,6 +6931,11 @@ async function recrutCreerCollaborateur(candId){
   const email=document.getElementById('rcc-email').value.trim();
   const role=document.getElementById('rcc-role').value;
   if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
+  // Garde de ré-entrance (audit idempotence 29/08) : côté serveur, un double-clic est déjà
+  // rattrapé par l'unicité d'email de auth.users (le 2e appel à invite-collaborateur échoue),
+  // mais ça envoie un 2e e-mail d'invitation pour rien. Même idiome bouton que creerClient().
+  const btn=document.getElementById('rcc-submit-btn');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='Création…';}
   err.textContent='Création en cours…';
   try{
     const tok=localStorage.getItem('sv_tok');
@@ -6927,7 +6946,7 @@ async function recrutCreerCollaborateur(candId){
       body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo})
     });
     const d=await r.json();
-    if(!r.ok||d.error){err.textContent=d.error||'Erreur.';return;}
+    if(!r.ok||d.error){err.textContent=d.error||'Erreur.';if(btn){btn.disabled=false;btn.textContent='Créer et inviter';}return;}
     const newId=d.user_id;
     await sbFetch('profiles?id=eq.'+newId,{method:'PATCH',body:{
       ville:c.ville||null,
@@ -6945,7 +6964,7 @@ async function recrutCreerCollaborateur(candId){
     toast('Collaborateur créé — onboarding démarré.','ok');
     await loadRecrutement();
     if(typeof updateNavBadges==='function')updateNavBadges(S.role);
-  }catch(e){err.textContent='Erreur réseau.';}
+  }catch(e){err.textContent='Erreur réseau.';if(btn){btn.disabled=false;btn.textContent='Créer et inviter';}}
 }
 
 // ── Équipe — Vue d'ensemble (RH, 28/08/2026) ──────────────────────────────
@@ -10591,9 +10610,15 @@ async function modalPrepLivraison(livrableId){
 }
 
 async function confirmerLivraison(livrableId){
+  // Garde de ré-entrance (audit idempotence 29/08) : aucune protection n'existait
+  // contre un double-clic sur "Confirmer la livraison" — risque de double ligne
+  // media_livraisons (donc double e-mail envoyé au client) et double brouillon
+  // contenus/notification CM pour le pont Full Com ci-dessous.
+  const btn=document.querySelector('[onclick^="confirmerLivraison"]');
+  if(btn){if(btn.disabled)return;btn.disabled=true;}
   const err=document.getElementById('liv-err');
   const email=document.getElementById('liv-email')?.value?.trim();
-  if(!email){err.textContent='Email obligatoire.';return;}
+  if(!email){err.textContent='Email obligatoire.';if(btn)btn.disabled=false;return;}
   err.textContent='Enregistrement…';
   try{
     const lvData=await sbFetch('media_livrables?select=prestation_id,nom,date_expiration&id=eq.'+livrableId);
@@ -10609,7 +10634,7 @@ async function confirmerLivraison(livrableId){
       expediteur_id:S.uid,
       statut:'envoyee'
     }});
-    if(sbErr(rEnvoi)){err.textContent='Erreur : '+(rEnvoi.message||'Enregistrement de la livraison impossible.');return;}
+    if(sbErr(rEnvoi)){err.textContent='Erreur : '+(rEnvoi.message||'Enregistrement de la livraison impossible.');if(btn)btn.disabled=false;return;}
     // Idem : l'événement de livraison est déjà enregistré (rEnvoi vérifié
     // ci-dessus, le client a déjà reçu son fichier) — cette écriture ne doit
     // pas bloquer, mais si elle échoue en silence le livrable reste "à
@@ -10654,7 +10679,7 @@ async function confirmerLivraison(livrableId){
     closeModal();
     toast(sbErr(rStatut)?'Livraison enregistrée, mais le statut du livrable n\'a pas pu être synchronisé.':'Livraison enregistrée','ok');
     loadProdLivrables();
-  }catch(e){err.textContent='Erreur lors de l\'enregistrement.';}
+  }catch(e){err.textContent='Erreur lors de l\'enregistrement.';if(btn)btn.disabled=false;}
 }
 
 // ── PROD RÉMUNÉRATIONS ────────────────────────────────────────────────────────
@@ -12630,7 +12655,16 @@ async function ajouterMembreEquipe(prestationId,ref){
       equipeBody.multiplier_snapshot=MISSION_MULTIPLIERS[format];
     }
     const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:equipeBody});
-    if(sbErr(rAdd)){err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');if(btn)btn.disabled=false;return;}
+    if(sbErr(rAdd)){
+      // Garde d'idempotence (audit 29/08) : l'index unique partiel
+      // prestations_equipe_active_uniq ferme la fenêtre de course que le
+      // check "already" ci-dessus (lecture-puis-écriture) ne peut pas fermer
+      // seul (deux membres du staff agissant en parallèle). Un 23505 ici
+      // signifie que l'affectation existe déjà (créée entre-temps par
+      // l'autre appel) — pas un vrai échec.
+      if(rAdd?.code==='23505'){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
+      err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');if(btn)btn.disabled=false;return;
+    }
     creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
     document.getElementById('eq-col').value='';
     document.querySelectorAll('#eq-col-cards .eq-op-card').forEach(c=>{c.style.borderColor='var(--b1)';c.style.background='var(--s2)';});
@@ -15522,7 +15556,19 @@ async function getOrCreateFacture(prestationId){
     statut:'emise',date_emission:dateEmission,date_echeance:dateEcheance,
     created_by:localStorage.getItem('sv_uid'),
   }});
-  if(sbErr(created))return null;
+  if(sbErr(created)){
+    // Garde d'idempotence (audit 29/08) : un index unique partiel
+    // factures_prestation_id_uniq empêche désormais deux factures pour la
+    // même prestation. En cas de course (deux appels concurrents à
+    // getOrCreateFacture, ex. double-clic sur "Émettre"), le perdant reçoit
+    // une violation 23505 — ce n'est pas un échec réel, l'autre appel a bien
+    // créé la facture : on la relit au lieu de renvoyer null.
+    if(created?.code==='23505'){
+      const retry=await sbFetch('factures?select=*&prestation_id=eq.'+prestationId+'&order=created_at.desc&limit=1').catch(()=>[]);
+      if(Array.isArray(retry)&&retry[0])return retry[0];
+    }
+    return null;
+  }
   return Array.isArray(created)?created[0]:created;
 }
 
@@ -19812,7 +19858,7 @@ function _renderDemandeRow(d,showPrendre){
     <td><span class="bd ${stCls}"><span class="bd-d"></span>${stLbl}</span></td>
     <td style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
       ${showPrendre?`<button class="btn bp bs" onclick="prendreEnChargeDemande('${d.id}')">Prendre en charge</button>`:nextActions.map(a=>`<button class="btn bg2 bs" onclick="avancerDemande('${d.id}','${a.st}')">${a.lb}</button>`).join('')}
-      ${!showPrendre&&d.clubs?.portail_client_id?`<button class="btn bp bs" onclick="creerContenuDepuisDemande('${d.clubs.portail_client_id}','${escJs(d.type||'Demande')}')" title="Créer un contenu à partir de cette demande">+ Contenu</button>`:''}
+      ${!showPrendre&&d.clubs?.portail_client_id?`<button class="btn bp bs" onclick="creerContenuDepuisDemande('${d.clubs.portail_client_id}','${escJs(d.type||'Demande')}','${d.id}')" title="Créer un contenu à partir de cette demande">+ Contenu</button>`:''}
     </td>
   </tr>`;
 }
@@ -19861,8 +19907,8 @@ async function prendreEnChargeDemande(id){
   loadCmDemandes();
 }
 
-function creerContenuDepuisDemande(clientId,titre){
-  modalNouveauContenu(null,null,{clientId,titre});
+function creerContenuDepuisDemande(clientId,titre,requestId){
+  modalNouveauContenu(null,null,{clientId,titre,requestId});
 }
 
 // ── CM — Sponsors/créations/actualités soumis par les clubs (Connect) ──────
@@ -20943,6 +20989,12 @@ function creerContenuDepuisMediaBank(id){
 async function modalNouveauContenu(statutInit,dateInit,prefill){
   const d=dateInit||'';
   const pf=prefill||{};
+  // Traçabilité demande Club+ → contenu (audit 29/08) : contenus.request_id
+  // existe en base depuis migration-clubplus-v37 spécifiquement pour ça
+  // ("exploitable plus tard sans nouvelle migration") mais n'était jamais
+  // renseigné par creerContenu() — remis à zéro à chaque ouverture pour ne
+  // jamais réutiliser par erreur l'id d'une demande précédente.
+  window._ctRequestId=pf.requestId||null;
   const clients=await _cmVisibleClients();
   openModal(`<div class="mh"><div class="mt">Nouveau contenu</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
@@ -20989,10 +21041,11 @@ async function creerContenu(){
     const r=await sbFetch('contenus',{method:'POST',body:{
       client_id:clientId||null,cm_id:uid,titre:ti,plateforme:pl,type_contenu:ty,
       date_prevue:dt||null,hook:hook||null,cta:cta||null,legende:legende||null,
-      hashtags:hashtags||null,sponsor:sponsor||null
+      hashtags:hashtags||null,sponsor:sponsor||null,request_id:window._ctRequestId||null
     }});
     if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');return;}
     if(Array.isArray(r)&&r[0]) _logAudit('contenu_cree','contenu',r[0].id,{titre:ti});
+    window._ctRequestId=null;
     closeModal();
     if(document.getElementById('contenus-real')) loadCmContenus();
     else if(document.getElementById('cal-real')) loadCmCal();
@@ -24601,17 +24654,22 @@ async function secMarquerPaye(id){
 }
 
 async function secConfirmerPaye(id){
+  // Garde de ré-entrance (audit idempotence 29/08) : sans elle, un double-clic
+  // sur "Confirmer" duplique l'écriture logFinancialAudit (double entrée
+  // d'audit financier pour le même encaissement), même idiome que creerPrestation().
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){if(btn.disabled)return;btn.disabled=true;}
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
       statut_financier:'payée',
       date_paiement:document.getElementById('paye-date')?.value||null,
       mode_paiement:document.getElementById('paye-mode')?.value||null,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'enregistrement impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(r.message||'enregistrement impossible.'),'er');if(btn)btn.disabled=false;return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{mode_paiement:r?.[0]?.mode_paiement});
     _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
     closeModal();toast('Paiement enregistré.','ok');loadSecRelances();
-  }catch(e){toast('Erreur lors de l\'enregistrement.','er');}
+  }catch(e){toast('Erreur lors de l\'enregistrement.','er');if(btn)btn.disabled=false;}
 }
 
 // Corrigé (28/08/2026, demande Fouka) : ce bouton se contentait de passer

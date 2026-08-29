@@ -111,13 +111,33 @@ serve(async (req) => {
     // le même rapprochement que clubplus-onboarding sur exactement la même table, sans le
     // correctif.
     if (user.email && user.email_confirmed_at) {
-      const { data: matched } = await admin
-        .from("clients")
-        .select("id")
-        .ilike("email", user.email)
-        .limit(1)
-        .maybeSingle();
-      if (matched) clientId = matched.id;
+      // Trouve-ou-crée atomique (audit idempotence 29/08/2026) : l'ancien
+      // motif SELECT puis INSERT séparés laissait une fenêtre de course
+      // (double appel onboarding, retry réseau) pouvant créer deux fiches
+      // clients pour le même e-mail confirmé. RPC atomique partagée avec
+      // create-guest-request/create-guest-rdv/clubplus-onboarding — n'est
+      // appelée QUE dans cette branche (e-mail confirmé) : le cas non
+      // confirmé ci-dessous continue de toujours créer une fiche neuve,
+      // sans jamais rattacher à un client existant (correctif sécurité du
+      // 10/08/2026 documenté ci-dessus, volontairement inchangé).
+      const typeClient = TYPE_CLIENT_MAP[profil] || "particulier";
+      const nomAffichage =
+        typeClient === "particulier"
+          ? `${prenom || ""} ${nom || ""}`.trim() || "Client Connect"
+          : nom || prenom || "Client Connect";
+      const { data: clientRow, error: clientErr } = await admin.rpc("find_or_create_client_by_email", {
+        p_email: user.email,
+        p_type_client: typeClient,
+        p_nom: nomAffichage,
+        p_nom_contact: nom || null,
+        p_prenom_contact: prenom || null,
+        p_telephone: telephone || null,
+        p_origine_prospect: "connect",
+        p_promo_bienvenue_disponible: true,
+      });
+      if (clientErr) return json({ error: clientErr.message }, 500);
+      clientId = clientRow.id;
+      isNewClient = !!clientRow._created;
     }
 
     if (!clientId) {

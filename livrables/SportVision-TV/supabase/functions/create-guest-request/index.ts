@@ -262,30 +262,26 @@ serve(async (req) => {
       return json({ error: "Trop de demandes envoyées récemment. Merci de réessayer plus tard." }, 429);
     }
 
-    let clientId: string | null = null;
-    const { data: matched } = await admin.from("clients").select("id").ilike("email", email).limit(1).maybeSingle();
-    if (matched) {
-      clientId = matched.id;
-    } else {
-      const typeClient = TYPE_CLIENT_MAP[profil] || "particulier";
-      const nomAffichage = typeClient === "particulier" ? `${prenom} ${nom}`.trim() : nom;
-      const { data: created, error: createErr } = await admin
-        .from("clients")
-        .insert({
-          statut: "prospect",
-          type_client: typeClient,
-          nom: nomAffichage,
-          nom_contact: nom,
-          prenom_contact: prenom,
-          email,
-          telephone: telephone || null,
-          origine_prospect: origine === "vitrine" ? "vitrine" : "connect",
-        })
-        .select("id")
-        .single();
-      if (createErr) return json({ error: createErr.message }, 500);
-      clientId = created.id;
-    }
+    // Trouve-ou-crée atomique (audit idempotence 29/08/2026) : l'ancien motif
+    // SELECT puis INSERT séparés laissait une fenêtre de course entre deux
+    // appels concurrents (double-clic visiteur, deux onglets, retry réseau)
+    // — chacun pouvait lire "absent" avant que l'autre n'écrive, créant deux
+    // fiches clients pour la même personne. RPC atomique (verrou consultatif
+    // Postgres scopé à l'e-mail) partagée avec create-guest-rdv/portal-
+    // onboarding/clubplus-onboarding, mêmes symptôme et correctif.
+    const typeClient = TYPE_CLIENT_MAP[profil] || "particulier";
+    const nomAffichage = typeClient === "particulier" ? `${prenom} ${nom}`.trim() : nom;
+    const { data: clientRow, error: clientErr } = await admin.rpc("find_or_create_client_by_email", {
+      p_email: email,
+      p_type_client: typeClient,
+      p_nom: nomAffichage,
+      p_nom_contact: nom,
+      p_prenom_contact: prenom,
+      p_telephone: telephone || null,
+      p_origine_prospect: origine === "vitrine" ? "vitrine" : "connect",
+    });
+    if (clientErr) return json({ error: clientErr.message }, 500);
+    const clientId: string = clientRow.id;
 
     const adresseComplete = [adresse, cp, ville].filter(Boolean).join(", ") || null;
 

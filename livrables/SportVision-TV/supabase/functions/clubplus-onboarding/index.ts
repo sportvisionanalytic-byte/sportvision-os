@@ -192,34 +192,26 @@ serve(async (req) => {
     // enfin visible et gérable côté staff dès son inscription.
     if (user.email && user.email_confirmed_at) {
       try {
-        const { data: matchedClient } = await admin
-          .from("clients")
-          .select("id")
-          .ilike("email", user.email)
-          .limit(1)
-          .maybeSingle();
-
-        let linkedClientId: string | null = matchedClient?.id ?? null;
-
-        if (!linkedClientId) {
-          const { data: createdClient, error: createClientErr } = await admin
-            .from("clients")
-            .insert({
-              statut: "prospect",
-              type_client: "club",
-              nom: String(club.nom).trim(),
-              nom_contact: nom || null,
-              prenom_contact: prenom || null,
-              email: user.email,
-              telephone: telephone || null,
-              ville: club.ville || null,
-              origine_prospect: "connect",
-            })
-            .select("id")
-            .single();
-          if (createClientErr) throw createClientErr;
-          linkedClientId = createdClient.id;
-        }
+        // Trouve-ou-crée atomique (audit idempotence 29/08/2026) : l'ancien
+        // motif SELECT puis INSERT séparés laissait une fenêtre de course
+        // (double appel onboarding, retry réseau) pouvant créer deux fiches
+        // clients "club" pour le même e-mail confirmé. RPC atomique partagée
+        // avec create-guest-request/create-guest-rdv/portal-onboarding —
+        // toujours conditionnée à email_confirmed_at ci-dessus, le
+        // comportement sécurité (jamais de rattachement sur e-mail non
+        // confirmé) est inchangé.
+        const { data: clientRow, error: clientErr } = await admin.rpc("find_or_create_client_by_email", {
+          p_email: user.email,
+          p_type_client: "club",
+          p_nom: String(club.nom).trim(),
+          p_nom_contact: nom || null,
+          p_prenom_contact: prenom || null,
+          p_telephone: telephone || null,
+          p_origine_prospect: "connect",
+          p_ville: club.ville || null,
+        });
+        if (clientErr) throw clientErr;
+        const linkedClientId: string = clientRow.id;
 
         await admin.from("clubs").update({ portail_client_id: linkedClientId }).eq("id", createdClub.id);
         await admin
