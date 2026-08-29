@@ -1700,17 +1700,17 @@ const VIEWS={
   // loadCmCal, plus l'inbox de validation modalPlanningsAValider déjà
   // existante — aucune vue transverse admin n'existait avant ceci).
   'admin.commhub':()=>`
-  <div class="cd" style="margin-bottom:16px;border-color:rgba(240,68,94,.2)">
+  <div class="cd" id="commhub-ph-card" style="margin-bottom:16px;border-color:rgba(240,68,94,.2);transition:border-color .2s,background .2s">
     <div class="cd-h"><div class="cd-t">📝 Plannings à valider</div><span id="commhub-ph-nb" class="bd bn">—</span></div>
     <div id="commhub-ph" style="padding:14px 18px"><button class="btn bp bs" onclick="modalPlanningsAValider()">Ouvrir la validation</button></div>
   </div>
   <div class="cd" style="margin-bottom:16px">
     <div class="cd-h"><div class="cd-t">Pipeline de contenu (tous clubs)</div></div>
-    <div id="commhub-pipeline" style="padding:12px 18px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+    <div id="commhub-pipeline" style="padding:12px 18px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px">${Array.from({length:4}).map(()=>'<div class="skel" style="height:64px;border-radius:8px"></div>').join('')}</div>
   </div>
   <div class="cd">
     <div class="cd-h"><div class="cd-t">Structures</div></div>
-    <div id="commhub-structures"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div id="commhub-structures"><div style="display:flex;flex-direction:column;gap:8px;padding:10px 18px">${Array.from({length:5}).map(()=>'<div class="skel" style="height:46px;border-radius:9px"></div>').join('')}</div></div>
   </div>`,
 
   'sec.planning':()=>`
@@ -20448,7 +20448,13 @@ async function loadCommHub(){
   try{
     const ph=await sbFetch('plannings_hebdo?select=id&statut=eq.soumis').catch(()=>[]);
     const nPh=(Array.isArray(ph)?ph:[]).length;
-    const badge=document.getElementById('commhub-ph-nb');if(badge)badge.textContent=nPh||'0';
+    const badge=document.getElementById('commhub-ph-nb');
+    if(badge){badge.className='bd '+(nPh>0?'bw':'ba');animateNumber(badge,nPh);}
+    // Sévérité visuelle : callout neutre tant que rien n'est en attente,
+    // accent alerte seulement quand une action est réellement requise
+    // (même logique que SEV_CLR/SEV_BG côté Accueil admin).
+    const card=document.getElementById('commhub-ph-card');
+    if(card)card.style.borderColor=nPh>0?'rgba(240,68,94,.2)':'var(--b1)';
   }catch(e){}
 
   // Pipeline de contenu — enum réel contenus.statut (migration-contenus.sql) :
@@ -20482,11 +20488,10 @@ async function loadCommHub(){
   // pas d'embed PostgREST profiles(...) sans FK nommée confirmée).
   const elStruct=document.getElementById('commhub-structures');
   if(elStruct){
-    elStruct.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
     try{
       const clients=await sbFetch('clients?select=id,nom,cm_id&statut=in.(client,partenaire)&order=nom.asc');
       const list=Array.isArray(clients)?clients:[];
-      if(!list.length){elStruct.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun club actif.</div>';return;}
+      if(!list.length){elStruct.innerHTML='<div style="padding:32px 20px;text-align:center;color:var(--t3);font-size:13px"><div style="font-size:26px;margin-bottom:8px;opacity:.35">🏟️</div>Aucun club actif.</div>';return;}
       const cmIds=[...new Set(list.map(c=>c.cm_id).filter(Boolean))];
       let cmById={};
       if(cmIds.length){
@@ -20506,10 +20511,11 @@ async function loadCommHub(){
         const cmLabel=c.cm_id?esc(cmById[c.cm_id]||'—'):'<span style="color:var(--wa)">— Non affecté</span>';
         const st=phByClient[c.id];
         const stHtml=st?`<span class="bd ${PH_CLS[st]||'bn'}"><span class="bd-d"></span>${PH_LB[st]||st}</span>`:'<span class="bd bn"><span class="bd-d"></span>Aucun</span>';
-        return`<div style="display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="ouvrirFicheClubCommunication('${escJs(c.id)}')">
+        return`<div style="display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .12s" onclick="ouvrirFicheClubCommunication('${escJs(c.id)}')" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
           <div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.nom||'—')}</div>
           <div style="width:180px;flex-shrink:0;font-size:12px;color:var(--t2)">${cmLabel}</div>
           <div style="width:110px;flex-shrink:0">${stHtml}</div>
+          <div style="width:16px;flex-shrink:0;text-align:right;color:var(--t3);font-size:12px">›</div>
         </div>`;
       }).join('');
     }catch(e){elStruct.innerHTML='<div style="padding:20px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
