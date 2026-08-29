@@ -1874,6 +1874,7 @@ const VIEWS={
   'prod.livr':()=>`
     <div class="sh" style="margin-bottom:14px">
       <div><div class="sh-t">Livraisons</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Contrôler avant toute diffusion</div></div>
+      <button class="btn bg2 bs" onclick="switchView('mediabank')">⭐ Media Bank</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
       <button onclick="filterProdLivrMission('a_valider')" class="btn bp bs" id="plivm-a_valider" style="flex-shrink:0;font-size:11px">À valider</button>
@@ -4433,7 +4434,7 @@ async function loadViewData(role,view){
   // et à l'admin (même mécanisme que VIEWS['admin.mediabank']=tplMediaBank
   // plus bas — admin a accès en lecture à toute la banque, comme les autres
   // écrans CM déjà consultables depuis 'Communication').
-  if((role==='cm'||role==='admin')&&view==='mediabank') await loadCmMediaBank();
+  if(['cm','admin','prod'].includes(role)&&view==='mediabank') await loadCmMediaBank();
   if(role==='photo'&&view==='medias') await loadPhotoMedias();
   if(role==='photo'&&view==='kits') await loadPhotoKits();
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
@@ -26158,6 +26159,12 @@ if(NAV['cm']) VIEWS['cm.msgclients']=tplMsgClients;
 // écrans CM de Communication, cf. NAV.admin 'mediabank' juste après 'commhub').
 if(NAV['cm']) VIEWS['cm.mediabank']=tplMediaBank;
 if(NAV['admin']) VIEWS['admin.mediabank']=tplMediaBank;
+// Refonte Responsable Production §2 "Accès contextuels" (29/08) : "Media Bank via
+// Livraisons / Bibliothèque" — le tag ★ (modalTagMediaBank) était déjà accessible à prod
+// (isProdAdmin l'inclut déjà), seul l'écran de consultation manquait pour ce rôle. Pas de
+// nouvelle entrée dans NAV.prod (hors des 5 écrans du critère §52.1) — atteint depuis
+// Livraisons (bouton ajouté ci-dessous) et depuis switchView('mediabank') en direct.
+if(NAV['prod']) VIEWS['prod.mediabank']=tplMediaBank;
 // Tableau de bord dédié à l'expert-comptable : quelqu'un qui vient
 // ponctuellement vérifier/exporter, pas au quotidien — donc pas le dashboard
 // générique de compta (loadComptaDash), mais une vraie vue de synthèse :
@@ -29599,7 +29606,7 @@ const MOB_MORE_ITEMS={
   // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
   // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
   // (jourj/planning/brief/incidents/media/rem/frais) qui n'ont plus de case dans NAV.prod.
-  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
+  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
