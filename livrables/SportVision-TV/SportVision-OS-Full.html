@@ -1499,6 +1499,7 @@ const VIEWS={
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
       <button id="af-tab-stats" onclick="afTab('stats')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--acc);background:var(--acc);color:#fff">Statistiques</button>
       <button id="af-tab-sessions" onclick="afTab('sessions')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Sessions</button>
+      <button id="af-tab-terrain" onclick="afTab('terrain')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Validation terrain</button>
       <button id="af-tab-certifs" onclick="afTab('certifs')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Certifications</button>
       <button id="af-tab-catalogue" onclick="afTab('catalogue')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Gérer le catalogue</button>
     </div>
@@ -17413,6 +17414,19 @@ async function loadFormProgFromDB(uid){
       };
       _formInscIds[i.formation_id]=i.id;
     });
+    // Validation terrain du collaborateur : la policy fvt_read l'autorise à lire
+    // les siennes. Une requête de plus, groupée sur ses propres inscriptions,
+    // pour qu'il voie le retour du formateur dans son parcours et pas seulement
+    // l'admin dans l'onglet Validation terrain.
+    const insIds=(ins||[]).map(i=>i.id).filter(Boolean);
+    if(insIds.length){
+      const parIns={};
+      for(let k=0;k<insIds.length;k+=60){
+        const lot=await sbFetch('formation_validations_terrain?select=*,profiles(prenom,nom)&inscription_id=in.('+insIds.slice(k,k+60).join(',')+')').catch(()=>[]);
+        (Array.isArray(lot)?lot:[]).forEach(v=>{parIns[v.inscription_id]=v;});
+      }
+      (ins||[]).forEach(i=>{if(prog[i.formation_id]&&parIns[i.id])prog[i.formation_id].validation_terrain=parIns[i.id];});
+    }
     _formProgCache=prog;
     return prog;
   }catch(e){
@@ -18697,6 +18711,22 @@ function _fpRender(){
       ${!quizUnlocked?`<div style="padding:0 16px 8px;font-size:10.5px;color:var(--t3)">Terminez toutes les leçons pour débloquer</div>`:''}
     </div>`:'';
 
+  // Volet terrain : en lecture seule ici, c'est le formateur qui l'évalue
+  // depuis Centre de formation → Validation terrain.
+  const vt=fp.validation_terrain;
+  const terrainRow=(f.type!=='en_ligne')?`<div style="margin-top:8px;border-top:1px solid var(--b1);padding-top:8px">
+      <div style="display:flex;align-items:center;gap:9px;padding:10px 16px">
+        <div style="width:16px;height:16px;border-radius:5px;border:1.5px solid ${vt&&vt.statut==='valide'?'var(--ok)':'var(--b2)'};background:${vt&&vt.statut==='valide'?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          ${vt&&vt.statut==='valide'?'<svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}
+        </div>
+        <span style="font-size:12.5px;color:var(--t1);font-weight:700">Validation terrain</span>
+        <span style="margin-left:auto">${svTerrainBadge(vt?vt.statut:'en_attente')}</span>
+      </div>
+      ${vt&&vt.note_globale!=null?`<div style="padding:0 16px 4px;font-size:10.5px;color:var(--t3)">${vt.note_globale}/20${vt.prestation_ref?' · '+esc(vt.prestation_ref):''}</div>`:''}
+      ${vt&&vt.commentaire?`<div style="padding:0 16px 8px;font-size:11px;color:var(--t2);line-height:1.45">${esc(vt.commentaire)}</div>`:''}
+      ${!vt?`<div style="padding:0 16px 8px;font-size:10.5px;color:var(--t3)">Évaluée par ton formateur sur une prestation réelle</div>`:''}
+    </div>`:'';
+
   el.innerHTML=`
     <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--b1);background:var(--s1);flex-shrink:0">
       <button onclick="closeFormationPlayer()" style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;color:var(--t2);font-size:13px;cursor:pointer;flex-shrink:0">✕ Quitter</button>
@@ -18710,7 +18740,7 @@ function _fpRender(){
       </div>
     </div>
     <div style="flex:1;display:flex;overflow:hidden;position:relative">
-      <div id="fp-sidebar" style="width:300px;flex-shrink:0;border-right:1px solid var(--b1);background:var(--s1);overflow-y:auto;padding:10px 0">${sidebarHtml}${quizRow}</div>
+      <div id="fp-sidebar" style="width:300px;flex-shrink:0;border-right:1px solid var(--b1);background:var(--s1);overflow-y:auto;padding:10px 0">${sidebarHtml}${quizRow}${terrainRow}</div>
       <div style="flex:1;overflow-y:auto;padding:28px 32px" id="fp-main">
         <div style="max-width:820px;margin:0 auto">
           <div style="font-size:10.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${esc(mod?.titre||'')}</div>
@@ -18955,7 +18985,7 @@ async function toggleFormLesson(id,mi,li){
 let _afTab='stats';
 function afTab(tab){
   _afTab=tab;
-  ['stats','sessions','certifs','catalogue'].forEach(t=>{
+  ['stats','sessions','terrain','certifs','catalogue'].forEach(t=>{
     const b=document.getElementById('af-tab-'+t);
     if(!b)return;
     const on=t===tab;
@@ -18963,6 +18993,7 @@ function afTab(tab){
   });
   if(tab==='stats')loadAdminFormStats();
   else if(tab==='sessions')loadAdminFormSessions();
+  else if(tab==='terrain')loadAdminFormTerrain();
   else if(tab==='certifs')loadAdminFormCertifs();
   else if(tab==='catalogue')loadAdminFormCatalogue();
 }
@@ -19205,6 +19236,226 @@ async function loadAdminFormCertifs(){
         ${active.length?`<div class="tw"><table><thead><tr><th>Collaborateur</th><th>Certification</th><th>Formation</th><th>Obtenue le</th><th>Expire le</th><th>Statut</th></tr></thead><tbody>${active.map(renderRow).join('')}</tbody></table></div>`:`<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune certification active.<br><span style="font-size:11px;opacity:.7">Les certifications apparaissent automatiquement à la fin des formations certifiantes.</span></div>`}
       </div>`;
   }catch(e){el.innerHTML='<div class="cd"><div style="padding:32px;text-align:center;color:var(--er)">Erreur de chargement des certifications.</div></div>';}
+}
+
+// ── ADMIN FORMATION : VALIDATION TERRAIN ────────────────────────────────────
+// Dette technique relevée par l'audit du 29/08 (§11) : la table
+// formation_validations_terrain existait en base depuis migration-formation-v2
+// (RLS, trigger, index, contrainte d'unicité sur inscription_id) mais aucun
+// écran ne l'avait jamais lue ni écrite. Le volet terrain d'une formation
+// hybride n'était donc tracé nulle part : seul le quiz laissait une trace.
+//
+// Ce que cet écran ne fait PAS, volontairement : il ne conditionne pas la
+// délivrance de la certification, qui reste acquise à la réussite du quiz.
+// Faire de la validation terrain un verrou sur la certification change le
+// parcours de formation de tout le monde — c'est une décision produit, pas une
+// correction de dette, et elle revient à Fouka.
+
+const SV_GRILLE_TERRAIN=[
+  {k:'preparation',l:'Préparation et matériel',d:'Checklist faite, kit retiré, batteries et cartes prêtes'},
+  {k:'ponctualite',l:'Ponctualité et présentation',d:'Arrivée à l\'heure, tenue et présentation au contact'},
+  {k:'posture',l:'Posture et relation client',d:'Intégration discrète, échanges avec le club et les familles'},
+  {k:'technique',l:'Maîtrise technique',d:'Réglages, cadrage, couverture des temps forts'},
+  {k:'securite',l:'Consignes, zones et sécurité',d:'Zones autorisées, droit à l\'image, sécurité du matériel'},
+  {k:'livraison',l:'Transfert et compte rendu',d:'Sécurisation des médias, transfert, débriefing'},
+];
+const SV_TERRAIN_NIVEAUX=[
+  {v:0,l:'Non acquis'},{v:1,l:'En cours'},{v:2,l:'Acquis'},{v:3,l:'Maîtrisé'},
+];
+const SV_TERRAIN_STATUTS={
+  en_attente:{l:'En attente',c:'var(--t3)',bg:'rgba(120,120,120,.12)'},
+  valide:{l:'Validé',c:'var(--ok)',bg:'rgba(46,204,138,.12)'},
+  valide_reserve:{l:'Validé avec réserve',c:'var(--wa)',bg:'rgba(245,165,36,.12)'},
+  nouvelle_situation:{l:'À revoir en situation',c:'var(--wa)',bg:'rgba(245,165,36,.12)'},
+  refuse:{l:'Refusé',c:'var(--er)',bg:'rgba(240,68,94,.12)'},
+};
+function svTerrainBadge(s){
+  const c=SV_TERRAIN_STATUTS[s]||SV_TERRAIN_STATUTS.en_attente;
+  return`<span style="font-size:10.5px;font-weight:700;color:${c.c};background:${c.bg};padding:2px 8px;border-radius:20px;white-space:nowrap">${c.l}</span>`;
+}
+// Une validation terrain n'a de sens que pour une formation à volet terrain :
+// les modules 100 % en ligne (culture, sécurité matériel, comportement) n'ont
+// rien à observer sur une prestation.
+function svFormationTerrain(formationId){
+  const f=(window._customFormsCache||[]).find(x=>x.id===formationId)
+    ||FORMATIONS_CATALOG.find(x=>x.id===formationId);
+  return f&&f.type!=='en_ligne'?f:null;
+}
+
+async function loadAdminFormTerrain(){
+  const el=document.getElementById('admin-form-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const ins=await sbFetch('formation_inscriptions?select=id,formation_id,statut,completed_at,collaborateur_id,profiles(id,prenom,nom,role,avatar_url)&statut=in.(en_cours,terminee)&order=completed_at.desc.nullslast&limit=500').catch(()=>[]);
+    const insList=(ins||[]).filter(i=>svFormationTerrain(i.formation_id));
+    let vals=[];
+    if(insList.length){
+      // Découpé par lots : un filtre in.(...) sur plusieurs centaines d'UUID
+      // dépasse la longueur d'URL acceptée.
+      const ids=insList.map(i=>i.id);
+      for(let i=0;i<ids.length;i+=60){
+        const lot=await sbFetch('formation_validations_terrain?select=*,profiles(prenom,nom)&inscription_id=in.('+ids.slice(i,i+60).join(',')+')').catch(()=>[]);
+        if(Array.isArray(lot))vals=vals.concat(lot);
+      }
+    }
+    const parIns={};vals.forEach(v=>{parIns[v.inscription_id]=v;});
+    window._aftValCache=parIns;
+    const lignes=insList.map(i=>({...i,_v:parIns[i.id]||null,_f:svFormationTerrain(i.formation_id)}));
+    const fini=r=>r.statut==='terminee';
+    const aFaire=lignes.filter(r=>fini(r)&&(!r._v||r._v.statut==='en_attente'));
+    const aRevoir=lignes.filter(r=>r._v&&['valide_reserve','nouvelle_situation'].includes(r._v.statut));
+    const traitees=lignes.filter(r=>r._v&&['valide','refuse'].includes(r._v.statut));
+    const enCours=lignes.filter(r=>!fini(r)&&!r._v);
+    const row=r=>{
+      const v=r._v;
+      const ini=((r.profiles?.prenom||'?')[0]||'?').toUpperCase();
+      const av=r.profiles?.avatar_url;
+      const dt=v&&v.date_validation?new Date(v.date_validation):null;
+      return`<tr onclick="modalValidationTerrain('${r.id}')" style="cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+        <td class="tm"><div style="display:flex;align-items:center;gap:9px">
+          <div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;${av?`background:url('${esc(av)}') center/cover no-repeat`:'background:var(--gr);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff'}">${av?'':ini}</div>
+          <div>${esc(r.profiles?.prenom||'')} ${esc(r.profiles?.nom||'')}<div style="font-size:10px;color:var(--t3)">${ROLE_LABELS[r.profiles?.role]||r.profiles?.role||''}</div></div>
+        </div></td>
+        <td style="font-size:11.5px">${esc(r._f?.icone||'')} ${esc(r._f?.titre||r.formation_id)}</td>
+        <td style="font-size:11.5px;color:var(--t3)">${v&&v.prestation_ref?esc(v.prestation_ref):'—'}</td>
+        <td style="font-size:11.5px">${v&&v.note_globale!=null?v.note_globale+'/20':'—'}</td>
+        <td style="font-size:11.5px;color:var(--t3)">${v&&v.profiles?esc(v.profiles.prenom||'')+' '+esc(v.profiles.nom||''):'—'}</td>
+        <td style="font-size:11.5px;color:var(--t3)">${dt?dt.toLocaleDateString('fr-FR'):'—'}</td>
+        <td>${svTerrainBadge(v?v.statut:'en_attente')}</td>
+      </tr>`;
+    };
+    const table=(titre,arr,couleur)=>`<div class="cd" style="margin-bottom:12px">
+      <div class="cd-h"><div class="cd-t"${couleur?` style="color:${couleur}"`:''}>${titre} (${arr.length})</div></div>
+      ${arr.length?`<div class="tw"><table><thead><tr><th>Collaborateur</th><th>Formation</th><th>Prestation</th><th>Note</th><th>Formateur</th><th>Date</th><th>Statut</th></tr></thead><tbody>${arr.map(row).join('')}</tbody></table></div>`
+        :'<div style="padding:26px;text-align:center;color:var(--t3);font-size:12.5px">Rien ici.</div>'}
+    </div>`;
+    el.innerHTML=(insList.length?'':`<div class="cd"><div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune formation à volet terrain en cours ou terminée pour l'instant.</div></div>`)
+      +(insList.length?table('À valider sur le terrain',aFaire,aFaire.length?'var(--wa)':'')
+      +table('À revoir en situation',aRevoir,aRevoir.length?'var(--wa)':'')
+      +table('Validations terminées',traitees)
+      +table('Formation encore en cours',enCours):'');
+  }catch(e){
+    el.innerHTML='<div class="cd"><div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement des validations terrain.</div></div>';
+  }
+}
+
+// Note sur 20 calculée à partir des seuls critères observés : un critère laissé
+// à « non observé » ne doit pas peser comme un zéro.
+function svTerrainNote(grille){
+  const vals=SV_GRILLE_TERRAIN.map(c=>grille[c.k]).filter(v=>typeof v==='number');
+  if(!vals.length)return null;
+  return Math.round(vals.reduce((s,v)=>s+v,0)/(vals.length*3)*20);
+}
+function _svTerrainLireGrille(){
+  const g={};
+  SV_GRILLE_TERRAIN.forEach(c=>{
+    const sel=document.getElementById('vt-c-'+c.k);
+    const v=sel?sel.value:'';
+    if(v!=='')g[c.k]=parseInt(v,10);
+  });
+  return g;
+}
+function svTerrainMajNote(){
+  const el=document.getElementById('vt-note');
+  if(!el)return;
+  const n=svTerrainNote(_svTerrainLireGrille());
+  el.textContent=n==null?'— / 20':n+' / 20';
+  el.style.color=n==null?'var(--t3)':n>=14?'var(--ok)':n>=10?'var(--wa)':'var(--er)';
+}
+
+async function modalValidationTerrain(inscriptionId){
+  openModal('<div style="padding:24px;max-width:600px;margin:auto;text-align:center;color:var(--t3)">Chargement…</div>');
+  try{
+    const [insArr,valArr]=await Promise.all([
+      sbFetch('formation_inscriptions?select=id,formation_id,statut,collaborateur_id,profiles(prenom,nom,role)&id=eq.'+inscriptionId+'&limit=1').catch(()=>[]),
+      sbFetch('formation_validations_terrain?select=*,profiles(prenom,nom)&inscription_id=eq.'+inscriptionId+'&limit=1').catch(()=>[]),
+    ]);
+    const ins=(insArr||[])[0];
+    if(!ins){openModal('<div style="padding:28px;text-align:center;color:var(--er);font-size:13px">Inscription introuvable.</div>');return;}
+    const v=(valArr||[])[0]||null;
+    const f=svFormationTerrain(ins.formation_id);
+    const grille=(v&&v.grille&&typeof v.grille==='object')?v.grille:{};
+    const nom=`${ins.profiles?.prenom||''} ${ins.profiles?.nom||''}`.trim();
+    const critere=c=>`<div style="display:grid;grid-template-columns:1fr 150px;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--b1)">
+      <div><div style="font-size:12.5px;color:var(--t1);font-weight:600">${esc(c.l)}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(c.d)}</div></div>
+      <select id="vt-c-${c.k}" onchange="svTerrainMajNote()" style="width:100%;padding:8px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:12.5px">
+        <option value="">Non observé</option>
+        ${SV_TERRAIN_NIVEAUX.map(n=>`<option value="${n.v}"${grille[c.k]===n.v?' selected':''}>${n.l}</option>`).join('')}
+      </select>
+    </div>`;
+    openModal(`<div style="padding:24px 20px;max-width:600px;margin:auto">
+      <div style="font-size:17px;font-weight:700;color:var(--t1)">Validation terrain</div>
+      <div style="font-size:12.5px;color:var(--t3);margin:4px 0 18px">${esc(nom)} · ${esc(f?.icone||'')} ${esc(f?.titre||ins.formation_id)}</div>
+      ${ins.statut!=='terminee'?`<div style="padding:10px 12px;background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.25);border-radius:10px;font-size:12px;color:var(--wa);margin-bottom:14px">La partie en ligne de cette formation n'est pas encore terminée. La validation terrain reste possible, elle sera simplement enregistrée avant la fin du parcours.</div>`:''}
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+            <div style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">Grille d'observation</div>
+            <div id="vt-note" style="font-size:14px;font-weight:800;color:var(--t3)">— / 20</div>
+          </div>
+          ${SV_GRILLE_TERRAIN.map(critere).join('')}
+        </div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Prestation observée</div>
+          <input id="vt-presta" type="text" value="${esc(v?.prestation_ref||'')}" placeholder="ex : Tournoi Sens du 12/04, ASAM Montereau" style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px;box-sizing:border-box"></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Commentaire du formateur</div>
+          <textarea id="vt-comm" rows="4" placeholder="Ce qui est acquis, ce qui reste à travailler, la situation à revoir le cas échéant." style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px;font-family:var(--ff);box-sizing:border-box;resize:vertical">${esc(v?.commentaire||'')}</textarea></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Conclusion</div>
+          <select id="vt-statut" style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px">
+            ${Object.entries(SV_TERRAIN_STATUTS).map(([k,c])=>`<option value="${k}"${(v?.statut||'en_attente')===k?' selected':''}>${c.l}</option>`).join('')}
+          </select></div>
+        <div id="vt-err" style="font-size:12px;color:var(--er);min-height:16px"></div>
+        ${v?`<div style="font-size:11px;color:var(--t3)">Dernière mise à jour${v.profiles?` par ${esc(v.profiles.prenom||'')} ${esc(v.profiles.nom||'')}`:''}${v.updated_at?' le '+new Date(v.updated_at).toLocaleDateString('fr-FR'):''}.</div>`:''}
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn bg2" onclick="closeModal()" style="flex:1;padding:12px;justify-content:center">Annuler</button>
+          <button class="btn bp" onclick="enregistrerValidationTerrain('${inscriptionId}')" style="flex:2;padding:12px;justify-content:center">Enregistrer la validation</button>
+        </div>
+      </div>
+    </div>`);
+    svTerrainMajNote();
+  }catch(e){
+    openModal('<div style="padding:28px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement de la validation.</div>');
+  }
+}
+
+async function enregistrerValidationTerrain(inscriptionId){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
+  const err=document.getElementById('vt-err');
+  const statut=document.getElementById('vt-statut')?.value||'en_attente';
+  const grille=_svTerrainLireGrille();
+  // Conclure sans avoir rien observé n'a pas de sens : la grille est la trace,
+  // le statut n'en est que le résumé.
+  if(statut!=='en_attente'&&!Object.keys(grille).length){
+    if(err)err.textContent='Renseignez au moins un critère de la grille avant de conclure.';
+    return;
+  }
+  const body={
+    inscription_id:inscriptionId,
+    formateur_id:localStorage.getItem('sv_uid')||null,
+    statut,
+    grille,
+    note_globale:svTerrainNote(grille),
+    commentaire:document.getElementById('vt-comm')?.value.trim()||null,
+    prestation_ref:document.getElementById('vt-presta')?.value.trim()||null,
+    date_validation:statut==='en_attente'?null:new Date().toISOString(),
+  };
+  try{
+    // Upsert sur inscription_id : la contrainte d'unicité de la table fait qu'un
+    // deuxième enregistrement met à jour la validation au lieu d'en créer une
+    // seconde, y compris si deux formateurs enregistrent en même temps.
+    const r=await sbFetch('formation_validations_terrain?on_conflict=inscription_id',{
+      method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
+      body,
+    });
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+    toast('Validation terrain enregistrée.','ok');
+    closeModal();
+    if(_afTab==='terrain')loadAdminFormTerrain();
+  }catch(e){
+    if(err)err.textContent='Erreur lors de l\'enregistrement.';
+  }
 }
 
 // ── ADMIN FORMATION : GESTION CATALOGUE ─────────────────────────────────────
