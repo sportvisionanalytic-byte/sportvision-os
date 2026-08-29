@@ -412,7 +412,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 .toast-ok .toast-ic{background:var(--ok)}
 .toast-warn .toast-ic{background:var(--wa)}
 .toast-error .toast-ic{background:var(--er)}
-.skel{position:relative;overflow:hidden;background:var(--s1);border-radius:var(--rb)}
+.skel{position:relative;overflow:hidden;background:rgba(255,255,255,.06);border-radius:var(--rb)}
 .skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.045),transparent);animation:skelshim 1.4s ease-in-out infinite}
 @keyframes skelshim{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
