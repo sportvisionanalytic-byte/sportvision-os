@@ -12382,7 +12382,7 @@ async function modalEquipePrestation(prestationId,ref){
   // affecter quelqu'un exigeait de deviner ou vérifier ailleurs qui était
   // déjà chargé. Tri photo/cm (rôles terrain) en tête, moins chargé d'abord.
   Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role,niveau_operateur,zone,materiel_personnel&order=nom.asc'),
+    sbFetch('profiles?select=id,prenom,nom,role,niveau_operateur,zone,materiel_personnel,actif&order=nom.asc'),
     sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation,statut)&statut=eq.acceptée&prestations.date_prestation=gte.'+ymdLocal()+'&prestations.statut=not.in.(annulée,refusée)').catch(()=>[]),
   ]).then(([data,chargeRaw])=>{
     if(!data)return;
@@ -12661,6 +12661,22 @@ async function ajouterMembreEquipe(prestationId,ref){
         }
       }
     }catch(e){}
+    // Gate "collaborateur inactif" (audit final 29/08, action humaine §10.5 tranchée en
+    // faveur d'un avertissement non bloquant) : un collaborateur dont l'onboarding n'a
+    // jamais été finalisé (profiles.actif=false) pouvait jusqu'ici être sélectionné pour
+    // une mission réelle sans aucun signal. Même philosophie que le conflit de planning et
+    // la formation manquante ci-dessous : le staff qui affecte sait généralement pourquoi
+    // (ex. réactivation en cours), donc avertissement seulement, jamais un blocage dur qui
+    // court-circuiterait une décision légitime du staff.
+    {
+      const colProfileActif=_eqOperateursCache.find(p=>p.id===colId);
+      if(colProfileActif&&colProfileActif.actif===false){
+        if(!confirm('⚠️ '+(colProfileActif.prenom||'Ce collaborateur')+' est marqué inactif (onboarding non finalisé ou compte désactivé).\n\nConfirmer quand même cette affectation ?')){
+          if(btn)btn.disabled=false;
+          return;
+        }
+      }
+    }
     // Gate de qualification (spec §47 "gates de qualification" du Centre de formation) :
     // avertissement seulement, jamais bloquant — même philosophie que le conflit de planning
     // ci-dessus (décision fondateur 2026-08-06), le staff garde la main. Réutilise
@@ -16447,6 +16463,12 @@ async function avancerPipeline(id,statut){
     if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     const lb={prospect:'Prospect',qualifié:'Qualifié',devis_envoyé:'Devis envoyé',négociation:'Négociation',partenaire:'Partenaire',client:'Client'}[statut]||statut;
     toast('→ '+lb,'ok');
+    // Visibilité Secrétariat/Admin (audit final 29/08, §10.4) : le rôle com peut conclure
+    // seul, sans validation intermédiaire (droit non retiré, voir SV_EVENT_WORKFLOWS
+    // ci-dessous) — notifie au moins Secrétariat/Admin à chaque conclusion réelle.
+    if(S.role==='com'&&['partenaire','client'].includes(statut)){
+      dispatchSVEvent('client.won',{client_id:id,label:r?.[0]?.nom||''}).catch(()=>{});
+    }
     loadPipeline();
     updateNavBadges(S.role);
   }catch(e){toast('Erreur lors de la mise à jour.','er');}
@@ -24135,7 +24157,7 @@ async function loadClubBookings(){
   const el=document.getElementById('cbk-real');
   if(!el)return;
   try{
-    const data=await sbFetch('club_bookings?select=id,club_id,service_label,team,event_date,heure,adresse,contact,objectif,status,price_label,mode_paiement,created_at,clubs(nom)&order=created_at.desc&limit=200');
+    const data=await sbFetch('club_bookings?select=id,club_id,service_label,team,event_date,heure,adresse,contact,objectif,status,price_label,mode_paiement,prestation_id,created_at,clubs(nom)&order=created_at.desc&limit=200');
     if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
     _cbkData=data;
     const katt=_cbkData.filter(b=>['recue','qualifiee'].includes(b.status)).length;
@@ -24187,7 +24209,8 @@ function renderClubBookings(){
       <td class="tm">${esc(b.price_label||'—')}</td>
       <td><span class="bd ${CBK_STATUS_COLOR[b.status]||'bn'}"><span class="bd-d"></span>${esc(CBK_STATUS_LABEL[b.status]||b.status)}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">
-        ${b.status!=='livree'?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secAvancerReservation('${b.id}','${b.status}')">→ Étape suivante</button>`:''}
+        ${['recue','qualifiee'].includes(b.status)?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secAvancerReservation('${b.id}','${b.status}')">→ Étape suivante</button>`:''}
+        ${b.status==='confirmee'&&!b.prestation_id?`<button style="padding:4px 9px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:6px;color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="envoyerReservationEnProduction('${b.id}')">→ Envoyer en Production</button>`:''}
         <button class="btn bg2 bs" onclick="modalReservationClub('${b.id}')">Ouvrir</button>
       </div></td>
     </tr>`).join('')+'</tbody></table></div>';
@@ -24196,7 +24219,19 @@ function renderClubBookings(){
 function modalReservationClub(id){
   const b=_cbkData.find(x=>x.id===id);
   if(!b){toast('Réservation introuvable.','error');return;}
-  const opts=CBK_STEPS.map(s=>`<option value="${s}" ${s===b.status?'selected':''}>${esc(CBK_STATUS_LABEL[s])}</option>`).join('');
+  // Une fois liée à une vraie prestation (pont Production, audit final 29/08 §10.3), le
+  // statut n'est plus modifiable à la main pour operateur_affecte/mission_realisee/livree —
+  // il suit désormais automatiquement prestations.statut (trigger sync_club_booking_status_
+  // from_prestation). Le <select> ne propose donc plus que les étapes réellement manuelles
+  // (recue/qualifiee/confirmee/annulee) ; une fois liée, statut affiché en lecture seule +
+  // lien direct vers la prestation.
+  const manualSteps=['recue','qualifiee','confirmee','annulee'];
+  const opts=manualSteps.map(s=>`<option value="${s}" ${s===b.status?'selected':''}>${esc(CBK_STATUS_LABEL[s])}</option>`).join('');
+  const statutField=b.prestation_id
+    ? `<div class="fg"><label class="fl">Statut</label><div style="display:flex;align-items:center;gap:8px"><span class="bd ${CBK_STATUS_COLOR[b.status]||'bn'}"><span class="bd-d"></span>${esc(CBK_STATUS_LABEL[b.status]||b.status)}</span><span style="font-size:11px;color:var(--t3)">— suit automatiquement la prestation liée</span></div></div>
+       <div style="margin-top:10px"><button class="btn bg2 bs" onclick="closeModal();modalDetailById('${b.prestation_id}')">Voir la prestation en Production</button></div>`
+    : `<div class="fg"><label class="fl">Statut</label><select id="cbk-status-select" class="fi">${opts}</select></div>
+       ${b.status==='confirmee'?`<div style="margin-top:10px"><button class="btn bp bs" onclick="envoyerReservationEnProduction('${id}')">→ Envoyer en Production</button></div>`:''}`;
   openModal(`<div class="mh"><div class="mt">${esc(b.service_label||'Prestation')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:12.5px;color:var(--t3);margin-bottom:14px">${esc(b.clubs?.nom||'—')} · ${esc(b.team||'—')} · ${b.event_date?new Date(b.event_date).toLocaleDateString('fr-FR'):'—'}</div>
@@ -24207,14 +24242,24 @@ function modalReservationClub(id){
       ${b.objectif?`<div class="fg"><label class="fl">Objectif</label><div style="font-size:13.5px;color:var(--t1)">${esc(b.objectif)}</div></div>`:''}
       <div class="fg"><label class="fl">Tarif indicatif</label><div style="font-size:13.5px;color:var(--t1);font-weight:600">${esc(b.price_label||'Sur devis')}</div></div>
       ${b.mode_paiement?`<div class="fg"><label class="fl">Paiement souhaité</label><div style="font-size:13.5px;color:var(--t1)">${b.mode_paiement==='carte'?'Carte bancaire':'Espèces'}</div></div>`:''}
-      <div class="fg"><label class="fl">Statut</label>
-        <select id="cbk-status-select" class="fi">${opts}</select>
-      </div>
+      ${statutField}
     </div>
     <div class="mf">
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
-      <button class="btn bp" onclick="secEnregistrerStatutReservation('${id}')">Enregistrer</button>
+      ${!b.prestation_id?`<button class="btn bp" onclick="secEnregistrerStatutReservation('${id}')">Enregistrer</button>`:''}
     </div>`);
+}
+// Envoi explicite en Production (pont club_bookings → prestations, audit final 29/08 §10.3) :
+// RPC atomique côté serveur (idempotente — un second appel renvoie la prestation déjà créée
+// au lieu d'en créer une seconde), réservée à admin/com/sec (même périmètre que cet écran).
+async function envoyerReservationEnProduction(id){
+  try{
+    const r=await sbFetch('rpc/club_booking_send_to_production',{method:'POST',body:{p_booking_id:id}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Envoi en Production impossible.'),'error');return;}
+    closeModal();
+    toast('Réservation envoyée en Production.','ok');
+    loadClubBookings();
+  }catch(e){toast('Erreur lors de l\'envoi en Production.','error');}
 }
 
 async function secEnregistrerStatutReservation(id){
@@ -31475,6 +31520,18 @@ const SV_EVENT_WORKFLOWS={
   'document.signed':[
     {role:'sec',titre:'Contrat signé — archivage requis',msg:'Le contrat a été signé électroniquement. Archivez la version officielle.',priority:'normale'},
     {role:'prod',titre:'Contrat signé — prestation confirmée',msg:'Le contrat client est signé. La prestation est officiellement confirmée.',priority:'normale'},
+  ],
+  // Ajouté (audit final 29/08, action humaine §10.4 tranchée en faveur de la
+  // visibilité plutôt que d'une restriction de droits) : le rôle com a le même
+  // niveau d'écriture qu'admin/sec sur clients et peut faire passer un prospect
+  // en client actif d'un clic, sans étape de validation intermédiaire — retirer
+  // ce droit serait un changement de RBAC avec impact direct sur son travail
+  // quotidien, pas une décision à prendre à sa place sans lui. À la place :
+  // Secrétariat/Admin sont notifiés à chaque conclusion, pour garder de la
+  // supervision sans rien bloquer.
+  'client.won':[
+    {role:'sec',titre:'Nouveau client conclu par le Commercial',msg:'Un prospect vient de passer client. Vérifiez le dossier (devis, contrat, informations administratives).',priority:'normale'},
+    {role:'admin',titre:'Nouveau client conclu par le Commercial',msg:'Un prospect vient de passer client.',priority:'faible'},
   ],
 };
 
