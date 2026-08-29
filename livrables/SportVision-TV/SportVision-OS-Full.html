@@ -1864,9 +1864,25 @@ const VIEWS={
     <div id="prod-post-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── PROD : LIVRABLES ──────────────────────────────────────────────────────
+  // Refonte Responsable Production §26-29 "Module Livraisons" (29/08) : la validation
+  // globale d'une MISSION (rpc validate_production, déjà posée le 28/08 mais jamais
+  // exposée ailleurs qu'un bandeau dans la fiche prestation) devient le geste principal de
+  // cet écran, avec les 3 onglets exacts de la spec. Le suivi par livrable individuel
+  // existant plus bas (créer/valider/livrer un media_livrable un par un — une granularité
+  // différente, déjà solide et utilisée) est conservé intégralement, pas remplacé : les
+  // deux se complètent, la validation globale n'empêche pas le suivi fin par type de média.
   'prod.livr':()=>`
     <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">Livrables & livraisons</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Validation et transmission aux clients</div></div>
+      <div><div class="sh-t">Livraisons</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Contrôler avant toute diffusion</div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+      <button onclick="filterProdLivrMission('a_valider')" class="btn bp bs" id="plivm-a_valider" style="flex-shrink:0;font-size:11px">À valider</button>
+      <button onclick="filterProdLivrMission('a_corriger')" class="btn bg2 bs" id="plivm-a_corriger" style="flex-shrink:0;font-size:11px">À corriger</button>
+      <button onclick="filterProdLivrMission('validees')" class="btn bg2 bs" id="plivm-validees" style="flex-shrink:0;font-size:11px">Validées</button>
+    </div>
+    <div id="prod-livr-mission-real" style="margin-bottom:22px"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div class="sh" style="margin-bottom:14px;padding-top:8px;border-top:1px solid var(--b1)">
+      <div><div class="sh-t" style="font-size:15px">Détail par livrable</div><div style="font-size:11px;color:var(--t3);margin-top:2px">Suivi individuel (photos, rushs, vidéo finale…)</div></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À valider</div><div class="fs-v" id="lv-kpi-val" style="color:var(--wa)">—</div></div>
@@ -4326,7 +4342,7 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='brief') await loadProdBriefings();
   if(role==='prod'&&view==='media'){_mediaTab='liens';await loadProdMedias();}
   if(role==='prod'&&view==='post') await loadProdPostprod();
-  if(role==='prod'&&view==='livr') await loadProdLivrables();
+  if(role==='prod'&&view==='livr'){await loadProdLivrMissions();await loadProdLivrables();}
   if(role==='prod'&&view==='kanban') await loadKanban();
   // prod.form uses loadForm() — see line below
   if(role==='prod'&&view==='rapports') await loadProdRapport('prestations');
@@ -9596,7 +9612,69 @@ async function changerStatutPostprod(id,nouveauStatut){
 
 // ─── Livrables ────────────────────────────────────────────────────────────────
 let _livrFilter='all';
-let _livrData=[];
+// ── PROD LIVRAISONS (niveau mission, spec §26-29) ───────────────────────────
+// Une carte = une prestation, pas un media_livrable isolé — c'est la granularité que
+// validate_production() traite réellement (transition livrée→clôturée sur prestations,
+// pas sur media_liens/media_livrables). "À corriger" = au moins un lien de la mission au
+// statut correction_demandee (posé par modalDemanderCorrection, déjà existant, réutilisé
+// tel quel ici — aucune nouvelle action de correction inventée).
+let _livrMissionData=[];
+let _livrMissionFilter='a_valider';
+async function loadProdLivrMissions(){
+  const el=document.getElementById('prod-livr-mission-real');
+  if(!el)return;
+  try{
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom)),media_liens(id,nom,url,type_media,categorie,statut,commentaire,ajouteur_id)&statut=in.(livrée,clôturée)&order=date_prestation.desc&limit=100');
+    _livrMissionData=Array.isArray(raw)?raw:[];
+    renderProdLivrMissionList();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
+}
+function filterProdLivrMission(f){
+  _livrMissionFilter=f;
+  ['a_valider','a_corriger','validees'].forEach(id=>{
+    const b=document.getElementById('plivm-'+id);
+    if(b){b.className='btn '+(f===id?'bp':'bg2')+' bs';b.style.fontSize='11px';}
+  });
+  renderProdLivrMissionList();
+}
+function renderProdLivrMissionList(){
+  const el=document.getElementById('prod-livr-mission-real');
+  if(!el)return;
+  const hasCorrection=p=>(p.media_liens||[]).some(l=>l.statut==='correction_demandee');
+  let list=_livrMissionData;
+  if(_livrMissionFilter==='validees') list=list.filter(p=>p.statut==='clôturée');
+  else if(_livrMissionFilter==='a_corriger') list=list.filter(p=>p.statut==='livrée'&&hasCorrection(p));
+  else list=list.filter(p=>p.statut==='livrée'&&!hasCorrection(p));
+  if(!list.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:40px;gap:8px;color:var(--t3)"><div style="font-size:32px;opacity:.2">📦</div><div style="font-size:13px">Aucune mission dans cet onglet.</div></div>';
+    return;
+  }
+  const CAT_LB={depot:'Dépôt',rushs:'Rushs',travail:'Travail',previsualisation:'Prévisu',final:'Final',livraison:'Livraison',bibliotheque:'Bibliothèque'};
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:10px">'+list.map(p=>{
+    const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').map(e=>[e.collaborateur?.prenom,e.collaborateur?.nom].filter(Boolean).join(' ')).filter(Boolean);
+    const liens=p.media_liens||[];
+    const corrige=hasCorrection(p);
+    return`<div class="cd" style="margin-bottom:0${corrige?';border-color:rgba(240,68,94,.3)':''}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <div>
+          <div style="font-size:13.5px;font-weight:700;color:var(--t1)">${esc(p.clients?.nom||'—')} — ${p.type_prestation||'—'}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${equipe.join(', ')||'—'} · ${p.reference||'—'}</div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;background:${corrige?'rgba(240,68,94,.12)':p.statut==='clôturée'?'rgba(46,204,138,.12)':'rgba(245,165,36,.12)'};border:1px solid ${corrige?'rgba(240,68,94,.3)':p.statut==='clôturée'?'rgba(46,204,138,.3)':'rgba(245,165,36,.3)'};color:${corrige?'var(--er)':p.statut==='clôturée'?'var(--ok)':'var(--wa)'}">${corrige?'À corriger':p.statut==='clôturée'?'Validée':'À valider'}</span>
+      </div>
+      ${liens.length?`<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">${liens.map(l=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s2);border-radius:var(--rp);${l.statut==='correction_demandee'?'border:1px solid rgba(240,68,94,.25)':''}">
+          <span style="flex:1;min-width:0;font-size:12px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.nom)} <span style="color:var(--t3)">· ${CAT_LB[l.categorie]||l.categorie||'—'}</span></span>
+          ${l.statut==='correction_demandee'?`<span style="font-size:10px;color:var(--er);font-weight:600;white-space:nowrap">Correction demandée</span>`:''}
+          ${l.url?`<button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:6px;color:var(--acc);font-size:10.5px;font-weight:600;cursor:pointer;white-space:nowrap">Ouvrir</button>`:''}
+          ${p.statut==='livrée'&&l.statut!=='correction_demandee'?`<button onclick="modalDemanderCorrection('${l.id}')" style="padding:4px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:10.5px;cursor:pointer;white-space:nowrap">Corriger</button>`:''}
+        </div>`).join('')}</div>`:`<div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Aucun lien média rattaché.</div>`}
+      ${p.statut==='livrée'?`<div style="display:flex;gap:8px">
+        <button onclick="validerProduction('${p.id}')" style="flex:1;padding:8px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;cursor:pointer">✓ Valider la production</button>
+      </div>`:''}
+    </div>`;
+  }).join('')+'</div>';
+}
 
 function filterProdLivr(f){
   _livrFilter=f;
