@@ -265,6 +265,9 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
 .fi:focus{border-color:rgba(54,107,255,.45);box-shadow:0 0 0 3px rgba(54,107,255,.12)}
 .fi::placeholder{color:var(--t3)}
 .fi:disabled,.fi[disabled]{opacity:.5;cursor:not-allowed}
+/* Champ de contact au format invalide (validation email/téléphone). */
+.sv-inv{border-color:var(--er)!important;box-shadow:0 0 0 2px rgba(240,68,94,.14)!important}
+.sv-inv-msg{color:var(--er);font-size:11.5px;line-height:1.35;margin-top:5px}
 .fi:read-only{background:rgba(255,255,255,.03);color:var(--t2)}
 textarea.fi{height:auto;padding:9px 12px;resize:vertical}
 select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555E73' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
@@ -3242,6 +3245,7 @@ async function doLogin(){
   const email=(document.getElementById('l-email').value||'').trim();
   const pass=document.getElementById('l-pass').value||'';
   const errEl=document.getElementById('l-err');
+  if(!svValiderContacts(['l-email'],'l-err'))return;
   const btn=document.getElementById('l-btn');
   if(!email||!pass){errEl.textContent='Remplissez email et mot de passe.';return;}
   errEl.textContent='';btn.textContent='Connexion…';btn.disabled=true;
@@ -4422,6 +4426,7 @@ async function creerClient(){
   const warn=document.getElementById('fc-doublon-warn');
   const nom=document.getElementById('fc-nom').value.trim();
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  if(!svValiderContacts(['fc-email','fc-tel'],'fc-err'))return;
   window._fcCreating=true;
   const btn=document.getElementById('fc-submit-btn');
   if(btn){btn.disabled=true;btn.textContent='Création…';}
@@ -4589,6 +4594,7 @@ async function creerCollaborateur(){
   const email=document.getElementById('fi-email').value.trim();
   const role=document.getElementById('fi-role').value;
   if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
+  if(!svValiderContacts(['fi-email'],'fi-err'))return;
   err.textContent='Envoi de l\'invitation…';
   try{
     const tok=localStorage.getItem('sv_tok');
@@ -5096,6 +5102,7 @@ async function validerPrestation(id,nouveauStatut){
 
 async function modifierPrestation(id){
   const err=document.getElementById('pd-err');
+  if(!svValiderContacts(['pd-tsp'],'pd-err'))return;
   err.textContent='Enregistrement…';
   try{
     const body={
@@ -6457,6 +6464,7 @@ async function confirmerAffiliationCm(clientId){
 
 async function modifierClient(id){
   const err=document.getElementById('fce-err');
+  if(!svValiderContacts(['fce-email','fce-tel'],'fce-err'))return;
   const nom=document.getElementById('fce-nom').value.trim();
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
   err.textContent='Enregistrement…';
@@ -6542,6 +6550,7 @@ async function loadClientOrganigramme(clientId){
 async function ajouterOrganigrammeEntry(clientId){
   const role=document.getElementById('corg-role')?.value.trim();
   const errEl=document.getElementById('corg-err');
+  if(!svValiderContacts(['corg-email','corg-tel'],'corg-err'))return;
   if(!role){if(errEl)errEl.textContent='Le rôle est obligatoire.';return;}
   const r=await sbFetch('client_organigramme',{method:'POST',body:{
     client_id:clientId,
@@ -6962,6 +6971,7 @@ async function recrutCreerCollaborateur(candId){
   const email=document.getElementById('rcc-email').value.trim();
   const role=document.getElementById('rcc-role').value;
   if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
+  if(!svValiderContacts(['rcc-email'],'rcc-err'))return;
   // Garde de ré-entrance (audit idempotence 29/08) : côté serveur, un double-clic est déjà
   // rattrapé par l'unicité d'email de auth.users (le 2e appel à invite-collaborateur échoue),
   // mais ça envoie un 2e e-mail d'invitation pour rien. Même idiome bouton que creerClient().
@@ -10666,6 +10676,7 @@ async function confirmerLivraison(livrableId){
   const err=document.getElementById('liv-err');
   const email=document.getElementById('liv-email')?.value?.trim();
   if(!email){err.textContent='Email obligatoire.';if(btn)btn.disabled=false;return;}
+  if(!svValiderContacts(['liv-email'],'liv-err')){if(btn)btn.disabled=false;return;}
   err.textContent='Enregistrement…';
   try{
     const lvData=await sbFetch('media_livrables?select=prestation_id,nom,date_expiration&id=eq.'+livrableId);
@@ -12208,6 +12219,7 @@ async function toggleNotifPref(uid,categorie,actif){
 }
 async function sauvegarderProfil(uid){
   const err=document.getElementById('set-err');
+  if(!svValiderContacts(['set-tel'],'set-err'))return;
   if(err)err.textContent='Enregistrement…';
   try{
     const body={
@@ -12267,7 +12279,7 @@ async function changerEmail(){
   const err=document.getElementById('set-email-err');
   const newEmail=(document.getElementById('set-email-new')?.value||'').trim();
   if(!newEmail){if(err){err.style.color='var(--er)';err.textContent='Entrez un nouvel email.';}return;}
-  if(!newEmail.includes('@')){if(err){err.style.color='var(--er)';err.textContent='Email invalide.';}return;}
+  if(!svValiderContacts(['set-email-new'],'set-email-err'))return;
   if(err){err.style.color='var(--t3)';err.textContent='Envoi en cours…';}
   try{
     const tok=localStorage.getItem('sv_tok');
@@ -14837,7 +14849,7 @@ async function _sendContratEmailConfirm(id){
   const msg=(document.getElementById('cem-msg')?.value||'').trim();
   const errEl=document.getElementById('cem-err');
   if(!to){if(errEl)errEl.textContent='Email destinataire requis.';return;}
-  if(!to.includes('@')||!to.includes('.')){if(errEl)errEl.textContent='Adresse email invalide.';return;}
+  if(!svValiderContacts(['cem-to'],'cem-err'))return;
   if(errEl)errEl.textContent='';
   const btn=document.querySelector('#sv-modal .mf .btn.bp');
   if(btn){btn.disabled=true;btn.textContent='Envoi en cours…';}
@@ -15537,7 +15549,7 @@ async function _sendDevisEmailConfirm(id,statutActuel){
   const markSent=document.getElementById('em-markSent')?.checked;
   const errEl=document.getElementById('em-err');
   if(!to){if(errEl)errEl.textContent='Email destinataire requis.';return;}
-  if(!to.includes('@')||!to.includes('.')){if(errEl)errEl.textContent='Adresse email invalide.';return;}
+  if(!svValiderContacts(['em-to'],'em-err'))return;
   if(errEl)errEl.textContent='';
   const btn=document.querySelector('#sv-modal .mf .btn.bp');
   if(btn){btn.disabled=true;btn.textContent='Envoi en cours…';}
@@ -15792,7 +15804,7 @@ async function _sendFactureEmailConfirm(factureId){
   const msg=(document.getElementById('em-msg')?.value||'').trim();
   const errEl=document.getElementById('em-err');
   if(!to){if(errEl)errEl.textContent='Email destinataire requis.';return;}
-  if(!to.includes('@')||!to.includes('.')){if(errEl)errEl.textContent='Adresse email invalide.';return;}
+  if(!svValiderContacts(['em-to'],'em-err'))return;
   if(errEl)errEl.textContent='';
   const btn=document.querySelector('#sv-modal .mf .btn.bp');
   if(btn){btn.disabled=true;btn.textContent='Envoi en cours…';}
@@ -22843,6 +22855,7 @@ async function sauvegarderFournisseur(){
   const err=document.getElementById('nf-err');
   const nom=document.getElementById('nf-nom')?.value.trim();
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  if(!svValiderContacts(['nf-email'],'nf-err'))return;
   const body={
     nom,
     categorie:document.getElementById('nf-cat')?.value||'autre',
@@ -26800,6 +26813,7 @@ async function modalModifierCollaborateur(idx){
 }
 async function modifierCollaborateur(id){
   const err=document.getElementById('fco-err');
+  if(!svValiderContacts(['fco-tel'],'fco-err'))return;
   err.textContent='Enregistrement…';
   const body={
     prenom:document.getElementById('fco-prenom').value.trim()||null,
@@ -27588,6 +27602,7 @@ async function envoyerResetMdp(){
   const msg=document.getElementById('reset-msg');
   const email=(emailEl?.value||'').trim();
   if(!email){if(msg){msg.style.color='var(--er)';msg.textContent='Entre ton adresse email.';}return;}
+  if(!svValiderContacts(['reset-email'],'reset-msg'))return;
   if(msg){msg.style.color='var(--t3)';msg.textContent='Envoi en cours…';}
   try{
     const redirectTo=window.location.origin+window.location.pathname;
@@ -32386,6 +32401,120 @@ async function loadMobileComDash(ct){
     ct.innerHTML=html;
   }catch(e){ct.innerHTML=`<div style="padding:32px;color:var(--er);text-align:center;font-size:13px">Erreur de chargement.</div>`;}
 }
+
+// ── VALIDATION EMAIL / TÉLÉPHONE ─────────────────────────────────────────────
+// Dette technique relevée par l'audit du 29/08 (§11) : aucune validation réelle
+// au-delà du typage cosmétique input type="email"/"tel". Une adresse saisie de
+// travers partait donc telle quelle en base, et le seul retour possible était
+// l'échec silencieux de l'e-mail des jours plus tard.
+
+// Volontairement structurel plutôt qu'alphabétique : un domaine accentué
+// (contact@café.fr) ou un TLD long doivent passer. On ne rejette que ce qui ne
+// peut pas être une adresse, jamais ce qui est simplement inhabituel — un faux
+// négatif ici bloquerait un vrai client.
+function svEmailNormaliser(v){return String(v==null?'':v).trim().toLowerCase();}
+function svEmailValide(v){
+  const s=svEmailNormaliser(v);
+  if(!s||s.length>254)return false;
+  const at=s.lastIndexOf('@');
+  if(at<1||at===s.length-1)return false;
+  const loc=s.slice(0,at),dom=s.slice(at+1);
+  if(loc.length>64)return false;
+  if(/[\s@,;:<>"'\\\[\]()]/.test(loc)||loc.charAt(0)==='.'||loc.charAt(loc.length-1)==='.'||loc.indexOf('..')>=0)return false;
+  const labels=dom.split('.');
+  if(labels.length<2)return false;
+  for(const l of labels){
+    if(!l||l.length>63)return false;
+    if(l.charAt(0)==='-'||l.charAt(l.length-1)==='-')return false;
+    if(/[\s@.,;:<>"'\\\[\]()!#$%&*+/=?^_`{|}~]/.test(l))return false;
+  }
+  const tld=labels[labels.length-1];
+  return tld.length>=2&&!/\d/.test(tld);
+}
+
+// Téléphone : numéro français (0X ou +33/0033) ou international (+indicatif).
+// Renvoie {ok, valeur} — `valeur` est la forme normalisée à réenregistrer, pour
+// que « 0612345678 », « 06.12.34.56.78 » et « +33 6 12 34 56 78 » ne fassent
+// plus trois valeurs différentes en base pour le même numéro.
+function svTelParse(v){
+  const brut=String(v==null?'':v).trim();
+  if(!brut)return {ok:true,vide:true,valeur:''};
+  if(/[^\d+()\-.\s/]/.test(brut))return {ok:false};
+  let d=brut.replace(/[^\d+]/g,'');
+  if(d.indexOf('00')===0)d='+'+d.slice(2);
+  if(d.indexOf('+')>0)return {ok:false};
+  if(d.indexOf('+33')===0)d='0'+d.slice(3);
+  if(/^0[1-9]\d{8}$/.test(d))return {ok:true,valeur:d.replace(/(\d{2})(?=\d)/g,'$1 ')};
+  if(/^\+\d{8,15}$/.test(d))return {ok:true,valeur:d};
+  return {ok:false};
+}
+
+function svChampMarquer(el,msg){
+  if(!el)return;
+  el.classList.toggle('sv-inv',!!msg);
+  el.setAttribute('aria-invalid',msg?'true':'false');
+  let m=el.nextElementSibling;
+  if(!(m&&m.classList&&m.classList.contains('sv-inv-msg'))){
+    if(!msg)return;
+    m=document.createElement('div');
+    m.className='sv-inv-msg';
+    if(el.parentNode)el.parentNode.insertBefore(m,el.nextSibling);
+  }
+  m.textContent=msg||'';
+  m.style.display=msg?'':'none';
+}
+
+// Contrôle le FORMAT des champs de contact d'un formulaire avant enregistrement.
+// Un champ vide passe : l'obligation d'un champ reste gérée par chaque
+// formulaire, ici on ne juge que la forme. Les valeurs valides sont réécrites
+// normalisées dans le champ, donc c'est bien la forme normalisée qui part en
+// base. Renvoie true si tout est bon ; sinon marque les champs fautifs,
+// focalise le premier et renseigne la zone d'erreur du formulaire.
+function svValiderContacts(ids,errId){
+  let premier=null,nbEmail=0,nbTel=0;
+  for(const id of ids){
+    const el=document.getElementById(id);
+    if(!el)continue;
+    const estTel=el.type==='tel'||/(^|-)(tel|telephone|phone)(-|$)/i.test(id);
+    if(!String(el.value||'').trim()){svChampMarquer(el,'');continue;}
+    if(estTel){
+      const r=svTelParse(el.value);
+      if(!r.ok){svChampMarquer(el,'Numéro invalide — attendu 06 12 34 56 78 ou +33 6 12 34 56 78.');premier=premier||el;nbTel++;}
+      else{el.value=r.valeur;svChampMarquer(el,'');}
+    }else{
+      if(!svEmailValide(el.value)){svChampMarquer(el,'Adresse email invalide — attendu nom@domaine.fr.');premier=premier||el;nbEmail++;}
+      else{el.value=svEmailNormaliser(el.value);svChampMarquer(el,'');}
+    }
+  }
+  if(!premier)return true;
+  const err=errId&&document.getElementById(errId);
+  if(err){
+    err.style.color='var(--er)';
+    err.textContent=nbEmail&&nbTel?'Adresse email et numéro de téléphone invalides.'
+      :nbEmail?(nbEmail>1?'Adresses email invalides.':'Adresse email invalide.')
+      :(nbTel>1?'Numéros de téléphone invalides.':'Numéro de téléphone invalide.');
+  }
+  try{premier.focus();}catch(e){}
+  return false;
+}
+
+// Retour immédiat à la sortie du champ, sans toucher aux ~20 formulaires
+// concernés : un seul écouteur délégué en phase de capture (blur ne remonte pas).
+document.addEventListener('blur',function(e){
+  const el=e.target;
+  if(!el||el.tagName!=='INPUT')return;
+  const estTel=el.type==='tel'||/(^|-)(tel|telephone|phone)(-|$)/i.test(el.id||'');
+  if(el.type!=='email'&&!estTel&&!/(^|-)(email|mail)(-|$)/i.test(el.id||''))return;
+  if(!String(el.value||'').trim()){svChampMarquer(el,'');return;}
+  if(estTel){
+    const r=svTelParse(el.value);
+    if(r.ok){el.value=r.valeur;svChampMarquer(el,'');}
+    else svChampMarquer(el,'Numéro invalide — attendu 06 12 34 56 78 ou +33 6 12 34 56 78.');
+  }else{
+    if(svEmailValide(el.value)){el.value=svEmailNormaliser(el.value);svChampMarquer(el,'');}
+    else svChampMarquer(el,'Adresse email invalide — attendu nom@domaine.fr.');
+  }
+},true);
 
 // ── ANTI-DOUBLE-CLIC GÉNÉRIQUE ───────────────────────────────────────────────
 // Dette technique relevée par l'audit du 29/08 (§11) : seules ~20 fonctions
