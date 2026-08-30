@@ -197,16 +197,22 @@ section{position:relative}
 
 /* ── Prestations (cartes avec prix publics) ── */
 .prestation-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:8px}
-.prestation-card{background:#fff;border:1px solid #e9ecf5;border-radius:var(--radius-lg);padding:22px;display:flex;flex-direction:column;transition:border-color .18s, transform .18s}
-.prestation-card:hover{border-color:var(--blue);transform:translateY(-3px)}
-.prestation-card .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.prestation-card .icon{width:40px;height:40px;border-radius:11px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0}
-.prestation-card .sans-abo{font-size:10px;font-weight:800;color:var(--success);background:rgba(18,183,106,.1);border-radius:999px;padding:4px 9px;white-space:nowrap;letter-spacing:.02em}
-.prestation-card h4{font-size:15.5px;margin-top:14px}
+.prestation-card{background:#fff;border:1px solid #e9ecf5;border-radius:var(--radius-lg);padding:22px;display:flex;flex-direction:column;transition:border-color .18s, transform .18s, box-shadow .18s}
+.prestation-card:hover{border-color:var(--blue);transform:translateY(-4px);box-shadow:0 20px 44px rgba(7,10,23,.12)}
+.prestation-card .thumb{margin:-22px -22px 16px;aspect-ratio:16/10;position:relative;overflow:hidden;border-radius:var(--radius-lg) var(--radius-lg) 0 0;background:linear-gradient(155deg,#131a3d,#232a5c)}
+.prestation-card .thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+.prestation-card:hover .thumb img{transform:scale(1.045)}
+.prestation-card .thumb::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(7,10,23,.55),transparent 55%)}
+.prestation-card .thumb .icon{position:absolute;left:14px;bottom:12px;z-index:1;width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.14);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px}
+.prestation-card .thumb .sans-abo{position:absolute;right:12px;top:12px;z-index:1;font-size:10px;font-weight:800;color:var(--navy-900);background:#fff;border-radius:999px;padding:5px 10px;white-space:nowrap;letter-spacing:.02em;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.prestation-card h4{font-size:15.5px;margin-top:2px}
 .prestation-card p.desc{font-size:13px;color:#5b6478;margin-top:6px;flex:1}
 .prestation-card .price-row{margin-top:16px;padding-top:14px;border-top:1px solid #e9ecf5}
 .prestation-card .price{font-size:15.5px;font-weight:800;color:var(--navy-900)}
 .prestation-card .price small{font-size:11px;font-weight:600;color:var(--text-secondary)}
+.prestation-card .card-ctas{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.prestation-card .fiche-link{display:block;text-align:center;font-size:12.5px;font-weight:700;color:var(--blue)}
+.prestation-card .fiche-link:hover{text-decoration:underline}
 
 /* ── Onglets (parcours par profil) ── */
 .tabs-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 40px}
@@ -495,25 +501,34 @@ section{position:relative}
     </div>
     <div class="prestation-grid reveal">
       <div class="prestation-card" id="match-photo">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h1.5l1-1.5h9l1 1.5H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/foot-action-03.jpg" alt="Photographe SportVision en action pendant un match" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h1.5l1-1.5h9l1 1.5H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></span></div>
         <h4>Match photo</h4>
         <p class="desc">Captation du match, sélection et livraison digitale. Inclus : présence photographe, sélection des meilleurs clichés, livraison numérique. Délai moyen : 24h maximum.</p>
         <div class="price-row"><span class="price">120 € <small>TTC</small></span></div>
-        <a href="prestation-match-photo.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche match photo</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=match-photo" class="btn btn-grad btn-sm" style="width:100%">Réserver cette prestation</a>
+          <a href="prestation-match-photo.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
       <div class="prestation-card" id="match-video">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M3.5 9.5h17V19a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1z"/><path d="m7 4 1.5 5.5M12 4l1.5 5.5M17 4l1.5 5.5"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/reel-match-action-01-poster.jpg" alt="Opérateur vidéo SportVision captant un temps fort de match" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M3.5 9.5h17V19a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1z"/><path d="m7 4 1.5 5.5M12 4l1.5 5.5M17 4l1.5 5.5"/></svg></span></div>
         <h4>Match vidéo</h4>
         <p class="desc">Captation vidéo, livraison avec highlight simple. Inclus : présence opérateur vidéo, captation des temps forts, montage highlight. Délai moyen : 24h maximum.</p>
         <div class="price-row"><span class="price">120 € <small>TTC</small></span></div>
-        <a href="prestation-match-video.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche match vidéo</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=match-video" class="btn btn-grad btn-sm" style="width:100%">Réserver cette prestation</a>
+          <a href="prestation-match-video.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
       <div class="prestation-card" id="pack-match">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="vertical-align:-0.15em" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/foot-action-sportvision.jpg" alt="Couverture photo et vidéo réunies pour un match" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="vertical-align:-0.15em" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></span></div>
         <h4>Pack Match Complet</h4>
         <p class="desc">Photos + vidéo + highlight simple, dans une seule prestation. Délai moyen : 24h maximum.</p>
         <div class="price-row"><span class="price">160 € <small>TTC</small></span></div>
-        <a href="prestation-pack-match.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche pack complet</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=pack-match" class="btn btn-grad btn-sm" style="width:100%">Réserver cette prestation</a>
+          <a href="prestation-pack-match.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
     </div>
   </div>
@@ -529,18 +544,24 @@ section{position:relative}
     </div>
     <div class="prestation-grid reveal">
       <div class="prestation-card" id="camera-isolee">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 10 5-3v10l-5-3z"/></svg></div><span class="sans-abo">Très demandé</span></div>
+        <div class="thumb"><img src="assets/realisations/reel-camera-isolee-01-poster.jpg" alt="Extrait d'un montage caméra isolée centré sur un joueur" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 10 5-3v10l-5-3z"/></svg></span><span class="sans-abo">Très demandé</span></div>
         <h4>Caméra isolée joueur</h4>
         <p class="desc">Un opérateur dédié reste centré sur un seul joueur pendant sa présence sur le terrain, pour un montage individuel — idéal pour un dossier de recrutement.</p>
         <div class="price-row"><span class="price">150 € <small>TTC</small></span></div>
-        <a href="prestation-camera-isolee.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche caméra isolée</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=camera-isolee" class="btn btn-grad btn-sm" style="width:100%">Réserver cette prestation</a>
+          <a href="prestation-camera-isolee.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
       <div class="prestation-card" id="montage-compilation">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 10 18 0M9 4v16"/></svg></div><span class="sans-abo">Très demandé</span></div>
+        <div class="thumb"><img src="assets/realisations/reel-compilation-veo-01-poster.jpg" alt="Extrait d'une compilation vidéo montée à partir de rushs Veo" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 10 18 0M9 4v16"/></svg></span><span class="sans-abo">Très demandé</span></div>
         <h4>Montage &amp; compilation</h4>
         <p class="desc">Vos meilleures actions (caméra Veo, caméra isolée, plusieurs matchs) réunies en une seule compilation prête à partager.</p>
         <div class="price-row"><span class="price">Dès 40 € <small>TTC</small></span></div>
-        <a href="prestation-montage-compilation.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche montage &amp; compilation</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=montage-compilation" class="btn btn-grad btn-sm" style="width:100%">Réserver cette prestation</a>
+          <a href="prestation-montage-compilation.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
     </div>
   </div>
@@ -556,18 +577,24 @@ section{position:relative}
     </div>
     <div class="prestation-grid reveal">
       <div class="prestation-card">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="currentColor" stroke="none"/><path d="m21 15-5-5-9 9"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/foot-portrait-08.jpg" alt="Portrait de joueur réalisé lors d'un shooting SportVision" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="currentColor" stroke="none"/><path d="m21 15-5-5-9 9"/></svg></span></div>
         <h4>Shooting joueur</h4>
         <p class="desc">Portraits professionnels, contenus réseaux, valorisation personnelle.</p>
         <div class="price-row"><span class="price">Sur devis</span></div>
-        <a href="prestation-shooting-joueur.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche shooting joueur</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=shooting" class="btn btn-grad btn-sm" style="width:100%">Demander un devis</a>
+          <a href="prestation-shooting-joueur.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
       <div class="prestation-card" id="shooting-equipe">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 19.5c0-3.3 2.7-5.8 6-5.8s6 2.5 6 5.8"/><path d="M16 5.3a3.2 3.2 0 0 1 0 6.2M19 19.5c0-2.7-1.8-5-4.3-5.7"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/foot-groupe-07.jpg" alt="Photo d'équipe officielle réalisée lors d'un shooting SportVision" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 19.5c0-3.3 2.7-5.8 6-5.8s6 2.5 6 5.8"/><path d="M16 5.3a3.2 3.2 0 0 1 0 6.2M19 19.5c0-2.7-1.8-5-4.3-5.7"/></svg></span></div>
         <h4>Shooting d'équipe</h4>
         <p class="desc">Photos officielles, portraits d'équipe.</p>
         <div class="price-row"><span class="price">Sur devis</span></div>
-        <a href="prestation-shooting-equipe.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche shooting équipe</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=shooting" class="btn btn-grad btn-sm" style="width:100%">Demander un devis</a>
+          <a href="prestation-shooting-equipe.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
     </div>
   </div>
@@ -583,32 +610,44 @@ section{position:relative}
     </div>
     <div class="prestation-grid reveal">
       <div class="prestation-card" id="media-day">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/coaching-preparation.jpg" alt="Séance de contenus lors d'un Media Day SportVision" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6"/></svg></span></div>
         <h4>Media Day</h4>
         <p class="desc">Portraits, contenus partenaires, banque média pour la saison.</p>
         <div class="price-row"><span class="price">Sur devis</span></div>
-        <a href="prestation-media-day.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche Media Day</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=media-day" class="btn btn-grad btn-sm" style="width:100%">Demander un devis</a>
+          <a href="prestation-media-day.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
       <div class="prestation-card" id="tournois">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 5H5a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4M16 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/><path d="M12 13v3M9 20h6M10 20v-2.5h4V20"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/case-tournoi-milly-poster.jpg" alt="Couverture d'un tournoi par l'équipe SportVision" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 5H5a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4M16 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/><path d="M12 13v3M9 20h6M10 20v-2.5h4V20"/></svg></span></div>
         <h4>Tournois &amp; stages</h4>
         <p class="desc">Couverture photo, vidéo et contenus à chaud sur toute la durée.</p>
         <div class="price-row"><span class="price">Sur devis</span></div>
-        <a href="prestation-tournois.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche tournois</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=couverture-tournoi" class="btn btn-grad btn-sm" style="width:100%">Demander un devis</a>
+          <a href="prestation-tournois.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
       <div class="prestation-card" id="creations">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.5-.6 1.5-1.4 0-.4-.15-.75-.4-1a1.3 1.3 0 0 1-.4-.95c0-.8.65-1.4 1.4-1.4H16a4.5 4.5 0 0 0 4.5-4.5C20.5 6.6 16.7 3 12 3z"/><circle cx="7.5" cy="11" r="1.1" fill="currentColor" stroke="none"/><circle cx="9.5" cy="7.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="7.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.7" cy="11" r="1.1" fill="currentColor" stroke="none"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/case-fc-varenne.jpg" alt="Exemple de création graphique réalisée par SportVision" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.5-.6 1.5-1.4 0-.4-.15-.75-.4-1a1.3 1.3 0 0 1-.4-.95c0-.8.65-1.4 1.4-1.4H16a4.5 4.5 0 0 0 4.5-4.5C20.5 6.6 16.7 3 12 3z"/><circle cx="7.5" cy="11" r="1.1" fill="currentColor" stroke="none"/><circle cx="9.5" cy="7.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="7.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.7" cy="11" r="1.1" fill="currentColor" stroke="none"/></svg></span></div>
         <h4>Créations graphiques</h4>
         <p class="desc">Compositions, visuels d'annonces, contenus promotionnels.</p>
         <div class="price-row"><span class="price">Sur devis</span></div>
-        <a href="prestation-creations.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche créations</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=creation-contenu" class="btn btn-grad btn-sm" style="width:100%">Demander un devis</a>
+          <a href="prestation-creations.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
       <div class="prestation-card" id="coachs">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/entrainement-exercice.jpg" alt="Tournage d'une séance de coach ou préparateur physique" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span></div>
         <h4>Coachs &amp; préparateurs</h4>
         <p class="desc">Tournages de séances, contenus pédagogiques.</p>
         <div class="price-row"><span class="price">Sur devis</span></div>
-        <a href="prestation-coachs.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche coachs</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=coach-preparateur" class="btn btn-grad btn-sm" style="width:100%">Demander un devis</a>
+          <a href="prestation-coachs.html" class="fiche-link">Voir la fiche complète →</a>
+        </div>
       </div>
     </div>
   </div>
@@ -624,32 +663,40 @@ section{position:relative}
     </div>
     <div class="prestation-grid reveal">
       <div class="prestation-card" id="match-filme-drone">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 6h9M12 6v4M6 6V3.5M8 10h6.5a3.5 3.5 0 0 1 3.5 3.5V15a2 2 0 0 1-2 2H10a4 4 0 0 1-4-4v-1z"/><path d="M17 12h4M2 17l3-2M22 17l-3-2"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/foot-action-04.jpg" alt="Match filmé en drone par SportVision" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 6h9M12 6v4M6 6V3.5M8 10h6.5a3.5 3.5 0 0 1 3.5 3.5V15a2 2 0 0 1-2 2H10a4 4 0 0 1-4-4v-1z"/><path d="M17 12h4M2 17l3-2M22 17l-3-2"/></svg></span></div>
         <h4>Match filmé drone</h4>
         <p class="desc">Captation vidéo aérienne de votre match par drone, prises de vue depuis les airs. Délai moyen : 24h maximum (sous réserve de la réglementation, de la météo et de la zone survolée).</p>
         <div class="price-row"><span class="price">120 € <small>TTC</small></span></div>
-        <a href="reserver.html?besoin=match-filme-drone" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Réserver un match filmé drone</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=match-filme-drone" class="btn btn-grad btn-sm" style="width:100%">Réserver cette prestation</a>
+        </div>
       </div>
       <div class="prestation-card" id="combo-drone-photo">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h1.5l1-1.5h9l1 1.5H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/foot-groupe-04.jpg" alt="Combo drone et photo réalisé par SportVision" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h1.5l1-1.5h9l1 1.5H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></span></div>
         <h4>Combo Drone + Photo</h4>
         <p class="desc">Captation vidéo aérienne par drone, combinée à un reportage photo par un opérateur SportVision. Délai moyen : 24h maximum.</p>
         <div class="price-row"><span class="price">160 € <small>TTC</small></span></div>
-        <a href="reserver.html?besoin=combo-drone-photo" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Réserver le combo Drone + Photo</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=combo-drone-photo" class="btn btn-grad btn-sm" style="width:100%">Réserver cette prestation</a>
+        </div>
       </div>
       <div class="prestation-card" id="match-camera-veo">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 10 5-3v10l-5-3z"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/reel-duel-13-poster.jpg" alt="Match filmé par caméra Véo automatisée" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 10 5-3v10l-5-3z"/></svg></span></div>
         <h4>Match filmé caméra Véo</h4>
         <p class="desc">Captation vidéo automatisée de votre match par caméra Véo, sans opérateur sur place. Délai moyen : 24h maximum.</p>
         <div class="price-row"><span class="price">120 € <small>TTC</small></span></div>
-        <a href="reserver.html?besoin=match-camera-veo" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Réserver un match filmé Véo</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=match-camera-veo" class="btn btn-grad btn-sm" style="width:100%">Réserver cette prestation</a>
+        </div>
       </div>
       <div class="prestation-card" id="combo-veo-photo">
-        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h1.5l1-1.5h9l1 1.5H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></div></div>
+        <div class="thumb"><img src="assets/realisations/foot-action-06.jpg" alt="Combo caméra Véo et photo réalisé par SportVision" loading="lazy"><span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h1.5l1-1.5h9l1 1.5H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></span></div>
         <h4>Combo Véo + Photo</h4>
         <p class="desc">Captation vidéo automatisée par caméra Véo, combinée à un reportage photo par un opérateur SportVision. Délai moyen : 24h maximum.</p>
         <div class="price-row"><span class="price">180 € <small>TTC</small></span></div>
-        <a href="reserver.html?besoin=combo-veo-photo" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Réserver le combo Véo + Photo</a>
+        <div class="card-ctas">
+          <a href="reserver.html?besoin=combo-veo-photo" class="btn btn-grad btn-sm" style="width:100%">Réserver cette prestation</a>
+        </div>
       </div>
     </div>
     <p style="text-align:center;margin-top:40px;color:var(--text-secondary);font-size:13px" class="reveal">Déplacement calculé selon la distance depuis notre siège (Montereau-Fault-Yonne).</p>
