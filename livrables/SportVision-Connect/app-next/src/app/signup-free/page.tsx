@@ -33,7 +33,20 @@ export default function SignupFreePage() {
     setSubmitting(true);
     const supabase = createClient();
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        // Sans ça, le lien du mail de confirmation redirige vers l'origine nue
+        // ("https://clubplus.sportvision-an.fr/") plutôt que vers /auth/callback : le code PKCE
+        // n'est alors jamais échangé (exchangeCodeForSession jamais appelé), le lien atterrit sur
+        // /auth/login avec un ?code= mort puis "otp_expired" au clic suivant — même bug que celui
+        // corrigé le 14/08/2026 côté app-connect (voir signup/club/page.tsx et auth/callback/
+        // route.ts), jamais reproduit ici jusqu'à cet audit du 30/08/2026 : personne n'avait encore
+        // testé en réel le clic sur le lien reçu par e-mail pour ce parcours self-service.
+        emailRedirectTo: `${window.location.origin}/clubplus/auth/callback`,
+      },
+    });
     if (signUpError) {
       setSubmitting(false);
       setSubmitError(
