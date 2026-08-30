@@ -110,12 +110,14 @@ Fouka a délégué la décision sur les points 3 à 7 ; tous ont été tranchés
 
 ## 11. Dette technique restante
 
-- Anti-double-clic non généralisé (~20 fonctions protégées sur ~478 handlers `onclick` au total) — une passe dédiée avec un helper générique serait plus efficace qu'un correctif au cas par cas.
+**Traité depuis la première version de ce rapport** (délégation explicite de Fouka, matin du 30/08) :
+- **8 des 9 tables mortes supprimées** (`calendar_connections`, `calendar_sync_channels`, `email_connections`, `favorite_collections`, `formation_validations_terrain`, `media_validations`, `webhook_events`, `whatsapp_opt_ins`) — re-confirmées mortes indépendamment avant suppression (dont un faux positif écarté : `favorite_collections` n'était mentionnée que dans un commentaire, jamais réellement utilisée). La vue `clubs_safe` a volontairement été laissée de côté : contrairement aux 9 tables, elle a une intention de sécurité claire (masquage conditionnel de champs financiers), qui ressemble à une préparation pour un usage futur plutôt qu'un résidu abandonné.
+- **Anti-double-clic ajouté sur les 5 fonctions explicitement signalées** par l'audit routes/boutons (`signalerIncident`, `creerContenu`, `tuteurValiderContenu`, `centreValiderGrade`, `comptaRembourserFrais`) — même idiome déjà établi dans le reste du fichier. Le solde des ~478 handlers `onclick` n'a volontairement pas été balayé : la grande majorité ne mute rien (navigation, filtres, ouverture de modale) et n'a pas besoin de cette garde ; un balayage exhaustif serait disproportionné par rapport au risque réel restant.
+
+**Toujours ouvert, délibérément non traité :**
+- **Incohérence `status`/`statut`** — confirmée réelle mais non corrigée : renommer une colonne activement lue/écrite dans 3 codebases différentes (OS, Connect app-next, Connect mobile) sans visibilité complète sur chacune est le genre d'action qui peut casser silencieusement quelque chose d'invisible depuis un seul point d'observation. Une vraie correction mérite une revue dédiée, table par table, avec test de chaque codebase concernée — pas un renommage en masse en une passe.
 - Aucune validation email/téléphone réelle au-delà du typage cosmétique `input type="email"/"tel"` (comportement uniforme sur tout le fichier, pas une régression locale).
-- 9 tables mortes en base, non supprimées par prudence (`DROP TABLE` hors périmètre autonome).
-- Incohérence `status`/`statut` documentée, non corrigée (impact multi-codebase).
 - 200 colonnes FK restantes sans index couvrant (fréquence de filtrage non objectivée aujourd'hui, base trop petite pour que ce soit mesurable).
-- `formation_validations_terrain` : table complète (RLS, trigger) jamais branchée à aucun écran.
 - `en_attente_signature`/`en_attente_acompte`/`documents_complets` : statuts orphelins dans le workflow Prestation Connect, sans événement métier qui les fait progresser automatiquement.
 - Pas de MFA, sessions en `localStorage` sans cookie `httpOnly` — chantier d'architecture, pas un correctif ponctuel.
 
