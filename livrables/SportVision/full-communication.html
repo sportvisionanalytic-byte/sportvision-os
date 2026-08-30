@@ -411,6 +411,7 @@ section{position:relative}
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Qui produit réellement les contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Une équipe SportVision, coordonnée par votre Community Manager référent, qui connaît vos équipes ou groupes et vos partenaires sur la durée."}}, {"@type": "Question", "name": "Est-ce que je perds la main sur ce qui est publié ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. Votre Community Manager SportVision publie en autonomie, selon le calendrier éditorial défini avec vous à l'onboarding. Vous gardez une visibilité complète sur ce qui est publié et à venir depuis votre espace Club+, et vous pouvez demander un ajustement à tout moment."}}, {"@type": "Question", "name": "Les présences photo et vidéo sont-elles incluses ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, des présences photo et vidéo régulières font partie de l'accompagnement, selon la fréquence et le périmètre définis dans votre formule."}}, {"@type": "Question", "name": "Full Communication remplace-t-il Club+ ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, ce sont deux offres différentes, mais votre espace Club+ de suivi est inclus dans votre accompagnement Full Communication, sans coût supplémentaire. Avec Club+ seul, votre structure organise et pilote elle-même sa communication, avec les outils et services SportVision. Avec Full Communication, une équipe SportVision prend en charge votre communication au quotidien, en s'appuyant sur ce même espace Club+ pour centraliser vos contenus, validations, calendrier et échanges. Voir Club+."}}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://sportvision-an.fr/"}, {"@type": "ListItem", "position": 2, "name": "Full Communication"}]}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -1084,6 +1085,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
   }catch(err){
@@ -1153,6 +1155,7 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('rdv-form-wrap').style.display = 'none';
+    window.svTrackConversion('rdv_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('rdv-ok-wrap').style.display = '';
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";

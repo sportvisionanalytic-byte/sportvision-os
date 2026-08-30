@@ -391,6 +391,7 @@ section{position:relative}
 
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Je suis coach indépendant, est-ce adapté ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. L'accompagnement s'adapte aussi bien aux coachs indépendants qu'aux préparateurs affiliés à un club ou une structure."}}, {"@type": "Question", "name": "Quelle est la durée d'engagement ?", "acceptedAnswer": {"@type": "Answer", "text": "La durée et le rythme sont définis selon l'accompagnement choisi. Contactez-nous pour connaître les modalités adaptées à votre activité."}}, {"@type": "Question", "name": "Dois-je fournir les idées de contenu ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, SportVision propose un calendrier éditorial adapté à votre discipline et publie en autonomie. Vous suivez tout depuis votre espace Club+ et pouvez demander un ajustement à tout moment."}}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://sportvision-an.fr/"}, {"@type": "ListItem", "position": 2, "name": "Full Communication", "item": "https://sportvision-an.fr/full-communication"}, {"@type": "ListItem", "position": 3, "name": "Coachs"}]}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -933,6 +934,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
   }catch(err){

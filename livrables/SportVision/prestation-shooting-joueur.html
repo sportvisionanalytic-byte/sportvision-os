@@ -387,6 +387,7 @@ section{position:relative}
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Dois-je avoir un club pour réserver un shooting ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. Le shooting joueur est ouvert à tout joueur, licencié ou non, avec ou sans club."}}, {"@type": "Question", "name": "Où se déroule le shooting ?", "acceptedAnswer": {"@type": "Answer", "text": "En studio ou sur un terrain, selon la formule choisie et les disponibilités. Le lieu est convenu ensemble au moment du devis."}}, {"@type": "Question", "name": "Puis-je demander un style particulier ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. Décrivez le style souhaité (portrait sobre, dynamique, mise en situation sportive...) dans le formulaire de devis, nous l'adaptons à votre séance."}}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://sportvision-an.fr/"}, {"@type": "ListItem", "position": 2, "name": "Prestations", "item": "https://sportvision-an.fr/prestations"}, {"@type": "ListItem", "position": 3, "name": "Shooting Joueur"}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Service", "serviceType": "Shooting Joueur", "name": "Shooting Joueur", "description": "Portraits professionnels et contenus pour les réseaux sociaux d'un joueur.", "url": "https://sportvision-an.fr/prestations/shooting-joueur", "provider": {"@type": "ProfessionalService", "@id": "https://sportvision-an.fr/#organization", "name": "SportVision", "legalName": "ELKANA GROUP", "url": "https://sportvision-an.fr/", "telephone": "+33768842450", "email": "contact@sportvision-an.fr", "address": {"@type": "PostalAddress", "streetAddress": "4 Place Pierre Semard", "postalCode": "77130", "addressLocality": "Montereau-Fault-Yonne", "addressCountry": "FR"}}, "areaServed": ["Yonne", "Île-de-France"]}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -983,6 +984,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
   }catch(err){
@@ -1094,6 +1096,7 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('rdv-form-wrap').style.display = 'none';
+    window.svTrackConversion('rdv_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('rdv-ok-wrap').style.display = '';
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";

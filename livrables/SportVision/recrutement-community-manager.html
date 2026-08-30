@@ -225,6 +225,7 @@ section{position:relative}
 .mobile-nav-group .sub-links{display:flex;flex-direction:column;padding:0 4px 14px 12px}
 .mobile-nav-group .sub-links a{font-size:15px;font-weight:600;padding:9px 0;color:rgba(255,255,255,.68)}
 </style>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -692,6 +693,7 @@ document.getElementById('candidature-form').addEventListener('submit', async (e)
       return;
     }
     showCandidatureSuccess();
+    window.svTrackConversion('candidature_envoyee', { page: location.pathname.split('/').pop() || 'index.html' });
   }catch(err){
     errEl.textContent = "Impossible d'envoyer votre candidature pour le moment. Réessayez dans un instant, ou écrivez-nous directement à contact@sportvision-an.fr.";
   }finally{

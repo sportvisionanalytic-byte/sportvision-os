@@ -315,6 +315,7 @@ section{position:relative}
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Dois-je avoir été filmé par SportVision ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. Nous pouvons monter votre compilation à partir de vos propres rushs (caméra Veo, GoPro, téléphone) comme à partir de captations réalisées par SportVision."}}, {"@type": "Question", "name": "Combien ça coûte exactement ?", "acceptedAnswer": {"@type": "Answer", "text": "39,90 € HT si vous envoyez vos rushs déjà découpés (jusqu'à 6 min — plusieurs matchs déjà sélectionnés possibles), ou 40/55/70/80 € HT selon le nombre de matchs (1 à 4) si vous nous donnez le lien du/des match(s) complet(s). Au-delà de ces seuils, sur devis."}}, {"@type": "Question", "name": "Combien de temps pour recevoir ma compilation ?", "acceptedAnswer": {"@type": "Answer", "text": "24h maximum pour un montage standard (jusqu'à 4 matchs). Au-delà, sur devis, le délai est communiqué avec celui-ci."}}, {"@type": "Question", "name": "Quel format de livraison ?", "acceptedAnswer": {"@type": "Answer", "text": "Un format est inclus dans le tarif de base, au choix : vertical (réseaux sociaux) ou horizontal, à préciser dans votre demande. L'autre format peut être ajouté en option."}}, {"@type": "Question", "name": "Puis-je demander des ajustements sur le montage livré ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, une série de retouches est incluse dans le tarif de base. Au-delà, des ajustements supplémentaires peuvent être proposés sur devis."}}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://sportvision-an.fr/"}, {"@type": "ListItem", "position": 2, "name": "Prestations", "item": "https://sportvision-an.fr/prestations"}, {"@type": "ListItem", "position": 3, "name": "Montage & Compilation Vidéo"}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Service", "serviceType": "Montage & Compilation Vidéo", "name": "Montage & Compilation Vidéo", "description": "Montage des meilleures actions (Veo, caméra isolée, plusieurs matchs) réunies dans une vidéo prête à partager.", "url": "https://sportvision-an.fr/prestations/montage-compilation", "provider": {"@type": "ProfessionalService", "@id": "https://sportvision-an.fr/#organization", "name": "SportVision", "legalName": "ELKANA GROUP", "url": "https://sportvision-an.fr/", "telephone": "+33768842450", "email": "contact@sportvision-an.fr", "address": {"@type": "PostalAddress", "streetAddress": "4 Place Pierre Semard", "postalCode": "77130", "addressLocality": "Montereau-Fault-Yonne", "addressCountry": "FR"}}, "areaServed": ["Yonne", "Île-de-France"], "offers": {"@type": "Offer", "priceCurrency": "EUR", "price": "39.90", "priceValidUntil": "2026-12-31", "availability": "https://schema.org/InStock", "url": "https://sportvision-an.fr/prestations/montage-compilation", "valueAddedTaxIncluded": false, "description": "Tarif de base, à partir de ce prix selon durée et nombre de matchs."}}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -977,6 +978,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
   }catch(err){
@@ -1088,6 +1090,7 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('rdv-form-wrap').style.display = 'none';
+    window.svTrackConversion('rdv_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('rdv-ok-wrap').style.display = '';
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";

@@ -421,6 +421,7 @@ section{position:relative}
 }
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Connect est-il payant ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, votre espace Connect personnel est gratuit dès la création de votre compte. Pour la gestion professionnelle d'une structure (club, académie, coach, organisateur), y compris le suivi Full Communication (calendrier éditorial, visibilité complète sur les publications, reporting), direction Club+, un espace séparé."}}, {"@type": "Question", "name": "Comment j'accède à mon espace Connect ?", "acceptedAnswer": {"@type": "Answer", "text": "Vous créez votre compte directement depuis la page d'inscription, en quelques secondes, avec votre adresse e-mail et le mot de passe de votre choix — aucune commande préalable n'est nécessaire. Si vous avez déjà une demande ou une commande en cours, elle apparaît automatiquement dans votre espace."}}, {"@type": "Question", "name": "Puis-je utiliser Connect depuis mon téléphone ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, Connect fonctionne directement depuis un navigateur, sans application à installer, sur ordinateur comme sur mobile."}}, {"@type": "Question", "name": "Mes contenus restent-ils accessibles dans le temps ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, vos contenus sont centralisés dans votre espace pour les retrouver facilement, pendant la durée de conservation indiquée dans nos CGV. Nous vous recommandons aussi de conserver vos propres copies après livraison."}}]}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -1108,6 +1109,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
   }catch(err){
@@ -1177,6 +1179,7 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('rdv-form-wrap').style.display = 'none';
+    window.svTrackConversion('rdv_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('rdv-ok-wrap').style.display = '';
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";

@@ -380,6 +380,7 @@ section{position:relative}
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Est-ce adapté à une académie avec plusieurs groupes ou plusieurs sites ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. L'accompagnement s'adapte au nombre de groupes et de sites de votre académie, avec un planning de communication construit avec vous."}}, {"@type": "Question", "name": "Comment se passe le suivi au quotidien ?", "acceptedAnswer": {"@type": "Answer", "text": "Vos demandes et vos contenus sont centralisés dans Club+, l'espace professionnel accessible à votre académie."}}, {"@type": "Question", "name": "Est-ce que cela remplace notre communication interne ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. SportVision vient en appui de votre communication existante : nous produisons les contenus, vous gardez la main sur votre message et votre méthode."}}, {"@type": "Question", "name": "Peut-on aussi déléguer la publication et la gestion de nos réseaux ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. Full Communication peut compléter votre accompagnement : une équipe SportVision prend alors en charge la publication et vos réseaux, selon le périmètre défini avec votre académie."}}, {"@type": "Question", "name": "Comment démarrer l'accompagnement ?", "acceptedAnswer": {"@type": "Answer", "text": "Utilisez le bouton « Parler à SportVision » en haut de cette page pour nous décrire votre académie, vos groupes et vos objectifs de développement. Nous revenons vers vous rapidement."}}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://sportvision-an.fr/"}, {"@type": "ListItem", "position": 2, "name": "Accompagnements", "item": "https://sportvision-an.fr/accompagnements"}, {"@type": "ListItem", "position": 3, "name": "Académies"}]}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -929,6 +930,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
   }catch(err){
@@ -1040,6 +1042,7 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('rdv-form-wrap').style.display = 'none';
+    window.svTrackConversion('rdv_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('rdv-ok-wrap').style.display = '';
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";

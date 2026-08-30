@@ -390,6 +390,7 @@ section{position:relative}
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "L'opérateur vidéo se déplace-t-il partout ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, sur l'ensemble de nos zones d'intervention. Le déplacement est calculé selon la distance depuis notre siège (Montereau-Fault-Yonne) et peut s'ajouter au prix affiché selon votre localisation."}}, {"@type": "Question", "name": "Puis-je choisir l'heure du match ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, indiquez la date et l'heure de votre match dans le formulaire de demande. Nous confirmons la disponibilité de notre opérateur avant validation."}}, {"@type": "Question", "name": "Comment je reçois ma vidéo ?", "acceptedAnswer": {"@type": "Answer", "text": "Votre highlight est livré en numérique haute définition, accessible depuis votre espace SportVision Connect, sous 24h maximum après le match."}}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://sportvision-an.fr/"}, {"@type": "ListItem", "position": 2, "name": "Prestations", "item": "https://sportvision-an.fr/prestations"}, {"@type": "ListItem", "position": 3, "name": "Match Vidéo"}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Service", "serviceType": "Match Vidéo", "name": "Match Vidéo", "description": "Captation vidéo intégrale du match, montage et livraison sous 24h maximum.", "url": "https://sportvision-an.fr/prestations/match-video", "provider": {"@type": "ProfessionalService", "@id": "https://sportvision-an.fr/#organization", "name": "SportVision", "legalName": "ELKANA GROUP", "url": "https://sportvision-an.fr/", "telephone": "+33768842450", "email": "contact@sportvision-an.fr", "address": {"@type": "PostalAddress", "streetAddress": "4 Place Pierre Semard", "postalCode": "77130", "addressLocality": "Montereau-Fault-Yonne", "addressCountry": "FR"}}, "areaServed": ["Yonne", "Île-de-France"], "offers": {"@type": "Offer", "priceCurrency": "EUR", "price": "120", "priceValidUntil": "2026-12-31", "availability": "https://schema.org/InStock", "url": "https://sportvision-an.fr/prestations/match-video", "valueAddedTaxIncluded": true}}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -1027,6 +1028,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
     document.getElementById('devis-connect-link').href = 'https://connect.sportvision-an.fr/?signup=1&email=' + encodeURIComponent(body.email);
@@ -1139,6 +1141,7 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('rdv-form-wrap').style.display = 'none';
+    window.svTrackConversion('rdv_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('rdv-ok-wrap').style.display = '';
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";

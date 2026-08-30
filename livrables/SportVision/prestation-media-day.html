@@ -387,6 +387,7 @@ section{position:relative}
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Qu'est-ce qu'un Media Day exactement ?", "acceptedAnswer": {"@type": "Answer", "text": "Une journée dédiée entièrement à la production de contenus pour votre club : portraits, visuels partenaires et banque d'images conçue pour alimenter vos supports au fil de la saison, organisée en une seule session."}}, {"@type": "Question", "name": "Nos sponsors peuvent-ils être mis en avant ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, c'est l'un des objectifs du Media Day : des contenus mettant en scène vos partenaires (logos, mise en situation) sont intégrés à la banque média livrée."}}, {"@type": "Question", "name": "Combien de temps faut-il prévoir ?", "acceptedAnswer": {"@type": "Answer", "text": "Cela dépend du nombre de joueurs, du staff et des contenus souhaités. Une durée précise vous est proposée avec le devis, selon votre effectif."}}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://sportvision-an.fr/"}, {"@type": "ListItem", "position": 2, "name": "Prestations", "item": "https://sportvision-an.fr/prestations"}, {"@type": "ListItem", "position": 3, "name": "Media Day"}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Service", "serviceType": "Media Day", "name": "Media Day", "description": "Portraits et contenus partenaires produits lors d'une journée organisée pour toute une structure.", "url": "https://sportvision-an.fr/prestations/media-day", "provider": {"@type": "ProfessionalService", "@id": "https://sportvision-an.fr/#organization", "name": "SportVision", "legalName": "ELKANA GROUP", "url": "https://sportvision-an.fr/", "telephone": "+33768842450", "email": "contact@sportvision-an.fr", "address": {"@type": "PostalAddress", "streetAddress": "4 Place Pierre Semard", "postalCode": "77130", "addressLocality": "Montereau-Fault-Yonne", "addressCountry": "FR"}}, "areaServed": ["Yonne", "Île-de-France"]}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -982,6 +983,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
   }catch(err){
@@ -1093,6 +1095,7 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('rdv-form-wrap').style.display = 'none';
+    window.svTrackConversion('rdv_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('rdv-ok-wrap').style.display = '';
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";

@@ -390,6 +390,7 @@ section{position:relative}
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Le pack inclut-il un seul intervenant ou deux ?", "acceptedAnswer": {"@type": "Answer", "text": "Selon les matchs, un ou deux opérateurs SportVision assurent la couverture — l'essentiel est que les deux formats, photo et vidéo, vous soient livrés."}}, {"@type": "Question", "name": "Puis-je choisir l'heure du match ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, indiquez la date et l'heure de votre match dans le formulaire de demande. Nous confirmons la disponibilité de notre équipe avant validation."}}, {"@type": "Question", "name": "Comment je reçois mes photos et ma vidéo ?", "acceptedAnswer": {"@type": "Answer", "text": "Vos photos et votre highlight sont livrés en numérique haute définition, de façon groupée, accessibles depuis votre espace SportVision Connect, sous 24h maximum après le match."}}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://sportvision-an.fr/"}, {"@type": "ListItem", "position": 2, "name": "Prestations", "item": "https://sportvision-an.fr/prestations"}, {"@type": "ListItem", "position": 3, "name": "Pack Match Complet"}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Service", "serviceType": "Pack Match Complet", "name": "Pack Match Complet", "description": "Photo et vidéo du match combinées en une seule prestation, livraison sous 24h maximum.", "url": "https://sportvision-an.fr/prestations/pack-match", "provider": {"@type": "ProfessionalService", "@id": "https://sportvision-an.fr/#organization", "name": "SportVision", "legalName": "ELKANA GROUP", "url": "https://sportvision-an.fr/", "telephone": "+33768842450", "email": "contact@sportvision-an.fr", "address": {"@type": "PostalAddress", "streetAddress": "4 Place Pierre Semard", "postalCode": "77130", "addressLocality": "Montereau-Fault-Yonne", "addressCountry": "FR"}}, "areaServed": ["Yonne", "Île-de-France"], "offers": {"@type": "Offer", "priceCurrency": "EUR", "price": "160", "priceValidUntil": "2026-12-31", "availability": "https://schema.org/InStock", "url": "https://sportvision-an.fr/prestations/pack-match", "valueAddedTaxIncluded": true}}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -1016,6 +1017,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
     document.getElementById('devis-connect-link').href = 'https://connect.sportvision-an.fr/?signup=1&email=' + encodeURIComponent(body.email);
@@ -1128,6 +1130,7 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('rdv-form-wrap').style.display = 'none';
+    window.svTrackConversion('rdv_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('rdv-ok-wrap').style.display = '';
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";

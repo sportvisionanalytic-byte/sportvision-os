@@ -387,6 +387,7 @@ section{position:relative}
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Combien de temps dure la séance pour une équipe complète ?", "acceptedAnswer": {"@type": "Answer", "text": "Cela dépend de votre effectif : comptez quelques minutes par joueur pour les portraits individuels, en plus de la photo de groupe. Une durée précise vous est communiquée avec le devis."}}, {"@type": "Question", "name": "Peut-on inclure le staff ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, en option. Précisez-le dans votre demande de devis pour intégrer les éducateurs et le staff à la séance."}}, {"@type": "Question", "name": "Recevons-nous les photos individuelles ET la photo de groupe ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. La livraison inclut la photo d'équipe officielle ainsi que les portraits individuels de chaque sportif."}}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://sportvision-an.fr/"}, {"@type": "ListItem", "position": 2, "name": "Prestations", "item": "https://sportvision-an.fr/prestations"}, {"@type": "ListItem", "position": 3, "name": "Shooting d'Équipe"}]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Service", "serviceType": "Shooting d'Équipe", "name": "Shooting d'Équipe", "description": "Photos officielles d'équipe et portraits individuels de chaque sportif, en une seule session organisée.", "url": "https://sportvision-an.fr/prestations/shooting-equipe", "provider": {"@type": "ProfessionalService", "@id": "https://sportvision-an.fr/#organization", "name": "SportVision", "legalName": "ELKANA GROUP", "url": "https://sportvision-an.fr/", "telephone": "+33768842450", "email": "contact@sportvision-an.fr", "address": {"@type": "PostalAddress", "streetAddress": "4 Place Pierre Semard", "postalCode": "77130", "addressLocality": "Montereau-Fault-Yonne", "addressCountry": "FR"}}, "areaServed": ["Yonne", "Île-de-France"]}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -983,6 +984,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
   }catch(err){
@@ -1094,6 +1096,7 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('rdv-form-wrap').style.display = 'none';
+    window.svTrackConversion('rdv_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('rdv-ok-wrap').style.display = '';
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";

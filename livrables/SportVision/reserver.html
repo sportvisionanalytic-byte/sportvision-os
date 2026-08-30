@@ -245,6 +245,7 @@ section{position:relative}
   .booking-nav .btn{width:100%}
 }
 </style>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -1424,6 +1425,7 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     // règlement se fait désormais uniquement depuis SportVision Connect, une fois la
     // disponibilité confirmée par l'équipe.
     showConfirmation(data, email);
+    window.svTrackConversion('reservation_envoyee', { besoin: (typeof state !== 'undefined' && state && state.slug) ? state.slug : undefined });
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";
   }finally{

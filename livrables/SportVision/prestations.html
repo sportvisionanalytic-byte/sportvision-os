@@ -385,6 +385,7 @@ section{position:relative}
 }
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Dois-je créer un compte pour réserver ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. Vous pouvez demander une prestation directement via le formulaire, sans créer de compte. Vous pouvez ensuite créer gratuitement votre espace SportVision Connect pour suivre votre commande. Si une demande existe déjà, elle apparaît automatiquement dans votre espace."}}, {"@type": "Question", "name": "Comment se passe le paiement ?", "acceptedAnswer": {"@type": "Answer", "text": "Après confirmation de la disponibilité, le règlement s'effectue en ligne depuis votre espace SportVision Connect. Sauf accord particulier, le montant total est à régler au plus tard avant le début de la prestation le jour J."}}, {"@type": "Question", "name": "Puis-je annuler une réservation ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, contactez-nous dès que possible via votre espace Connect ou notre formulaire de contact. Les conditions d'annulation sont précisées dans nos CGV."}}, {"@type": "Question", "name": "Les prix affichés incluent-ils le déplacement ?", "acceptedAnswer": {"@type": "Answer", "text": "Les prix affichés sont une base. Le déplacement est calculé selon la distance depuis notre siège (Montereau-Fault-Yonne) et peut s'ajouter selon votre localisation."}}]}</script>
+<script src="analytics.js"></script>
 </head>
 <body>
 
@@ -1079,6 +1080,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('devis-form-wrap').style.display = 'none';
+    window.svTrackConversion('devis_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
   }catch(err){
@@ -1190,6 +1192,7 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
       return;
     }
     document.getElementById('rdv-form-wrap').style.display = 'none';
+    window.svTrackConversion('rdv_envoye', { page: location.pathname.split('/').pop() || 'index.html' });
     document.getElementById('rdv-ok-wrap').style.display = '';
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";
