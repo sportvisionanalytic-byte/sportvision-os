@@ -229,10 +229,18 @@ serve(async (req) => {
       return json({ error: "Trop de candidatures envoyées récemment. Merci de réessayer plus tard." }, 429);
     }
 
+    // "source" reflète la page d'origine, déduite du poste visé — corrigé lors de la
+    // campagne QA recrutement/rétractation/cookies/légal du 30/08 : la valeur était
+    // codée en dur sur "photographe_videaste" pour TOUTE candidature (y compris celles
+    // envoyées depuis recrutement-community-manager.html), rendant la colonne trompeuse
+    // pour le staff. `poste` restait correct (donc les candidatures étaient toujours
+    // identifiables), mais `source` ne l'était pas.
+    const source = poste === "community_manager" ? "community_manager" : "photographe_videaste";
+
     const { data: created, error: createErr } = await admin
       .from("recruitment_applications")
       .insert({
-        source: "photographe_videaste",
+        source,
         poste,
         prenom,
         nom,

@@ -711,6 +711,13 @@ document.getElementById('candidature-form').addEventListener('submit', async (e)
     errEl.textContent = 'Merci de remplir les champs obligatoires (poste, prénom, nom, e-mail, zone, expérience).';
     return;
   }
+  // #candidature-form est en novalidate : ce contrôle de format prend le relais du type="email"
+  // natif désactivé (même correctif que sur retractation.html/reserver.html/demande-de-devis.html,
+  // audit du 30/08 — trouvé manquant ici lors de la campagne QA recrutement/rétractation/cookies/légal).
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)){
+    errEl.textContent = "Merci de renseigner une adresse e-mail valide.";
+    return;
+  }
 
   const cvFile = cvInput.files && cvInput.files[0];
   if (cvFile && cvFile.size > 8 * 1024 * 1024){
