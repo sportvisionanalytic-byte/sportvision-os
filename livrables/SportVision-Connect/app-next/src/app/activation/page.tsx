@@ -81,7 +81,16 @@ function ActivationContent() {
     setSubmitting(true);
     const supabase = createClient();
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        // Même correctif que signup-free/page.tsx (audit du 30/08/2026) : sans emailRedirectTo,
+        // le lien de confirmation atterrit sur l'origine nue au lieu de /auth/callback, le code
+        // PKCE n'est jamais échangé et le lien finit en "otp_expired" au second clic.
+        emailRedirectTo: `${window.location.origin}/clubplus/auth/callback`,
+      },
+    });
     if (signUpError) {
       setSubmitting(false);
       setSubmitError(

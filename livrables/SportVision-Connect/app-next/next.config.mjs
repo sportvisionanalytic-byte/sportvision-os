@@ -13,7 +13,13 @@ const SECURITY_HEADERS = [
   {
     key: "Content-Security-Policy",
     value:
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'",
+      // connect-src doit inclure wss:// en plus de https:// pour le même host : le SDK Supabase
+      // Realtime (postgres_changes, voir lib/supabase/realtime.ts) ouvre un WebSocket vers
+      // /realtime/v1/websocket, bloqué silencieusement par la CSP sans cette entrée séparée (une
+      // URL https:// n'autorise pas automatiquement son équivalent wss://). Même bug reproduit et
+      // corrigé côté app-connect (audit du 30/08/2026, compte Connect tout neuf) — jamais vérifié
+      // ici jusqu'à cet audit, mais la CSP est strictement identique.
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'",
   },
 ];
 

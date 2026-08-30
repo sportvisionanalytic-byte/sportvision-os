@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   CATEGORY_META,
   fetchNotifications,
@@ -12,6 +13,49 @@ import {
   markNotificationRead,
   type MemberNotification,
 } from "@/lib/notifications";
+
+// Singleton de canal Realtime partagé par user_id, module-level (donc unique par onglet, pas par
+// instance de composant). Nécessaire car <NotificationBell/> est monté DEUX FOIS en même temps sur
+// toute page (Topbar.tsx desktop, masqué en CSS sous 1024px avec `hidden lg:flex`, + le header
+// mobile de AppShell.tsx/ParticularShell.tsx, masqué en CSS avec `lg:hidden`) : `hidden`/`lg:hidden`
+// ne démonte rien, les deux instances exécutent donc systématiquement cet effet. Sans ce partage,
+// la 2ᵉ instance appelait `.on("postgres_changes", ...)` sur un canal déjà `.subscribe()` par la
+// 1ʳᵉ (même topic `member-notifications-${userId}`) — realtime-js refuse ça et jette "cannot add
+// postgres_changes callbacks ... after subscribe()" (reproduit en réel le 30/08/2026 sur un compte
+// Connect tout neuf, CSP corrigée juste avant qui démasquait cette erreur jusque-là étouffée).
+// Chaque abonné reçoit l'événement une seule fois quel que soit le nombre d'instances montées.
+type SharedChannelEntry = {
+  channel: ReturnType<SupabaseClient["channel"]>;
+  listeners: Set<() => void>;
+};
+const sharedNotificationChannels = new Map<string, SharedChannelEntry>();
+
+function subscribeToMemberNotifications(supabase: SupabaseClient, userId: string, onInsert: () => void): () => void {
+  let entry = sharedNotificationChannels.get(userId);
+  if (!entry) {
+    const listeners = new Set<() => void>();
+    const channel = supabase
+      .channel(`member-notifications-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "member_notifications", filter: `user_id=eq.${userId}` },
+        () => listeners.forEach((fn) => fn()),
+      )
+      .subscribe();
+    entry = { channel, listeners };
+    sharedNotificationChannels.set(userId, entry);
+  }
+  entry.listeners.add(onInsert);
+  return () => {
+    const current = sharedNotificationChannels.get(userId);
+    if (!current) return;
+    current.listeners.delete(onInsert);
+    if (current.listeners.size === 0) {
+      supabase.removeChannel(current.channel);
+      sharedNotificationChannels.delete(userId);
+    }
+  };
+}
 
 // Cloche de notifications — voir design-connect-personnel-12-08/README.md § Shell et navigation
 // ("notifications avec pastille") + § Notifications ("Compteur non lu, tout marquer comme lu,
@@ -41,7 +85,7 @@ export function NotificationBell() {
   useEffect(() => {
     const supabase = createClient();
     let cancelled = false;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let unsubscribe: (() => void) | null = null;
 
     (async () => {
       const {
@@ -53,31 +97,23 @@ export function NotificationBell() {
         .then((c) => !cancelled && setUnreadCount(c))
         .catch(() => {});
 
-      const ch = supabase
-        .channel(`member-notifications-${user.id}`)
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "member_notifications", filter: `user_id=eq.${user.id}` },
-          () => {
-            if (cancelled) return;
-            setUnreadCount((c) => c + 1);
-          },
-        )
-        .subscribe();
+      const unsub = subscribeToMemberNotifications(supabase, user.id, () => {
+        if (!cancelled) setUnreadCount((c) => c + 1);
+      });
 
       // Le composant a pu démonter pendant l'attente de getUser() ci-dessus (montage/démontage
-      // très rapide) — évite une fuite de canal jamais nettoyé par le cleanup ci-dessous, déjà
+      // très rapide) — évite une fuite d'abonnement jamais nettoyé par le cleanup ci-dessous, déjà
       // passé au moment où ce code s'exécute.
       if (cancelled) {
-        supabase.removeChannel(ch);
+        unsub();
         return;
       }
-      channel = ch;
+      unsubscribe = unsub;
     })();
 
     return () => {
       cancelled = true;
-      if (channel) supabase.removeChannel(channel);
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
