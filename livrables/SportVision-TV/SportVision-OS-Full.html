@@ -6922,9 +6922,9 @@ function recrutCard(c,stage){
     c.vehicule==='oui'?'Véhiculé':null,
   ].filter(Boolean).map(t=>`<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--s1);border:1px solid var(--b1);color:var(--t2)">${t}</span>`).join(' ');
   let actions='';
-  if(stage==='nouveau')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','a_appeler')">À appeler</button><button class="btn bg2 bs" style="color:var(--er)" onclick="recrutMove('${c.id}','refuse')">Refuser</button>`;
-  else if(stage==='a_appeler')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','entretien')">Entretien</button><button class="btn bg2 bs" style="color:var(--er)" onclick="recrutMove('${c.id}','refuse')">Refuser</button>`;
-  else if(stage==='entretien')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','retenu')">Retenir</button><button class="btn bg2 bs" style="color:var(--er)" onclick="recrutMove('${c.id}','refuse')">Refuser</button>`;
+  if(stage==='nouveau')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','a_appeler')">À appeler</button><button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerAction('Refuser cette candidature ? Un e-mail cordial sera envoyé au candidat.',()=>recrutMove('${c.id}','refuse'))">Refuser</button>`;
+  else if(stage==='a_appeler')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','entretien')">Entretien</button><button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerAction('Refuser cette candidature ? Un e-mail cordial sera envoyé au candidat.',()=>recrutMove('${c.id}','refuse'))">Refuser</button>`;
+  else if(stage==='entretien')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','retenu')">Retenir</button><button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerAction('Refuser cette candidature ? Un e-mail cordial sera envoyé au candidat.',()=>recrutMove('${c.id}','refuse'))">Refuser</button>`;
   else if(stage==='retenu')actions=c.collaborateur_id?`<button class="btn bg2 bs" onclick="switchView('equipehub');setTimeout(()=>modalFicheCollaborateur('${c.collaborateur_id}'),300)">Voir la fiche</button>`:`<button class="btn bp bs" onclick="modalRecrutCreerCollaborateur('${c.id}')">+ Créer le collaborateur</button>`;
   else if(stage==='refuse')actions=`<button class="btn bg2 bs" onclick="recrutMove('${c.id}','vivier')">→ Vivier</button>`;
   else if(stage==='vivier')actions=`<button class="btn bg2 bs" onclick="recrutMove('${c.id}','nouveau')">Réexaminer</button>`;
@@ -6951,8 +6951,31 @@ async function recrutMove(id,statut){
   if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
   const c=_recrutCache.find(x=>x.id===id);if(c)c.statut=statut;
   renderRecrutement();
-  toast('Candidature mise à jour.','ok');
+  if(statut==='refuse'){
+    toast('Candidature refusée — envoi de l\'e-mail au candidat…','ok');
+    envoyerEmailRefusCandidature(id);
+  }else{
+    toast('Candidature mise à jour.','ok');
+  }
   if(typeof updateNavBadges==='function')updateNavBadges(S.role);
+}
+// Envoie un e-mail cordial de refus au candidat (Edge Function send-candidature-refus-email,
+// même patron que send-devis-email/send-contrat-email : Resend + secrets RESEND_API_KEY/
+// FROM_EMAIL). Fire-and-forget : la candidature est déjà marquée "refuse" en base quoi qu'il
+// arrive, l'e-mail est une notification secondaire — un échec réseau ne doit pas bloquer l'UI.
+async function envoyerEmailRefusCandidature(applicationId){
+  try{
+    const res=await fetch(SB_URL+'/functions/v1/send-candidature-refus-email',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')},
+      body:JSON.stringify({application_id:applicationId})
+    });
+    let j={};try{j=await res.json();}catch(e2){}
+    if(!res.ok)throw new Error(j.error||('Erreur serveur ('+res.status+')'));
+    toast('E-mail de refus envoyé au candidat.','ok');
+  }catch(e){
+    toast('Candidature refusée, mais l\'e-mail n\'a pas pu être envoyé : '+(e.message||'erreur réseau.'),'wa');
+  }
 }
 function modalRecrutCreerCollaborateur(id){
   const c=_recrutCache.find(x=>x.id===id);
