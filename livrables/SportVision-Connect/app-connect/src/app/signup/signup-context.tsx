@@ -85,7 +85,26 @@ export function SignupProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setState((prev) => ({ ...prev, ...loadStored() }));
+    const stored = loadStored();
+    // BUGFIX (audit QA du 30/08/2026) : pré-remplissage de l'e-mail depuis ?email=... (posé par
+    // la page racine "/", elle-même appelée depuis le CTA "Créer mon espace Connect" affiché
+    // après une demande de réservation/devis sur le site vitrine — voir page.tsx). Ne l'applique
+    // QUE si aucun e-mail n'est déjà en cours de saisie dans un tunnel repris depuis le
+    // localStorage (stored.email), pour ne jamais écraser une inscription déjà commencée.
+    let emailFromUrl: string | undefined;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = params.get("email");
+      if (fromQuery) emailFromUrl = fromQuery;
+    } catch {
+      // URL/localStorage indisponibles (rendu serveur, navigation privée stricte) : le tunnel
+      // fonctionne quand même, simplement sans pré-remplissage.
+    }
+    setState((prev) => ({
+      ...prev,
+      ...stored,
+      email: stored.email || emailFromUrl || prev.email,
+    }));
     setHydrated(true);
   }, []);
 
