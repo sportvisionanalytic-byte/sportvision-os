@@ -190,6 +190,17 @@ section{position:relative}
 .video-modal-overlay video{max-width:420px;width:100%;max-height:88vh;border-radius:16px}
 .video-modal-close{position:absolute;top:22px;right:22px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:18px}
 
+/* ── Pour qui (cartes d'orientation) ── */
+.accomp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:8px}
+.accomp-card{background:#fff;border:1px solid #e9ecf5;border-radius:var(--radius-lg);padding:26px 22px;display:flex;flex-direction:column;transition:border-color .18s, transform .18s}
+.accomp-card:hover{border-color:var(--blue);transform:translateY(-3px)}
+.accomp-card .icon{width:42px;height:42px;border-radius:12px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;margin-bottom:16px}
+.accomp-card h4{font-size:16.5px}
+.accomp-card p{font-size:13.5px;color:#5b6478;margin-top:8px;flex:1}
+.pourqui-grid{grid-template-columns:repeat(3,1fr)}
+@media (max-width:980px){.accomp-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.accomp-grid{grid-template-columns:1fr}}
+
 /* ── FAQ ── */
 .faq-list{max-width:760px;margin:0 auto}
 .faq-item{border-bottom:1px solid #e4e7ef}
@@ -479,6 +490,33 @@ section{position:relative}
       </div>
       <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/academie-petrus-leeds-01.jpg) center/cover no-repeat">
         <div class="gcard"><div class="k">Réservation</div><div class="v">Référence immédiate</div><div class="sub">Demande enregistrée · Devis personnalisé · Suivi dans Connect</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ POUR QUI ══════════════ -->
+<section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Pour qui</span>
+      <h2>Un suivi individuel pour trois profils.</h2>
+    </div>
+    <div class="accomp-grid pourqui-grid reveal">
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg></div>
+        <h4>Joueur en quête d'un dossier</h4>
+        <p>Un montage individuel exploitable pour un dossier de recrutement ou pour se présenter à un club, une académie ou un recruteur.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 12 4l7.5 8.5M6 10.5V20h12v-9.5"/></svg></div>
+        <h4>Famille</h4>
+        <p>Un suivi de la progression du joueur, match après match, sans dépendre d'un proche filmant depuis les gradins.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M4 20c0-3 2.5-5.5 5-5.5s5 2.5 5 5.5M14 8.5c1.5.3 2.5 1.6 2.5 3.2 0 1-.4 1.9-1 2.5M18 20c0-2-1-4-3-5"/></svg></div>
+        <h4>Agents &amp; recruteurs</h4>
+        <p>Plusieurs agences de représentation nous ont déjà contactés directement après avoir vu ce type de montage.</p>
       </div>
     </div>
   </div>
