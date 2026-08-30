@@ -397,7 +397,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
    les patterns mobiles déjà en place (#mob-filter-panel, #mob-action-sheet :
    cubic-bezier(.4,0,.2,1), ~250-280ms). */
 #sv-modal{opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-#sv-modal.on{opacity:1;visibility:visible;pointer-events:auto}
+#sv-modal.on{opacity:1;visibility:visible;pointer-events:auto!important}
 #sv-modal>div{transform:scale(.96) translateY(10px);transition:transform .22s cubic-bezier(.4,0,.2,1)}
 #sv-modal.on>div{transform:scale(1) translateY(0)}
 .kpi,.cd,.fs{transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}
@@ -3991,7 +3991,17 @@ async function creerNotifSiActive(destinataire_id,categorie,body){
   try{
     const map=await _fetchNotifPrefsMap([destinataire_id]);
     if(!_notifEnabled(map[destinataire_id],categorie))return null;
-    return await sbFetch('notifications',{method:'POST',body:{...body,destinataire_id}}).catch(()=>null);
+    // Bug trouvé QA nocturne 29-30/08 (audit pipeline commercial) : sbFetch ajoute par défaut
+    // Prefer:return=representation sur tout POST. Ici le destinataire_id n'est quasiment jamais
+    // l'auteur de l'appel (invitations, missions, matériel, corrections...) — or Postgres doit
+    // relire la ligne insérée pour construire la réponse RETURNING, relecture filtrée par la
+    // policy SELECT notifs_own_select (auth.uid()=destinataire_id) qui échoue puisque le
+    // destinataire n'est jamais l'auteur. Résultat : l'INSERT entier était rejeté en 403 ("new row
+    // violates row-level security policy"), avalé par le .catch(()=>null) ci-dessous — silencieux
+    // dans TOUTE la vingtaine d'appels à cette fonction (invitations mission, correction média,
+    // matériel, tâches déléguées...). Fix : return=minimal, dont on n'a de toute façon pas besoin
+    // ici (le résultat n'est jamais lu par les appelants au-delà d'un test truthy/erreur).
+    return await sbFetch('notifications',{method:'POST',body:{...body,destinataire_id},headers:{'Prefer':'return=minimal'}}).catch(()=>null);
   }catch(e){return null;}
 }
 // Filtre un tableau de notifications déjà construites (plusieurs destinataires)
@@ -31587,7 +31597,18 @@ async function dispatchSVEvent(type, data){
   const notifsFiltres=await filtrerNotifsParPrefs(notifs,'taches');
   if(notifsFiltres.length){
     try{
-      await sbFetch('notifications',{method:'POST',body:notifsFiltres});
+      // Bug trouvé QA nocturne 29-30/08 en testant réellement le pipeline commercial (client.won) :
+      // sbFetch ajoute par défaut Prefer:return=representation sur tout POST. Pour un insert dont le
+      // destinataire_id n'est PAS l'auteur (le cas normal ici : on notifie sec/admin, pas soi-même),
+      // Postgres doit relire la ligne insérée pour construire la réponse RETURNING, et cette relecture
+      // est filtrée par la policy SELECT notifs_own_select (auth.uid()=destinataire_id) — qui échoue
+      // puisque le destinataire n'est jamais l'auteur. Résultat : l'INSERT entier était rejeté en 403
+      // ("new row violates row-level security policy") alors que la policy INSERT (is_staff()) l'aurait
+      // très bien autorisé — capturé par le catch ci-dessous et donc invisible en usage normal. Ça
+      // cassait silencieusement TOUT SV_EVENT_WORKFLOWS (devis.accepted, prestation.confirmed,
+      // client.won, etc.), pas seulement client.won. Fix : return=minimal, dont on n'a de toute façon
+      // pas besoin ici (le résultat n'est jamais lu).
+      await sbFetch('notifications',{method:'POST',body:notifsFiltres,headers:{'Prefer':'return=minimal'}});
     }catch(e){console.warn('dispatchSVEvent error:',e);}
   }
 }
