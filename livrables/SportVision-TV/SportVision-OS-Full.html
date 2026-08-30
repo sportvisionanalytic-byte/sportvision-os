@@ -23452,7 +23452,12 @@ async function sauvegarderMappingPCG(){
 
 // ── Journal d'audit financier (financial_audit_log) ─────────────────────
 let _auditLogCache=[],_auditLogFilter='all';
-const AUDIT_ACTION_LABELS={creation:'Création',modification:'Modification',cloture:'Clôture',reouverture:'Réouverture',validation:'Validation',paiement:'Paiement',provisionnement:'Provisionnement',encaissement:'Encaissement',remboursement:'Remboursement'};
+// import_csv_bancaire/rapprochement_bancaire : actions écrites respectivement par
+// _finConfirmerImportCSV() (JS) et la RPC fin_rapprocher_transaction() (SQL,
+// migration-finance-refonte-28-08.sql) — absentes jusqu'ici de cette table de labels,
+// le journal d'audit affichait donc le nom technique brut au lieu d'un libellé lisible
+// pour toute ligne issue du rapprochement bancaire (repéré en testant l'import CSV).
+const AUDIT_ACTION_LABELS={creation:'Création',modification:'Modification',cloture:'Clôture',reouverture:'Réouverture',validation:'Validation',paiement:'Paiement',provisionnement:'Provisionnement',encaissement:'Encaissement',remboursement:'Remboursement',import_csv_bancaire:'Import CSV bancaire',rapprochement_bancaire:'Rapprochement bancaire'};
 async function loadComptaAuditLog(){
   const el=document.getElementById('audit-log-real');if(!el)return;
   try{
@@ -26525,10 +26530,23 @@ async function modalRapprocherTransaction(txId){
     </div>
   </div>`);
   try{
-    const r=await sbFetch('rpc/fin_suggerer_rapprochements',{method:'POST',body:{p_transaction_id:txId}});
+    const rRaw=await sbFetch('rpc/fin_suggerer_rapprochements',{method:'POST',body:{p_transaction_id:txId}});
     const box=document.getElementById('rapb-suggestions');
     if(!box)return;
-    if(sbErr(r)||!Array.isArray(r)||!r.length){
+    if(sbErr(rRaw)){
+      box.innerHTML='<div style="font-size:12px;color:var(--t3);padding:12px;text-align:center;background:var(--s2);border-radius:var(--rb)">Aucune correspondance nette trouvée — cette transaction reste "à traiter". Vous pouvez l\'ignorer si elle est hors périmètre (virement interne, etc.).</div>';
+      return;
+    }
+    // fin_suggerer_rapprochements() renvoie jusqu'à 5 factures/dépenses "les plus proches"
+    // dans les 90 jours SANS filtrer sur un score minimum côté SQL (elle trie juste par score
+    // desc) — pour une transaction qui ne correspond réellement à rien (montant, référence,
+    // client et date tous sans rapport), elle renvoyait quand même jusqu'à 5 factures/dépenses
+    // au hasard avec score 0, affichées ici comme des "suggestions" avec un bouton "Rapprocher"
+    // tout aussi cliquable que les vrais matchs — un risque concret de rapprocher (donc marquer
+    // payée) une facture totalement sans rapport avec la transaction bancaire. Score 0 = aucun
+    // signal (ni montant, ni référence, ni client, ni date proche) : on ne les affiche plus.
+    const r=Array.isArray(rRaw)?rRaw.filter(s=>(s.score||0)>0):[];
+    if(!r.length){
       box.innerHTML='<div style="font-size:12px;color:var(--t3);padding:12px;text-align:center;background:var(--s2);border-radius:var(--rb)">Aucune correspondance nette trouvée — cette transaction reste "à traiter". Vous pouvez l\'ignorer si elle est hors périmètre (virement interne, etc.).</div>';
       return;
     }
