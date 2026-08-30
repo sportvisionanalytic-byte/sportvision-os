@@ -58,6 +58,28 @@ export async function updateSession(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
+    // BUGFIX (audit QA fonctionnelle réservation/compte du 30/08/2026) : le CTA "Créer mon
+    // espace Connect" affiché après une demande de réservation/devis sur le site vitrine
+    // (reserver.html, demande-de-devis.html) pointe vers "/?signup=1&email=...", pour amener le
+    // visiteur directement sur le tunnel d'inscription avec son e-mail déjà pré-rempli — promesse
+    // de la FAQ vitrine (a-propos.html : "Un espace SportVision Connect vous est ensuite proposé
+    // pour créer votre accès"). Avant ce correctif, TOUTE requête non authentifiée vers "/"
+    // (page absente de PUBLIC_PATHS) était renvoyée vers "/auth/login" sans distinction — le lien
+    // existait, la cible en tenait compte (src/app/page.tsx), mais ce garde-fou, exécuté AVANT la
+    // page, redirigeait déjà ailleurs : le paramètre n'atteignait jamais le composant qui savait
+    // le lire. Trouvé par test réel (Playwright, navigation contrôlée) : l'URL finale observée
+    // était "/auth/login?signup=1&email=..." — /auth/login ignore ces deux paramètres (ne lit que
+    // `next`/`confirmation`, voir son commentaire), le visiteur devait donc retaper son adresse
+    // e-mail lui-même après avoir cliqué "Créer mon compte" sur cet écran.
+    // "/signup" est déjà public (PUBLIC_PATHS) : `email` y est lu par signup-context.tsx pour
+    // pré-remplir l'étape Identité, sans écraser un tunnel déjà repris depuis le localStorage.
+    if (pathname === "/" && url.searchParams.get("signup") === "1" && url.searchParams.get("email")) {
+      const email = url.searchParams.get("email")!;
+      url.pathname = "/signup";
+      url.search = "";
+      url.searchParams.set("email", email);
+      return NextResponse.redirect(url);
+    }
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);
   }
