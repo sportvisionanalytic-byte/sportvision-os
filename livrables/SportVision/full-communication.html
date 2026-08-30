@@ -383,8 +383,23 @@ section{position:relative}
 .illustrative-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);background:#f4f6fa;border-radius:999px;padding:5px 11px;margin-bottom:12px}
 .switch-note{max-width:640px;margin:0 auto;text-align:center;font-size:14.5px;color:#5b6478}
 .switch-note a{color:var(--blue);font-weight:700}
+.cycle-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:8px;position:relative}
+.cycle-strip::before{content:'';position:absolute;top:33px;left:38px;right:38px;height:2px;background:linear-gradient(90deg,rgba(36,84,255,.3),rgba(0,199,255,.3),rgba(131,45,255,.3));z-index:0}
+.cycle-step{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:10px;background:#fff;border:1px solid #e9ecf5;border-radius:14px;padding:18px 15px;box-shadow:0 2px 10px rgba(16,22,49,.05);transition:border-color .18s, transform .18s, box-shadow .18s}
+.cycle-step:hover{border-color:var(--blue);transform:translateY(-3px);box-shadow:0 10px 24px rgba(16,22,49,.09)}
+.cycle-step .n{width:34px;height:34px;border-radius:10px;background:var(--grad-brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-family:var(--font-head);font-size:14px;flex-shrink:0}
+.cycle-step b{font-size:14.5px;font-family:var(--font-head);font-weight:800;color:var(--navy-900)}
+.cycle-step>span:last-child{font-size:12.5px;color:#5b6478;line-height:1.45}
+@media (max-width:980px){
+  .cycle-strip{grid-template-columns:repeat(3,1fr)}
+  .cycle-strip::before{display:none}
+}
 @media (max-width:700px){
   .steps-list li{gap:16px}
+  .cycle-strip{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .cycle-strip{grid-template-columns:1fr}
 }
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Qui produit réellement les contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Une équipe SportVision, coordonnée par votre Community Manager référent, qui connaît vos équipes ou groupes et vos partenaires sur la durée."}}, {"@type": "Question", "name": "Est-ce que je perds la main sur ce qui est publié ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. Votre Community Manager SportVision publie en autonomie, selon le calendrier éditorial défini avec vous à l'onboarding. Vous gardez une visibilité complète sur ce qui est publié et à venir depuis votre espace Club+, et vous pouvez demander un ajustement à tout moment."}}, {"@type": "Question", "name": "Les présences photo et vidéo sont-elles incluses ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, des présences photo et vidéo régulières font partie de l'accompagnement, selon la fréquence et le périmètre définis dans votre formule."}}, {"@type": "Question", "name": "Full Communication remplace-t-il Club+ ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, ce sont deux offres différentes, mais votre espace Club+ de suivi est inclus dans votre accompagnement Full Communication, sans coût supplémentaire. Avec Club+ seul, votre structure organise et pilote elle-même sa communication, avec les outils et services SportVision. Avec Full Communication, une équipe SportVision prend en charge votre communication au quotidien, en s'appuyant sur ce même espace Club+ pour centraliser vos contenus, validations, calendrier et échanges. Voir Club+."}}]}</script>
@@ -623,22 +638,20 @@ section{position:relative}
   </div>
 </section>
 
-<!-- ══════════════ CE QUE COUVRE L'ACCOMPAGNEMENT ══════════════ -->
-<section class="section-tint">
+<!-- ══════════════ CYCLE DE PRODUCTION ══════════════ -->
+<section class="section-light">
   <div class="container">
     <div class="section-head reveal">
-      <h2>Ce que couvre l'accompagnement, au quotidien</h2>
+      <h2>Le cycle qui tourne chaque semaine</h2>
       <p>Une équipe SportVision prend en charge la communication de votre structure, sans que vous ayez à y consacrer du temps.</p>
     </div>
-    <div class="reveal" style="max-width:640px;margin:8px auto 0">
-      <ul class="feature-list">
-        <li>Un Community Manager SportVision référent suit votre calendrier éditorial</li>
-        <li>Gestion de vos réseaux sociaux selon le périmètre défini avec votre structure</li>
-        <li>Présences photo et vidéo planifiées à l'avance autour de vos matchs et événements</li>
-        <li>Création de contenus, affiches, flyers et posts pour vos communications</li>
-        <li>Dossier de sponsoring et mise en avant de vos sponsors intégrée au plan de communication</li>
-        <li>Publication en autonomie par votre Community Manager, avec visibilité complète pour vous depuis Club+</li>
-      </ul>
+    <div class="cycle-strip reveal">
+      <div class="cycle-step"><span class="n">1</span><b>Planning</b><span>Calendrier éditorial construit autour de votre saison et de votre calendrier sportif</span></div>
+      <div class="cycle-step"><span class="n">2</span><b>Terrain</b><span>Présences photo et vidéo régulières sur vos matchs et temps forts</span></div>
+      <div class="cycle-step"><span class="n">3</span><b>Production</b><span>Les contenus captés sont triés et préparés pour vos réseaux</span></div>
+      <div class="cycle-step"><span class="n">4</span><b>Création</b><span>Affiches, flyers et visuels adaptés à vos communications</span></div>
+      <div class="cycle-step"><span class="n">5</span><b>Publication</b><span>Votre Community Manager publie en autonomie, selon le calendrier défini avec vous</span></div>
+      <div class="cycle-step"><span class="n">6</span><b>Performance</b><span>Reporting mensuel : publications, portée, sponsors mis en avant</span></div>
     </div>
   </div>
 </section>
