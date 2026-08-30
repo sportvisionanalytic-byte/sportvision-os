@@ -7064,7 +7064,7 @@ async function loadEquipeOverview(){
       const nom=p?esc((p.prenom||'')+' '+(p.nom||'')):'Collaborateur';
       const gA=SV_GRADES[r.grade_actuel]||SV_GRADES[0],gP=SV_GRADES[r.grade_propose]||null;
       alerts.push({ic:'⭐',sev:'important',txt:`${nom} — recommandation de grade ${gA.nom} → ${gP?gP.nom:'—'}`,
-        actions:`<button class="btn bp bs" onclick="centreValiderGrade('${r.id}','valide');setTimeout(loadEquipeOverview,400)">Valider</button><button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade('${r.id}','refuse');setTimeout(loadEquipeOverview,400)">Refuser</button>`});
+        actions:`<button class="btn bp bs" onclick="centreValiderGrade('${r.id}','valide',this);setTimeout(loadEquipeOverview,400)">Valider</button><button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade('${r.id}','refuse',this);setTimeout(loadEquipeOverview,400)">Refuser</button>`});
     });
     formationRetard.forEach(({p,manquantes})=>{
       alerts.push({ic:'🎓',sev:'urgent',txt:`${esc((p.prenom||'')+' '+(p.nom||''))} — ${manquantes.length} formation${manquantes.length>1?'s':''} obligatoire${manquantes.length>1?'s':''} manquante${manquantes.length>1?'s':''}`,
@@ -16323,6 +16323,11 @@ async function signalerIncident(){
   const type=document.getElementById('inc-type').value.trim();
   const desc=document.getElementById('inc-desc').value.trim();
   if(!type||!desc){err.textContent='Type et description requis.';return;}
+  // Anti-double-clic (audit final 29/08, passe généralisée) : même idiome que
+  // creerPrestation()/comptaConfirmerAcompte() — un double-clic pouvait créer
+  // deux incidents identiques.
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){if(btn.disabled)return;btn.disabled=true;}
   err.textContent='Envoi…';
   try{
     const pid=document.getElementById('inc-pre').value||null;
@@ -16333,12 +16338,12 @@ async function signalerIncident(){
       declare_par:localStorage.getItem('sv_uid'),
       prestation_id:pid||null,
     }});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'envoi impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'envoi impossible.');if(btn)btn.disabled=false;return;}
     closeModal();
     toast('Incident signalé.','ok');
     if(S.view==='incidents')loadIncidents();
     updateNavBadges(S.role);
-  }catch(e){err.textContent='Erreur lors de l\'envoi.';}
+  }catch(e){err.textContent='Erreur lors de l\'envoi.';if(btn)btn.disabled=false;}
 }
 
 // ── Pipeline commercial ───────────────────────────────────────────────────────
@@ -20737,9 +20742,13 @@ const CONTENU_NEXT_JUNIOR_OWN={
   // a_valider_tuteur : aucun bouton pour le Junior lui-même, doit attendre le tuteur.
 };
 // Actions du tuteur sur un contenu Junior en attente de validation.
-async function tuteurValiderContenu(id){
+// Anti-double-clic (audit final 29/08, passe généralisée) : bouton de ligne
+// (pas de modale), même idiome que marquerSigne()/marquerPayeRem() — le
+// bouton lui-même est passé en second paramètre depuis l'onclick.
+async function tuteurValiderContenu(id,btn){
+  if(btn){if(btn.disabled)return;btn.disabled=true;}
   const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{statut:'pret',valide_par:localStorage.getItem('sv_uid'),valide_at:new Date().toISOString(),updated_at:new Date().toISOString()}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'validation impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(r.message||'validation impossible.'),'er');if(btn)btn.disabled=false;return;}
   _logAudit('contenu_statut_change','contenu',id,{statut:'pret',action:'validation_tuteur'});
   toast('Contenu validé.','ok');
   loadViewData(S.role,S.view);
@@ -20824,7 +20833,7 @@ async function loadCmContenus(){
         const isMyTutee=tutees.has(c.cm_id);
         let actions='';
         if(c.statut==='a_valider_tuteur'&&(isMyTutee||['admin'].includes(S.role)||myTier==='responsable')){
-          actions=`<button class="btn bp bs" onclick="tuteurValiderContenu('${c.id}')">✓ Valider</button><button class="btn bg2 bs" style="color:var(--er)" onclick="modalCorrigerContenuJunior('${c.id}')">Corriger</button>`;
+          actions=`<button class="btn bp bs" onclick="tuteurValiderContenu('${c.id}',this)">✓ Valider</button><button class="btn bg2 bs" style="color:var(--er)" onclick="modalCorrigerContenuJunior('${c.id}')">Corriger</button>`;
         }else{
           const next=(isMine&&myTier==='junior')?CONTENU_NEXT_JUNIOR_OWN[c.statut]:CONTENU_NEXT[c.statut];
           actions=next?`<button class="btn bg2 bs" onclick="avancerContenu('${c.id}','${next.st}')">${next.lb}</button>`:'';
@@ -21101,20 +21110,24 @@ async function creerContenu(){
   const err=document.getElementById('ct-err');
   if(!ti){if(err)err.textContent='Donnez un titre au contenu.';return;}
   const uid=localStorage.getItem('sv_uid');
+  // Anti-double-clic (audit final 29/08, passe généralisée) : même idiome que
+  // creerPrestation() — un double-clic pouvait créer deux contenus identiques.
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){if(btn.disabled)return;btn.disabled=true;}
   try{
     const r=await sbFetch('contenus',{method:'POST',body:{
       client_id:clientId||null,cm_id:uid,titre:ti,plateforme:pl,type_contenu:ty,
       date_prevue:dt||null,hook:hook||null,cta:cta||null,legende:legende||null,
       hashtags:hashtags||null,sponsor:sponsor||null,request_id:window._ctRequestId||null
     }});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');if(btn)btn.disabled=false;return;}
     if(Array.isArray(r)&&r[0]) _logAudit('contenu_cree','contenu',r[0].id,{titre:ti});
     window._ctRequestId=null;
     closeModal();
     if(document.getElementById('contenus-real')) loadCmContenus();
     else if(document.getElementById('cal-real')) loadCmCal();
     else if(document.getElementById('pub-real')) loadCmPublications();
-  }catch(e){if(err)err.textContent='Erreur lors de la création.';}
+  }catch(e){if(err)err.textContent='Erreur lors de la création.';if(btn)btn.disabled=false;}
 }
 
 async function modalEditContenu(id){
@@ -22534,7 +22547,7 @@ function renderComptaFrais(){
       <td class="tm">${f.km||'—'}</td>
       <td class="tm" style="font-weight:600">${f.montant?f.montant.toLocaleString('fr-FR')+' €':'—'}</td>
       <td><span class="bd ${f.statut==='remboursé'?'ba':f.statut==='en_attente'?'bw':'bn'}"><span class="bd-d"></span>${f.statut||'—'}</span></td>
-      <td>${f.statut==='en_attente'?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="comptaRembourserFrais('${f.id}','fra')">✓ Rembourser</button>`:''}</td>
+      <td>${f.statut==='en_attente'?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="comptaRembourserFrais('${f.id}','fra',this)">✓ Rembourser</button>`:''}</td>
     </tr>`).join('')+'</tbody></table></div>';
 }
 
@@ -22717,14 +22730,18 @@ async function comptaConfirmerImpaye(id){
   }catch(e){toast('Erreur.','er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}}
 }
 
-async function comptaRembourserFrais(id,source){
+// Anti-double-clic (audit final 29/08, passe généralisée) : bouton de ligne
+// directe, même idiome que marquerSigne()/marquerPayeRem() — le bouton est
+// passé en 3e paramètre depuis l'onclick.
+async function comptaRembourserFrais(id,source,btn){
+  if(btn){if(btn.disabled)return;btn.disabled=true;}
   try{
     const r=await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'remboursé'}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Remboursement impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Remboursement impossible.'),'er');if(btn)btn.disabled=false;return;}
     logFinancialAudit('remboursement','frais',id,null,r?.[0]?.montant,{statut:'remboursé'});
     toast('Frais marqué remboursé.','ok');
     if(source==='fra')loadComptaFrais();else loadComptaDepenses();
-  }catch(e){toast('Erreur lors du remboursement.','er');}
+  }catch(e){toast('Erreur lors du remboursement.','er');if(btn)btn.disabled=false;}
 }
 
 async function modalNouvelleDepense(){
@@ -27064,8 +27081,8 @@ async function modalFicheCollaborateur(id){
         ?'<div style="margin-top:16px;background:rgba(245,165,36,.06);border:1px solid rgba(245,165,36,.25);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
           +'<div style="font-size:12.5px;color:var(--t1)">⏳ Recommandation en attente : '+(SV_GRADES[gradeReco.grade_actuel]||SV_GRADES[0]).nom+' → '+(SV_GRADES[gradeReco.grade_propose]?.nom||'—')+'</div>'
           +'<div style="display:flex;gap:6px;flex-shrink:0">'
-          +'<button class="btn bp bs" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'valide\');closeModal();setTimeout(()=>modalFicheCollaborateur(\''+id+'\'),400)">Valider</button>'
-          +'<button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'refuse\');closeModal();setTimeout(()=>modalFicheCollaborateur(\''+id+'\'),400)">Refuser</button>'
+          +'<button class="btn bp bs" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'valide\',this);closeModal();setTimeout(()=>modalFicheCollaborateur(\''+id+'\'),400)">Valider</button>'
+          +'<button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'refuse\',this);closeModal();setTimeout(()=>modalFicheCollaborateur(\''+id+'\'),400)">Refuser</button>'
           +'</div></div>'
         :'<div style="margin-top:16px;text-align:right"><button class="btn bg2 bs" onclick="closeModal();centreModalChangerGrade(\''+id+'\',\''+escJs(prof.prenom||'')+'\',\''+escJs(prof.nom||'')+'\','+(prof.grade||0)+')">Changer le grade</button></div>'
       ):'')
@@ -29477,8 +29494,8 @@ async function loadGradesUnused_deprecated(){
             <div style="font-size:12px;color:var(--t3)">${gActuel.nom} → ${gPropose?gPropose.nom:'—'}</div>
           </div>
           <div style="display:flex;gap:6px">
-            <button onclick="centreValiderGrade('${r.id}','valide')" style="padding:6px 12px;border-radius:var(--rp);background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓ Valider</button>
-            <button onclick="centreValiderGrade('${r.id}','refuse')" style="padding:6px 12px;border-radius:var(--rp);background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);color:var(--er);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✕ Refuser</button>
+            <button onclick="centreValiderGrade('${r.id}','valide',this)" style="padding:6px 12px;border-radius:var(--rp);background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓ Valider</button>
+            <button onclick="centreValiderGrade('${r.id}','refuse',this)" style="padding:6px 12px;border-radius:var(--rp);background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);color:var(--er);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✕ Refuser</button>
           </div>
         </div>`;
       }).join('')}
@@ -30237,8 +30254,8 @@ async function renderCentreGrades(){
                 <div style="font-size:12px;color:var(--t3)">${SV_GRADES[r.grade_actuel]?.nom||'—'} → ${SV_GRADES[r.grade_propose]?.nom||'—'}</div>
               </div>
               <div style="display:flex;gap:6px">
-                <button onclick="centreValiderGrade('${r.id}','valide')" style="padding:6px 12px;border-radius:var(--rp);background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓ Valider</button>
-                <button onclick="centreValiderGrade('${r.id}','refuse')" style="padding:6px 12px;border-radius:var(--rp);background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);color:var(--er);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✕ Refuser</button>
+                <button onclick="centreValiderGrade('${r.id}','valide',this)" style="padding:6px 12px;border-radius:var(--rp);background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓ Valider</button>
+                <button onclick="centreValiderGrade('${r.id}','refuse',this)" style="padding:6px 12px;border-radius:var(--rp);background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);color:var(--er);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✕ Refuser</button>
               </div>
             </div>`).join('')}
           </div>
@@ -30710,21 +30727,25 @@ async function centreValidateGradeChange(userId,gradeActuel){
   }catch(e){toast('Erreur lors de la mise à jour.','er');}
 }
 
-async function centreValiderGrade(recoId,decision){
+// Anti-double-clic (audit final 29/08, passe généralisée) : bouton de ligne (4
+// points d'appel), même idiome que marquerSigne()/marquerPayeRem() — le bouton
+// est passé en 3e paramètre depuis l'onclick.
+async function centreValiderGrade(recoId,decision,btn){
+  if(btn){if(btn.disabled)return;btn.disabled=true;}
   try{
     const uid=localStorage.getItem('sv_uid');
     const reco=await sbFetch('grade_recommendations?select=collaborateur_id,grade_propose&id=eq.'+recoId);
-    if(!reco||!reco[0])return;
+    if(!reco||!reco[0]){if(btn)btn.disabled=false;return;}
     const rReco=await sbFetch('grade_recommendations?id=eq.'+recoId,{method:'PATCH',body:{statut:decision,valide_par:uid}});
-    if(sbErr(rReco)){toast('Erreur : '+(rReco.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(rReco)){toast('Erreur : '+(rReco.message||'mise à jour impossible.'),'er');if(btn)btn.disabled=false;return;}
     if(decision==='valide'){
       const {collaborateur_id,grade_propose}=reco[0];
       const rProf=await sbFetch('profiles?id=eq.'+collaborateur_id,{method:'PATCH',body:{grade:grade_propose,grade_valide_at:new Date().toISOString(),grade_valide_par:uid}});
-      if(sbErr(rProf)){toast('Erreur : '+(rProf.message||'attribution du grade impossible.'),'er');return;}
+      if(sbErr(rProf)){toast('Erreur : '+(rProf.message||'attribution du grade impossible.'),'er');if(btn)btn.disabled=false;return;}
       toast('Grade validé et attribué.','ok');
     }else{toast('Recommandation refusée.','ok');}
     if(S.view==='centre')await loadCentreSection('grades');
-  }catch(e){toast('Erreur.','er');}
+  }catch(e){toast('Erreur.','er');if(btn)btn.disabled=false;}
 }
 
 // ── CENTRE — RESSOURCES PUBLIÉES ──────────────────────────────────────────────
