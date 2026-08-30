@@ -568,6 +568,12 @@ document.getElementById('retract-form').addEventListener('submit', async (e) => 
     errEl.textContent = 'Prénom, nom et e-mail sont obligatoires.';
     return;
   }
+  // #retract-form est en novalidate : ce contrôle de format prend le relais du type="email"
+  // natif désactivé (même correctif que sur reserver.html/demande-de-devis.html, audit du 30/08).
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)){
+    errEl.textContent = "Merci de renseigner une adresse e-mail valide.";
+    return;
+  }
   if (!document.getElementById('rt-confirm').checked){
     errEl.textContent = 'Merci de confirmer votre déclaration de rétractation en cochant la case ci-dessus.';
     return;

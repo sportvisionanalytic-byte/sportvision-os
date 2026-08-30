@@ -196,13 +196,18 @@
   status = 200
 
 # En-têtes de sécurité HTTP (2026-08-06). CSP construite à partir des seuls
-# domaines externes réellement appelés par ce site : Google Fonts (feuille de
-# style + fichiers de police) et le projet Supabase (fetch vers
-# /functions/v1/create-guest-request et /functions/v1/check-disponibilite
-# depuis reserver.html et demande-de-devis.html). Le site utilise des
-# gestionnaires d'évènements inline (onclick=...) et des <script> inline,
-# d'où 'unsafe-inline' sur script-src et style-src : durcir davantage
-# nécessiterait une refonte du HTML, hors périmètre ici.
+# domaines externes réellement appelés par ce site : le projet Supabase (fetch
+# vers /functions/v1/create-guest-request, /functions/v1/create-guest-rdv,
+# /functions/v1/check-disponibilite et /functions/v1/submit-retractation-demande,
+# appelés depuis plusieurs pages du site dont reserver.html, demande-de-devis.html
+# et retractation.html). Le site utilise des gestionnaires d'évènements inline
+# (onclick=...) et des <script> inline, d'où 'unsafe-inline' sur script-src et
+# style-src : durcir davantage nécessiterait une refonte du HTML, hors périmètre
+# ici. Google Fonts retiré de style-src/font-src le 30/08 : toutes les polices
+# sont auto-hébergées via @font-face + assets/fonts/*.woff2 sur les 37 pages
+# (vérifié : aucune référence à fonts.googleapis.com/fonts.gstatic.com sur le
+# site), ce domaine n'était donc plus utilisé par personne — CSP resserrée en
+# conséquence, sans rien casser.
 # HSTS ajouté le 2026-08-07 : tout est servi par Netlify, donc HTTPS par
 # défaut sur le domaine exact visité, sans risque. Volontairement SANS
 # includeSubDomains (on ne connaît pas encore tous les sous-domaines
@@ -217,4 +222,4 @@
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     X-Frame-Options = "SAMEORIGIN"
     Strict-Transport-Security = "max-age=31536000"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'"

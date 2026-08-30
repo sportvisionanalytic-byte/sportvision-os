@@ -118,6 +118,13 @@ section{position:relative}
 .hero-ctas{display:flex;gap:14px;justify-content:center;margin-top:34px;flex-wrap:wrap}
 .hero-micro{color:rgba(255,255,255,.45);font-size:13px;margin-top:20px}
 
+/* .hero-tertiary/.btn-link — utilisés dans le hero (fond sombre) et dans la FAQ (fond clair)
+   sans jamais avoir été stylés (bouton natif brut affiché avant ce correctif, audit du
+   30/08) : couleur unique lisible sur les deux fonds, pas de contexte dépendant. */
+.hero-tertiary{margin-top:22px}
+.btn-link{background:none;border:none;padding:0;font:inherit;font-size:14px;font-weight:700;color:var(--blue-electric);cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:opacity .15s}
+.btn-link:hover{opacity:.8}
+
 /* ── Mockup produit (hero + sections app) ── */
 .app-frame{position:relative;max-width:960px;margin:0 auto;border-radius:20px;overflow:hidden;background:linear-gradient(160deg,#0d1330,#131a3d);border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow-lg)}
 .app-frame .bar{display:flex;gap:6px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -393,6 +400,23 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 @media (max-width:560px){
   .page-hero{padding:128px 0 44px}
   .devis-card{padding:24px}
+}
+
+/* ── CTA sticky mobile (audit du 30/08) ── Page longue (hero → douleurs →
+   démo → offres → réalisations → témoignages → FAQ) avant de retrouver le
+   formulaire déjà atteint une fois via le CTA du hero. Repropose un accès
+   rapide en bas d'écran pendant le scroll, uniquement mobile, et se cache
+   dès que le formulaire (#devis) est réellement à l'écran pour ne jamais le
+   recouvrir ni faire doublon avec son propre bouton d'envoi. */
+.sticky-cta-mobile{display:none}
+@media (max-width:640px){
+  .sticky-cta-mobile{
+    display:flex;position:fixed;left:12px;right:12px;bottom:14px;z-index:1500;
+    opacity:0;transform:translateY(14px);pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+  }
+  .sticky-cta-mobile.on{opacity:1;transform:translateY(0);pointer-events:auto}
+  .sticky-cta-mobile .btn{width:100%;box-shadow:0 12px 30px rgba(7,10,23,.35)}
 }
 
 /* ── Bandeau cookies (RGPD) ── */
@@ -769,6 +793,14 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 
 <div class="toast" id="toast"></div>
 
+<!-- ══════════════ CTA STICKY MOBILE ══════════════
+     Visible uniquement < 640px, seulement une fois le hero dépassé, et
+     masqué dès que #devis (le formulaire lui-même) est à l'écran — voir
+     script plus bas. N'apparaît jamais par-dessus un champ de formulaire. -->
+<div class="sticky-cta-mobile" id="sticky-cta-mobile">
+  <a href="#devis" class="btn btn-grad" id="sticky-cta-link">Aller au formulaire</a>
+</div>
+
 <script>
 /* ============================================================
    SportVision — page « Demande de devis ». Vanilla JS, aucune
@@ -813,6 +845,33 @@ if ('IntersectionObserver' in window){
 } else {
   revealEls.forEach(el => el.classList.add('in'));
 }
+
+// ── CTA sticky mobile (audit du 30/08) ── visible seulement une fois le
+// hero dépassé, masqué dès que #devis (le formulaire) est à l'écran, pour
+// ne jamais recouvrir un champ ni faire doublon avec le bouton d'envoi du
+// formulaire lui-même.
+(function initStickyCta(){
+  const el = document.getElementById('sticky-cta-mobile');
+  const heroEl = document.querySelector('.hero.page-hero');
+  const devisEl = document.getElementById('devis');
+  if (!el || !heroEl || !devisEl) return;
+  let pastHero = false;
+  let devisInView = false;
+  function update(){
+    el.classList.toggle('on', pastHero && !devisInView);
+  }
+  if ('IntersectionObserver' in window){
+    new IntersectionObserver((entries) => {
+      entries.forEach(e => { pastHero = !e.isIntersecting; update(); });
+    }, { threshold: 0 }).observe(heroEl);
+    new IntersectionObserver((entries) => {
+      entries.forEach(e => { devisInView = e.isIntersecting; update(); });
+    }, { threshold: 0 }).observe(devisEl);
+  }
+  document.getElementById('sticky-cta-link').addEventListener('click', () => {
+    el.classList.remove('on');
+  });
+})();
 
 // ── Année du footer ──
 document.getElementById('sv-year').textContent = new Date().getFullYear();
@@ -863,6 +922,13 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
   };
   if (!body.prenom || !body.nom || !body.email){
     errEl.textContent = 'Prénom, nom et e-mail sont obligatoires.';
+    return;
+  }
+  // Champ e-mail natif retiré de toute validation par novalidate (cf. attribut sur
+  // #devis-form) : ce contrôle de format prend le relais pour rester cohérent avec le
+  // message ci-dessus (audit du 30/08).
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)){
+    errEl.textContent = "Merci de renseigner une adresse e-mail valide.";
     return;
   }
   if (!objet){
@@ -975,7 +1041,7 @@ document.getElementById('cookie-manage').addEventListener('click', (e) => {
     <div id="rdv-form-wrap">
       <h3>Demander un rendez-vous</h3>
       <p class="sub">Choisissez librement une date et un horaire, nous vérifions ensuite la disponibilité et revenons vers vous rapidement.</p>
-      <form id="rdv-form">
+      <form id="rdv-form" novalidate>
         <div class="sv-honeypot" aria-hidden="true"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
         <div class="sv-field">
           <label for="rdv-type">Type de rendez-vous</label>
@@ -1055,6 +1121,12 @@ document.getElementById('rdv-form').addEventListener('submit', async (e) => {
   };
   if (!body.prenom || !body.nom || !body.email || !body.date_demandee){
     errEl.textContent = 'Prénom, nom, e-mail et date sont obligatoires.';
+    return;
+  }
+  // #rdv-form est en novalidate (audit du 30/08, même correctif que #booking-form et
+  // #devis-form) : ce contrôle de format prend le relais du type="email" natif désactivé.
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)){
+    errEl.textContent = "Merci de renseigner une adresse e-mail valide.";
     return;
   }
   btn.disabled = true; btn.textContent = 'Envoi…';
