@@ -878,6 +878,20 @@ if ('IntersectionObserver' in window){
 // hero dépassé, masqué dès que #devis (le formulaire) est à l'écran, pour
 // ne jamais recouvrir un champ ni faire doublon avec le bouton d'envoi du
 // formulaire lui-même.
+// BUGFIX (audit QA fonctionnelle du 30/08, repasse du même jour) : le bandeau
+// cookies (#cookie-banner, z-index 2500) est affiché par défaut à TOUT premier
+// visiteur et occupe le bas de l'écran en mobile — exactement là où ce CTA
+// sticky (bottom:14px, z-index 1500) est positionné. Le bandeau, plus haut en
+// z-index, capte alors tous les clics : le bouton "Aller au formulaire" reste
+// visuellement masqué sous le bandeau et totalement inutilisable tant que le
+// visiteur n'a pas fait un choix cookies — trouvé en testant un clic réel au
+// clavier/souris (pas juste une inspection visuelle), confirmé par Playwright
+// (le clic timeout avec "cookie-banner-actions intercepts pointer events").
+// Corrigé en masquant aussi ce CTA tant que le bandeau cookies est affiché —
+// même principe que le masquage déjà en place pour #devis : ne jamais laisser
+// ce bouton visible mais inatteignable. window.svUpdateStickyCta est exposé
+// pour que les gestionnaires du bandeau cookies (plus bas dans ce fichier)
+// puissent redemander une évaluation dès que le bandeau apparaît/disparaît.
 (function initStickyCta(){
   const el = document.getElementById('sticky-cta-mobile');
   const heroEl = document.querySelector('.hero.page-hero');
@@ -886,7 +900,9 @@ if ('IntersectionObserver' in window){
   let pastHero = false;
   let devisInView = false;
   function update(){
-    el.classList.toggle('on', pastHero && !devisInView);
+    const cookieBannerEl = document.getElementById('cookie-banner');
+    const cookieBannerOn = !!(cookieBannerEl && cookieBannerEl.classList.contains('on'));
+    el.classList.toggle('on', pastHero && !devisInView && !cookieBannerOn);
   }
   if ('IntersectionObserver' in window){
     new IntersectionObserver((entries) => {
@@ -899,6 +915,7 @@ if ('IntersectionObserver' in window){
   document.getElementById('sticky-cta-link').addEventListener('click', () => {
     el.classList.remove('on');
   });
+  window.svUpdateStickyCta = update;
 })();
 
 // ── Année du footer ──
@@ -1018,11 +1035,15 @@ function showCookieBanner(openPanel){
   cookieBanner.classList.add('on');
   if (openPanel) cookiePanel.classList.add('on');
   document.body.style.paddingBottom = cookieBanner.offsetHeight + 'px';
+  // Voir le commentaire de initStickyCta plus haut : le CTA sticky mobile doit
+  // se masquer pendant que le bandeau cookies recouvre le bas de l'écran.
+  if (window.svUpdateStickyCta) window.svUpdateStickyCta();
 }
 function hideCookieBanner(){
   cookieBanner.classList.remove('on');
   cookiePanel.classList.remove('on');
   document.body.style.paddingBottom = '';
+  if (window.svUpdateStickyCta) window.svUpdateStickyCta();
 }
 function applyStoredChoiceToPanel(){
   const c = readConsent();
