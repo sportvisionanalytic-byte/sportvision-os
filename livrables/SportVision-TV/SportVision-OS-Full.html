@@ -27615,11 +27615,14 @@ async function envoyerResetMdp(){
   }
 }
 
-// ── Barre latérale : sections dépliables ──────────────────────────────────
-// Le nombre d'écrans par rôle a beaucoup grandi (module Finance & Comptabilité
-// notamment) — chaque grand axe (séparateur NAV) devient une section qu'on
-// peut replier, avec l'état mémorisé par rôle dans localStorage.
-function renderSidebarNav(role,activeId){
+// Nav effective d'un rôle, y compris les entrées injectées au rendu (Responsable CM,
+// cf. commentaire ci-dessous) — factorisé pour que renderSidebarNav() ET switchView()
+// (titre de page / breadcrumb) restent d'accord sur la même liste. Avant cette
+// factorisation, switchView() lisait directement NAV[role] (jamais augmenté) : le
+// titre de page restait vide sur Pilotage CM / Performances pour un Responsable CM,
+// alors que la sidebar affichait bien ces deux entrées (repéré en cliquant vraiment
+// dessus, campagne QA boutons nocturne du 30/08/2026).
+function _navForRole(role){
   let nav=NAV[role]||[];
   // Responsable CM (spec Refonte CM §8) : mêmes pages que le CM, plus une couche de
   // pilotage — insérée ici (au rendu, pas dans NAV.cm statique) car cm_niveau_autonomie
@@ -27633,6 +27636,14 @@ function renderSidebarNav(role,activeId){
     const iContenus=nav.findIndex(n=>n.id==='contenus');
     if(iContenus!==-1)nav.splice(iContenus+1,0,{id:'analytics',lb:'Performances',ic:'fin'});
   }
+  return nav;
+}
+// ── Barre latérale : sections dépliables ──────────────────────────────────
+// Le nombre d'écrans par rôle a beaucoup grandi (module Finance & Comptabilité
+// notamment) — chaque grand axe (séparateur NAV) devient une section qu'on
+// peut replier, avec l'état mémorisé par rôle dans localStorage.
+function renderSidebarNav(role,activeId){
+  let nav=_navForRole(role);
   let collapsedSet;
   try{collapsedSet=new Set(JSON.parse(localStorage.getItem('sv_nav_collapsed_'+role)||'[]'));}catch(e){collapsedSet=new Set();}
   let html='<div class="nav">',inGroup=false,groupIdx=-1;
@@ -28691,7 +28702,7 @@ function switchView(id){
   const activeGrp=document.querySelector(`.ni[data-id="${id}"]`)?.closest('.nav-grp.collapsed');
   if(activeGrp)toggleNavGroup(S.role,activeGrp.dataset.grp);
   updateBottomNav(id);
-  const cfg=NAV[S.role].find(n=>n.id===id);
+  const cfg=_navForRole(S.role).find(n=>n.id===id);
   document.getElementById('pt').textContent=cfg?cfg.lb:'';
   updateCta();
   renderContent();
