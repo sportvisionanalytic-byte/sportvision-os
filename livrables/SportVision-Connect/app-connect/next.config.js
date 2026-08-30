@@ -15,7 +15,13 @@ const SECURITY_HEADERS = [
   {
     key: "Content-Security-Policy",
     value:
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'",
+      // connect-src doit inclure le schéma wss:// en plus de https:// : le SDK Supabase Realtime
+      // (postgres_changes, ex. NotificationBell.tsx) ouvre un WebSocket vers /realtime/v1/websocket,
+      // bloqué silencieusement par la CSP sans cette entrée séparée (une URL https:// n'autorise
+      // pas automatiquement son équivalent wss://). Trouvé en testant en réel un compte Connect
+      // tout neuf (audit du 30/08/2026) : erreur console "violates ... connect-src" + pageerror
+      // "cannot add postgres_changes callbacks ... after subscribe()" dès l'arrivée sur le dashboard.
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'",
   },
 ];
 
