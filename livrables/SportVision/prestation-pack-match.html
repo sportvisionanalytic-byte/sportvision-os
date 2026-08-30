@@ -232,6 +232,7 @@ section{position:relative}
 .accomp-card h4{font-size:16.5px}
 .accomp-card p{font-size:13.5px;color:#5b6478;margin-top:8px;flex:1}
 .accomp-card a{margin-top:16px;font-size:13.5px;font-weight:700;color:var(--blue)}
+.pourqui-grid{grid-template-columns:repeat(3,1fr)}
 
 /* ── Réalisations ── */
 .gallery-filters{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:32px}
@@ -245,6 +246,7 @@ section{position:relative}
 .gallery-item .overlay .cap b{font-size:13.5px;display:block}
 .gallery-item .overlay .cap span{font-size:11.5px;color:rgba(255,255,255,.65)}
 .gallery-item .play{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+.gallery-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
 /* ── Études de cas ── */
 .case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:8px}
@@ -529,8 +531,25 @@ section{position:relative}
   </div>
 </section>
 
-<!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
+<!-- ══════════════ EXEMPLES ══════════════ -->
 <section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Exemples</span>
+      <h2>Photo et vidéo, dans une seule livraison.</h2>
+      <p>Un aperçu de ce que réunit le Pack Match Complet.</p>
+    </div>
+    <div class="gallery-grid reveal">
+      <div class="gallery-item"><img src="assets/realisations/foot-action-05.jpg" alt="Action de match photographiée par SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Pack Match Complet</b><span>Volet photo</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/reel-action-but-09-poster.jpg" alt="Extrait vidéo d'un but capté par SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Pack Match Complet</b><span>Volet vidéo</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/foot-groupe-05.jpg" alt="Photo de groupe après un match" loading="lazy"><div class="overlay"><div class="cap"><b>Pack Match Complet</b><span>Ambiance d'équipe</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/reel-celebration-18-poster.jpg" alt="Extrait vidéo d'une célébration de but" loading="lazy"><div class="overlay"><div class="cap"><b>Pack Match Complet</b><span>Highlight de fin de match</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
+<section class="section-light">
   <div class="container">
     <div class="feature-row rev reveal">
       <div class="feature-copy">
@@ -546,6 +565,33 @@ section{position:relative}
       </div>
       <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/coulisses-photographe.jpg) center/cover no-repeat">
         <div class="gcard"><div class="k">Réservation</div><div class="v">Référence immédiate</div><div class="sub">Confirmation rapide · Suivi dans SportVision Connect</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ POUR QUI ══════════════ -->
+<section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Pour qui</span>
+      <h2>Le choix le plus complet, pour trois usages.</h2>
+    </div>
+    <div class="accomp-grid pourqui-grid reveal">
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 19.5c0-3.3 2.7-5.8 6-5.8s6 2.5 6 5.8"/><path d="M16 5.3a3.2 3.2 0 0 1 0 6.2M19 19.5c0-2.7-1.8-5-4.3-5.7"/></svg></div>
+        <h4>Clubs &amp; équipes</h4>
+        <p>Photos et highlight du même match, pour couvrir tous vos besoins de communication en une seule réservation.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg></div>
+        <h4>Joueurs &amp; familles</h4>
+        <p>Le souvenir le plus complet d'un match, en photo et en vidéo, sans multiplier les prestataires.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></div>
+        <h4>Coachs &amp; éducateurs</h4>
+        <p>Une matière photo et vidéo complète pour le débrief comme pour la communication du club.</p>
       </div>
     </div>
   </div>
