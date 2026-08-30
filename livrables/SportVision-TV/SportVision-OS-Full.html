@@ -4026,9 +4026,9 @@ async function creerNotifSiActive(destinataire_id,categorie,body){
     // propres notifs (ou l'admin). Sans ça, sbFetch (Prefer: return=representation
     // par défaut) fait échouer l'INSERT ENTIER dès qu'on notifie quelqu'un d'autre
     // que soi-même — PostgREST renvoie 42501 "row violates RLS" alors que c'est en
-    // fait le SELECT de la représentation qui est bloqué, pas l'insertion. Repéré
-    // lors de l'audit QA boutons Secrétaire 30/08 (clic réel sur "→ Envoyer" un
-    // devis → notif de relance vers l'autre secrétaire silencieusement perdue).
+    // fait le SELECT de la représentation qui est bloqué, pas l'insertion. Touche
+    // tout rôle non-admin notifiant un tiers (sec, prod, cm...) — repéré lors des
+    // audits QA boutons Secrétaire et Production du 30/08.
     return await sbFetch('notifications',{method:'POST',body:{...body,destinataire_id},headers:{'Prefer':'return=minimal'}}).catch(()=>null);
   }catch(e){return null;}
 }
@@ -8219,7 +8219,7 @@ async function computeATraiterItems(roleFilter){
     // actives/récentes (fenêtres 3j/7j, statut='livrée') : un tri par date décroissante avec
     // un plafond large ne change aucun résultat métier tant que la table reste sous 1000
     // lignes, et borne le payload une fois qu'elle le dépassera.
-    safe(sbFetch('prestations?select=id,statut,statut_financier,reference,type_prestation,date_prestation,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,materiel_personnel))&order=date_prestation.desc.nullslast&limit=1000')),
+    safe(sbFetch('prestations?select=id,statut,statut_financier,reference,type_prestation,date_prestation,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(id,materiel_personnel))&order=date_prestation.desc.nullslast&limit=1000')),
     safe(sbFetch('kit_reservations?select=id,kit_id,prestation_id,statut,prestations(date_prestation,reference,clients(nom))&statut=in.(pré_réservé,réservé,sorti,en_prestation,à_récupérer,à_retourner)')),
     safe(sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.mission_refusee&lue=eq.false&order=created_at.desc&limit=10')),
     safe(sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.changement_planning_cm&lue=eq.false&order=created_at.desc&limit=10')),
@@ -8445,7 +8445,7 @@ async function loadProdHub(){
   try{
     [allPre,semainePre,kits,inc,aValider]=await Promise.all([
       sbFetch('prestations?select=id,statut&order=date_prestation.asc&limit=500'),
-      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom))&date_prestation=gte.'+weekStart+'&date_prestation=lte.'+weekEnd+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc,heure_debut.asc'),
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(prenom,nom))&date_prestation=gte.'+weekStart+'&date_prestation=lte.'+weekEnd+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc,heure_debut.asc'),
       sbFetch('kits?select=id,nom,statut&order=nom.asc'),
       sbFetch('incidents?select=id,type_incident,description,niveau,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
       sbFetch('prestations?select=id,reference,type_prestation,date_prestation,clients(nom)&statut=eq.à_valider_production&order=date_prestation.asc').catch(()=>[]),
@@ -8595,7 +8595,7 @@ async function loadProdDash(){
       // limit=1000 + order (audit pagination 29/08) : idem computeATraiterItems ci-dessous —
       // ce select était sans limite ni tri, potentiellement toute la table prestations sur
       // chaque chargement du Dashboard Production.
-      sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,source,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,role,materiel_personnel))&order=date_prestation.desc.nullslast&limit=1000'),
+      sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,source,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(id,prenom,nom,role,materiel_personnel))&order=date_prestation.desc.nullslast&limit=1000'),
       sbFetch('incidents?select=id,type_incident,description,niveau,cloture,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
       sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=nom.asc'),
       // §3/§4 : "Corrections en cours" (media_liens.statut='correction_demandee', posé par
@@ -8711,7 +8711,7 @@ async function loadProdDash(){
           const heures=[(p.heure_debut||'').slice(0,5),(p.heure_fin||'').slice(0,5)].filter(Boolean).join('–')||'—';
           const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée');
           const clr=ST_CLR[p.statut]||'var(--t3)';
-          const lb=ST_LB2[p.statut]||p.statut;
+          const lb=ST_LB2[p.statut]||SL[p.statut]||p.statut;
           return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<todayPres.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
             <div style="width:4px;background:${clr};flex-shrink:0;border-radius:0"></div>
             <div style="flex:1;min-width:0;padding:11px 14px">
@@ -8743,7 +8743,7 @@ async function loadProdDash(){
           return`<div style="padding:14px 18px${i<livePre.length-1?';border-bottom:1px solid var(--b1)':''}">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
               <div style="font-weight:700;font-size:14px;color:var(--t1)">${esc(p.clients?.nom||'—')}</div>
-              <span style="font-size:10px;font-weight:700;padding:3px 8px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:20px;color:var(--er)">${ST_LB2[p.statut]||p.statut}</span>
+              <span style="font-size:10px;font-weight:700;padding:3px 8px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:20px;color:var(--er)">${ST_LB2[p.statut]||SL[p.statut]||p.statut}</span>
             </div>
             <div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Resp. : ${respName} · ${heures}</div>
             <div style="background:var(--s2);border-radius:100px;height:5px;overflow:hidden">
@@ -8849,7 +8849,7 @@ async function loadProdPlanning(){
     if(sub)sub.textContent=tab==='equipe'?'Vue équipe — semaine courante':'Vue kits — semaine courante';
   }
   try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom,role))&date_prestation=gte.'+start+'&date_prestation=lte.'+end+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc');
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(prenom,nom,role))&date_prestation=gte.'+start+'&date_prestation=lte.'+end+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc');
     if(!Array.isArray(raw))throw new Error(JSON.stringify(raw));
     if(!raw.length){
       el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📅</div><div style="font-size:13px">Aucune prestation sur cette période.</div></div>';
@@ -8891,7 +8891,7 @@ async function loadProdPlanning(){
         const equipe=(p.prestations_equipe||[]).filter(e=>['acceptée','invitation_envoyée'].includes(e.statut));
         const hDeb=(p.heure_debut||'').slice(0,5);
         const barClr=ST_BAR[p.statut]||'var(--acc)';
-        const lb=ST_LB[p.statut]||p.statut;
+        const lb=ST_LB[p.statut]||SL[p.statut]||p.statut;
         const [bdBg,bdBorder,bdColor]=ST_BADGE[p.statut]||['rgba(54,107,255,.1)','rgba(54,107,255,.2)','var(--acc)'];
         const teamNames=equipe.length?equipe.slice(0,2).map(e=>{const c=e.collaborateur||{};return[c.prenom,c.nom].filter(Boolean).join(' ');}).join(', ')+(equipe.length>2?` +${equipe.length-2}`:''):'';
         const kitsStr=(kitsByPre[p.id]||[]).join(', ')||null;
@@ -8985,7 +8985,7 @@ function renderProdPreList(){
     const heures=[(p.heure_debut||'').slice(0,5),(p.heure_fin||'').slice(0,5)].filter(Boolean).join('–')||'—';
     const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée');
     const clr=ST_CLR[p.statut]||'var(--t3)';
-    const lb=ST_LB[p.statut]||p.statut;
+    const lb=ST_LB[p.statut]||SL[p.statut]||p.statut;
     const noEquipe=equipe.length===0&&!['livrée','clôturée','annulée','refusée'].includes(p.statut);
     const isUrgent=noEquipe&&p.date_prestation&&p.date_prestation<=soonYmd;
     const barClr=isUrgent?'var(--er)':clr;
@@ -9011,7 +9011,7 @@ async function loadProdPrestations(){
   const el=document.getElementById('prod-pre-real');
   if(!el)return;
   try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom))&order=date_prestation.desc&limit=100');
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(id,prenom,nom))&order=date_prestation.desc&limit=100');
     _prodPreData=Array.isArray(raw)?raw:[];
     _prodPreFilter='all';
     ['all','attribuer','proposees','confirmees','encours','alivrer','terminees'].forEach(id=>{
@@ -9033,7 +9033,7 @@ async function loadProdJourJ(){
   el.innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">Chargement…</div>';
   try{
     const [preRaw,incRaw]=await Promise.all([
-      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,telephone,role))&date_prestation=eq.'+today+'&statut=not.in.(annulée,refusée,livrée,clôturée)&order=heure_debut.asc'),
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(id,prenom,nom,telephone,role))&date_prestation=eq.'+today+'&statut=not.in.(annulée,refusée,livrée,clôturée)&order=heure_debut.asc'),
       sbFetch('incidents?select=id,type_incident,niveau,cloture&cloture=eq.false'),
     ]);
     const pre=Array.isArray(preRaw)?preRaw:[];
@@ -9067,7 +9067,7 @@ async function loadProdJourJ(){
               <div style="font-size:15px;font-weight:800;color:var(--t1)">${esc(p.clients?.nom||'—')}</div>
               <div style="font-size:12px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'} · ${esc(p.lieu||'—')} · ${heures}</div>
             </div>
-            <span style="font-size:11px;font-weight:700;padding:4px 10px;background:${brd}22;border:1px solid ${brd}55;border-radius:20px;color:${brd};flex-shrink:0;${isLive?'animation:prodPulse 2s ease-in-out infinite':''}">${ST_LB[p.statut]||p.statut}</span>
+            <span style="font-size:11px;font-weight:700;padding:4px 10px;background:${brd}22;border:1px solid ${brd}55;border-radius:20px;color:${brd};flex-shrink:0;${isLive?'animation:prodPulse 2s ease-in-out infinite':''}">${ST_LB[p.statut]||SL[p.statut]||p.statut}</span>
           </div>
           <div style="display:flex;gap:8px">
             <button onclick="switchView('msg')" style="padding:7px 12px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">💬 Message équipe</button>
@@ -9152,7 +9152,7 @@ async function loadProdBriefings(){
   const el=document.getElementById('prod-brief-real');
   if(!el)return;
   try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,description_besoin,livrables_demandes,briefing_vu_at,clients(nom),prestations_equipe(statut)&statut=not.in.(annulée,refusée,livrée,clôturée)&order=date_prestation.asc&limit=50');
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,description_besoin,livrables_demandes,briefing_vu_at,clients(nom),prestations_equipe:prestations_equipe_display(statut)&statut=not.in.(annulée,refusée,livrée,clôturée)&order=date_prestation.asc&limit=50');
     const pre=Array.isArray(raw)?raw:[];
     _prodBriefData=pre.map(p=>({
       ...p,
@@ -10425,7 +10425,7 @@ async function loadProdLivrMissions(){
   const el=document.getElementById('prod-livr-mission-real');
   if(!el)return;
   try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom)),media_liens(id,nom,url,type_media,categorie,statut,commentaire,ajouteur_id)&statut=in.(livrée,clôturée)&order=date_prestation.desc&limit=100');
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(prenom,nom)),media_liens(id,nom,url,type_media,categorie,statut,commentaire,ajouteur_id)&statut=in.(livrée,clôturée)&order=date_prestation.desc&limit=100');
     _livrMissionData=Array.isArray(raw)?raw:[];
     renderProdLivrMissionList();
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
@@ -11026,7 +11026,7 @@ async function loadProdRapport(type){
   const titles={'prestations':'Rapport prestations','equipe':'Rapport équipe','kits':'Rapport kits','incidents':'Rapport incidents'};
   try{
     if(type==='prestations'){
-      const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,montant_ttc,clients(nom),prestations_equipe(id)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=50');
+      const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,montant_ttc,clients(nom),prestations_equipe:prestations_equipe_display(id)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=50');
       const list=Array.isArray(data)?data:[];
       const total=list.reduce((s,p)=>s+(p.montant_ttc||0),0);
       el.innerHTML=`<div class="cd">
@@ -11142,7 +11142,7 @@ async function modalAffecterCollab(collabId,collabName){
         return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb)">
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.clients?.nom||'—')} — ${p.type_prestation||'—'}</div>
-            <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · <span class="bd bw"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></div>
+            <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · <span class="bd bw"><span class="bd-d"></span>${sLb[p.statut]||SL[p.statut]||p.statut}</span></div>
           </div>
           <button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${p.id}','${escJs(p.reference||'')}'),150)" style="flex-shrink:0;padding:8px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:700;cursor:pointer">Affecter</button>
         </div>`;
@@ -11154,7 +11154,7 @@ async function loadEquipes(){
   const el=document.getElementById('equipes-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,clients(nom),prestations_equipe(statut,fonction,collaborateur:profiles(prenom,nom,role))&statut=not.in.(clôturée,annulée,refusée,livrée)&order=created_at.desc');
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,clients(nom),prestations_equipe:prestations_equipe_display(statut,fonction,collaborateur:profiles(prenom,nom,role))&statut=not.in.(clôturée,annulée,refusée,livrée)&order=created_at.desc');
     if(!data||!data.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucune prestation active avec équipe affectée.</div></div>';return;}
     const rc={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
     const sLb={'demande_reçue':'Demande','confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','équipe_affectée':'Équipe OK'};
@@ -11164,7 +11164,7 @@ async function loadEquipes(){
       return`<div class="cd" style="margin-bottom:13px"><div class="cd-h">
         <div><div class="cd-t">${esc(p.clients?.nom||'—')} — ${p.type_prestation||'—'}</div><div class="cd-s" style="font-family:monospace;font-size:10.5px">${p.reference||'—'}</div></div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span>
+          <span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||SL[p.statut]||p.statut}</span>
           <button class="btn bg2 bs" onclick="modalEquipePrestation('${p.id}','${escJs(p.reference||'')}')">Gérer</button>
         </div>
       </div><div class="cd-b" style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 18px">
@@ -12769,25 +12769,33 @@ async function ajouterMembreEquipe(prestationId,ref){
         }
       }
     }catch(e){}
-    const equipeBody={prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,notes:notes||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null};
+    const equipeBody={p_prestation_id:prestationId,p_collaborateur_id:colId,p_fonction:fonc||null,p_notes:notes||null,p_remuneration:rem?Number(rem):null,p_heure_rdv:rdv||null};
     // Snapshot du calcul (niveau/base/coefficient) uniquement quand le montant final
     // correspond bien à la suggestion automatique — un montant ajusté à la main par
     // admin/sec (ou format "exceptionnelle") n'a pas de règle figée à historiser.
     if(niveauOp&&autoPay!=null&&Number(rem)===autoPay){
-      equipeBody.niveau_snapshot=niveauOp;
-      equipeBody.base_rate_snapshot=OPERATOR_BASE_RATES[niveauOp];
-      equipeBody.multiplier_snapshot=MISSION_MULTIPLIERS[format];
+      equipeBody.p_niveau_snapshot=niveauOp;
+      equipeBody.p_base_rate_snapshot=OPERATOR_BASE_RATES[niveauOp];
+      equipeBody.p_multiplier_snapshot=MISSION_MULTIPLIERS[format];
     }
-    const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:equipeBody});
-    if(sbErr(rAdd)){
+    // Audit QA nocturne (30/08) : POST direct sur prestations_equipe cassé pour 'prod' —
+    // PostgREST enveloppe l'INSERT+RETURNING dans un CTE dont la lecture retour est
+    // re-filtrée par la policy SELECT (equipe_select), qui exclut délibérément 'prod'
+    // depuis la migration v88 (masquage rémunération). Résultat vérifié en réel : la
+    // simple table donnait 403 "row violates row-level security policy" pour tout
+    // affecteur 'prod', alors que la policy INSERT elle-même est correcte. Passage par
+    // une RPC SECURITY DEFINER (même patron que rpc/validate_production) qui revérifie
+    // le rôle elle-même et bypasse ainsi cette interaction PostgREST/RLS.
+    const rAddId=await sbFetch('rpc/rpc_ajouter_membre_equipe',{method:'POST',body:equipeBody});
+    if(sbErr(rAddId)){
       // Garde d'idempotence (audit 29/08) : l'index unique partiel
       // prestations_equipe_active_uniq ferme la fenêtre de course que le
       // check "already" ci-dessus (lecture-puis-écriture) ne peut pas fermer
       // seul (deux membres du staff agissant en parallèle). Un 23505 ici
       // signifie que l'affectation existe déjà (créée entre-temps par
       // l'autre appel) — pas un vrai échec.
-      if(rAdd?.code==='23505'){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
-      err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');if(btn)btn.disabled=false;return;
+      if(rAddId?.code==='23505'){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
+      err.textContent='Erreur : '+(rAddId.message||'Ajout impossible.');if(btn)btn.disabled=false;return;
     }
     creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
     document.getElementById('eq-col').value='';
@@ -12804,7 +12812,14 @@ async function ajouterMembreEquipe(prestationId,ref){
 function retirerMembreEquipe(equipeId,prestationId,ref,collaborateurId){
   confirmerAction('Retirer ce collaborateur de la prestation ?',async()=>{
     try{
-      const r=await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'DELETE'});
+      // Audit QA nocturne (30/08) : le DELETE direct sur prestations_equipe était un
+      // échec SILENCIEUX pour 'prod' — l'API répondait 200/204 (succès apparent) mais
+      // la ligne n'était jamais réellement supprimée (même cause que l'INSERT ci-dessus :
+      // le CTE RETURNING de PostgREST est re-filtré par equipe_select, qui exclut 'prod').
+      // Vérifié en réel : le toast affichait "Collaborateur retiré" et une notification de
+      // retrait était envoyée à l'opérateur, alors qu'il restait affecté en base. RPC
+      // SECURITY DEFINER (même patron que rpc_ajouter_membre_equipe ci-dessus).
+      const r=await sbFetch('rpc/rpc_retirer_membre_equipe',{method:'POST',body:{p_equipe_id:equipeId}});
       if(sbErr(r)){toast('Erreur : '+(r.message||'Retrait impossible.'),'er');return;}
       if(collaborateurId){
         creerNotifSiActive(collaborateurId,'invitations',{type:'invitation',titre:'Mission annulée — '+(ref||'prestation'),message:'Tu as été retiré(e) de cette prestation.',lue:false,prestation_id:prestationId}).catch(()=>{});
@@ -31941,7 +31956,7 @@ async function enterJourJ(prestationId){
   el.innerHTML=`<div class="jj-m-top"><button class="jj-m-back" onclick="exitJourJ()">← Retour</button><div class="jj-m-ttl">Mode Jour J</div><div style="width:72px"></div></div>
     <div class="jj-m-body"><div style="text-align:center;padding:32px;color:var(--t3)">Chargement…</div></div>`;
   try{
-    const d=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,description_besoin,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom))&id=eq.'+prestationId);
+    const d=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,description_besoin,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(prenom,nom))&id=eq.'+prestationId);
     if(!d||!d[0]){exitJourJ();toast('Prestation introuvable.','er');return;}
     _jjData=d[0];
     renderJourJ();
@@ -32219,7 +32234,7 @@ async function loadMobileProdDash(ct){
   try{
     const today=ymdLocal();
     const [pres,inc]=await Promise.all([
-      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,clients(nom),prestations_equipe(statut)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=100').catch(()=>[]),
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,clients(nom),prestations_equipe:prestations_equipe_display(statut)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=100').catch(()=>[]),
       sbFetch('incidents?select=id&cloture=eq.false').catch(()=>[]),
     ]);
     const list=Array.isArray(pres)?pres:[];
