@@ -4027,8 +4027,8 @@ async function creerNotifSiActive(destinataire_id,categorie,body){
     // par défaut) fait échouer l'INSERT ENTIER dès qu'on notifie quelqu'un d'autre
     // que soi-même — PostgREST renvoie 42501 "row violates RLS" alors que c'est en
     // fait le SELECT de la représentation qui est bloqué, pas l'insertion. Touche
-    // tout rôle non-admin notifiant un tiers (sec, prod, cm...) — repéré lors des
-    // audits QA boutons Secrétaire et Production du 30/08.
+    // tout rôle non-admin notifiant un tiers (sec, prod, cm, com...) — repéré lors des
+    // audits QA boutons Secrétaire, Production et Commercial du 30/08.
     return await sbFetch('notifications',{method:'POST',body:{...body,destinataire_id},headers:{'Prefer':'return=minimal'}}).catch(()=>null);
   }catch(e){return null;}
 }
@@ -31735,7 +31735,8 @@ async function dispatchSVEvent(type, data){
       // return=minimal : voir le commentaire dans creerNotifSiActive — sans ça, la
       // policy SELECT de `notifications` (qui ne laisse lire que ses propres notifs)
       // fait échouer tout l'INSERT batch dès qu'un seul destinataire n'est pas
-      // l'expéditeur, ce qui est le cas quasi systématiquement ici.
+      // l'expéditeur, ce qui est le cas quasi systématiquement ici (cassait
+      // silencieusement tout SV_EVENT_WORKFLOWS : devis.accepted, client.won...).
       await sbFetch('notifications',{method:'POST',body:notifsFiltres,headers:{'Prefer':'return=minimal'}});
     }catch(e){console.warn('dispatchSVEvent error:',e);}
   }
