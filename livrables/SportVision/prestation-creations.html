@@ -239,6 +239,7 @@ section{position:relative}
 .accomp-card h4{font-size:16.5px}
 .accomp-card p{font-size:13.5px;color:#5b6478;margin-top:8px;flex:1}
 .accomp-card a{margin-top:16px;font-size:13.5px;font-weight:700;color:var(--blue)}
+.pourqui-grid{grid-template-columns:repeat(3,1fr)}
 
 /* ── Réalisations ── */
 .gallery-filters{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:32px}
@@ -252,6 +253,7 @@ section{position:relative}
 .gallery-item .overlay .cap b{font-size:13.5px;display:block}
 .gallery-item .overlay .cap span{font-size:11.5px;color:rgba(255,255,255,.65)}
 .gallery-item .play{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+.gallery-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
 /* ── Études de cas ── */
 .case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:8px}
@@ -538,6 +540,23 @@ section{position:relative}
   </div>
 </section>
 
+<!-- ══════════════ EXEMPLES ══════════════ -->
+<section class="section-light">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Exemples</span>
+      <h2>Vos propres contenus, comme matière de départ.</h2>
+      <p>Vos créations partent de vos vraies photos et vidéos — un aperçu de la matière que nous utilisons pour un club, un stage ou un tournoi.</p>
+    </div>
+    <div class="gallery-grid reveal">
+      <div class="gallery-item"><img src="assets/realisations/case-fc-varenne.jpg" alt="Photo de club utilisée comme matière pour une création graphique" loading="lazy"><div class="overlay"><div class="cap"><b>Matière club</b><span>Photo utilisée pour vos visuels d'annonce</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/case-es-colombienne.jpg" alt="Photo de club utilisée comme matière pour une création graphique" loading="lazy"><div class="overlay"><div class="cap"><b>Matière club</b><span>Photo utilisée pour vos compositions résultat</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/case-tournoi-milly-poster-02.jpg" alt="Photo de tournoi utilisée comme matière pour une création graphique" loading="lazy"><div class="overlay"><div class="cap"><b>Matière événement</b><span>Photo utilisée pour vos affiches</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/case-elite-camp-horizon-02.jpg" alt="Photo de stage utilisée comme matière pour une création graphique" loading="lazy"><div class="overlay"><div class="cap"><b>Matière stage</b><span>Photo utilisée pour vos contenus promotionnels</span></div></div></div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
 <section class="section-tint">
   <div class="container">
@@ -560,6 +579,33 @@ section{position:relative}
   </div>
 </section>
 
+<!-- ══════════════ POUR QUI ══════════════ -->
+<section class="section-light">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Pour qui</span>
+      <h2>Des créations pour trois usages.</h2>
+    </div>
+    <div class="accomp-grid pourqui-grid reveal">
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 19.5c0-3.3 2.7-5.8 6-5.8s6 2.5 6 5.8"/><path d="M16 5.3a3.2 3.2 0 0 1 0 6.2M19 19.5c0-2.7-1.8-5-4.3-5.7"/></svg></div>
+        <h4>Clubs</h4>
+        <p>Annonces de match, résultats et visuels de saison, pour une communication visuellement cohérente.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></div>
+        <h4>Coachs &amp; préparateurs</h4>
+        <p>Des visuels pour habiller votre communication personnelle, en complément de vos tournages.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 5H5a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4M16 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/><path d="M12 13v3M9 20h6M10 20v-2.5h4V20"/></svg></div>
+        <h4>Organisateurs d'événements</h4>
+        <p>Affiches et visuels d'annonce pour donner à votre tournoi ou stage une image professionnelle.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════════ OPTIONS ══════════════ -->
 <section class="section-tint">
   <div class="container">
@@ -573,11 +619,13 @@ section{position:relative}
         <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 7.5a1.5 1.5 0 0 1 1.5-1.5H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v9A1.5 1.5 0 0 1 19.5 20h-15A1.5 1.5 0 0 1 3 18.5z"/></svg></div><span class="sans-abo">En option</span></div>
         <h4>Pack de plusieurs créations</h4>
         <p class="desc">Une création principale accompagnée de ses déclinaisons pour les réseaux sociaux.</p>
+        <a href="#devis" class="btn btn-grad btn-sm" data-action="open-devis" style="margin-top:14px;width:100%">Ajouter cette option</a>
       </div>
       <div class="prestation-card option-card">
         <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M11 2 12.5 8 18.5 9.5 12.5 11 11 17 9.5 11 3.5 9.5 9.5 8z"/><path d="M18.5 15 19.3 17.7 22 18.5 19.3 19.3 18.5 22 17.7 19.3 15 18.5 17.7 17.7z"/></svg></div><span class="sans-abo">En option</span></div>
         <h4>Identité visuelle plus poussée</h4>
         <p class="desc">Un travail plus approfondi sur votre identité visuelle, sur demande.</p>
+        <a href="#devis" class="btn btn-grad btn-sm" data-action="open-devis" style="margin-top:14px;width:100%">Ajouter cette option</a>
       </div>
     </div>
   </div>

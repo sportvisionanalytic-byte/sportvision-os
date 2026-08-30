@@ -239,6 +239,7 @@ section{position:relative}
 .accomp-card h4{font-size:16.5px}
 .accomp-card p{font-size:13.5px;color:#5b6478;margin-top:8px;flex:1}
 .accomp-card a{margin-top:16px;font-size:13.5px;font-weight:700;color:var(--blue)}
+.pourqui-grid{grid-template-columns:repeat(3,1fr)}
 
 /* ── Réalisations ── */
 .gallery-filters{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:32px}
@@ -252,6 +253,7 @@ section{position:relative}
 .gallery-item .overlay .cap b{font-size:13.5px;display:block}
 .gallery-item .overlay .cap span{font-size:11.5px;color:rgba(255,255,255,.65)}
 .gallery-item .play{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+.gallery-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
 /* ── Études de cas ── */
 .case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:8px}
@@ -524,8 +526,25 @@ section{position:relative}
   </div>
 </section>
 
-<!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
+<!-- ══════════════ EXEMPLES ══════════════ -->
 <section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Exemples</span>
+      <h2>Des contenus réels, pas une maquette.</h2>
+      <p>Un aperçu du type de contenus produits lors d'un Media Day SportVision.</p>
+    </div>
+    <div class="gallery-grid reveal">
+      <div class="gallery-item"><img src="assets/realisations/celebration-sponsor.jpg" alt="Contenu mettant en avant un partenaire lors d'un Media Day" loading="lazy"><div class="overlay"><div class="cap"><b>Media Day</b><span>Mise en avant des partenaires</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/coaching-preparation.jpg" alt="Portrait de coach réalisé lors d'un Media Day" loading="lazy"><div class="overlay"><div class="cap"><b>Media Day</b><span>Portraits joueurs et staff</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/foot-portrait-03.jpg" alt="Portrait de joueur réalisé lors d'un Media Day" loading="lazy"><div class="overlay"><div class="cap"><b>Media Day</b><span>Banque de contenus saison</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/coulisses-photographe.jpg" alt="Équipe SportVision en coulisses pendant une journée de production" loading="lazy"><div class="overlay"><div class="cap"><b>Media Day</b><span>Journée organisée de bout en bout</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
+<section class="section-light">
   <div class="container">
     <div class="feature-row rev reveal">
       <div class="feature-copy">
@@ -541,6 +560,33 @@ section{position:relative}
       </div>
       <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/coulisses-photographe.jpg) center/cover no-repeat">
         <div class="gcard"><div class="k">Réservation</div><div class="v">Référence immédiate</div><div class="sub">Demande enregistrée · Devis personnalisé · Suivi dans votre espace SportVision</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ POUR QUI ══════════════ -->
+<section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Pour qui</span>
+      <h2>Une journée pour toute votre structure.</h2>
+    </div>
+    <div class="accomp-grid pourqui-grid reveal">
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h13l-2.5-2.5M20 17H7l2.5 2.5"/></svg></div>
+        <h4>Clubs avec partenaires à valoriser</h4>
+        <p>Des contenus mettant en scène vos sponsors, pour tenir vos engagements de visibilité auprès d'eux.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 19.5c0-3.3 2.7-5.8 6-5.8s6 2.5 6 5.8"/><path d="M16 5.3a3.2 3.2 0 0 1 0 6.2M19 19.5c0-2.7-1.8-5-4.3-5.7"/></svg></div>
+        <h4>Associations en quête d'une banque média</h4>
+        <p>Une réserve de contenus constituée en une seule journée, pour alimenter vos supports sur toute la saison.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 10 18 0M9 4v16"/></svg></div>
+        <h4>Structures professionnelles &amp; semi-pro</h4>
+        <p>Une production organisée, au niveau d'exigence attendu par une structure avec une image à tenir.</p>
       </div>
     </div>
   </div>
