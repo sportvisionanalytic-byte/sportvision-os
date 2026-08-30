@@ -611,7 +611,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 </div>
 
 <!-- MODAL -->
-<div id="sv-modal" role="dialog" aria-modal="true" style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center;pointer-events:none">
+<div id="sv-modal" role="dialog" aria-modal="true" style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center">
   <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:28px;width:min(540px,calc(100vw - 24px));max-height:90dvh;overflow-y:auto;position:relative">
     <button onclick="closeModal()" aria-label="Fermer" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1">✕</button>
     <div id="sv-modal-ct"></div>
@@ -7063,8 +7063,16 @@ async function loadEquipeOverview(){
       const p=profiles.find(x=>x.id===r.collaborateur_id);
       const nom=p?esc((p.prenom||'')+' '+(p.nom||'')):'Collaborateur';
       const gA=SV_GRADES[r.grade_actuel]||SV_GRADES[0],gP=SV_GRADES[r.grade_propose]||null;
+      // Bug trouvé en cliquant (audit QA nocturne 30/08) : centreValiderGrade() est
+      // asynchrone (2 PATCH réseau séquentiels) mais le rafraîchissement était lancé
+      // via un setTimeout(...,400) indépendant, sans attendre la fin réelle de l'appel.
+      // Sur une latence réseau réaliste (>400ms cumulés), la liste se rechargeait AVANT
+      // que la recommandation soit marquée traitée côté base : l'item restait affiché
+      // avec ses boutons actifs, invitant à le valider/refuser une seconde fois (risque
+      // de statut incohérent — ex. grade déjà attribué puis recommandation "refusée").
+      // Fix : chaîner le rechargement sur la résolution réelle de la promesse.
       alerts.push({ic:'⭐',sev:'important',txt:`${nom} — recommandation de grade ${gA.nom} → ${gP?gP.nom:'—'}`,
-        actions:`<button class="btn bp bs" onclick="centreValiderGrade('${r.id}','valide',this);setTimeout(loadEquipeOverview,400)">Valider</button><button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade('${r.id}','refuse',this);setTimeout(loadEquipeOverview,400)">Refuser</button>`});
+        actions:`<button class="btn bp bs" onclick="centreValiderGrade('${r.id}','valide',this).then(loadEquipeOverview)">Valider</button><button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade('${r.id}','refuse',this).then(loadEquipeOverview)">Refuser</button>`});
     });
     formationRetard.forEach(({p,manquantes})=>{
       alerts.push({ic:'🎓',sev:'urgent',txt:`${esc((p.prenom||'')+' '+(p.nom||''))} — ${manquantes.length} formation${manquantes.length>1?'s':''} obligatoire${manquantes.length>1?'s':''} manquante${manquantes.length>1?'s':''}`,
@@ -13207,7 +13215,7 @@ function kitsModalCreerKit(){
         <input id="ck-nom" type="text" class="fi" placeholder="KIT PHOTO 01, KIT VIDÉO 01…" autofocus>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="fg"><label class="fl">Type</label>
+        <div class="fg"><label class="fl">Type *</label>
           <select id="ck-type" class="fi"><option value="">— Type —</option>${KIT_TYPES_LIST.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
         </div>
         <div class="fg"><label class="fl">N° interne</label>
@@ -13220,6 +13228,7 @@ function kitsModalCreerKit(){
       <div class="fg"><label class="fl">Notes</label>
         <input id="ck-notes" type="text" class="fi" placeholder="Informations complémentaires…">
       </div>
+      <div id="ck-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
     </div>
     <div class="mf">
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
@@ -13229,19 +13238,27 @@ function kitsModalCreerKit(){
 
 async function kitsCreerKitSubmit(){
   const nom=document.getElementById('ck-nom')?.value.trim();
-  if(!nom){toast('Le nom est obligatoire.','er');return;}
+  const type=document.getElementById('ck-type')?.value||'';
+  const err=document.getElementById('ck-err');
+  // Bug trouvé en cliquant (audit QA nocturne 30/08) : type_kit est NOT NULL en base
+  // mais le <select> autorisait une soumission sans type sélectionné → 400 Postgres
+  // brut ("null value in column type_kit violates not-null constraint"), le kit
+  // n'était jamais créé et l'utilisateur ne voyait qu'un toast d'erreur générique.
+  // Même garde côté client que pour "nom", avant l'appel réseau.
+  if(!nom){if(err)err.textContent='Le nom est obligatoire.';else toast('Le nom est obligatoire.','er');return;}
+  if(!type){if(err)err.textContent='Le type est obligatoire.';else toast('Le type est obligatoire.','er');return;}
   try{
     const r=await sbFetch('kits',{method:'POST',body:{
       nom,
-      type_kit:document.getElementById('ck-type')?.value||null,
+      type_kit:type,
       num_interne:document.getElementById('ck-num')?.value||null,
       localisation:document.getElementById('ck-loc')?.value||null,
       notes:document.getElementById('ck-notes')?.value||null,
       statut:'disponible',
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');else toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
     closeModal();toast('Kit créé.','ok');kitsLoadAll();
-  }catch(e){toast('Erreur lors de la création.','er');}
+  }catch(e){if(err)err.textContent='Erreur lors de la création.';else toast('Erreur lors de la création.','er');}
 }
 
 // ── CRÉATION MATÉRIEL ─────────────────────────────────────────────────────────
@@ -13912,7 +13929,7 @@ function kitsModalEditKit(kitId){
         <input id="ek-nom" type="text" class="fi" value="${esc(k.nom||'')}" autofocus>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="fg"><label class="fl">Type</label>
+        <div class="fg"><label class="fl">Type *</label>
           <select id="ek-type" class="fi"><option value="">— Type —</option>${KIT_TYPES_LIST.map(t=>`<option value="${t}"${t===k.type_kit?' selected':''}>${t}</option>`).join('')}</select>
         </div>
         <div class="fg"><label class="fl">N° interne</label>
@@ -13925,6 +13942,7 @@ function kitsModalEditKit(kitId){
       <div class="fg"><label class="fl">Notes</label>
         <input id="ek-notes" type="text" class="fi" value="${esc(k.notes||'')}">
       </div>
+      <div id="ek-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
     </div>
     <div class="mf">
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
@@ -13934,18 +13952,23 @@ function kitsModalEditKit(kitId){
 
 async function kitsEditKitSubmit(kitId){
   const nom=document.getElementById('ek-nom')?.value.trim();
-  if(!nom){toast('Le nom est obligatoire.','er');return;}
+  const type=document.getElementById('ek-type')?.value||'';
+  const err=document.getElementById('ek-err');
+  // Même bug/garde que kitsCreerKitSubmit (audit QA nocturne 30/08) : type_kit est
+  // NOT NULL en base, un type vidé en édition faisait échouer le PATCH en 400 brut.
+  if(!nom){if(err)err.textContent='Le nom est obligatoire.';else toast('Le nom est obligatoire.','er');return;}
+  if(!type){if(err)err.textContent='Le type est obligatoire.';else toast('Le type est obligatoire.','er');return;}
   try{
     const r=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{
       nom,
-      type_kit:document.getElementById('ek-type')?.value||null,
+      type_kit:type,
       num_interne:document.getElementById('ek-num')?.value||null,
       localisation:document.getElementById('ek-loc')?.value||null,
       notes:document.getElementById('ek-notes')?.value||null,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'mise à jour impossible.');else toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     closeModal();toast('Kit mis à jour.','ok');kitsLoadAll();
-  }catch(e){toast('Erreur lors de la mise à jour.','er');}
+  }catch(e){if(err)err.textContent='Erreur lors de la mise à jour.';else toast('Erreur lors de la mise à jour.','er');}
 }
 
 function kitsConfirmerSupprimer(kitId){
@@ -27081,8 +27104,12 @@ async function modalFicheCollaborateur(id){
         ?'<div style="margin-top:16px;background:rgba(245,165,36,.06);border:1px solid rgba(245,165,36,.25);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
           +'<div style="font-size:12.5px;color:var(--t1)">⏳ Recommandation en attente : '+(SV_GRADES[gradeReco.grade_actuel]||SV_GRADES[0]).nom+' → '+(SV_GRADES[gradeReco.grade_propose]?.nom||'—')+'</div>'
           +'<div style="display:flex;gap:6px;flex-shrink:0">'
-          +'<button class="btn bp bs" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'valide\',this);closeModal();setTimeout(()=>modalFicheCollaborateur(\''+id+'\'),400)">Valider</button>'
-          +'<button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'refuse\',this);closeModal();setTimeout(()=>modalFicheCollaborateur(\''+id+'\'),400)">Refuser</button>'
+          // Même bug/fix que loadEquipeOverview (audit QA nocturne 30/08) : closeModal()+
+          // setTimeout(...,400) rouvrait la fiche AVANT la fin réelle des 2 PATCH réseau de
+          // centreValiderGrade(), qui réaffichait alors la bannière "en attente" avec ses
+          // boutons actifs alors que la recommandation venait d'être traitée.
+          +'<button class="btn bp bs" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'valide\',this).then(()=>{closeModal();modalFicheCollaborateur(\''+id+'\');})">Valider</button>'
+          +'<button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade(\''+gradeReco.id+'\',\'refuse\',this).then(()=>{closeModal();modalFicheCollaborateur(\''+id+'\');})">Refuser</button>'
           +'</div></div>'
         :'<div style="margin-top:16px;text-align:right"><button class="btn bg2 bs" onclick="closeModal();centreModalChangerGrade(\''+id+'\',\''+escJs(prof.prenom||'')+'\',\''+escJs(prof.nom||'')+'\','+(prof.grade||0)+')">Changer le grade</button></div>'
       ):'')
