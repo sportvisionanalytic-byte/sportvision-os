@@ -383,7 +383,7 @@ section{position:relative}
 .illustrative-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);background:#f4f6fa;border-radius:999px;padding:5px 11px;margin-bottom:12px}
 .switch-note{max-width:640px;margin:0 auto;text-align:center;font-size:14.5px;color:#5b6478}
 .switch-note a{color:var(--blue);font-weight:700}
-.cycle-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:8px;position:relative}
+.cycle-strip{list-style:none;display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:8px 0 0;padding:0;position:relative}
 .cycle-strip::before{content:'';position:absolute;top:33px;left:38px;right:38px;height:2px;background:linear-gradient(90deg,rgba(36,84,255,.3),rgba(0,199,255,.3),rgba(131,45,255,.3));z-index:0}
 .cycle-step{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:10px;background:#fff;border:1px solid #e9ecf5;border-radius:14px;padding:18px 15px;box-shadow:0 2px 10px rgba(16,22,49,.05);transition:border-color .18s, transform .18s, box-shadow .18s}
 .cycle-step:hover{border-color:var(--blue);transform:translateY(-3px);box-shadow:0 10px 24px rgba(16,22,49,.09)}
@@ -645,14 +645,14 @@ section{position:relative}
       <h2>Le cycle qui tourne chaque semaine</h2>
       <p>Une équipe SportVision prend en charge la communication de votre structure, sans que vous ayez à y consacrer du temps.</p>
     </div>
-    <div class="cycle-strip reveal">
-      <div class="cycle-step"><span class="n">1</span><b>Planning</b><span>Calendrier éditorial construit autour de votre saison et de votre calendrier sportif</span></div>
-      <div class="cycle-step"><span class="n">2</span><b>Terrain</b><span>Présences photo et vidéo régulières sur vos matchs et temps forts</span></div>
-      <div class="cycle-step"><span class="n">3</span><b>Production</b><span>Les contenus captés sont triés et préparés pour vos réseaux</span></div>
-      <div class="cycle-step"><span class="n">4</span><b>Création</b><span>Affiches, flyers et visuels adaptés à vos communications</span></div>
-      <div class="cycle-step"><span class="n">5</span><b>Publication</b><span>Votre Community Manager publie en autonomie, selon le calendrier défini avec vous</span></div>
-      <div class="cycle-step"><span class="n">6</span><b>Performance</b><span>Reporting mensuel : publications, portée, sponsors mis en avant</span></div>
-    </div>
+    <ol class="cycle-strip reveal">
+      <li class="cycle-step"><span class="n" aria-hidden="true">1</span><b>Planning</b><span>Calendrier éditorial construit autour de votre saison et de votre calendrier sportif</span></li>
+      <li class="cycle-step"><span class="n" aria-hidden="true">2</span><b>Terrain</b><span>Présences photo et vidéo régulières sur vos matchs et temps forts</span></li>
+      <li class="cycle-step"><span class="n" aria-hidden="true">3</span><b>Production</b><span>Les contenus captés sont triés et préparés pour vos réseaux</span></li>
+      <li class="cycle-step"><span class="n" aria-hidden="true">4</span><b>Création</b><span>Affiches, flyers et visuels adaptés à vos communications</span></li>
+      <li class="cycle-step"><span class="n" aria-hidden="true">5</span><b>Publication</b><span>Votre Community Manager publie en autonomie, selon le calendrier défini avec vous</span></li>
+      <li class="cycle-step"><span class="n" aria-hidden="true">6</span><b>Performance</b><span>Reporting mensuel : publications, portée, sponsors mis en avant</span></li>
+    </ol>
   </div>
 </section>
 
