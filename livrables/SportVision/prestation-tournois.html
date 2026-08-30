@@ -237,6 +237,7 @@ section{position:relative}
 .accomp-card h4{font-size:16.5px}
 .accomp-card p{font-size:13.5px;color:#5b6478;margin-top:8px;flex:1}
 .accomp-card a{margin-top:16px;font-size:13.5px;font-weight:700;color:var(--blue)}
+.pourqui-grid{grid-template-columns:repeat(3,1fr)}
 
 /* ── Réalisations ── */
 .gallery-filters{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:32px}
@@ -250,6 +251,7 @@ section{position:relative}
 .gallery-item .overlay .cap b{font-size:13.5px;display:block}
 .gallery-item .overlay .cap span{font-size:11.5px;color:rgba(255,255,255,.65)}
 .gallery-item .play{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+.gallery-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
 /* ── Études de cas ── */
 .case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:8px}
@@ -531,6 +533,23 @@ section{position:relative}
   </div>
 </section>
 
+<!-- ══════════════ EXEMPLES ══════════════ -->
+<section class="section-light">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Exemples</span>
+      <h2>Des couvertures réelles, pas une maquette.</h2>
+      <p>Un aperçu de précédentes couvertures de tournois et stages SportVision.</p>
+    </div>
+    <div class="gallery-grid reveal">
+      <div class="gallery-item"><img src="assets/realisations/case-tournoi-milly-poster.jpg" alt="Couverture du tournoi de Milly par SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Tournoi</b><span>Couverture complète sur la durée</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/tsf-tournoi-sens-01.jpg" alt="Couverture du tournoi TSF à Sens par SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Tournoi</b><span>Photo et vidéo à chaud</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/case-elite-camp-horizon.jpg" alt="Couverture d'un stage par SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Stage</b><span>Suivi sur plusieurs jours</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/case-asa-montereau-03.jpg" alt="Couverture d'un événement sportif par SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Tournoi</b><span>Contenus prêts à publier</span></div></div></div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
 <section class="section-tint">
   <div class="container">
@@ -553,6 +572,33 @@ section{position:relative}
   </div>
 </section>
 
+<!-- ══════════════ POUR QUI ══════════════ -->
+<section class="section-light">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Pour qui</span>
+      <h2>Une couverture pour trois types d'organisateurs.</h2>
+    </div>
+    <div class="accomp-grid pourqui-grid reveal">
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 5H5a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4M16 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/><path d="M12 13v3M9 20h6M10 20v-2.5h4V20"/></svg></div>
+        <h4>Organisateurs de tournois</h4>
+        <p>Une présence continue sur toute la durée de l'événement, avec des contenus publiés à chaud pour animer les réseaux.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 12 4l8 16"/><path d="M12 4v16M8 20l4-8 4 8"/></svg></div>
+        <h4>Clubs organisateurs de stages</h4>
+        <p>Une couverture qui suit votre stage sur plusieurs jours, avec une sélection finale livrée après l'événement.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></div>
+        <h4>Comités &amp; ligues</h4>
+        <p>Une équipe dimensionnée selon le nombre d'équipes présentes, pour couvrir un événement à plus grande échelle.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════════ OPTIONS ══════════════ -->
 <section class="section-tint">
   <div class="container">
@@ -566,16 +612,19 @@ section{position:relative}
         <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 6h9M12 6v4M6 6V3.5M8 10h6.5a3.5 3.5 0 0 1 3.5 3.5V15a2 2 0 0 1-2 2H10a4 4 0 0 1-4-4v-1z"/><path d="M17 12h4M2 17l3-2M22 17l-3-2"/></svg></div><span class="sans-abo">En option</span></div>
         <h4>Plans drone complémentaires</h4>
         <p class="desc">Un complément à votre couverture existante : plans aériens de votre événement, sous réserve de la réglementation, de la météo et de la zone survolée.</p>
+        <a href="#devis" class="btn btn-grad btn-sm" data-action="open-devis" style="margin-top:14px;width:100%">Ajouter cette option</a>
       </div>
       <div class="prestation-card option-card">
         <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M8 12 4.5 8.7a1.8 1.8 0 0 1 2.5-2.6L11 9.5"/><path d="m11 9.5 2.3-2.2a1.8 1.8 0 0 1 2.5 2.6L11 14.5l-2-1.8"/><path d="M13.5 12.5 17 16a1.6 1.6 0 0 1-2.3 2.3L13 16.5"/><path d="m9 13-1.3 1.2a1.6 1.6 0 0 0 2.3 2.3l.7-.7"/></svg></div><span class="sans-abo">En option</span></div>
         <h4>Mise en avant des partenaires</h4>
         <p class="desc">Valorisation des sponsors et partenaires de votre événement dans les contenus livrés.</p>
+        <a href="#devis" class="btn btn-grad btn-sm" data-action="open-devis" style="margin-top:14px;width:100%">Ajouter cette option</a>
       </div>
       <div class="prestation-card option-card">
         <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3 9h18M3 15h18M7.5 5v4M7.5 15v4M16.5 5v4M16.5 15v4"/></svg></div><span class="sans-abo">En option</span></div>
         <h4>Aftermovie</h4>
         <p class="desc">Un montage récapitulatif de l'événement, pour garder une trace forte et partageable.</p>
+        <a href="#devis" class="btn btn-grad btn-sm" data-action="open-devis" style="margin-top:14px;width:100%">Ajouter cette option</a>
       </div>
     </div>
   </div>

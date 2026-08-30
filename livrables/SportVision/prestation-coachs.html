@@ -237,6 +237,7 @@ section{position:relative}
 .accomp-card h4{font-size:16.5px}
 .accomp-card p{font-size:13.5px;color:#5b6478;margin-top:8px;flex:1}
 .accomp-card a{margin-top:16px;font-size:13.5px;font-weight:700;color:var(--blue)}
+.pourqui-grid{grid-template-columns:repeat(3,1fr)}
 
 /* ── Réalisations ── */
 .gallery-filters{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:32px}
@@ -250,6 +251,7 @@ section{position:relative}
 .gallery-item .overlay .cap b{font-size:13.5px;display:block}
 .gallery-item .overlay .cap span{font-size:11.5px;color:rgba(255,255,255,.65)}
 .gallery-item .play{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+.gallery-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
 /* ── Études de cas ── */
 .case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:8px}
@@ -530,6 +532,23 @@ section{position:relative}
   </div>
 </section>
 
+<!-- ══════════════ EXEMPLES ══════════════ -->
+<section class="section-light">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Exemples</span>
+      <h2>Des tournages réels, pas une maquette.</h2>
+      <p>Un aperçu de séances filmées pour des coachs et préparateurs.</p>
+    </div>
+    <div class="gallery-grid reveal">
+      <div class="gallery-item"><img src="assets/realisations/coaching-preparation.jpg" alt="Tournage d'une séance de préparation physique" loading="lazy"><div class="overlay"><div class="cap"><b>Tournage coach</b><span>Séance de préparation</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/entrainement-exercice.jpg" alt="Tournage d'un exercice d'entraînement" loading="lazy"><div class="overlay"><div class="cap"><b>Tournage coach</b><span>Explication d'exercice</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/academie-petrus-leeds-01.jpg" alt="Tournage d'une séance en académie" loading="lazy"><div class="overlay"><div class="cap"><b>Tournage coach</b><span>Contenu pédagogique</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/reel-coaching-14-poster.jpg" alt="Extrait vidéo d'une séance de coaching" loading="lazy"><div class="overlay"><div class="cap"><b>Tournage coach</b><span>Format court prêt pour les réseaux</span></div></div></div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
 <section class="section-tint">
   <div class="container">
@@ -552,6 +571,33 @@ section{position:relative}
   </div>
 </section>
 
+<!-- ══════════════ POUR QUI ══════════════ -->
+<section class="section-light">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Pour qui</span>
+      <h2>Un tournage pour trois profils.</h2>
+    </div>
+    <div class="accomp-grid pourqui-grid reveal">
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></div>
+        <h4>Coachs indépendants</h4>
+        <p>Des contenus professionnels pour développer votre activité et votre présence en ligne.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M4 20c0-3 2.5-5.5 5-5.5s5 2.5 5 5.5M14 8.5c1.5.3 2.5 1.6 2.5 3.2 0 1-.4 1.9-1 2.5M18 20c0-2-1-4-3-5"/></svg></div>
+        <h4>Préparateurs physiques</h4>
+        <p>Des vidéos d'exercices claires, filmées et montées pour un usage pédagogique auprès de vos athlètes.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 19.5c0-3.3 2.7-5.8 6-5.8s6 2.5 6 5.8"/><path d="M16 5.3a3.2 3.2 0 0 1 0 6.2M19 19.5c0-2.7-1.8-5-4.3-5.7"/></svg></div>
+        <h4>Éducateurs en club</h4>
+        <p>Un tournage de séance pour illustrer votre méthode auprès des familles et de votre structure.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════════ OPTIONS ══════════════ -->
 <section class="section-tint">
   <div class="container">
@@ -565,6 +611,7 @@ section{position:relative}
         <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="currentColor" stroke="none"/><path d="m21 15-5-5-9 9"/></svg></div><span class="sans-abo">En option</span></div>
         <h4>Shooting portrait</h4>
         <p class="desc">Un shooting portrait en complément du tournage, pour compléter votre banque de contenus.</p>
+        <a href="#devis" class="btn btn-grad btn-sm" data-action="open-devis" style="margin-top:14px;width:100%">Ajouter cette option</a>
       </div>
       <div class="prestation-card option-card">
         <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M4 7h13l-2.5-2.5M20 17H7l2.5 2.5"/></svg></div><span class="sans-abo">Accompagnement</span></div>
