@@ -383,11 +383,26 @@ section{position:relative}
 .illustrative-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);background:#f4f6fa;border-radius:999px;padding:5px 11px;margin-bottom:12px}
 .switch-note{max-width:640px;margin:0 auto;text-align:center;font-size:14.5px;color:#5b6478}
 .switch-note a{color:var(--blue);font-weight:700}
+.cycle-strip{list-style:none;display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:8px 0 0;padding:0;position:relative}
+.cycle-strip::before{content:'';position:absolute;top:33px;left:38px;right:38px;height:2px;background:linear-gradient(90deg,rgba(36,84,255,.3),rgba(0,199,255,.3),rgba(131,45,255,.3));z-index:0}
+.cycle-step{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:10px;background:#fff;border:1px solid #e9ecf5;border-radius:14px;padding:18px 15px;box-shadow:0 2px 10px rgba(16,22,49,.05);transition:border-color .18s, transform .18s, box-shadow .18s}
+.cycle-step:hover{border-color:var(--blue);transform:translateY(-3px);box-shadow:0 10px 24px rgba(16,22,49,.09)}
+.cycle-step .n{width:34px;height:34px;border-radius:10px;background:var(--grad-brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-family:var(--font-head);font-size:14px;flex-shrink:0}
+.cycle-step b{font-size:14.5px;font-family:var(--font-head);font-weight:800;color:var(--navy-900)}
+.cycle-step>span:last-child{font-size:12.5px;color:#5b6478;line-height:1.45}
+@media (max-width:980px){
+  .cycle-strip{grid-template-columns:repeat(3,1fr)}
+  .cycle-strip::before{display:none}
+}
 @media (max-width:700px){
   .steps-list li{gap:16px}
+  .cycle-strip{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .cycle-strip{grid-template-columns:1fr}
 }
 </style>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Qui produit réellement les contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Une équipe SportVision, coordonnée par votre Community Manager référent, qui connaît vos équipes ou groupes et vos partenaires sur la durée."}}, {"@type": "Question", "name": "Est-ce que je perds la main sur ce qui est publié ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. Votre Community Manager publie en autonomie selon la ligne éditoriale définie avec vous dès l'onboarding — vous n'avez rien à valider au quotidien. Vous gardez une visibilité complète sur tous les contenus publiés, en temps réel, depuis votre espace Club+."}}, {"@type": "Question", "name": "Les présences photo et vidéo sont-elles incluses ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, des présences photo et vidéo régulières font partie de l'accompagnement, selon la fréquence et le périmètre définis dans votre formule."}}, {"@type": "Question", "name": "Full Communication remplace-t-il Club+ ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, ce sont deux offres différentes, mais votre espace Club+ de suivi est inclus dans votre accompagnement Full Communication, sans coût supplémentaire. Avec Club+ seul, votre structure organise et pilote elle-même sa communication, avec les outils et services SportVision. Avec Full Communication, une équipe SportVision prend en charge votre communication au quotidien, en s'appuyant sur ce même espace Club+ pour centraliser vos contenus, validations, calendrier et échanges. Voir Club+."}}]}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Qui produit réellement les contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Une équipe SportVision, coordonnée par votre Community Manager référent, qui connaît vos équipes ou groupes et vos partenaires sur la durée."}}, {"@type": "Question", "name": "Est-ce que je perds la main sur ce qui est publié ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. Votre Community Manager SportVision publie en autonomie, selon le calendrier éditorial défini avec vous à l'onboarding. Vous gardez une visibilité complète sur ce qui est publié et à venir depuis votre espace Club+, et vous pouvez demander un ajustement à tout moment."}}, {"@type": "Question", "name": "Les présences photo et vidéo sont-elles incluses ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, des présences photo et vidéo régulières font partie de l'accompagnement, selon la fréquence et le périmètre définis dans votre formule."}}, {"@type": "Question", "name": "Full Communication remplace-t-il Club+ ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, ce sont deux offres différentes, mais votre espace Club+ de suivi est inclus dans votre accompagnement Full Communication, sans coût supplémentaire. Avec Club+ seul, votre structure organise et pilote elle-même sa communication, avec les outils et services SportVision. Avec Full Communication, une équipe SportVision prend en charge votre communication au quotidien, en s'appuyant sur ce même espace Club+ pour centraliser vos contenus, validations, calendrier et échanges. Voir Club+."}}]}</script>
 </head>
 <body>
 
@@ -606,40 +621,38 @@ section{position:relative}
   <div class="container">
     <div class="feature-row reveal">
       <div class="feature-copy">
-        <span class="eyebrow">Autonomie, pas absence de contrôle</span>
+        <span class="eyebrow">Déléguer sans perdre la main</span>
         <h3>Vous gardez la visibilité, pas la charge.</h3>
-        <p class="desc">Votre Community Manager référent publie en autonomie, selon la ligne éditoriale définie avec vous dès l'onboarding — vous n'avez rien à valider au quotidien. C'est justement ce qui vous fait gagner du temps.</p>
-        <p class="desc">Votre accompagnement Full Communication inclut votre espace Club+, sans coût supplémentaire : vous suivez en temps réel tout ce qui est publié pour votre structure, et pouvez demander un ajustement à tout moment.</p>
+        <p class="desc">Confier sa communication ne veut pas dire perdre en visibilité. Votre Community Manager SportVision publie en autonomie, selon le calendrier éditorial défini avec vous dès l'onboarding, sans attendre votre feu vert avant chaque publication. Vous suivez tout ce qui est publié et à venir depuis votre espace Club+, et vous pouvez demander un ajustement à tout moment.</p>
+        <p class="desc">Votre accompagnement Full Communication inclut votre espace Club+, sans coût supplémentaire, pour centraliser vos contenus publiés, votre calendrier et vos échanges avec SportVision : vous gardez la main sur le suivi, sans avoir à piloter vous-même la production.</p>
         <ul class="feature-list">
-          <li>Tous les contenus publiés, visibles en temps réel dans votre espace</li>
-          <li>Demandes de retouche ou d'ajustement en un message</li>
+          <li>Calendrier et contenus publiés visibles en temps réel dans votre espace</li>
+          <li>Demandes d'ajustement en un message</li>
           <li>Historique complet de ce qui a été publié, et quand</li>
         </ul>
       </div>
       <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/foot-portrait-09.jpg) center/cover no-repeat">
-        <div class="gcard"><div class="k">Publié</div><div class="v">2 contenus cette semaine</div><div class="sub">Visibles dans votre espace Club+</div></div>
+        <div class="gcard"><div class="k">Publié</div><div class="v">5 contenus cette semaine</div><div class="sub">Prochaine publication : demain 18h</div></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ══════════════ CE QUE COUVRE L'ACCOMPAGNEMENT ══════════════ -->
-<section class="section-tint">
+<!-- ══════════════ CYCLE DE PRODUCTION ══════════════ -->
+<section class="section-light">
   <div class="container">
     <div class="section-head reveal">
-      <h2>Ce que couvre l'accompagnement, au quotidien</h2>
+      <h2>Le cycle qui tourne chaque semaine</h2>
       <p>Une équipe SportVision prend en charge la communication de votre structure, sans que vous ayez à y consacrer du temps.</p>
     </div>
-    <div class="reveal" style="max-width:640px;margin:8px auto 0">
-      <ul class="feature-list">
-        <li>Un Community Manager SportVision référent suit votre calendrier éditorial</li>
-        <li>Gestion de vos réseaux sociaux selon le périmètre défini avec votre structure</li>
-        <li>Présences photo et vidéo planifiées à l'avance autour de vos matchs et événements</li>
-        <li>Création de contenus, affiches, flyers et posts pour vos communications</li>
-        <li>Dossier de sponsoring et mise en avant de vos sponsors intégrée au plan de communication</li>
-        <li>Ligne éditoriale cadrée avec vous dès l'onboarding — publication en autonomie par votre CM, visibilité complète depuis Club+</li>
-      </ul>
-    </div>
+    <ol class="cycle-strip reveal">
+      <li class="cycle-step"><span class="n" aria-hidden="true">1</span><b>Planning</b><span>Calendrier éditorial construit autour de votre saison et de votre calendrier sportif</span></li>
+      <li class="cycle-step"><span class="n" aria-hidden="true">2</span><b>Terrain</b><span>Présences photo et vidéo régulières sur vos matchs et temps forts</span></li>
+      <li class="cycle-step"><span class="n" aria-hidden="true">3</span><b>Production</b><span>Les contenus captés sont triés et préparés pour vos réseaux</span></li>
+      <li class="cycle-step"><span class="n" aria-hidden="true">4</span><b>Création</b><span>Affiches, flyers et visuels adaptés à vos communications</span></li>
+      <li class="cycle-step"><span class="n" aria-hidden="true">5</span><b>Publication</b><span>Votre Community Manager publie en autonomie, selon le calendrier défini avec vous</span></li>
+      <li class="cycle-step"><span class="n" aria-hidden="true">6</span><b>Performance</b><span>Reporting mensuel : publications, portée, sponsors mis en avant</span></li>
+    </ol>
   </div>
 </section>
 
@@ -656,7 +669,7 @@ section{position:relative}
     <div class="section-head reveal"><h2>Questions fréquentes</h2></div>
     <div class="faq-list reveal" id="faq-list">
       <div class="faq-item"><button class="faq-q"><span>Qui produit réellement les contenus ?</span><span class="chev">+</span></button><div class="faq-a"><p>Une équipe SportVision, coordonnée par votre Community Manager référent, qui connaît vos équipes ou groupes et vos partenaires sur la durée.</p></div></div>
-      <div class="faq-item"><button class="faq-q"><span>Est-ce que je perds la main sur ce qui est publié ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non. Votre Community Manager publie en autonomie selon la ligne éditoriale définie avec vous dès l'onboarding — vous n'avez rien à valider au quotidien. Vous gardez une visibilité complète sur tous les contenus publiés, en temps réel, depuis votre espace Club+.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Est-ce que je perds la main sur ce qui est publié ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non. Votre Community Manager SportVision publie en autonomie, selon le calendrier éditorial défini avec vous à l'onboarding. Vous gardez une visibilité complète sur ce qui est publié et à venir depuis votre espace Club+, et vous pouvez demander un ajustement à tout moment.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Les présences photo et vidéo sont-elles incluses ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui, des présences photo et vidéo régulières font partie de l'accompagnement, selon la fréquence et le périmètre définis dans votre formule.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Full Communication remplace-t-il Club+ ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non, ce sont deux offres différentes, mais votre espace Club+ de suivi est <strong>inclus dans votre accompagnement Full Communication, sans coût supplémentaire</strong>. Avec Club+ seul, votre structure organise et pilote elle-même sa communication, avec les outils et services SportVision. Avec Full Communication, une équipe SportVision prend en charge votre communication au quotidien, en s'appuyant sur ce même espace Club+ pour centraliser vos contenus, validations, calendrier et échanges. <a href="club-plus.html" style="color:var(--blue);font-weight:700">Voir Club+</a>.</p></div></div>
     </div>
