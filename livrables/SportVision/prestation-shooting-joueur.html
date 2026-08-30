@@ -237,6 +237,7 @@ section{position:relative}
 .accomp-card h4{font-size:16.5px}
 .accomp-card p{font-size:13.5px;color:#5b6478;margin-top:8px;flex:1}
 .accomp-card a{margin-top:16px;font-size:13.5px;font-weight:700;color:var(--blue)}
+.pourqui-grid{grid-template-columns:repeat(3,1fr)}
 
 /* ── Réalisations ── */
 .gallery-filters{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:32px}
@@ -250,6 +251,7 @@ section{position:relative}
 .gallery-item .overlay .cap b{font-size:13.5px;display:block}
 .gallery-item .overlay .cap span{font-size:11.5px;color:rgba(255,255,255,.65)}
 .gallery-item .play{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+.gallery-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
 /* ── Études de cas ── */
 .case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:8px}
@@ -518,8 +520,25 @@ section{position:relative}
   </div>
 </section>
 
-<!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
+<!-- ══════════════ EXEMPLES ══════════════ -->
 <section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Exemples</span>
+      <h2>Des portraits réels, pas une maquette.</h2>
+      <p>Une sélection de clichés livrés lors de précédents shootings joueur.</p>
+    </div>
+    <div class="gallery-grid reveal">
+      <div class="gallery-item"><img src="assets/realisations/foot-portrait-02.jpg" alt="Portrait de joueur réalisé lors d'un shooting SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Shooting joueur</b><span>Portrait studio</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/foot-portrait-06.jpg" alt="Portrait de joueur réalisé lors d'un shooting SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Shooting joueur</b><span>Mise en situation terrain</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/tennis-action-02.jpg" alt="Portrait de joueur de tennis en action" loading="lazy"><div class="overlay"><div class="cap"><b>Shooting joueur</b><span>Toutes disciplines couvertes</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/foot-portrait-10.jpg" alt="Portrait de joueur réalisé lors d'un shooting SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Shooting joueur</b><span>Rendu prêt pour les réseaux</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
+<section class="section-light">
   <div class="container">
     <div class="feature-row rev reveal">
       <div class="feature-copy">
@@ -535,6 +554,33 @@ section{position:relative}
       </div>
       <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/coulisses-photographe.jpg) center/cover no-repeat">
         <div class="gcard"><div class="k">Réservation</div><div class="v">Référence immédiate</div><div class="sub">Demande enregistrée · Devis personnalisé · Suivi dans Connect</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ POUR QUI ══════════════ -->
+<section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Pour qui</span>
+      <h2>Un shooting pour trois profils.</h2>
+    </div>
+    <div class="accomp-grid pourqui-grid reveal">
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg></div>
+        <h4>Joueur en quête de contenus</h4>
+        <p>Des visuels professionnels pour vos réseaux personnels ou votre profil de joueur, au-delà des photos prises en match.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 12 4l7.5 8.5M6 10.5V20h12v-9.5"/></svg></div>
+        <h4>Famille</h4>
+        <p>Un souvenir professionnel et durable, dans un cadre soigné, en dehors de l'agitation d'un jour de match.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M4 20c0-3 2.5-5.5 5-5.5s5 2.5 5 5.5M14 8.5c1.5.3 2.5 1.6 2.5 3.2 0 1-.4 1.9-1 2.5M18 20c0-2-1-4-3-5"/></svg></div>
+        <h4>Dossier de recrutement</h4>
+        <p>Des portraits soignés pour compléter un dossier destiné à un club, une académie ou un recruteur.</p>
       </div>
     </div>
   </div>

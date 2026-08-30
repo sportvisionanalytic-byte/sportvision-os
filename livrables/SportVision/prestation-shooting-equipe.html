@@ -237,6 +237,7 @@ section{position:relative}
 .accomp-card h4{font-size:16.5px}
 .accomp-card p{font-size:13.5px;color:#5b6478;margin-top:8px;flex:1}
 .accomp-card a{margin-top:16px;font-size:13.5px;font-weight:700;color:var(--blue)}
+.pourqui-grid{grid-template-columns:repeat(3,1fr)}
 
 /* ── Réalisations ── */
 .gallery-filters{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:32px}
@@ -250,6 +251,7 @@ section{position:relative}
 .gallery-item .overlay .cap b{font-size:13.5px;display:block}
 .gallery-item .overlay .cap span{font-size:11.5px;color:rgba(255,255,255,.65)}
 .gallery-item .play{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+.gallery-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
 /* ── Études de cas ── */
 .case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:8px}
@@ -518,8 +520,25 @@ section{position:relative}
   </div>
 </section>
 
-<!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
+<!-- ══════════════ EXEMPLES ══════════════ -->
 <section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Exemples</span>
+      <h2>Des photos d'équipe réelles, pas une maquette.</h2>
+      <p>Une sélection de clichés livrés lors de précédents shootings d'équipe.</p>
+    </div>
+    <div class="gallery-grid reveal">
+      <div class="gallery-item"><img src="assets/realisations/foot-groupe-01.jpg" alt="Photo d'équipe officielle réalisée par SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Shooting équipe</b><span>Photo de groupe officielle</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/foot-groupe-06.jpg" alt="Photo d'équipe officielle réalisée par SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Shooting équipe</b><span>Mise en scène terrain</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/foot-groupe-08.jpg" alt="Portraits individuels réalisés lors d'un shooting d'équipe" loading="lazy"><div class="overlay"><div class="cap"><b>Shooting équipe</b><span>Portraits individuels de l'effectif</span></div></div></div>
+      <div class="gallery-item"><img src="assets/realisations/foot-groupe-09.jpg" alt="Photo d'équipe officielle réalisée par SportVision" loading="lazy"><div class="overlay"><div class="cap"><b>Shooting équipe</b><span>Rendu prêt pour vos supports</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
+<section class="section-light">
   <div class="container">
     <div class="feature-row rev reveal">
       <div class="feature-copy">
@@ -535,6 +554,33 @@ section{position:relative}
       </div>
       <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/coulisses-photographe.jpg) center/cover no-repeat">
         <div class="gcard"><div class="k">Réservation</div><div class="v">Référence immédiate</div><div class="sub">Demande enregistrée · Devis personnalisé · Suivi dans votre espace SportVision</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ POUR QUI ══════════════ -->
+<section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Pour qui</span>
+      <h2>Une séance pour toute votre structure.</h2>
+    </div>
+    <div class="accomp-grid pourqui-grid reveal">
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 19.5c0-3.3 2.7-5.8 6-5.8s6 2.5 6 5.8"/><path d="M16 5.3a3.2 3.2 0 0 1 0 6.2M19 19.5c0-2.7-1.8-5-4.3-5.7"/></svg></div>
+        <h4>Clubs &amp; associations</h4>
+        <p>Une photo d'équipe officielle et des portraits individuels pour votre site, vos réseaux et vos supports de communication.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg></div>
+        <h4>Écoles de sport &amp; académies</h4>
+        <p>Une photo officielle par groupe ou promotion, dans une session organisée sur un seul créneau.</p>
+      </div>
+      <div class="accomp-card">
+        <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></div>
+        <h4>Staff &amp; éducateurs</h4>
+        <p>Des portraits du staff intégrés à la séance, en option, pour une image de club complète.</p>
       </div>
     </div>
   </div>
