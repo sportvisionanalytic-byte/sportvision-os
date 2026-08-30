@@ -114,11 +114,13 @@ section{position:relative}
 .space-switch>a{cursor:pointer}
 .space-switch:hover .nav-caret,.space-switch:focus-within .nav-caret{transform:rotate(180deg)}
 .nav-dropdown-sub{display:block;font-size:11px;font-weight:500;opacity:.6;margin-top:1px}
+.nav-dropdown.nav-dropdown-wide{min-width:460px;display:grid;grid-template-columns:1fr 1fr;gap:1px 6px}
+.nav-dropdown.nav-dropdown-wide .nav-dropdown-all{grid-column:1/-1}
 .burger{display:none;background:none;border:none;color:#fff;width:38px;height:38px;align-items:center;justify-content:center}
 .burger span,.burger span::before,.burger span::after{content:'';display:block;width:20px;height:2px;background:#fff;position:relative;transition:.2s}
 .burger span::before{position:absolute;top:-6px}
 .burger span::after{position:absolute;top:6px}
-.mobile-nav{display:none;position:fixed;inset:0;z-index:999;background:var(--navy-900);padding:90px 24px 24px;flex-direction:column;gap:6px;overflow-y:auto}
+.mobile-nav{display:none;position:fixed;inset:0;z-index:2600;background:var(--navy-900);padding:90px 24px 24px;flex-direction:column;gap:6px;overflow-y:auto}
 .mobile-nav.on{display:flex}
 .mobile-nav>a{color:#fff;font-size:18px;font-weight:700;padding:13px 4px;border-bottom:1px solid rgba(255,255,255,.08);display:block}
 .mobile-nav-group{border-bottom:1px solid rgba(255,255,255,.08)}
@@ -148,6 +150,9 @@ section{position:relative}
 .hero-ctas{display:flex;gap:14px;justify-content:center;margin-top:32px;flex-wrap:wrap}
 .hero-micro{color:rgba(255,255,255,.45);font-size:13px;margin-top:20px}
 .hero-tertiary{margin-top:14px}
+.hero-quicklinks{margin-top:30px;font-size:13px;color:rgba(255,255,255,.38)}
+.hero-quicklinks a{color:rgba(255,255,255,.78);font-weight:600}
+.hero-quicklinks a:hover{color:#fff;text-decoration:underline;text-underline-offset:3px}
 
 /* ── Mockup produit (hero) ── */
 .app-frame{position:relative;max-width:960px;margin:0 auto;border-radius:20px;overflow:hidden;background:linear-gradient(160deg,#0d1330,#131a3d);border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow-lg)}
@@ -162,6 +167,18 @@ section{position:relative}
 .gcard .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cyan);margin-bottom:8px}
 .gcard .v{font-size:15px;font-weight:700;color:#fff}
 .gcard .sub{font-size:12.5px;color:rgba(255,255,255,.55);margin-top:4px}
+.gcard.sm{padding:10px 14px;flex:0 0 auto}
+.gcard.sm .k{margin-bottom:4px}
+.app-body.app-body-media{position:relative;padding:22px;min-height:auto;display:flex;flex-direction:column;gap:16px;background:
+  radial-gradient(circle at 15% 15%, rgba(36,84,255,.25), transparent 45%),
+  radial-gradient(circle at 85% 85%, rgba(0,199,255,.18), transparent 45%);
+}
+.hero-reel-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.hero-reel-tile{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#0d1330;box-shadow:0 14px 30px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.06)}
+.hero-reel-tile img,.hero-reel-tile .hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.hero-reel-tile .hero-video-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,15,0) 55%,rgba(5,7,15,.7) 100%);pointer-events:none}
+.hero-reel-play{position:absolute;top:9px;right:9px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;backdrop-filter:blur(3px)}
+.hero-video-chips{display:flex;gap:10px;flex-wrap:wrap}
 .float-card{position:absolute;background:#fff;color:var(--navy-900);border-radius:14px;padding:14px 16px;box-shadow:0 20px 44px rgba(0,0,0,.4);animation:floaty 6s ease-in-out infinite;max-width:220px}
 .float-card .k{font-size:10.5px;font-weight:800;text-transform:uppercase;color:var(--blue);letter-spacing:.04em}
 .float-card .v{font-size:13.5px;font-weight:700;margin-top:4px}
@@ -296,7 +313,10 @@ section{position:relative}
 .cta-final .hero-ctas{margin-top:34px}
 
 /* ── Footer ── */
-.site-footer{background:var(--navy-900);color:rgba(255,255,255,.6);padding:70px 0 30px;border-top:1px solid rgba(255,255,255,.06)}
+.site-footer{background:var(--navy-900);color:rgba(255,255,255,.6);padding:70px 0 30px;position:relative;overflow:hidden}
+.site-footer::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(36,84,255,.6) 18%,rgba(0,199,255,.55) 50%,rgba(131,45,255,.55) 82%,transparent)}
+.site-footer::after{content:'';position:absolute;top:-160px;left:50%;width:680px;height:320px;transform:translateX(-50%);background:radial-gradient(circle,rgba(36,84,255,.12),transparent 70%);pointer-events:none}
+.site-footer .container{position:relative}
 .footer-grid{display:grid;grid-template-columns:1.6fr repeat(5,1fr);gap:30px}
 .footer-brand p{font-size:13.5px;line-height:1.6;margin-top:14px;max-width:220px}
 .footer-col h5{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.85);margin-bottom:16px}
@@ -306,7 +326,9 @@ section{position:relative}
 .footer-bottom{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-top:1px solid rgba(255,255,255,.08);margin-top:54px;padding-top:24px;font-size:12.5px;color:rgba(255,255,255,.4)}
 .footer-legal{display:flex;gap:18px;flex-wrap:wrap}
 .footer-social{display:flex;gap:10px}
-.footer-social a{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:13px}
+.footer-social a{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(255,255,255,.7);transition:background .15s,border-color .15s,color .15s,transform .15s}
+.footer-social a:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18);color:#fff;transform:translateY(-2px)}
+.footer-social a svg{width:16px;height:16px}
 
 /* ── Reveal au scroll ── */
 .reveal{opacity:0;transform:translateY(28px);transition:opacity .6s ease, transform .6s ease}
@@ -371,6 +393,8 @@ section{position:relative}
   .burger{display:flex}
   .app-grid{grid-template-columns:1fr}
   .float-card{display:none}
+  .hero-reel-strip{grid-template-columns:repeat(3,1fr)}
+  .hero-reel-tile:nth-child(4){display:none}
   .need-selector-grid{grid-template-columns:repeat(2,1fr)}
   .feature-row{grid-template-columns:1fr;gap:30px}
   .feature-row.rev .feature-copy,.feature-row.rev .feature-visual{order:0}
@@ -384,6 +408,11 @@ section{position:relative}
   .hero{padding:126px 0 60px}
   .hero-tabs{width:100%}
   .hero-tab{flex:1}
+  .hero-reel-strip{grid-template-columns:repeat(2,1fr)}
+  .hero-reel-tile:nth-child(3),.hero-reel-tile:nth-child(4){display:none}
+  .hero-video-chips{gap:8px}
+  .gcard.sm{padding:8px 12px}
+  .gcard.sm .v{font-size:13px}
   .need-selector-grid{grid-template-columns:1fr 1fr}
   .gallery-grid{grid-template-columns:1fr 1fr}
   .footer-grid{grid-template-columns:1fr}
@@ -402,7 +431,7 @@ section{position:relative}
     <nav class="main-nav">
       <div class="nav-item">
         <a href="prestations.html">Prestations <span class="nav-caret">▾</span></a>
-        <div class="nav-dropdown">
+        <div class="nav-dropdown nav-dropdown-wide">
           <a href="prestation-match-photo.html">Match photo</a>
           <a href="prestation-match-video.html">Match vidéo</a>
           <a href="prestation-pack-match.html">Pack Match Complet</a>
@@ -440,7 +469,7 @@ section{position:relative}
           <a href="https://clubplus.sportvision-an.fr/">SportVision Club+<span class="nav-dropdown-sub">Espace professionnel</span></a>
         </div>
       </div>
-      <a href="reserver.html" class="btn btn-grad">Réserver</a>
+      <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
     </div>
     <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
   </div>
@@ -519,6 +548,8 @@ section{position:relative}
           <a href="#devis" class="btn-link" data-action="open-devis">Parler à SportVision →</a>
         </div>
       </div>
+
+      <p class="hero-quicklinks">Autres portes d'entrée : <a href="club-plus.html">Club+</a> · <a href="full-communication.html">Full Communication</a> · <a href="realisations.html">Voir nos réalisations</a></p>
     </div>
 
     <div class="reveal" style="max-width:960px;margin:52px auto 0;position:relative">
@@ -531,28 +562,21 @@ section{position:relative}
         <div class="v">Highlight prêt à télécharger</div>
       </div>
       <div class="app-frame">
-        <div class="bar"><span></span><span></span><span></span><div style="margin-left:auto;font-size:11px;color:rgba(255,255,255,.35)">Aperçu Connect</div></div>
-        <div class="app-body">
-          <div class="app-grid">
-            <div class="gcard">
-              <div class="k">Ma prestation</div>
-              <div class="v">Pack Match Complet</div>
-              <div class="sub">Équipe SportVision attribuée</div>
+        <div class="bar"><span></span><span></span><span></span><div style="margin-left:auto;font-size:11px;color:rgba(255,255,255,.35)">Captations réelles SportVision</div></div>
+        <div class="app-body app-body-media">
+          <div class="hero-reel-strip">
+            <div class="hero-reel-tile">
+              <video class="hero-video" id="hero-video" muted loop playsinline preload="none" poster="assets/realisations/reel-match-action-01-poster.jpg" aria-label="Extrait réel d'une captation de match SportVision"></video>
+              <div class="hero-video-overlay" aria-hidden="true"></div>
+              <span class="hero-reel-play" aria-hidden="true">▶</span>
             </div>
-            <div class="gcard">
-              <div class="k">Devis</div>
-              <div class="v">Accepté et signé</div>
-              <div class="sub">Paiement réglé</div>
-            </div>
-            <div class="gcard">
-              <div class="k">Livraison</div>
-              <div class="v">Sous 24h maximum</div>
-            </div>
-            <div class="gcard">
-              <div class="k">Médiathèque</div>
-              <div class="v">238 contenus</div>
-              <div class="sub">Photos · Vidéos · Créations graphiques</div>
-            </div>
+            <div class="hero-reel-tile"><img src="assets/realisations/tennis-action-01.jpg" alt="Action de jeu en tennis, captation SportVision" loading="lazy" style="object-position:center 20%"></div>
+            <div class="hero-reel-tile"><img src="assets/realisations/basket-action-01.jpg" alt="Défense en basket, captation SportVision" loading="lazy" style="object-position:center 15%"></div>
+            <div class="hero-reel-tile"><img src="assets/realisations/foot-portrait-01.jpg" alt="Portrait joueur, séance shooting SportVision" loading="lazy" style="object-position:center top"></div>
+          </div>
+          <div class="hero-video-chips">
+            <div class="gcard sm"><div class="k">Livraison</div><div class="v">Sous 24h maximum</div></div>
+            <div class="gcard sm"><div class="k">Prestations</div><div class="v">Dès 120 € TTC</div></div>
           </div>
         </div>
       </div>
@@ -943,7 +967,7 @@ section{position:relative}
         <a href="#" id="cookie-manage">Gérer mes cookies</a>
       </div>
       <div class="footer-social">
-        <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
+        <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg></a>
       </div>
     </div>
   </div>
@@ -1128,11 +1152,33 @@ const header = document.getElementById('site-header');
 function onScroll(){ header.classList.toggle('solid', window.scrollY > 40); }
 window.addEventListener('scroll', onScroll, { passive:true }); onScroll();
 
-// ── Menu mobile ──
+// ── Menu mobile (accessible : aria-expanded + fermeture au clavier) ──
 const burger = document.getElementById('burger-btn');
 const mobileNav = document.getElementById('mobile-nav');
-burger.addEventListener('click', () => mobileNav.classList.toggle('on'));
-mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mobileNav.classList.remove('on')));
+function setMobileNav(open){
+  mobileNav.classList.toggle('on', open);
+  burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+burger.setAttribute('aria-expanded', 'false');
+burger.setAttribute('aria-controls', 'mobile-nav');
+burger.addEventListener('click', () => setMobileNav(!mobileNav.classList.contains('on')));
+mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setMobileNav(false)));
+
+// ── Sous-menus desktop : aria-expanded synchronisé (hover + clavier) ──
+document.querySelectorAll('.nav-item, .space-switch').forEach(item => {
+  const trigger = item.querySelector(':scope > a, :scope > button');
+  if (!trigger) return;
+  trigger.setAttribute('aria-haspopup', 'true');
+  trigger.setAttribute('aria-expanded', 'false');
+  const setOpen = (open) => trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  item.addEventListener('mouseenter', () => setOpen(true));
+  item.addEventListener('mouseleave', () => setOpen(false));
+  item.addEventListener('focusin', () => setOpen(true));
+  item.addEventListener('focusout', (e) => { if (!item.contains(e.relatedTarget)) setOpen(false); });
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && mobileNav.classList.contains('on')){ setMobileNav(false); burger.focus(); }
+});
 
 // ── Reveal au scroll ──
 const revealEls = document.querySelectorAll('.reveal');
@@ -1148,6 +1194,18 @@ if ('IntersectionObserver' in window){
 // ── Logo track : duplique le contenu pour un défilement continu sans coupure ──
 const track = document.getElementById('logo-track');
 track.innerHTML += track.innerHTML;
+
+// ── Hero : extrait vidéo réel en fond du mockup, chargé uniquement sur grand
+//    écran et si le visiteur n'a pas demandé de réduire les animations (perf
+//    mobile + respect de prefers-reduced-motion). Sinon, l'affiche (poster)
+//    suffit : c'est déjà une vraie photo de captation, pas un placeholder ──
+const heroVideo = document.getElementById('hero-video');
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (heroVideo && !prefersReducedMotion && window.matchMedia('(min-width: 1024px)').matches){
+  heroVideo.src = 'assets/realisations/videos/reel-match-action-01.mp4';
+  heroVideo.load();
+  heroVideo.play().catch(() => {});
+}
 
 // ── Hero : deux parcours sélectionnables ──
 document.getElementById('hero-tabs').addEventListener('click', (e) => {
