@@ -315,7 +315,7 @@ section{position:relative}
 
 <header class="site-header" id="site-header">
   <div class="container">
-    <a href="index.html" class="brand"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true">SportVision</a>
+    <a href="index.html" class="brand"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" width="160" height="240">SportVision</a>
     <nav class="main-nav">
       <div class="nav-item">
         <a href="prestations.html" class="active">Prestations <span class="nav-caret">▾</span></a>
@@ -435,17 +435,17 @@ section{position:relative}
     </div>
     <div class="video-showcase-grid reveal">
       <div class="video-showcase" data-video="assets/realisations/videos/reel-camera-isolee-01.mp4">
-        <img src="assets/realisations/reel-camera-isolee-01-poster.jpg" alt="Extrait caméra isolée joueur 1" loading="lazy">
+        <picture><source srcset="assets/realisations/reel-camera-isolee-01-poster.webp" type="image/webp"><img src="assets/realisations/reel-camera-isolee-01-poster.jpg" alt="Extrait caméra isolée joueur 1" loading="lazy" width="720" height="1280"></picture>
         <span class="play">▶</span>
         <div class="cap"><b>Caméra isolée joueur</b><span>Extrait réel — suivi individuel</span></div>
       </div>
       <div class="video-showcase" data-video="assets/realisations/videos/reel-camera-isolee-02.mp4">
-        <img src="assets/realisations/reel-camera-isolee-02-poster.jpg" alt="Extrait caméra isolée joueur 2" loading="lazy">
+        <picture><source srcset="assets/realisations/reel-camera-isolee-02-poster.webp" type="image/webp"><img src="assets/realisations/reel-camera-isolee-02-poster.jpg" alt="Extrait caméra isolée joueur 2" loading="lazy" width="720" height="1280"></picture>
         <span class="play">▶</span>
         <div class="cap"><b>Caméra isolée joueur</b><span>Extrait réel — suivi individuel</span></div>
       </div>
       <div class="video-showcase" data-video="assets/realisations/videos/reel-camera-isolee-03.mp4">
-        <img src="assets/realisations/reel-camera-isolee-03-poster.jpg" alt="Extrait caméra isolée joueur 3" loading="lazy">
+        <picture><source srcset="assets/realisations/reel-camera-isolee-03-poster.webp" type="image/webp"><img src="assets/realisations/reel-camera-isolee-03-poster.jpg" alt="Extrait caméra isolée joueur 3" loading="lazy" width="720" height="1280"></picture>
         <span class="play">▶</span>
         <div class="cap"><b>Caméra isolée joueur</b><span>Extrait réel — suivi individuel</span></div>
       </div>
@@ -590,7 +590,7 @@ section{position:relative}
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a href="index.html" class="brand" style="font-size:18px"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" style="width:28px;height:28px;padding:4px">SportVision</a>
+        <a href="index.html" class="brand" style="font-size:18px"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" style="width:28px;height:28px;padding:4px" width="160" height="240">SportVision</a>
         <p>Photo, vidéo et communication sportive — par ELKANA GROUP.</p>
       </div>
       <div class="footer-col"><h5>Prestations</h5><ul>
@@ -723,7 +723,7 @@ section{position:relative}
 
 <div class="video-modal-overlay" id="video-modal-overlay">
   <button class="video-modal-close" id="video-modal-close" aria-label="Fermer">✕</button>
-  <video id="video-modal-player" controls playsinline></video>
+  <video id="video-modal-player" controls playsinline preload="none"></video>
 </div>
 
 <div class="toast" id="toast"></div>

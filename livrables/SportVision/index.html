@@ -427,7 +427,7 @@ section{position:relative}
 <!-- ══════════════ HEADER ══════════════ -->
 <header class="site-header" id="site-header">
   <div class="container">
-    <a href="index.html" class="brand"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true">SportVision</a>
+    <a href="index.html" class="brand"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" width="160" height="240">SportVision</a>
     <nav class="main-nav">
       <div class="nav-item">
         <a href="prestations.html">Prestations <span class="nav-caret">▾</span></a>
@@ -566,13 +566,13 @@ section{position:relative}
         <div class="app-body app-body-media">
           <div class="hero-reel-strip">
             <div class="hero-reel-tile">
-              <video class="hero-video" id="hero-video" muted loop playsinline preload="none" poster="assets/realisations/reel-match-action-01-poster.jpg" aria-label="Extrait réel d'une captation de match SportVision"></video>
+              <video class="hero-video" id="hero-video" muted loop playsinline preload="none" poster="assets/realisations/reel-match-action-01-poster.jpg" aria-label="Extrait réel d'une captation de match SportVision" fetchpriority="high"></video>
               <div class="hero-video-overlay" aria-hidden="true"></div>
               <span class="hero-reel-play" aria-hidden="true">▶</span>
             </div>
-            <div class="hero-reel-tile"><img src="assets/realisations/tennis-action-01.jpg" alt="Action de jeu en tennis, captation SportVision" loading="lazy" style="object-position:center 20%"></div>
-            <div class="hero-reel-tile"><img src="assets/realisations/basket-action-01.jpg" alt="Défense en basket, captation SportVision" loading="lazy" style="object-position:center 15%"></div>
-            <div class="hero-reel-tile"><img src="assets/realisations/foot-portrait-01.jpg" alt="Portrait joueur, séance shooting SportVision" loading="lazy" style="object-position:center top"></div>
+            <div class="hero-reel-tile"><picture><source srcset="assets/realisations/tennis-action-01.webp" type="image/webp"><img src="assets/realisations/tennis-action-01.jpg" alt="Action de jeu en tennis, captation SportVision" style="object-position:center 20%" width="933" height="1400"></picture></div>
+            <div class="hero-reel-tile"><picture><source srcset="assets/realisations/basket-action-01.webp" type="image/webp"><img src="assets/realisations/basket-action-01.jpg" alt="Défense en basket, captation SportVision" style="object-position:center 15%" width="933" height="1400"></picture></div>
+            <div class="hero-reel-tile"><picture><source srcset="assets/realisations/foot-portrait-01.webp" type="image/webp"><img src="assets/realisations/foot-portrait-01.jpg" alt="Portrait joueur, séance shooting SportVision" style="object-position:center top" width="933" height="1400"></picture></div>
           </div>
           <div class="hero-video-chips">
             <div class="gcard sm"><div class="k">Livraison</div><div class="v">Sous 24h maximum</div></div>
@@ -700,24 +700,24 @@ section{position:relative}
       <p>Un aperçu de nos captations réelles — football, tennis, basket, photo et vidéo.</p>
     </div>
     <div class="gallery-grid reveal" id="gallery-grid">
-      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-match-action-01.mp4"><img src="assets/realisations/reel-match-action-01-poster.jpg" alt="Action de match — Extrait réel — captation terrain" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Action de match</b><span>Extrait réel — captation terrain</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/foot-portrait-01.jpg" alt="Portrait joueur — Séance shooting club" loading="lazy" style="object-position:center top"><div class="overlay"><div class="cap"><b>Portrait joueur</b><span>Séance shooting club</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/tennis-action-01.jpg" alt="Action de jeu — Tennis — shooting joueur" loading="lazy" style="object-position:center 25%"><div class="overlay"><div class="cap"><b>Action de jeu</b><span>Tennis — shooting joueur</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/basket-action-01.jpg" alt="Position défensive — Basket — captation match" loading="lazy" style="object-position:center 20%"><div class="overlay"><div class="cap"><b>Position défensive</b><span>Basket — captation match</span></div></div></div>
-      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-celebration-08.mp4"><img src="assets/realisations/reel-celebration-08-poster.jpg" alt="Célébration — Extrait réel — victoire d'équipe" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Célébration</b><span>Extrait réel — victoire d'équipe</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/foot-groupe-01.jpg" alt="Complicité — Avant-match" loading="lazy" style="object-position:center top"><div class="overlay"><div class="cap"><b>Complicité</b><span>Avant-match</span></div></div></div>
-      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-duel-13.mp4"><img src="assets/realisations/reel-duel-13-poster.jpg" alt="Duel — Extrait réel — captation match" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Duel</b><span>Extrait réel — captation match</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/asam-montereau-action-01.jpg" alt="Action de jeu — ASA Montereau" loading="lazy" style="object-position:center 20%"><div class="overlay"><div class="cap"><b>Action de match</b><span>ASA Montereau</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/academie-petrus-leeds-01.jpg" alt="Jeune joueur en tournoi international" loading="lazy" style="object-position:center 15%"><div class="overlay"><div class="cap"><b>Tournoi international</b><span>Jeunes talents en détection</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/es-colombienne-montee-02.jpg" alt="Action de jeu — ES Colombienne, montée en Régional 2" loading="lazy" style="object-position:center 25%"><div class="overlay"><div class="cap"><b>Match de montée</b><span>ES Colombienne — Régional 2</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/fc-varenne-action-02.jpg" alt="Action de jeu — FC Varennes" loading="lazy" style="object-position:center 15%"><div class="overlay"><div class="cap"><b>Action de match</b><span>FC Varennes</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/tsf-tournoi-sens-01.jpg" alt="Jeune joueur en tournoi international, Sens" loading="lazy" style="object-position:center 15%"><div class="overlay"><div class="cap"><b>Tournoi international</b><span>Tournoi Sans Frontière — Sens</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/academie-petrus-sunderland-01.jpg" alt="Joueurs de l'académie Petrus" loading="lazy" style="object-position:center 20%"><div class="overlay"><div class="cap"><b>Tournoi international</b><span>Académie Petrus</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><img src="assets/realisations/asam-montereau-action-02.jpg" alt="Action de jeu — ASA Montereau" loading="lazy" style="object-position:center 20%"><div class="overlay"><div class="cap"><b>Action de match</b><span>ASA Montereau</span></div></div></div>
-      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-camera-isolee-01.mp4"><img src="assets/realisations/reel-camera-isolee-01-poster.jpg" alt="Caméra isolée joueur — Extrait réel — suivi individuel" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Caméra isolée joueur</b><span>Suivi individuel — extrait réel</span></div></div></div>
-      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-compilation-veo-01.mp4"><img src="assets/realisations/reel-compilation-veo-01-poster.jpg" alt="Compilation Veo — Extrait réel — montage highlight" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Compilation Veo</b><span>Montage highlight — extrait réel</span></div></div></div>
-      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-camera-isolee-02.mp4"><img src="assets/realisations/reel-camera-isolee-02-poster.jpg" alt="Caméra isolée joueur — Extrait réel — contrôle de balle" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Caméra isolée joueur</b><span>Suivi individuel — extrait réel</span></div></div></div>
-      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-camera-isolee-03.mp4"><img src="assets/realisations/reel-camera-isolee-03-poster.jpg" alt="Caméra isolée joueur — Extrait réel — échauffement" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Caméra isolée joueur</b><span>Suivi individuel — extrait réel</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-match-action-01.mp4"><picture><source srcset="assets/realisations/reel-match-action-01-poster.webp" type="image/webp"><img src="assets/realisations/reel-match-action-01-poster.jpg" alt="Action de match — Extrait réel — captation terrain" loading="lazy" style="object-position:center" width="700" height="1244"></picture><span class="play">▶</span><div class="overlay"><div class="cap"><b>Action de match</b><span>Extrait réel — captation terrain</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/foot-portrait-01.webp" type="image/webp"><img src="assets/realisations/foot-portrait-01.jpg" alt="Portrait joueur — Séance shooting club" loading="lazy" style="object-position:center top" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Portrait joueur</b><span>Séance shooting club</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/tennis-action-01.webp" type="image/webp"><img src="assets/realisations/tennis-action-01.jpg" alt="Action de jeu — Tennis — shooting joueur" loading="lazy" style="object-position:center 25%" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Action de jeu</b><span>Tennis — shooting joueur</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/basket-action-01.webp" type="image/webp"><img src="assets/realisations/basket-action-01.jpg" alt="Position défensive — Basket — captation match" loading="lazy" style="object-position:center 20%" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Position défensive</b><span>Basket — captation match</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-celebration-08.mp4"><picture><source srcset="assets/realisations/reel-celebration-08-poster.webp" type="image/webp"><img src="assets/realisations/reel-celebration-08-poster.jpg" alt="Célébration — Extrait réel — victoire d'équipe" loading="lazy" style="object-position:center" width="700" height="1244"></picture><span class="play">▶</span><div class="overlay"><div class="cap"><b>Célébration</b><span>Extrait réel — victoire d'équipe</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/foot-groupe-01.webp" type="image/webp"><img src="assets/realisations/foot-groupe-01.jpg" alt="Complicité — Avant-match" loading="lazy" style="object-position:center top" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Complicité</b><span>Avant-match</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-duel-13.mp4"><picture><source srcset="assets/realisations/reel-duel-13-poster.webp" type="image/webp"><img src="assets/realisations/reel-duel-13-poster.jpg" alt="Duel — Extrait réel — captation match" loading="lazy" style="object-position:center" width="700" height="1244"></picture><span class="play">▶</span><div class="overlay"><div class="cap"><b>Duel</b><span>Extrait réel — captation match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/asam-montereau-action-01.webp" type="image/webp"><img src="assets/realisations/asam-montereau-action-01.jpg" alt="Action de jeu — ASA Montereau" loading="lazy" style="object-position:center 20%" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Action de match</b><span>ASA Montereau</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/academie-petrus-leeds-01.webp" type="image/webp"><img src="assets/realisations/academie-petrus-leeds-01.jpg" alt="Jeune joueur en tournoi international" loading="lazy" style="object-position:center 15%" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Tournoi international</b><span>Jeunes talents en détection</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/es-colombienne-montee-02.webp" type="image/webp"><img src="assets/realisations/es-colombienne-montee-02.jpg" alt="Action de jeu — ES Colombienne, montée en Régional 2" loading="lazy" style="object-position:center 25%" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Match de montée</b><span>ES Colombienne — Régional 2</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/fc-varenne-action-02.webp" type="image/webp"><img src="assets/realisations/fc-varenne-action-02.jpg" alt="Action de jeu — FC Varennes" loading="lazy" style="object-position:center 15%" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Action de match</b><span>FC Varennes</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/tsf-tournoi-sens-01.webp" type="image/webp"><img src="assets/realisations/tsf-tournoi-sens-01.jpg" alt="Jeune joueur en tournoi international, Sens" loading="lazy" style="object-position:center 15%" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Tournoi international</b><span>Tournoi Sans Frontière — Sens</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/academie-petrus-sunderland-01.webp" type="image/webp"><img src="assets/realisations/academie-petrus-sunderland-01.jpg" alt="Joueurs de l'académie Petrus" loading="lazy" style="object-position:center 20%" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Tournoi international</b><span>Académie Petrus</span></div></div></div>
+      <div class="gallery-item" data-cat="photo"><picture><source srcset="assets/realisations/asam-montereau-action-02.webp" type="image/webp"><img src="assets/realisations/asam-montereau-action-02.jpg" alt="Action de jeu — ASA Montereau" loading="lazy" style="object-position:center 20%" width="933" height="1400"></picture><div class="overlay"><div class="cap"><b>Action de match</b><span>ASA Montereau</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-camera-isolee-01.mp4"><picture><source srcset="assets/realisations/reel-camera-isolee-01-poster.webp" type="image/webp"><img src="assets/realisations/reel-camera-isolee-01-poster.jpg" alt="Caméra isolée joueur — Extrait réel — suivi individuel" loading="lazy" style="object-position:center" width="720" height="1280"></picture><span class="play">▶</span><div class="overlay"><div class="cap"><b>Caméra isolée joueur</b><span>Suivi individuel — extrait réel</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-compilation-veo-01.mp4"><picture><source srcset="assets/realisations/reel-compilation-veo-01-poster.webp" type="image/webp"><img src="assets/realisations/reel-compilation-veo-01-poster.jpg" alt="Compilation Veo — Extrait réel — montage highlight" loading="lazy" style="object-position:center" width="720" height="1280"></picture><span class="play">▶</span><div class="overlay"><div class="cap"><b>Compilation Veo</b><span>Montage highlight — extrait réel</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-camera-isolee-02.mp4"><picture><source srcset="assets/realisations/reel-camera-isolee-02-poster.webp" type="image/webp"><img src="assets/realisations/reel-camera-isolee-02-poster.jpg" alt="Caméra isolée joueur — Extrait réel — contrôle de balle" loading="lazy" style="object-position:center" width="720" height="1280"></picture><span class="play">▶</span><div class="overlay"><div class="cap"><b>Caméra isolée joueur</b><span>Suivi individuel — extrait réel</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-camera-isolee-03.mp4"><picture><source srcset="assets/realisations/reel-camera-isolee-03-poster.webp" type="image/webp"><img src="assets/realisations/reel-camera-isolee-03-poster.jpg" alt="Caméra isolée joueur — Extrait réel — échauffement" loading="lazy" style="object-position:center" width="720" height="1280"></picture><span class="play">▶</span><div class="overlay"><div class="cap"><b>Caméra isolée joueur</b><span>Suivi individuel — extrait réel</span></div></div></div>
     </div>
     <div class="hero-tertiary reveal" style="text-align:center;margin-top:36px">
       <a href="realisations.html" class="btn btn-ghost-light">Voir toutes nos réalisations →</a>
@@ -752,16 +752,16 @@ section{position:relative}
   <div class="container">
     <p class="proof-label reveal">Ils font confiance à SportVision</p>
     <div class="logo-track reveal"><div class="logo-track-inner" id="logo-track">
-      <span class="logo-item"><img src="assets/partners/rc-fontainebleau.svg" alt="RC Pays de Fontainebleau" loading="lazy"></span>
-      <span class="logo-item"><img src="assets/partners/fc-varenne.jpeg" alt="FC Varenne Féminine" loading="lazy"></span>
-      <span class="logo-item"><img src="assets/partners/elite-sport-camps-horizon.png" alt="Elite Sports Camps Horizon" loading="lazy"></span>
+      <span class="logo-item"><img src="assets/partners/rc-fontainebleau.svg" alt="RC Pays de Fontainebleau" loading="lazy" width="525" height="525"></span>
+      <span class="logo-item"><img src="assets/partners/fc-varenne.jpeg" alt="FC Varenne Féminine" loading="lazy" width="225" height="225"></span>
+      <span class="logo-item"><img src="assets/partners/elite-sport-camps-horizon.png" alt="Elite Sports Camps Horizon" loading="lazy" width="500" height="500"></span>
       <span class="logo-item">Games Factory</span>
       <span class="logo-item">Brunoy FC</span>
-      <span class="logo-item"><img src="assets/partners/asa-montereau.png" alt="ASA Montereau" loading="lazy"></span>
-      <span class="logo-item"><img src="assets/partners/es-colombienne.png" alt="ES Colombienne" loading="lazy"></span>
+      <span class="logo-item"><img src="assets/partners/asa-montereau.png" alt="ASA Montereau" loading="lazy" width="342" height="445"></span>
+      <span class="logo-item"><img src="assets/partners/es-colombienne.png" alt="ES Colombienne" loading="lazy" width="500" height="500"></span>
       <span class="logo-item">FC Milly-Gâtinais</span>
-      <span class="logo-item"><img src="assets/partners/roi-du-beton.jpg" alt="Roi du Béton" loading="lazy"></span>
-      <span class="logo-item"><img src="assets/partners/alchimist-performance.png" alt="Alchimist Performance" loading="lazy"></span>
+      <span class="logo-item"><img src="assets/partners/roi-du-beton.jpg" alt="Roi du Béton" loading="lazy" width="500" height="487"></span>
+      <span class="logo-item"><img src="assets/partners/alchimist-performance.png" alt="Alchimist Performance" loading="lazy" width="500" height="333"></span>
     </div></div>
     <p class="zones-note reveal">Matchs, shootings, stages et événements couverts en Yonne et Île-de-France (Seine-et-Marne en particulier) — extension progressive à d'autres régions.</p>
   </div>
@@ -776,7 +776,7 @@ section{position:relative}
     </div>
     <div class="case-grid reveal" id="case-grid">
       <div class="case-card">
-        <div class="case-media"><img src="assets/realisations/case-fc-varenne.jpg" alt="Joueurs du FC Varennes célébrant leur montée" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 20%"><span class="more-badge">+4</span></div>
+        <div class="case-media"><picture><source srcset="assets/realisations/case-fc-varenne.webp" type="image/webp"><img src="assets/realisations/case-fc-varenne.jpg" alt="Joueurs du FC Varennes célébrant leur montée" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 20%" width="933" height="1400"></picture><span class="more-badge">+4</span></div>
         <div class="case-body">
           <span class="tag">FC Varennes · U15</span>
           <h4>Un match de montée filmé en immersion</h4>
@@ -790,7 +790,7 @@ section{position:relative}
         </div>
       </div>
       <div class="case-card">
-        <div class="case-media"><img src="assets/realisations/tsf-tournoi-sens-01.jpg" alt="Jeune joueur en tournoi international, Sens" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%"><span class="more-badge">+4</span></div>
+        <div class="case-media"><picture><source srcset="assets/realisations/tsf-tournoi-sens-01.webp" type="image/webp"><img src="assets/realisations/tsf-tournoi-sens-01.jpg" alt="Jeune joueur en tournoi international, Sens" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%" width="933" height="1400"></picture><span class="more-badge">+4</span></div>
         <div class="case-body">
           <span class="tag">Tournoi Sans Frontière · Sens</span>
           <h4>Un tournoi international couvert de bout en bout</h4>
@@ -804,7 +804,7 @@ section{position:relative}
         </div>
       </div>
       <div class="case-card">
-        <div class="case-media"><img src="assets/realisations/case-asa-montereau-03.jpg" alt="Joueurs de l'ASA Montereau célébrant un but" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 65%"><span class="more-badge">+3</span></div>
+        <div class="case-media"><picture><source srcset="assets/realisations/case-asa-montereau-03.webp" type="image/webp"><img src="assets/realisations/case-asa-montereau-03.jpg" alt="Joueurs de l'ASA Montereau célébrant un but" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 65%" width="933" height="1400"></picture><span class="more-badge">+3</span></div>
         <div class="case-body">
           <span class="tag">ASA Montereau · Seniors</span>
           <h4>Un match capté au plus près de l'action</h4>
@@ -817,7 +817,7 @@ section{position:relative}
         </div>
       </div>
       <div class="case-card">
-        <div class="case-media"><img src="assets/realisations/case-elite-camp-horizon.jpg" alt="Jeunes joueurs du stage Elite Sport Camp Horizon" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 40%"><span class="more-badge">+4</span></div>
+        <div class="case-media"><picture><source srcset="assets/realisations/case-elite-camp-horizon.webp" type="image/webp"><img src="assets/realisations/case-elite-camp-horizon.jpg" alt="Jeunes joueurs du stage Elite Sport Camp Horizon" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 40%" width="1400" height="933"></picture><span class="more-badge">+4</span></div>
         <div class="case-body">
           <span class="tag">Elite Sport Camp Horizon · Stage</span>
           <h4>La communication complète d'un stage sportif</h4>
@@ -831,7 +831,7 @@ section{position:relative}
         </div>
       </div>
       <div class="case-card">
-        <div class="case-media"><img src="assets/realisations/case-es-colombienne.jpg" alt="Joueur de l'ES Colombienne sous la pluie" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 25%"><span class="more-badge">+4</span></div>
+        <div class="case-media"><picture><source srcset="assets/realisations/case-es-colombienne.webp" type="image/webp"><img src="assets/realisations/case-es-colombienne.jpg" alt="Joueur de l'ES Colombienne sous la pluie" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 25%" width="933" height="1400"></picture><span class="more-badge">+4</span></div>
         <div class="case-body">
           <span class="tag">ES Colombienne · Plusieurs prestations</span>
           <h4>Un club suivi sur plusieurs prestations</h4>
@@ -845,7 +845,7 @@ section{position:relative}
         </div>
       </div>
       <div class="case-card">
-        <div class="case-media" data-video="assets/realisations/videos/reel-tournoi-milly-01.mp4"><img src="assets/realisations/case-tournoi-milly-poster.jpg" alt="Animation lors du tournoi FC Milly-Gâtinais" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center"><span class="play" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">▶</span><span class="more-badge">+1</span></div>
+        <div class="case-media" data-video="assets/realisations/videos/reel-tournoi-milly-01.mp4"><picture><source srcset="assets/realisations/case-tournoi-milly-poster.webp" type="image/webp"><img src="assets/realisations/case-tournoi-milly-poster.jpg" alt="Animation lors du tournoi FC Milly-Gâtinais" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center" width="720" height="1280"></picture><span class="play" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">▶</span><span class="more-badge">+1</span></div>
         <div class="case-body">
           <span class="tag">FC Milly-Gâtinais · Tournoi</span>
           <h4>Communication complète d'un tournoi</h4>
@@ -923,7 +923,7 @@ section{position:relative}
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a href="index.html" class="brand" style="font-size:18px"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" style="width:28px;height:28px;padding:4px">SportVision</a>
+        <a href="index.html" class="brand" style="font-size:18px"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" style="width:28px;height:28px;padding:4px" width="160" height="240">SportVision</a>
         <p>Photo, vidéo et communication sportive — par ELKANA GROUP.</p>
       </div>
       <div class="footer-col"><h5>Prestations</h5><ul>
@@ -1059,7 +1059,7 @@ section{position:relative}
 <div class="sv-overlay" id="video-overlay">
   <div class="video-modal">
     <button class="sv-close" id="video-close" aria-label="Fermer">✕</button>
-    <video id="video-player" controls playsinline></video>
+    <video id="video-player" controls playsinline preload="none"></video>
   </div>
 </div>
 
