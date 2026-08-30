@@ -214,6 +214,10 @@
 # éventuels du domaine définitif — mail, outils internes...) ni preload
 # (engagement long à ne pas prendre à la légère) : uniquement max-age sur le
 # domaine exact.
+# Google Analytics 4 ajouté le 30/08 (analytics.js, chargé uniquement après
+# consentement RGPD "Mesure d'audience") : script-src et connect-src élargis
+# aux domaines Google nécessaires à gtag.js, sinon le navigateur bloque le
+# script même après consentement (CSP prioritaire sur tout le reste).
 [[headers]]
   for = "/*"
   [headers.values]
@@ -222,4 +226,4 @@
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     X-Frame-Options = "SAMEORIGIN"
     Strict-Transport-Security = "max-age=31536000"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; frame-src 'none'; object-src 'none'; base-uri 'self'"
