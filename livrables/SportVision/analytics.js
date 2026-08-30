@@ -4,13 +4,14 @@
 // bandeau cookies présent sur chaque page (cf. § "Bandeau cookies (RGPD)" dans le <script>
 // de chaque fichier).
 //
-// ACTIVATION : remplacer GA_MEASUREMENT_ID ci-dessous par l'ID réel (format G-XXXXXXXXXX)
-// une fois la propriété GA4 créée sur analytics.google.com. Tant que la valeur contient
-// "XXXX", ce script ne fait rien (aucun script Google chargé, aucune erreur non plus).
+// Propriété GA4 créée par Fouka le 30/08/2026 (analytics.google.com), ID de mesure
+// ci-dessous. Le garde-fou "XXXX" reste en place plus bas au cas où cet ID devrait être
+// retiré temporairement (ex. nouvelle propriété à recréer) : remettre 'G-XXXXXXXXXX'
+// suffit à tout désactiver sans toucher au reste du script.
 (function () {
   'use strict';
 
-  var GA_MEASUREMENT_ID = 'G-XXXXXXXXXX';
+  var GA_MEASUREMENT_ID = 'G-2GKKTPTJQC';
 
   var loaded = false;
 
