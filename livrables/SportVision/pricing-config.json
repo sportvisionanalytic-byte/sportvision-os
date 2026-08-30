@@ -1,0 +1,262 @@
+{
+  "match-photo": {
+    "label": "Match photo",
+    "price": 120,
+    "unit": "TTC",
+    "note": null,
+    "sources": [
+      "index.html",
+      "prestations.html",
+      "prestation-match-photo.html",
+      "reserver.html"
+    ]
+  },
+  "match-video": {
+    "label": "Match vidéo",
+    "price": 120,
+    "unit": "TTC",
+    "note": null,
+    "sources": [
+      "index.html",
+      "prestations.html",
+      "prestation-match-video.html",
+      "reserver.html"
+    ]
+  },
+  "pack-match": {
+    "label": "Pack Match Complet",
+    "price": 160,
+    "unit": "TTC",
+    "note": "Match photo + Match vidéo combinés",
+    "sources": [
+      "index.html",
+      "prestations.html",
+      "prestation-pack-match.html",
+      "reserver.html"
+    ]
+  },
+  "camera-isolee": {
+    "label": "Caméra isolée joueur",
+    "price": 150,
+    "unit": "TTC",
+    "note": "Par joueur suivi",
+    "sources": [
+      "prestations.html",
+      "prestation-camera-isolee.html",
+      "reserver.html"
+    ]
+  },
+  "match-filme-drone": {
+    "label": "Match filmé drone",
+    "price": 120,
+    "unit": "TTC",
+    "note": null,
+    "sources": [
+      "prestations.html",
+      "reserver.html"
+    ]
+  },
+  "combo-drone-photo": {
+    "label": "Combo Drone + Photo",
+    "price": 160,
+    "unit": "TTC",
+    "note": null,
+    "sources": [
+      "prestations.html",
+      "reserver.html"
+    ]
+  },
+  "match-camera-veo": {
+    "label": "Match filmé caméra Véo",
+    "price": 120,
+    "unit": "TTC",
+    "note": null,
+    "sources": [
+      "prestations.html",
+      "reserver.html"
+    ]
+  },
+  "combo-veo-photo": {
+    "label": "Combo Véo + Photo",
+    "price": 180,
+    "unit": "TTC",
+    "note": null,
+    "sources": [
+      "prestations.html",
+      "reserver.html"
+    ]
+  },
+  "montage-compilation": {
+    "label": "Montage & compilation",
+    "price": null,
+    "priceFrom": 39.9,
+    "unit": "HT",
+    "note": "À partir de 39,90 € HT — grille par volume de matière à monter",
+    "tiers": [
+      {
+        "value": "Rushs prédécoupés (≤6 min)",
+        "price": 39.9
+      },
+      {
+        "value": "1 match complet",
+        "price": 40
+      },
+      {
+        "value": "2 matchs complets",
+        "price": 55
+      },
+      {
+        "value": "3 matchs complets",
+        "price": 70
+      },
+      {
+        "value": "4 matchs complets",
+        "price": 80
+      },
+      {
+        "value": "5 matchs et plus",
+        "price": null,
+        "note": "Sur devis"
+      }
+    ],
+    "sources": [
+      "index.html",
+      "prestations.html",
+      "prestation-montage-compilation.html",
+      "reserver.html"
+    ]
+  },
+  "shooting": {
+    "label": "Shooting (joueur ou équipe)",
+    "price": null,
+    "note": "Sur devis",
+    "sources": [
+      "prestation-shooting-joueur.html",
+      "prestation-shooting-equipe.html",
+      "reserver.html"
+    ]
+  },
+  "couverture-tournoi": {
+    "label": "Couverture tournoi",
+    "price": null,
+    "note": "Sur devis",
+    "sources": [
+      "prestation-tournois.html",
+      "reserver.html"
+    ]
+  },
+  "couverture-stage": {
+    "label": "Couverture stage",
+    "price": null,
+    "note": "Sur devis",
+    "sources": [
+      "prestation-tournois.html",
+      "reserver.html"
+    ]
+  },
+  "creation-contenu": {
+    "label": "Création graphique",
+    "price": null,
+    "note": "Sur devis",
+    "sources": [
+      "prestation-creations.html",
+      "reserver.html"
+    ]
+  },
+  "coach-preparateur": {
+    "label": "Coach / préparateur",
+    "price": null,
+    "note": "Sur devis",
+    "sources": [
+      "prestation-coachs.html",
+      "reserver.html"
+    ]
+  },
+  "media-day": {
+    "label": "Media Day",
+    "price": null,
+    "note": "Sur devis",
+    "sources": [
+      "prestation-media-day.html",
+      "reserver.html"
+    ]
+  },
+  "option-drone-veo": {
+    "label": "Plans drone ou Véo complémentaires",
+    "price": 40,
+    "unit": "TTC",
+    "note": "Complément sur une prestation existante (match photo/vidéo, Pack Match, tournoi, stage)",
+    "sources": [
+      "prestation-match-photo.html",
+      "prestation-match-video.html",
+      "prestation-pack-match.html",
+      "reserver.html"
+    ]
+  },
+  "club-plus-gratuit": {
+    "label": "Club+ Gratuit",
+    "price": 0,
+    "unit": "TTC/mois",
+    "engagement": null,
+    "users": 1,
+    "teams": 1,
+    "creditsPerMonth": 0,
+    "discountPct": 0,
+    "note": "Sans engagement, résiliable à tout moment. Réservation au tarif standard.",
+    "sources": [
+      "club-plus.html"
+    ]
+  },
+  "club-plus-start": {
+    "label": "Club+ Start",
+    "price": 49,
+    "priceNoEngagement": 59,
+    "unit": "TTC/mois",
+    "engagement": "12 mois (ou 59 €/mois sans engagement)",
+    "users": 5,
+    "teams": 2,
+    "creditsPerMonth": 10,
+    "discountPct": 5,
+    "note": "Remise de 5 % sur les prestations ponctuelles éligibles SportVision — confirmée par Fouka le 11/08/2026, cf. PLAN_SERVICE_DISCOUNT_PCT dans SportVision-Connect/app-next/src/lib/types/services.ts (source de calcul réelle du panier Connect).",
+    "sources": [
+      "club-plus.html"
+    ]
+  },
+  "club-plus-performance": {
+    "label": "Club+ Performance",
+    "price": 129,
+    "priceNoEngagement": 139,
+    "unit": "TTC/mois",
+    "engagement": "12 mois (ou 139 €/mois sans engagement)",
+    "users": "Illimité",
+    "teams": "Illimité",
+    "creditsPerMonth": 40,
+    "discountPct": 10,
+    "note": "Remise de 10 % sur les prestations ponctuelles éligibles SportVision — même source que Club+ Start.",
+    "sources": [
+      "club-plus.html"
+    ]
+  },
+  "full-communication": {
+    "label": "Full Communication",
+    "price": null,
+    "note": "Sur devis. Club+ inclus sans coût supplémentaire.",
+    "sources": [
+      "full-communication.html",
+      "full-communication-academies.html",
+      "full-communication-clubs.html",
+      "full-communication-coachs.html",
+      "full-communication-evenements.html"
+    ]
+  },
+  "capital-social": {
+    "label": "Capital social SASU ELKANA GROUP",
+    "price": 1,
+    "unit": "TTC",
+    "note": "Mentions légales / CGV uniquement — pas un tarif commercial.",
+    "sources": [
+      "mentions-legales.html",
+      "cgv.html"
+    ]
+  }
+}

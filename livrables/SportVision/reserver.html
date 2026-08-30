@@ -683,6 +683,7 @@ section{position:relative}
   </div>
 </div>
 
+<script src="pricing-config.js"></script>
 <script>
 /* ============================================================
    SportVision — tunnel de réservation. Vanilla JS, aucune
@@ -693,10 +694,96 @@ section{position:relative}
 const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
 const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
 
-// Prix publics connus (les 3 seules prestations à tarif fixe) — utilisé
-// uniquement pour l'affichage du récap et pour proposer "créer mon
-// compte et payer" en fin de tunnel.
-const OFFRES_PRIX_FIXE = new Set(['match-photo', 'match-video', 'pack-match', 'match-filme-drone', 'combo-drone-photo', 'camera-isolee', 'match-camera-veo', 'combo-veo-photo']);
+// ── Tarifs : source unique de vérité = pricing-config.js (chargé juste
+// au-dessus). Ce fichier <script> ne redéclare plus aucun prix en dur : il
+// LIT PRICING_CONFIG. Si le fichier ne charge pas pour une raison ou une
+// autre, on retombe sur un objet vide et le HTML statique (déjà à jour)
+// continue de s'afficher sans erreur — voir applyPricingConfig() plus bas.
+// Cf. livrables/SportVision/audit/PRICING_CENTRALISATION.md.
+const PRICING = (typeof PRICING_CONFIG !== 'undefined') ? PRICING_CONFIG : {};
+
+// Prix publics connus (les prestations à tarif fixe, calculé depuis PRICING
+// plutôt que dupliqué ici) — utilisé pour l'affichage du récap et pour
+// proposer "créer mon compte et payer" en fin de tunnel.
+const OFFRES_PRIX_FIXE = new Set(Object.keys(PRICING).filter(slug => typeof PRICING[slug].price === 'number'));
+
+// Formatage FR d'un prix numérique (39.9 → "39,90", 40 → "40") — utilisée par
+// applyPricingConfig() ci-dessous ET par le reste du script (cf. plus bas).
+function formatPriceFr(str){
+  const num = parseFloat(str);
+  if (isNaN(num)) return str;
+  return num.toFixed(2).replace(/[.,]00$/, '').replace('.', ',');
+}
+
+// ── Applique PRICING_CONFIG aux cartes/champs déjà présents dans le HTML ──
+// Le HTML statique contient déjà les bons prix (source de vérité au moment
+// où cette page a été écrite), mais pour que pricing-config.js soit la
+// SEULE source vivante côté tunnel, cette fonction réécrit au chargement :
+//  - le data-price et le prix affiché des cartes de besoin (étape 1),
+//  - les paliers du <select> Montage & compilation (étape 3),
+//  - le libellé/montant de l'option "Plans drone ou Véo complémentaires".
+// Si PRICING_CONFIG est vide (fichier non chargé), cette fonction ne modifie
+// rien : le HTML existant reste affiché tel quel, aucune régression.
+function applyPricingConfig(){
+  // Cartes de besoin (étape 1)
+  document.querySelectorAll('.need-card[data-slug]').forEach(card => {
+    const slug = card.getAttribute('data-slug');
+    const cfg = PRICING[slug];
+    if (!cfg) return;
+    const span = card.querySelector(':scope > span');
+    if (typeof cfg.price === 'number'){
+      const txt = formatPriceFr(cfg.price) + ' € ' + (cfg.unit || 'TTC');
+      card.setAttribute('data-price', txt);
+      if (span) span.textContent = txt;
+    } else if (typeof cfg.priceFrom === 'number'){
+      const priceTxt = formatPriceFr(cfg.priceFrom) + ' € ' + (cfg.unit || 'HT');
+      card.setAttribute('data-price', 'À partir de ' + priceTxt);
+      if (span) span.textContent = 'Dès ' + priceTxt;
+    }
+    // Prestations "sur devis" : le data-price HTML ("Sur devis") est déjà
+    // correct et les libellés des cartes sont volontairement personnalisés
+    // par besoin (ex. "Joueur ou équipe · Sur devis") — non écrasés ici.
+  });
+
+  // Option tarifée "Plans drone ou Véo complémentaires" (étape 3)
+  const droneCfg = PRICING['option-drone-veo'];
+  if (droneCfg && typeof droneCfg.price === 'number'){
+    document.querySelectorAll('input[data-opt="drone"]').forEach(input => {
+      const newVal = droneCfg.label + ' (+' + formatPriceFr(droneCfg.price) + ' €)';
+      input.setAttribute('value', newVal);
+      input.value = newVal;
+      const label = input.closest('label');
+      if (label){
+        for (let i = label.childNodes.length - 1; i >= 0; i--){
+          const node = label.childNodes[i];
+          if (node.nodeType === 3 && node.textContent.trim()){
+            node.textContent = ' ' + newVal;
+            break;
+          }
+        }
+      }
+    });
+  }
+
+  // Paliers Montage & compilation (select étape 3)
+  const montageCfg = PRICING['montage-compilation'];
+  const montageSelect = document.getElementById('bk-montage-volume');
+  if (montageCfg && Array.isArray(montageCfg.tiers) && montageSelect){
+    const previousValue = montageSelect.value;
+    const options = ['<option value="">— Choisir —</option>'].concat(
+      montageCfg.tiers.map(tier => {
+        const priceAttr = typeof tier.price === 'number' ? tier.price : '';
+        const priceTxt = typeof tier.price === 'number'
+          ? (formatPriceFr(tier.price) + ' € ' + (montageCfg.unit || 'HT'))
+          : (tier.note || 'sur devis');
+        return '<option value="' + tier.value + '" data-price="' + priceAttr + '">' + tier.value + ' — ' + priceTxt + '</option>';
+      })
+    );
+    montageSelect.innerHTML = options.join('');
+    if (previousValue) montageSelect.value = previousValue;
+  }
+}
+applyPricingConfig();
 
 // ── Options dynamiques selon le besoin (audit externe du 16/08) ──
 // Uniquement pour les besoins listés ici : les options du catalogue existant
@@ -1211,14 +1298,9 @@ function esc(str){
   }[c]));
 }
 
-// Formatage FR d'un prix venant d'un data-price (ex. "39.90" → "39,90", "40" → "40") —
-// utilisé pour le tarif Montage & compilation (seule prestation du tunnel avec une
-// décimale, 39,90 € HT pour le palier ≤6 min).
-function formatPriceFr(str){
-  const num = parseFloat(str);
-  if (isNaN(num)) return str;
-  return num.toFixed(2).replace(/[.,]00$/, '').replace('.', ',');
-}
+// (formatPriceFr est défini plus haut, juste après OFFRES_PRIX_FIXE — réutilisée
+// ici pour le tarif Montage & compilation, seule prestation du tunnel avec une
+// décimale, 39,90 € HT pour le palier ≤6 min.)
 
 // ── Navigation retour ──
 document.querySelectorAll('[data-back]').forEach(btn => {
