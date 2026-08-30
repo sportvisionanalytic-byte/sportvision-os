@@ -91,7 +91,8 @@ section{position:relative}
 .recrut-hero::before{content:'';position:absolute;inset:0;background:
   radial-gradient(900px 500px at 88% 0%,rgba(0,199,255,.22),transparent 60%),
   radial-gradient(700px 600px at 5% 100%,rgba(131,45,255,.24),transparent 60%)}
-.recrut-hero .container{position:relative;z-index:2;max-width:820px}
+.recrut-hero .container{position:relative;z-index:2;max-width:1160px;display:grid;grid-template-columns:1fr;gap:40px;align-items:center}
+.recrut-hero-copy{max-width:640px}
 .recrut-badge{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#0A0E22;background:linear-gradient(90deg,#00C7FF,#C337FF);border-radius:999px;padding:8px 16px;margin-bottom:20px}
 .recrut-hero h1{font-size:clamp(32px,5vw,50px);color:#fff}
 .recrut-hero .lead{margin-top:18px;font-size:17px;line-height:1.65;color:rgba(255,255,255,.78);max-width:640px}
@@ -99,17 +100,35 @@ section{position:relative}
 .recrut-tags span{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:7px 14px}
 .recrut-cta{margin-top:32px}
 
+/* ── Composition photo du hero (recadrage maîtrisé, décalé) ── */
+.recrut-hero-media{position:relative;display:none;height:100%;min-height:340px}
+.recrut-hero-media img{position:absolute;border-radius:18px;object-fit:cover;box-shadow:0 24px 50px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.1)}
+.recrut-hero-media .rh-1{width:72%;height:82%;top:0;right:0}
+.recrut-hero-media .rh-2{width:46%;height:52%;bottom:0;left:0;box-shadow:0 20px 40px rgba(0,0,0,.5)}
+
 /* ── Contenu (profil / conditions) ── */
 .recrut-body{padding:70px 0 40px;background:var(--white)}
 .recrut-wrap{max-width:820px;margin:0 auto;padding:0 24px}
 .recrut-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:16px}
 .recrut-card{background:var(--bg-light);border:1px solid #e4e7ef;border-radius:var(--radius-lg);padding:26px 28px}
+.recrut-card .icon{width:38px;height:38px;border-radius:11px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;margin-bottom:14px}
 .recrut-card h3{font-size:16px;color:var(--navy-900);margin-bottom:12px}
 .recrut-card ul{margin:0;padding-left:20px;color:#374151;font-size:14.5px;line-height:1.75}
 .recrut-card li{margin-bottom:6px}
 .recrut-body h2{font-family:var(--font-head);font-weight:800;font-size:22px;color:var(--navy-900);margin:44px 0 6px}
 .recrut-body h2:first-child{margin-top:0}
 .recrut-body>.recrut-wrap>p{color:#374151;font-size:15.5px;line-height:1.75}
+
+/* ── Sur le terrain (preuve visuelle réelle) ── */
+.recrut-photos{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.recrut-photos a{position:relative;display:block;border-radius:14px;overflow:hidden;aspect-ratio:3/4;background:#131a3d}
+.recrut-photos img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease}
+.recrut-photos a:hover img{transform:scale(1.05)}
+.recrut-photos-note{margin-top:10px;font-size:12.5px;color:#8891A8}
+
+/* ── Clubs représentés (logos réels) ── */
+.recrut-partners{display:flex;flex-wrap:wrap;align-items:center;gap:22px;margin-top:18px;padding:20px 24px;background:var(--bg-light);border:1px solid #e4e7ef;border-radius:var(--radius-lg)}
+.recrut-partners img{height:34px;width:auto;max-width:120px;object-fit:contain;filter:grayscale(100%);opacity:.75}
 
 /* ── Formulaire ── */
 .recrut-form-section{padding:20px 0 110px;background:var(--white)}
@@ -146,11 +165,18 @@ section{position:relative}
 .footer-social{display:flex;gap:10px}
 .footer-social a{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:13px}
 
+@media (min-width:981px){
+  .recrut-hero .container{grid-template-columns:1.1fr 1fr}
+  .recrut-hero-media{display:block}
+}
 @media (max-width:980px){
   .main-nav,.header-actions{display:none}
   .burger{display:flex}
   .footer-grid{grid-template-columns:1fr 1fr}
   .recrut-grid{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .recrut-photos{grid-template-columns:repeat(2,1fr)}
 }
 @media (max-width:560px){
   .recrut-hero{padding:140px 0 60px}
@@ -302,18 +328,24 @@ section{position:relative}
 <!-- ══════════════ HERO ══════════════ -->
 <section class="recrut-hero">
   <div class="container">
-    <span class="recrut-badge">SportVision recrute</span>
-    <h1>Photographe &amp; Vidéaste sportif freelance</h1>
-    <p class="lead">Rejoignez le réseau SportVision et couvrez des matchs et événements pour nos clubs partenaires, à la fois en photo et en vidéo — c'est un poste combiné, pas une spécialisation au choix. Débutants acceptés, une formation est possible si vous n'avez pas encore d'expérience.</p>
-    <div class="recrut-tags">
-      <span>Freelance / indépendant</span>
-      <span>Île-de-France</span>
-      <span>Côte-d'Or (Dijon)</span>
-      <span>Aube</span>
-      <span>Débutants bienvenus</span>
+    <div class="recrut-hero-copy">
+      <span class="recrut-badge">SportVision recrute</span>
+      <h1>Photographe &amp; Vidéaste sportif freelance</h1>
+      <p class="lead">Rejoignez le réseau SportVision et couvrez des matchs et événements pour nos clubs partenaires, à la fois en photo et en vidéo — c'est un poste combiné, pas une spécialisation au choix. Débutants acceptés, une formation est possible si vous n'avez pas encore d'expérience.</p>
+      <div class="recrut-tags">
+        <span>Freelance / indépendant</span>
+        <span>Île-de-France</span>
+        <span>Côte-d'Or (Dijon)</span>
+        <span>Aube</span>
+        <span>Débutants bienvenus</span>
+      </div>
+      <div class="recrut-cta">
+        <a href="#candidature" class="btn btn-grad">Candidater →</a>
+      </div>
     </div>
-    <div class="recrut-cta">
-      <a href="#candidature" class="btn btn-grad">Candidater →</a>
+    <div class="recrut-hero-media" aria-hidden="true">
+      <img class="rh-1" src="assets/realisations/foot-action-sportvision.jpg" alt="" style="object-position:center 20%">
+      <img class="rh-2" src="assets/realisations/tennis-action-01.jpg" alt="" style="object-position:center 25%">
     </div>
   </div>
 </section>
@@ -328,6 +360,7 @@ section{position:relative}
 
     <div class="recrut-grid">
       <div class="recrut-card">
+        <div class="icon" aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 10 5-3v10l-5-3z"/></svg></div>
         <h3>Profil recherché</h3>
         <ul>
           <li>À l'aise à la fois en photo et en vidéo (ou motivé pour se former aux deux)</li>
@@ -338,6 +371,7 @@ section{position:relative}
         </ul>
       </div>
       <div class="recrut-card">
+        <div class="icon" aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.4 7-12a7 7 0 1 0-14 0c0 4.6 7 12 7 12z"/><circle cx="12" cy="9" r="2.3"/></svg></div>
         <h3>Ce que SportVision propose</h3>
         <ul>
           <li>Statut freelance / indépendant</li>
@@ -348,6 +382,16 @@ section{position:relative}
         </ul>
       </div>
     </div>
+
+    <h2>La réalité du terrain</h2>
+    <p>Un aperçu réel de ce que vous couvrirez : matchs, tournois, shootings joueurs — le même travail que celui déjà livré par SportVision à ses clubs partenaires.</p>
+    <div class="recrut-photos">
+      <a href="realisations.html" aria-label="Voir la réalisation : entraînement, captation terrain"><img src="assets/realisations/foot-action-sportvision.jpg" alt="Entraînement — captation terrain" loading="lazy" style="object-position:center 20%"></a>
+      <a href="realisations.html" aria-label="Voir la réalisation : ES Colombienne, sous la pluie"><img src="assets/realisations/case-es-colombienne.jpg" alt="Joueur de l'ES Colombienne sous la pluie" loading="lazy" style="object-position:center 25%"></a>
+      <a href="realisations.html" aria-label="Voir la réalisation : basket, captation match"><img src="assets/realisations/basket-action-01.jpg" alt="Position défensive — basket, captation match" loading="lazy" style="object-position:center 20%"></a>
+      <a href="realisations.html" aria-label="Voir la réalisation : FC Varennes, montée fêtée"><img src="assets/realisations/case-fc-varenne.jpg" alt="Joueurs du FC Varennes célébrant leur montée" loading="lazy" style="object-position:center 20%"></a>
+    </div>
+    <p class="recrut-photos-note">Extrait du portfolio SportVision — <a href="realisations.html" style="color:var(--blue);font-weight:600">voir toutes nos réalisations →</a></p>
 
   </div>
 </section>

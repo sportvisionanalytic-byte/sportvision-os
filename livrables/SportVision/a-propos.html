@@ -192,6 +192,17 @@ section{position:relative}
 .team-photo .overlay{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.75),transparent 50%);display:flex;align-items:flex-end;padding:14px}
 .team-photo .overlay span{color:#fff;font-size:12.5px;font-weight:700;letter-spacing:.02em}
 
+/* ── Preuve par l'image (extrait du portfolio réel) ── */
+.proof-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:12px}
+.proof-item{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:3/4;background:#131a3d}
+.proof-item:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
+.proof-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease}
+.proof-item:hover img{transform:scale(1.045)}
+.proof-item .overlay{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.78),transparent 55%);display:flex;align-items:flex-end;padding:12px;opacity:0;transition:opacity .2s}
+.proof-item:hover .overlay{opacity:1}
+.proof-item .overlay span{color:#fff;font-size:12px;font-weight:700}
+.proof-cta{text-align:center;margin-top:22px}
+
 /* ── CTA final ── */
 .cta-final{background:var(--navy-900);color:#fff;padding:120px 0;text-align:center;position:relative;overflow:hidden}
 .cta-final::before{content:'';position:absolute;inset:0;background:var(--grad-hero-glow);opacity:.7}
@@ -245,11 +256,14 @@ section{position:relative}
   .services-grid{grid-template-columns:repeat(2,1fr)}
   .process-steps{grid-template-columns:repeat(2,1fr)}
   .team-grid{grid-template-columns:repeat(2,1fr)}
+  .proof-strip{grid-template-columns:repeat(4,1fr)}
   .footer-grid{grid-template-columns:1fr 1fr}
 }
 @media (max-width:560px){
   .hero{padding:130px 0 70px}
   .team-grid{grid-template-columns:1fr 1fr}
+  .proof-strip{grid-template-columns:repeat(2,1fr)}
+  .proof-item:first-child{grid-column:span 2;grid-row:span 1;aspect-ratio:16/10}
   .footer-grid{grid-template-columns:1fr}
 }
 
@@ -465,8 +479,28 @@ section{position:relative}
   </div>
 </section>
 
+<!-- ══════════════ PREUVE PAR L'IMAGE ══════════════ -->
+<section class="section-light" id="preuve">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Notre travail</span>
+      <h2>Un rendu professionnel, pas une promesse.</h2>
+      <p>Un extrait de nos captations réelles — clubs, joueurs et tournois. L'intégralité du portfolio est visible sur la page Réalisations.</p>
+    </div>
+    <div class="proof-strip reveal">
+      <a class="proof-item" href="realisations.html"><img src="assets/realisations/foot-action-sportvision.jpg" alt="Entraînement — captation terrain" loading="lazy" style="object-position:center 20%"><div class="overlay"><span>Entraînement — captation terrain</span></div></a>
+      <a class="proof-item" href="realisations.html"><img src="assets/realisations/case-fc-varenne.jpg" alt="Joueurs du FC Varennes célébrant leur montée" loading="lazy" style="object-position:center 20%"><div class="overlay"><span>FC Varennes — montée fêtée</span></div></a>
+      <a class="proof-item" href="realisations.html"><img src="assets/realisations/tennis-action-01.jpg" alt="Action de jeu — tennis" loading="lazy" style="object-position:center 25%"><div class="overlay"><span>Tennis — shooting joueur</span></div></a>
+      <a class="proof-item" href="realisations.html"><img src="assets/realisations/basket-action-01.jpg" alt="Position défensive — basket, captation match" loading="lazy" style="object-position:center 20%"><div class="overlay"><span>Basket — captation match</span></div></a>
+      <a class="proof-item" href="realisations.html"><img src="assets/realisations/case-es-colombienne.jpg" alt="Joueur de l'ES Colombienne sous la pluie" loading="lazy" style="object-position:center 25%"><div class="overlay"><span>ES Colombienne — sous la pluie</span></div></a>
+      <a class="proof-item" href="realisations.html"><img src="assets/realisations/academie-petrus-leeds-01.jpg" alt="Jeune joueur en tournoi international, académie Petrus" loading="lazy" style="object-position:center 15%"><div class="overlay"><span>Académie Petrus — tournoi international</span></div></a>
+    </div>
+    <div class="proof-cta reveal"><a href="realisations.html" class="btn btn-ghost-light">Voir toutes nos réalisations →</a></div>
+  </div>
+</section>
+
 <!-- ══════════════ COMMENT ÇA SE PASSE ══════════════ -->
-<section class="section-light" id="process">
+<section class="section-tint" id="process">
   <div class="container">
     <div class="section-head reveal">
       <span class="eyebrow">Comment ça se passe</span>
