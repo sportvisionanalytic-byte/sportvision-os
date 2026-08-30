@@ -3890,13 +3890,22 @@ async function logFinancialAudit(action,tableCible,ligneId,montantAvant,montantA
     // qu'un échec réseau, jamais un refus RLS/contrainte. On vérifie le
     // résultat explicitement pour que l'échec reste au moins visible en
     // console, plutôt que de disparaître sans aucune trace.
+    // return=minimal : la policy INSERT de financial_audit_log autorise bien
+    // sec/compta/admin, mais la policy SELECT (utilisée pour relire la ligne
+    // via Prefer: return=representation, défaut de sbFetch) ne liste QUE
+    // admin/compta/expert_comptable/auditeur. Résultat pour un secrétaire :
+    // l'INSERT réussit puis la relecture échoue en RLS, ce qui fait annuler
+    // TOUTE la ligne (PostgREST/Postgres traitent ça comme un seul statut
+    // atomique) — le journal d'audit perdait donc silencieusement 100% des
+    // actions financières faites par un compte sec (ex: "✓ Payé" en Relances)
+    // avant ce correctif. Repéré lors de l'audit boutons Secrétaire 30/08.
     const r=await sbFetch('financial_audit_log',{method:'POST',body:{
       acteur_id:localStorage.getItem('sv_uid')||null,
       action,table_cible:tableCible,ligne_id:ligneId||null,
       montant_avant:(montantAvant===undefined?null:montantAvant),
       montant_apres:(montantApres===undefined?null:montantApres),
       details:details||{},
-    }});
+    },headers:{'Prefer':'return=minimal'}});
     if(sbErr(r))console.error('logFinancialAudit failed',r);
   }catch(e){console.error('logFinancialAudit failed',e);}
 }
@@ -3991,7 +4000,14 @@ async function creerNotifSiActive(destinataire_id,categorie,body){
   try{
     const map=await _fetchNotifPrefsMap([destinataire_id]);
     if(!_notifEnabled(map[destinataire_id],categorie))return null;
-    return await sbFetch('notifications',{method:'POST',body:{...body,destinataire_id}}).catch(()=>null);
+    // return=minimal : la policy SELECT de `notifications` ne laisse lire que ses
+    // propres notifs (ou l'admin). Sans ça, sbFetch (Prefer: return=representation
+    // par défaut) fait échouer l'INSERT ENTIER dès qu'on notifie quelqu'un d'autre
+    // que soi-même — PostgREST renvoie 42501 "row violates RLS" alors que c'est en
+    // fait le SELECT de la représentation qui est bloqué, pas l'insertion. Repéré
+    // lors de l'audit QA boutons Secrétaire 30/08 (clic réel sur "→ Envoyer" un
+    // devis → notif de relance vers l'autre secrétaire silencieusement perdue).
+    return await sbFetch('notifications',{method:'POST',body:{...body,destinataire_id},headers:{'Prefer':'return=minimal'}}).catch(()=>null);
   }catch(e){return null;}
 }
 // Filtre un tableau de notifications déjà construites (plusieurs destinataires)
@@ -29053,6 +29069,18 @@ async function exportRapportCSV(){
 }
 
 // ── CONTRATS & ABONNEMENTS ───────────────────────────────────────────────────
+// Créer/modifier/supprimer un contrat se fait depuis des modales partagées entre
+// Admin (#contrats-real, loadContrats) et Secrétaire (#sec-contrats-real,
+// loadSecContrats) — deux rendus séparés pour le même type d'action. Les 3 handlers
+// (sauvegarderContrat/mettreAJourContrat/supprimerContrat) n'appelaient que
+// loadContrats() : chez Secrétaire, la liste ne se rafraîchissait donc jamais après
+// une action (le contrat était bien créé/modifié/supprimé en base, juste invisible
+// tant qu'on ne quittait pas l'écran et n'y revenait pas). Repéré en cliquant "+
+// Contrat" pour de vrai lors de l'audit boutons Secrétaire 30/08.
+async function _refreshContratsApresAction(){
+  if(document.getElementById('contrats-real'))await loadContrats();
+  if(document.getElementById('sec-contrats-real'))await loadSecContrats();
+}
 async function loadContrats(){
   const d=document.getElementById('contrats-real');
   const r=await sbFetch('contrats?select=*,clients(nom)&order=created_at.desc');
@@ -29230,7 +29258,7 @@ async function sauvegarderContrat(){
     }
     closeModal();
     toast(descriptionNonEnregistree?'Contrat créé — le périmètre n\'a pas pu être enregistré (migration-contrats-v3-description.sql non exécutée).':'Contrat créé',descriptionNonEnregistree?'wa':'ok');
-    await loadContrats();
+    await _refreshContratsApresAction();
     if(payload.type_contrat==='full_communication'&&payload.statut==='actif')await lancerCascadeFullCom(clientId);
   }catch(e){
     if(err){err.textContent='Erreur réseau lors de la création.';err.style.display='block';}
@@ -29429,7 +29457,7 @@ async function mettreAJourContrat(id){
   }
   closeModal();
   toast(descriptionNonEnregistree?'Contrat mis à jour — le périmètre n\'a pas pu être enregistré (migration-contrats-v3-description.sql non exécutée).':'Contrat mis à jour',descriptionNonEnregistree?'wa':'ok');
-  await loadContrats();
+  await _refreshContratsApresAction();
   if(payload.type_contrat==='full_communication'&&payload.statut==='actif'&&cidPourCascade)await lancerCascadeFullCom(cidPourCascade);
 }
 
@@ -29437,7 +29465,7 @@ function supprimerContrat(id){
   confirmerAction('Supprimer ce contrat ? Cette action est irréversible.',async()=>{
     const r=await sbFetch('contrats?id=eq.'+id,{method:'DELETE'});
     if(sbErr(r)){toast('Erreur suppression','er');return;}
-    closeModal();toast('Contrat supprimé','ok');await loadContrats();
+    closeModal();toast('Contrat supprimé','ok');await _refreshContratsApresAction();
   });
 }
 
@@ -31643,7 +31671,11 @@ async function dispatchSVEvent(type, data){
   const notifsFiltres=await filtrerNotifsParPrefs(notifs,'taches');
   if(notifsFiltres.length){
     try{
-      await sbFetch('notifications',{method:'POST',body:notifsFiltres});
+      // return=minimal : voir le commentaire dans creerNotifSiActive — sans ça, la
+      // policy SELECT de `notifications` (qui ne laisse lire que ses propres notifs)
+      // fait échouer tout l'INSERT batch dès qu'un seul destinataire n'est pas
+      // l'expéditeur, ce qui est le cas quasi systématiquement ici.
+      await sbFetch('notifications',{method:'POST',body:notifsFiltres,headers:{'Prefer':'return=minimal'}});
     }catch(e){console.warn('dispatchSVEvent error:',e);}
   }
 }
