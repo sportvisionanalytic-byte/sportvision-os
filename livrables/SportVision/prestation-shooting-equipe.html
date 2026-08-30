@@ -229,7 +229,7 @@ section{position:relative}
 .feature-list li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;font-weight:600;color:#232a3b}
 .feature-list li::before{content:'';flex-shrink:0;width:18px;height:18px;margin-top:2px;border-radius:6px;background:var(--grad-brand);position:relative}
 .feature-list li::after{content:'✓';position:absolute;color:#fff;font-size:11px;font-weight:900;margin-left:3.5px;margin-top:2.5px}
-.feature-visual{border-radius:var(--radius-lg);overflow:hidden;background:linear-gradient(160deg,#0d1330,#171f45);padding:22px;box-shadow:var(--shadow-lg);min-height:240px;position:relative}
+.feature-visual{border-radius:var(--radius-lg);overflow:hidden;background:linear-gradient(160deg,#0d1330,#171f45);padding:22px;box-shadow:var(--shadow-lg);min-height:240px;position:relative}.feature-visual:has(.gcard)::before{content:"Aperçu de l'interface";position:absolute;top:14px;right:16px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5);background:rgba(0,0,0,.3);padding:4px 9px;border-radius:99px;z-index:2;pointer-events:none}
 
 /* ── Accompagnements spécialisés (cartes d'orientation) ── */
 .accomp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:8px}
