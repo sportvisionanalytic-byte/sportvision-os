@@ -833,6 +833,15 @@ const NAV={
     {id:'finrevenus',lb:'Revenus',ic:'fin'},
     {id:'findepenses',lb:'Dépenses',ic:'fin'},
     {id:'finequipe',lb:'Équipe',ic:'col'},
+    // Lot 6 (31/08/2026, migration multi-pôles) : ventilation finance par pôle + grille de
+    // rémunération du Responsable de pôle. Admin uniquement — même périmètre que le reste du
+    // module Finance (finrevenus/findepenses/finequipe n'ont eux non plus aucun équivalent
+    // non-admin dans ce repo). Les fonctions RPC sous-jacentes (pole_finance_ventilation,
+    // pole_calculer_remuneration_responsable) acceptent déjà admin OU responsable du pôle — un
+    // futur accès en libre-service pour le/la responsable lui-même/elle-même n'exigerait donc
+    // aucun changement backend, seulement un point d'entrée UI supplémentaire.
+    {id:'finpoles',lb:'Finance par pôle',ic:'fin'},
+    {id:'polerem',lb:'Rémunération pôle',ic:'col'},
     {id:'finrapports',lb:'Rapports & exports',ic:'export'},
     {id:'resultat',lb:'Compte de résultat',ic:'fin',hidden:true},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin',hidden:true},
@@ -1663,6 +1672,45 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterFinEquipeType('commission')" id="fineqt-f-commission">Commission</button>
     </div>
     <div id="finequipe-real">${_finSkelRows(6,44)}</div>`,
+
+  // ── Lot 6 (31/08/2026, migration multi-pôles) : Finance par pôle + Rémunération responsable ──
+  // Deux nouveaux écrans, tous deux appuyés sur des fonctions RPC SECURITY DEFINER
+  // (pole_finance_ventilation / pole_calculer_remuneration_responsable, migration-poles-v6) qui
+  // font leur propre contrôle d'accès (admin ou responsable du pôle) — pas de nouvelle table
+  // exposée en lecture directe. N'affichent quelque chose d'utile que si au moins 1 pôle existe ;
+  // le sélecteur liste tous les pôles même s'il n'y en a qu'un (dégrade proprement).
+  'admin.finpoles':()=>`
+    <div class="sh"><div><div class="sh-t">Finance par pôle</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Revenus et charges ventilés par pôle sportif, sans perdre la vue consolidée SportVision</div></div></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+      <div>
+        <label style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle</label>
+        <select class="l-inp" id="finpoles-pole" style="height:36px;min-width:200px" onchange="loadFinPoles()"></select>
+      </div>
+      <div>
+        <label style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Mois</label>
+        <input type="month" class="l-inp" id="finpoles-mois" style="height:36px" onchange="loadFinPoles()">
+      </div>
+    </div>
+    <div id="finpoles-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'admin.polerem':()=>`
+    <div class="sh"><div><div class="sh-t">Rémunération Responsable de pôle</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Grille configurable, calcul du bénéfice éligible et validation Direction avant paiement</div></div></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+      <div>
+        <label style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle</label>
+        <select class="l-inp" id="polerem-pole" style="height:36px;min-width:200px" onchange="loadPoleRem()"></select>
+      </div>
+      <div>
+        <label style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Mois</label>
+        <input type="month" class="l-inp" id="polerem-mois" style="height:36px" onchange="loadPoleRem()">
+      </div>
+      <button class="btn bp bs" onclick="poleRemCalculer()">↻ Calculer / recalculer</button>
+    </div>
+    <div id="polerem-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div class="cd" style="margin-top:16px">
+      <div class="cd-h"><div class="cd-t">Grille de référence</div></div>
+      <div id="polerem-grille-real"><div style="padding:16px;color:var(--t3);font-size:12.5px">Chargement…</div></div>
+    </div>`,
 
   'admin.finrapports':()=>`
     <div class="sh"><div class="sh-t">Rapports & exports</div></div>
@@ -4764,6 +4812,8 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='finrevenus') await loadFinRevenus();
   if(role==='admin'&&view==='findepenses') await loadFinDepenses();
   if(role==='admin'&&view==='finequipe') await loadFinEquipe();
+  if(role==='admin'&&view==='finpoles') await loadFinPoles();
+  if(role==='admin'&&view==='polerem') await loadPoleRem();
   const _isComptaLike=['compta','expert_comptable','auditeur'].includes(role);
   if(_isComptaLike&&view==='factures') await loadComptaFactures();
   if(role==='expert_comptable'&&view==='dash') await loadExpertComptableDash(); else if(_isComptaLike&&view==='dash') await loadComptaDash();
@@ -26748,6 +26798,208 @@ function renderFinEquipe(){
 }
 
 // ════════════════════════════════════════════════════════════════════════
+// ── Finance par pôle + Rémunération Responsable de pôle (Lot 6, 31/08/2026) ──
+// ════════════════════════════════════════════════════════════════════════
+// Les deux écrans lisent des fonctions RPC SECURITY DEFINER (pole_finance_ventilation /
+// pole_calculer_remuneration_responsable / pole_valider_remuneration_responsable,
+// migration-poles-v6-finance-remuneration-responsable.sql) — jamais de table exposée en lecture
+// directe pour ces agrégats sensibles. Le contrôle d'accès (admin ou responsable du pôle) est fait
+// CÔTÉ SERVEUR par ces fonctions elles-mêmes, pas seulement par le fait que ces écrans ne sont
+// aujourd'hui câblés que dans NAV['admin'] (voir commentaire à cet endroit).
+
+// Remplit un <select> de pôles depuis S.allPoles (chargé au login, goApp()), en conservant la
+// sélection déjà faite si elle est encore valide, sinon S.activePoleId, sinon le premier pôle.
+function _polePickerFill(selectId){
+  const sel=document.getElementById(selectId);
+  if(!sel)return null;
+  const poles=S.allPoles||[];
+  if(!poles.length){sel.innerHTML='<option value="">Aucun pôle</option>';return null;}
+  const keep=sel.value&&poles.some(p=>p.id===sel.value)?sel.value:(S.activePoleId&&poles.some(p=>p.id===S.activePoleId)?S.activePoleId:poles[0].id);
+  sel.innerHTML=poles.map(p=>`<option value="${p.id}"${p.id===keep?' selected':''}>${esc(p.nom)}</option>`).join('');
+  return keep;
+}
+// Remplit un <input type=month> avec le mois courant s'il est vide (ne touche pas à un choix déjà fait).
+function _monthPickerDefault(inputId){
+  const inp=document.getElementById(inputId);
+  if(!inp)return null;
+  if(!inp.value)inp.value=ymdLocal(new Date()).slice(0,7);
+  return inp.value;
+}
+function _monthBounds(monthStr){
+  const [y,m]=(monthStr||ymdLocal(new Date()).slice(0,7)).split('-').map(Number);
+  const debut=`${y}-${String(m).padStart(2,'0')}-01`;
+  const finD=new Date(y,m,1);
+  const fin=ymdLocal(finD);
+  return{debut,fin};
+}
+
+// ── Finance par pôle (ventilation revenus/charges) ──
+async function loadFinPoles(){
+  const poleId=_polePickerFill('finpoles-pole');
+  const mois=_monthPickerDefault('finpoles-mois');
+  const el=document.getElementById('finpoles-real');
+  if(!el)return;
+  if(!poleId){el.innerHTML='<div style="padding:20px;color:var(--t3)">Aucun pôle configuré.</div>';return;}
+  el.innerHTML=_finSkelRows(4,44);
+  const{debut,fin}=_monthBounds(mois);
+  try{
+    const r=await sbFetch('rpc/pole_finance_ventilation',{method:'POST',body:{p_pole_id:poleId,p_debut:debut,p_fin:fin}});
+    if(sbErr(r)||r?.erreur){el.innerHTML='<div style="padding:20px;color:var(--er)">'+(r?.erreur==='acces_refuse'?'Accès refusé à ce pôle.':'Erreur de chargement.')+'</div>';return;}
+    renderFinPoles(r);
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function renderFinPoles(data){
+  const el=document.getElementById('finpoles-real');
+  if(!el)return;
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const rev=data.revenus||{};
+  const chg=data.charges||{};
+  const revLignes=[
+    ['Full Communication / contrats récurrents',rev.full_communication],
+    ['Prestations ponctuelles',rev.prestations_ponctuelles],
+    ['Tournois / événements',rev.tournois_evenements],
+    ['Joueurs / académies',rev.joueurs_academies],
+    ['Autres revenus du pôle',rev.autres_revenus],
+  ];
+  const chgLignes=[
+    ['Photographes / vidéastes',chg.photographes_videastes],
+    ['Community managers',chg.community_managers],
+    ['Autres missions terrain',chg.autres_missions_terrain],
+    ['Déplacements',chg.deplacements],
+    ['Sous-traitance / montage',chg.sous_traitance_montage],
+    ['Matériel / location',chg.materiel_location],
+    ['Fixe secrétaire / production affecté',chg.fixe_secretaire_production],
+    ['Coût indirect alloué',chg.cout_indirect_alloue],
+    ['Autres charges',chg.autres_charges],
+  ];
+  const marge=data.marge_avant_fixe_responsable||0;
+  el.innerHTML=`
+    <div class="g3" style="margin-bottom:16px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Revenus du pôle</div><div class="fs-v" style="color:var(--ok)">${fmt(rev.total)}</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Charges du pôle</div><div class="fs-v" style="color:var(--er)">${fmt(chg.total)}</div></div>
+      <div class="fs" style="border-color:${marge>=0?'rgba(46,204,138,.25)':'rgba(240,68,94,.25)'}"><div class="fs-l">Marge avant fixe responsable</div><div class="fs-v" style="color:${marge>=0?'var(--ok)':'var(--er)'}">${fmt(marge)}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="cd" style="margin-bottom:0">
+        <div class="cd-h"><div class="cd-t">Revenus</div></div>
+        <div class="tw"><table><tbody>${revLignes.map(([lb,v])=>`<tr><td class="tp">${lb}</td><td class="tm" style="text-align:right;font-weight:600">${fmt(v)}</td></tr>`).join('')}</tbody></table></div>
+      </div>
+      <div class="cd" style="margin-bottom:0">
+        <div class="cd-h"><div class="cd-t">Charges</div></div>
+        <div class="tw"><table><tbody>${chgLignes.map(([lb,v])=>`<tr><td class="tp">${lb}</td><td class="tm" style="text-align:right;font-weight:600">${fmt(v)}</td></tr>`).join('')}</tbody></table></div>
+      </div>
+    </div>
+    <div style="padding:10px 4px;font-size:11px;color:var(--t3)">Les revenus sont classés d'après le contrat actif du client au moment du calcul : une prestation ponctuelle facturée en plus à un club déjà sous contrat Full Communication est comptée dans "Full Communication" plutôt que "Prestations ponctuelles" (aucune donnée ne relie aujourd'hui une facture à un contrat ligne à ligne).</div>`;
+}
+
+// ── Rémunération Responsable de pôle ──
+async function loadPoleRem(){
+  const poleId=_polePickerFill('polerem-pole');
+  const mois=_monthPickerDefault('polerem-mois');
+  const el=document.getElementById('polerem-real');
+  if(!el)return;
+  if(!poleId){el.innerHTML='<div style="padding:20px;color:var(--t3)">Aucun pôle configuré.</div>';return;}
+  el.innerHTML=_finSkelRows(3,44);
+  const{debut}=_monthBounds(mois);
+  try{
+    const[calc,paliers]=await Promise.all([
+      // profiles!pole_remuneration_calculs_responsable_id_fkey (pas juste "profiles(...)") : la table
+      // a 2 FK vers profiles (responsable_id ET valide_par) — trouvé en testant en réel (31/08/2026),
+      // l'embed ambigu renvoyait une erreur PGRST201 silencieusement absorbée par le .catch(()=>[])
+      // ci-dessous, affichant à tort "Aucun calcul pour ce mois" alors que le calcul existait bien.
+      sbFetch('pole_remuneration_calculs?select=*,profiles!pole_remuneration_calculs_responsable_id_fkey(prenom,nom)&pole_id=eq.'+poleId+'&periode=eq.'+debut).catch(()=>[]),
+      sbFetch('pole_remuneration_paliers?select=*&actif=eq.true&order=borne_min.asc').catch(()=>[]),
+    ]);
+    renderPoleRemGrille(Array.isArray(paliers)?paliers:[]);
+    renderPoleRem(Array.isArray(calc)&&calc[0]?calc[0]:null);
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function renderPoleRemGrille(paliers){
+  const el=document.getElementById('polerem-grille-real');
+  if(!el)return;
+  if(!paliers.length){el.innerHTML='<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucun palier configuré.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Contrats récurrents</th><th>Fixe mensuel</th><th>Variable</th><th>Portée</th></tr></thead><tbody>'+
+    paliers.map(p=>`<tr>
+      <td class="tp">${p.borne_min}${p.borne_max&&p.borne_max!==p.borne_min?'–'+p.borne_max:(p.borne_max===null?'+':'')}</td>
+      <td class="tm">${(p.fixe_mensuel||0).toLocaleString('fr-FR')} €/mois</td>
+      <td class="tm">${p.variable_pct||0}% du bénéfice éligible</td>
+      <td style="font-size:11.5px;color:var(--t3)">${p.pole_id?'Ce pôle uniquement':'Tous pôles (grille globale)'}</td>
+    </tr>`).join('')+
+  '</tbody></table></div><div style="padding:10px 4px;font-size:11px;color:var(--t3)">Au-delà du plus haut palier (aujourd\'hui 10 contrats), aucun montant n\'est appliqué automatiquement — revue stratégique Direction obligatoire.</div>';
+}
+function renderPoleRem(calc){
+  const el=document.getElementById('polerem-real');
+  if(!el)return;
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:2})+' €';
+  if(!calc){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:40px;gap:10px;color:var(--t3)"><div style="font-size:32px;opacity:.25">📐</div><div>Aucun calcul pour ce mois.</div><button class="btn bp bs" onclick="poleRemCalculer()">Calculer maintenant</button></div>';
+    return;
+  }
+  const stLb={a_valider:'À valider',valide:'Validé',paye:'Payé'};
+  const stClr={a_valider:'bw',valide:'ba',paye:'ba'};
+  const responsableNom=calc.profiles?[calc.profiles.prenom,calc.profiles.nom].filter(Boolean).join(' '):'—';
+  const alerte=calc.detail_calcul?.alerte;
+  el.innerHTML=`
+    ${calc.hors_grille?`<div style="padding:12px 16px;border-radius:var(--rc);background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.25);color:var(--er);font-size:13px;font-weight:600;margin-bottom:14px">⚠️ ${esc(alerte||'Hors grille — revue stratégique Direction obligatoire.')}</div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:12.5px;color:var(--t3)">Responsable : <strong style="color:var(--t1)">${esc(responsableNom)}</strong></div>
+      <span class="bd ${stClr[calc.statut]||'bw'}"><span class="bd-d"></span>${stLb[calc.statut]||calc.statut}</span>
+    </div>
+    <div class="g3" style="margin-bottom:14px">
+      <div class="fs"><div class="fs-l">Contrats récurrents actifs</div><div class="fs-v">${calc.nb_contrats_recurrents}</div></div>
+      <div class="fs"><div class="fs-l">Bénéfice éligible</div><div class="fs-v" style="color:${(calc.benefice_eligible||0)>=0?'var(--ok)':'var(--er)'}">${fmt(calc.benefice_eligible)}</div></div>
+      <div class="fs" style="border-color:rgba(54,107,255,.25)"><div class="fs-l">Total à payer</div><div class="fs-v" style="color:var(--acc)">${fmt(calc.total)}</div></div>
+    </div>
+    <div class="tw" style="margin-bottom:14px"><table><tbody>
+      <tr><td class="tp">Fixe mensuel</td><td class="tm" style="text-align:right;font-weight:600">${fmt(calc.fixe_mensuel)}</td></tr>
+      <tr><td class="tp">Revenus du pôle (mois)</td><td class="tm" style="text-align:right;font-weight:600">${fmt(calc.revenus_pole)}</td></tr>
+      <tr><td class="tp">Charges du pôle (mois)</td><td class="tm" style="text-align:right;font-weight:600">${fmt(calc.charges_pole)}</td></tr>
+      <tr><td class="tp">Variable (${calc.variable_pct||0}% du bénéfice éligible)</td><td class="tm" style="text-align:right;font-weight:600">${fmt(calc.variable_montant)}</td></tr>
+      ${calc.ajustement_montant?`<tr><td class="tp">Ajustement Direction${calc.ajustement_motif?' — '+esc(calc.ajustement_motif):''}</td><td class="tm" style="text-align:right;font-weight:600">${fmt(calc.ajustement_montant)}</td></tr>`:''}
+    </tbody></table></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${calc.statut==='a_valider'?`<button class="btn bp bs" onclick="poleRemValider('${calc.id}','valide')">Valider</button>`:''}
+      ${calc.statut==='valide'?`<button class="btn bp bs" onclick="poleRemValider('${calc.id}','paye')">Marquer payé</button>`:''}
+      ${calc.statut!=='paye'?`<button class="btn bg2 bs" onclick="poleRemAjuster('${calc.id}')">Ajuster le montant</button>`:''}
+    </div>`;
+}
+async function poleRemCalculer(){
+  const poleId=document.getElementById('polerem-pole')?.value;
+  const mois=document.getElementById('polerem-mois')?.value;
+  if(!poleId){toast('Sélectionnez un pôle.','er');return;}
+  const{debut}=_monthBounds(mois);
+  try{
+    const r=await sbFetch('rpc/pole_calculer_remuneration_responsable',{method:'POST',body:{p_pole_id:poleId,p_periode:debut}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'calcul impossible.'),'er');return;}
+    toast('Calcul effectué.','ok');
+    loadPoleRem();
+  }catch(e){toast('Erreur lors du calcul.','er');}
+}
+async function poleRemValider(calculId,statut){
+  const lbl={valide:'valider ce calcul',paye:'marquer ce calcul comme payé'}[statut]||'mettre à jour ce calcul';
+  if(!confirm('Confirmer : '+lbl+' ?'))return;
+  try{
+    const r=await sbFetch('rpc/pole_valider_remuneration_responsable',{method:'POST',body:{p_calcul_id:calculId,p_statut:statut,p_ajustement_montant:null,p_ajustement_motif:null}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
+    toast(statut==='paye'?'Marqué comme payé.':'Validé.','ok');
+    loadPoleRem();
+  }catch(e){toast('Erreur lors de la mise à jour.','er');}
+}
+async function poleRemAjuster(calculId){
+  const montantStr=prompt('Ajustement (€) — positif ou négatif, appliqué en plus du calcul brut :','0');
+  if(montantStr===null)return;
+  const montant=parseFloat(montantStr.replace(',','.'));
+  if(isNaN(montant)){toast('Montant invalide.','er');return;}
+  const motif=prompt('Motif de l\'ajustement :','')||null;
+  try{
+    const r=await sbFetch('rpc/pole_valider_remuneration_responsable',{method:'POST',body:{p_calcul_id:calculId,p_statut:null,p_ajustement_montant:montant,p_ajustement_motif:motif}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'ajustement impossible.'),'er');return;}
+    toast('Ajustement enregistré.','ok');
+    loadPoleRem();
+  }catch(e){toast('Erreur lors de l\'ajustement.','er');}
+}
+
+// ════════════════════════════════════════════════════════════════════════
 // ── Rapprochement bancaire (28/08/2026) — moteur réel, provider csv_import ──
 // ════════════════════════════════════════════════════════════════════════
 // Décision produit (cf. rapport de fin de chantier) : aucune credential Revolut/Qonto
@@ -32095,7 +32347,7 @@ const MOB_MORE_ITEMS={
   // Refonte Finance (28/08, nuit) : 5 anciens raccourcis (fin/résultat/rentabilité/
   // dépenses/clôtures) remplacés par les 4 pages réelles + 1 secondaire, même patron que
   // la sidebar desktop (cf. NAV['admin'] section "Finances & Documents").
-  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
+  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finpoles',lb:'Finance par pôle',ic:'🏢',sub:'Ventilation'},{id:'polerem',lb:'Rémunération pôle',ic:'📐',sub:'Grille responsable'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'agendasec',lb:'Agenda',ic:'📅',sub:'RDV & rappels'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'docrh',lb:'Documents',ic:'📁',sub:'Pièces'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
   // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
