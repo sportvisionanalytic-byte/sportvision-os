@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-// resolveMessageAttachments/MessageData déplacés dans messageAttachments.ts (bug du 31/08/2026,
-// voir son en-tête) : un Server Component ne peut pas appeler un export non-composant d'un module
-// "use client" comme CE fichier — page.tsx (Server Component) plantait à chaque chargement. Les
-// deux appelants (messages/page.tsx, MessagesParticulierView.tsx) importent désormais directement
-// depuis "./messageAttachments" — les RÉ-exporter ici ne suffirait pas : sous React Server
-// Components, la limite "use client" se juge au FICHIER traversé par l'import, pas à l'origine
-// réelle de la valeur, donc un ré-export via ce fichier resterait tout aussi cassé côté serveur.
+// resolveMessageAttachments/MessageData déplacés dans messageAttachments.ts (bug trouvé
+// indépendamment le 31/08/2026 par deux audits, QA transversal et Espace joueur — voir l'en-tête
+// de messageAttachments.ts) : un Server Component ne peut pas appeler un export non-composant d'un
+// module "use client" comme CE fichier — page.tsx (Server Component) plantait à chaque chargement.
+// Les deux appelants (messages/page.tsx, MessagesParticulierView.tsx) importent désormais
+// directement depuis "./messageAttachments" — les RÉ-exporter ici ne suffirait pas : sous React
+// Server Components, la limite "use client" se juge au FICHIER traversé par l'import, pas à
+// l'origine réelle de la valeur, donc un ré-export via ce fichier resterait tout aussi cassé côté
+// serveur.
 import type { MessageData } from "./messageAttachments";
 
 // Mêmes constantes que messageAttachments.ts (bucket privé, TTL de signature) — dupliquées ici

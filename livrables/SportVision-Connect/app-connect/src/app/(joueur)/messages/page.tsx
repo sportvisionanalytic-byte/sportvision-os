@@ -3,7 +3,9 @@ import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session
 import { MessagesThread } from "./MessagesThread";
 // resolveMessageAttachments/MessageData viennent de messageAttachments.ts, PAS de MessagesThread
 // (qui porte "use client") — ce Server Component ne peut pas appeler un export non-composant d'un
-// module "use client" (voir l'en-tête de messageAttachments.ts, bug du 31/08/2026).
+// module "use client" (voir l'en-tête de messageAttachments.ts, bug trouvé indépendamment le
+// 31/08/2026 par deux audits : reproduit en build production, /messages plantait pour tout joueur
+// ayant déjà un client_id résolu).
 import { resolveMessageAttachments, type MessageData } from "./messageAttachments";
 
 // Messages — voir design-connect-personnel-12-08/README.md § Espace joueur → Messages et

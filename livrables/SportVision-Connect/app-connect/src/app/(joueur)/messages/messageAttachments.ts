@@ -1,16 +1,20 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Extrait de MessagesThread.tsx (bug trouvé le 31/08/2026, audit QA transversal) : cette fonction
-// doit être appelable aussi bien depuis un Server Component (messages/page.tsx : "server or
-// client, le client Supabase passé porte la session/RLS dans les deux cas") que depuis un client
-// component (MessagesParticulierView.tsx). Elle vivait dans MessagesThread.tsx, qui porte
-// "use client" en tête de fichier — sous React Server Components, TOUS les exports d'un module
-// "use client" (pas seulement le composant React par défaut) deviennent des références client
-// opaques du point de vue d'un Server Component qui les importe : messages/page.tsx plantait donc
-// systématiquement à l'exécution avec "resolveMessageAttachments is not a function" (reproduit à
-// 100% en Playwright, sur chaque chargement de /messages, jamais un flake) — la page tombait dans
-// error.tsx à chaque visite, Messages entièrement indisponible côté Espace joueur. Extraite ici,
-// dans un module SANS "use client", elle reste un simple export appelable des deux côtés.
+// Extrait de MessagesThread.tsx (bug trouvé indépendamment le 31/08/2026 par deux audits, QA
+// transversal et Espace joueur) : cette fonction doit être appelable aussi bien depuis un Server
+// Component (messages/page.tsx : "server or client, le client Supabase passé porte la session/RLS
+// dans les deux cas") que depuis un client component (MessagesParticulierView.tsx). Elle vivait
+// dans MessagesThread.tsx, qui porte "use client" en tête de fichier — sous React Server
+// Components, TOUS les exports d'un module "use client" (pas seulement le composant React par
+// défaut) deviennent des références client opaques du point de vue d'un Server Component qui les
+// importe : messages/page.tsx plantait donc systématiquement à l'exécution avec
+// "resolveMessageAttachments is not a function" / "TypeError: (0, o.a) is not a function" en build
+// production (reproduit à 100% en Playwright, sur chaque chargement de /messages dès qu'un joueur
+// avait un client_id résolu — jamais un flake) — la page tombait dans error.tsx à chaque visite,
+// Messages entièrement indisponible côté Espace joueur. Extraite ici, dans un module SANS
+// "use client", elle reste un simple export appelable des deux côtés (MessagesParticulierView.tsx
+// l'appelait déjà côté client dans un useEffect — fonctionnait par coïncidence, jamais concerné
+// par ce bug).
 export interface MessageData {
   id: string;
   auteur: "client" | "staff";

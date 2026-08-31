@@ -72,7 +72,9 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
               </span>
               <div className="flex min-w-0 flex-col gap-1.5">
                 <h1 className="font-sora text-[26px] font-bold tracking-tight">{group.name}</h1>
-                <span className="text-[13px] text-text-tertiary">{group.member_count} membres</span>
+                <span className="text-[13px] text-text-tertiary">
+                  {group.member_count} membre{group.member_count > 1 ? "s" : ""}
+                </span>
               </div>
             </div>
 

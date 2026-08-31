@@ -249,7 +249,8 @@ export default async function DashboardPage() {
                     </div>
                     <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                       Plus que {formatEUR(Math.max(0, cotisation.target - cotisation.collected))} pour atteindre l&apos;objectif
-                      {cotisation.participants > 0 && ` · ${cotisation.participants} participants`}
+                      {cotisation.participants > 0 &&
+                        ` · ${cotisation.participants} participant${cotisation.participants > 1 ? "s" : ""}`}
                     </span>
                   </div>
                   <Link
