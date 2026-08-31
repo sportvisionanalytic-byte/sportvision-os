@@ -4263,6 +4263,15 @@ function modalNouvellePrestation(presetClientId,presetDate){
         <button class="btn bp" onclick="creerPrestation()">Créer la prestation</button>
       </div>
     </div>`);
+  // _clientsNP=null (plutôt que []) le temps du chargement : distingue "pas encore
+  // chargé" de "chargé, 0 client" — voir filtrerClientsSelect(). Corrige un faux
+  // "Aucun résultat" repéré en direct (audit fraîcheur 31/08) : la liste se charge de
+  // façon asynchrone après ouverture de la modale, et un utilisateur qui tape vite
+  // (ou une connexion lente) pouvait chercher un client réel avant la fin du fetch —
+  // filtrerClientsSelect() tombait alors sur le tableau vide par défaut, affichait
+  // "Aucun résultat" pour un client bien réel, et rien ne rafraîchissait le dropdown
+  // une fois la vraie liste arrivée tant que l'utilisateur ne retapait pas.
+  _clientsNP=null;
   sbFetch('clients?select=id,nom,statut&order=nom').then(cs=>{
     if(!cs)return;
     _clientsNP=cs;
@@ -4275,6 +4284,13 @@ function modalNouvellePrestation(presetClientId,presetDate){
         if(inp)inp.value=found.nom;
       }
     }
+    // Le fetch a pu résoudre APRÈS que l'utilisateur a déjà tapé une recherche (dropdown
+    // affiché avec le mauvais résultat "Aucun résultat"/liste vide) : on relance le filtre
+    // avec la vraie liste maintenant disponible, seulement si aucun client n'a encore été
+    // sélectionné (ne pas écraser un choix déjà fait entre-temps).
+    const inp2=document.getElementById('f-client-search');
+    const hid2=document.getElementById('f-client');
+    if(inp2&&hid2&&!hid2.value)filtrerClientsSelect(inp2.value);
   });
 }
 
@@ -4311,6 +4327,7 @@ async function creerPrestation(){
 function filtrerClientsSelect(q){
   const dd=document.getElementById('f-client-dropdown');
   if(!dd)return;
+  if(_clientsNP===null){dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--t3)">Chargement des clients…</div>';dd.style.display='block';return;}
   const lq=(q||'').toLowerCase();
   const list=lq?_clientsNP.filter(c=>(c.nom||'').toLowerCase().includes(lq)):_clientsNP.slice(0,25);
   if(!list.length){dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--t3)">Aucun résultat</div>';dd.style.display='block';return;}
