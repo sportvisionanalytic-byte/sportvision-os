@@ -5,6 +5,12 @@
 // layout.tsx utilise next/font pour toutes ses polices, servies depuis le domaine propre au
 // build. Le paiement/abonnement Stripe est une redirection pleine page (window.location.href),
 // jamais un iframe/script embarqué — pas besoin d'autoriser de domaine Stripe ici.
+// 31/08/2026 — audit Communication & Contenu : en dev, le webpack devtool de Next utilise `eval()`
+// pour le HMR/React Refresh, bloqué silencieusement par script-src sans 'unsafe-eval' — aucun clic
+// ne fonctionnait (hydratation React cassée), même bug déjà rencontré et corrigé sur app-connect.
+// 'unsafe-eval' n'est ajouté qu'en dev (NODE_ENV !== "production"), jamais en prod/build.
+const isDev = process.env.NODE_ENV !== "production";
+
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -19,7 +25,7 @@ const SECURITY_HEADERS = [
       // URL https:// n'autorise pas automatiquement son équivalent wss://). Même bug reproduit et
       // corrigé côté app-connect (audit du 30/08/2026, compte Connect tout neuf) — jamais vérifié
       // ici jusqu'à cet audit, mais la CSP est strictement identique.
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'",
+      `default-src 'self'; script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'`,
   },
 ];
 
