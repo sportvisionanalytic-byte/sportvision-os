@@ -439,6 +439,22 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 /* ══════════════════════════════════════════════════════════
    SPORTVISION OS — MOBILE-FIRST LAYER (interface terrain)
 ══════════════════════════════════════════════════════════ */
+/* ── Offline banner ── remonté hors du @media(max-width:768px) ci-dessous (audit
+   fraîcheur 31/08) : ces deux règles étaient les SEULES à définir le display de
+   #mob-offline-banner, entièrement imbriquées dans la media query mobile. Sur tout
+   écran ≥769px (desktop/laptop — l'essentiel des postes internes SportVision), aucune
+   règle CSS ne s'appliquait plus du tout : la div retombait sur le display:block par
+   défaut du navigateur, donc TOUJOURS visible, indépendamment de l'état réel de
+   connexion et même sans la classe .on. Confirmé en direct (Playwright, viewport
+   1440×900, getComputedStyle) : display:block/offsetHeight:21 sans .on ; repasse
+   correctement à display:none dès qu'on repasse sous 768px. Le bandeau "Connexion
+   perdue — mode hors-ligne" s'affichait donc en permanence en haut de l'écran pour
+   tout le staff sur desktop, sans rapport avec une vraie coupure. Ces deux règles ne
+   dépendent d'aucune autre règle mobile-only (position fixed, contenu, tailles déjà
+   adaptées à toutes largeurs) : les sortir de la media query suffit, comportement
+   mobile (repli sous 768px) inchangé.  */
+#mob-offline-banner{display:none;position:fixed;top:env(safe-area-inset-top,0);left:0;right:0;z-index:800;background:var(--wa);padding:8px 16px;font-size:12.5px;font-weight:600;color:#000;text-align:center}
+#mob-offline-banner.on{display:block}
 @media(max-width:768px){
   /* ── Carte mobile ── */
   .mc{background:var(--s1);border:1px solid var(--b1);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;margin-bottom:11px}
@@ -552,9 +568,6 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   .mso-row-ic{width:36px;height:36px;border-radius:9px;background:rgba(54,107,255,.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
   .mso-row-t{font-size:14px;font-weight:500;color:var(--t1)}
   .mso-row-s{font-size:11px;color:var(--t3);margin-top:1px}
-  /* ── Offline banner ── */
-  #mob-offline-banner{display:none;position:fixed;top:env(safe-area-inset-top,0);left:0;right:0;z-index:800;background:var(--wa);padding:8px 16px;font-size:12.5px;font-weight:600;color:#000;text-align:center}
-  #mob-offline-banner.on{display:block}
 }
 </style>
 
@@ -3902,6 +3915,25 @@ function escJs(s){
   return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// Validation légère des champs email/téléphone (audit fraîcheur 31/08) : aucune des
+// ~50 saisies email/tel du fichier n'était jamais vérifiée côté client (type="email"/
+// type="tel" seuls, sans effet car les boutons sont des onclick, pas un vrai <form>
+// soumis — la validation HTML5 native ne se déclenche donc jamais). Repro confirmée en
+// direct : "ceci-nest-pas-un-email" / "pas-un-numero-de-telephone-xyz" acceptés tels
+// quels par creerClient(), stockés en base, utilisés ensuite pour l'envoi réel de devis/
+// contrats/factures (échec silencieux d'envoi côté Brevo/Resend). Volontairement
+// permissif (pas de format strict imposé, juste rejet des saisies manifestement
+// invalides) pour ne jamais bloquer une vraie donnée client légitime.
+function isValidEmailFormat(v){
+  if(!v)return true; // champ facultatif partout où utilisé
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v).trim());
+}
+function isValidPhoneFormat(v){
+  if(!v)return true; // champ facultatif partout où utilisé
+  const digits=String(v).replace(/[\s.\-()]/g,'');
+  return /^\+?\d{6,15}$/.test(digits);
+}
+
 // Journal d'audit financier (financial_audit_log, migration-finance-lot0.sql).
 // Best-effort : ne bloque jamais l'action principale si l'écriture échoue
 // (ex: RLS, réseau) — l'utilisateur ne doit pas perdre sa saisie pour ça.
@@ -4244,6 +4276,15 @@ function modalNouvellePrestation(presetClientId,presetDate){
         <button class="btn bp" onclick="creerPrestation()">Créer la prestation</button>
       </div>
     </div>`);
+  // _clientsNP=null (plutôt que []) le temps du chargement : distingue "pas encore
+  // chargé" de "chargé, 0 client" — voir filtrerClientsSelect(). Corrige un faux
+  // "Aucun résultat" repéré en direct (audit fraîcheur 31/08) : la liste se charge de
+  // façon asynchrone après ouverture de la modale, et un utilisateur qui tape vite
+  // (ou une connexion lente) pouvait chercher un client réel avant la fin du fetch —
+  // filtrerClientsSelect() tombait alors sur le tableau vide par défaut, affichait
+  // "Aucun résultat" pour un client bien réel, et rien ne rafraîchissait le dropdown
+  // une fois la vraie liste arrivée tant que l'utilisateur ne retapait pas.
+  _clientsNP=null;
   sbFetch('clients?select=id,nom,statut&order=nom').then(cs=>{
     if(!cs)return;
     _clientsNP=cs;
@@ -4256,6 +4297,13 @@ function modalNouvellePrestation(presetClientId,presetDate){
         if(inp)inp.value=found.nom;
       }
     }
+    // Le fetch a pu résoudre APRÈS que l'utilisateur a déjà tapé une recherche (dropdown
+    // affiché avec le mauvais résultat "Aucun résultat"/liste vide) : on relance le filtre
+    // avec la vraie liste maintenant disponible, seulement si aucun client n'a encore été
+    // sélectionné (ne pas écraser un choix déjà fait entre-temps).
+    const inp2=document.getElementById('f-client-search');
+    const hid2=document.getElementById('f-client');
+    if(inp2&&hid2&&!hid2.value)filtrerClientsSelect(inp2.value);
   });
 }
 
@@ -4292,6 +4340,7 @@ async function creerPrestation(){
 function filtrerClientsSelect(q){
   const dd=document.getElementById('f-client-dropdown');
   if(!dd)return;
+  if(_clientsNP===null){dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--t3)">Chargement des clients…</div>';dd.style.display='block';return;}
   const lq=(q||'').toLowerCase();
   const list=lq?_clientsNP.filter(c=>(c.nom||'').toLowerCase().includes(lq)):_clientsNP.slice(0,25);
   if(!list.length){dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--t3)">Aucun résultat</div>';dd.style.display='block';return;}
@@ -4455,6 +4504,10 @@ async function creerClient(){
   const warn=document.getElementById('fc-doublon-warn');
   const nom=document.getElementById('fc-nom').value.trim();
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  const fcEmailVal=document.getElementById('fc-email').value.trim();
+  const fcTelVal=document.getElementById('fc-tel').value.trim();
+  if(!isValidEmailFormat(fcEmailVal)){err.textContent='Email invalide (format attendu : nom@domaine.fr).';return;}
+  if(!isValidPhoneFormat(fcTelVal)){err.textContent='Téléphone invalide (chiffres uniquement, 6 à 15 chiffres).';return;}
   window._fcCreating=true;
   const btn=document.getElementById('fc-submit-btn');
   if(btn){btn.disabled=true;btn.textContent='Création…';}
@@ -4955,6 +5008,54 @@ const _NEXT_ST={
   'livrée':'clôturée'
 };
 function pdAvancer(){const sel=document.getElementById('pd-statut');if(!sel)return;const next=_NEXT_ST[sel.value];if(next){sel.value=next;}}
+// Effets de bord d'un changement de statut de prestation (événements métier, tâches
+// auto, génération de facture, contrôle matériel "après") — extrait en fonction
+// partagée (audit fraîcheur 31/08). Avant ce correctif, cette logique n'existait
+// QUE dans avancerStatutPrestation() (bouton "→" rapide des listes), jamais dans
+// modifierPrestation() (bouton "Enregistrer" des fiches détail modalDetailPrestation/
+// modalProdFiche — le chemin le plus naturel pour un Responsable Production qui modifie
+// d'autres champs en même temps que le statut). Repro en direct : une prestation de
+// test amenée jusqu'à 'production_terminée' via "Étape suivante" + "Enregistrer" dans
+// la fiche détail restait statut_financier='non_facturée' et 0 ligne créée dans
+// `factures` — aucune facture générée, aucun événement prestation.completed, aucun
+// contrôle matériel "après" créé, silencieusement. Centralisé ici et appelé depuis les
+// deux chemins pour que le résultat ne dépende plus du bouton utilisé.
+async function appliquerEffetsStatutPrestation(id,next){
+  if(!next)return;
+  // Moteur d'événements — 'payée' retiré (INC-021, 20/08) : statut n'atteint plus jamais
+  // cette valeur, l'événement payment.confirmed part maintenant de majStatutFinancier/
+  // majStatutFacture, là où le paiement se confirme réellement (statut_financier/factures).
+  const evMap={'confirmée':'prestation.confirmed','production_terminée':'prestation.completed'};
+  if(evMap[next]){
+    dispatchSVEvent(evMap[next],{prestation_id:id});
+    creerTachesAuto(evMap[next],{source_type:'prestation',source_id:id}).catch(()=>{});
+  }
+  // Avant, la fin de prestation créait seulement une tâche "Émettre la
+  // facture" pour compta — la facture elle-même n'existait qu'au moment où
+  // quelqu'un cliquait "Imprimer"/"Envoyer". On la génère désormais tout de
+  // suite (getOrCreateFacture est déjà idempotent, ne recrée rien si une
+  // facture existe déjà) : au moment de la relance, il ne reste plus qu'à
+  // vérifier et envoyer, pas à créer depuis zéro. Best-effort.
+  if(next==='production_terminée'){
+    getOrCreateFacture(id).then(fact=>{
+      if(fact) sbFetch('prestations?id=eq.'+id+'&statut_financier=eq.non_facturée',{method:'PATCH',body:{statut_financier:'facturée'}}).catch(()=>{});
+    }).catch(()=>{});
+    // Contrôle "après" : même correctif que le contrôle "avant" (voir
+    // kitsAttribuerSubmit) — crée le contrôle retour dès que la prestation
+    // est terminée, pour tout kit qui lui était réservé et n'a pas encore
+    // de contrôle après. Best-effort, ne bloque jamais l'avancement.
+    sbFetch('kit_reservations?select=id,kit_id,collaborateur_id,responsable_id&prestation_id=eq.'+id).then(resas=>{
+      (Array.isArray(resas)?resas:[]).forEach(async resa=>{
+        const already=await sbFetch('kit_controles?select=id&kit_reservation_id=eq.'+resa.id+'&type=eq.apres&limit=1').catch(()=>[]);
+        if(Array.isArray(already)&&already.length)return;
+        await sbFetch('kit_controles',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
+          kit_id:resa.kit_id,kit_reservation_id:resa.id,prestation_id:id,
+          collaborateur_id:resa.responsable_id||resa.collaborateur_id,type:'apres',statut:'en_cours',
+        }}).catch(()=>{});
+      });
+    }).catch(()=>{});
+  }
+}
 async function avancerStatutPrestation(id,statut){
   const next=_NEXT_ST[statut];
   if(!next)return;
@@ -4964,39 +5065,7 @@ async function avancerStatutPrestation(id,statut){
     toast('→ '+(SL[next]||next),'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
-    // Moteur d'événements — 'payée' retiré (INC-021, 20/08) : statut n'atteint plus jamais
-    // cette valeur, l'événement payment.confirmed part maintenant de majStatutFinancier/
-    // majStatutFacture, là où le paiement se confirme réellement (statut_financier/factures).
-    const evMap={'confirmée':'prestation.confirmed','production_terminée':'prestation.completed'};
-    if(evMap[next]){
-      dispatchSVEvent(evMap[next],{prestation_id:id});
-      creerTachesAuto(evMap[next],{source_type:'prestation',source_id:id}).catch(()=>{});
-    }
-    // Avant, la fin de prestation créait seulement une tâche "Émettre la
-    // facture" pour compta — la facture elle-même n'existait qu'au moment où
-    // quelqu'un cliquait "Imprimer"/"Envoyer". On la génère désormais tout de
-    // suite (getOrCreateFacture est déjà idempotent, ne recrée rien si une
-    // facture existe déjà) : au moment de la relance, il ne reste plus qu'à
-    // vérifier et envoyer, pas à créer depuis zéro. Best-effort.
-    if(next==='production_terminée'){
-      getOrCreateFacture(id).then(fact=>{
-        if(fact) sbFetch('prestations?id=eq.'+id+'&statut_financier=eq.non_facturée',{method:'PATCH',body:{statut_financier:'facturée'}}).catch(()=>{});
-      }).catch(()=>{});
-      // Contrôle "après" : même correctif que le contrôle "avant" (voir
-      // kitsAttribuerSubmit) — crée le contrôle retour dès que la prestation
-      // est terminée, pour tout kit qui lui était réservé et n'a pas encore
-      // de contrôle après. Best-effort, ne bloque jamais l'avancement.
-      sbFetch('kit_reservations?select=id,kit_id,collaborateur_id,responsable_id&prestation_id=eq.'+id).then(resas=>{
-        (Array.isArray(resas)?resas:[]).forEach(async resa=>{
-          const already=await sbFetch('kit_controles?select=id&kit_reservation_id=eq.'+resa.id+'&type=eq.apres&limit=1').catch(()=>[]);
-          if(Array.isArray(already)&&already.length)return;
-          await sbFetch('kit_controles',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
-            kit_id:resa.kit_id,kit_reservation_id:resa.id,prestation_id:id,
-            collaborateur_id:resa.responsable_id||resa.collaborateur_id,type:'apres',statut:'en_cours',
-          }}).catch(()=>{});
-        });
-      }).catch(()=>{});
-    }
+    await appliquerEffetsStatutPrestation(id,next);
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
@@ -5131,6 +5200,14 @@ async function modifierPrestation(id){
   const err=document.getElementById('pd-err');
   err.textContent='Enregistrement…';
   try{
+    // Statut avant modification, pour appliquerEffetsStatutPrestation() ci-dessous (audit
+    // fraîcheur 31/08) : ce bouton "Enregistrer" pouvait jusqu'ici faire passer une prestation
+    // par 'production_terminée' sans jamais déclencher la génération de facture/l'événement
+    // métier/le contrôle matériel "après" — ces effets n'existaient que sur le bouton "→"
+    // rapide des listes (avancerStatutPrestation), jamais sur ce chemin, pourtant le plus
+    // naturel pour un Responsable Production qui modifie d'autres champs en même temps.
+    const avant=await sbFetch('prestations?id=eq.'+id+'&select=statut').catch(()=>null);
+    const statutAvant=Array.isArray(avant)&&avant[0]?avant[0].statut:null;
     const body={
       statut:document.getElementById('pd-statut').value,
       statut_financier:document.getElementById('pd-sfin').value,
@@ -5154,6 +5231,7 @@ async function modifierPrestation(id){
     toast('Prestation mise à jour.','ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
+    if(body.statut&&body.statut!==statutAvant)appliquerEffetsStatutPrestation(id,body.statut).catch(()=>{});
   }catch(e){err.textContent='Erreur lors de la modification.';}
 }
 
@@ -6492,6 +6570,10 @@ async function modifierClient(id){
   const err=document.getElementById('fce-err');
   const nom=document.getElementById('fce-nom').value.trim();
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  const fceEmailVal=document.getElementById('fce-email').value.trim();
+  const fceTelVal=document.getElementById('fce-tel').value.trim();
+  if(!isValidEmailFormat(fceEmailVal)){err.textContent='Email invalide (format attendu : nom@domaine.fr).';return;}
+  if(!isValidPhoneFormat(fceTelVal)){err.textContent='Téléphone invalide (chiffres uniquement, 6 à 15 chiffres).';return;}
   err.textContent='Enregistrement…';
   try{
     const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{
