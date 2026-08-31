@@ -22,11 +22,14 @@ import type { OrgUser } from "@/lib/types/settings";
 // simplement pointé vers lui si le responsable n'est pas encore dans l'effectif.
 interface CreateTeamModalProps {
   clubId: string;
+  /** Noms déjà pris par une équipe existante du club (teams.map(t => t.name), TeamsPage) — voir
+   * la garde anti-doublon ci-dessous. */
+  existingNames?: string[];
   onClose: () => void;
   onCreate: (input: { name: string; categorie?: string; coach?: string }) => Promise<unknown>;
 }
 
-export function CreateTeamModal({ clubId, onClose, onCreate }: CreateTeamModalProps) {
+export function CreateTeamModal({ clubId, existingNames, onClose, onCreate }: CreateTeamModalProps) {
   const [categorie, setCategorie] = useState("");
   const [teamNumber, setTeamNumber] = useState("");
   const [coachMemberId, setCoachMemberId] = useState("");
@@ -40,13 +43,20 @@ export function CreateTeamModal({ clubId, onClose, onCreate }: CreateTeamModalPr
       .catch(() => setMembers([]));
   }, [clubId]);
 
-  const canSubmit = categorie.trim().length > 0;
+  const name = teamNumber ? `${categorie} ${teamNumber}` : categorie;
+  // club_teams n'a aucune contrainte d'unicité sur (club_id, name) côté base — rien n'empêchait
+  // de créer deux fois "U15" (ex. double-clic, ou catégorie choisie deux fois sans numéro
+  // d'équipe) : trouvé lors de l'audit complet du 31/08/2026, ça cassait le datalist de
+  // /requests/new (deux <option> avec la même clé React). Comparaison insensible à la casse/
+  // aux espaces superflus, comme un humain lirait les deux noms.
+  const isDuplicate = name.trim().length > 0 && (existingNames ?? []).some((n) => n.trim().toLowerCase() === name.trim().toLowerCase());
+  const canSubmit = categorie.trim().length > 0 && !isDuplicate;
   const coachName = members?.find((m) => m.id === coachMemberId);
 
   function handleSubmit() {
+    if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
-    const name = teamNumber ? `${categorie} ${teamNumber}` : categorie;
     const coach = coachName ? `${coachName.firstName} ${coachName.lastName}`.trim() : undefined;
     onCreate({ name, categorie, coach })
       .then(() => onClose())
@@ -122,6 +132,11 @@ export function CreateTeamModal({ clubId, onClose, onCreate }: CreateTeamModalPr
           </span>
         </label>
 
+        {isDuplicate && (
+          <p className="text-[12.5px] font-bold text-danger-fg">
+            Une équipe « {name} » existe déjà. Choisissez un numéro d&apos;équipe différent pour la distinguer.
+          </p>
+        )}
         {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
 
         <div className="mt-1 flex justify-end">

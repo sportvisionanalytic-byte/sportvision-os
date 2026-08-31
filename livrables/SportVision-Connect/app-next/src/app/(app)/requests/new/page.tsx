@@ -175,7 +175,12 @@ function NewRequestContent() {
                 className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13.5px] outline-none focus-visible:border-brand-blue"
               />
               <datalist id="sv-new-request-teams">
-                {teamNames.map((t) => (
+                {/* club_teams n'a aucune contrainte d'unicité sur (club_id, name) — deux équipes
+                    peuvent réellement porter le même nom (ex. "U15" créée deux fois, trouvé lors
+                    de l'audit complet du 31/08/2026). `key={t}` seul provoquait alors un
+                    avertissement React "two children with the same key" ; dédoublonné ici pour
+                    rester correct même si des doublons existent déjà en base. */}
+                {[...new Set(teamNames)].map((t) => (
                   <option key={t} value={t} />
                 ))}
               </datalist>

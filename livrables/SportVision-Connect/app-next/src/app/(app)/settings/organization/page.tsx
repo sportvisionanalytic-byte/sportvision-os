@@ -62,7 +62,15 @@ export default function OrganizationSettingsPage() {
 function OrganizationForm() {
   const { ctx } = useSession();
   const { organization } = ctx;
-  const canEdit = ctx.membership.role === "admin";
+  // updateClubOrganization (data/club/organization.ts) n'écrit QUE dans `clubs` (adresse,
+  // instagram_handle, siret, couleurs) — une table qui n'a de ligne que pour organization.type
+  // ==="club" (coach/académie/sponsor/agence CM/tournoi/stage vivent uniquement dans
+  // `organizations`, sans ces colonnes). Écriture donc réellement impossible hors club, quel que
+  // soit le rôle : `role === "admin"` reste le bon test pour un club (seul rôle réel autorisé par
+  // clubs_admin_update, RLS), mais pour tout autre type d'organisation canEdit doit rester false
+  // — jamais dérivé du rôle, qui n'a de toute façon aucun équivalent "admin" littéral pour un
+  // coach/une agence CM (rôle réel "owner") ou un tournoi/stage ("event_admin", voir mappers.ts).
+  const canEdit = ctx.organization.type === "club" && ctx.membership.role === "admin";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [address, setAddress] = useState(organization.address ?? "");
@@ -327,11 +335,15 @@ function OrganizationForm() {
 
       {!canEdit && (
         <p className="text-[12.5px] text-text-soft">
-          Ces informations sont réservées en écriture à l&apos;administrateur du club.
+          {ctx.organization.type === "club"
+            ? "Ces informations sont réservées en écriture à l'administrateur du club."
+            : "Ces informations ne sont pas encore modifiables depuis Club+ pour ce type d'espace. Contactez votre conseiller SportVision pour les mettre à jour."}
         </p>
       )}
       <p className="text-[12.5px] text-text-soft">
-        Le nom du club n&apos;est pas modifiable depuis Club+. Contactez votre conseiller SportVision pour le mettre à jour.
+        {ctx.organization.type === "club"
+          ? "Le nom du club n'est pas modifiable depuis Club+. Contactez votre conseiller SportVision pour le mettre à jour."
+          : "Le nom de votre organisation n'est pas modifiable depuis Club+. Contactez votre conseiller SportVision pour le mettre à jour."}
       </p>
     </div>
   );
