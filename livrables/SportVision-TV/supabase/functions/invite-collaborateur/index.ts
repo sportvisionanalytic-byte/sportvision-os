@@ -74,11 +74,22 @@ serve(async (req) => {
     const callerIsSec = callerProfile?.role === "sec";
     if (!callerIsAdmin && !callerIsSec) return json({ error: "Réservé aux administrateurs et à la secrétaire" }, 403);
 
-    const { email, prenom, nom, role, organization_name, redirect_url } = await req.json();
+    const { email, prenom, nom, role, organization_name, redirect_url, pole_id } = await req.json();
     if (!email || !prenom || !nom || !role) return json({ error: "Champs manquants" }, 400);
     if (!ROLE_LABELS[role]) return json({ error: "Rôle invalide" }, 400);
     if (callerIsSec && !INVITABLE_ROLES_SEC.has(role)) {
       return json({ error: "La secrétaire ne peut pas attribuer ce rôle. Seul un administrateur le peut." }, 403);
+    }
+
+    // Multi-pôles (migration-poles-v11/v12, 31/08/2026) : pole_id optionnel, transmis par le
+    // formulaire d'invitation UNIQUEMENT quand plusieurs pôles existent (sinon absent — le
+    // trigger handle_user_invited()/ensure_default_pole_affectation() retombe alors sur
+    // Football, comportement historique implicite). Validé ici (existence réelle du pôle)
+    // pour ne jamais transmettre un pole_id invalide en metadata — le trigger a de toute
+    // façon son propre garde-fou, mais autant échouer proprement ici avec un message clair.
+    if (pole_id) {
+      const { data: poleRow } = await admin.from("poles").select("id").eq("id", pole_id).maybeSingle();
+      if (!poleRow) return json({ error: "Pôle sportif invalide." }, 400);
     }
 
     // Idempotence (spec : "une invitation rejouée ne crée pas deux profils") —
@@ -95,7 +106,10 @@ serve(async (req) => {
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "invite",
       email,
-      options: { data: { role, prenom, nom }, redirectTo: redirect_url },
+      // pole_id (optionnel) : lu par ensure_default_pole_affectation() côté trigger DB
+      // (migration-poles-v12) pour affecter ce nouveau collaborateur au bon pôle sportif dès
+      // sa création — jamais laissé sans aucune affectation (verrouillage RLS total sinon).
+      options: { data: { role, prenom, nom, ...(pole_id ? { pole_id } : {}) }, redirectTo: redirect_url },
     });
     if (linkErr) return json({ error: linkErr.message }, 400);
 

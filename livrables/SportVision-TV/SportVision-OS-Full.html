@@ -4725,6 +4725,11 @@ function modalInviterCollaborateur(){
           <option value="auditeur">Auditeur (lecture seule)</option>
         </select>
       </div>
+      ${(S.allPoles&&S.allPoles.length>1)?`<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle sportif *</label>
+        <select id="fi-pole" class="l-inp" style="height:38px">
+          ${S.allPoles.map(p=>`<option value="${p.id}"${p.slug==='football'?' selected':''}>${esc(p.nom)}</option>`).join('')}
+        </select>
+      </div>`:''}
       <div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rb);padding:10px 14px;font-size:11.5px;color:var(--t2)">
         Un e-mail d'invitation SportVision sera envoyé automatiquement à cette adresse, avec un lien à usage unique pour définir son mot de passe. Rien à communiquer à la main.
       </div>
@@ -4742,6 +4747,10 @@ async function creerCollaborateur(){
   const nom=document.getElementById('fi-nom').value.trim();
   const email=document.getElementById('fi-email').value.trim();
   const role=document.getElementById('fi-role').value;
+  // Multi-pôles (migration-poles-v11/v12, 31/08/2026) : sélecteur affiché seulement si
+  // plusieurs pôles existent (même convention que fc-pole/fce-pole) — undefined sinon,
+  // le trigger DB retombe alors sur Football par défaut.
+  const poleId=document.getElementById('fi-pole')?.value||undefined;
   if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
   err.textContent='Envoi de l\'invitation…';
   try{
@@ -4750,7 +4759,7 @@ async function creerCollaborateur(){
     const r=await fetch(SB_URL+'/functions/v1/invite-collaborateur',{
       method:'POST',
       headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
-      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo})
+      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_id:poleId})
     });
     const d=await r.json();
     if(!r.ok||d.error){err.textContent=d.error||'Erreur.';return;}
@@ -7163,6 +7172,11 @@ function modalRecrutCreerCollaborateur(id){
           <option value="com">Commercial</option>
         </select>
       </div>
+      ${(S.allPoles&&S.allPoles.length>1)?`<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle sportif *</label>
+        <select id="rcc-pole" class="l-inp" style="height:38px">
+          ${S.allPoles.map(p=>`<option value="${p.id}"${p.slug==='football'?' selected':''}>${esc(p.nom)}</option>`).join('')}
+        </select>
+      </div>`:''}
       <div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rb);padding:10px 14px;font-size:11.5px;color:var(--t2)">
         Un e-mail d'invitation sera envoyé (même mécanisme que « + Inviter »). La fiche est créée en statut onboarding : l'accès à l'OS reste bloqué tant que la checklist n'est pas complète.
       </div>
@@ -7181,6 +7195,8 @@ async function recrutCreerCollaborateur(candId){
   const nom=document.getElementById('rcc-nom').value.trim();
   const email=document.getElementById('rcc-email').value.trim();
   const role=document.getElementById('rcc-role').value;
+  // Multi-pôles (migration-poles-v11/v12, 31/08/2026) : cf. creerCollaborateur() ci-dessus.
+  const poleId=document.getElementById('rcc-pole')?.value||undefined;
   if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
   // Garde de ré-entrance (audit idempotence 29/08) : côté serveur, un double-clic est déjà
   // rattrapé par l'unicité d'email de auth.users (le 2e appel à invite-collaborateur échoue),
@@ -7194,7 +7210,7 @@ async function recrutCreerCollaborateur(candId){
     const r=await fetch(SB_URL+'/functions/v1/invite-collaborateur',{
       method:'POST',
       headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
-      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo})
+      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_id:poleId})
     });
     const d=await r.json();
     if(!r.ok||d.error){err.textContent=d.error||'Erreur.';if(btn){btn.disabled=false;btn.textContent='Créer et inviter';}return;}
