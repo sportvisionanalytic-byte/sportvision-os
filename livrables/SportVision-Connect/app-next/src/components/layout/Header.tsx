@@ -21,10 +21,20 @@ import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 // pour l'espace Parent/Joueur — un admin de club qui y accède directement, par exemple depuis un
 // lien partagé, ne doit pas voir le slug d'URL brut en titre). resolveNavigation() ne peut pas
 // leur trouver de libellé pour l'espace actif : ce petit repli couvre ces cas précis.
+//
+// "/newsroom" et "/studio" (31/08/2026, audit Communication & Contenu) : accessibles à tout club
+// Full Communication (organization_entitlements activées automatiquement à la signature du
+// contrat — migration-clubplus-fullcomm-auto-entitlements.sql — et Studio ouvert à tout membre
+// actif dès READY_MODULES, voir entitlements.ts) mais absentes de la nav Full Communication
+// elle-même (centrée sur le planning éditorial du CM, voir navigation.ts § NAV_CLUB_FULLCOMM) :
+// sans ce repli, un membre qui y accède (lien direct, ancien favori, redirection depuis
+// Newsroom→Studio) voyait le slug d'URL brut ("newsroom"/"studio") en titre de page.
 const TITLE_FALLBACKS: Record<string, string> = {
   "/notifications": "Notifications",
   "/children": "Profils associés",
   "/authorizations": "Autorisations",
+  "/newsroom": "Newsroom",
+  "/studio": "Studio",
 };
 
 interface HeaderProps {
