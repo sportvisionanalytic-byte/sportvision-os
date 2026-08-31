@@ -34,6 +34,15 @@ export interface PendingPlayerOnboarding {
   // reste alors NULL, traitée comme "pas de plafond" par connect_particulier_limit(), exactement
   // comme un compte antérieur à la migration.
   profilParticulier?: "agent" | "parent" | "tuteur" | "autre";
+  // Sport choisi à l'étape Sport du tunnel (signup-context.tsx, state.sport/otherSport) —
+  // uniquement pour un profil joueur/sportif (voir isSportLike dans signup/sport/page.tsx,
+  // le champ n'existe pas pour particulier/parent/agent/autre). Rejoué comme le reste (voir
+  // ci-dessus) car auth.signUp() ne renvoie aucune session tant que l'e-mail n'est pas confirmé.
+  // Résolu en pôle réel côté serveur par resolve_pole_by_sport() (migration-poles-v13) quand
+  // connect_resolve_beneficiary_client_id() crée la ligne clients — jamais côté client, cette
+  // table n'étant pas lisible par un compte Connect (voir migration-poles-v13-connect-sport-
+  // coherence.sql).
+  sport?: string;
 }
 
 export function savePendingOnboarding(pending: PendingPlayerOnboarding) {
@@ -91,7 +100,12 @@ export async function consumePendingOnboarding(
       data: { user },
     } = await supabase.auth.getUser();
     if (user) {
-      const payload: { user_id: string; account_type: "joueur" | "particulier"; profil_particulier?: string } = {
+      const payload: {
+        user_id: string;
+        account_type: "joueur" | "particulier";
+        profil_particulier?: string;
+        sport?: string;
+      } = {
         user_id: user.id,
         account_type: pending.accountType,
       };
@@ -100,6 +114,9 @@ export async function consumePendingOnboarding(
       // ne jamais envoyer explicitement `undefined`/`null` dans le payload upsert, ce qui
       // écraserait une valeur déjà posée par un rejeu précédent avec NULL.
       if (pending.profilParticulier) payload.profil_particulier = pending.profilParticulier;
+      // sport (migration-poles-v13, 31/08/2026) : même garde — n'écrit que si capturé (profil
+      // joueur/sportif), pour ne jamais écraser une valeur déjà éditée depuis "Mon profil".
+      if (pending.sport) payload.sport = pending.sport;
       const { error: cpsError } = await supabase
         .from("connect_profile_settings")
         .upsert(payload, { onConflict: "user_id" });

@@ -139,6 +139,10 @@ export default function SignupClubPage() {
     // correctif, un profil particulier/parent/autre ne déclenchait aucun savePendingOnboarding
     // du tout, donc aucun account_type n'était jamais écrit).
     const accountType: "joueur" | "particulier" = isSportLike ? "joueur" : "particulier";
+    // Sport choisi à l'étape précédente (signup/sport/page.tsx) — "Autre" transporte la précision
+    // texte libre plutôt que le libellé générique, pour que le signal de demande (migration-
+    // poles-v13) reste exploitable côté staff.
+    const sportValue = state.sport === "Autre" ? state.otherSport.trim() : state.sport;
 
     if (isSportLike) {
       if (choice === "search" && selected) {
@@ -150,6 +154,7 @@ export default function SignupClubPage() {
           nom: state.lastName,
           dateNaissance: state.dateNaissance,
           accountType,
+          sport: sportValue || undefined,
         });
       } else if (choice === "declare") {
         // dateNaissance (audit du 31/08/2026, bug confirmé en conditions réelles) : manquait ici
@@ -171,6 +176,7 @@ export default function SignupClubPage() {
           nom: state.lastName,
           dateNaissance: state.dateNaissance,
           accountType,
+          sport: sportValue || undefined,
         });
       } else {
         // "Non / plus tard" (migration-connect-v72, 15/08) : prenom/nom/dateNaissance sont
@@ -184,6 +190,7 @@ export default function SignupClubPage() {
           prenom: state.firstName,
           nom: state.lastName,
           dateNaissance: state.dateNaissance,
+          sport: sportValue || undefined,
         });
       }
     } else {
