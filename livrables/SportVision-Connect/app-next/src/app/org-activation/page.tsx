@@ -183,7 +183,7 @@ function OrgActivationContent() {
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <Field label="Nom de la structure" value={nom} onChange={setNom} required />
           <Field label="Adresse e-mail" value={email} onChange={setEmail} type="email" required />
-          <Field label="Mot de passe" value={password} onChange={setPassword} type="password" required minLength={6} />
+          <Field label="Mot de passe" value={password} onChange={setPassword} type="password" required minLength={8} />
 
           <Button type="submit" disabled={submitting} className="mt-2 h-12 w-full text-[15px]">
             {submitting ? "Activation…" : "Activer mon espace Club+"}
