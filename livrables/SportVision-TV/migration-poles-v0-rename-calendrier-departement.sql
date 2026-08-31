@@ -1,0 +1,34 @@
+-- migration-poles-v0-rename-calendrier-departement.sql
+--
+-- Prépare le terrain pour l'architecture multi-pôles (Football + Basket, cf.
+-- plan de migration "SportVision OS multi-pôles", 31/08/2026) : la colonne
+-- `pole` de la vue v_calendar_global désigne aujourd'hui un DÉPARTEMENT
+-- FONCTIONNEL INTERNE (production/communication/commercial/secretariat/
+-- clients/formation/rh/recrutement), pas une ligne d'activité sportive.
+-- Avant de créer la vraie table `poles` (pôles sportifs, migration v1), on
+-- renomme cette colonne en `departement` pour qu'il n'existe jamais de
+-- fenêtre où le mot "pole" a deux sens différents dans le code.
+--
+-- Périmètre : uniquement la colonne exposée par la vue (aucune donnée,
+-- aucune table physique, le corps de la vue est inchangé) + 3 lignes de
+-- front dans SportVision-OS-Full.html (CAL_GLOBAL_POLE_LBL ->
+-- CAL_GLOBAL_DEPT_LBL, id HTML cg-f-pole -> cg-f-dept, variable locale
+-- `pole` -> `dept`).
+--
+-- ALTER VIEW ... RENAME COLUMN (pas CREATE OR REPLACE VIEW, qui refuse de
+-- renommer une colonne exposée — testé en direct le 31/08/2026, erreur
+-- Postgres 42P16 "cannot change name of view column"). Ce renommage ne
+-- touche que le nom de colonne PUBLIC de la vue ; l'alias interne
+-- `'production'::text as pole` dans la première branche du UNION ALL
+-- (source `prestations`) reste tel quel dans le corps de la vue, sans
+-- incidence : seule la position de cette colonne dans le SELECT externe
+-- détermine son nom une fois exposée.
+--
+-- Idempotente au sens where-il-a-déjà-été-exécuté (un 2e run échoue
+-- proprement avec "column departement already exists" plutôt que de
+-- corrompre quoi que ce soit — pas de IF NOT EXISTS disponible pour ALTER
+-- VIEW RENAME COLUMN en Postgres, à relancer uniquement si nécessaire).
+--
+-- Rollback : alter view v_calendar_global rename column departement to pole;
+
+alter view v_calendar_global rename column pole to departement;

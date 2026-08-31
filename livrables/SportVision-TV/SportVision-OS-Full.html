@@ -1303,7 +1303,7 @@ const VIEWS={
       <div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
         <input type="text" id="cg-f-q" class="fi" placeholder="Rechercher club, titre…" style="max-width:200px" oninput="applyCalGlobalFilters()">
         <select id="cg-f-type" class="fi" style="max-width:170px" onchange="applyCalGlobalFilters()"><option value="">Tous les types</option></select>
-        <select id="cg-f-pole" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous les pôles</option></select>
+        <select id="cg-f-dept" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous les départements</option></select>
         <select id="cg-f-statut" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous statuts</option></select>
         <select id="cg-f-sport" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous sports</option></select>
         <select id="cg-f-collab" class="fi" style="max-width:180px" onchange="applyCalGlobalFilters()"><option value="">Tous les collaborateurs</option></select>
@@ -25884,7 +25884,11 @@ const CAL_GLOBAL_TYPE_COLOR={
   relance:'#F5A524',rappel:'#8891A8',echeance_admin:'#F0445E',echeance_contrat:'#F0445E',
   formation:'#8B2BFF',indisponibilite:'#4E5870',recrutement:'#00C4FF',
 };
-const CAL_GLOBAL_POLE_LBL={
+// Renommé "pole"->"departement" le 31/08/2026 (migration-poles-v0) : ce champ désigne un
+// département fonctionnel interne (production/commercial/rh...), pas un pôle sportif
+// (Football/Basket) — évite toute ambiguïté avec la nouvelle table `poles` introduite par la
+// migration multi-pôles.
+const CAL_GLOBAL_DEPT_LBL={
   production:'Production',communication:'Communication',commercial:'Commercial',
   secretariat:'Secrétariat',clients:'Clients',formation:'Formation',rh:'RH',recrutement:'Recrutement',
 };
@@ -25959,7 +25963,7 @@ function populateCalGlobalFilters(){
     if(values.includes(cur))sel.value=cur;
   };
   fill('cg-f-type',distinct('display_type'),CAL_GLOBAL_TYPE_LBL);
-  fill('cg-f-pole',distinct('pole'),CAL_GLOBAL_POLE_LBL);
+  fill('cg-f-dept',distinct('departement'),CAL_GLOBAL_DEPT_LBL);
   fill('cg-f-statut',distinct('statut'),null);
   fill('cg-f-sport',distinct('sport'),null);
   fill('cg-f-collab',distinct('responsible_nom'),null);
@@ -25987,14 +25991,14 @@ function _cgLegendFilter(type){
 function applyCalGlobalFilters(){
   const q=(document.getElementById('cg-f-q')?.value||'').trim().toLowerCase();
   const type=document.getElementById('cg-f-type')?.value||'';
-  const pole=document.getElementById('cg-f-pole')?.value||'';
+  const dept=document.getElementById('cg-f-dept')?.value||'';
   const statut=document.getElementById('cg-f-statut')?.value||'';
   const sport=document.getElementById('cg-f-sport')?.value||'';
   const collab=document.getElementById('cg-f-collab')?.value||'';
   let list=_cgRawData;
   if(q)list=list.filter(r=>(r.titre||'').toLowerCase().includes(q)||(r.club_nom||'').toLowerCase().includes(q));
   if(type)list=list.filter(r=>r.display_type===type);
-  if(pole)list=list.filter(r=>r.pole===pole);
+  if(dept)list=list.filter(r=>r.departement===dept);
   if(statut)list=list.filter(r=>r.statut===statut);
   if(sport)list=list.filter(r=>r.sport===sport);
   if(collab)list=list.filter(r=>r.responsible_nom===collab);
@@ -27563,7 +27567,11 @@ async function validerNouveauMdpOS(){
 }
 
 // ── STATE ────────────────────────────────
-let S={screen:'login',role:null,view:null,obStep:1,obRole:null};
+// poleIds/polesResponsable (31/08/2026, migration multi-pôles) : pôles sportifs (Football/Basket)
+// affectés à l'utilisateur connecté — chargés au login dans goApp() ci-dessous. Donnée dormante
+// dans cette tranche (aucun sélecteur/filtre ne les consomme encore, Lot 4) : la RLS scope déjà
+// tout côté serveur, ce fetch évite juste un aller-retour réseau supplémentaire au Lot 4.
+let S={screen:'login',role:null,view:null,obStep:1,obRole:null,poleIds:[],polesResponsable:[]};
 let _myNiveauCm=undefined; // undefined = pas encore chargé, null = chargé mais non classé
 async function _ensureMyNiveauCm(){
   if(_myNiveauCm!==undefined)return _myNiveauCm;
@@ -27961,6 +27969,13 @@ function goApp(role){
           document.getElementById('sb-nav').innerHTML=renderSidebarNav(role,S.view);
         }
       }
+    }).catch(()=>{});
+    // Pôles sportifs affectés (31/08/2026, migration multi-pôles) — donnée dormante dans cette
+    // tranche, voir commentaire sur S en haut du fichier. Best-effort : un échec ne doit jamais
+    // bloquer l'accès à l'app (la RLS scope déjà tout côté serveur indépendamment de ce fetch).
+    sbFetch('pole_affectations?select=pole_id,role_pole&user_id=eq.'+uid+'&actif=eq.true').then(rows=>{
+      S.poleIds=(rows||[]).map(r=>r.pole_id);
+      S.polesResponsable=(rows||[]).filter(r=>r.role_pole==='responsable').map(r=>r.pole_id);
     }).catch(()=>{});
   }
   updateNavBadges(role);
