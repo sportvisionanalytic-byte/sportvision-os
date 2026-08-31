@@ -643,24 +643,31 @@ export async function buildProjetActiveContext(
 ): Promise<ActiveContext | null> {
   if (space.kind !== "organization" || space.organizationType !== "projet" || !space.clickable) return null;
 
-  const [orgRes, contractRes] = await Promise.all([
-    supabase
-      .from("organizations")
-      .select("id, nom, organization_type, created_at, credits_balance, credits_reserved")
-      .eq("id", space.id)
-      .maybeSingle(),
-    supabase
+  // legacy_client_id (pas `space.id`/organizations.id) est le VRAI pont vers `clients`/`contrats`
+  // — même bug et même correctif que buildOrgSpaceActiveContext ci-dessous (31/08/2026, vérifié en
+  // E2E réel) : un Espace Projet créé depuis le tunnel unifié (connect-org-activate, post-17/08) a
+  // organizations.id ≠ clients.id, contrairement aux organisations "projet" backfillées par
+  // migration-connect-v2 (où les deux valent la même chose, ce qui masquait le bug en local/démo).
+  const { data: orgRow } = await supabase
+    .from("organizations")
+    .select("id, nom, organization_type, created_at, credits_balance, credits_reserved, legacy_client_id")
+    .eq("id", space.id)
+    .maybeSingle();
+  const org = orgRow as (ProjetOrgRow & { legacy_client_id: string | null }) | null;
+  if (!org || !space.role) return null;
+
+  let isFullCommunication = false;
+  if (org.legacy_client_id) {
+    const { data: contract } = await supabase
       .from("client_contrats")
       .select("id")
-      .eq("client_id", space.id)
+      .eq("client_id", org.legacy_client_id)
       .eq("type_contrat", "full_communication")
       .eq("statut", "actif")
       .limit(1)
-      .maybeSingle(),
-  ]);
-  const org = orgRes.data as ProjetOrgRow | null;
-  if (!org || !space.role) return null;
-  const isFullCommunication = Boolean(contractRes.data);
+      .maybeSingle();
+    isFullCommunication = Boolean(contract);
+  }
 
   return {
     user: buildUserFromAuth(authUser),
@@ -669,6 +676,7 @@ export async function buildProjetActiveContext(
       type: mapOrgType(org.organization_type),
       name: org.nom,
       createdAt: org.created_at,
+      portailClientId: org.legacy_client_id ?? undefined,
     },
     membership: {
       id: space.membershipId!,
@@ -753,26 +761,40 @@ export async function buildOrgSpaceActiveContext(
   const orgType = space.organizationType as GenericOrgType;
   const checkFullCom = (FULLCOM_ELIGIBLE_ORG_TYPES as readonly string[]).includes(orgType);
 
-  const [orgRes, contractRes] = await Promise.all([
-    supabase
-      .from("organizations")
-      .select("id, nom, organization_type, created_at")
-      .eq("id", space.id)
-      .maybeSingle(),
-    checkFullCom
-      ? supabase
-          .from("client_contrats")
-          .select("id")
-          .eq("client_id", space.id)
-          .eq("type_contrat", "full_communication")
-          .eq("statut", "actif")
-          .limit(1)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
-  const org = orgRes.data as { id: string; nom: string; organization_type: string; created_at: string } | null;
+  // legacy_client_id (pas `space.id`/organizations.id) est le VRAI pont vers `clients`/`contrats`
+  // pour ces 6 types — posé par connect-org-activate/connect-staff-create-org au moment de
+  // l'activation (token.client_id, choisi par le staff), organizations.id lui est un uuid généré
+  // indépendamment (crypto.randomUUID()). Bug trouvé le 31/08/2026 en vérifiant en conditions
+  // réelles le correctif FULLCOM_ELIGIBLE_ORG_TYPES du jour même : un coach/académie/tournoi/stage
+  // avec un contrat full_communication actif RÉEL (créé comme un vrai onboarding post-17/08, donc
+  // organizations.id ≠ clients.id) restait détecté "one_off" — la requête `client_contrats.eq(
+  // "client_id", space.id)` comparait organizations.id à contrats.client_id (qui référence
+  // clients.id), deux uuids différents par construction, donc 0 ligne à chaque fois. Seuls les
+  // organismes backfillés par migration-connect-v2 (id=clients.id ET legacy_client_id=clients.id,
+  // les deux valent la même chose) faisaient illusion en local/démo. Reproduit en E2E réel (compte
+  // coach jetable, cf. rapport d'audit) puis corrigé ici : legacy_client_id est déjà sélectionnable
+  // sur `organizations` (colonne posée par migration-connect-v2), il suffit de le lire et de
+  // l'utiliser à la place de space.id pour cette seule requête — aucune migration SQL requise.
+  const { data: orgRow } = await supabase
+    .from("organizations")
+    .select("id, nom, organization_type, created_at, legacy_client_id")
+    .eq("id", space.id)
+    .maybeSingle();
+  const org = orgRow as { id: string; nom: string; organization_type: string; created_at: string; legacy_client_id: string | null } | null;
   if (!org || !space.role) return null;
-  const isFullCommunication = checkFullCom && Boolean(contractRes.data);
+
+  let isFullCommunication = false;
+  if (checkFullCom && org.legacy_client_id) {
+    const { data: contract } = await supabase
+      .from("client_contrats")
+      .select("id")
+      .eq("client_id", org.legacy_client_id)
+      .eq("type_contrat", "full_communication")
+      .eq("statut", "actif")
+      .limit(1)
+      .maybeSingle();
+    isFullCommunication = Boolean(contract);
+  }
 
   return {
     user: buildUserFromAuth(authUser),
@@ -781,6 +803,7 @@ export async function buildOrgSpaceActiveContext(
       type: mapOrgType(org.organization_type),
       name: org.nom,
       createdAt: org.created_at,
+      portailClientId: org.legacy_client_id ?? undefined,
     },
     membership: {
       id: space.membershipId!,

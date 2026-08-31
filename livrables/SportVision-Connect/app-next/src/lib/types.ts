@@ -73,6 +73,14 @@ export interface Organization {
   memberCount?: number;
   /** Renseigné pour un joueur affilié à un club abonné — voir DATA_MODEL.md § Organization. */
   parentOrganizationId?: string;
+  /** `organizations.legacy_client_id` (clients.id) — le VRAI pont vers `contrats`/`client_devis`/
+   * `client_factures`/`client_users`, PAS `organization.id` (uuid généré indépendamment côté
+   * organisation depuis connect-org-activate). Posé pour "generic" (Espace Projet) et les 4 types
+   * Full Communication-éligibles (coach/academie/tournoi/stage) par buildProjetActiveContext /
+   * buildOrgSpaceActiveContext (session.ts) — voir leur commentaire du 31/08/2026 pour le bug que
+   * ce champ corrige. `undefined` si l'organisation n'a jamais été rattachée à une fiche Portail
+   * (état honnête, pas une erreur) — voir useClientId() pour la résolution côté écran. */
+  portailClientId?: string;
   accountManagerId?: string;
   communityManagerId?: string;
   createdAt: string;
