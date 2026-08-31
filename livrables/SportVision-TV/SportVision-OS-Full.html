@@ -12974,10 +12974,21 @@ async function modalEquipePrestation(prestationId,ref){
   // affecter quelqu'un exigeait de deviner ou vérifier ailleurs qui était
   // déjà chargé. Tri photo/cm (rôles terrain) en tête, moins chargé d'abord.
   Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role,niveau_operateur,zone,materiel_personnel,actif&order=nom.asc'),
+    // Pôle de CETTE prestation (pas S.activePoleId — un admin sur "Direction" ou sur un autre
+    // pôle doit quand même se voir proposer les bons opérateurs pour LA mission ouverte).
+    // migration-poles-v19 (31/08/2026) : Fouka a repéré des photographes Football proposés pour
+    // affecter une prestation Basket — cette requête n'avait jusqu'ici AUCUN filtre de pôle,
+    // contrairement aux écrans Collaborateurs/Équipe déjà corrigés (migration-poles-v14+).
+    sbFetch('prestations?id=eq.'+prestationId+'&select=pole_id').catch(()=>[]),
+    sbFetch('profiles?select=id,prenom,nom,role,niveau_operateur,zone,materiel_personnel,actif,pole_affectations!pole_affectations_user_id_fkey(pole_id)&order=nom.asc'),
     sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation,statut)&statut=eq.acceptée&prestations.date_prestation=gte.'+ymdLocal()+'&prestations.statut=not.in.(annulée,refusée)').catch(()=>[]),
-  ]).then(([data,chargeRaw])=>{
-    if(!data)return;
+  ]).then(([presRaw,dataRaw,chargeRaw])=>{
+    if(!dataRaw)return;
+    const presPoleId=Array.isArray(presRaw)&&presRaw[0]?presRaw[0].pole_id:null;
+    // Un collaborateur reste candidat s'il est affecté au pôle de la prestation (ou flexible
+    // multi-pôle, ou si le pôle de la prestation est introuvable — filet de sécurité, ne jamais
+    // vider la liste par erreur plutôt que de la sur-filtrer).
+    const data=presPoleId?dataRaw.filter(p=>(p.pole_affectations||[]).some(pa=>pa.pole_id===presPoleId)):dataRaw;
     _eqCharge={};
     (Array.isArray(chargeRaw)?chargeRaw:[]).forEach(c=>{_eqCharge[c.collaborateur_id]=(_eqCharge[c.collaborateur_id]||0)+1;});
     _eqOperateursCache=data;
