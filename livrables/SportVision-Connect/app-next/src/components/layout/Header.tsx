@@ -47,6 +47,16 @@ import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 // repli sur le slug d'URL brut que /presences. Libellé repris de navigation.ts (item("users",
 // "Membres & accès", ...), constant partout) ; "Affiliations" pour team-requests, le libellé le
 // plus générique parmi ses variantes par type d'organisation (Bible/navigation.ts).
+//
+// "/settings" (30-31/08/2026, audit transversal 3 profils) : le lookup ci-dessous ne compare que
+// le premier segment d'URL (firstSegment), donc /settings, /settings/profile et
+// /settings/organization visent tous et uniquement un item de nav dont le href est exactement
+// "/settings" (ex. NAV_CLUB_PLUS, NAV_COACH_FULLCOM). Or plusieurs navs n'exposent que "Mon
+// profil" à "/settings/profile" (CLUB_ROLE_NAV restreints, NAV_PARENT, NAV_PLAYER) ou n'ont
+// carrément aucune entrée settings (NAV_TOURNAMENT_ONE_OFF, NAV_CAMP_ONE_OFF) — le compte
+// tournoi/prestation-unique de l'audit affichait littéralement "settings/profile" en titre de
+// page. Cette page reste accessible dans tous les cas (canAccess(), pas la nav, décide de
+// l'accès) : "Paramètres" est le bon titre générique quel que soit le profil.
 const TITLE_FALLBACKS: Record<string, string> = {
   "/notifications": "Notifications",
   "/children": "Profils associés",
@@ -57,6 +67,7 @@ const TITLE_FALLBACKS: Record<string, string> = {
   "/presences": "Présences",
   "/users": "Membres & accès",
   "/team-requests": "Affiliations",
+  "/settings": "Paramètres",
 };
 
 interface HeaderProps {

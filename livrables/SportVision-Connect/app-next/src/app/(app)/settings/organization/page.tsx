@@ -154,6 +154,7 @@ function OrganizationForm() {
       <Card className="flex items-center gap-4 p-5">
         <button
           type="button"
+          aria-label={logoUrl ? "Changer le logo" : "Ajouter un logo"}
           disabled={!canEdit || uploadingLogo}
           onClick={() => fileInputRef.current?.click()}
           className={cn(

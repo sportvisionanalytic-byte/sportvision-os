@@ -58,8 +58,9 @@ export function DemoShell({ profile, children }: { profile: DemoProfile; childre
         </div>
 
         <div className="px-3.5 pb-3">
-          <label className="block px-1 pb-1.5 text-[10px] font-extrabold uppercase tracking-[.11em] text-[#5B6B96]">Profil de démonstration</label>
+          <label htmlFor="demo-profile-select" className="block px-1 pb-1.5 text-[10px] font-extrabold uppercase tracking-[.11em] text-[#5B6B96]">Profil de démonstration</label>
           <select
+            id="demo-profile-select"
             value={profile.key}
             onChange={(e) => switchProfile(e.target.value)}
             className="w-full rounded-[10px] border border-white/10 bg-white/[.06] px-2.5 py-2 text-[12.5px] font-semibold text-white outline-none"
