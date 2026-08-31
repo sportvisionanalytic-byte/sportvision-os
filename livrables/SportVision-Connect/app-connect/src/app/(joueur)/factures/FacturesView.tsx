@@ -45,15 +45,19 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
     Promise.all([
       supabase.functions.invoke("connect-player-prestations", { body: { action: "list_invoices", multi } }),
       supabase.functions.invoke("connect-player-prestations", { body: { action: "list_payments", multi } }),
-    ]).then(([invRes, payRes]) => {
-      if (cancelled) return;
-      if (invRes.error || invRes.data?.error || payRes.error || payRes.data?.error) {
-        setError("Impossible de charger vos factures pour le moment.");
-        return;
-      }
-      setInvoices(invRes.data.invoices as PlayerInvoice[]);
-      setPayments(payRes.data.payments as PlayerPayment[]);
-    });
+    ])
+      .then(([invRes, payRes]) => {
+        if (cancelled) return;
+        if (invRes.error || invRes.data?.error || payRes.error || payRes.data?.error) {
+          setError("Impossible de charger vos factures pour le moment.");
+          return;
+        }
+        setInvoices(invRes.data.invoices as PlayerInvoice[]);
+        setPayments(payRes.data.payments as PlayerPayment[]);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Impossible de charger vos factures pour le moment.");
+      });
     return () => {
       cancelled = true;
     };

@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
-import { MessagesThread, resolveMessageAttachments, type MessageData } from "./MessagesThread";
+import { MessagesThread } from "./MessagesThread";
+// resolveMessageAttachments/MessageData viennent de messageAttachments.ts, PAS de MessagesThread
+// (qui porte "use client") — ce Server Component ne peut pas appeler un export non-composant d'un
+// module "use client" (voir l'en-tête de messageAttachments.ts, bug du 31/08/2026).
+import { resolveMessageAttachments, type MessageData } from "./messageAttachments";
 
 // Messages — voir design-connect-personnel-12-08/README.md § Espace joueur → Messages et
 // MASTER-CONNECT-V1 §28 : conversation unique "Équipe SportVision", aucun statut "en ligne".

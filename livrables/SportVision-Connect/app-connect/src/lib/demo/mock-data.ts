@@ -13,7 +13,7 @@ import type { ContentItem } from "@/app/(joueur)/contenus/ContentGallery";
 import type { CalendarEventData } from "@/app/(joueur)/calendrier/CalendarView";
 import type { FundingRow } from "@/app/(joueur)/cotisations/FundingTabs";
 import type { FundingDetail } from "@/app/(joueur)/cotisations/[id]/FundingDetailView";
-import type { MessageData } from "@/app/(joueur)/messages/MessagesThread";
+import type { MessageData } from "@/app/(joueur)/messages/messageAttachments";
 
 export const DEMO_FIRST_NAME = "Lucas";
 export const DEMO_LAST_NAME = "Martin";
