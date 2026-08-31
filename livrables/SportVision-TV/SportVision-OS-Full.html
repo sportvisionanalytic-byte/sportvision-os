@@ -3902,6 +3902,25 @@ function escJs(s){
   return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// Validation légère des champs email/téléphone (audit fraîcheur 31/08) : aucune des
+// ~50 saisies email/tel du fichier n'était jamais vérifiée côté client (type="email"/
+// type="tel" seuls, sans effet car les boutons sont des onclick, pas un vrai <form>
+// soumis — la validation HTML5 native ne se déclenche donc jamais). Repro confirmée en
+// direct : "ceci-nest-pas-un-email" / "pas-un-numero-de-telephone-xyz" acceptés tels
+// quels par creerClient(), stockés en base, utilisés ensuite pour l'envoi réel de devis/
+// contrats/factures (échec silencieux d'envoi côté Brevo/Resend). Volontairement
+// permissif (pas de format strict imposé, juste rejet des saisies manifestement
+// invalides) pour ne jamais bloquer une vraie donnée client légitime.
+function isValidEmailFormat(v){
+  if(!v)return true; // champ facultatif partout où utilisé
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v).trim());
+}
+function isValidPhoneFormat(v){
+  if(!v)return true; // champ facultatif partout où utilisé
+  const digits=String(v).replace(/[\s.\-()]/g,'');
+  return /^\+?\d{6,15}$/.test(digits);
+}
+
 // Journal d'audit financier (financial_audit_log, migration-finance-lot0.sql).
 // Best-effort : ne bloque jamais l'action principale si l'écriture échoue
 // (ex: RLS, réseau) — l'utilisateur ne doit pas perdre sa saisie pour ça.
@@ -4455,6 +4474,10 @@ async function creerClient(){
   const warn=document.getElementById('fc-doublon-warn');
   const nom=document.getElementById('fc-nom').value.trim();
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  const fcEmailVal=document.getElementById('fc-email').value.trim();
+  const fcTelVal=document.getElementById('fc-tel').value.trim();
+  if(!isValidEmailFormat(fcEmailVal)){err.textContent='Email invalide (format attendu : nom@domaine.fr).';return;}
+  if(!isValidPhoneFormat(fcTelVal)){err.textContent='Téléphone invalide (chiffres uniquement, 6 à 15 chiffres).';return;}
   window._fcCreating=true;
   const btn=document.getElementById('fc-submit-btn');
   if(btn){btn.disabled=true;btn.textContent='Création…';}
@@ -6492,6 +6515,10 @@ async function modifierClient(id){
   const err=document.getElementById('fce-err');
   const nom=document.getElementById('fce-nom').value.trim();
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  const fceEmailVal=document.getElementById('fce-email').value.trim();
+  const fceTelVal=document.getElementById('fce-tel').value.trim();
+  if(!isValidEmailFormat(fceEmailVal)){err.textContent='Email invalide (format attendu : nom@domaine.fr).';return;}
+  if(!isValidPhoneFormat(fceTelVal)){err.textContent='Téléphone invalide (chiffres uniquement, 6 à 15 chiffres).';return;}
   err.textContent='Enregistrement…';
   try{
     const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{
