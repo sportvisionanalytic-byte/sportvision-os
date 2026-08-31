@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { scorersToText, textToScorers } from "@/lib/mock/studio";
 import type { Match } from "@/lib/types/studio";
 import type { MatchOutcome } from "@/lib/data/club/matches";
+import { parseDateOnly } from "@/lib/date-only";
 
 // Modale « Saisir un résultat / Reporter / Annuler » — voir ACTIONS.md § 8, DATA_MODEL.md § Match
 // et CLUB-PLUS-PRODUCT-BIBLE.md § 7 (Saisie résultat : Score, Statut, Buteurs, Passeurs, Joueur du
@@ -171,7 +172,7 @@ export function MatchResultModal({
             </div>
             <p className="mt-1 text-[12.5px] text-text-soft">
               {match.teamName} vs {match.opponent}
-              {match.kickoffAt ? ` · ${new Date(match.kickoffAt).toLocaleDateString("fr-FR")}` : ""}
+              {match.kickoffAt ? ` · ${parseDateOnly(match.kickoffAt).toLocaleDateString("fr-FR")}` : ""}
             </p>
           </div>
           <button

@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { createClient } from "@/lib/supabase/client";
 import { resolveOrgLegacyClientId } from "@/lib/data/shared/org-legacy-link";
 import { fetchAcademieCamps, type AcademieCampEvent } from "@/lib/data/academie/camps";
+import { parseDateOnly } from "@/lib/date-only";
 
 // /camps — stages de l'académie, alimentés par calendar_events (type='stage'), en lecture seule
 // (le staff SportVision planifie, l'académie consulte — voir le plan Tier C § Phase 1 Séances/
@@ -23,7 +24,7 @@ import { fetchAcademieCamps, type AcademieCampEvent } from "@/lib/data/academie/
 // Portail de connect-org-signup est best-effort et peut ne pas avoir abouti).
 
 function fmtDate(value: string): string {
-  const d = new Date(value);
+  const d = parseDateOnly(value);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }

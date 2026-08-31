@@ -18,6 +18,7 @@ import { AddEventModal } from "@/components/calendar/AddEventModal";
 import { CREATABLE_EVENT_TYPE_MAP, createClubCalendarEvent, fetchClubCalendarEvents } from "@/lib/data/club/calendar";
 import { fetchOrgCalendarEvents } from "@/lib/data/shared/calendar-events";
 import { createClient } from "@/lib/supabase/client";
+import { parseDateOnly } from "@/lib/date-only";
 
 // Filtre "Type" : les 6 valeurs réellement possibles pour club_calendar_events.type (contrainte
 // check, migration-clubplus-v4.sql), pas les 10 CalendarEventKind du design — même restriction
@@ -55,6 +56,15 @@ function addDays(date: Date, days: number): Date {
 
 function isSameDay(a: Date, b: Date): boolean {
   return a.toDateString() === b.toDateString();
+}
+
+// e.startsAt est soit une date pure ("YYYY-MM-DD", allDay=true, ex. club_matches.match_date ou
+// club_calendar_events sans event_time), soit une chaîne datetime locale sans fuseau
+// ("YYYY-MM-DDTHH:mm", allDay=false) — cette dernière est déjà correctement interprétée en heure
+// locale par `new Date()` (aucun suffixe "Z"/offset). Seul le cas allDay doit passer par
+// parseDateOnly (voir son docstring) pour éviter un décalage d'un jour hors fuseaux UTC+.
+function parseEventStart(e: { startsAt: string; allDay: boolean }): Date {
+  return e.allDay ? parseDateOnly(e.startsAt) : new Date(e.startsAt);
 }
 
 export default function CalendarPage() {
@@ -106,7 +116,7 @@ export default function CalendarPage() {
   // Hooks appelés inconditionnellement avant tout `return` — sortedEvents doit être calculé ici,
   // pas après le early-return de canAccess ci-dessous (règle des Hooks React).
   const sortedEvents = useMemo(
-    () => [...(events ?? [])].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()),
+    () => [...(events ?? [])].sort((a, b) => parseEventStart(a).getTime() - parseEventStart(b).getTime()),
     [events],
   );
 
@@ -163,7 +173,7 @@ export default function CalendarPage() {
   }
 
   function eventsOnDay(day: Date): CalendarEvent[] {
-    return filteredEvents.filter((e) => isSameDay(new Date(e.startsAt), day));
+    return filteredEvents.filter((e) => isSameDay(parseEventStart(e), day));
   }
 
   function navigate(direction: -1 | 1) {
@@ -191,6 +201,13 @@ export default function CalendarPage() {
   function exportIcal() {
     const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SportVision Club+//FR"];
     for (const e of sortedEvents) {
+      // Journée entière : DTSTART;VALUE=DATE (pas d'heure ni de fuseau à convertir, donc aucun
+      // risque de décalage de jour) — un événement horodaté garde DTSTART en UTC classique.
+      if (e.allDay) {
+        const ymd = e.startsAt.slice(0, 10).replace(/-/g, "");
+        lines.push("BEGIN:VEVENT", `UID:${e.id}`, `DTSTART;VALUE=DATE:${ymd}`, `SUMMARY:${e.title}`, "END:VEVENT");
+        continue;
+      }
       const dt = `${new Date(e.startsAt).toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
       lines.push("BEGIN:VEVENT", `UID:${e.id}`, `DTSTART:${dt}`, `SUMMARY:${e.title}`, "END:VEVENT");
     }
@@ -485,10 +502,10 @@ function ListView({
   onSelect: (e: CalendarEvent) => void;
   today: Date;
 }) {
-  const upcoming = events.filter((e) => new Date(e.startsAt).getTime() >= today.getTime() - 86_400_000);
+  const upcoming = events.filter((e) => parseEventStart(e).getTime() >= today.getTime() - 86_400_000);
   const groups = new Map<string, CalendarEvent[]>();
   for (const e of upcoming) {
-    const label = new Date(e.startsAt).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    const label = parseEventStart(e).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
     groups.set(label, [...(groups.get(label) ?? []), e]);
   }
 

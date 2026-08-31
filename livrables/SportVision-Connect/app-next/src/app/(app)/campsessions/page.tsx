@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { SkeletonRow } from "@/components/ui/Skeleton";
 import { Toast, useToast } from "@/components/feedback/Toast";
+import { parseDateOnly } from "@/lib/date-only";
 
 // /campsessions — "Mes sessions" (Bible §15, organisation.type === "camp" — bascule 2 org types
 // séparés, migration-clubplus-v44, 17/08/2026). Objet central "Session" d'un organisateur de
@@ -38,11 +39,11 @@ const STATUT_TONES: Record<EventSessionStatut, BadgeTone> = {
 
 function fmtDateRange(debut: string | null, fin: string | null): string | null {
   if (!debut) return null;
-  const d = new Date(debut);
+  const d = parseDateOnly(debut);
   if (Number.isNaN(d.getTime())) return null;
   const start = d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   if (!fin || fin === debut) return start;
-  const f = new Date(fin);
+  const f = parseDateOnly(fin);
   if (Number.isNaN(f.getTime())) return start;
   return `${d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} – ${f.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`;
 }

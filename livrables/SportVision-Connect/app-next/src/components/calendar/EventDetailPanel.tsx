@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { KIND_TONE } from "./calendar-style";
+import { parseDateOnly } from "@/lib/date-only";
 
 // Fiche latérale d'un événement du calendrier — voir ACTIONS.md § 15 : « clic sur un événement →
 // fiche latérale ».
@@ -17,8 +18,10 @@ interface EventDetailPanelProps {
 }
 
 export function EventDetailPanel({ event, onClose }: EventDetailPanelProps) {
-  const start = new Date(event.startsAt);
-  const end = event.endsAt ? new Date(event.endsAt) : null;
+  // event.startsAt est une date pure ("YYYY-MM-DD") quand allDay=true — voir le docstring de
+  // parseDateOnly pour le décalage d'un jour que `new Date()` provoquerait hors fuseaux UTC+.
+  const start = event.allDay ? parseDateOnly(event.startsAt) : new Date(event.startsAt);
+  const end = event.endsAt ? (event.allDay ? parseDateOnly(event.endsAt) : new Date(event.endsAt)) : null;
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end bg-[rgba(7,10,23,.55)]">

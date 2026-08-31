@@ -25,6 +25,7 @@ import { fetchClubTeams } from "@/lib/data/club/teams";
 import { createClient } from "@/lib/supabase/client";
 import { MATCH_STATUS_LABELS, MATCH_STATUS_TONE, type Match, type MatchStatus } from "@/lib/types/studio";
 import type { Team } from "@/lib/types/teams";
+import { parseDateOnly } from "@/lib/date-only";
 
 // Match Center — saisie de résultats. Voir ACTIONS.md § 8 et DATA_MODEL.md § Match.
 // "content_created" (visuel généré) n'a pas d'équivalent réel en base (voir data/club/matches.ts)
@@ -330,7 +331,7 @@ export default function MatchCenterPage() {
                 </div>
                 <div className="mt-1 flex items-center gap-1.5 text-[12px] font-semibold text-text-faint">
                   <CalendarClock className="h-3.5 w-3.5" aria-hidden />
-                  {m.kickoffAt ? new Date(m.kickoffAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "Date à confirmer"}
+                  {m.kickoffAt ? parseDateOnly(m.kickoffAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "Date à confirmer"}
                   {m.competition ? ` · ${m.competition}` : ""}
                   {m.venue ? ` · ${m.venue}` : ""}
                 </div>
