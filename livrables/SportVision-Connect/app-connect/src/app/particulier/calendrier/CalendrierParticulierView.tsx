@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AthleteRow } from "@/lib/supabase/particulier";
 import { AddManualMatchForm } from "./AddManualMatchForm";
+import { downloadIcsEvent } from "@/lib/ics";
 
 export interface ParticulierEvent {
   id: string;
@@ -48,6 +49,14 @@ export function CalendrierParticulierView({
   const router = useRouter();
   const [filter, setFilter] = useState<string | null>(initialSportif);
   const [addingMatch, setAddingMatch] = useState(false);
+  // BUGFIX (audit Espace particulier 30-31/08/2026) : contrairement à l'Espace joueur
+  // ((joueur)/calendrier/CalendarView.tsx), cette page n'offrait aucun moyen d'exporter un
+  // événement vers son propre calendrier (.ics) — les lignes n'étaient que des <div> sans aucun
+  // clic possible. Le brief de mission liste explicitement "export calendrier" parmi les
+  // fonctionnalités à tester pour l'Espace particulier. Réutilise lib/ics.ts (downloadIcsEvent),
+  // déjà utilisé côté Espace joueur — aucune synchronisation, un simple fichier .ics local (voir
+  // son en-tête, MASTER-CONNECT-V1 §22).
+  const [selectedEvent, setSelectedEvent] = useState<ParticulierEvent | null>(null);
 
   const filterOptions = useMemo(
     () => [{ key: null, label: "Tous" }, ...athletes.filter((a) => a.rights.calendrier).map((a) => ({ key: `${a.kind}:${a.refId}`, label: `${a.firstName} ${a.lastName}`.trim() }))],
@@ -126,7 +135,12 @@ export function CalendrierParticulierView({
           {visible.map((event) => {
             const meta = TYPE_LABEL[event.type] || { label: "Événement", color: "#9A9AB8", bg: "rgba(255,255,255,.07)" };
             return (
-              <div key={event.id} className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-[18px]">
+              <button
+                type="button"
+                key={event.id}
+                onClick={() => setSelectedEvent(event)}
+                className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-[18px] text-left hover:bg-white/[.06]"
+              >
                 <div className="flex h-[54px] w-[54px] flex-none flex-col items-center justify-center rounded-sv" style={{ background: "linear-gradient(150deg,rgba(79,125,255,.3),rgba(34,211,238,.14))" }}>
                   <span className="font-sora text-[17px] font-bold leading-none">{new Date(`${event.date}T00:00:00`).getDate()}</span>
                   <span className="text-[10px] font-medium uppercase text-prestations">
@@ -154,11 +168,73 @@ export function CalendrierParticulierView({
                   </span>
                 </div>
                 <span className="ml-auto flex-none rounded-sv-pill bg-white/[.07] px-2.5 py-1 text-[11px] font-medium text-text-tertiary">Pour {event.athleteLabel}</span>
-              </div>
+              </button>
             );
           })}
         </div>
       )}
+
+      {selectedEvent && <EventDetail event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
+    </div>
+  );
+}
+
+function EventDetail({ event, onClose }: { event: ParticulierEvent; onClose: () => void }) {
+  const meta = TYPE_LABEL[event.type] || { label: "Événement", color: "#9A9AB8", bg: "rgba(255,255,255,.07)" };
+  const facts: { icon: string; label: string; value: string }[] = [
+    { icon: "calendar_today", label: "Date", value: formatDate(event.date) },
+  ];
+  if (event.time) facts.push({ icon: "schedule", label: "Horaire", value: event.time.slice(0, 5) });
+  if (event.location) facts.push({ icon: "location_on", label: "Lieu", value: event.location });
+  if (event.team) facts.push({ icon: "groups", label: "Équipe", value: event.team });
+  facts.push({ icon: "person", label: "Pour", value: event.athleteLabel });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/66 p-4 sm:p-6" onClick={onClose}>
+      <div
+        className="flex w-full max-w-[520px] max-h-[85vh] flex-col gap-5 overflow-y-auto rounded-sv-modal border border-border bg-bg-elevated p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <span className="rounded-sv-pill px-2.5 py-1 text-[11px] font-medium" style={{ color: meta.color, background: meta.bg }}>
+            {meta.label}
+          </span>
+          <button type="button" onClick={onClose} className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv bg-white/[.06] hover:bg-white/[.12]">
+            <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <h2 className="font-sora text-[22px] font-bold tracking-tight">{event.title}</h2>
+        <div className="flex flex-col gap-3">
+          {facts.map((f) => (
+            <div key={f.label} className="flex items-center gap-3">
+              <span className="flex h-9 w-9 flex-none items-center justify-center rounded-sv bg-white/[.06]">
+                <span className="material-symbols-rounded !text-[18px] text-prestations" aria-hidden="true">{f.icon}</span>
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] text-text-faint">{f.label}</span>
+                <span className="text-[14px] font-medium">{f.value}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            downloadIcsEvent({
+              uid: event.id,
+              title: event.title,
+              date: event.date,
+              time: event.time,
+              location: event.location,
+              description: `SportVision · Pour ${event.athleteLabel}`,
+            })
+          }
+          className="flex h-[50px] items-center justify-center gap-2 self-start rounded-sv border border-border-strong bg-surface px-5 font-sora text-[15px] font-semibold hover:bg-surface-hover"
+        >
+          <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">event</span>
+          Ajouter à mon calendrier
+        </button>
+      </div>
     </div>
   );
 }

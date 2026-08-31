@@ -256,7 +256,19 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
           </div>
 
           <div className="flex flex-col gap-3">
-            {detail.club_nom && (
+            {/* BUGFIX (audit Espace particulier 30-31/08/2026, reproduit en réel avec un profil
+                géré) : ce bloc affichait "✓ Affilié" + un pictogramme "logo" pour TOUT
+                detail.club_nom non vide, y compris pour un profil géré (kind="managed") — dont le
+                club vient de managed_athlete_profiles.club_declare, un champ libre facultatif
+                saisi par le parent à la création (ManagedAthleteForm.tsx, "Club · facultatif"),
+                JAMAIS vérifié par SportVision et sans aucune ligne organizations réelle derrière
+                (connect_get_athlete_detail renvoie club_id=null dans ce cas — voir sa définition
+                SQL). Un parent qui tape n'importe quel nom de club dans ce champ voyait "✓
+                Affilié" comme s'il s'agissait d'une affiliation réelle et vérifiée, identique en
+                tout point au rendu d'un vrai sportif "linked" (club_id renseigné, organizations
+                réel). Distinction maintenant faite sur detail.club_id, la seule donnée qui prouve
+                une affiliation réelle. */}
+            {detail.club_id && detail.club_nom && (
               <div className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-5">
                 <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Affiliation principale</span>
                 <div className="flex items-center gap-3">
@@ -268,6 +280,19 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
                   <span className="ml-auto flex-none rounded-sv-pill bg-affiliations-bg px-2.5 py-1 text-[11px] font-medium text-affiliations">✓ Affilié</span>
                 </div>
                 <span className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">Vous consultez l&apos;affiliation, sans accès à la gestion du club.</span>
+              </div>
+            )}
+
+            {!detail.club_id && detail.club_nom && (
+              <div className="flex flex-col gap-2.5 rounded-sv-card border border-dashed border-border-strong bg-white/[.04] p-5">
+                <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Club déclaré</span>
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-sora text-[15px] font-semibold">{detail.club_nom}</span>
+                  <span className="text-[12px] text-text-tertiary">{detail.categorie || ""}</span>
+                </div>
+                <span className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">
+                  Renseigné par vous à la création du profil — non vérifié par SportVision.
+                </span>
               </div>
             )}
 
