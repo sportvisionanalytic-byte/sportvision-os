@@ -3,9 +3,11 @@ import { CreateFundingWizard, type OffreOption, type GroupOption } from "@/app/(
 import { DEMO_GROUPS } from "@/lib/demo/mock-data";
 
 // Démo : catalogue_offres est public en lecture (même raisonnement que /demo/prestations).
-// "Mes équipes" vient de mock-data.ts (list_my_groups exigerait une vraie session). Le dernier
-// clic ("Créer le paiement collectif") appellerait une RPC nécessitant auth.uid() — échoue
-// proprement sans session, aucune écriture réelle possible.
+// "Mes équipes" vient de mock-data.ts (list_my_groups exigerait une vraie session).
+// demoMode=true (audit du 31/08/2026) : le dernier clic ("Créer le paiement collectif")
+// n'appelle plus la vraie RPC create_group_funding — voir le commentaire de `demoMode` dans
+// CreateFundingWizard.tsx pour l'écriture réelle que ça évitait pour un visiteur démo par
+// ailleurs connecté (session réelle + "Partage libre" + offre réelle = insert réel possible).
 export default async function DemoCreerCotisationPage() {
   const supabase = await createClient();
   const { data: offres } = await supabase
@@ -24,6 +26,7 @@ export default async function DemoCreerCotisationPage() {
       groups={groups}
       initialGroupId={null}
       basePath="/demo/cotisations"
+      demoMode
     />
   );
 }

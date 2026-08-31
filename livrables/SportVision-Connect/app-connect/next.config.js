@@ -11,12 +11,14 @@
 // ci-dessous). `next dev` empaquette chaque module avec eval() pour le Fast Refresh/HMR (devtool
 // eval-source-map) — sans 'unsafe-eval', cet eval() est bloqué par la CSP et React n'hydrate
 // JAMAIS silencieusement : aucun onClick/onSubmit ne se branche, un clic sur un <button
-// type="submit"> retombe sur la soumission native du <form> (rechargement complet de la page).
-// Trouvé le 31/08/2026 en auditant Connect avec Playwright en local : "Se connecter" semblait ne
-// rien faire (aucune requête d'auth, 0 cookie posé) alors que la même action fonctionne en
-// production (voir connect.sportvision-an.fr) — le build de prod n'utilise pas eval(), donc la CSP
-// stricte y est sans danger. process.env.NODE_ENV vaut "production" pour `next build`/`next start`
-// (et pour le déploiement Netlify), "development" uniquement pour `next dev`.
+// type="submit"> retombe sur la soumission native du <form> (rechargement complet de la page), et
+// un input contrôlé affiche bien ce qui est tapé au clavier (comportement natif du DOM,
+// indépendant de React) mais ne déclenche jamais onChange — aucun state ne bouge. Trouvé
+// indépendamment le 31/08/2026 par deux audits (Playwright en local sur /auth/login puis sur
+// /cotisation/[token]). `next build`/`next start` (et donc Netlify en production) n'utilisent pas
+// eval() pour leurs bundles : ce correctif ne change donc RIEN à la CSP réellement servie en
+// production. process.env.NODE_ENV vaut "production" pour `next build`/`next start` (et pour le
+// déploiement Netlify), "development" uniquement pour `next dev`.
 const SCRIPT_SRC = process.env.NODE_ENV === "production" ? "'self' 'unsafe-inline'" : "'self' 'unsafe-inline' 'unsafe-eval'";
 
 const SECURITY_HEADERS = [

@@ -59,6 +59,7 @@ export function CreateFundingWizard({
   initialPrestationId = null,
   beneficiary = null,
   basePath = "/cotisations",
+  demoMode = false,
 }: {
   offres: OffreOption[];
   groups: GroupOption[];
@@ -68,6 +69,18 @@ export function CreateFundingWizard({
   initialPrestationId?: string | null;
   beneficiary?: FundingBeneficiary | null;
   basePath?: string;
+  // /demo/cotisations/creer (audit Connect du 31/08/2026) : ce composant est le VRAI wizard,
+  // réutilisé tel quel en démo pour son offres[] réel (catalogue_offres, lecture publique — voir
+  // demo/cotisations/creer/page.tsx). Sans ce garde-fou, un visiteur démo qui EST par ailleurs
+  // connecté (session réelle dans les cookies du navigateur, ex. Fouka qui teste /demo dans le
+  // même onglet que son compte) déclenchait un vrai insert en base : create_group_funding()
+  // utilise auth.uid() (sa session réelle) comme created_by, et "Partage libre" (groupId=null)
+  // saute complètement la vérification d'appartenance à un groupe — contrairement à toutes les
+  // autres actions d'écriture de /demo, qui échouent proprement parce qu'elles référencent un id
+  // factice ("demo-f1", "demo-client"...) rejeté par Postgres (uuid invalide), celle-ci ne
+  // référence aucun id factice : elle CRÉE une ligne entièrement neuve avec des données réelles.
+  // demoMode saute donc l'appel réseau et simule le même écran de succès avec un résultat local.
+  demoMode?: boolean;
 }) {
   const router = useRouter();
   // Arrivée depuis "Créer une cotisation" sur une commande existante (CommandeDetailView.tsx,
@@ -109,6 +122,15 @@ export function CreateFundingWizard({
     }
     setBusy(true);
     setError(null);
+
+    if (demoMode) {
+      // Aucun appel réseau, aucune écriture — voir le commentaire de `demoMode` ci-dessus.
+      setBusy(false);
+      setResult({ id: "demo-f1", share_token: "demo-token", montant_cible: goal });
+      setStep("success");
+      return;
+    }
+
     const supabase = createClient();
     const { data, error: rpcError } = await supabase.rpc("create_group_funding", {
       p_group_id: groupId,
