@@ -145,7 +145,11 @@ function PlanningView({ clientId }: { clientId: string }) {
       ) : (
         <Card>
           {items.map((c) => (
-            <div key={c.id} className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
+            <Link
+              key={c.id}
+              href={`/communication/publications/${c.id}`}
+              className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0 hover:bg-row-hover"
+            >
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-bold text-text">{c.titre}</span>
                 <span className="mt-0.5 block text-[12px] text-text-soft">
@@ -156,7 +160,7 @@ function PlanningView({ clientId }: { clientId: string }) {
                 {c.datePrevue ?? c.datePublication ?? "Date à définir"}
               </span>
               <Badge tone={CONTENU_STATUT_TONE[c.statut]}>{CONTENU_STATUT_LABEL[c.statut]}</Badge>
-            </div>
+            </Link>
           ))}
         </Card>
       )}

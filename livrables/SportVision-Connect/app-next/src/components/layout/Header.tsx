@@ -57,6 +57,14 @@ import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 // tournoi/prestation-unique de l'audit affichait littéralement "settings/profile" en titre de
 // page. Cette page reste accessible dans tous les cas (canAccess(), pas la nav, décide de
 // l'accès) : "Paramètres" est le bon titre générique quel que soit le profil.
+//
+// "/newsroom" et "/studio" (31/08/2026, audit Communication & Contenu) : accessibles à tout club
+// Full Communication (organization_entitlements activées automatiquement à la signature du
+// contrat — migration-clubplus-fullcomm-auto-entitlements.sql — et Studio ouvert à tout membre
+// actif dès READY_MODULES, voir entitlements.ts) mais absentes de la nav Full Communication
+// elle-même (centrée sur le planning éditorial du CM, voir navigation.ts § NAV_CLUB_FULLCOMM) :
+// sans ce repli, un membre qui y accède (lien direct, ancien favori, redirection depuis
+// Newsroom→Studio) voyait le slug d'URL brut ("newsroom"/"studio") en titre de page.
 const TITLE_FALLBACKS: Record<string, string> = {
   "/notifications": "Notifications",
   "/children": "Profils associés",
@@ -68,6 +76,12 @@ const TITLE_FALLBACKS: Record<string, string> = {
   "/users": "Membres & accès",
   "/team-requests": "Affiliations",
   "/settings": "Paramètres",
+  "/newsroom": "Newsroom",
+  "/studio": "Studio",
+  // "/media" (alias de /content, voir media/page.tsx) : jamais présent dans aucune navigation
+  // (grep confirmé sur navigation.ts — toutes les variantes pointent vers /content), donc jamais
+  // résolu par resolveNavigation() non plus, quel que soit le type d'organisation.
+  "/media": "Contenus",
 };
 
 interface HeaderProps {

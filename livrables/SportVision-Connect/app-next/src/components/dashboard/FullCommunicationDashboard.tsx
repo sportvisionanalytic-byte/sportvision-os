@@ -280,7 +280,16 @@ function DashboardBody({ clientId }: { clientId: string }) {
             upcoming.map((c) => {
               const date = c.datePrevue ?? c.datePublication;
               return (
-                <div key={c.id} className="flex w-full items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
+                // Ligne cliquable vers la fiche détail réelle (31/08/2026 : /communication/
+                // publications/[id] reconstruite sur `contenus`, ne dépend plus du mock — voir
+                // son en-tête). button plutôt que Link pour rester cohérent avec le bouton
+                // "Planning complet" juste au-dessus dans cette même Card (router.push déjà
+                // importé ici).
+                <button
+                  key={c.id}
+                  onClick={() => router.push(`/communication/publications/${c.id}`)}
+                  className="flex w-full items-center gap-3.5 border-b border-divider px-5 py-3.5 text-left last:border-0 hover:bg-row-hover"
+                >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13.5px] font-bold text-text">{c.titre}</span>
                     <span className="mt-0.5 block text-[12px] text-text-soft">
@@ -289,7 +298,7 @@ function DashboardBody({ clientId }: { clientId: string }) {
                     </span>
                   </span>
                   <Badge tone={CONTENU_STATUT_TONE[c.statut]}>{CONTENU_STATUT_LABEL[c.statut]}</Badge>
-                </div>
+                </button>
               );
             })
           )}

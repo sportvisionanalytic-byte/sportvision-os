@@ -76,6 +76,18 @@ export async function fetchContenus(supabase: SupabaseClient, clientId: string):
   });
 }
 
+/** Un seul contenu par id, scopé au client — utilisé par la fiche détail /communication/
+ * publications/[id] (31/08/2026 : reconstruite sur `contenus` réel, l'ancienne version lisait
+ * lib/mock/communication.ts et ne pouvait jamais résoudre un vrai id, voir git log). `.eq("client_
+ * id", clientId)` en plus de l'id : la policy RLS suffirait déjà à empêcher de lire le contenu d'un
+ * autre client, mais filtrer ici évite d'afficher par erreur un contenu d'un AUTRE client du même
+ * CM si jamais deux clients partageaient un id (jamais le cas avec des UUID, mais coûte rien). */
+export async function fetchContenuById(supabase: SupabaseClient, clientId: string, id: string): Promise<Contenu | null> {
+  const { data, error } = await supabase.from("contenus").select(SELECT).eq("client_id", clientId).eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data ? toContenu(data as ContenuRow) : null;
+}
+
 /** Nombre de contenus publiés ce mois-ci pour ce client, tous CM confondus — /accompagnement
  * « Le mois en cours » (Tier C Phase 3, 10/08/2026). Même principe que
  * data/shared/community-manager.ts:fetchContentsProducedThisMonth (compte `statut='publie'` sur

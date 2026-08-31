@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, Inbox } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -131,7 +132,11 @@ function PublicationsHistory({ clientId }: { clientId: string }) {
         </Card>
       ) : (
         <Card>
-          <div className="flex items-center gap-3.5 border-b border-divider px-5 py-2.5 text-[11px] font-bold uppercase tracking-[.04em] text-text-faint">
+          {/* Rangée d'en-têtes cachée sous `sm` : à largeur fixe (contrairement aux lignes de
+              données juste en dessous, en `flex-wrap`), elle débordait hors du viewport sur
+              mobile (audit du 31/08/2026, Playwright 390px) — les données elles-mêmes restent
+              lisibles une fois repliées, la légende Portée/Interactions ci-dessous suffit. */}
+          <div className="hidden items-center gap-3.5 border-b border-divider px-5 py-2.5 text-[11px] font-bold uppercase tracking-[.04em] text-text-faint sm:flex">
             <span className="min-w-0 flex-1">Contenu</span>
             <span className="w-20 flex-none text-right">Portée</span>
             <span className="w-20 flex-none text-right">Interactions</span>
@@ -144,7 +149,11 @@ function PublicationsHistory({ clientId }: { clientId: string }) {
           {items.map((c) => {
             const stat = c.statut === "publie" ? statsById.get(c.id) : undefined;
             return (
-              <div key={c.id} className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
+              <Link
+                key={c.id}
+                href={`/communication/publications/${c.id}`}
+                className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0 hover:bg-row-hover"
+              >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-bold text-text">{c.titre}</span>
                   <span className="mt-0.5 block text-[12px] text-text-soft">{c.plateforme ?? "—"}</span>
@@ -159,7 +168,7 @@ function PublicationsHistory({ clientId }: { clientId: string }) {
                 <span className="w-[74px] flex-none text-right">
                   <Badge tone={c.statut === "publie" ? "success" : "info"}>{c.statut === "publie" ? "Publié" : "Programmé"}</Badge>
                 </span>
-              </div>
+              </Link>
             );
           })}
         </Card>

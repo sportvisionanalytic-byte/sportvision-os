@@ -222,6 +222,39 @@ const NAV_GENERIC: NavEntry[] = [
   item("settings", "Paramètres", "settings"),
 ];
 
+// Espace Projet Full Communication (organization.type === "generic", organizations.
+// organization_type réel "projet"). 31/08/2026, audit Communication & Contenu : jusqu'ici cette
+// variante n'existait pas et resolveNavigation() retombait sur NAV_GENERIC quel que soit le
+// contrat réel du client (session.ts:buildProjetActiveContext posait toujours planCode="one_off"
+// — voir son en-tête, corrigé le même jour). Même trame que NAV_GENERIC (Prestations/Calendrier/
+// Rendez-vous/Documents/Factures/Membres & accès inchangés, ce sont de vrais modules Espace Projet
+// indépendants de l'offre communication), avec le groupe "Communication" de NAV_CLUB_FULLCOM à la
+// place de "Demandes" (visual_requests n'a pas de sens sous Full Communication, le CM pilote
+// directement — même retrait que NAV_CLUB_PLUS → NAV_CLUB_FULLCOM) et "Mon CM" comme les 4 autres
+// variantes Full Communication (coach/académie/tournoi/stage).
+const NAV_GENERIC_FULLCOM: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("Communication"),
+  item("communication", "Planning éditorial", "communication"),
+  item("validations", "À valider", "validations"),
+  item("publications", "Publications", "publications"),
+  item("content", "Contenus", "content"),
+  section("Performance"),
+  item("analytics", "Statistiques", "analytics"),
+  item("reports", "Rapports", "reports"),
+  section("SportVision"),
+  item("services", "Prestations", "services"),
+  item("calendar", "Calendrier", "calendar"),
+  item("appointments", "Rendez-vous", "appointments"),
+  item("mycm", "Mon Community Manager", "mycm"),
+  section("Gestion"),
+  item("documents", "Documents", "documents"),
+  item("billing", "Factures", "billing"),
+  item("users", "Membres & accès", "users"),
+  item("messages", "Messages", "messages"),
+  item("settings", "Paramètres", "settings"),
+];
+
 const NAV_PARENT: NavEntry[] = [
   item("dashboard", "Accueil", "dashboard"),
   section("Mes enfants"),
@@ -362,6 +395,10 @@ export function resolveNavigation(orgType: OrgType, planCode: PlanCode): NavEntr
     if (orgType === "academy") return NAV_ACADEMY_FULLCOM;
     if (orgType === "tournament_organizer") return NAV_TOURNAMENT_FULLCOM;
     if (orgType === "camp") return NAV_CAMP_FULLCOM;
+    // "generic" (Espace Projet) ajouté le 31/08/2026 (audit Communication & Contenu) : sans ce
+    // cas, un Espace Projet Full Communication retombait sur NAV_CLUB_FULLCOM (Équipes/Sponsors/
+    // Présences n'ont aucun sens hors club) — voir NAV_GENERIC_FULLCOM ci-dessus.
+    if (orgType === "generic") return NAV_GENERIC_FULLCOM;
     return NAV_CLUB_FULLCOM;
   }
   if (orgType === "club") return NAV_CLUB_PLUS;
