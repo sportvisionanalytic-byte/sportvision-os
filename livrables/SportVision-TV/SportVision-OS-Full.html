@@ -7302,8 +7302,14 @@ async function loadEquipeOverview(){
   if(!el)return;
   el.innerHTML=_adminEqSkel(3);
   try{
+    // Filtre par pôle actif (migration-poles-v14+, 31/08/2026) : cf. commentaire détaillé dans
+    // loadCollaborateurs() — admin bypasse la RLS pole_scope_ok par design, donc sans ce filtre
+    // client le sélecteur de pôle n'avait aucun effet ici.
+    const _eqovRole=localStorage.getItem('sv_role');
+    const _eqovPoleSelect=(S.activePoleId&&_eqovRole==='admin')?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+    const _eqovPoleQS=(S.activePoleId&&_eqovRole==='admin')?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
     const [profRaw,candRaw,recoRaw,inscrRaw]=await Promise.all([
-      sbFetch('profiles?select=id,prenom,nom,role,actif,onboarding_started_at').catch(()=>[]),
+      sbFetch('profiles?select=id,prenom,nom,role,actif,onboarding_started_at'+_eqovPoleSelect+_eqovPoleQS).catch(()=>[]),
       sbFetch('recruitment_applications?select=id&statut=in.(nouveau,a_appeler,entretien)').catch(()=>[]),
       sbFetch('grade_recommendations?select=id,collaborateur_id,grade_actuel,grade_propose&statut=eq.en_attente').catch(()=>[]),
       sbFetch('formation_inscriptions?select=collaborateur_id,formation_id,statut').catch(()=>[]),
@@ -27684,7 +27690,16 @@ async function loadCollaborateurs(){
   try{
     const _colRole=localStorage.getItem('sv_role');
     const _colFilter=_colRole==='prod'?'&role=in.(photo,cm)':'';
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie,cm_pool_clubplus_general'+_colFilter+'&order=role.asc,nom.asc');
+    // Filtre par pôle actif (migration-poles-v14+, 31/08/2026) : pour un non-admin/rh, RLS
+    // limite déjà profiles au bon pôle (is_admin_or_rh()/profile_shares_pole_with_caller) — rien
+    // à faire ici. Mais admin (et rh) BYPASSENT cette RLS par design (vue transversale
+    // nécessaire), donc sans ce filtre client, le sélecteur de pôle (S.activePoleId) n'avait
+    // strictement aucun effet sur cet écran : un admin sur "Basket" continuait de voir tous les
+    // collaborateurs Football. Même embed pole_affectations!inner que loadEquipeOverview()/
+    // loadEquipeEnDirect() ci-dessous.
+    const _colPoleSelect=(S.activePoleId&&_colRole==='admin')?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+    const _colPoleQS=(S.activePoleId&&_colRole==='admin')?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie,cm_pool_clubplus_general'+_colPoleSelect+_colFilter+_colPoleQS+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E','rh':'#C084FC'};
@@ -32289,8 +32304,14 @@ async function loadEquipeEnDirect(){
   // Fetch profiles + today's missions + month counts in parallel
   const _eqRole=localStorage.getItem('sv_role');
   const _eqRoleFilter=_eqRole==='prod'?'&role=in.(photo,cm)':'';
+  // Filtre par pôle actif (migration-poles-v14+, 31/08/2026) : cf. commentaire détaillé dans
+  // loadCollaborateurs() — admin bypasse la RLS pole_scope_ok par design, donc sans ce filtre
+  // client le sélecteur de pôle n'avait aucun effet ici (c'est l'écran exact où Fouka a repéré
+  // des photographes/vidéastes Football en regardant le pôle Basket).
+  const _eqPoleSelect=(S.activePoleId&&_eqRole==='admin')?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+  const _eqPoleQS=(S.activePoleId&&_eqRole==='admin')?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone,ville,vehicule,permis,zone,materiel_personnel'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
+    sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone,ville,vehicule,permis,zone,materiel_personnel'+_eqPoleSelect+_eqRoleFilter+_eqPoleQS+'&order=prenom.asc').catch(()=>[]),
     sbFetch('prestations_equipe_display?select=collaborateur_id,statut,prestations!inner(id,reference,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
     sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
