@@ -714,14 +714,34 @@ export async function buildProjetActiveContext(
 export const GENERIC_ORG_TYPES = ["coach", "academie", "structure_coaching", "sponsor", "tournoi", "stage", "cm_agency"] as const;
 type GenericOrgType = (typeof GENERIC_ORG_TYPES)[number];
 
+// Sous-ensemble de GENERIC_ORG_TYPES qui vend réellement un contrat Full Communication (31/08/2026,
+// bug trouvé en creusant le correctif buildProjetActiveContext du même jour) : resolveNavigation()
+// (navigation.ts) a TOUJOURS eu des arbres dédiés NAV_COACH_FULLCOM/NAV_ACADEMY_FULLCOM/
+// NAV_TOURNAMENT_FULLCOM/NAV_CAMP_FULLCOM, gated sur planCode==="full_communication" — mais
+// buildOrgSpaceActiveContext ci-dessous figeait planCode à "one_off" pour TOUS les types génériques
+// sans jamais vérifier `client_contrats`, rendant ces 4 arbres de navigation intégralement morts :
+// un coach/académie/organisateur de tournoi/stage payant Full Communication n'avait aucune entrée
+// vers Communication/Publications/Mon CM/Validations, malgré des pages entièrement fonctionnelles
+// en accès direct (même symptôme exact que le bug Espace Projet corrigé juste avant). Sponsor et
+// agence CM restent volontairement exclus : aucune variante NAV_SPONSOR_FULLCOM/NAV_CM_AGENCY_
+// FULLCOM n'existe (ces deux types ne sont jamais eux-mêmes titulaires d'un contrat Full
+// Communication — l'agence CM accède aux clubs qu'elle gère via délégation, pas via son propre
+// espace ; structure_coaching non plus, aucun NAV_*_FULLCOM dédié).
+const FULLCOM_ELIGIBLE_ORG_TYPES = ["coach", "academie", "tournoi", "stage"] as const;
+
 /**
  * Construit l'ActiveContext pour un espace Coach, Académie, Sponsor, Tournoi/Événement, Stage/
  * Camp ou Agence CM. Les 6 partagent le même socle réel (migration-connect-v3/v4/v6/v20,
  * migration-clubplus-v44) : une vraie ligne `memberships`, un rôle réel via
  * `organization_role_catalog` (pas de check constraint en dur comme pour club_members), et
- * aucune `organization_entitlements` (pas de plan/quota vendu — planCode "one_off", comme pour
- * un espace projet). Une seule fonction paramétrée plutôt que 6 quasi-identiques : les 6
- * backends sont structurellement identiques, seul le rôle diffère.
+ * aucune `organization_entitlements` (pas de plan/quota vendu). Une seule fonction paramétrée
+ * plutôt que 6 quasi-identiques : les 6 backends sont structurellement identiques, seul le rôle
+ * diffère.
+ *
+ * planCode "one_off" par défaut, "full_communication" si un contrat réel actif de ce type existe
+ * pour ce type d'organisation (voir FULLCOM_ELIGIBLE_ORG_TYPES ci-dessus) — même vue
+ * `client_contrats` que buildProjetActiveContext/fetchIsFullCommunication, même filtre RLS déjà
+ * éprouvé (client_users), pas de nouvelle surface d'accès.
  */
 export async function buildOrgSpaceActiveContext(
   supabase: SupabaseClient,
@@ -731,14 +751,28 @@ export async function buildOrgSpaceActiveContext(
   if (space.kind !== "organization" || !space.clickable) return null;
   if (!GENERIC_ORG_TYPES.includes(space.organizationType as GenericOrgType)) return null;
   const orgType = space.organizationType as GenericOrgType;
+  const checkFullCom = (FULLCOM_ELIGIBLE_ORG_TYPES as readonly string[]).includes(orgType);
 
-  const { data } = await supabase
-    .from("organizations")
-    .select("id, nom, organization_type, created_at")
-    .eq("id", space.id)
-    .maybeSingle();
-  const org = data as { id: string; nom: string; organization_type: string; created_at: string } | null;
+  const [orgRes, contractRes] = await Promise.all([
+    supabase
+      .from("organizations")
+      .select("id, nom, organization_type, created_at")
+      .eq("id", space.id)
+      .maybeSingle(),
+    checkFullCom
+      ? supabase
+          .from("client_contrats")
+          .select("id")
+          .eq("client_id", space.id)
+          .eq("type_contrat", "full_communication")
+          .eq("statut", "actif")
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const org = orgRes.data as { id: string; nom: string; organization_type: string; created_at: string } | null;
   if (!org || !space.role) return null;
+  const isFullCommunication = checkFullCom && Boolean(contractRes.data);
 
   return {
     user: buildUserFromAuth(authUser),
@@ -760,7 +794,7 @@ export async function buildOrgSpaceActiveContext(
     subscription: {
       id: `sub-${org.id}`,
       organizationId: org.id,
-      planCode: "one_off",
+      planCode: isFullCommunication ? "full_communication" : "one_off",
       status: "active",
       startsAt: org.created_at,
       renewsAt: org.created_at,
