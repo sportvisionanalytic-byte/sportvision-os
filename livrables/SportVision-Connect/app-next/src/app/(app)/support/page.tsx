@@ -148,6 +148,7 @@ function SupportPageContent() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Rechercher dans le centre d'aide…"
+          aria-label="Rechercher dans le centre d'aide"
           className="h-11 w-full rounded-xl border border-border-strong bg-input-bg pl-9 pr-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
         />
       </div>

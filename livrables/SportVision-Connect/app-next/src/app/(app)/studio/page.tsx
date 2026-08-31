@@ -85,6 +85,7 @@ export default function StudioPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher un modèle…"
+            aria-label="Rechercher un modèle"
             className="h-10 w-full rounded-sv border border-border-strong bg-input-bg pl-9 pr-3 text-[13.5px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.1)]"
           />
         </div>
