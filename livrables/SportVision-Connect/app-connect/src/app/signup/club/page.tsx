@@ -117,6 +117,21 @@ export default function SignupClubPage() {
       return;
     }
 
+    // BUGFIX (audit du 31/08/2026, confirmé en conditions réelles) : pour une adresse déjà
+    // enregistrée ET déjà confirmée, signUp() ne renvoie PAS d'erreur — Supabase répond HTTP 200
+    // avec un utilisateur dont `identities` est un tableau vide, une protection anti-énumération
+    // d'e-mails documentée par Supabase (aucun signal ne doit permettre de deviner qu'un compte
+    // existe déjà). Sans cette vérification, le tunnel poursuivait normalement : pending onboarding
+    // sauvegardé pour un compte qui n'est PAS le sien, redirection vers /signup/verify avec
+    // "Vérifiez votre boîte mail" — un utilisateur qui a déjà un compte et se réinscrit par erreur
+    // n'était jamais prévenu, et n'aurait jamais reçu de nouvel e-mail de confirmation (déjà
+    // confirmé), restant bloqué indéfiniment sur cet écran.
+    if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
+      setBusy(false);
+      setSubmitError("Un compte SportVision utilise déjà cette adresse.");
+      return;
+    }
+
     // Type de compte (joueur vs particulier) — voir lib/signup/pending-onboarding.ts et
     // migration-connect-v51-espace-particulier.sql §1 : c'est ICI, au tout premier point où le
     // choix de l'étape Profil (signup-context.tsx) peut être capturé de façon durable, que le
@@ -137,6 +152,16 @@ export default function SignupClubPage() {
           accountType,
         });
       } else if (choice === "declare") {
+        // dateNaissance (audit du 31/08/2026, bug confirmé en conditions réelles) : manquait ici
+        // alors que les branches "join" et "skip" ci-dessous la transportent toutes les deux —
+        // player_profiles.date_naissance est NOT NULL en base (voir signup/sport/page.tsx), donc
+        // l'insertion échouait systématiquement côté edge function pour QUICONQUE déclarait un
+        // club non partenaire, sans jamais remonter d'erreur visible à l'écran (le tunnel affiche
+        // quand même "Vérifiez votre boîte mail" puisque l'échec ne se produit qu'au rejeu, après
+        // confirmation — voir lib/signup/pending-onboarding.ts). Le compte restait alors sans
+        // aucune ligne player_profiles pour toujours : buildPlayerContext() renvoie null en
+        // permanence, exactement le bug déjà documenté pour "skip" ci-dessous avant son propre
+        // correctif (migration-connect-v72).
         savePendingOnboarding({
           action: "declare",
           name: declareName,
@@ -144,6 +169,7 @@ export default function SignupClubPage() {
           team: declareTeam,
           prenom: state.firstName,
           nom: state.lastName,
+          dateNaissance: state.dateNaissance,
           accountType,
         });
       } else {

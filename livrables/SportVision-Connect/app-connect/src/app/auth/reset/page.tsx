@@ -16,6 +16,16 @@ import { createClient } from "@/lib/supabase/client";
 // équivalent déjà corrigé côté Club+ (qui restait au moins visiblement bloqué). Porté ici le même
 // correctif : lecture explicite du hash (#error=... ou #access_token=...), setSession()
 // déterministe, message d'erreur visible en cas d'échec de mise à jour du mot de passe.
+//
+// 31/08/2026, audit complet : le hash n'était lu qu'au montage (deps [] ), jamais rejoué. Cas
+// réel confirmé par test Playwright (event "load" du navigateur ne se déclenche qu'une fois) :
+// deux URL /auth/reset qui ne diffèrent QUE par le fragment (#...) — typiquement un lien expiré
+// suivi du clic sur un lien fraîchement redemandé dans le MÊME onglet (lien collé dans la barre
+// d'adresse déjà ouverte sur /auth/reset, ou onglet réutilisé par le client mail) — ne déclenchent
+// qu'une navigation "same-document" côté navigateur : aucun remount React, donc l'ancien message
+// "Ce lien a expiré" restait affiché indéfiniment même si le nouveau lien, valide, venait d'arriver
+// dans l'URL. Corrigé en réexécutant le traitement du hash à chaque "hashchange", pas seulement au
+// montage.
 export default function ResetPage() {
   const router = useRouter();
   const [pw, setPw] = useState("");
@@ -27,41 +37,60 @@ export default function ResetPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    const hashError = hash.get("error_description") || hash.get("error");
-    if (hashError) {
-      setLinkError(
-        hash.get("error_code") === "otp_expired"
-          ? "Ce lien a expiré. Demandez-en un nouveau ci-dessous."
-          : "Ce lien n'est plus valide. Demandez-en un nouveau ci-dessous.",
-      );
-      return;
-    }
-
     const supabase = createClient();
-    const accessToken = hash.get("access_token");
-    const refreshToken = hash.get("refresh_token");
+    let cancelled = false;
 
-    if (accessToken && refreshToken) {
-      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error }) => {
-        if (error) {
-          setLinkError("Ce lien n'est plus valide. Demandez-en un nouveau ci-dessous.");
-        } else {
-          setReady(true);
-        }
+    function processHash() {
+      // Repart d'un état propre à chaque traitement (montage ou hashchange) — sans ça, un
+      // ancien linkError/ready resterait affiché par-dessus le nouveau résultat.
+      setReady(false);
+      setLinkError(null);
+
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const hashError = hash.get("error_description") || hash.get("error");
+      if (hashError) {
+        setLinkError(
+          hash.get("error_code") === "otp_expired"
+            ? "Ce lien a expiré. Demandez-en un nouveau ci-dessous."
+            : "Ce lien n'est plus valide. Demandez-en un nouveau ci-dessous.",
+        );
+        return;
+      }
+
+      const accessToken = hash.get("access_token");
+      const refreshToken = hash.get("refresh_token");
+
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error }) => {
+          if (cancelled) return;
+          if (error) {
+            setLinkError("Ce lien n'est plus valide. Demandez-en un nouveau ci-dessous.");
+          } else {
+            setReady(true);
+          }
+        });
+        return;
+      }
+
+      supabase.auth.getSession().then(({ data }) => {
+        if (!cancelled && data.session) setReady(true);
       });
-      return;
     }
+
+    processHash();
+    window.addEventListener("hashchange", processHash);
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setReady(true);
     });
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setReady(true);
-    });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("hashchange", processHash);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const ok = pw.length >= 8 && pw === pw2;
