@@ -91,7 +91,22 @@ function SupportPageContent() {
     setTicketContext(undefined);
   }
 
+  // club_support_tickets (voir data/club/support.ts) n'est lisible/écrivable que pour un vrai
+  // club — RLS cst_member_select/cst_member_insert passent par is_club_member(club_id), qui ne
+  // reconnaît que club_members (+ délégation cm_agency). Un compte non-club (cm_agency, académie,
+  // coach, joueur, projet/generic, tournoi, stage) qui atteint quand même /support (tous dans leur
+  // navigation respective, voir navigation.ts) obtenait un module "Nouveau ticket" entièrement
+  // fonctionnel en apparence, mais dont la soumission échouait TOUJOURS avec un 403 RLS —
+  // "Impossible d'envoyer le ticket. Réessayez." en boucle, jamais un vrai ticket possible.
+  // Reproduit en réel (audit complet, 31/08/2026) avec un compte Espace Projet. Corrigé en
+  // n'appelant fetchClubSupportTickets que pour un club (évite aussi une liste "vide" trompeuse
+  // qui masquait en fait un accès refusé), et en étendant à tous les types non-club le même bloc
+  // "Votre échange avec SportVision" déjà utilisé pour tournoi/stage ci-dessous — qui pointe vers
+  // "Contacter mon conseiller" (bouton toujours visible plus bas, déjà branché sur /messages).
+  const isClub = ctx.organization.type === "club";
+
   useEffect(() => {
+    if (!isClub) return;
     let cancelled = false;
     const supabase = createClient();
     fetchClubSupportTickets(supabase, ctx.organization.id).then((rows) => {
@@ -100,7 +115,7 @@ function SupportPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [ctx.organization.id]);
+  }, [ctx.organization.id, isClub]);
 
   if (!canAccess(ctx, "support")) return <LockedModule title="Aide" />;
 
@@ -111,8 +126,10 @@ function SupportPageContent() {
   // Bascule 2 org types séparés (migration-clubplus-v44, 17/08/2026) : le bloc "Votre échange
   // avec SportVision" ci-dessous n'est pas spécifique au tournoi, il concerne tout client
   // "one-off" — tournoi ET stage/camp partageaient déjà NAV_ONE_OFF (aujourd'hui
-  // NAV_TOURNAMENT_ONE_OFF/NAV_CAMP_ONE_OFF) avant la bascule.
-  const isOneOffClient = ctx.organization.type === "tournament_organizer" || ctx.organization.type === "camp";
+  // NAV_TOURNAMENT_ONE_OFF/NAV_CAMP_ONE_OFF) avant la bascule. Élargi (31/08/2026, voir
+  // commentaire ci-dessus) à TOUT type non-club, pour la même raison : aucun n'a de file de
+  // tickets réelle.
+  const isOneOffClient = !isClub;
 
   function handleReplayOnboarding() {
     resetOnboardingProgress();
@@ -165,7 +182,7 @@ function SupportPageContent() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Button onClick={openNewTicket}>Nouveau ticket</Button>
+        {isClub && <Button onClick={openNewTicket}>Nouveau ticket</Button>}
         <Button variant="secondary" onClick={handleReplayOnboarding}>
           <PlayCircle className="h-4 w-4" aria-hidden />
           Revoir le tutoriel de bienvenue
@@ -183,11 +200,18 @@ function SupportPageContent() {
         // use-client-id.ts) traite délibérément tournament_organizer/camp comme "aucune donnée
         // réelle possible pour ces types à ce jour" — cohérent avec cette limite plutôt que de
         // construire un vrai fil de discussion en dehors de ce périmètre déjà décidé.
+        //
+        // 31/08/2026 — élargi à tout type non-club (voir commentaire plus haut) : le texte reste
+        // volontairement générique ("passez par Contacter mon conseiller" plutôt que "par e-mail")
+        // car /messages fonctionne réellement pour certains de ces types (Espace Projet, Joueur —
+        // useClientId() le résout), pas seulement pour tournoi/stage. Le bouton "Contacter mon
+        // conseiller" ci-dessus route déjà vers /messages pour tout le monde, y compris quand
+        // celui-ci affiche lui-même un état "pas encore relié" honnête pour un type non couvert.
         <Card className="flex flex-col items-center gap-2 px-5 py-10 text-center">
           <div className="text-[15px] font-extrabold tracking-tight">Votre échange avec SportVision</div>
           <p className="max-w-sm text-[13px] text-text-soft">
-            Pour toute question, contactez directement votre interlocuteur SportVision par e-mail — la messagerie en ligne
-            n&apos;est pas encore disponible pour ce type d&apos;espace.
+            Il n&apos;y a pas de file de tickets pour ce type d&apos;espace. Pour toute question, utilisez « Contacter mon
+            conseiller » ci-dessus.
           </p>
         </Card>
       ) : (

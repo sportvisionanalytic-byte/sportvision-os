@@ -5,6 +5,14 @@
 // layout.tsx utilise next/font pour toutes ses polices, servies depuis le domaine propre au
 // build. Le paiement/abonnement Stripe est une redirection pleine page (window.location.href),
 // jamais un iframe/script embarqué — pas besoin d'autoriser de domaine Stripe ici.
+// script-src : 'unsafe-eval' est ajouté UNIQUEMENT en dev (jamais en production, valeur figée à
+// 'self' 'unsafe-inline'). `next dev` (webpack, mode eval-source-map) hydrate React via un eval()
+// interne — sans 'unsafe-eval', la CSP bloque silencieusement cet eval() et React n'hydrate jamais
+// (page figée, aucun clic ne répond). Même bug trouvé et corrigé côté app-connect (audit du
+// 30/08/2026) — reproduit et corrigé ici le 31/08/2026 (Club+ n'avait jamais eu ce correctif).
+// process.env.NODE_ENV vaut "production" pour `next build`/`next start`, jamais en dev.
+const SCRIPT_SRC = process.env.NODE_ENV === "production" ? "'self' 'unsafe-inline'" : "'self' 'unsafe-inline' 'unsafe-eval'";
+
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -19,7 +27,7 @@ const SECURITY_HEADERS = [
       // URL https:// n'autorise pas automatiquement son équivalent wss://). Même bug reproduit et
       // corrigé côté app-connect (audit du 30/08/2026, compte Connect tout neuf) — jamais vérifié
       // ici jusqu'à cet audit, mais la CSP est strictement identique.
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'",
+      `default-src 'self'; script-src ${SCRIPT_SRC}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'`,
   },
 ];
 
