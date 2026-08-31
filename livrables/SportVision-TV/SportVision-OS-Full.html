@@ -689,6 +689,12 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
         </button>
       </div>
     </div>
+    <!-- Sélecteur de pôle (31/08/2026, migration multi-pôles) : peuplé/affiché par
+         renderPoleSelector(), appelée depuis goApp(). Masqué par défaut — reste invisible tant
+         qu'un seul pôle existe ou que l'utilisateur n'est affecté qu'à un seul (cas de tout le
+         staff Football existant aujourd'hui), pour ne rien changer à l'écran de qui n'est pas
+         concerné. Voir S.activePoleId : détermine le pôle appliqué aux nouvelles créations. -->
+    <div id="sb-pole-selector" style="display:none;padding:0 14px 10px"></div>
     <div id="sb-nav"></div>
     <div class="sb-foot">
       <div style="display:flex;align-items:center;gap:6px;padding:4px 6px">
@@ -1206,6 +1212,10 @@ const VIEWS={
         </div>
       </div>
     </div>
+    <!-- Comparatif pôles (31/08/2026, migration multi-pôles) : peuplé par renderPolesComparatif(),
+         appelée depuis loadAdminDash() UNIQUEMENT si plusieurs pôles existent (S.allPoles.length>1)
+         — reste vide/absent tant que Basket n'est pas créé, aucun changement visuel avant. -->
+    <div id="dash-poles-comparatif"></div>
     <div class="cd" style="margin-bottom:16px;border-color:rgba(240,68,94,.2)">
       <div class="cd-h"><div class="cd-t">⚡ À traiter</div><span id="dash-traiter-nb" class="bd bn">—</span></div>
       <div id="dash-traiter"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
@@ -4436,8 +4446,10 @@ function modalNouveauClient(){
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-        <div><label style="${L}">Sport</label>
-          <input id="fc-sport" type="text" class="l-inp" placeholder="Football" style="height:38px">
+        <div><label style="${L}">Pôle *</label>
+          <select id="fc-pole" class="l-inp" style="height:38px">
+            ${(S.allPoles&&S.allPoles.length?S.allPoles:[{id:'',nom:'Football',sport:'Football'}]).map(p=>`<option value="${p.id}"${(S.activePoleId?p.id===S.activePoleId:S.allPoles&&S.allPoles[0]&&p.id===S.allPoles[0].id)?' selected':''}>${esc(p.nom)}</option>`).join('')}
+          </select>
         </div>
         <div><label style="${L}">Ville</label>
           <input id="fc-ville" type="text" class="l-inp" style="height:38px">
@@ -4532,6 +4544,13 @@ async function creerClient(){
     }
     window._fcDoublonConfirme=false;
     err.textContent='Création...';
+    // pole_id (31/08/2026, migration multi-pôles) : le sélecteur fc-pole remplace l'ancien champ
+    // texte libre "Sport" — sport reste renseigné (24 endroits du front l'affichent encore comme
+    // badge/filtre, voir plan de migration) mais dérivé du pôle choisi plutôt que saisi à la main,
+    // pour rester cohérent avec pole_id (source d'autorité désormais). fc-pole vide (S.allPoles
+    // pas encore chargé au moment de l'ouverture du formulaire, cas rare) → pole_id omis, la
+    // colonne retombe sur son DEFAULT (pole_football_id()), comportement inchangé d'avant Basket.
+    const polePicked=(S.allPoles||[]).find(p=>p.id===document.getElementById('fc-pole')?.value);
     const r=await sbFetch('clients',{method:'POST',body:{
       nom,
       type_client:document.getElementById('fc-type').value,
@@ -4540,7 +4559,8 @@ async function creerClient(){
       nom_contact:document.getElementById('fc-nomct').value||null,
       email:document.getElementById('fc-email').value||null,
       telephone:document.getElementById('fc-tel').value||null,
-      sport:document.getElementById('fc-sport').value||null,
+      sport:polePicked?polePicked.sport:null,
+      ...(polePicked?{pole_id:polePicked.id}:{}),
       ville:document.getElementById('fc-ville').value||null,
       division:document.getElementById('fc-division')?.value||null,
       notes:document.getElementById('fc-notes')?.value||null,
@@ -5947,8 +5967,11 @@ function modalModifierClient(idx){
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-        <div><label style="${lbl}">Sport</label>
-          <input id="fce-sport" type="text" class="l-inp" value="${esc(c.sport||'')}" style="height:38px" ${ro}>
+        <div><label style="${lbl}">Pôle</label>
+          <select id="fce-pole" class="l-inp" style="height:38px" ${S.role==='admin'?'':'disabled'}>
+            ${(S.allPoles||[]).map(p=>`<option value="${p.id}"${c.pole_id===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}
+          </select>
+          ${S.role!=='admin'?`<div style="font-size:10.5px;color:var(--t3);margin-top:3px">Réservé à l'administrateur (déplace le client entre pôles)</div>`:''}
         </div>
         <div><label style="${lbl}">Ville</label>
           <input id="fce-ville" type="text" class="l-inp" value="${esc(c.ville||'')}" style="height:38px" ${ro}>
@@ -6576,6 +6599,12 @@ async function modifierClient(id){
   if(!isValidPhoneFormat(fceTelVal)){err.textContent='Téléphone invalide (chiffres uniquement, 6 à 15 chiffres).';return;}
   err.textContent='Enregistrement…';
   try{
+    // pole_id (31/08/2026) : fce-pole désactivé pour tout non-admin (voir modalModifierClient) —
+    // sa valeur reste néanmoins celle pré-sélectionnée (pole_id actuel du client), donc un
+    // non-admin renvoie toujours la même valeur sans jamais pouvoir réellement déplacer un client
+    // entre pôles (readonly de fait, pas juste visuel). sport dérivé du pôle choisi, comme pour la
+    // création — remplace l'ancienne saisie libre fce-sport.
+    const poleEditPicked=(S.allPoles||[]).find(p=>p.id===document.getElementById('fce-pole')?.value);
     const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{
       nom,
       type_client:document.getElementById('fce-type').value||null,
@@ -6584,7 +6613,8 @@ async function modifierClient(id){
       nom_contact:document.getElementById('fce-nomct').value.trim()||null,
       email:document.getElementById('fce-email').value||null,
       telephone:document.getElementById('fce-tel').value||null,
-      sport:document.getElementById('fce-sport').value||null,
+      sport:poleEditPicked?poleEditPicked.sport:null,
+      ...(poleEditPicked?{pole_id:poleEditPicked.id}:{}),
       ville:document.getElementById('fce-ville').value||null,
       division:document.getElementById('fce-division')?.value||null,
       adresse:document.getElementById('fce-adresse')?.value.trim()||null,
@@ -8023,18 +8053,26 @@ async function loadAdminDash(){
     bj.textContent='Bonjour'+(prenom?' '+prenom:'');
   }
 
+  // Filtre pôle actif (31/08/2026, migration multi-pôles) : quand un admin a choisi un pôle
+  // précis dans le sélecteur (S.activePoleId non null), le dashboard reflète CE pôle uniquement —
+  // vide en "Direction" (S.activePoleId===null) pour ne rien changer au comportement historique
+  // (comparatif global géré séparément par renderPolesComparatif() ci-dessous). Les non-admins
+  // n'ont de toute façon accès qu'à leur(s) pôle(s) via RLS — ce filtre est une commodité
+  // d'affichage pour eux, jamais un mécanisme de sécurité (déjà assuré côté serveur).
+  const poleQS=S.activePoleId?('&pole_id=eq.'+S.activePoleId):'';
+
   // Fetch all data in parallel
   let semainePre=[],allInc=[],rentabMois=[],activite=[],rentabMoisPrec=[],semainePrec=[];
   try{
     [semainePre,allInc,rentabMois,activite,rentabMoisPrec,semainePrec]=await Promise.all([
-      sbFetch('prestations?select=id,reference,statut,date_prestation,heure_debut,type_prestation,clients(nom)&date_prestation=gte.'+weekStart+'&date_prestation=lte.'+weekEnd+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc,heure_debut.asc'),
+      sbFetch('prestations?select=id,reference,statut,date_prestation,heure_debut,type_prestation,clients(nom)&date_prestation=gte.'+weekStart+'&date_prestation=lte.'+weekEnd+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc,heure_debut.asc'+poleQS),
       sbFetch('incidents?select=id&cloture=eq.false'),
       // CA HT du mois — même vue et même calcul que le compte de résultat
       // officiel (loadComptaResultat), pas une approximation TTC locale.
-      sbFetch('v_rentabilite_missions?select=revenu_ht&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext),
+      sbFetch('v_rentabilite_missions?select=revenu_ht&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext+poleQS),
       sbFetch('activity_log?select=id,categorie,titre,description,created_at&order=created_at.desc&limit=5').catch(()=>[]),
-      sbFetch('v_rentabilite_missions?select=revenu_ht&date_prestation=gte.'+prevMonthStart+'&date_prestation=lt.'+mStart).catch(()=>[]),
-      sbFetch('prestations?select=id&date_prestation=gte.'+prevWeekStart+'&date_prestation=lte.'+prevWeekEnd+'&statut=not.in.(annulée,refusée)').catch(()=>[]),
+      sbFetch('v_rentabilite_missions?select=revenu_ht&date_prestation=gte.'+prevMonthStart+'&date_prestation=lt.'+mStart+poleQS).catch(()=>[]),
+      sbFetch('prestations?select=id&date_prestation=gte.'+prevWeekStart+'&date_prestation=lte.'+prevWeekEnd+'&statut=not.in.(annulée,refusée)'+poleQS).catch(()=>[]),
     ]);
   }catch(e){}
 
@@ -8103,7 +8141,7 @@ async function loadAdminDash(){
 
   // Tracker 5 clubs partenaires — objectif visuel (logique inchangée, déjà confirmée)
   try{
-    const pipRaw=await sbFetch('clients?select=id,nom,statut,sport,ville,score_priorite,prochaine_action,date_prochaine_action&statut=in.(client,partenaire,négociation,devis_envoyé,qualifié,prospect)&order=score_priorite.desc.nullslast,created_at.asc&limit=300');
+    const pipRaw=await sbFetch('clients?select=id,nom,statut,sport,ville,score_priorite,prochaine_action,date_prochaine_action&statut=in.(client,partenaire,négociation,devis_envoyé,qualifié,prospect)&order=score_priorite.desc.nullslast,created_at.asc&limit=300'+poleQS);
     const pip=Array.isArray(pipRaw)?pipRaw:[];
     const partners=pip.filter(c=>['client','partenaire'].includes(c.statut));
     const negoList=pip.filter(c=>c.statut==='négociation');
@@ -8221,6 +8259,44 @@ async function loadAdminDash(){
       </div>`;}).join('');
     }
   }
+  renderPolesComparatif().catch(()=>{});
+}
+
+// Comparatif pôles (31/08/2026, migration multi-pôles) — carte "Direction" affichant CA du mois
+// et clubs actifs par pôle, côte à côte. N'affiche rien tant qu'un seul pôle existe (avant la
+// création de Basket) : #dash-poles-comparatif reste vide, zéro changement visuel pour Football
+// seul. Volontairement une requête indépendante du Promise.all principal de loadAdminDash — un
+// échec ici ne doit jamais faire échouer le reste du dashboard (voir .catch(()=>{}) à l'appel).
+async function renderPolesComparatif(){
+  const el=document.getElementById('dash-poles-comparatif');
+  if(!el)return;
+  if(!S.allPoles||S.allPoles.length<=1){el.innerHTML='';return;}
+  const today=ymdLocal();
+  const mStart=today.slice(0,7)+'-01';
+  const now=new Date();
+  const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
+  const [rentabRows,clientsRows]=await Promise.all([
+    sbFetch('v_rentabilite_missions?select=revenu_ht,pole_id&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext),
+    sbFetch('clients?select=id,pole_id,statut&statut=in.(client,partenaire)'),
+  ]);
+  const rentab=Array.isArray(rentabRows)?rentabRows:[];
+  const clients=Array.isArray(clientsRows)?clientsRows:[];
+  el.innerHTML=`
+    <div class="cd" style="margin-bottom:16px">
+      <div class="cd-h"><div class="cd-t">🏢 Comparatif pôles</div></div>
+      <div style="display:grid;grid-template-columns:repeat(${S.allPoles.length},1fr);gap:1px;background:var(--b1)">
+        ${S.allPoles.map(p=>{
+          const ca=rentab.filter(r=>r.pole_id===p.id).reduce((s,r)=>s+(r.revenu_ht||0),0);
+          const nbClients=clients.filter(c=>c.pole_id===p.id).length;
+          return`<div style="background:var(--c1);padding:16px 18px;cursor:pointer" onclick="setActivePole('${p.id}');document.querySelector('#sb-pole-selector select').value='${p.id}'">
+            <div style="font-size:12.5px;font-weight:700;color:var(--t1);margin-bottom:8px">${esc(p.nom)} ${p.statut==='lancement'?'<span class=\"bd bw\" style=\"font-size:9.5px;margin-left:4px\">Lancement</span>':''}</div>
+            <div style="font-size:22px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums">${Math.round(ca).toLocaleString('fr-FR')} €</div>
+            <div style="font-size:10.5px;color:var(--t3);margin-bottom:6px">CA HT ce mois</div>
+            <div style="font-size:13px;font-weight:600;color:var(--t2)">${nbClients} club${nbClients>1?'s':''} actif${nbClients>1?'s':''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -27568,10 +27644,15 @@ async function validerNouveauMdpOS(){
 
 // ── STATE ────────────────────────────────
 // poleIds/polesResponsable (31/08/2026, migration multi-pôles) : pôles sportifs (Football/Basket)
-// affectés à l'utilisateur connecté — chargés au login dans goApp() ci-dessous. Donnée dormante
-// dans cette tranche (aucun sélecteur/filtre ne les consomme encore, Lot 4) : la RLS scope déjà
-// tout côté serveur, ce fetch évite juste un aller-retour réseau supplémentaire au Lot 4.
-let S={screen:'login',role:null,view:null,obStep:1,obRole:null,poleIds:[],polesResponsable:[]};
+// affectés à l'utilisateur connecté — chargés au login dans goApp() ci-dessous.
+// allPoles : liste complète des pôles existants (chargée pour tout le monde — la table `poles`
+// est lisible par tout compte staff, voir policy poles_select_staff), utilisée pour construire le
+// sélecteur (admin) et les listes déroulantes de création (fc-pole).
+// activePoleId : pôle "actif" pour les nouvelles créations (clients notamment) — null seulement
+// pour un admin en vue "Direction" (tous pôles), jamais null pour un compte pole-scopé (voir
+// renderPoleSelector()). Rien ne le consomme encore hors renderPoleSelector/modalNouveauClient
+// dans cette tranche (Lot 4), pas de filtre supplémentaire ailleurs.
+let S={screen:'login',role:null,view:null,obStep:1,obRole:null,poleIds:[],polesResponsable:[],allPoles:[],activePoleId:null};
 let _myNiveauCm=undefined; // undefined = pas encore chargé, null = chargé mais non classé
 async function _ensureMyNiveauCm(){
   if(_myNiveauCm!==undefined)return _myNiveauCm;
@@ -27970,12 +28051,17 @@ function goApp(role){
         }
       }
     }).catch(()=>{});
-    // Pôles sportifs affectés (31/08/2026, migration multi-pôles) — donnée dormante dans cette
-    // tranche, voir commentaire sur S en haut du fichier. Best-effort : un échec ne doit jamais
-    // bloquer l'accès à l'app (la RLS scope déjà tout côté serveur indépendamment de ce fetch).
-    sbFetch('pole_affectations?select=pole_id,role_pole&user_id=eq.'+uid+'&actif=eq.true').then(rows=>{
-      S.poleIds=(rows||[]).map(r=>r.pole_id);
-      S.polesResponsable=(rows||[]).filter(r=>r.role_pole==='responsable').map(r=>r.pole_id);
+    // Pôles sportifs affectés + liste complète (31/08/2026, migration multi-pôles). Best-effort :
+    // un échec ne doit jamais bloquer l'accès à l'app (la RLS scope déjà tout côté serveur
+    // indépendamment de ces deux fetch — le sélecteur reste juste masqué si l'un échoue).
+    Promise.all([
+      sbFetch('pole_affectations?select=pole_id,role_pole&user_id=eq.'+uid+'&actif=eq.true'),
+      sbFetch('poles?select=id,nom,slug,sport,statut&order=nom.asc'),
+    ]).then(([affRows,poleRows])=>{
+      S.poleIds=(affRows||[]).map(r=>r.pole_id);
+      S.polesResponsable=(affRows||[]).filter(r=>r.role_pole==='responsable').map(r=>r.pole_id);
+      S.allPoles=poleRows||[];
+      renderPoleSelector();
     }).catch(()=>{});
   }
   updateNavBadges(role);
@@ -27983,6 +28069,52 @@ function goApp(role){
   if(window._badgeTimer)clearInterval(window._badgeTimer);
   window._badgeTimer=setInterval(()=>{if(S.screen==='app')updateNavBadges(S.role);},60000);
   _rtNotifEnsure(role);
+}
+
+// ── Sélecteur de pôle (31/08/2026, migration multi-pôles) ─────────────────
+// Détermine S.activePoleId et affiche/masque #sb-pole-selector. Reste invisible pour tout le
+// staff Football existant tant qu'un seul pôle existe ou qu'ils ne sont affectés qu'à un seul —
+// aucun changement d'écran pour eux. Trois cas :
+//   1. Un seul pôle au total (ex: avant la création de Basket) → aucun sélecteur, activePoleId =
+//      cet unique pôle.
+//   2. Admin (voit tous les pôles par bypass RLS, indépendamment de pole_affectations) → sélecteur
+//      avec une option "Direction (tous pôles)" (activePoleId=null, comparatif global sur le
+//      dashboard) + une option par pôle existant.
+//   3. Non-admin affecté à plusieurs pôles (ex: un opérateur formellement multi-pôle) →
+//      sélecteur limité aux pôles réellement affectés (pole_affectations), pas de "Direction"
+//      (la RLS ne leur donnerait de toute façon accès à rien de plus).
+function renderPoleSelector(){
+  const el=document.getElementById('sb-pole-selector');
+  if(!el)return;
+  if(!S.allPoles||S.allPoles.length<=1){
+    el.style.display='none';
+    S.activePoleId=(S.allPoles&&S.allPoles[0])?S.allPoles[0].id:null;
+    return;
+  }
+  const isAdmin=S.role==='admin';
+  const options=isAdmin?S.allPoles:S.allPoles.filter(p=>S.poleIds.includes(p.id));
+  if(!isAdmin&&options.length<=1){
+    el.style.display='none';
+    S.activePoleId=options[0]?options[0].id:(S.poleIds[0]||null);
+    return;
+  }
+  if(S.activePoleId===null&&!isAdmin)S.activePoleId=options[0]?.id||null;
+  // Si l'ancien choix ne correspond plus aux options actuelles (ex: rôle changé), retombe sur le
+  // premier pôle disponible plutôt que de garder une sélection invalide.
+  if(S.activePoleId&&!isAdmin&&!options.some(p=>p.id===S.activePoleId))S.activePoleId=options[0]?.id||null;
+  el.style.display='block';
+  el.innerHTML=`
+    <label style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle actif</label>
+    <select class="l-inp" style="height:34px;font-size:12.5px" onchange="setActivePole(this.value||null)">
+      ${isAdmin?`<option value=""${S.activePoleId===null?' selected':''}>🏢 Direction (tous pôles)</option>`:''}
+      ${options.map(p=>`<option value="${p.id}"${S.activePoleId===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}
+    </select>`;
+}
+function setActivePole(poleId){
+  S.activePoleId=poleId||null;
+  // Rafraîchit l'écran courant avec le nouveau contexte de pôle (dashboard Admin notamment,
+  // qui applique un filtre explicite quand activePoleId est un pôle précis — voir loadAdminDash).
+  loadViewData(S.role,S.view);
 }
 
 // Realtime : nouvelle notification (table 'notifications' de la publication

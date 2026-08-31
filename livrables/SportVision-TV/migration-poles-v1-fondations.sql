@@ -88,15 +88,31 @@ create policy "pole_affectations_self_select" on pole_affectations for select us
   user_id = auth.uid()
 );
 
+-- CORRECTIF (31/08/2026, trouvé en testant en réel, jamais vu en prod) : la version initiale de
+-- cette policy interrogeait pole_affectations DEPUIS une policy SUR pole_affectations (sous-requête
+-- classique pa2) — la table s'auto-référence, donc évaluer la policy pour une ligne redéclenche son
+-- évaluation pour la sous-requête, qui la redéclenche encore : récursion infinie ("infinite
+-- recursion detected in policy for relation pole_affectations", Postgres 42P17). Corrigé en
+-- déclarant is_pole_responsable() ICI (avant migration-poles-v3-rls.sql, qui la redéclare aussi de
+-- façon idempotente pour la RLS clients/prestations/etc.) : SECURITY DEFINER, contourne la RLS en
+-- interne au lieu d'une sous-requête classique, cassant le cycle à la racine — même principe que
+-- prestation_pole_scope_ok()/client_pole_scope_ok() dans migration-poles-v3-rls.sql.
+create or replace function is_pole_responsable(p_pole_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path to 'public'
+as $$
+  select exists (
+    select 1 from pole_affectations
+    where pole_id = p_pole_id and user_id = auth.uid() and role_pole = 'responsable' and actif = true
+  );
+$$;
+
 drop policy if exists "pole_affectations_responsable_select" on pole_affectations;
 create policy "pole_affectations_responsable_select" on pole_affectations for select using (
-  exists (
-    select 1 from pole_affectations pa2
-    where pa2.pole_id = pole_affectations.pole_id
-      and pa2.user_id = auth.uid()
-      and pa2.role_pole = 'responsable'
-      and pa2.actif = true
-  )
+  is_pole_responsable(pole_affectations.pole_id)
 );
 
 -- ── 3. Colonnes pole_id (nullable — bascule NOT NULL en v2) ─────────────
