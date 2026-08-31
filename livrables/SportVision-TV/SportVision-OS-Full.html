@@ -5008,6 +5008,54 @@ const _NEXT_ST={
   'livrée':'clôturée'
 };
 function pdAvancer(){const sel=document.getElementById('pd-statut');if(!sel)return;const next=_NEXT_ST[sel.value];if(next){sel.value=next;}}
+// Effets de bord d'un changement de statut de prestation (événements métier, tâches
+// auto, génération de facture, contrôle matériel "après") — extrait en fonction
+// partagée (audit fraîcheur 31/08). Avant ce correctif, cette logique n'existait
+// QUE dans avancerStatutPrestation() (bouton "→" rapide des listes), jamais dans
+// modifierPrestation() (bouton "Enregistrer" des fiches détail modalDetailPrestation/
+// modalProdFiche — le chemin le plus naturel pour un Responsable Production qui modifie
+// d'autres champs en même temps que le statut). Repro en direct : une prestation de
+// test amenée jusqu'à 'production_terminée' via "Étape suivante" + "Enregistrer" dans
+// la fiche détail restait statut_financier='non_facturée' et 0 ligne créée dans
+// `factures` — aucune facture générée, aucun événement prestation.completed, aucun
+// contrôle matériel "après" créé, silencieusement. Centralisé ici et appelé depuis les
+// deux chemins pour que le résultat ne dépende plus du bouton utilisé.
+async function appliquerEffetsStatutPrestation(id,next){
+  if(!next)return;
+  // Moteur d'événements — 'payée' retiré (INC-021, 20/08) : statut n'atteint plus jamais
+  // cette valeur, l'événement payment.confirmed part maintenant de majStatutFinancier/
+  // majStatutFacture, là où le paiement se confirme réellement (statut_financier/factures).
+  const evMap={'confirmée':'prestation.confirmed','production_terminée':'prestation.completed'};
+  if(evMap[next]){
+    dispatchSVEvent(evMap[next],{prestation_id:id});
+    creerTachesAuto(evMap[next],{source_type:'prestation',source_id:id}).catch(()=>{});
+  }
+  // Avant, la fin de prestation créait seulement une tâche "Émettre la
+  // facture" pour compta — la facture elle-même n'existait qu'au moment où
+  // quelqu'un cliquait "Imprimer"/"Envoyer". On la génère désormais tout de
+  // suite (getOrCreateFacture est déjà idempotent, ne recrée rien si une
+  // facture existe déjà) : au moment de la relance, il ne reste plus qu'à
+  // vérifier et envoyer, pas à créer depuis zéro. Best-effort.
+  if(next==='production_terminée'){
+    getOrCreateFacture(id).then(fact=>{
+      if(fact) sbFetch('prestations?id=eq.'+id+'&statut_financier=eq.non_facturée',{method:'PATCH',body:{statut_financier:'facturée'}}).catch(()=>{});
+    }).catch(()=>{});
+    // Contrôle "après" : même correctif que le contrôle "avant" (voir
+    // kitsAttribuerSubmit) — crée le contrôle retour dès que la prestation
+    // est terminée, pour tout kit qui lui était réservé et n'a pas encore
+    // de contrôle après. Best-effort, ne bloque jamais l'avancement.
+    sbFetch('kit_reservations?select=id,kit_id,collaborateur_id,responsable_id&prestation_id=eq.'+id).then(resas=>{
+      (Array.isArray(resas)?resas:[]).forEach(async resa=>{
+        const already=await sbFetch('kit_controles?select=id&kit_reservation_id=eq.'+resa.id+'&type=eq.apres&limit=1').catch(()=>[]);
+        if(Array.isArray(already)&&already.length)return;
+        await sbFetch('kit_controles',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
+          kit_id:resa.kit_id,kit_reservation_id:resa.id,prestation_id:id,
+          collaborateur_id:resa.responsable_id||resa.collaborateur_id,type:'apres',statut:'en_cours',
+        }}).catch(()=>{});
+      });
+    }).catch(()=>{});
+  }
+}
 async function avancerStatutPrestation(id,statut){
   const next=_NEXT_ST[statut];
   if(!next)return;
@@ -5017,39 +5065,7 @@ async function avancerStatutPrestation(id,statut){
     toast('→ '+(SL[next]||next),'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
-    // Moteur d'événements — 'payée' retiré (INC-021, 20/08) : statut n'atteint plus jamais
-    // cette valeur, l'événement payment.confirmed part maintenant de majStatutFinancier/
-    // majStatutFacture, là où le paiement se confirme réellement (statut_financier/factures).
-    const evMap={'confirmée':'prestation.confirmed','production_terminée':'prestation.completed'};
-    if(evMap[next]){
-      dispatchSVEvent(evMap[next],{prestation_id:id});
-      creerTachesAuto(evMap[next],{source_type:'prestation',source_id:id}).catch(()=>{});
-    }
-    // Avant, la fin de prestation créait seulement une tâche "Émettre la
-    // facture" pour compta — la facture elle-même n'existait qu'au moment où
-    // quelqu'un cliquait "Imprimer"/"Envoyer". On la génère désormais tout de
-    // suite (getOrCreateFacture est déjà idempotent, ne recrée rien si une
-    // facture existe déjà) : au moment de la relance, il ne reste plus qu'à
-    // vérifier et envoyer, pas à créer depuis zéro. Best-effort.
-    if(next==='production_terminée'){
-      getOrCreateFacture(id).then(fact=>{
-        if(fact) sbFetch('prestations?id=eq.'+id+'&statut_financier=eq.non_facturée',{method:'PATCH',body:{statut_financier:'facturée'}}).catch(()=>{});
-      }).catch(()=>{});
-      // Contrôle "après" : même correctif que le contrôle "avant" (voir
-      // kitsAttribuerSubmit) — crée le contrôle retour dès que la prestation
-      // est terminée, pour tout kit qui lui était réservé et n'a pas encore
-      // de contrôle après. Best-effort, ne bloque jamais l'avancement.
-      sbFetch('kit_reservations?select=id,kit_id,collaborateur_id,responsable_id&prestation_id=eq.'+id).then(resas=>{
-        (Array.isArray(resas)?resas:[]).forEach(async resa=>{
-          const already=await sbFetch('kit_controles?select=id&kit_reservation_id=eq.'+resa.id+'&type=eq.apres&limit=1').catch(()=>[]);
-          if(Array.isArray(already)&&already.length)return;
-          await sbFetch('kit_controles',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
-            kit_id:resa.kit_id,kit_reservation_id:resa.id,prestation_id:id,
-            collaborateur_id:resa.responsable_id||resa.collaborateur_id,type:'apres',statut:'en_cours',
-          }}).catch(()=>{});
-        });
-      }).catch(()=>{});
-    }
+    await appliquerEffetsStatutPrestation(id,next);
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
@@ -5184,6 +5200,14 @@ async function modifierPrestation(id){
   const err=document.getElementById('pd-err');
   err.textContent='Enregistrement…';
   try{
+    // Statut avant modification, pour appliquerEffetsStatutPrestation() ci-dessous (audit
+    // fraîcheur 31/08) : ce bouton "Enregistrer" pouvait jusqu'ici faire passer une prestation
+    // par 'production_terminée' sans jamais déclencher la génération de facture/l'événement
+    // métier/le contrôle matériel "après" — ces effets n'existaient que sur le bouton "→"
+    // rapide des listes (avancerStatutPrestation), jamais sur ce chemin, pourtant le plus
+    // naturel pour un Responsable Production qui modifie d'autres champs en même temps.
+    const avant=await sbFetch('prestations?id=eq.'+id+'&select=statut').catch(()=>null);
+    const statutAvant=Array.isArray(avant)&&avant[0]?avant[0].statut:null;
     const body={
       statut:document.getElementById('pd-statut').value,
       statut_financier:document.getElementById('pd-sfin').value,
@@ -5207,6 +5231,7 @@ async function modifierPrestation(id){
     toast('Prestation mise à jour.','ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
+    if(body.statut&&body.statut!==statutAvant)appliquerEffetsStatutPrestation(id,body.statut).catch(()=>{});
   }catch(e){err.textContent='Erreur lors de la modification.';}
 }
 
