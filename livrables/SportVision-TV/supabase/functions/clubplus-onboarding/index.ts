@@ -13,6 +13,16 @@
 // sans rien recréer (cf. handleLogin() côté client, qui rappelle cette fonction comme
 // filet de sécurité au premier login si la confirmation par e-mail était activée).
 //
+// 31/08/2026 (audit Auth/Signup/Onboarding) — cette idempotence était en réalité un motif
+// SELECT-puis-INSERT non atomique (comme find_or_create_client_by_email l'était avant son propre
+// correctif, voir plus bas) : deux appels concurrents pour le même utilisateur (reproduit en réel
+// via le double effect React Strict Mode de src/app/auth/confirming/page.tsx — deux onglets ou un
+// retry réseau produiraient la même course en prod) passaient tous les deux le SELECT avant que
+// le premier INSERT ne soit visible, créant DEUX clubs distincts avec le même utilisateur admin
+// des deux. Le check-puis-création est désormais entièrement délégué à
+// clubplus_claim_self_service_onboarding (migration-clubplus-onboarding-race-31-08.sql), verrouillée
+// par pg_advisory_xact_lock scopé à l'utilisateur — un seul appel à la fois peut créer le club.
+//
 // Portée v1 : crée toujours un NOUVEAU club avec l'appelant comme admin. La jonction
 // à un club existant via lien d'invitation ou lien d'activation privé (PILOT_MODE)
 // sera ajoutée dans une fonction séparée (clubplus-accept-invite / clubplus-activate)
@@ -127,46 +137,33 @@ serve(async (req) => {
       return json({ error: "Trop de tentatives. Réessayez dans une heure." }, 429);
     }
 
-    // Idempotence : déjà onboardé (quel que soit le club) → ne rien recréer.
-    const { data: existing } = await admin
-      .from("club_members")
-      .select("id, club_id, role")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-    if (existing) {
-      return json({ club_id: existing.club_id, role: existing.role, already_onboarded: true });
-    }
-
     if (!club.nom || !String(club.nom).trim()) {
       return json({ error: "Le nom du club est obligatoire." }, 400);
     }
 
-    const { data: createdClub, error: clubErr } = await admin
-      .from("clubs")
-      .insert({
-        nom: String(club.nom).trim(),
-        ville: club.ville || null,
-        discipline: club.discipline || null,
-        plan,
-        engagement: body.engagement === "sans" ? "sans" : "12mois",
-        credits_monthly: CREDITS_BY_PLAN[plan],
-        credits_balance: CREDITS_BY_PLAN[plan],
-      })
-      .select("id")
-      .single();
-    if (clubErr) return json({ error: clubErr.message }, 500);
-
-    const { error: cmErr } = await admin.from("club_members").insert({
-      user_id: user.id,
-      club_id: createdClub.id,
-      role: "admin",
-      prenom: prenom || null,
-      nom: nom || null,
-      telephone: telephone || null,
-      status: "actif",
+    // Idempotence + création atomiques (migration-clubplus-onboarding-race-31-08.sql) : un
+    // SELECT-puis-INSERT séparé ici laissait une fenêtre de course entre deux appels concurrents
+    // pour le même utilisateur (double effect React côté /auth/confirming, double onglet, retry
+    // réseau) — chacun passait le "pas encore onboardé" avant que l'autre n'ait posé sa ligne
+    // club_members, créant deux clubs distincts avec le même admin. La fonction verrouille
+    // désormais (pg_advisory_xact_lock scopé à l'utilisateur) tout le check-puis-création.
+    const { data: claim, error: claimErr } = await admin.rpc("clubplus_claim_self_service_onboarding", {
+      p_user_id: user.id,
+      p_club_nom: String(club.nom).trim(),
+      p_ville: club.ville || null,
+      p_discipline: club.discipline || null,
+      p_plan: plan,
+      p_engagement: body.engagement === "sans" ? "sans" : "12mois",
+      p_credits: CREDITS_BY_PLAN[plan],
+      p_prenom: prenom || null,
+      p_nom: nom || null,
+      p_telephone: telephone || null,
     });
-    if (cmErr) return json({ error: cmErr.message }, 500);
+    if (claimErr) return json({ error: claimErr.message }, 500);
+    if (claim.already_onboarded) {
+      return json({ club_id: claim.club_id, role: claim.role, already_onboarded: true });
+    }
+    const createdClub = { id: claim.club_id as string };
 
     // Pont Documents ↔ Portail (best-effort, ne bloque jamais la création du club) : relie
     // clubs.portail_client_id à un `clients` Portail et fait de l'admin un client_users pour ce

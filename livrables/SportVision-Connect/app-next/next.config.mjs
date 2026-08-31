@@ -10,9 +10,9 @@
 // chaque module avec eval() pour le Fast Refresh/HMR (devtool eval-source-map), bloqué par la CSP
 // sans 'unsafe-eval', ce qui empêche React d'hydrater silencieusement (aucun onClick/onChange ne se
 // branche, un clic sur un bouton de formulaire retombe sur la soumission native/rechargement
-// complet). Reproduit indépendamment par deux audits du 31/08/2026 (Finance/Contrats/Sponsors sur
+// complet). Reproduit indépendamment par trois audits du 31/08/2026 (Finance/Contrats/Sponsors sur
 // /auth/login ; Organisation/Équipe via Playwright, pageerror "Evaluating a string as JavaScript
-// violates ... script-src").
+// violates ... script-src" ; Auth/Signup/Onboarding, identifié avant même de lancer `npm run dev`).
 // `next build`/`next start` (et donc Netlify en production) n'utilisent pas eval() pour leurs
 // bundles : ce correctif ne change rien à la CSP réellement servie en production.
 const SCRIPT_SRC = process.env.NODE_ENV === "production" ? "'self' 'unsafe-inline'" : "'self' 'unsafe-inline' 'unsafe-eval'";

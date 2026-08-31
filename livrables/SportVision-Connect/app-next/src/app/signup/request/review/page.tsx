@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { createClient } from "@/lib/supabase/client";
@@ -65,18 +66,27 @@ export default function RequestReviewPage() {
           certification_acceptee: true,
         },
       });
-      if (fnError) throw fnError;
-      if (data?.error) {
-        // Doublon (17/08/2026) : message déjà rédigé côté serveur pour être montré tel quel — pas
-        // de détail technique dedans, contrairement aux autres erreurs (§59) qui restent avalées
-        // dans le message générique ci-dessous.
-        if (data.duplicate) {
-          setError(data.error);
-          setSubmitting(false);
-          return;
+      if (fnError) {
+        // Bug trouvé à l'audit (31/08/2026) : supabase-js (functions.invoke) traite TOUT statut
+        // non-2xx comme une erreur et renvoie `data: null` — la branche `data.duplicate`
+        // ci-dessous était donc du code mort, le message de doublon rédigé côté serveur (409,
+        // voir connect-club-signup-request/index.ts) ne s'affichait jamais, seulement le message
+        // générique du catch plus bas. FunctionsHttpError expose la Response brute via `.context`,
+        // jamais encore lue ici : on la parse pour retrouver le vrai corps JSON.
+        if (fnError instanceof FunctionsHttpError) {
+          const body = await fnError.context.json().catch(() => null);
+          if (body?.duplicate && typeof body.error === "string") {
+            // Doublon (17/08/2026) : message déjà rédigé côté serveur pour être montré tel quel —
+            // pas de détail technique dedans, contrairement aux autres erreurs (§59) qui restent
+            // avalées dans le message générique du catch plus bas.
+            setError(body.error);
+            setSubmitting(false);
+            return;
+          }
         }
-        throw new Error(data.error);
+        throw fnError;
       }
+      if (data?.error) throw new Error(data.error);
       patch({ certificationAcceptee: true });
       const requestId = data?.request_id as string | null | undefined;
       router.push(requestId ? `/signup/request/sent?ref=${encodeURIComponent(requestId)}` : "/signup/request/sent");
