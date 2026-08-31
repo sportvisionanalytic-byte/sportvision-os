@@ -439,6 +439,22 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 /* ══════════════════════════════════════════════════════════
    SPORTVISION OS — MOBILE-FIRST LAYER (interface terrain)
 ══════════════════════════════════════════════════════════ */
+/* ── Offline banner ── remonté hors du @media(max-width:768px) ci-dessous (audit
+   fraîcheur 31/08) : ces deux règles étaient les SEULES à définir le display de
+   #mob-offline-banner, entièrement imbriquées dans la media query mobile. Sur tout
+   écran ≥769px (desktop/laptop — l'essentiel des postes internes SportVision), aucune
+   règle CSS ne s'appliquait plus du tout : la div retombait sur le display:block par
+   défaut du navigateur, donc TOUJOURS visible, indépendamment de l'état réel de
+   connexion et même sans la classe .on. Confirmé en direct (Playwright, viewport
+   1440×900, getComputedStyle) : display:block/offsetHeight:21 sans .on ; repasse
+   correctement à display:none dès qu'on repasse sous 768px. Le bandeau "Connexion
+   perdue — mode hors-ligne" s'affichait donc en permanence en haut de l'écran pour
+   tout le staff sur desktop, sans rapport avec une vraie coupure. Ces deux règles ne
+   dépendent d'aucune autre règle mobile-only (position fixed, contenu, tailles déjà
+   adaptées à toutes largeurs) : les sortir de la media query suffit, comportement
+   mobile (repli sous 768px) inchangé.  */
+#mob-offline-banner{display:none;position:fixed;top:env(safe-area-inset-top,0);left:0;right:0;z-index:800;background:var(--wa);padding:8px 16px;font-size:12.5px;font-weight:600;color:#000;text-align:center}
+#mob-offline-banner.on{display:block}
 @media(max-width:768px){
   /* ── Carte mobile ── */
   .mc{background:var(--s1);border:1px solid var(--b1);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;margin-bottom:11px}
@@ -552,9 +568,6 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   .mso-row-ic{width:36px;height:36px;border-radius:9px;background:rgba(54,107,255,.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
   .mso-row-t{font-size:14px;font-weight:500;color:var(--t1)}
   .mso-row-s{font-size:11px;color:var(--t3);margin-top:1px}
-  /* ── Offline banner ── */
-  #mob-offline-banner{display:none;position:fixed;top:env(safe-area-inset-top,0);left:0;right:0;z-index:800;background:var(--wa);padding:8px 16px;font-size:12.5px;font-weight:600;color:#000;text-align:center}
-  #mob-offline-banner.on{display:block}
 }
 </style>
 
