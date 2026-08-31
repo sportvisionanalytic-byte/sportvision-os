@@ -51,10 +51,18 @@ export function FundingDetailView({
   funding,
   paiement,
   listHref = "/cotisations",
+  demoMode = false,
 }: {
   funding: FundingDetail;
   paiement?: string;
   listHref?: string;
+  // /demo/cotisations/[id] (audit du 31/08/2026) : la démo réutilise ce composant avec un
+  // share_token factice ("demo-token", voir mock-data.ts) — le lien "Aperçu du lien" ci-dessous
+  // pointait vers la vraie page publique /cotisation/demo-token, qui affiche un 404 réel
+  // (aucune ligne group_fundings n'a ce token en base). Sans conséquence pour l'utilisateur
+  // (aucune donnée exposée, juste un cul-de-sac), mais un écran démo n'est censé mener nulle
+  // part de cassé — demoMode désactive ce lien précis au lieu de le pointer vers une 404.
+  demoMode?: boolean;
 }) {
   const pct = Math.min(100, Math.round((funding.montant_collecte / funding.montant_cible) * 100));
   const reached = funding.statut === "objectif_atteint";
@@ -232,14 +240,24 @@ export function FundingDetailView({
               <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                 Voici ce que voient vos coéquipiers en ouvrant le lien.
               </span>
-              <Link
-                href={`/cotisation/${funding.share_token}`}
-                target="_blank"
-                className="flex h-11 w-fit items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
-              >
-                <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">open_in_new</span>
-                Aperçu du lien
-              </Link>
+              {demoMode ? (
+                <span
+                  title="Indisponible en démonstration"
+                  className="flex h-11 w-fit cursor-not-allowed items-center gap-2 rounded-sv border border-border-strong bg-white/[.03] px-4 font-sora text-[14px] font-semibold text-text-faint"
+                >
+                  <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">open_in_new</span>
+                  Aperçu du lien
+                </span>
+              ) : (
+                <Link
+                  href={`/cotisation/${funding.share_token}`}
+                  target="_blank"
+                  className="flex h-11 w-fit items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
+                >
+                  <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">open_in_new</span>
+                  Aperçu du lien
+                </Link>
+              )}
             </div>
           )}
         </div>
