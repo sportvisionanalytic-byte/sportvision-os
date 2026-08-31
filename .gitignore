@@ -11,3 +11,6 @@ Thumbs.db
 # Editeurs
 .vscode/settings.json
 *.swp
+
+# Supabase CLI (cache local de liaison de projet, recréé à chaque `functions deploy`)
+livrables/SportVision-TV/supabase/.temp/
