@@ -8532,7 +8532,13 @@ async function loadPoleRoadmapData(){
 const _PALIERS_POLE_CFG=[
   {code:'2_contrats_remuneration',metrique:'contrats_recurrents_actifs',seuil:2,
     titre:'Palier de rémunération atteint',
-    msg:'2 contrats récurrents actifs sur {POLE} — le palier de rémunération 300€+15% est franchi (calcul détaillé du montant : module Finance/rémunération).',
+    // QA Lot 9 (31/08/2026) : le montant "300€+15%" était codé en dur ici alors qu'il vit déjà,
+    // en toutes lettres, dans pole_remuneration_paliers — une table explicitement documentée
+    // comme "CONFIGURABLE (éditable par Fouka sans déploiement de code)" (migration-poles-v10).
+    // Si la grille est un jour ajustée depuis l'écran Rémunération pôle, ce texte figé serait
+    // devenu faux silencieusement alors que le calcul réel (module Finance/rémunération) resterait
+    // juste. Retiré au profit d'un renvoi vers le module, seule source de vérité pour le montant.
+    msg:'2 contrats récurrents actifs sur {POLE} — le palier de rémunération suivant est franchi (montant exact : module Finance/rémunération).',
     destinataires:['admin','responsable'],priorite:'haute'},
   {code:'5_clubs_secretaire',metrique:'clubs_recurrents_actifs',seuil:5,
     titre:'Recrutement secrétaire à envisager',
