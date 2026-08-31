@@ -4715,6 +4715,8 @@ async function creerCollaborateur(){
 
 // ── CHARGEMENT DONNÉES RÉELLES ────────────
 async function loadViewData(role,view){
+  // Roadmap pôle (Lot 8) : indépendant du rôle fonctionnel, voir renderContent().
+  if(view==='poleroadmap'){await loadPoleRoadmapData();return;}
   if((role==='admin'||role==='sec'||role==='prod')&&view==='pre') await loadPrestations();
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
   if((role==='admin'||role==='sec')&&view==='crmfullcom') await loadCrmFullCom();
@@ -8260,6 +8262,10 @@ async function loadAdminDash(){
     }
   }
   renderPolesComparatif().catch(()=>{});
+  // Paliers d'alerte pôle (Lot 8, 31/08/2026) : vérifiés à chaque ouverture du dashboard
+  // Admin, pour tous les pôles existants — voir verifierPaliersPole() plus bas pour le détail
+  // et la limite assumée (pas de cron/edge function ce soir, calcul déclenché côté client).
+  (S.allPoles||[]).forEach(p=>{verifierPaliersPole(p.id).catch(()=>{});});
 }
 
 // Comparatif pôles (31/08/2026, migration multi-pôles) — carte "Direction" affichant CA du mois
@@ -8297,6 +8303,229 @@ async function renderPolesComparatif(){
         }).join('')}
       </div>
     </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ROADMAP DE LANCEMENT PÔLE + PALIERS D'ALERTE (Lot 8, 31/08/2026)
+// ══════════════════════════════════════════════════════════════════════════
+// Table pole_roadmap_etapes (migration-poles-v6-roadmap-basket.sql) : 4 phases
+// (immersion/premier_contrat/noyau_equipe/stabilisation), chaque étape
+// validation='auto' recalculée ici depuis des données réelles, validation='manuel'
+// basculée par un clic Admin/Responsable. Visible uniquement par l'admin et le
+// Responsable DU pôle (RLS is_pole_responsable(), pas pole_scope_ok() — un simple
+// membre du pôle n'y a pas accès, cf. commentaire de la migration).
+//
+// Choix d'architecture pour les notifications de palier (§2 du cahier des charges) :
+// ni creerTachesAuto/_TACHES_AUTO_CFG ni dispatchSVEvent/SV_EVENT_WORKFLOWS ne sont
+// réutilisés tels quels — les deux systèmes existants notifient TOUS les profils d'un
+// rôle FONCTIONNEL (`profiles?role=eq.X`), aucun des deux ne sait cibler "le Responsable
+// de CE pôle précis" (pole_affectations, orthogonal au rôle fonctionnel). On réutilise
+// en revanche leur brique d'envoi unitaire creerNotifSiActive(destinataire_id,...).
+
+// Un seul point de calcul des métriques réelles d'un pôle, réutilisé par la roadmap
+// (étapes validation='auto') ET par les paliers d'alerte ci-dessous — évite de dupliquer
+// les mêmes requêtes contrats/pole_affectations à deux endroits.
+async function getPoleMetriques(poleId){
+  const vide={contrats_recurrents_actifs:0,clubs_recurrents_actifs:0,operateurs_actifs:0,cm_actifs:0,secretaire_active:false};
+  if(!poleId)return vide;
+  try{
+    const [contratsFC,affs]=await Promise.all([
+      // "Contrat récurrent actif" = Full Communication actif — seul type d'abonnement
+      // récurrent de prestations photo/vidéo de la Banque de contrats (club_plus est un
+      // abonnement logiciel, pas une prestation récurrente — migration-contrats-v2-types-banque.sql).
+      sbFetch('contrats?select=id,client_id,clients!inner(pole_id)&type_contrat=eq.full_communication&statut=eq.actif&clients.pole_id=eq.'+poleId).catch(()=>[]),
+      // profiles!user_id : pole_affectations a DEUX FK vers profiles (user_id ET affecte_par) —
+      // sans le hint explicite, l'embed PostgREST échouerait (ambigu).
+      sbFetch('pole_affectations?select=user_id,role_pole,profiles!user_id(role)&pole_id=eq.'+poleId+'&actif=eq.true').catch(()=>[]),
+    ]);
+    const contrats=Array.isArray(contratsFC)?contratsFC:[];
+    const affRows=Array.isArray(affs)?affs:[];
+    return{
+      contrats_recurrents_actifs:contrats.length,
+      clubs_recurrents_actifs:new Set(contrats.map(c=>c.client_id)).size,
+      operateurs_actifs:affRows.filter(a=>a.profiles?.role==='photo').length,
+      cm_actifs:affRows.filter(a=>a.profiles?.role==='cm').length,
+      secretaire_active:affRows.some(a=>a.profiles?.role==='sec'),
+    };
+  }catch(e){return vide;}
+}
+
+const POLE_ROADMAP_PHASES={
+  immersion:{lb:'Mois 1 — Immersion',ic:'🌱'},
+  premier_contrat:{lb:'Mois 2 — Premier contrat',ic:'🤝'},
+  noyau_equipe:{lb:'Mois 3 — Noyau équipe',ic:'👥'},
+  stabilisation:{lb:'Mois 4+ — 2 à 3 clubs',ic:'📈'},
+};
+const POLE_ETAPE_STATUT={
+  a_venir:{lb:'À venir',cls:'bn'},
+  en_cours:{lb:'En cours',cls:'bw'},
+  atteinte:{lb:'Atteinte',cls:'ba'},
+};
+
+function renderPoleRoadmapShell(){
+  return `<div id="poleroadmap-ct"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+
+// Recalcule le statut de chaque étape validation='auto' depuis les métriques réelles et
+// persiste tout changement (garde une trace en base — valide_le — plutôt qu'un calcul
+// jamais écrit nulle part). Mute les objets `etapes` en place pour un rendu immédiat sans
+// second aller-retour réseau.
+async function refreshPoleRoadmapAuto(etapes,metriques){
+  for(const e of etapes){
+    if(e.validation!=='auto')continue;
+    const val=metriques[e.metrique]||0;
+    const seuil=Number(e.seuil)||0;
+    const nouveauStatut=val>=seuil?'atteinte':(val>0?'en_cours':'a_venir');
+    if(nouveauStatut===e.statut)continue;
+    const body={statut:nouveauStatut};
+    if(nouveauStatut==='atteinte')body.valide_le=new Date().toISOString();
+    else if(e.statut==='atteinte')body.valide_le=null; // régression (ex. contrat résilié depuis)
+    try{
+      await sbFetch('pole_roadmap_etapes?id=eq.'+e.id,{method:'PATCH',body});
+      e.statut=nouveauStatut;
+      if('valide_le' in body)e.valide_le=body.valide_le;
+    }catch(err){}
+  }
+  return etapes;
+}
+
+// Bascule manuelle (étapes validation='manuel') : cycle à_venir → en_cours → atteinte → à_venir.
+async function togglePoleEtapeManuel(etapeId,statutActuel){
+  const cycle=['a_venir','en_cours','atteinte'];
+  const next=cycle[(cycle.indexOf(statutActuel)+1)%cycle.length];
+  const uid=localStorage.getItem('sv_uid');
+  const body={statut:next,valide_par:next==='atteinte'?uid:null,valide_le:next==='atteinte'?new Date().toISOString():null};
+  const r=await sbFetch('pole_roadmap_etapes?id=eq.'+etapeId,{method:'PATCH',body});
+  if(sbErr(r)){toast('Erreur : mise à jour impossible.','er');return;}
+  toast('Étape mise à jour.','ok');
+  loadPoleRoadmapData();
+}
+
+async function loadPoleRoadmapData(){
+  const el=document.getElementById('poleroadmap-ct');
+  if(!el)return;
+  const poleId=S.activePoleId;
+  if(!poleId){
+    el.innerHTML=`<div class="cd" style="padding:28px;text-align:center;color:var(--t3)">Sélectionnez un pôle précis dans le sélecteur de la barre latérale pour afficher sa roadmap de lancement (« Direction » regroupe tous les pôles, aucune roadmap unique n'a de sens à ce niveau).</div>`;
+    return;
+  }
+  const pole=(S.allPoles||[]).find(p=>p.id===poleId);
+  const [etapesRaw,metriques]=await Promise.all([
+    sbFetch('pole_roadmap_etapes?select=*&pole_id=eq.'+poleId+'&order=phase_ordre.asc,ordre.asc').catch(()=>[]),
+    getPoleMetriques(poleId),
+  ]);
+  let etapes=Array.isArray(etapesRaw)?etapesRaw:[];
+  if(!etapes.length){
+    el.innerHTML=`<div class="cd" style="padding:28px;text-align:center;color:var(--t3)">Aucune roadmap définie pour ${esc(pole?.nom||'ce pôle')}.</div>`;
+    return;
+  }
+  etapes=await refreshPoleRoadmapAuto(etapes,metriques);
+  // Vérification des paliers d'alerte (§2) — déclenchée ici aussi (pas seulement depuis
+  // loadAdminDash) pour couvrir le cas où le Responsable ouvre sa roadmap directement, sans
+  // passer par le dashboard Admin auquel il n'a pas accès.
+  verifierPaliersPole(poleId,metriques).catch(()=>{});
+  const phasesOrdre=['immersion','premier_contrat','noyau_equipe','stabilisation'];
+  const byPhase={};
+  etapes.forEach(e=>{(byPhase[e.phase]=byPhase[e.phase]||[]).push(e);});
+  const totalAtteintes=etapes.filter(e=>e.statut==='atteinte').length;
+  el.innerHTML=`
+    <div class="cd" style="margin-bottom:16px;padding:18px 20px">
+      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3)">Roadmap de lancement</div>
+      <div style="font-size:18px;font-weight:700;color:var(--t1);margin-top:3px">${esc(pole?.nom||'Pôle')} <span style="font-size:13px;font-weight:500;color:var(--t3)">${totalAtteintes}/${etapes.length} étapes atteintes</span></div>
+      <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden;margin-top:12px">
+        <div style="height:100%;width:${Math.round(totalAtteintes/etapes.length*100)}%;background:var(--gr);border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)"></div>
+      </div>
+    </div>
+    ${phasesOrdre.filter(ph=>byPhase[ph]&&byPhase[ph].length).map(ph=>{
+      const items=byPhase[ph];
+      const phInfo=POLE_ROADMAP_PHASES[ph]||{lb:ph,ic:''};
+      const phAtteintes=items.filter(e=>e.statut==='atteinte').length;
+      return `<div class="cd" style="margin-bottom:14px">
+        <div class="cd-h"><div class="cd-t">${phInfo.ic} ${esc(phInfo.lb)}</div><span class="bd bb">${phAtteintes}/${items.length}</span></div>
+        <div>${items.map(e=>{
+          const st=POLE_ETAPE_STATUT[e.statut]||POLE_ETAPE_STATUT.a_venir;
+          const estAuto=e.validation==='auto';
+          const clic=!estAuto?` onclick="togglePoleEtapeManuel('${e.id}','${e.statut}')" style="cursor:pointer"`:'';
+          return `<div${clic} style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--bd)">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(e.libelle)}</div>
+              ${e.description?`<div style="font-size:11.5px;color:var(--t3);margin-top:2px">${esc(e.description)}</div>`:''}
+              ${estAuto&&e.seuil!=null?`<div style="font-size:10.5px;color:var(--t3);margin-top:3px">Calculé automatiquement — seuil : ${e.seuil}</div>`:''}
+            </div>
+            <span class="bd ${st.cls}">${st.lb}</span>
+            ${!estAuto?`<span style="font-size:10px;color:var(--t3);flex-shrink:0" title="Étape manuelle — cliquer pour changer le statut">✏️</span>`:''}
+          </div>`;
+        }).join('')}</div>
+      </div>`;
+    }).join('')}`;
+}
+
+// Seuils d'alerte automatiques par pôle (§2 du Lot 8). V1 : objet JS isolé et documenté ici
+// pour être rendu éditable en base plus tard (une table pole_paliers_config) — non prioritaire
+// ce soir face aux alertes fonctionnelles elles-mêmes, cf. cahier des charges.
+const _PALIERS_POLE_CFG=[
+  {code:'2_contrats_remuneration',metrique:'contrats_recurrents_actifs',seuil:2,
+    titre:'Palier de rémunération atteint',
+    msg:'2 contrats récurrents actifs sur {POLE} — le palier de rémunération 300€+15% est franchi (calcul détaillé du montant : module Finance/rémunération).',
+    destinataires:['admin','responsable'],priorite:'haute'},
+  {code:'5_clubs_secretaire',metrique:'clubs_recurrents_actifs',seuil:5,
+    titre:'Recrutement secrétaire à envisager',
+    msg:'5 clubs sous contrat récurrent sur {POLE} — le volume administratif justifie d’envisager le recrutement d’une secrétaire dédiée à ce pôle.',
+    destinataires:['admin','responsable'],priorite:'haute'},
+  {code:'5_photographes_resp_prod',metrique:'operateurs_actifs',seuil:5,
+    titre:'Responsable Production à envisager',
+    msg:'5 photographes/vidéastes actifs sur {POLE} — envisagez la création d’un poste de Responsable Production dédié à ce pôle.',
+    destinataires:['admin','responsable'],priorite:'haute'},
+  // Pas de "responsable" en destinataire : seuil de revue stratégique, action Direction
+  // uniquement selon le cahier des charges ("pas d'automatisme au-delà").
+  {code:'10_contrats_revue_strategique',metrique:'contrats_recurrents_actifs',seuil:10,
+    titre:'Revue stratégique et rémunération requise',
+    msg:'10 contrats récurrents actifs sur {POLE} — une revue stratégique et rémunération est nécessaire.',
+    destinataires:['admin'],priorite:'urgente'},
+];
+
+// Calcule les métriques réelles du pôle et notifie (une seule fois par palier — table
+// pole_paliers_franchis, idempotence via on_conflict=ignore-duplicates) tout seuil
+// nouvellement franchi. Appelée depuis loadAdminDash() (tous les pôles, à chaque ouverture
+// du dashboard Admin) et loadPoleRoadmapData() (le pôle actif, pour couvrir l'ouverture
+// directe par le Responsable). Limite assumée : pas de vérification en continu si personne
+// n'ouvre l'app (documenté aussi dans migration-poles-v6-roadmap-basket.sql).
+async function verifierPaliersPole(poleId,metriquesDejaCalculees){
+  if(!poleId)return;
+  const m=metriquesDejaCalculees||await getPoleMetriques(poleId);
+  const pole=(S.allPoles||[]).find(p=>p.id===poleId);
+  const poleNom=pole?.nom||'ce pôle';
+  for(const cfg of _PALIERS_POLE_CFG){
+    const val=m[cfg.metrique]||0;
+    if(val<cfg.seuil)continue;
+    let inserted;
+    try{
+      inserted=await sbFetch('pole_paliers_franchis?on_conflict=pole_id,palier_code',{
+        method:'POST',
+        headers:{'Prefer':'resolution=ignore-duplicates,return=representation'},
+        body:{pole_id:poleId,palier_code:cfg.code},
+      });
+    }catch(e){continue;}
+    if(!Array.isArray(inserted)||!inserted.length)continue; // déjà franchi et notifié précédemment
+    const destUids=new Set();
+    if(cfg.destinataires.includes('admin')){
+      const admins=await sbFetch('profiles?select=id&role=eq.admin').catch(()=>[]);
+      (admins||[]).forEach(a=>destUids.add(a.id));
+    }
+    if(cfg.destinataires.includes('responsable')){
+      const resp=await sbFetch('pole_affectations?select=user_id&pole_id=eq.'+poleId+'&role_pole=eq.responsable&actif=eq.true').catch(()=>[]);
+      (resp||[]).forEach(r=>destUids.add(r.user_id));
+    }
+    for(const destId of destUids){
+      await creerNotifSiActive(destId,'taches',{
+        type:'palier_pole',
+        titre:cfg.titre+' — '+poleNom,
+        message:cfg.msg.replace('{POLE}',poleNom),
+        lue:false,
+        priorite:cfg.priorite||'normale',
+      });
+    }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -27952,6 +28181,18 @@ function _navForRole(role){
     const iContenus=nav.findIndex(n=>n.id==='contenus');
     if(iContenus!==-1)nav.splice(iContenus+1,0,{id:'analytics',lb:'Performances',ic:'fin'});
   }
+  // Roadmap pôle (Lot 8, 31/08/2026) : visible pour l'admin (toutes les roadmaps, sélection
+  // via S.activePoleId — le sélecteur de pôle de la barre latérale) et pour tout profil
+  // Responsable d'au moins un pôle (S.polesResponsable), quel que soit son rôle FONCTIONNEL —
+  // le rôle pôle (pole_affectations.role_pole) est orthogonal au rôle métier ROLES/NAV (un
+  // Responsable de pôle peut être admin, prod, photo... voir commentaire ligne ~27646). Insérée
+  // ici (au rendu) plutôt que dans NAV statique car S.polesResponsable n'est connu qu'après
+  // connexion, même patron que la couche pilotage CM ci-dessus.
+  if(role==='admin'||(S.polesResponsable&&S.polesResponsable.length)){
+    nav=[...nav];
+    const iDash2=nav.findIndex(n=>n.id==='dash');
+    nav.splice(iDash2!==-1?iDash2+1:0,0,{id:'poleroadmap',lb:'Roadmap pôle',ic:'target'});
+  }
   return nav;
 }
 // ── Barre latérale : sections dépliables ──────────────────────────────────
@@ -29085,7 +29326,10 @@ function switchView(id){
 function renderContent(){
   const key=`${S.role}.${S.view}`;
   const ct=document.getElementById('app-ct');
-  ct.innerHTML=(VIEWS[key]||(()=>fallbackView(S.role,S.view)))();
+  // Roadmap pôle (Lot 8) : écran commun à tous les rôles (un Responsable de pôle peut avoir
+  // n'importe quel rôle fonctionnel), rendu indépendamment de VIEWS[key] plutôt que dupliqué
+  // dans l'entrée VIEWS de chaque rôle — voir _navForRole() pour la même logique côté nav.
+  ct.innerHTML=S.view==='poleroadmap'?renderPoleRoadmapShell():(VIEWS[key]||(()=>fallbackView(S.role,S.view)))();
   if(document.getElementById('mc'))finBars('mc',80);
   if(document.getElementById('fc'))finBars('fc',140);
   loadViewData(S.role,S.view);
