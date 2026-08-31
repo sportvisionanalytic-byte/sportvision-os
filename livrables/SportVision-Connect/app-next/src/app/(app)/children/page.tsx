@@ -76,6 +76,19 @@ export default function ChildrenPage() {
 
   if (!canAccess(ctx, "children")) return <LockedModule />;
 
+  // "children" est READY (READY_MODULES) sans clé connect_modules dédiée (entitlements.ts) —
+  // canAccess() le laisse donc ouvert à TOUT type d'organisation, pas seulement "parent" (seul
+  // espace pour qui ce module a un sens réel, cf. header du fichier). Trouvé lors de l'audit
+  // complet du 31/08/2026 : un club/coach/académie... qui atteint /children (lien direct, ancien
+  // favori, historique navigateur) fetchConfirmedChildren() avec SON PROPRE organization_id —
+  // RLS renvoie honnêtement 0 ligne (aucune fuite), mais l'écran affichait "Aucun enfant associé
+  // à votre espace" comme si ce module le concernait vraiment. Même garde que team-requests/
+  // page.tsx pour un type hors périmètre (§ "Ce module ne concerne pas cet espace"), posée avant
+  // le chargement pour ne montrer ni ce message ni un "Chargement…" trompeur.
+  if (ctx.organization.type !== "parent") {
+    return <Card className="p-8 text-center text-[13.5px] text-text-soft">Ce module ne concerne pas cet espace.</Card>;
+  }
+
   if (loadError) {
     return (
       <Card className="p-8 text-center text-[13.5px] font-semibold text-danger-fg">

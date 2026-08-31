@@ -21,10 +21,29 @@ import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 // pour l'espace Parent/Joueur — un admin de club qui y accède directement, par exemple depuis un
 // lien partagé, ne doit pas voir le slug d'URL brut en titre). resolveNavigation() ne peut pas
 // leur trouver de libellé pour l'espace actif : ce petit repli couvre ces cas précis.
+// "/presences" (audit complet Organisation/Équipe/Utilisateurs, 31/08/2026) : le module est gated
+// par organization_entitlements (canAccess, permissions.ts), pas par le plan Full Communication
+// directement — un club peut donc avoir l'entitlement "presences" actif sans que /presences fasse
+// partie de la navigation résolue pour son plan actuel (resolveNavigation ne l'ajoute qu'en Full
+// Communication), par exemple juste après l'activation manuelle du module par le staff, avant que
+// le contrat Full Communication ne soit relié. Reproduit en réel : la page se charge et fonctionne
+// (RLS + entitlement l'autorisent), seul ce titre d'en-tête retombait sur le slug d'URL brut
+// "presences" en minuscules faute d'entrée dans ce repli, contrairement à toutes les autres pages.
+// "/users" et "/team-requests" (même audit, 31/08/2026) : les deux pages posent déjà leur propre
+// garde-fou de contenu pour un type d'organisation hors périmètre (LockedModule pour users/
+// page.tsx — "users" hors READY_MODULES, verrouillé pour tout le monde tant que club_members
+// n'est pas branché pour ce type ; "Ce module ne concerne pas cet espace" pour team-requests/
+// page.tsx), mais aucune des deux n'apparaît dans la navigation résolue pour un tel espace : même
+// repli sur le slug d'URL brut que /presences. Libellé repris de navigation.ts (item("users",
+// "Membres & accès", ...), constant partout) ; "Affiliations" pour team-requests, le libellé le
+// plus générique parmi ses variantes par type d'organisation (Bible/navigation.ts).
 const TITLE_FALLBACKS: Record<string, string> = {
   "/notifications": "Notifications",
   "/children": "Profils associés",
   "/authorizations": "Autorisations",
+  "/presences": "Présences",
+  "/users": "Membres & accès",
+  "/team-requests": "Affiliations",
 };
 
 interface HeaderProps {

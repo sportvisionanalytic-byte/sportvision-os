@@ -81,17 +81,21 @@ export default function ProfileSettingsPage() {
 
   return (
     <div className="flex max-w-2xl flex-col gap-5">
+      {/* "Changer la photo" retiré (audit complet du 31/08/2026, même principe que la double
+          authentification plus bas sur cet écran, cf. brief Fouka § "évite toutes les mentions
+          bientôt disponible dans la V1") : aucun bucket Storage ni colonne avatar_url pour un
+          utilisateur (contrairement au logo du club, voir data/club/organization.ts) — ce bouton
+          n'avait jamais eu de onClick, un clic ne faisait donc littéralement rien. Trouvé en
+          cliquant réellement dessus en Playwright. L'avatar (initiales) reste affiché, juste plus
+          présenté comme modifiable. */}
       <Card className="flex items-center gap-4 p-5">
         <span className="flex h-16 w-16 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-violet to-brand-blue-electric text-[20px] font-extrabold text-white">
           {initials || <UserIcon className="h-6 w-6" aria-hidden />}
         </span>
         <div>
           <div className="text-[14px] font-extrabold">Photo de profil</div>
-          <div className="text-[12px] text-text-soft">JPG ou PNG, 2 Mo maximum.</div>
+          <div className="text-[12px] text-text-soft">Initiales générées automatiquement à partir de votre nom.</div>
         </div>
-        <Button variant="secondary" className="ml-auto h-9 px-3.5 text-[12.5px]">
-          Changer la photo
-        </Button>
       </Card>
 
       <Card className="flex flex-col gap-4 p-5">
