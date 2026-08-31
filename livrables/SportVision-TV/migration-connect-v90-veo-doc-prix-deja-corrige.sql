@@ -1,0 +1,25 @@
+-- ============================================================
+-- SPORTVISION CONNECT (personnel) — Migration v90 (documentation seule, aucun UPDATE)
+-- Match filmé caméra Veo / Combo Veo + Photo : trace la correction déjà appliquée en
+-- base, non documentée par une migration au moment où elle a été faite.
+--
+-- Contexte (31/08/2026, audit de cohérence inter-systèmes) : migration-portail-v13.sql
+-- avait inséré ces deux offres à prix_ht = 91.67 (→ 110€ TTC) et 141.67 (→ 170€ TTC),
+-- avec duree_estimee = '72h' — alors que la vitrine publique (pricing-config.js) affiche
+-- depuis longtemps 120€ TTC / 180€ TTC et un délai de 24h max (CGV Art. 22, cohérent
+-- partout ailleurs sur le site).
+--
+-- Vérification en direct sur catalogue_offres (lulgezzpvrlbftbykzrc) le 31/08/2026 :
+-- les deux offres sont AUJOURD'HUI à prix_ht = 100.00 / 150.00 (→ 120€/180€ TTC,
+-- cohérent avec la vitrine) et duree_estimee = '24h' (cohérent avec les CGV). La
+-- correction a donc déjà été appliquée en production, probablement à la main via le
+-- dashboard Supabase (aucune migration .sql du dépôt ne référence 100.00/150.00 pour
+-- ces deux slugs) — cette migration ne fait qu'enregistrer l'état actuel dans
+-- l'historique versionné, pour que la convention "documenter le changement a
+-- posteriori" reste respectée et que le prochain audit ne re-signale pas un problème
+-- déjà réglé faute de trace écrite.
+--
+-- Aucune action nécessaire : ce fichier ne contient volontairement aucun UPDATE.
+-- ============================================================
+
+-- (documentation uniquement — voir commentaire ci-dessus)
