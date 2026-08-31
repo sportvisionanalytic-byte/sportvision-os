@@ -1066,19 +1066,10 @@ const NAV={
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
-  // Secrétaire générale / RH (migration-poles-v14, 31/08/2026, séparation collaborateurs par
-  // pôle) : accès staff/HR transversal à TOUS les pôles (RLS is_admin_or_rh()), mais aucun accès
-  // client/prestation/finance cross-pôle — pole_scope_ok()/pole_finance_access_ok() restent
-  // admin-only, inchangées. Nav volontairement réduite à Équipe & RH + Recrutement.
-  rh:[
-    {type:'sep',lb:'Équipe & RH'},
-    {id:'equipeoverview',lb:"Vue d'ensemble",ic:'dash'},
-    {id:'equipehub',lb:'Collaborateurs',ic:'col'},
-    {id:'recrutement',lb:'Recrutement',ic:'col'},
-    {type:'sep',lb:'Ressources'},
-    {id:'centre',lb:'Centre SportVision',ic:'help'},
-    {id:'set',lb:'Paramètres',ic:'set'},
-  ],
+  // Secrétaire générale / RH : composée juste après la fermeture de NAV (voir plus bas,
+  // "NAV.rh = NAV.sec + Équipe & RH") — placeholder ici pour réserver la clé, jamais utilisé tel
+  // quel (goApp()/renderSidebarNav() lisent NAV.rh, écrasé avant le premier rendu).
+  rh:[],
   // Espace lecture seule (Lot 0 Finance & Comptabilité) : l'expert-comptable et
   // l'auditeur consultent les mêmes écrans que compta, RLS empêche toute
   // écriture (policies "..._manage" limitées à admin/compta) — les boutons de
@@ -1128,6 +1119,19 @@ const NAV={
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
 };
+
+// NAV.rh = NAV.sec transversal (migration-poles-v17/v18, 31/08/2026) : Fouka précise que la
+// Secrétaire générale / RH doit voir/gérer prestations, clients, devis, contrats, factures...
+// sur TOUS les pôles, exactement comme 'sec' le fait déjà sur son propre pôle — donc même nav
+// que 'sec' (clonée, pas partagée par référence : Équipe & RH n'existe que côté rh), plus les
+// écrans Équipe & RH/Recrutement (déjà dans NAV.sec pour 'recrutement', ajoutés ici pour
+// équipe/collaborateurs). Toute future évolution de NAV.sec profite automatiquement à NAV.rh.
+NAV.rh=[
+  ...NAV.sec.map(i=>({...i})),
+  {type:'sep',lb:'Équipe & RH'},
+  {id:'equipeoverview',lb:"Vue d'ensemble",ic:'dash'},
+  {id:'equipehub',lb:'Collaborateurs',ic:'col'},
+];
 
 // ── Regroupement menu Finances (22/08, simplification demandée par Fouka ; retravaillé
 // 28/08 lors de la refonte Finance) ──
@@ -4802,11 +4806,14 @@ async function creerCollaborateur(){
 async function loadViewData(role,view){
   // Roadmap pôle (Lot 8) : indépendant du rôle fonctionnel, voir renderContent().
   if(view==='poleroadmap'){await loadPoleRoadmapData();return;}
-  if((role==='admin'||role==='sec'||role==='prod')&&view==='pre') await loadPrestations();
-  if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
-  if((role==='admin'||role==='sec')&&view==='crmfullcom') await loadCrmFullCom();
-  if((role==='admin'||role==='sec')&&view==='crmclubplus') await loadCrmClubPlus();
-  if((role==='admin'||role==='sec')&&view==='connectcomptes') await loadConnectComptes();
+  // 'rh' (migration-poles-v17/v18, 31/08/2026) : Secrétaire générale, mêmes écrans que 'sec'
+  // mais transversal à tous les pôles (RLS pole_scope_ok bypass) — voir NAV.rh (composé depuis
+  // NAV.sec) pour la liste complète des vues concernées.
+  if((role==='admin'||role==='sec'||role==='rh'||role==='prod')&&view==='pre') await loadPrestations();
+  if((role==='admin'||role==='sec'||role==='rh'||role==='com')&&view==='crm') await loadClients();
+  if((role==='admin'||role==='sec'||role==='rh')&&view==='crmfullcom') await loadCrmFullCom();
+  if((role==='admin'||role==='sec'||role==='rh')&&view==='crmclubplus') await loadCrmClubPlus();
+  if((role==='admin'||role==='sec'||role==='rh')&&view==='connectcomptes') await loadConnectComptes();
   if(role==='admin'&&view==='prodhub') await loadProdHub();
   if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
   if(role==='admin'&&view==='commhub') await loadCommHub();
@@ -4837,16 +4844,16 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='pre') await loadPhotoMesPrestations();
   if(role==='photo'&&view==='planning'){_photoPlanOffset=0;await loadPhotoPlan();}
   if(role==='photo'&&view==='jourj') await loadJourJ();
-  if(role==='sec'&&view==='dash') await loadSecDash();
-  if(role==='sec'&&view==='demandes') await loadSecDemandes();
-  if(['admin','sec'].includes(role)&&view==='reservationsclubs'){await loadClubBookings();_rtCbkEnsure();}
-  if(['admin','sec','compta'].includes(role)&&view==='cotisations') await loadCotisations();
-  if(role==='sec'&&view==='relances') await loadSecRelances();
-  if(role==='sec'&&view==='contrats') await loadSecContrats();
-  if(role==='sec'&&view==='abonnements') await loadSecAbonnements();
-  if(role==='sec'&&view==='livraisons') await loadSecLivraisons();
+  if((role==='sec'||role==='rh')&&view==='dash') await loadSecDash();
+  if((role==='sec'||role==='rh')&&view==='demandes') await loadSecDemandes();
+  if(['admin','sec','rh'].includes(role)&&view==='reservationsclubs'){await loadClubBookings();_rtCbkEnsure();}
+  if(['admin','sec','rh','compta'].includes(role)&&view==='cotisations') await loadCotisations();
+  if((role==='sec'||role==='rh')&&view==='relances') await loadSecRelances();
+  if((role==='sec'||role==='rh')&&view==='contrats') await loadSecContrats();
+  if((role==='sec'||role==='rh')&&view==='abonnements') await loadSecAbonnements();
+  if((role==='sec'||role==='rh')&&view==='livraisons') await loadSecLivraisons();
   if(role==='sec'&&view==='rapports'){_secRapDate=new Date();await loadSecRapports();}
-  if(role==='sec'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
+  if((role==='sec'||role==='rh')&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='admin'&&view==='fin') await loadFinances();
   if(role==='admin'&&view==='finrevenus') await loadFinRevenus();
   if(role==='admin'&&view==='findepenses') await loadFinDepenses();
@@ -4905,7 +4912,7 @@ async function loadViewData(role,view){
   if(role==='com'&&view==='prospects') await loadComProspects();
   if(role==='com'&&view==='agenda') await loadComAgenda();
   if(role==='com'&&view==='mesclients') await loadComMesClients();
-  if(['com','admin','sec'].includes(role)&&view==='devis') await loadDevis();
+  if(['com','admin','sec','rh'].includes(role)&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
   if(role==='cm'&&view==='demandes'){await loadCmDemandes();await loadCmClubContentSubmissions();}
   if(role==='cm'&&view==='briefs') await loadCmBriefs();
@@ -4931,14 +4938,14 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='prod'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='cm'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
-  if(role==='sec'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
+  if((role==='sec'||role==='rh')&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='com'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
-  if(['prod','admin','sec','photo','cm','compta','com'].includes(role)&&view==='msg') await loadMsg();
+  if(['prod','admin','sec','rh','photo','cm','compta','com'].includes(role)&&view==='msg') await loadMsg();
   if(['admin','compta'].includes(role)&&view==='paiements') await loadPaiements();
-  if(role==='sec'&&view==='taches') await loadTaches();
-  if((['admin','compta','expert_comptable'].includes(role)&&view==='documents')||((role==='sec'||role==='admin'||_isComptaLike)&&view==='docs')) await loadDocuments(role);
-  if(role==='sec'&&view==='agendasec') await loadAgendaSec();
-  if((role==='sec'||role==='admin')&&view==='docrh') await loadDocRh();
+  if((role==='sec'||role==='rh')&&view==='taches') await loadTaches();
+  if((['admin','compta','expert_comptable'].includes(role)&&view==='documents')||((role==='sec'||role==='rh'||role==='admin'||_isComptaLike)&&view==='docs')) await loadDocuments(role);
+  if((role==='sec'||role==='rh')&&view==='agendasec') await loadAgendaSec();
+  if((role==='sec'||role==='rh'||role==='admin')&&view==='docrh') await loadDocRh();
   if(_isComptaLike&&view==='rapprochement') await loadRapprochementBancaire();
   if(view==='set') await loadSettings();
   if(role==='admin'&&view==='rapport'){_rapportOffset=0;await loadRapport();}
@@ -29403,12 +29410,12 @@ VIEWS['expert_comptable.fec']=VIEWS['compta.fec'];
 const _svp_origLoadViewData=loadViewData;
 loadViewData=async function(role,view){
   await _svp_origLoadViewData(role,view);
-  if((role==='admin'||role==='sec')&&view==='msgclients') await loadMsgClients();
-  if((role==='admin'||role==='sec')&&view==='rdvclients') await loadRdvClients();
-  if((role==='admin'||role==='sec')&&view==='catalogue') await loadCatalogueOffres();
+  if((role==='admin'||role==='sec'||role==='rh')&&view==='msgclients') await loadMsgClients();
+  if((role==='admin'||role==='sec'||role==='rh')&&view==='rdvclients') await loadRdvClients();
+  if((role==='admin'||role==='sec'||role==='rh')&&view==='catalogue') await loadCatalogueOffres();
   if(role==='admin'&&view==='realisations') await loadRealisations();
   if(role==='admin'&&view==='comptesportail') await loadComptesPortail();
-  if(['admin','sec','com'].includes(role)&&view==='avisclients') await loadAvisClients();
+  if(['admin','sec','rh','com'].includes(role)&&view==='avisclients') await loadAvisClients();
   if(role==='cm'&&view==='msgclients') await loadMsgClients();
 };
 
@@ -29840,7 +29847,12 @@ function renderContent(){
   // Roadmap pôle (Lot 8) : écran commun à tous les rôles (un Responsable de pôle peut avoir
   // n'importe quel rôle fonctionnel), rendu indépendamment de VIEWS[key] plutôt que dupliqué
   // dans l'entrée VIEWS de chaque rôle — voir _navForRole() pour la même logique côté nav.
-  ct.innerHTML=S.view==='poleroadmap'?renderPoleRoadmapShell():(VIEWS[key]||(()=>fallbackView(S.role,S.view)))();
+  // Repli rh->sec (migration-poles-v17/v18, 31/08/2026) : NAV.rh est composé depuis NAV.sec
+  // (RH = secrétaire transversale à tous les pôles) ; plutôt que dupliquer chaque template
+  // VIEWS['sec.*'] sous une clé 'rh.*', on retombe directement sur le template sec quand
+  // aucune clé 'rh.*' dédiée n'existe (contenu déjà générique, alimenté par loadViewData()).
+  const tpl=VIEWS[key]||(S.role==='rh'?VIEWS['sec.'+S.view]:null);
+  ct.innerHTML=S.view==='poleroadmap'?renderPoleRoadmapShell():(tpl||(()=>fallbackView(S.role,S.view)))();
   if(document.getElementById('mc'))finBars('mc',80);
   if(document.getElementById('fc'))finBars('fc',140);
   loadViewData(S.role,S.view);
@@ -29897,7 +29909,7 @@ const VIEW_CTA={
 
 function updateCta(){
   const key=`${S.role}.${S.view}`;
-  const cfg=VIEW_CTA[key];
+  const cfg=VIEW_CTA[key]||(S.role==='rh'?VIEW_CTA['sec.'+S.view]:null);
   const btn=document.getElementById('cta-btn');
   if(!btn)return;
   if(cfg){btn.textContent=cfg.t;btn.style.display='';}
@@ -29906,7 +29918,7 @@ function updateCta(){
 
 function ctaAction(){
   const key=`${S.role}.${S.view}`;
-  const cfg=VIEW_CTA[key];
+  const cfg=VIEW_CTA[key]||(S.role==='rh'?VIEW_CTA['sec.'+S.view]:null);
   if(cfg&&window[cfg.fn]) window[cfg.fn]();
 }
 
