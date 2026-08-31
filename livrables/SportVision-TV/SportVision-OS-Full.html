@@ -1342,6 +1342,11 @@ const VIEWS={
         <select id="cg-f-type" class="fi" style="max-width:170px" onchange="applyCalGlobalFilters()"><option value="">Tous les types</option></select>
         <select id="cg-f-dept" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous les départements</option></select>
         <select id="cg-f-statut" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous statuts</option></select>
+        ${(S.allPoles&&S.allPoles.length>1)?`<select id="cg-f-pole" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()">
+          <option value="">Tous pôles</option>
+          <option value="general">Général</option>
+          ${S.allPoles.map(p=>`<option value="${p.id}">${esc(p.nom)}</option>`).join('')}
+        </select>`:''}
         <select id="cg-f-sport" class="fi" style="max-width:150px" onchange="applyCalGlobalFilters()"><option value="">Tous sports</option></select>
         <select id="cg-f-collab" class="fi" style="max-width:180px" onchange="applyCalGlobalFilters()"><option value="">Tous les collaborateurs</option></select>
         <span style="font-size:11px;color:var(--t3);margin-left:auto" id="cg-f-count"></span>
@@ -1666,6 +1671,12 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterFinDepensesCat('sous_traitance')" id="findepc-f-sous_traitance">Sous-traitance</button>
       <button class="btn bg2 bs" onclick="filterFinDepensesCat('autre')" id="findepc-f-autre">Autres</button>
     </div>
+    ${(S.allPoles&&S.allPoles.length>1)?`<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Pôle</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterFinDepensesPole('all')" id="findepp-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
+      <button class="btn bg2 bs" onclick="filterFinDepensesPole('general')" id="findepp-f-general">Général</button>
+      ${S.allPoles.map(p=>`<button class="btn bg2 bs" onclick="filterFinDepensesPole('${p.id}')" id="findepp-f-${p.id}">${esc(p.nom)}</button>`).join('')}
+    </div>`:''}
     <div id="findepenses-real">${_finSkelRows(6,44)}</div>`,
 
   'admin.finequipe':()=>`
@@ -4821,7 +4832,11 @@ async function loadViewData(role,view){
   if(['admin','rh'].includes(role)&&view==='equipehub') await loadCollaborateurs();
   if(['admin','sec','rh'].includes(role)&&view==='recrutement') await loadRecrutement();
   if(role==='admin'&&view==='form'){await loadAdminForm();}
-  if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';window._kitsPoleF='Tous';await loadKits();}
+  // _kitsPoleF initialisé depuis S.activePoleId (audit v21, 31/08/2026) : avant, ce filtre était
+  // 100% manuel et indépendant du sélecteur de pôle sidebar — changer de pôle actif n'avait
+  // aucun effet sur cet écran (Fouka le repère ailleurs, mais même cause). Reste ajustable
+  // ensuite via _kitsPoleFilterBar(), 'commun' n'étant jamais le défaut auto-sélectionné.
+  if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';window._kitsPoleF=S.activePoleId||'Tous';await loadKits();}
   if(role==='admin'&&view==='dash') await loadAdminDash();
   if(role==='admin'&&view==='atraiter') await loadATraiter();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
@@ -5010,7 +5025,11 @@ async function loadPrestations(){
     // qui lit _prestationsCache) affichait donc une fiche sans le bloc "Transmis par le
     // client"/"Offre du catalogue Connect" même quand ces données existaient réellement en
     // base, simplement parce que cette requête-ci ne les demandait pas.
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,source,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,options_selectionnees,mode_paiement_choisi,distance_km,frais_deplacement_ht,offre_id,catalogue_offres(nom,categorie,description,tarif_type,prix_ht,duree_estimee,livrables_inclus),clients(nom)&order=date_prestation.desc&limit=200');
+    // Filtre par pôle actif (audit v21, 31/08/2026) : écran Prestations principal, jamais
+    // touché par les correctifs précédents (seul le widget dashboard l'était).
+    const _preRole=localStorage.getItem('sv_role');
+    const _prePoleQS=(S.activePoleId&&(_preRole==='admin'||_preRole==='rh'))?'&pole_id=eq.'+S.activePoleId:'';
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,source,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,options_selectionnees,mode_paiement_choisi,distance_km,frais_deplacement_ht,offre_id,catalogue_offres(nom,categorie,description,tarif_type,prix_ht,duree_estimee,livrables_inclus),clients(nom)&order=date_prestation.desc&limit=200'+_prePoleQS);
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div>Aucune prestation. Créez la première.</div></div>';return;}
     _prestationsCache=data;
     // Badge "PRÊTE" (spec refonte Responsable Production §23) : réservé au
@@ -5413,7 +5432,10 @@ async function loadClients(){
   const el=document.getElementById('crm-real');
   if(!el)return;
   try{
-    const data=await sbFetch('clients?select=id,nom,statut,statut_relation,etape_pipeline,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect,cm_id,contrats(type_contrat,statut,created_at)&order=created_at.desc&limit=100');
+    // Filtre par pôle actif (audit v21, 31/08/2026) : écran CRM principal, jamais touché.
+    const _cliRole=localStorage.getItem('sv_role');
+    const _cliPoleQS=(S.activePoleId&&(_cliRole==='admin'||_cliRole==='rh'))?'&pole_id=eq.'+S.activePoleId:'';
+    const data=await sbFetch('clients?select=id,nom,statut,statut_relation,etape_pipeline,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect,cm_id,contrats(type_contrat,statut,created_at)&order=created_at.desc&limit=100'+_cliPoleQS);
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun client. Créez le premier prospect.</div></div>';return;}
     _clientsCache=data;
     renderClientsTable();
@@ -5534,7 +5556,10 @@ async function loadCrmFullCom(){
     // code_postal, notes...) : ouvrir la fiche depuis CE module (sans jamais être passé par le
     // CRM générique auparavant) ne doit jamais afficher des champs vides pour des données qui
     // existent réellement, au risque de les écraser silencieusement à l'enregistrement.
-    const data=await sbFetch('clients?select=id,nom,statut,statut_relation,etape_pipeline,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect,logo_url,division,adresse,code_postal,cm_id,contrats(id,type_contrat,statut,created_at)&order=created_at.desc&limit=300');
+    // Filtre par pôle actif (audit v21, 31/08/2026), même pattern que loadClients().
+    const _fcRole=localStorage.getItem('sv_role');
+    const _fcPoleQS=(S.activePoleId&&(_fcRole==='admin'||_fcRole==='rh'))?'&pole_id=eq.'+S.activePoleId:'';
+    const data=await sbFetch('clients?select=id,nom,statut,statut_relation,etape_pipeline,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect,logo_url,division,adresse,code_postal,cm_id,contrats(id,type_contrat,statut,created_at)&order=created_at.desc&limit=300'+_fcPoleQS);
     if(sbErr(data)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
     _fullComCache=(Array.isArray(data)?data:[]).filter(c=>_offreDuClient(c)==='full_communication');
     if(!_fullComCache.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📡</div><div>Aucun client Full Communication pour le moment.</div></div>';return;}
@@ -7302,21 +7327,30 @@ async function loadEquipeOverview(){
   if(!el)return;
   el.innerHTML=_adminEqSkel(3);
   try{
-    // Filtre par pôle actif (migration-poles-v14+, 31/08/2026) : cf. commentaire détaillé dans
-    // loadCollaborateurs() — admin bypasse la RLS pole_scope_ok par design, donc sans ce filtre
-    // client le sélecteur de pôle n'avait aucun effet ici.
+    // Filtre par pôle actif (migration-poles-v14+, étendu v21 le 31/08/2026) : admin ET rh
+    // bypassent la RLS pole_scope_ok par design, donc sans ce filtre client le sélecteur de
+    // pôle n'avait aucun effet ici. rh ajouté (audit v21) : le correctif précédent ne couvrait
+    // que 'admin', alors que rh accède aussi à cet écran (voir loadViewData, view==='equipeoverview').
     const _eqovRole=localStorage.getItem('sv_role');
-    const _eqovPoleSelect=(S.activePoleId&&_eqovRole==='admin')?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
-    const _eqovPoleQS=(S.activePoleId&&_eqovRole==='admin')?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
+    const _eqovHasGlobal=_eqovRole==='admin'||_eqovRole==='rh';
+    const _eqovPoleSelect=(S.activePoleId&&_eqovHasGlobal)?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+    const _eqovPoleQS=(S.activePoleId&&_eqovHasGlobal)?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
     const [profRaw,candRaw,recoRaw,inscrRaw]=await Promise.all([
       sbFetch('profiles?select=id,prenom,nom,role,actif,onboarding_started_at'+_eqovPoleSelect+_eqovPoleQS).catch(()=>[]),
+      // recruitment_applications n'a pas de notion de pôle en base (audit v21) : reste non filtré,
+      // décision produit à trancher séparément (hors correctif mécanique).
       sbFetch('recruitment_applications?select=id&statut=in.(nouveau,a_appeler,entretien)').catch(()=>[]),
       sbFetch('grade_recommendations?select=id,collaborateur_id,grade_actuel,grade_propose&statut=eq.en_attente').catch(()=>[]),
       sbFetch('formation_inscriptions?select=collaborateur_id,formation_id,statut').catch(()=>[]),
     ]);
     const profiles=Array.isArray(profRaw)?profRaw:[];
+    const profileIds=new Set(profiles.map(p=>p.id));
     const candidatures=Array.isArray(candRaw)?candRaw:[];
-    const recos=Array.isArray(recoRaw)?recoRaw:[];
+    // grade_recommendations n'a pas de pole_id propre : filtré côté client sur le set profiles
+    // déjà scopé par pôle (bug trouvé en audit v21 — sans ça, une recommandation hors pôle
+    // s'affichait quand même, avec un nom générique "Collaborateur" faute de correspondance, et
+    // ses boutons Valider/Refuser restaient actifs sur une fiche d'un autre pôle).
+    const recos=(Array.isArray(recoRaw)?recoRaw:[]).filter(r=>!S.activePoleId||!_eqovHasGlobal||profileIds.has(r.collaborateur_id));
     const inscriptions=Array.isArray(inscrRaw)?inscrRaw:[];
     const actifs=profiles.filter(p=>p.actif!==false);
     const onboarding=profiles.filter(p=>p.actif===false&&p.onboarding_started_at);
@@ -8310,16 +8344,21 @@ async function loadAdminDash(){
   const elNb=document.getElementById('dash-traiter-nb');
   if(elTraiter){
     const items=[];
+    // Filtre par pôle actif (audit v21, 31/08/2026) : ces 3 fetchs du widget "À traiter"
+    // n'avaient jamais reçu le poleQS déjà appliqué au reste de loadAdminDash().
+    const _traiterPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
     // Factures en retard
     try{
-      const enRetard=await sbFetch('prestations?select=id,reference,clients(nom)&statut_financier=eq.en_retard&limit=10');
+      const enRetard=await sbFetch('prestations?select=id,reference,clients(nom)&statut_financier=eq.en_retard&limit=10'+_traiterPoleQS);
       (enRetard||[]).forEach(p=>items.push({ic:'🔴',sev:'urgent',txt:`Facture en retard — ${esc(p.clients?.nom||p.reference||'?')}`,act:`modalDetailById('${p.id}')`}));
     }catch(e){}
     // Incidents ouverts
     if(incOuverts>0) items.push({ic:'⚠️',sev:'important',txt:`${incOuverts} incident${incOuverts>1?'s':''} ouvert${incOuverts>1?'s':''}`,act:`switchView('incidents')`});
-    // Devis arrivant à expiration
+    // Devis arrivant à expiration — devis n'a pas de pole_id propre, filtré via le client.
     try{
-      const devisExp=await sbFetch(`devis?select=id,numero,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&date_expiration=lte.${in7s}&order=date_expiration.asc&limit=5`);
+      const _devisPoleEmbed=S.activePoleId?'!inner':'';
+      const _devisPoleQS=S.activePoleId?'&clients.pole_id=eq.'+S.activePoleId:'';
+      const devisExp=await sbFetch(`devis?select=id,numero,date_expiration,clients${_devisPoleEmbed}(nom)&statut=in.(envoyé,en_attente)&date_expiration=lte.${in7s}${_devisPoleQS}&order=date_expiration.asc&limit=5`);
       (devisExp||[]).forEach(d=>{
         const exp=d.date_expiration?new Date(d.date_expiration).toLocaleDateString('fr-FR'):'?';
         const isExpired=d.date_expiration&&d.date_expiration<today;
@@ -8329,7 +8368,7 @@ async function loadAdminDash(){
     // Prestations confirmées cette semaine sans équipe (fenêtre 7 jours,
     // plus utile qu'un simple "aujourd'hui" — on veut anticiper, pas subir)
     try{
-      const sansEquipe=await sbFetch('prestations?select=id,reference,clients(nom)&statut=in.(confirmée,planifiée)&date_prestation=gte.'+today+'&date_prestation=lte.'+in7s+'&order=date_prestation.asc&limit=20');
+      const sansEquipe=await sbFetch('prestations?select=id,reference,clients(nom)&statut=in.(confirmée,planifiée)&date_prestation=gte.'+today+'&date_prestation=lte.'+in7s+_traiterPoleQS+'&order=date_prestation.asc&limit=20');
       if(sansEquipe&&sansEquipe.length){
         const equipeIds=await sbFetch('prestations_equipe_display?select=prestation_id');
         const withTeam=new Set((equipeIds||[]).map(e=>e.prestation_id));
@@ -8967,15 +9006,18 @@ async function loadProdHub(){
   const weekStart=ymdLocal(lun);
   const weekEnd=ymdLocal(dim);
 
+  // Filtre par pôle actif (audit v21, 31/08/2026) : hub Production admin, jamais touché.
+  const _phPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
   let allPre=[],semainePre=[],kits=[],inc=[],aValider=[];
   try{
     [allPre,semainePre,kits,inc,aValider]=await Promise.all([
-      sbFetch('prestations?select=id,statut&order=date_prestation.asc&limit=500'),
-      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(prenom,nom))&date_prestation=gte.'+weekStart+'&date_prestation=lte.'+weekEnd+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc,heure_debut.asc'),
+      sbFetch('prestations?select=id,statut&order=date_prestation.asc&limit=500'+_phPoleQS),
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(prenom,nom))&date_prestation=gte.'+weekStart+'&date_prestation=lte.'+weekEnd+'&statut=not.in.(annulée,refusée)'+_phPoleQS+'&order=date_prestation.asc,heure_debut.asc'),
       sbFetch('kits?select=id,nom,statut&order=nom.asc'),
-      sbFetch('incidents?select=id,type_incident,description,niveau,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
-      sbFetch('prestations?select=id,reference,type_prestation,date_prestation,clients(nom)&statut=eq.à_valider_production&order=date_prestation.asc').catch(()=>[]),
+      sbFetch('incidents?select=id,type_incident,description,niveau,prestation_id,created_at,prestations(reference,clients(nom),pole_id)&cloture=eq.false&order=created_at.desc&limit=8'),
+      sbFetch('prestations?select=id,reference,type_prestation,date_prestation,clients(nom)&statut=eq.à_valider_production'+_phPoleQS+'&order=date_prestation.asc').catch(()=>[]),
     ]);
+    if(S.activePoleId)inc=(Array.isArray(inc)?inc:[]).filter(i=>!i.prestation_id||i.prestations?.pole_id===S.activePoleId);
   }catch(e){}
 
   // À valider avant planification — "on valide, une fois validé le
@@ -9736,9 +9778,11 @@ async function loadProdMedias(){
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const all=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,date_expiration,transfert_confirme,prestation_id,is_media_bank,media_bank_sport,media_bank_category,ajouteur:profiles!ajouteur_id(prenom,nom),prestations(reference,clients(nom))&order=created_at.desc&limit=200').catch(()=>null);
+    const all=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,date_expiration,transfert_confirme,prestation_id,is_media_bank,media_bank_sport,media_bank_category,ajouteur:profiles!ajouteur_id(prenom,nom),prestations(reference,clients(nom),pole_id)&order=created_at.desc&limit=200').catch(()=>null);
     if(all===null){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">🔗</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Table media_liens requise</div><div style="font-size:12px;text-align:center;max-width:300px">Exécutez <span style="font-family:monospace;color:var(--acc)">migration-medias.sql</span> dans Supabase → SQL Editor pour activer ce module.</div></div>';return;}
-    _mediaLiens=Array.isArray(all)?all:[];
+    // Filtre par pôle actif (audit v21, 31/08/2026) : un média sans prestation (banque de
+    // médias générale) reste toujours visible.
+    _mediaLiens=(Array.isArray(all)?all:[]).filter(m=>!S.activePoleId||!m.prestation_id||m.prestations?.pole_id===S.activePoleId);
     const now=new Date();
     const in7=new Date(now.getTime()+7*864e5);
     const att=_mediaLiens.filter(l=>l.statut==='a_verifier'&&!l.transfert_confirme).length;
@@ -10583,9 +10627,10 @@ async function loadProdPostprod(){
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const raw=await sbFetch('media_postproductions?select=id,type_travail,statut,priorite,delai,validation_client_requise,created_at,prestations(id,reference,clients(nom)),responsable:profiles!responsable_id(prenom,nom)&statut=not.in.(archivee,annulee)&order=created_at.desc&limit=100').catch(()=>null);
+    const raw=await sbFetch('media_postproductions?select=id,type_travail,statut,priorite,delai,validation_client_requise,created_at,prestations(id,reference,clients(nom),pole_id),responsable:profiles!responsable_id(prenom,nom)&statut=not.in.(archivee,annulee)&order=created_at.desc&limit=100').catch(()=>null);
     if(raw===null){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">🎬</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Table media_postproductions requise</div><div style="font-size:12px;text-align:center;max-width:300px">Exécutez <span style="font-family:monospace;color:var(--acc)">migration-medias.sql</span> dans Supabase → SQL Editor.</div></div>';return;}
-    _prodPostprodData=Array.isArray(raw)?raw:[];
+    // Filtre par pôle actif (audit v21, 31/08/2026).
+    _prodPostprodData=(Array.isArray(raw)?raw:[]).filter(p=>!S.activePoleId||!p.prestations||p.prestations?.pole_id===S.activePoleId);
     s('pp-kpi-att',_prodPostprodData.filter(p=>p.statut==='a_attribuer').length);
     s('pp-kpi-enc',_prodPostprodData.filter(p=>['en_cours','attribuee','a_commencer'].includes(p.statut)).length);
     s('pp-kpi-cor',_prodPostprodData.filter(p=>['corrections_demandees','corrections_en_cours'].includes(p.statut)).length);
@@ -10951,7 +10996,8 @@ async function loadProdLivrMissions(){
   const el=document.getElementById('prod-livr-mission-real');
   if(!el)return;
   try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(prenom,nom)),media_liens(id,nom,url,type_media,categorie,statut,commentaire,ajouteur_id)&statut=in.(livrée,clôturée)&order=date_prestation.desc&limit=100');
+    const _lmPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(prenom,nom)),media_liens(id,nom,url,type_media,categorie,statut,commentaire,ajouteur_id)&statut=in.(livrée,clôturée)'+_lmPoleQS+'&order=date_prestation.desc&limit=100');
     _livrMissionData=Array.isArray(raw)?raw:[];
     renderProdLivrMissionList();
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
@@ -11657,7 +11703,13 @@ async function modalAffecterCollab(collabId,collabName){
       <button class="btn bg2" onclick="closeModal()">Fermer</button>
     </div>`);
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,livrée,clôturée)&order=date_prestation.asc&limit=20');
+    // Filtre par pôle(s) DU COLLABORATEUR (audit v21, 31/08/2026) — pas S.activePoleId : ce
+    // picker propose des prestations à CE collaborateur précis, donc scopé à son (ses) pôle(s)
+    // d'affectation (un collaborateur flexible reste proposé pour ses deux pôles).
+    const collabPoles=await sbFetch('pole_affectations?select=pole_id&user_id=eq.'+collabId).catch(()=>[]);
+    const poleIds=(Array.isArray(collabPoles)?collabPoles:[]).map(p=>p.pole_id);
+    const _acPoleQS=poleIds.length?'&pole_id=in.('+poleIds.join(',')+')':'';
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,livrée,clôturée)'+_acPoleQS+'&order=date_prestation.asc&limit=20');
     const el=document.getElementById('aff-pre-list');
     if(!el)return;
     if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="color:var(--t3);text-align:center;padding:20px;font-size:13px">Aucune prestation active.</div>';return;}
@@ -11680,7 +11732,8 @@ async function loadEquipes(){
   const el=document.getElementById('equipes-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,clients(nom),prestations_equipe:prestations_equipe_display(statut,fonction,collaborateur:profiles(prenom,nom,role))&statut=not.in.(clôturée,annulée,refusée,livrée)&order=created_at.desc');
+    const _eqsPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,clients(nom),prestations_equipe:prestations_equipe_display(statut,fonction,collaborateur:profiles(prenom,nom,role))&statut=not.in.(clôturée,annulée,refusée,livrée)'+_eqsPoleQS+'&order=created_at.desc');
     if(!data||!data.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucune prestation active avec équipe affectée.</div></div>';return;}
     const rc={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
     const sLb={'demande_reçue':'Demande','confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','équipe_affectée':'Équipe OK'};
@@ -13143,14 +13196,19 @@ async function chargerKitsPrestation(prestationId,ref){
   const selKit=document.getElementById('eq-kit-id');
   if(!el)return;
   try{
-    const [resaRaw,equipeRaw,kitsRaw]=await Promise.all([
+    const [presRaw,resaRaw,equipeRaw,kitsRaw]=await Promise.all([
+      // Pôle de CETTE prestation (audit v21, 31/08/2026 — Fouka a explicitement signalé ce
+      // picker : un kit dédié à un autre pôle que la prestation ouverte n'a pas à apparaître ici,
+      // même mécanique que le picker d'opérateurs juste au-dessus dans la même modale).
+      sbFetch('prestations?id=eq.'+prestationId+'&select=pole_id').catch(()=>[]),
       // FK explicite obligatoire : kit_reservations a 3 colonnes vers profiles
       // (collaborateur_id/created_by/responsable_id), PostgREST refuse l'embed ambigu sinon
       // (PGRST201, trouvé en testant en RLS réelle avant de considérer ce code fini).
       sbFetch('kit_reservations?select=id,statut,kits(nom,type_kit),collaborateur:profiles!kit_reservations_collaborateur_id_fkey(prenom,nom)&prestation_id=eq.'+prestationId+'&statut=not.in.(retourné)'),
       sbFetch('prestations_equipe_display?select=collaborateur_id,collaborateur:profiles(prenom,nom)&prestation_id=eq.'+prestationId+'&statut=eq.acceptée'),
-      sbFetch('kits?select=id,nom,type_kit&statut=eq.disponible&order=nom.asc'),
+      sbFetch('kits?select=id,nom,type_kit,pole_id,pole_exclusif&statut=eq.disponible&order=nom.asc'),
     ]);
+    const presPoleId=Array.isArray(presRaw)&&presRaw[0]?presRaw[0].pole_id:null;
     const resa=Array.isArray(resaRaw)?resaRaw:[];
     if(!resa.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:4px 0">Aucun kit attribué.</div>';}
     else{
@@ -13167,7 +13225,10 @@ async function chargerKitsPrestation(prestationId,ref){
         `<option value="${e.collaborateur_id}">${esc([e.collaborateur?.prenom,e.collaborateur?.nom].filter(Boolean).join(' ')||'—')}</option>`).join('');
     }
     if(selKit){
-      selKit.innerHTML='<option value="">— Kit disponible —</option>'+(Array.isArray(kitsRaw)?kitsRaw:[]).map(k=>
+      // Commun (pole_id null) ou Priorité (pole_exclusif=false) : toujours proposé. Dédié
+      // (pole_exclusif=true) : uniquement s'il appartient au même pôle que la prestation ouverte.
+      const kitsOk=(Array.isArray(kitsRaw)?kitsRaw:[]).filter(k=>!presPoleId||!k.pole_id||k.pole_exclusif===false||k.pole_id===presPoleId);
+      selKit.innerHTML='<option value="">— Kit disponible —</option>'+kitsOk.map(k=>
         `<option value="${k.id}">${esc(k.nom)}${k.type_kit?' ('+esc(k.type_kit)+')':''}</option>`).join('');
     }
   }catch(e){if(el)el.innerHTML='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';}
@@ -13716,8 +13777,18 @@ async function kitsRenderControles(){
     const _role=localStorage.getItem('sv_role');
     const _isManager=_role==='admin'||_role==='prod';
     const _selfFilter=_isManager?'':'&collaborateur_id=eq.'+localStorage.getItem('sv_uid');
-    const controles=await sbFetch('kit_controles?select=id,type,statut,created_at,kits(nom),kit_reservations(collaborateur_id,prestations(reference,date_prestation,clients(nom))),profiles(prenom,nom)&order=created_at.desc&limit=50'+_selfFilter).catch(()=>[]);
-    const all=Array.isArray(controles)?controles:[];
+    const controles=await sbFetch('kit_controles?select=id,type,statut,created_at,kits(nom,pole_id,pole_exclusif),kit_reservations(collaborateur_id,prestations(reference,date_prestation,clients(nom))),profiles(prenom,nom)&order=created_at.desc&limit=50'+_selfFilter).catch(()=>[]);
+    // Filtre par pôle actif (audit v21, 31/08/2026) : cet onglet n'avait jamais la barre de
+    // filtre pôle (masquée volontairement ici) ni aucun filtrage — un admin sur Basket voyait
+    // les contrôles de tout le matériel Football+Basket. Même sémantique que
+    // _kitsApplyPoleFilter() : 'Tous' = pas de filtre, 'commun' = pole_id null uniquement,
+    // sinon Priorité (pole_exclusif=false) toujours visible + Dédié seulement si même pôle.
+    const _kpf=window._kitsPoleF||'Tous';
+    const all=(Array.isArray(controles)?controles:[]).filter(c=>{
+      if(_kpf==='Tous')return true;
+      if(_kpf==='commun')return !c.kits?.pole_id;
+      return !c.kits?.pole_id||c.kits?.pole_exclusif===false||c.kits?.pole_id===_kpf;
+    });
     if(!all.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--t3)">Aucun contrôle à réaliser.</div>';return;}
     el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">
       ${all.map(c=>{
@@ -13752,8 +13823,16 @@ async function kitsRenderIncidents(){
   if(!el)return;
   el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Chargement…</div>';
   try{
-    const inc=await sbFetch('materiel_incidents?select=id,type_incident,description,gravite,statut,created_at,impact_prestation,materiels(nom),kits(nom),profiles!collaborateur_id(prenom,nom)&order=created_at.desc&limit=80').catch(()=>[]);
-    const all=Array.isArray(inc)?inc:[];
+    const inc=await sbFetch('materiel_incidents?select=id,type_incident,description,gravite,statut,created_at,impact_prestation,materiels(nom,pole_id,pole_exclusif),kits(nom,pole_id,pole_exclusif),profiles!collaborateur_id(prenom,nom)&order=created_at.desc&limit=80').catch(()=>[]);
+    // Filtre par pôle actif (audit v21, 31/08/2026) : cf. kitsRenderControles(). Un incident
+    // référence soit un kit soit un matériel (jamais les deux) — on regarde celui qui est défini.
+    const _kpfi=window._kitsPoleF||'Tous';
+    const all=(Array.isArray(inc)?inc:[]).filter(i=>{
+      const ref=i.kits||i.materiels;
+      if(_kpfi==='Tous'||!ref)return true;
+      if(_kpfi==='commun')return !ref.pole_id;
+      return !ref.pole_id||ref.pole_exclusif===false||ref.pole_id===_kpfi;
+    });
     const GRAV_CFG={critique:{c:'var(--er)',bg:'rgba(240,68,94,.1)',br:'rgba(240,68,94,.25)'},important:{c:'var(--wa)',bg:'rgba(245,165,36,.08)',br:'rgba(245,165,36,.2)'},mineur:{c:'var(--t3)',bg:'rgba(255,255,255,.04)',br:'var(--b1)'}};
     if(!all.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--t3)"><div style="font-size:40px;opacity:.15;margin-bottom:12px">🔎</div>Aucun incident enregistré.</div>';return;}
     el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">
@@ -13792,8 +13871,15 @@ async function kitsRenderMaintenance(){
   if(!el)return;
   el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Chargement…</div>';
   try{
-    const maint=await sbFetch('materiel_maintenances?select=id,statut,priorite,description,created_at,cout_final,devis,prestataire,date_retour_prevue,materiels(nom,categorie),kits(nom)&order=created_at.desc&limit=80').catch(()=>[]);
-    const all=Array.isArray(maint)?maint:[];
+    const maint=await sbFetch('materiel_maintenances?select=id,statut,priorite,description,created_at,cout_final,devis,prestataire,date_retour_prevue,materiels(nom,categorie,pole_id,pole_exclusif),kits(nom,pole_id,pole_exclusif)&order=created_at.desc&limit=80').catch(()=>[]);
+    // Filtre par pôle actif (audit v21, 31/08/2026) : cf. kitsRenderControles().
+    const _kpfm=window._kitsPoleF||'Tous';
+    const all=(Array.isArray(maint)?maint:[]).filter(m=>{
+      const ref=m.kits||m.materiels;
+      if(_kpfm==='Tous'||!ref)return true;
+      if(_kpfm==='commun')return !ref.pole_id;
+      return !ref.pole_id||ref.pole_exclusif===false||ref.pole_id===_kpfm;
+    });
     if(!all.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--t3)">Aucune maintenance enregistrée.</div>';return;}
     const PRI_C={urgente:'var(--er)',haute:'var(--wa)',normale:'var(--acc)',faible:'var(--t3)'};
     el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">
@@ -14191,8 +14277,17 @@ async function kitsAppliquerStatut(id){
 
 // ── ATTRIBUER KIT À PRESTATION ───────────────────────────────────────────────
 async function kitsModalAttribuer(kitId){
-  const prests=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&statut=in.(confirmée,en_production,planifiée)&order=date_prestation.asc&limit=50').catch(()=>[]);
-  const colls=await sbFetch('profiles?select=id,prenom,nom&role=in.(photo,prod)&order=nom.asc').catch(()=>[]);
+  // Pôle du kit (audit v21, 31/08/2026) : un kit Dédié (pole_exclusif=true) ne doit proposer
+  // que les prestations/responsables de SON pôle — Commun/Priorité restent ouverts à tous.
+  // Déjà en cache (_kitsCache), pas besoin d'un fetch réseau supplémentaire.
+  const _kmaKit=(typeof _kitsCache!=='undefined'?_kitsCache:[]).find(k=>k.id===kitId);
+  const _kmaDedie=!!(_kmaKit&&_kmaKit.pole_id&&_kmaKit.pole_exclusif===true);
+  const _kmaPoleId=_kmaKit?.pole_id||null;
+  const prestsRaw=await sbFetch('prestations?select=id,reference,date_prestation,pole_id,clients(nom)&statut=in.(confirmée,en_production,planifiée)&order=date_prestation.asc&limit=50').catch(()=>[]);
+  const prests=(Array.isArray(prestsRaw)?prestsRaw:[]).filter(p=>!_kmaDedie||p.pole_id===_kmaPoleId);
+  const _kmaCollSelect=_kmaDedie?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+  const _kmaCollQS=_kmaDedie?'&pole_affectations.pole_id=eq.'+_kmaPoleId:'';
+  const colls=await sbFetch('profiles?select=id,prenom,nom'+_kmaCollSelect+'&role=in.(photo,prod)'+_kmaCollQS+'&order=nom.asc').catch(()=>[]);
   openModal(`<div class="mh"><div class="mt">Attribuer le kit</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Prestation</label>
@@ -14299,7 +14394,14 @@ async function kitsAttribuerSubmit(kitId){
 
 // ── ATTRIBUTION KIT → COLLABORATEUR ──────────────────────────────────────────
 async function kitsModalAttribuerCollab(kitId){
-  const collabs=await sbFetch('profiles?select=id,prenom,nom&role=in.(photo,cm)&order=nom.asc').catch(()=>[]);
+  // Pôle du kit (audit v21, 31/08/2026 — cas explicitement signalé par Fouka) : un kit Dédié
+  // (pole_exclusif=true) ne doit proposer que les collaborateurs de SON pôle. Déjà en cache
+  // (_kitsCache), pas de fetch réseau supplémentaire.
+  const _kacKit=_kitsCache.find(k=>k.id===kitId);
+  const _kacDedie=!!(_kacKit&&_kacKit.pole_id&&_kacKit.pole_exclusif===true);
+  const _kacCollSelect=_kacDedie?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+  const _kacCollQS=_kacDedie?'&pole_affectations.pole_id=eq.'+_kacKit.pole_id:'';
+  const collabs=await sbFetch('profiles?select=id,prenom,nom'+_kacCollSelect+'&role=in.(photo,cm)'+_kacCollQS+'&order=nom.asc').catch(()=>[]);
   const curResas=await sbFetch('kit_reservations?select=id,collaborateur_id,profiles!collaborateur_id(prenom,nom)&kit_id=eq.'+kitId+'&prestation_id=is.null&statut=eq.sorti&limit=1').catch(()=>[]);
   const cur=Array.isArray(curResas)&&curResas[0]?curResas[0]:null;
   const list=Array.isArray(collabs)?collabs:[];
@@ -15794,7 +15896,14 @@ async function loadDevis(){
   const el=document.getElementById('devis-real');
   if(!el)return;
   try{
-    const data=await sbFetch('devis?select=id,numero,statut,client_id,total_ttc,notes,date_envoi,date_expiration,prestation_id,clients(id,nom),prestation:prestations(id,reference)&order=created_at.desc&limit=100');
+    // Filtre par pôle actif (audit v21, 31/08/2026) : admin/rh bypassent client_pole_scope_ok,
+    // sec/com/compta sont déjà correctement scopés par la RLS — filtre client réservé aux deux
+    // premiers.
+    const _devRole=localStorage.getItem('sv_role');
+    const _devHasGlobal=_devRole==='admin'||_devRole==='rh';
+    const _devPoleEmbed=(_devHasGlobal&&S.activePoleId)?'!inner':'';
+    const _devPoleQS=(_devHasGlobal&&S.activePoleId)?'&clients.pole_id=eq.'+S.activePoleId:'';
+    const data=await sbFetch('devis?select=id,numero,statut,client_id,total_ttc,notes,date_envoi,date_expiration,prestation_id,clients'+_devPoleEmbed+'(id,nom),prestation:prestations(id,reference)&order=created_at.desc&limit=100'+_devPoleQS);
     _devisCache=data||[];
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     const att=_devisCache.filter(d=>['envoyé','en_attente'].includes(d.statut)).length;
@@ -16902,8 +17011,12 @@ async function loadPaiements(){
   const el=document.getElementById('paiements-real');
   if(!el)return;
   try{
+    // Filtre par pôle actif (audit v21, 31/08/2026) : écran de pilotage financier RH jamais
+    // touché par les correctifs précédents.
+    const _payPoleSelect=S.activePoleId?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+    const _payPoleQS=S.activePoleId?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
     const [profiles,equipesRaw]=await Promise.all([
-      sbFetch('profiles?select=id,prenom,nom,role&order=role.asc,nom.asc'),
+      sbFetch('profiles?select=id,prenom,nom,role'+_payPoleSelect+_payPoleQS+'&order=role.asc,nom.asc'),
       sbFetch('prestations_equipe_display?select=collaborateur_id,statut,remuneration,prestations(statut)'),
     ]);
     const colls=(profiles||[]).filter(p=>p.role!=='admin');
@@ -17002,8 +17115,11 @@ async function loadIncidents(){
   const el=document.getElementById('incidents-real');
   if(!el)return;
   try{
-    const data=await sbFetch('incidents?select=id,type_incident,niveau,description,cloture,date_incident,prestation_id,prestations(reference),profiles!declare_par(prenom,nom)&order=date_incident.desc&limit=100');
-    _incidentsCache=data||[];
+    // Filtre par pôle actif (audit v21, 31/08/2026) : incidents n'a pas de pole_id propre,
+    // filtré via l'embed prestations. Un incident sans prestation (prestation_id null) reste
+    // toujours visible (filtre JS post-fetch, pas !inner, pour ne pas le faire disparaître à tort).
+    const data=await sbFetch('incidents?select=id,type_incident,niveau,description,cloture,date_incident,prestation_id,prestations(reference,pole_id),profiles!declare_par(prenom,nom)&order=date_incident.desc&limit=100');
+    _incidentsCache=(data||[]).filter(i=>!S.activePoleId||!i.prestation_id||i.prestations?.pole_id===S.activePoleId);
     const niv_cls={mineur:'bw',important:'bl',critique:'bb'};
     const niv_lbl={mineur:'Mineur',important:'Important',critique:'Critique'};
     if(!_incidentsCache.length){
@@ -17080,7 +17196,8 @@ async function modalSignalerIncident(){
       const data=await sbFetch('prestations_equipe_display?select=prestations(id,reference,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=20');
       pres=(data||[]).filter(r=>r.prestations).map(r=>r.prestations);
     } else {
-      pres=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,clôturée,payée)&order=date_prestation.desc&limit=30');
+      const _incPoleQS=(S.activePoleId&&(S.role==='admin'||S.role==='rh'))?'&pole_id=eq.'+S.activePoleId:'';
+      pres=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,clôturée,payée)'+_incPoleQS+'&order=date_prestation.desc&limit=30');
     }
     const sel=document.getElementById('inc-pre');
     if(sel){
@@ -19731,13 +19848,21 @@ async function loadAdminForm(){
   const el=document.getElementById('admin-form-real');
   if(!el)return;
   try{
+    // Filtre par pôle actif (audit v21, 31/08/2026) : écran admin jamais touché par les
+    // correctifs précédents.
+    const _afPoleSelect=S.activePoleId?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+    const _afPoleQS=S.activePoleId?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
     const [ins,profiles]=await Promise.all([
       sbFetch('formation_inscriptions?select=id,formation_id,statut,xp_gagnes,enrolled_at,completed_at,collaborateur_id,profiles(id,prenom,nom,role)&order=completed_at.desc.nullslast,enrolled_at.desc&limit=500').catch(()=>[]),
       // cm_niveau_autonomie ajouté (spec §51 "Juniors en progression") pour repérer les CM Junior
       // sans requête supplémentaire — champ déjà utilisé ailleurs (module CM, ligne ~24768).
-      sbFetch('profiles?select=id,prenom,nom,role,cm_niveau_autonomie&order=nom.asc&limit=100').catch(()=>[]),
+      sbFetch('profiles?select=id,prenom,nom,role,cm_niveau_autonomie'+_afPoleSelect+_afPoleQS+'&order=nom.asc&limit=100').catch(()=>[]),
     ]);
-    const insList=ins||[];const profList=profiles||[];
+    const profList=profiles||[];
+    // formation_inscriptions n'a pas de pole_id propre : filtré côté client sur le set profiles
+    // déjà scopé par pôle (même logique que loadEquipeOverview()).
+    const profIds=new Set(profList.map(p=>p.id));
+    const insList=(ins||[]).filter(i=>!S.activePoleId||profIds.has(i.collaborateur_id));
     const done=insList.filter(i=>i.statut==='terminee').length;
     const enc=insList.filter(i=>i.statut==='en_cours').length;
     const totalXp=insList.reduce((s,i)=>s+(i.xp_gagnes||0),0);
@@ -19917,7 +20042,12 @@ async function loadAdminFormCertifs(){
   if(!el)return;
   el.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--t3)">Chargement…</div>`;
   try{
-    const certs=await sbFetch('collaborateur_certifications?select=id,collaborateur_id,code_certification,nom,badge,formation_id,date_obtention,date_expiration,statut,numero_certificat,profiles(prenom,nom,role,avatar_url)&order=date_expiration.asc.nullslast&limit=200').catch(()=>[]);
+    // Filtre par pôle actif (audit v21, 31/08/2026) : écran admin jamais touché par les
+    // correctifs précédents — embed imbriqué (collaborateur_certifications -> profiles ->
+    // pole_affectations), même syntaxe validée en réel dans renderCentreGrades().
+    const _certPoleQS=S.activePoleId?'&profiles.pole_affectations.pole_id=eq.'+S.activePoleId:'';
+    const _certPoleSelect=S.activePoleId?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+    const certs=await sbFetch('collaborateur_certifications?select=id,collaborateur_id,code_certification,nom,badge,formation_id,date_obtention,date_expiration,statut,numero_certificat,profiles!inner(prenom,nom,role,avatar_url'+_certPoleSelect+')&order=date_expiration.asc.nullslast'+_certPoleQS+'&limit=200').catch(()=>[]);
     const now=new Date();
     const list=(certs||[]).map(c=>{
       const exp=c.date_expiration?new Date(c.date_expiration):null;
@@ -23534,6 +23664,12 @@ async function modalNouvelleDepense(){
       <div style="margin-top:10px"><label style="${L}">Libellé *</label>
         <input id="nd-libelle" class="fi" placeholder="Ex : Abonnement Adobe Creative Cloud">
       </div>
+      ${(S.allPoles&&S.allPoles.length>1)?`<div style="margin-top:10px"><label style="${L}">Pôle</label>
+        <select id="nd-pole" class="fi">
+          <option value="">Général (charge d'entreprise, pas liée à un pôle)</option>
+          ${S.allPoles.map(p=>`<option value="${p.id}">${esc(p.nom)}</option>`).join('')}
+        </select>
+      </div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px">
         <div><label style="${L}">Montant HT (€) *</label>
           <input id="nd-montant" type="number" step="0.01" min="0" class="fi" placeholder="0.00">
@@ -23591,6 +23727,10 @@ async function sauvegarderNouvelleDepense(){
     date_depense:dateDepense,
     date_prochaine_echeance:prochaineEcheance,
     statut:'engagee',
+    // Pôle (migration-poles-v10, expenses.pole_id nullable = "Général") : null si non renseigné
+    // — une dépense sans prestation liée reste Générale par défaut sauf choix explicite, cohérent
+    // avec le comportement historique (aucune dépense n'était pôle-taggée avant ce soir).
+    pole_id:document.getElementById('nd-pole')?.value||null,
     created_by:localStorage.getItem('sv_uid')||null,
   };
   const r=await sbFetch('expenses',{method:'POST',body});
@@ -23650,7 +23790,12 @@ async function loadComptaRentabilite(){
     // Vue v_rentabilite_missions (migration-finance-lot0.sql) : calcule le vrai
     // coût par mission (rémunérations acceptées + frais validés + dépenses
     // rattachées + quote-part de coûts indirects), pas juste rémunérations+frais.
-    const data=await sbFetch('v_rentabilite_missions?select=*&date_prestation=gte.'+sixMoisAgo+'&order=date_prestation.desc&limit=300');
+    // Filtre par pôle actif (audit v21, 31/08/2026) : pour compta/expert_comptable/auditeur, la
+    // RLS sous-jacente (pole_scope_ok, via prestations) scope déjà correctement — seul admin/rh
+    // bypassent et ont besoin de ce filtre client.
+    const _rentRole=localStorage.getItem('sv_role');
+    const _rentPoleQS=(S.activePoleId&&(_rentRole==='admin'||_rentRole==='rh'))?'&pole_id=eq.'+S.activePoleId:'';
+    const data=await sbFetch('v_rentabilite_missions?select=*&date_prestation=gte.'+sixMoisAgo+_rentPoleQS+'&order=date_prestation.desc&limit=300');
     const list=Array.isArray(data)?data:[];
     const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart&&p.date_prestation<mNext);
     const ca=moisList.reduce((s,p)=>s+(p.revenu_ht||0),0);
@@ -23746,15 +23891,22 @@ async function loadComptaResultat(){
     const mStart=ymdLocal(new Date(now.getFullYear(),now.getMonth(),1));
     const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
     const sixMoisAgo=ymdLocal(new Date(now.getFullYear(),now.getMonth()-5,1));
+    // Filtre par pôle actif (audit v21, 31/08/2026) : v_rentabilite_missions a pole_id
+    // (missions Football ou Basket, jamais Général). expenses a AUSSI pole_id (indépendant de
+    // prestation_id=null) : une charge générale peut être explicitement taggée à un pôle sans
+    // être rattachée à une mission précise — filtrée pareillement quand un pôle est actif.
+    // employee_costs/commissions restent non filtrés (rattachés à un collaborateur, pas à un
+    // pôle directement — hors périmètre de ce correctif mécanique, comme pour loadFinEquipe()).
+    const _resPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
     const [missions,employeeCosts,commissionsData,chargesGenData]=await Promise.all([
-      sbFetch('v_rentabilite_missions?select=*&date_prestation=gte.'+sixMoisAgo+'&order=date_prestation.asc&limit=500'),
+      sbFetch('v_rentabilite_missions?select=*&date_prestation=gte.'+sixMoisAgo+_resPoleQS+'&order=date_prestation.asc&limit=500'),
       sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct').catch(()=>[]),
       sbFetch('commissions?select=montant_commission,statut,date_calcul&date_calcul=gte.'+mStart+'&date_calcul=lt.'+mNext).catch(()=>[]),
       // Charges générales (loyer, logiciels, assurance...) : dépenses non
       // rattachées à une mission (prestation_id NULL), donc absentes de
       // v_rentabilite_missions qui est scopée par mission — sans cette
       // ligne, le "Résultat net" ignorait entièrement ces charges réelles.
-      sbFetch('expenses?select=montant_ht&prestation_id=is.null&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext+'&statut=in.(engagee,payee,comptabilisee)').catch(()=>[]),
+      sbFetch('expenses?select=montant_ht&prestation_id=is.null&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext+'&statut=in.(engagee,payee,comptabilisee)'+_resPoleQS).catch(()=>[]),
     ]);
     const list=Array.isArray(missions)?missions:[];
     const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart&&p.date_prestation<mNext);
@@ -25842,7 +25994,12 @@ async function loadComptaFactures(){
   const el=document.getElementById('compta-real');
   if(!el)return;
   try{
-    const data=await sbFetch('factures?select=id,numero,statut,montant_ttc,montant_paye,date_emission,date_echeance,prestation_id,clients(nom,email),prestations(reference,type_prestation)&order=date_emission.desc&limit=200');
+    // Filtre par pôle actif (audit v21, 31/08/2026) : admin/rh bypassent client_pole_scope_ok.
+    const _facRole=localStorage.getItem('sv_role');
+    const _facHasGlobal=_facRole==='admin'||_facRole==='rh';
+    const _facPoleEmbed=(_facHasGlobal&&S.activePoleId)?'!inner':'';
+    const _facPoleQS=(_facHasGlobal&&S.activePoleId)?'&clients.pole_id=eq.'+S.activePoleId:'';
+    const data=await sbFetch('factures?select=id,numero,statut,montant_ttc,montant_paye,date_emission,date_echeance,prestation_id,clients'+_facPoleEmbed+'(nom,email),prestations(reference,type_prestation)&order=date_emission.desc&limit=200'+_facPoleQS);
     _comptaFactData=Array.isArray(data)?data:[];
     const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
     let enc=0,att=0,total=0;
@@ -25934,7 +26091,9 @@ async function loadKanban(){
     {id:'done',lb:'Terminé',clr:'rgba(46,204,138,.35)',st:['livrée','facturée','partiellement_payée','payée','clôturée']},
   ];
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=100');
+    // Filtre par pôle actif (audit v21, 31/08/2026) : écran admin, bypass RLS.
+    const _kbnPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=100'+_kbnPoleQS);
     _kanbanCache=data||[];
     const now=new Date();const in7=new Date(now);in7.setDate(in7.getDate()+7);
     const active=_kanbanCache.filter(p=>!['clôturée','payée','livrée','facturée','partiellement_payée'].includes(p.statut)).length;
@@ -26329,9 +26488,11 @@ async function loadPlanning(){
   try{
     // Basculer Calendrier/Liste (setPlanningView) ne change ni le mois ni les données —
     // réutiliser le fetch déjà en cache pour ce mois plutôt que de relire toute la table
-    // à chaque clic sur le toggle de vue.
-    const key=debut+'|'+fin;
-    const data=(_planningRawData&&_planningRawKey===key)?_planningRawData:await sbFetch(`prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,clients(nom)&date_prestation=gte.${debut}&date_prestation=lte.${fin}&statut=not.in.(annulée,refusée)&order=date_prestation.asc`);
+    // à chaque clic sur le toggle de vue. Clé étendue à S.activePoleId (audit v21, 31/08/2026) :
+    // sans ça, changer de pôle actif sans changer de mois réutilisait le cache de l'autre pôle.
+    const _planPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
+    const key=debut+'|'+fin+'|'+(S.activePoleId||'');
+    const data=(_planningRawData&&_planningRawKey===key)?_planningRawData:await sbFetch(`prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,clients(nom)&date_prestation=gte.${debut}&date_prestation=lte.${fin}&statut=not.in.(annulée,refusée)${_planPoleQS}&order=date_prestation.asc`);
     _planningRawData=data;_planningRawKey=key;
     const byDay={};
     (data||[]).forEach(p=>{if(p.date_prestation){const k=p.date_prestation.slice(0,10);if(!byDay[k])byDay[k]=[];byDay[k].push(p);}});
@@ -26566,6 +26727,11 @@ function applyCalGlobalFilters(){
   const statut=document.getElementById('cg-f-statut')?.value||'';
   const sport=document.getElementById('cg-f-sport')?.value||'';
   const collab=document.getElementById('cg-f-collab')?.value||'';
+  // Pôle sportif (migration-poles-v22, 31/08/2026 — Fouka : "le calendrier basket ne doit voir
+  // que le basket" / "calendrier general et calendrier foot"). Distinct de "dept" (département
+  // fonctionnel interne, pas le pôle sportif) — v_calendar_global.pole_id, NULL = Général
+  // (formations, tâches secrétariat sans client, indisponibilités d'un rôle transversal comme rh).
+  const pole=document.getElementById('cg-f-pole')?.value||'';
   let list=_cgRawData;
   if(q)list=list.filter(r=>(r.titre||'').toLowerCase().includes(q)||(r.club_nom||'').toLowerCase().includes(q));
   if(type)list=list.filter(r=>r.display_type===type);
@@ -26573,6 +26739,8 @@ function applyCalGlobalFilters(){
   if(statut)list=list.filter(r=>r.statut===statut);
   if(sport)list=list.filter(r=>r.sport===sport);
   if(collab)list=list.filter(r=>r.responsible_nom===collab);
+  if(pole==='general')list=list.filter(r=>!r.pole_id);
+  else if(pole)list=list.filter(r=>r.pole_id===pole);
   const countEl=document.getElementById('cg-f-count');
   if(countEl)countEl.textContent=list.length+' événement'+(list.length>1?'s':'')+' affiché'+(list.length>1?'s':'');
   document.querySelectorAll('#cg-legend .bd').forEach(ch=>{
@@ -26852,7 +27020,11 @@ async function loadFinances(){
     // au-delà de 100 prestations facturées cumulées, les plus anciennes
     // disparaissaient aussi silencieusement du calcul.
     const startOfYear=ymdLocal(new Date(new Date().getFullYear(),0,1));
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom)&montant_ttc=not.is.null&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=2000');
+    // Filtre par pôle actif (audit v21, 31/08/2026 — Fouka : "que les finance aussi soit
+    // spliter"). prestations.pole_id est toujours Football ou Basket (jamais NULL, DEFAULT
+    // pole_football_id()) — contrairement aux dépenses, pas de notion de "Général" ici.
+    const _finPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom)&montant_ttc=not.is.null&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=2000'+_finPoleQS);
     const list=data||[];
     const listAnnee=list.filter(p=>p.date_prestation&&p.date_prestation>=startOfYear);
     let enc=0,total=0,att=0;
@@ -26983,8 +27155,11 @@ async function loadFinRevenus(){
   el.innerHTML=_finSkelRows(6,44);
   _finrevKpiAnimated=false;
   try{
+    // Filtre par pôle actif (audit v21, 31/08/2026) : écran admin, bypass RLS.
+    const _frPoleEmbed=S.activePoleId?'!inner':'';
+    const _frPoleQS=S.activePoleId?'&clients.pole_id=eq.'+S.activePoleId:'';
     const [factures,contrats]=await Promise.all([
-      sbFetch('factures?select=id,numero,client_id,prestation_id,montant_ht,montant_ttc,montant_paye,statut,date_emission,date_echeance,clients(nom),prestations(source,type_prestation)&order=date_emission.desc&limit=500'),
+      sbFetch('factures?select=id,numero,client_id,prestation_id,montant_ht,montant_ttc,montant_paye,statut,date_emission,date_echeance,clients'+_frPoleEmbed+'(nom),prestations(source,type_prestation)&order=date_emission.desc&limit=500'+_frPoleQS),
       sbFetch('contrats?select=client_id,type_contrat&statut=eq.actif').catch(()=>[]),
     ]);
     if(sbErr(factures)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
@@ -27077,6 +27252,9 @@ function renderFinRevenus(){
 let _findepCache=[];
 let _findepFiltre='all';
 let _findepCatFiltre='all';
+// Général/Football/Basket (migration-poles-v10 : expenses.pole_id nullable = "Général", une
+// charge d'entreprise non liée à un pôle sportif — demande explicite de Fouka le 31/08/2026).
+let _findepPoleFiltre='all';
 let _findepKpiAnimated=false;
 async function loadFinDepenses(){
   const el=document.getElementById('findepenses-real');
@@ -27089,7 +27267,7 @@ async function loadFinDepenses(){
   // chantier pour la recommandation pg_cron si Fouka veut une génération sans ouvrir l'OS.
   try{await sbFetch('rpc/fin_generer_depenses_recurrentes',{method:'POST',body:{}});}catch(e){}
   try{
-    const data=await sbFetch('expenses?select=id,libelle,categorie,montant_ht,montant_ttc,statut,date_depense,date_prochaine_echeance,recurrence,source_expense_id,vendors(nom)&order=date_depense.desc&limit=500');
+    const data=await sbFetch('expenses?select=id,libelle,categorie,montant_ht,montant_ttc,statut,date_depense,date_prochaine_echeance,recurrence,source_expense_id,pole_id,poles(nom),vendors(nom)&order=date_depense.desc&limit=500');
     if(sbErr(data)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
     _findepCache=data||[];
     renderFinDepenses();
@@ -27103,6 +27281,12 @@ function filterFinDepenses(f){
 function filterFinDepensesCat(c){
   _findepCatFiltre=c;
   ['all','materiel','logiciel','marketing','loyer','assurance','sous_traitance','autre'].forEach(x=>{const b=document.getElementById('findepc-f-'+x);if(b)b.style.cssText=x===c?'background:rgba(54,107,255,.15);color:var(--acc)':'';});
+  renderFinDepenses();
+}
+function filterFinDepensesPole(p){
+  _findepPoleFiltre=p;
+  const ids=['all','general',...(S.allPoles||[]).map(x=>x.id)];
+  ids.forEach(x=>{const b=document.getElementById('findepp-f-'+x);if(b)b.style.cssText=x===p?'background:rgba(54,107,255,.15);color:var(--acc)':'';});
   renderFinDepenses();
 }
 function renderFinDepenses(){
@@ -27125,14 +27309,17 @@ function renderFinDepenses(){
   if(_findepFiltre==='payee')list=list.filter(d=>['payee','comptabilisee'].includes(d.statut));
   else if(_findepFiltre!=='all')list=list.filter(d=>d.statut===_findepFiltre);
   if(_findepCatFiltre!=='all')list=list.filter(d=>d.categorie===_findepCatFiltre);
+  if(_findepPoleFiltre==='general')list=list.filter(d=>!d.pole_id);
+  else if(_findepPoleFiltre!=='all')list=list.filter(d=>d.pole_id===_findepPoleFiltre);
   const stLb={prevue:'Prévue',engagee:'Engagée',payee:'Payée',comptabilisee:'Comptabilisée'};
   const stClr={prevue:'bw',engagee:'bw',payee:'ba',comptabilisee:'ba'};
   if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🧾</div><div>Aucune dépense pour ce filtre.</div></div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Libellé</th><th>Fournisseur</th><th>Catégorie</th><th>Montant TTC</th><th>Statut</th><th>Date</th><th>Récurrence</th></tr></thead><tbody>'+
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Libellé</th><th>Fournisseur</th><th>Catégorie</th><th>Pôle</th><th>Montant TTC</th><th>Statut</th><th>Date</th><th>Récurrence</th></tr></thead><tbody>'+
     list.map(d=>`<tr>
       <td class="tp">${esc(d.libelle||'—')}${d.source_expense_id?' <span style="font-size:10px;color:var(--t3)" title="Occurrence générée automatiquement">↻</span>':''}</td>
       <td>${esc(d.vendors?.nom||'—')}</td>
       <td>${esc(d.categorie||'—')}</td>
+      <td style="font-size:11.5px;color:${d.pole_id?'var(--t1)':'var(--t3)'}">${d.pole_id?esc(d.poles?.nom||'—'):'Général'}</td>
       <td class="tm" style="color:var(--t1);font-weight:600">${fmt(d.montant_ttc)}</td>
       <td><span class="bd ${stClr[d.statut]||'bw'}"><span class="bd-d"></span>${stLb[d.statut]||d.statut}</span></td>
       <td>${d.date_depense?new Date(d.date_depense).toLocaleDateString('fr-FR'):'—'}</td>
@@ -27161,10 +27348,18 @@ async function loadFinEquipe(){
   el.innerHTML=_finSkelRows(6,44);
   _fineqKpiAnimated=false;
   try{
+    // Filtre par pôle actif (audit v21, 31/08/2026) : missions (via prestations.pole_id) et
+    // frais (frais.pole_id, nullable="Général" comme les dépenses) sont directement
+    // attribuables à un pôle. Salaires/commissions restent non filtrés (rattachés à un
+    // collaborateur, pas à une prestation précise — sémantique moins évidente, hors périmètre
+    // de ce correctif mécanique).
+    const _feqMissionEmbed=S.activePoleId?'!inner':'';
+    const _feqMissionQS=S.activePoleId?'&prestations.pole_id=eq.'+S.activePoleId:'';
+    const _feqFraisQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
     const [missions,salaires,frais,commissions]=await Promise.all([
-      sbFetch('prestations_equipe?select=id,collaborateur_id,remuneration,statut,statut_paiement,date_paiement,profiles(nom,prenom),prestations(reference,date_prestation)&statut=eq.acceptée&remuneration=not.is.null&order=date_paiement.desc.nullslast&limit=500'),
+      sbFetch('prestations_equipe?select=id,collaborateur_id,remuneration,statut,statut_paiement,date_paiement,profiles(nom,prenom),prestations'+_feqMissionEmbed+'(reference,date_prestation)&statut=eq.acceptée&remuneration=not.is.null'+_feqMissionQS+'&order=date_paiement.desc.nullslast&limit=500'),
       sbFetch('employee_costs?select=id,collaborateur_id,salaire_brut_mensuel,charges_patronales_pct,profiles(nom,prenom)&limit=200').catch(()=>[]),
-      sbFetch('frais?select=id,collaborateur_id,type,montant,km,statut,date_frais,profiles(nom,prenom),prestations(reference)&order=date_frais.desc&limit=500').catch(()=>[]),
+      sbFetch('frais?select=id,collaborateur_id,type,montant,km,statut,date_frais,profiles(nom,prenom),prestations(reference)&order=date_frais.desc&limit=500'+_feqFraisQS).catch(()=>[]),
       sbFetch('commissions?select=id,commercial_id,montant_commission,statut,date_calcul,date_paiement,profiles(nom,prenom)&order=date_calcul.desc&limit=500').catch(()=>[]),
     ]);
     const nom=p=>p?[p.prenom,p.nom].filter(Boolean).join(' ')||'—':'—';
@@ -27708,8 +27903,11 @@ async function loadCollaborateurs(){
     // strictement aucun effet sur cet écran : un admin sur "Basket" continuait de voir tous les
     // collaborateurs Football. Même embed pole_affectations!inner que loadEquipeOverview()/
     // loadEquipeEnDirect() ci-dessous.
-    const _colPoleSelect=(S.activePoleId&&_colRole==='admin')?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
-    const _colPoleQS=(S.activePoleId&&_colRole==='admin')?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
+    // rh ajouté (audit v21) : accède aussi à cet écran (loadViewData, view==='equipehub') et
+    // bypasse la RLS au même titre qu'admin — oublié du premier correctif.
+    const _colHasGlobal=_colRole==='admin'||_colRole==='rh';
+    const _colPoleSelect=(S.activePoleId&&_colHasGlobal)?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+    const _colPoleQS=(S.activePoleId&&_colHasGlobal)?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
     const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie,cm_pool_clubplus_general'+_colPoleSelect+_colFilter+_colPoleQS+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
@@ -28876,22 +29074,27 @@ function renderPoleSelector(){
     S.activePoleId=(S.allPoles&&S.allPoles[0])?S.allPoles[0].id:null;
     return;
   }
-  const isAdmin=S.role==='admin';
-  const options=isAdmin?S.allPoles:S.allPoles.filter(p=>S.poleIds.includes(p.id));
-  if(!isAdmin&&options.length<=1){
+  // rh (migration-poles-v21, 31/08/2026) : traité comme admin pour ce sélecteur — même bypass
+  // RLS transversal (is_admin_or_rh()), donc même besoin de pouvoir choisir "Direction (tous
+  // pôles)" ou un pôle précis. Sans ça, rh n'avait jamais aucun sélecteur (S.poleIds toujours
+  // vide pour ce rôle, accès global venant du rôle et non de pole_affectations) et retombait
+  // silencieusement sur "tous pôles" en permanence, sans possibilité de filtrer.
+  const hasGlobalAccess=S.role==='admin'||S.role==='rh';
+  const options=hasGlobalAccess?S.allPoles:S.allPoles.filter(p=>S.poleIds.includes(p.id));
+  if(!hasGlobalAccess&&options.length<=1){
     el.style.display='none';
     S.activePoleId=options[0]?options[0].id:(S.poleIds[0]||null);
     return;
   }
-  if(S.activePoleId===null&&!isAdmin)S.activePoleId=options[0]?.id||null;
+  if(S.activePoleId===null&&!hasGlobalAccess)S.activePoleId=options[0]?.id||null;
   // Si l'ancien choix ne correspond plus aux options actuelles (ex: rôle changé), retombe sur le
   // premier pôle disponible plutôt que de garder une sélection invalide.
-  if(S.activePoleId&&!isAdmin&&!options.some(p=>p.id===S.activePoleId))S.activePoleId=options[0]?.id||null;
+  if(S.activePoleId&&!hasGlobalAccess&&!options.some(p=>p.id===S.activePoleId))S.activePoleId=options[0]?.id||null;
   el.style.display='block';
   el.innerHTML=`
     <label style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle actif</label>
     <select class="l-inp" style="height:34px;font-size:12.5px" onchange="setActivePole(this.value||null)">
-      ${isAdmin?`<option value=""${S.activePoleId===null?' selected':''}>🏢 Direction (tous pôles)</option>`:''}
+      ${hasGlobalAccess?`<option value=""${S.activePoleId===null?' selected':''}>🏢 Direction (tous pôles)</option>`:''}
       ${options.map(p=>`<option value="${p.id}"${S.activePoleId===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}
     </select>`;
 }
@@ -30071,9 +30274,12 @@ async function loadRapport(){
   const titleEl=document.getElementById('rapport-titre');
   if(titleEl)titleEl.textContent='Rapport — '+mLabel.charAt(0).toUpperCase()+mLabel.slice(1);
   try{
+    // Filtre par pôle actif (audit v21, 31/08/2026) : rapport mensuel admin + son export CSV,
+    // jamais touchés — un export "Rapport Football" contenait en fait tout Football+Basket.
+    const _rapPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
     const [preMois,cliMois]=await Promise.all([
-      sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(id,nom)&date_prestation=gte.'+mStart+'&date_prestation=lte.'+mEnd+'&order=date_prestation.asc'),
-      sbFetch('clients?select=id,nom,created_at&created_at=gte.'+mStart+'T00:00:00&created_at=lte.'+mEnd+'T23:59:59&order=created_at.desc'),
+      sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(id,nom)&date_prestation=gte.'+mStart+'&date_prestation=lte.'+mEnd+_rapPoleQS+'&order=date_prestation.asc'),
+      sbFetch('clients?select=id,nom,created_at&created_at=gte.'+mStart+'T00:00:00&created_at=lte.'+mEnd+'T23:59:59'+_rapPoleQS+'&order=created_at.desc'),
     ]);
     const list=Array.isArray(preMois)?preMois:[];
     const preIds=list.map(p=>p.id);
@@ -30152,7 +30358,8 @@ async function exportRapportCSV(){
   const targetDate=new Date(now.getFullYear(),now.getMonth()+_rapportOffset,1);
   const mStart=ymdLocal(targetDate).slice(0,7)+'-01';
   const mEnd=ymdLocal(new Date(targetDate.getFullYear(),targetDate.getMonth()+1,0));
-  const data=await sbFetch('prestations?select=reference,date_prestation,type_prestation,lieu,montant_ht,montant_ttc,tva_pct,statut_financier,clients(nom)&date_prestation=gte.'+mStart+'&date_prestation=lte.'+mEnd+'&order=date_prestation.asc');
+  const _rapCsvPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
+  const data=await sbFetch('prestations?select=reference,date_prestation,type_prestation,lieu,montant_ht,montant_ttc,tva_pct,statut_financier,clients(nom)&date_prestation=gte.'+mStart+'&date_prestation=lte.'+mEnd+_rapCsvPoleQS+'&order=date_prestation.asc');
   const list=Array.isArray(data)?data:[];
   if(!list.length){toast('Aucune donnée à exporter','warn');return;}
   const headers=['Référence','Date','Client','Type','Montant HT','TVA %','Montant TTC','Statut financier'];
@@ -30190,7 +30397,10 @@ async function _refreshContratsApresAction(){
 }
 async function loadContrats(){
   const d=document.getElementById('contrats-real');
-  const r=await sbFetch('contrats?select=*,clients(nom)&order=created_at.desc');
+  // Filtre par pôle actif (audit v21, 31/08/2026) : écran admin, bypass RLS.
+  const _ctrPoleEmbed=S.activePoleId?'!inner':'';
+  const _ctrPoleQS=S.activePoleId?'&clients.pole_id=eq.'+S.activePoleId:'';
+  const r=await sbFetch('contrats?select=*,clients'+_ctrPoleEmbed+'(nom)&order=created_at.desc'+_ctrPoleQS);
   if(sbErr(r)){
     const setZ=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     setZ('ct-kpi-act',0);setZ('ct-kpi-exp',0);setZ('ct-kpi-quo',0);setZ('ct-kpi-ca','0 €');
@@ -31406,7 +31616,11 @@ async function renderCentreGrades(){
   // Charger la liste des photographes/vidéastes pour la gestion admin des grades
   let adminListHtml='<div style="color:var(--t3);font-size:13px">Aucun photographe/vidéaste.</div>';
   if(isAdmin){
-    const photogs=await sbFetch('profiles?select=id,prenom,nom,grade,xp&role=eq.photo&order=nom.asc').catch(()=>[]);
+    // Filtre par pôle actif (migration-poles-v21, écran jamais touché par les correctifs
+    // précédents — repéré par Fouka : "dans grade etc il voit encore dans basket").
+    const _grPoleSelect=S.activePoleId?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+    const _grPoleQS=S.activePoleId?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
+    const photogs=await sbFetch('profiles?select=id,prenom,nom,grade,xp'+_grPoleSelect+'&role=eq.photo'+_grPoleQS+'&order=nom.asc').catch(()=>[]);
     const list=Array.isArray(photogs)?photogs:[];
     if(list.length){
       adminListHtml=`<div style="display:flex;flex-direction:column;gap:6px">${list.map(p=>{
@@ -31433,7 +31647,9 @@ async function renderCentreGrades(){
   let recoHtml='';
   if(isAdmin){
     try{
-      const recosRaw=await sbFetch('grade_recommendations?select=id,collaborateur_id,grade_actuel,grade_propose,statut,created_at,profiles!collaborateur_id(prenom,nom)&statut=eq.en_attente&order=created_at.desc&limit=20').catch(()=>[]);
+      const _grrPoleSelect=S.activePoleId?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+      const _grrPoleQS=S.activePoleId?'&profiles.pole_affectations.pole_id=eq.'+S.activePoleId:'';
+      const recosRaw=await sbFetch('grade_recommendations?select=id,collaborateur_id,grade_actuel,grade_propose,statut,created_at,profiles!collaborateur_id!inner(prenom,nom'+_grPoleSelect+')&statut=eq.en_attente'+_grrPoleQS+'&order=created_at.desc&limit=20').catch(()=>[]);
       const recos=Array.isArray(recosRaw)?recosRaw:[];
       if(recos.length){
         recoHtml=`<div class="cv-card" style="border-color:rgba(245,165,36,.25);background:rgba(245,165,36,.05);margin-bottom:16px">
@@ -31767,16 +31983,24 @@ async function renderCentreAdminDash(){
   if(S.role!=='admin')return'<div style="padding:48px;text-align:center;color:var(--t3)">Accès réservé à l\'Administrateur.</div>';
   let statsHtml='<div style="color:var(--t3);font-size:13px">Chargement des statistiques…</div>';
   try{
+    // Filtre par pôle actif (audit v21, 31/08/2026) : écran admin-only jamais touché par les
+    // correctifs précédents (Fouka : "passe tout en revue").
+    const _cadPoleSelect=S.activePoleId?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
+    const _cadPoleQS=S.activePoleId?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
     const [collab,recos,vals]=await Promise.all([
-      sbFetch('profiles?select=id,prenom,nom,role,grade,xp&role=neq.admin&order=nom.asc').catch(()=>[]),
-      sbFetch('grade_recommendations?select=id&statut=eq.en_attente').catch(()=>[]),
+      sbFetch('profiles?select=id,prenom,nom,role,grade,xp'+_cadPoleSelect+'&role=neq.admin'+_cadPoleQS+'&order=nom.asc').catch(()=>[]),
+      sbFetch('grade_recommendations?select=id,collaborateur_id&statut=eq.en_attente').catch(()=>[]),
       sbFetch('centre_validations?select=collaborateur_id,chapitre_id&type=eq.accepte').catch(()=>[]),
     ]);
     const profiles=Array.isArray(collab)?collab:[];
-    const recosN=(Array.isArray(recos)?recos:[]).length;
+    const profileIds=new Set(profiles.map(p=>p.id));
+    // grade_recommendations/centre_validations n'ont pas de pole_id propre : filtrés côté
+    // client sur le set profiles déjà scopé par pôle, même logique que loadEquipeOverview().
+    const recosN=(Array.isArray(recos)?recos:[]).filter(r=>!S.activePoleId||profileIds.has(r.collaborateur_id)).length;
+    const valsFiltered=(Array.isArray(vals)?vals:[]).filter(v=>!S.activePoleId||profileIds.has(v.collaborateur_id));
     // Stats validations
     const totalReq=profiles.length*SV_REGLEMENT.length;
-    const totalDone=Array.isArray(vals)?vals.length:0;
+    const totalDone=valsFiltered.length;
     const tauxAccept=totalReq>0?Math.round(totalDone/totalReq*100):0;
 
     statsHtml=`
