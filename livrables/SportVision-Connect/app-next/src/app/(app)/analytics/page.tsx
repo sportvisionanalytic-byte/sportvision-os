@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, Eye, Heart, Radar } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
@@ -134,13 +135,15 @@ function AnalyticsScreen({ clientId }: { clientId: string }) {
             />
           </div>
         ) : (
-          // Rangées non cliquables (contrairement à l'ancienne version sur mock) : la fiche
-          // détail /communication/publications/[id] reste bâtie sur des identifiants mock et ne
-          // sait pas résoudre un vrai id `contenus` — pointer vers elle produirait un faux lien
-          // "introuvable". Hors périmètre de cette phase (reconstruire cette fiche appartient au
-          // module "communication", pas à "analytics"/"reports"/"publications").
+          // Rangées cliquables vers la fiche détail réelle (31/08/2026 : /communication/
+          // publications/[id] reconstruite sur `contenus`, ne dépend plus de lib/mock/
+          // communication.ts supprimé — voir son en-tête).
           best.map((c) => (
-            <div key={c.id} className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
+            <Link
+              key={c.id}
+              href={`/communication/publications/${c.id}`}
+              className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0 hover:bg-row-hover"
+            >
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13.5px] font-bold text-text">{c.titre}</span>
                 <span className="mt-0.5 block text-[12px] text-text-soft">{c.plateforme ?? "—"}</span>
@@ -149,7 +152,7 @@ function AnalyticsScreen({ clientId }: { clientId: string }) {
               <span className="w-32 flex-none text-right text-[12.5px] font-bold text-text-soft">
                 {fmt(c.stats?.engagement ?? null)} interactions
               </span>
-            </div>
+            </Link>
           ))
         )}
       </Card>
