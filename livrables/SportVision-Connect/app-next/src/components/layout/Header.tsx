@@ -35,6 +35,10 @@ const TITLE_FALLBACKS: Record<string, string> = {
   "/authorizations": "Autorisations",
   "/newsroom": "Newsroom",
   "/studio": "Studio",
+  // "/media" (alias de /content, voir media/page.tsx) : jamais présent dans aucune navigation
+  // (grep confirmé sur navigation.ts — toutes les variantes pointent vers /content), donc jamais
+  // résolu par resolveNavigation() non plus, quel que soit le type d'organisation.
+  "/media": "Contenus",
 };
 
 interface HeaderProps {

@@ -619,15 +619,22 @@ interface ProjetOrgRow {
  * client ponctuel indépendant — ex-Portail). Contrairement à joueur/parent, une vraie ligne
  * `memberships` existe (role réel toujours 'client', posé par sync_client_user_to_membership) —
  * voir le plan Phase 3 § Décisions d'architecture n°1. Pas de `clubs`/`organization_entitlements` :
- * planCode "one_off" ("Facturé à la commande"), entitlements undefined (aucun module Projet n'est
- * gated par une clé connect_modules de toute façon).
+ * entitlements undefined (aucun module Projet n'est gated par une clé connect_modules de toute
+ * façon).
  *
- * `creditsRemaining` lit désormais organizations.credits_balance/credits_reserved (migration-
- * connect-v24-projet-credits.sql), même formule que buildClubActiveContext ci-dessus
- * (Math.max(0, balance - reserved)) — plus de 0 en dur. Un espace Projet n'a pas de rechargement
- * automatique (pas d'abonnement Stripe récurrent, "facturé à la commande") : le crédit est
- * accordé manuellement par le staff SportVision via credit_organization() (fiche client Projet,
- * SportVision OS). Un client jamais crédité affiche donc honnêtement 0, jamais une valeur inventée.
+ * planCode "one_off" ("Facturé à la commande") par défaut, "full_communication" si un contrat réel
+ * actif de ce type existe pour ce client (31/08/2026, audit Communication & Contenu — bug trouvé :
+ * cette fonction posait "one_off" sans jamais vérifier `contrats`, alors que /communication,
+ * /publications, /mycm, /validations savent PARFAITEMENT servir un espace Projet Full
+ * Communication dès qu'on y accède par URL directe — useClientId() résout déjà client_id = org.id
+ * pour "generic" ; seul le dashboard/aiguilleur (dashboard/page.tsx) et la navigation
+ * (resolveNavigation, gated sur ctx.subscription.planCode) ignoraient totalement ce cas. Un client
+ * Projet Full Communication réel n'avait donc AUCUN moyen de découvrir Communication/Publications/
+ * Mon CM/À valider — badge "Prestation unique" trompeur en prime. Même vue `client_contrats` que
+ * fetchIsFullCommunication (data/shared/community-manager.ts), donc même filtre RLS déjà éprouvé
+ * (client_users) : pas de nouvelle surface d'accès. Club/cm_agency-délégué restent la seule
+ * référence pour la détection RPC `client_has_active_fullcomm_contract` — non réutilisable ici, son
+ * second EXISTS exige une ligne `clubs`, qu'un espace Projet n'a jamais.
  */
 export async function buildProjetActiveContext(
   supabase: SupabaseClient,
@@ -636,13 +643,24 @@ export async function buildProjetActiveContext(
 ): Promise<ActiveContext | null> {
   if (space.kind !== "organization" || space.organizationType !== "projet" || !space.clickable) return null;
 
-  const { data } = await supabase
-    .from("organizations")
-    .select("id, nom, organization_type, created_at, credits_balance, credits_reserved")
-    .eq("id", space.id)
-    .maybeSingle();
-  const org = data as ProjetOrgRow | null;
+  const [orgRes, contractRes] = await Promise.all([
+    supabase
+      .from("organizations")
+      .select("id, nom, organization_type, created_at, credits_balance, credits_reserved")
+      .eq("id", space.id)
+      .maybeSingle(),
+    supabase
+      .from("client_contrats")
+      .select("id")
+      .eq("client_id", space.id)
+      .eq("type_contrat", "full_communication")
+      .eq("statut", "actif")
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const org = orgRes.data as ProjetOrgRow | null;
   if (!org || !space.role) return null;
+  const isFullCommunication = Boolean(contractRes.data);
 
   return {
     user: buildUserFromAuth(authUser),
@@ -664,7 +682,7 @@ export async function buildProjetActiveContext(
     subscription: {
       id: `sub-${org.id}`,
       organizationId: org.id,
-      planCode: "one_off",
+      planCode: isFullCommunication ? "full_communication" : "one_off",
       status: "active",
       startsAt: org.created_at,
       renewsAt: org.created_at,
