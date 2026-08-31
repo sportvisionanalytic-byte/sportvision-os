@@ -778,6 +778,7 @@ const ROLES={
   cm:{r:'Community Manager',i:'?',c:'#366BFF',cta:'+ Nouveau contenu'},
   compta:{r:'Comptable',i:'?',c:'#FF6B35',cta:'+ Nouvelle facture'},
   com:{r:'Commercial',i:'?',c:'#F0445E',cta:'+ Nouveau prospect'},
+  rh:{r:'Secrétaire générale / RH',i:'?',c:'#C084FC',cta:'+ Inviter'},
   expert_comptable:{r:'Expert-comptable',i:'?',c:'#FFB020',cta:'Exporter les données'},
   auditeur:{r:'Auditeur',i:'?',c:'#9AA5B1',cta:'Consulter'},
 };
@@ -1062,6 +1063,19 @@ const NAV={
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
     {id:'form',lb:'Centre de formation',ic:'form'},
+    {id:'centre',lb:'Centre SportVision',ic:'help'},
+    {id:'set',lb:'Paramètres',ic:'set'},
+  ],
+  // Secrétaire générale / RH (migration-poles-v14, 31/08/2026, séparation collaborateurs par
+  // pôle) : accès staff/HR transversal à TOUS les pôles (RLS is_admin_or_rh()), mais aucun accès
+  // client/prestation/finance cross-pôle — pole_scope_ok()/pole_finance_access_ok() restent
+  // admin-only, inchangées. Nav volontairement réduite à Équipe & RH + Recrutement.
+  rh:[
+    {type:'sep',lb:'Équipe & RH'},
+    {id:'equipeoverview',lb:"Vue d'ensemble",ic:'dash'},
+    {id:'equipehub',lb:'Collaborateurs',ic:'col'},
+    {id:'recrutement',lb:'Recrutement',ic:'col'},
+    {type:'sep',lb:'Ressources'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -3213,6 +3227,15 @@ const VIEWS={
 // Même fonction réutilisée telle quelle (pattern déjà utilisé pour
 // admin.cmagency/sec.cmagency, admin.connectcomptes/sec.connectcomptes...).
 VIEWS['admin.docrh']=VIEWS['sec.docrh'];
+// Alias admin → rh.* (migration-poles-v14, 31/08/2026, séparation collaborateurs par pôle) :
+// nouveau rôle 'rh' (Secrétaire générale, accès staff transversal à tous les pôles), mêmes
+// templates statiques que l'admin pour ces 3 écrans (le contenu réel vient de loadViewData(),
+// déjà scopé côté RLS/nav) — même pattern d'alias que ci-dessus.
+VIEWS['rh.equipehub']=VIEWS['admin.equipehub'];
+VIEWS['rh.equipeoverview']=VIEWS['admin.equipeoverview'];
+VIEWS['rh.recrutement']=VIEWS['admin.recrutement'];
+VIEWS['rh.set']=VIEWS['sec.set'];
+VIEWS['rh.centre']=VIEWS['sec.centre'];
 
 function _settingsView(){
   return`
@@ -4714,21 +4737,23 @@ function modalInviterCollaborateur(){
         <input id="fi-email" type="email" class="l-inp" style="height:38px">
       </div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Rôle *</label>
-        <select id="fi-role" class="l-inp" style="height:38px">
+        <select id="fi-role" class="l-inp" style="height:38px" onchange="document.getElementById('fi-pole-block')?.style.setProperty('display',this.value==='rh'?'none':'')">
           <option value="sec">Secrétaire</option>
           <option value="prod">Resp. Production</option>
           <option value="photo">Photographe / Vidéaste</option>
           <option value="cm">Community Manager</option>
           <option value="compta">Comptable</option>
           <option value="com">Commercial</option>
+          <option value="rh">Secrétaire générale / RH</option>
           <option value="expert_comptable">Expert-comptable (lecture seule)</option>
           <option value="auditeur">Auditeur (lecture seule)</option>
         </select>
       </div>
-      ${(S.allPoles&&S.allPoles.length>1)?`<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle sportif *</label>
-        <select id="fi-pole" class="l-inp" style="height:38px">
-          ${S.allPoles.map(p=>`<option value="${p.id}"${p.slug==='football'?' selected':''}>${esc(p.nom)}</option>`).join('')}
-        </select>
+      ${(S.allPoles&&S.allPoles.length>1)?`<div id="fi-pole-block"><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle(s) sportif(s) *</label>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${S.allPoles.map(p=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)"><input type="checkbox" class="fi-pole-cb" value="${p.id}"${p.slug==='football'?' checked':''}> ${esc(p.nom)}</label>`).join('')}
+        </div>
+        <div style="font-size:10.5px;color:var(--t3);margin-top:4px">Cocher plusieurs pôles pour un collaborateur flexible, disponible sur les deux.</div>
       </div>`:''}
       <div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rb);padding:10px 14px;font-size:11.5px;color:var(--t2)">
         Un e-mail d'invitation SportVision sera envoyé automatiquement à cette adresse, avec un lien à usage unique pour définir son mot de passe. Rien à communiquer à la main.
@@ -4747,11 +4772,14 @@ async function creerCollaborateur(){
   const nom=document.getElementById('fi-nom').value.trim();
   const email=document.getElementById('fi-email').value.trim();
   const role=document.getElementById('fi-role').value;
-  // Multi-pôles (migration-poles-v11/v12, 31/08/2026) : sélecteur affiché seulement si
-  // plusieurs pôles existent (même convention que fc-pole/fce-pole) — undefined sinon,
-  // le trigger DB retombe alors sur Football par défaut.
-  const poleId=document.getElementById('fi-pole')?.value||undefined;
+  // Multi-pôles (migration-poles-v11/v12, étendu v14 le 31/08/2026 pour un collaborateur
+  // flexible multi-sport) : cases à cocher affichées seulement si plusieurs pôles existent
+  // (même convention que fc-pole/fce-pole) — tableau vide pour 'rh' (accès global par rôle,
+  // le bloc est masqué) ou si aucun pôle n'est coché, le trigger DB retombe alors sur
+  // Football par défaut.
+  const poleIds=role==='rh'?[]:Array.from(document.querySelectorAll('.fi-pole-cb:checked')).map(el=>el.value);
   if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
+  if(role!=='rh'&&document.getElementById('fi-pole-block')&&poleIds.length===0){err.textContent='Sélectionnez au moins un pôle.';return;}
   err.textContent='Envoi de l\'invitation…';
   try{
     const tok=localStorage.getItem('sv_tok');
@@ -4759,7 +4787,7 @@ async function creerCollaborateur(){
     const r=await fetch(SB_URL+'/functions/v1/invite-collaborateur',{
       method:'POST',
       headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
-      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_id:poleId})
+      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_ids:poleIds})
     });
     const d=await r.json();
     if(!r.ok||d.error){err.textContent=d.error||'Erreur.';return;}
@@ -4782,9 +4810,9 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='prodhub') await loadProdHub();
   if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
   if(role==='admin'&&view==='commhub') await loadCommHub();
-  if(role==='admin'&&view==='equipeoverview') await loadEquipeOverview();
-  if(role==='admin'&&view==='equipehub') await loadCollaborateurs();
-  if(['admin','sec'].includes(role)&&view==='recrutement') await loadRecrutement();
+  if(['admin','rh'].includes(role)&&view==='equipeoverview') await loadEquipeOverview();
+  if(['admin','rh'].includes(role)&&view==='equipehub') await loadCollaborateurs();
+  if(['admin','sec','rh'].includes(role)&&view==='recrutement') await loadRecrutement();
   if(role==='admin'&&view==='form'){await loadAdminForm();}
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';window._kitsPoleF='Tous';await loadKits();}
   if(role==='admin'&&view==='dash') await loadAdminDash();
@@ -7172,10 +7200,11 @@ function modalRecrutCreerCollaborateur(id){
           <option value="com">Commercial</option>
         </select>
       </div>
-      ${(S.allPoles&&S.allPoles.length>1)?`<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle sportif *</label>
-        <select id="rcc-pole" class="l-inp" style="height:38px">
-          ${S.allPoles.map(p=>`<option value="${p.id}"${p.slug==='football'?' selected':''}>${esc(p.nom)}</option>`).join('')}
-        </select>
+      ${(S.allPoles&&S.allPoles.length>1)?`<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle(s) sportif(s) *</label>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${S.allPoles.map(p=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)"><input type="checkbox" class="rcc-pole-cb" value="${p.id}"${p.slug==='football'?' checked':''}> ${esc(p.nom)}</label>`).join('')}
+        </div>
+        <div style="font-size:10.5px;color:var(--t3);margin-top:4px">Cocher plusieurs pôles pour un collaborateur flexible, disponible sur les deux.</div>
       </div>`:''}
       <div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rb);padding:10px 14px;font-size:11.5px;color:var(--t2)">
         Un e-mail d'invitation sera envoyé (même mécanisme que « + Inviter »). La fiche est créée en statut onboarding : l'accès à l'OS reste bloqué tant que la checklist n'est pas complète.
@@ -7195,9 +7224,11 @@ async function recrutCreerCollaborateur(candId){
   const nom=document.getElementById('rcc-nom').value.trim();
   const email=document.getElementById('rcc-email').value.trim();
   const role=document.getElementById('rcc-role').value;
-  // Multi-pôles (migration-poles-v11/v12, 31/08/2026) : cf. creerCollaborateur() ci-dessus.
-  const poleId=document.getElementById('rcc-pole')?.value||undefined;
+  // Multi-pôles (migration-poles-v11/v12, étendu v14 le 31/08/2026 pour un collaborateur
+  // flexible multi-sport) : cf. creerCollaborateur() ci-dessus.
+  const poleIds=Array.from(document.querySelectorAll('.rcc-pole-cb:checked')).map(el=>el.value);
   if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
+  if(document.querySelector('.rcc-pole-cb')&&poleIds.length===0){err.textContent='Sélectionnez au moins un pôle.';return;}
   // Garde de ré-entrance (audit idempotence 29/08) : côté serveur, un double-clic est déjà
   // rattrapé par l'unicité d'email de auth.users (le 2e appel à invite-collaborateur échoue),
   // mais ça envoie un 2e e-mail d'invitation pour rien. Même idiome bouton que creerClient().
@@ -7210,7 +7241,7 @@ async function recrutCreerCollaborateur(candId){
     const r=await fetch(SB_URL+'/functions/v1/invite-collaborateur',{
       method:'POST',
       headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
-      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_id:poleId})
+      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_ids:poleIds})
     });
     const d=await r.json();
     if(!r.ok||d.error){err.textContent=d.error||'Erreur.';if(btn){btn.disabled=false;btn.textContent='Créer et inviter';}return;}
@@ -27649,8 +27680,8 @@ async function loadCollaborateurs(){
     const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie,cm_pool_clubplus_general'+_colFilter+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
-    const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
-    const rLabels={'admin':'Administrateur','sec':'Secrétaire','prod':'Resp. Production','photo':'Photographe','cm':'Community Manager','compta':'Comptable','com':'Commercial'};
+    const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E','rh':'#C084FC'};
+    const rLabels={'admin':'Administrateur','sec':'Secrétaire','prod':'Resp. Production','photo':'Photographe','cm':'Community Manager','compta':'Comptable','com':'Commercial','rh':'Secrétaire générale / RH'};
     el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:13px">'+
       data.map((t,i)=>{
         const ini=((t.prenom?t.prenom[0]:'')+(t.nom?t.nom[0]:'')).toUpperCase()||t.role.substring(0,2).toUpperCase();
@@ -27826,12 +27857,15 @@ async function modalFicheCollaborateur(id){
   // migration-equipe-rh-refonte-28-08.sql) — le contrôle UI ci-dessous n'est
   // qu'un raccourci d'affichage, jamais la seule barrière.
   const canSeeDocs=['admin','compta'].includes(myRole);
-  const RLBL={admin:'Administrateur',sec:'Secrétaire',prod:'Resp. Production',photo:'Photographe',cm:'Community Manager',compta:'Comptable',com:'Commercial'};
-  const RCLR={admin:'#366BFF',sec:'#00B8D4',prod:'#2ECC8A',photo:'#7C4DFF',cm:'#F5A524',compta:'#FF6B35',com:'#F0445E'};
+  // Pôle(s) (migration-poles-v14/v15, 31/08/2026) : réaffectation réservée à admin/rh,
+  // mêmes rôles que is_admin_or_rh() côté RLS.
+  const canManagePoles=['admin','rh'].includes(myRole);
+  const RLBL={admin:'Administrateur',sec:'Secrétaire',prod:'Resp. Production',photo:'Photographe',cm:'Community Manager',compta:'Comptable',com:'Commercial',rh:'Secrétaire générale / RH'};
+  const RCLR={admin:'#366BFF',sec:'#00B8D4',prod:'#2ECC8A',photo:'#7C4DFF',cm:'#F5A524',compta:'#FF6B35',com:'#F0445E',rh:'#C084FC'};
   openModal('<div style="padding:32px;text-align:center;color:var(--t3)">Chargement de la fiche…</div>');
   try{
     const today=ymdLocal();
-    const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw,dispoRangeRaw,kitResaRaw,docsRaw,gradeRecoRaw,clientsCmRaw]=await Promise.all([
+    const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw,dispoRangeRaw,kitResaRaw,docsRaw,gradeRecoRaw,clientsCmRaw,poleAffRaw]=await Promise.all([
       sbFetch('profiles?select=*&id=eq.'+id).catch(()=>[]),
       sbFetch('prestations_equipe_display?select=id,statut,remuneration,prestations(id,reference,date_prestation,statut,lieu,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=200').catch(()=>[]),
       sbFetch('collaborateur_certifications?select=*&collaborateur_id=eq.'+id).catch(()=>[]),
@@ -27853,6 +27887,10 @@ async function modalFicheCollaborateur(id){
       // Clubs gérés — pour un CM, clients.cm_id est déjà la relation
       // d'affectation club↔CM existante (pas de nouvelle table d'affectation).
       sbFetch('clients?select=id,nom&cm_id=eq.'+id+'&order=nom.asc').catch(()=>[]),
+      // Pôle(s) affecté(s) (migration-poles-v14/v15, 31/08/2026, séparation collaborateurs par
+      // pôle) : lecture toujours possible ici (RLS pole_affectations_self_select couvre le cas
+      // "je regarde ma propre fiche"), écriture réservée admin/rh (voir canManagePoles ci-dessous).
+      sbFetch('pole_affectations?select=pole_id,poles(nom,slug)&user_id=eq.'+id).catch(()=>[]),
     ]);
     const prof=(Array.isArray(profRaw)?profRaw:[])[0];
     if(!prof){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">Profil introuvable.</div>');return;}
@@ -27880,6 +27918,15 @@ async function modalFicheCollaborateur(id){
     const name=esc([prof.prenom,prof.nom].filter(Boolean).join(' ')||prof.role);
     const ini=((prof.prenom?.[0]||'')+(prof.nom?.[0]||'')).toUpperCase()||'?';
     const col=RCLR[prof.role]||'#366BFF';
+    // Pôle(s) affecté(s) — badges toujours visibles, "Modifier" réservé admin/rh (migration-
+    // poles-v14/v15). Aucun badge = collaborateur 'rh' (accès global par rôle, pas d'affectation).
+    const poleAff=Array.isArray(poleAffRaw)?poleAffRaw:[];
+    const poleBadgesHtml=poleAff.length
+      ?poleAff.map(pa=>'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(192,132,252,.12);color:#C084FC">'+esc(pa.poles?.nom||'?')+'</span>').join('')
+      :(prof.role==='rh'?'<span style="font-size:11px;color:var(--t3)">Tous pôles (rôle RH)</span>':'<span style="font-size:11px;color:var(--t3)">Aucun pôle</span>');
+    const poleSectionHtml='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">'+poleBadgesHtml
+      +(canManagePoles&&prof.role!=='rh'?'<button onclick="modalModifierPolesCollaborateur(\''+id+'\')" style="font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;font-family:var(--ff);padding:0;margin-left:4px">Modifier</button>':'')
+      +'</div>';
     // Grade réellement accordé (profiles.grade, validé par l'admin via Grades & XP) —
     // pas le grade que l'XP permettrait d'atteindre (calcGrade), sinon la fiche affiche
     // une promotion que l'admin n'a pas encore approuvée.
@@ -28154,6 +28201,7 @@ async function modalFicheCollaborateur(id){
             +'<div style="font-size:18px;font-weight:700;color:var(--t1)">'+name+'</div>'
             +'<div style="font-size:12px;color:var(--t3);margin-top:2px">'+(RLBL[prof.role]||prof.role)+'</div>'
             +(isPhotoProfile?'<div style="font-size:14px;color:'+grade.color+';margin-top:4px;letter-spacing:.06em">'+grade.ic+'</div>':'')
+            +poleSectionHtml
           +'</div>'
         +'</div>'
         +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">'
@@ -28169,6 +28217,50 @@ async function modalFicheCollaborateur(id){
     const mw=document.querySelector('#sv-modal > div');
     if(mw){mw.style.width='min(720px,calc(100vw - 16px))';mw.style.padding='0';mw.style.overflow='hidden';const ob=mw.querySelector(':scope > button');if(ob)ob.style.display='none';}
   }catch(e){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">'+(e.message||'Impossible de charger la fiche.')+'</div>');}
+}
+
+// ── Pôle(s) d'un collaborateur existant (migration-poles-v14/v15, 31/08/2026,
+// séparation collaborateurs par pôle) : seul moyen de rendre un collaborateur
+// déjà créé flexible multi-sport, ou de le réaffecter d'un pôle à l'autre —
+// l'invitation (creerCollaborateur/recrutCreerCollaborateur) ne fixe le(s)
+// pôle(s) qu'à la création. Réservé admin/rh (canManagePoles, RLS
+// pole_affectations_admin_all/pole_affectations_rh_all).
+async function modalModifierPolesCollaborateur(id){
+  const current=await sbFetch('pole_affectations?select=pole_id&user_id=eq.'+id).catch(()=>[]);
+  const currentIds=new Set((Array.isArray(current)?current:[]).map(p=>p.pole_id));
+  openModal(`<div class="mh"><div class="mt">Pôle(s) sportif(s)</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:12px;color:var(--t3)">Cocher plusieurs pôles pour un collaborateur flexible, disponible sur les deux.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${(S.allPoles||[]).map(p=>`<label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--t2)"><input type="checkbox" class="mmp-cb" value="${p.id}"${currentIds.has(p.id)?' checked':''}> ${esc(p.nom)}</label>`).join('')}
+      </div>
+      <div id="mmp-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="sauverPolesCollaborateur('${id}')">Enregistrer</button>
+      </div>
+    </div>`);
+}
+async function sauverPolesCollaborateur(id){
+  const err=document.getElementById('mmp-err');
+  const wanted=Array.from(document.querySelectorAll('.mmp-cb:checked')).map(el=>el.value);
+  if(wanted.length===0){err.textContent='Sélectionnez au moins un pôle.';return;}
+  err.textContent='Enregistrement…';
+  try{
+    const current=await sbFetch('pole_affectations?select=pole_id&user_id=eq.'+id).catch(()=>[]);
+    const currentIds=new Set((Array.isArray(current)?current:[]).map(p=>p.pole_id));
+    const toAdd=wanted.filter(p=>!currentIds.has(p));
+    const toRemove=[...currentIds].filter(p=>!wanted.includes(p));
+    for(const poleId of toAdd){
+      await sbFetch('pole_affectations',{method:'POST',body:{pole_id:poleId,user_id:id,role_pole:'membre'}});
+    }
+    for(const poleId of toRemove){
+      await sbFetch('pole_affectations?pole_id=eq.'+poleId+'&user_id=eq.'+id,{method:'DELETE'});
+    }
+    closeModal();
+    toast('Pôle(s) mis à jour.','ok');
+    modalFicheCollaborateur(id);
+  }catch(e){err.textContent='Erreur réseau.';}
 }
 
 // ── Documents collaborateur (onglet Documents de la fiche, 28/08/2026) ────
@@ -29761,6 +29853,7 @@ const VIEW_CTA={
   'admin.crm':{t:'+ Nouveau client',fn:'modalNouveauClient'},
   'admin.crmfullcom':{t:'+ Nouveau client',fn:'modalNouveauClient'},
   'admin.equipehub':{t:'+ Inviter',fn:'modalInviterCollaborateur'},
+  'rh.equipehub':{t:'+ Inviter',fn:'modalInviterCollaborateur'},
   'admin.kits':{t:'+ Nouveau kit',fn:'modalNouveauKit'},
   'admin.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'admin.contrats':{t:'+ Nouveau contrat',fn:'modalNouveauContrat'},

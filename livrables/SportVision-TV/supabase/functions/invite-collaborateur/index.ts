@@ -40,13 +40,19 @@ const corsHeaders = {
 const ROLE_LABELS: Record<string, string> = {
   sec: "Secrétaire", prod: "Resp. Production", photo: "Photographe / Vidéaste",
   cm: "Community Manager", compta: "Comptable", com: "Commercial", admin: "Administrateur",
-  expert_comptable: "Expert-comptable", auditeur: "Auditeur",
+  expert_comptable: "Expert-comptable", auditeur: "Auditeur", rh: "Secrétaire générale / RH",
 };
 
 // Rôles qu'une secrétaire peut attribuer elle-même (opérationnels). Les rôles
 // financiers/administratifs (admin, compta, expert_comptable, auditeur)
-// restent réservés à un admin.
+// restent réservés à un admin. 'rh' (migration-poles-v14, 31/08/2026) : accès
+// staff transversal à tous les pôles, reste réservé à un admin comme les
+// autres rôles sensibles — une secrétaire ne peut pas se créer une collègue
+// avec une visibilité plus large que la sienne.
 const INVITABLE_ROLES_SEC = new Set(["sec", "prod", "photo", "cm", "com"]);
+// 'rh' (migration-poles-v14) peut attribuer les mêmes rôles opérationnels
+// qu'une secrétaire + un autre poste 'rh' — jamais admin/compta/expert_comptable/auditeur.
+const INVITABLE_ROLES_RH = new Set([...INVITABLE_ROLES_SEC, "rh"]);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -72,24 +78,35 @@ serve(async (req) => {
     const { data: callerProfile } = await admin.from("profiles").select("role").eq("id", userData.user.id).maybeSingle();
     const callerIsAdmin = callerProfile?.role === "admin";
     const callerIsSec = callerProfile?.role === "sec";
-    if (!callerIsAdmin && !callerIsSec) return json({ error: "Réservé aux administrateurs et à la secrétaire" }, 403);
+    // 'rh' (migration-poles-v14, 31/08/2026) : Secrétaire générale, mêmes droits d'invitation
+    // qu'une secrétaire (rôles opérationnels + un autre poste 'rh'), voir INVITABLE_ROLES_RH.
+    const callerIsRh = callerProfile?.role === "rh";
+    if (!callerIsAdmin && !callerIsSec && !callerIsRh) {
+      return json({ error: "Réservé aux administrateurs, à la secrétaire et à la RH" }, 403);
+    }
 
-    const { email, prenom, nom, role, organization_name, redirect_url, pole_id } = await req.json();
+    const { email, prenom, nom, role, organization_name, redirect_url, pole_ids } = await req.json();
     if (!email || !prenom || !nom || !role) return json({ error: "Champs manquants" }, 400);
     if (!ROLE_LABELS[role]) return json({ error: "Rôle invalide" }, 400);
     if (callerIsSec && !INVITABLE_ROLES_SEC.has(role)) {
       return json({ error: "La secrétaire ne peut pas attribuer ce rôle. Seul un administrateur le peut." }, 403);
     }
+    if (callerIsRh && !INVITABLE_ROLES_RH.has(role)) {
+      return json({ error: "La RH ne peut pas attribuer ce rôle. Seul un administrateur le peut." }, 403);
+    }
 
-    // Multi-pôles (migration-poles-v11/v12, 31/08/2026) : pole_id optionnel, transmis par le
-    // formulaire d'invitation UNIQUEMENT quand plusieurs pôles existent (sinon absent — le
-    // trigger handle_user_invited()/ensure_default_pole_affectation() retombe alors sur
-    // Football, comportement historique implicite). Validé ici (existence réelle du pôle)
-    // pour ne jamais transmettre un pole_id invalide en metadata — le trigger a de toute
-    // façon son propre garde-fou, mais autant échouer proprement ici avec un message clair.
-    if (pole_id) {
-      const { data: poleRow } = await admin.from("poles").select("id").eq("id", pole_id).maybeSingle();
-      if (!poleRow) return json({ error: "Pôle sportif invalide." }, 400);
+    // Multi-pôles (migration-poles-v11/v12, étendu v14 le 31/08/2026 pour supporter un
+    // collaborateur flexible multi-sport) : pole_ids optionnel (tableau), transmis par le
+    // formulaire d'invitation UNIQUEMENT quand plusieurs pôles existent et le rôle n'est pas
+    // 'rh' (accès global par rôle, pas par affectation — voir ensure_default_pole_affectation()).
+    // Absent/vide -> le trigger retombe sur Football, comportement historique implicite.
+    // Validé ici (existence réelle de chaque pôle) pour ne jamais transmettre un id invalide en
+    // metadata — le trigger a de toute façon son propre garde-fou, mais autant échouer
+    // proprement ici avec un message clair.
+    const poleIds: string[] = Array.isArray(pole_ids) ? pole_ids.filter((p) => typeof p === "string" && p) : [];
+    if (poleIds.length > 0) {
+      const { data: poleRows } = await admin.from("poles").select("id").in("id", poleIds);
+      if (!poleRows || poleRows.length !== poleIds.length) return json({ error: "Pôle sportif invalide." }, 400);
     }
 
     // Idempotence (spec : "une invitation rejouée ne crée pas deux profils") —
@@ -106,10 +123,12 @@ serve(async (req) => {
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "invite",
       email,
-      // pole_id (optionnel) : lu par ensure_default_pole_affectation() côté trigger DB
-      // (migration-poles-v12) pour affecter ce nouveau collaborateur au bon pôle sportif dès
-      // sa création — jamais laissé sans aucune affectation (verrouillage RLS total sinon).
-      options: { data: { role, prenom, nom, ...(pole_id ? { pole_id } : {}) }, redirectTo: redirect_url },
+      // pole_ids (optionnel, tableau) : lu par ensure_default_pole_affectation() côté trigger DB
+      // (migration-poles-v12, étendu v14) pour affecter ce nouveau collaborateur à un ou
+      // plusieurs pôles sportifs dès sa création — jamais laissé sans aucune affectation pour un
+      // rôle non-'rh' (verrouillage RLS total sinon). 2+ éléments = collaborateur flexible
+      // multi-sport (migration-poles-v14, 31/08/2026).
+      options: { data: { role, prenom, nom, ...(poleIds.length > 0 ? { pole_ids: poleIds } : {}) }, redirectTo: redirect_url },
     });
     if (linkErr) return json({ error: linkErr.message }, 400);
 
