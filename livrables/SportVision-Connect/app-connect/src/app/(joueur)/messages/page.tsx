@@ -1,6 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
-import { MessagesThread, resolveMessageAttachments, type MessageData } from "./MessagesThread";
+import { MessagesThread } from "./MessagesThread";
+// resolveMessageAttachments/MessageData importés depuis ce module dédié (pas depuis
+// ./MessagesThread, un "use client") — voir messageAttachments.ts pour le pourquoi : ce fichier
+// est un Server Component, et appeler une fonction exportée par un module "use client" pendant le
+// rendu serveur échoue avec `TypeError: (0 , o.a) is not a function` (reproduit en build
+// production sur cette page, audit du 30-31/08/2026 — /messages plantait pour tout joueur ayant
+// déjà un client_id résolu).
+import { resolveMessageAttachments, type MessageData } from "./messageAttachments";
 
 // Messages — voir design-connect-personnel-12-08/README.md § Espace joueur → Messages et
 // MASTER-CONNECT-V1 §28 : conversation unique "Équipe SportVision", aucun statut "en ligne".

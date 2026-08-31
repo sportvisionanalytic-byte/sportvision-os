@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import type { PlayerOrder, PlayerOrderDocument } from "@/lib/prestations/types";
 import { TIMELINE_STAGES, STAGE_LABEL, STAGE_COLOR, stageFromStatut, type OrderStage } from "@/lib/prestations/status";
-import { formatDateLong, formatEUR } from "@/lib/prestations/format";
+import { formatDateLong, formatEUR, formatTime } from "@/lib/prestations/format";
 
 const SUPPORT_EMAIL = "contact@sportvision-an.fr";
 
@@ -172,7 +172,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Fact label="Date" value={formatDateLong(order.datePrestation)} />
-        <Fact label="Heure" value={order.heureDebut || "—"} />
+        <Fact label="Heure" value={formatTime(order.heureDebut)} />
         <Fact label="Lieu" value={order.lieu || order.adresseComplete || "—"} />
         <Fact label="Équipe" value={order.equipes || "—"} />
         <Fact label="Montant" value={amount !== null ? `${formatEUR(amount)} TTC${order.montantTtc === null ? " (estimé)" : ""}` : "Sur devis"} />

@@ -26,6 +26,16 @@ export function formatDateShort(iso: string | null): string {
   return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" }).format(d);
 }
 
+// prestations.heure_debut/heure_fin sont des colonnes Postgres `time`, sérialisées "HH:MM:SS"
+// par PostgREST (donc aussi par connect-player-prestations, qui les renvoie telles quelles) —
+// jamais affiché tel quel côté client (bug trouvé lors de l'audit Espace joueur du 30-31/08/2026 :
+// "Mes commandes" affichait "15:00:00" au lieu de "15:00"). Même troncature déjà appliquée
+// ailleurs dans ce module (src/lib/supabase/dashboard.ts, getNextClubEvent/getNextPrestation).
+export function formatTime(hms: string | null): string {
+  if (!hms) return "—";
+  return hms.slice(0, 5);
+}
+
 /**
  * Droit de rétractation (article L221-18 du Code de la consommation) — même formule que
  * app-next/src/lib/types/services.ts:needsRetractationWaiver et le configurateur Projet

@@ -87,7 +87,9 @@ export default async function EquipesPage() {
                 </span>
                 <div className="flex min-w-0 flex-col gap-1">
                   <span className="font-sora text-[18px] font-semibold tracking-tight">{g.name}</span>
-                  <span className="text-[13px] text-text-tertiary">{g.member_count} membres</span>
+                  <span className="text-[13px] text-text-tertiary">
+                    {g.member_count} membre{g.member_count > 1 ? "s" : ""}
+                  </span>
                 </div>
                 <div className="ml-auto flex flex-none">
                   {g.member_previews.map((m, i) => (

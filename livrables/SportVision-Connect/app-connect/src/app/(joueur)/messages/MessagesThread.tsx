@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import type { MessageData } from "./messageAttachments";
 
-export interface MessageData {
-  id: string;
-  auteur: "client" | "staff";
-  contenu: string;
-  pieceJointeUrl: string | null;
-  lu: boolean;
-  createdAt: string;
-}
+// resolveMessageAttachments et le type MessageData vivent dans ./messageAttachments.ts (pas ici)
+// depuis l'audit Espace joueur du 30-31/08/2026 — voir ce fichier pour le pourquoi (bug de
+// frontière RSC : messages/page.tsx, un Server Component, ne peut pas appeler une fonction
+// exportée par ce module "use client"). Réexporté ci-dessous pour ne pas casser les imports
+// existants (MessagesThread, resolveMessageAttachments) depuis ce fichier.
+export { resolveMessageAttachments } from "./messageAttachments";
+export type { MessageData } from "./messageAttachments";
 
 // Bucket PRIVÉ dédié (migration-storage-v95, 20/08) — portail-media (utilisé avant) est un bucket
 // PUBLIC : /object/public/... (ce que génère getPublicUrl()) ignore complètement la RLS dès que
@@ -22,34 +21,6 @@ export interface MessageData {
 const ATTACHMENT_BUCKET = "sportvision-media-prive";
 const ATTACHMENT_SIGN_TTL_SECONDS = 3600;
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
-
-// Résout piece_jointe_path → URL signée temporaire pour une liste de lignes messages_client déjà
-// chargées (server ou client, le client Supabase passé porte la session/RLS dans les deux cas).
-// Un seul appel Storage groupé (createSignedUrls) plutôt qu'un par pièce jointe. Une ligne sans
-// accès RLS au chemin (ne devrait jamais arriver ici puisque la ligne messages_client elle-même
-// est déjà scopée par client_id, mais defensive) n'obtient simplement pas d'URL — pieceJointeUrl
-// reste null, pas d'erreur bloquante pour le reste du fil.
-export async function resolveMessageAttachments(
-  supabase: SupabaseClient,
-  rows: Array<{ id: string; auteur_type: string; contenu: string; piece_jointe_path: string | null; lu: boolean; created_at: string }>,
-): Promise<MessageData[]> {
-  const paths = rows.map((r) => r.piece_jointe_path).filter((p): p is string => !!p);
-  const urlByPath = new Map<string, string>();
-  if (paths.length) {
-    const { data: signedList } = await supabase.storage.from(ATTACHMENT_BUCKET).createSignedUrls(paths, ATTACHMENT_SIGN_TTL_SECONDS);
-    for (const s of signedList || []) {
-      if (s.signedUrl && !s.error) urlByPath.set(s.path ?? "", s.signedUrl);
-    }
-  }
-  return rows.map((row) => ({
-    id: row.id,
-    auteur: row.auteur_type === "staff" ? "staff" : "client",
-    contenu: row.contenu,
-    pieceJointeUrl: row.piece_jointe_path ? (urlByPath.get(row.piece_jointe_path) ?? null) : null,
-    lu: row.lu,
-    createdAt: row.created_at,
-  }));
-}
 
 function dayLabel(iso: string): string {
   const d = new Date(iso);
