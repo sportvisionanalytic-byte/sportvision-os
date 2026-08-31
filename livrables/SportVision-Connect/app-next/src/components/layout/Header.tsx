@@ -21,10 +21,22 @@ import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 // pour l'espace Parent/Joueur — un admin de club qui y accède directement, par exemple depuis un
 // lien partagé, ne doit pas voir le slug d'URL brut en titre). resolveNavigation() ne peut pas
 // leur trouver de libellé pour l'espace actif : ce petit repli couvre ces cas précis.
+//
+// /billing, /contracts, /services (audit Finance/Contrats/Sponsors du 31/08/2026) : absentes de
+// NAV_SPONSOR (et de la nav coach/académie/agence CM selon le type) — chacune de ces pages retombe
+// honnêtement sur <LockedModule /> pour ces types (voir billing/page.tsx, contracts/page.tsx,
+// services/page.tsx), mais AVANT ce correctif le titre au-dessus affichait le slug brut "billing"/
+// "contracts"/"services" au lieu d'un libellé, contredisant directement l'intention documentée
+// ci-dessus. Reproduit en testant un compte sponsor réel : "billing" et "contracts" affichés tels
+// quels en tête de page. Mêmes libellés que ceux déjà utilisés par resolveNavigation() pour les
+// types qui ont ces entrées dans leur menu (voir navigation.ts).
 const TITLE_FALLBACKS: Record<string, string> = {
   "/notifications": "Notifications",
   "/children": "Profils associés",
   "/authorizations": "Autorisations",
+  "/billing": "Factures",
+  "/contracts": "Contrats",
+  "/services": "Prestations",
 };
 
 interface HeaderProps {
