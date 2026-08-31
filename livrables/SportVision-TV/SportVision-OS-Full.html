@@ -28303,6 +28303,12 @@ function goApp(role){
       S.polesResponsable=(affRows||[]).filter(r=>r.role_pole==='responsable').map(r=>r.pole_id);
       S.allPoles=poleRows||[];
       renderPoleSelector();
+      // Re-rend la sidebar (Lot 8, 31/08/2026) : renderSidebarNav() a déjà tourné plus haut,
+      // synchrone, AVANT que ce fetch (async) ne remplisse S.polesResponsable — sans ce second
+      // rendu, l'item de nav "Roadmap pôle" (conditionné à S.polesResponsable, voir
+      // _navForRole()) n'apparaît jamais pour un Responsable non-admin. Même patron que le
+      // re-rendu déjà fait plus haut pour la couche pilotage CM (_myCmAutonomie).
+      document.getElementById('sb-nav').innerHTML=renderSidebarNav(S.role,S.view);
     }).catch(()=>{});
   }
   updateNavBadges(role);
