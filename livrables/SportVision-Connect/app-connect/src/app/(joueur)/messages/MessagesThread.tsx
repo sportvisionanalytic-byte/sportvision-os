@@ -38,10 +38,15 @@ function timeLabel(iso: string): string {
 }
 
 // Extrait un nom de fichier lisible d'une URL de pièce jointe (le stockage préfixe le nom par un
-// identifiant unique, voir handleAttach ci-dessous).
+// identifiant unique, voir handleAttach ci-dessous). BUG CORRIGÉ (audit repasse du 31/08/2026,
+// vu en réel en Playwright) : pieceJointeUrl est désormais une URL SIGNÉE
+// (bucket sportvision-media-prive, "?token=..." en suffixe — voir messageAttachments.ts) — sans
+// retirer la query string AVANT de découper sur "/", le libellé affiché était
+// "mon-fichier.txt?token=eyJ..." (le token entier collé au nom) au lieu de "mon-fichier.txt".
 function attachmentLabel(url: string): string {
   try {
-    const name = decodeURIComponent(url.split("/").pop() || "Pièce jointe");
+    const withoutQuery = url.split("?")[0]!;
+    const name = decodeURIComponent(withoutQuery.split("/").pop() || "Pièce jointe");
     return name.replace(/^[a-f0-9-]{20,}-/i, "");
   } catch {
     return "Pièce jointe";
