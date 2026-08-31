@@ -1,55 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+// resolveMessageAttachments/MessageData déplacés dans messageAttachments.ts (bug du 31/08/2026,
+// voir son en-tête) : un Server Component ne peut pas appeler un export non-composant d'un module
+// "use client" comme CE fichier — page.tsx (Server Component) plantait à chaque chargement. Les
+// deux appelants (messages/page.tsx, MessagesParticulierView.tsx) importent désormais directement
+// depuis "./messageAttachments" — les RÉ-exporter ici ne suffirait pas : sous React Server
+// Components, la limite "use client" se juge au FICHIER traversé par l'import, pas à l'origine
+// réelle de la valeur, donc un ré-export via ce fichier resterait tout aussi cassé côté serveur.
+import type { MessageData } from "./messageAttachments";
 
-export interface MessageData {
-  id: string;
-  auteur: "client" | "staff";
-  contenu: string;
-  pieceJointeUrl: string | null;
-  lu: boolean;
-  createdAt: string;
-}
-
-// Bucket PRIVÉ dédié (migration-storage-v95, 20/08) — portail-media (utilisé avant) est un bucket
-// PUBLIC : /object/public/... (ce que génère getPublicUrl()) ignore complètement la RLS dès que
-// bucket.public=true, donc une pièce jointe de message y était lisible par n'importe qui malgré
-// une policy d'écriture correctement scopée. Ce bucket est privé : la lecture passe uniquement par
-// une URL signée (temporaire, générée à l'affichage — voir loadSignedAttachmentUrl), jamais un lien
-// permanent stocké en base.
+// Mêmes constantes que messageAttachments.ts (bucket privé, TTL de signature) — dupliquées ici
+// car handleAttach ci-dessous appelle directement Storage côté client pour l'upload + la première
+// URL signée du fichier qu'il vient d'envoyer, un besoin différent de resolveMessageAttachments
+// (qui, lui, résout un lot de pièces jointes déjà en base). Voir messageAttachments.ts pour le
+// commentaire complet sur le choix du bucket privé.
 const ATTACHMENT_BUCKET = "sportvision-media-prive";
 const ATTACHMENT_SIGN_TTL_SECONDS = 3600;
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
-
-// Résout piece_jointe_path → URL signée temporaire pour une liste de lignes messages_client déjà
-// chargées (server ou client, le client Supabase passé porte la session/RLS dans les deux cas).
-// Un seul appel Storage groupé (createSignedUrls) plutôt qu'un par pièce jointe. Une ligne sans
-// accès RLS au chemin (ne devrait jamais arriver ici puisque la ligne messages_client elle-même
-// est déjà scopée par client_id, mais defensive) n'obtient simplement pas d'URL — pieceJointeUrl
-// reste null, pas d'erreur bloquante pour le reste du fil.
-export async function resolveMessageAttachments(
-  supabase: SupabaseClient,
-  rows: Array<{ id: string; auteur_type: string; contenu: string; piece_jointe_path: string | null; lu: boolean; created_at: string }>,
-): Promise<MessageData[]> {
-  const paths = rows.map((r) => r.piece_jointe_path).filter((p): p is string => !!p);
-  const urlByPath = new Map<string, string>();
-  if (paths.length) {
-    const { data: signedList } = await supabase.storage.from(ATTACHMENT_BUCKET).createSignedUrls(paths, ATTACHMENT_SIGN_TTL_SECONDS);
-    for (const s of signedList || []) {
-      if (s.signedUrl && !s.error) urlByPath.set(s.path ?? "", s.signedUrl);
-    }
-  }
-  return rows.map((row) => ({
-    id: row.id,
-    auteur: row.auteur_type === "staff" ? "staff" : "client",
-    contenu: row.contenu,
-    pieceJointeUrl: row.piece_jointe_path ? (urlByPath.get(row.piece_jointe_path) ?? null) : null,
-    lu: row.lu,
-    createdAt: row.created_at,
-  }));
-}
 
 function dayLabel(iso: string): string {
   const d = new Date(iso);

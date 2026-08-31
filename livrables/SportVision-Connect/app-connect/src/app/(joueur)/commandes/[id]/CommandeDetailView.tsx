@@ -41,19 +41,32 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    supabase.functions.invoke("connect-player-prestations", { body: { action: "get_order", id, multi } }).then(({ data, error: fnError }) => {
-      if (cancelled) return;
-      if (fnError || data?.error) {
-        setError(data?.error || "Commande introuvable.");
-        return;
+    supabase.functions.invoke("connect-player-prestations", { body: { action: "get_order", id, multi } })
+      .then(({ data, error: fnError }) => {
+        if (cancelled) return;
+        if (fnError || data?.error) {
+          setError(data?.error || "Commande introuvable.");
+          return;
+        }
+        setOrder(data.order as PlayerOrder);
+        setDocuments((data.documents || []) as PlayerOrderDocument[]);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Commande introuvable.");
+      });
+    // Best-effort : un échec ne doit pas bloquer l'affichage de la commande elle-même, le bloc
+    // "Payer à plusieurs" reste simplement masqué (fundingLink?.is_collectif). IIFE async plutôt
+    // qu'un .then().catch() : le PostgrestFilterBuilder de .rpc() est seulement "thenable"
+    // (PromiseLike), son .then() ne renvoie pas un objet chaînable avec .catch().
+    (async () => {
+      try {
+        const { data } = await supabase.rpc("connect_get_order_funding_link", { p_prestation_id: id });
+        if (cancelled || !data) return;
+        setFundingLink(data as OrderFundingLink);
+      } catch {
+        // Best-effort — voir le commentaire ci-dessus.
       }
-      setOrder(data.order as PlayerOrder);
-      setDocuments((data.documents || []) as PlayerOrderDocument[]);
-    });
-    supabase.rpc("connect_get_order_funding_link", { p_prestation_id: id }).then(({ data }) => {
-      if (cancelled || !data) return;
-      setFundingLink(data as OrderFundingLink);
-    });
+    })();
     return () => {
       cancelled = true;
     };

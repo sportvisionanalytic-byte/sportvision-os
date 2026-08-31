@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { MessagesThread, resolveMessageAttachments, type MessageData } from "@/app/(joueur)/messages/MessagesThread";
+import { MessagesThread } from "@/app/(joueur)/messages/MessagesThread";
+import { resolveMessageAttachments, type MessageData } from "@/app/(joueur)/messages/messageAttachments";
 import type { AthleteRow } from "@/lib/supabase/particulier";
 
 type Subject = { kind: "self" | "linked" | "managed"; id: string | null; label: string };

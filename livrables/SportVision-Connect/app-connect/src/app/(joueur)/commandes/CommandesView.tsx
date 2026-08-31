@@ -21,14 +21,18 @@ export function CommandesView() {
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    supabase.functions.invoke("connect-player-prestations", { body: { action: "list_orders" } }).then(({ data, error: fnError }) => {
-      if (cancelled) return;
-      if (fnError || data?.error) {
-        setError(data?.error || "Impossible de charger vos commandes pour le moment.");
-        return;
-      }
-      setOrders(data.orders as PlayerOrder[]);
-    });
+    supabase.functions.invoke("connect-player-prestations", { body: { action: "list_orders" } })
+      .then(({ data, error: fnError }) => {
+        if (cancelled) return;
+        if (fnError || data?.error) {
+          setError(data?.error || "Impossible de charger vos commandes pour le moment.");
+          return;
+        }
+        setOrders(data.orders as PlayerOrder[]);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Impossible de charger vos commandes pour le moment.");
+      });
     return () => {
       cancelled = true;
     };
