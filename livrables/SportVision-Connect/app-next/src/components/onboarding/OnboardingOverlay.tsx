@@ -74,7 +74,7 @@ const CLUB_PLUS_STEPS: StepContent[] = [
 ];
 
 const FULL_COM_STEPS: StepContent[] = [
-  { icon: Sparkles, title: "Bienvenue", body: "Full Communication vous accompagne de bout en bout : brief, création, validation, publication." },
+  { icon: Sparkles, title: "Bienvenue", body: "Full Communication vous accompagne de bout en bout : brief, création, publication en autonomie par votre Community Manager." },
   { icon: Building2, title: "Votre structure", body: "Confirmez les informations de votre organisation transmises à votre conseiller." },
   { icon: Target, title: "Vos objectifs", body: "Notoriété, recrutement, sponsoring : vos priorités orientent le planning éditorial." },
   { icon: Share2, title: "Vos réseaux", body: "Connectez vos comptes pour permettre la programmation directe des publications." },
@@ -82,7 +82,7 @@ const FULL_COM_STEPS: StepContent[] = [
   { icon: Users, title: "Vos équipes et sponsors", body: "Un aperçu complet permet à votre Community Manager de mieux vous représenter." },
   { icon: Calendar, title: "Votre calendrier", body: "Matchs, événements et échéances à anticiper pour les prochaines semaines." },
   { icon: ClipboardCheck, title: "Vos attentes", body: "Fréquence de publication, formats prioritaires, tonalité : précisez ce qui compte pour vous." },
-  { icon: Radio, title: "Votre Community Manager prépare votre stratégie", body: "Vous recevrez votre premier planning éditorial sous 48h, à valider depuis « À valider »." },
+  { icon: Radio, title: "Votre Community Manager prépare votre stratégie", body: "Vous recevrez votre premier planning éditorial sous 48h. Votre Community Manager publie en autonomie ; vous suivez tout depuis votre espace et pouvez demander un ajustement à tout moment." },
 ];
 
 function useOnboardingVariant() {
