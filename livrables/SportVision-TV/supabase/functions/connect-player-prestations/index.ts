@@ -558,8 +558,19 @@ serve(async (req) => {
         paiementMode === "seul" && (modePaiementChoisiRaw === "carte" || modePaiementChoisiRaw === "especes")
           ? modePaiementChoisiRaw
           : null;
+      // BUGFIX (audit Espace particulier 30-31/08/2026, reproduit en réel) : ce libellé interne
+      // (visible par le staff dans la fiche prestation) distinguait "Espace particulier" vs.
+      // "Espace joueur" sur `beneficiary.kind !== "self"` — donc TOUJOURS "Espace joueur" pour une
+      // réservation "Pour moi" (kind="self"), y compris pour un compte Espace particulier qui
+      // réserve pour lui-même (ReservationWizardParticulier.tsx envoie toujours `beneficiary`,
+      // même en kind="self"). Le staff voyait donc "Espace joueur" sur une demande venant en
+      // réalité d'un compte particulier sans club, ce qui peut induire en erreur au traitement
+      // (ex. supposer à tort une affiliation club). Le bon discriminant est déjà utilisé plus haut
+      // dans cette même fonction (ligne ~444, `if (beneficiary)` — Espace joueur legacy n'envoie
+      // JAMAIS ce champ, contrairement à l'Espace particulier qui l'envoie toujours, y compris
+      // pour "self") : réutilisé ici pour la cohérence.
       const descriptionParts = [
-        `Prestation demandée (Connect — ${beneficiary && beneficiary.kind !== "self" ? "Espace particulier" : "Espace joueur"}) : ${offer.nom}`,
+        `Prestation demandée (Connect — ${beneficiary ? "Espace particulier" : "Espace joueur"}) : ${offer.nom}`,
         body?.adversaire ? `Adversaire : ${String(body.adversaire).trim()}` : null,
         body?.categorie ? `Catégorie : ${String(body.categorie).trim()}` : null,
         dureeRushMinutes != null ? `Durée totale des rushs déclarée : ${dureeRushMinutes} min` : null,

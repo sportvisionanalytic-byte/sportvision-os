@@ -38,6 +38,17 @@ export function AthletesListView({
 
   const sportifsLabel = particulierSportifsLabel(profilParticulier);
 
+  // BUGFIX (audit Espace particulier 30-31/08/2026) : la bannière de plafond ci-dessous disait
+  // toujours "sportifs suivis" même pour un compte parent/tuteur (vocabulaire "Mes enfants"
+  // partout ailleurs sur cet écran — titre, lib/supabase/particulier.ts) — un parent qui suit ses
+  // 3 enfants voyait "3 / 3 sportifs suivis", incohérent avec le reste de la page. "sportifs
+  // suivis" reste le bon mot pour le choix explicite "autre" (aucune notion d'enfant).
+  const isParentOuTuteur = profilParticulier === "parent" || profilParticulier === "tuteur";
+  const particulierLimitCountLabel = isParentOuTuteur ? "enfants" : "sportifs suivis";
+  const particulierLimitReachedLabel = isParentOuTuteur
+    ? "Vous avez atteint votre limite d'enfants. Contactez SportVision pour en suivre davantage."
+    : "Vous avez atteint votre limite de sportifs suivis. Contactez SportVision pour en suivre davantage.";
+
   // Plafond dur parent/tuteur/autre (connect_particulier_limit/connect_particulier_total_
   // sportifs_count, migration-connect-v67 §2-3) — jamais affiché pour un compte agent : son
   // palier payant a déjà sa propre bannière ci-dessous (agentInfo, liée à Stripe), plus riche
@@ -85,7 +96,7 @@ export function AthletesListView({
         >
           <div className="flex items-center justify-between text-[14px] lg:text-[13px]">
             <span className="text-text-secondary">
-              {particulierTotal} / {particulierLimit} sportifs suivis
+              {particulierTotal} / {particulierLimit} {particulierLimitCountLabel}
             </span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-white/[.08]">
@@ -96,7 +107,7 @@ export function AthletesListView({
           </div>
           {particulierLimitReached && (
             <span className="text-[14px] leading-relaxed text-attente lg:text-[12.5px]">
-              Vous avez atteint votre limite de sportifs suivis. Contactez SportVision pour en suivre davantage.
+              {particulierLimitReachedLabel}
             </span>
           )}
         </div>

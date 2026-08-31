@@ -97,13 +97,22 @@ export default async function ProfilParticulierPage() {
                   })}
                 </div>
               ) : (
-                <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">Aucun sportif ajouté pour le moment.</span>
+                <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
+                  {/* BUGFIX (audit Espace particulier 30-31/08/2026) : ce texte et le bouton
+                      "Gérer" ci-dessous étaient figés sur "sportif(s)" quel que soit
+                      profilParticulier, incohérent avec le titre "Mes enfants" juste au-dessus
+                      pour un compte parent/tuteur — voir la même bascule déjà appliquée sur
+                      l'Accueil particulier (particulier/page.tsx, particulierSportifsLabel). */}
+                  {profilParticulier === "parent" || profilParticulier === "tuteur"
+                    ? "Aucun enfant ajouté pour le moment."
+                    : "Aucun sportif ajouté pour le moment."}
+                </span>
               )}
               <Link
                 href="/particulier/sportifs"
                 className="self-start rounded-sv border border-border-strong bg-white/[.03] px-3.5 py-2.5 font-sora text-[14px] font-semibold hover:bg-white/[.08] lg:text-[13px]"
               >
-                Gérer mes sportifs
+                Gérer {particulierSportifsLabel(profilParticulier).toLowerCase()}
               </Link>
             </div>
 
