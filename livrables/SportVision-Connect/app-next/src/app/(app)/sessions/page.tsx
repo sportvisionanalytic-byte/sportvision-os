@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { createClient } from "@/lib/supabase/client";
 import { resolveOrgLegacyClientId } from "@/lib/data/shared/org-legacy-link";
 import { fetchCoachSessions, type CoachSessionEvent } from "@/lib/data/coach/sessions";
+import { parseDateOnly } from "@/lib/date-only";
 
 // /sessions — séances du coach, alimentées par calendar_events (type='seance'), en lecture seule
 // (le staff SportVision planifie, le coach consulte — voir le plan Tier C § Phase 1 Séances/
@@ -22,7 +23,7 @@ import { fetchCoachSessions, type CoachSessionEvent } from "@/lib/data/coach/ses
 // abouti).
 
 function fmtDate(value: string): string {
-  const d = new Date(value);
+  const d = parseDateOnly(value);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
