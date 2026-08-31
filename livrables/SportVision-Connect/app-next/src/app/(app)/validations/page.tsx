@@ -17,7 +17,15 @@ export default function ValidationsPage() {
   const { ctx } = useSession();
   const resolution = useClientId();
 
-  if (resolution.status === "locked") return <LockedModule />;
+  // Message dédié — voir le même correctif et la même raison exacte dans messages/page.tsx
+  // (31/08/2026, audit complet) : useClientId() "locked" est définitif pour ce type d'espace,
+  // jamais débloqué par un changement de contrat, contrairement à ce que sous-entend le message
+  // générique de LockedModule.
+  if (resolution.status === "locked") {
+    return (
+      <LockedModule message="Les validations ne sont pas encore disponibles pour ce type d'espace, quel que soit votre contrat." />
+    );
+  }
   if (resolution.status === "loading") return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
 
   if (resolution.status === "not_linked") {

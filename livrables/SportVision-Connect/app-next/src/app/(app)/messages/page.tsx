@@ -22,7 +22,21 @@ export default function MessagesPage() {
   const { ctx } = useSession();
   const resolution = useClientId();
 
-  if (resolution.status === "locked") return <LockedModule title="Messages" />;
+  // Message dédié (pas le message générique de LockedModule, qui laisse croire qu'un changement
+  // de contrat ou un entitlement débloquerait le module "à tout moment") : useClientId() renvoie
+  // "locked" pour tout type d'organisation autre que club/generic/player de façon définitive et
+  // indépendante du contrat (voir data/shared/use-client-id.ts) — aucune action de SportVision ne
+  // rend ce module disponible aujourd'hui pour ce type d'espace. Même correctif que Studio
+  // (19/08/2026, audit démo Club+) et que support/page.tsx (31/08/2026, audit complet), pour la
+  // même raison exacte.
+  if (resolution.status === "locked") {
+    return (
+      <LockedModule
+        title="Messages"
+        message="Ce fil de messages n'est pas encore disponible pour ce type d'espace, quel que soit votre contrat."
+      />
+    );
+  }
   if (resolution.status === "loading") {
     return (
       <div className="flex h-[calc(100vh-140px)] flex-col gap-5">
