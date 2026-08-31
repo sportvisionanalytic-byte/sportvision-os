@@ -132,7 +132,11 @@ function PublicationsHistory({ clientId }: { clientId: string }) {
         </Card>
       ) : (
         <Card>
-          <div className="flex items-center gap-3.5 border-b border-divider px-5 py-2.5 text-[11px] font-bold uppercase tracking-[.04em] text-text-faint">
+          {/* Rangée d'en-têtes cachée sous `sm` : à largeur fixe (contrairement aux lignes de
+              données juste en dessous, en `flex-wrap`), elle débordait hors du viewport sur
+              mobile (audit du 31/08/2026, Playwright 390px) — les données elles-mêmes restent
+              lisibles une fois repliées, la légende Portée/Interactions ci-dessous suffit. */}
+          <div className="hidden items-center gap-3.5 border-b border-divider px-5 py-2.5 text-[11px] font-bold uppercase tracking-[.04em] text-text-faint sm:flex">
             <span className="min-w-0 flex-1">Contenu</span>
             <span className="w-20 flex-none text-right">Portée</span>
             <span className="w-20 flex-none text-right">Interactions</span>
