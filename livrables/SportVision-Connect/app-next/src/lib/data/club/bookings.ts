@@ -165,11 +165,21 @@ export function offerDiscountedPriceLabel(
 }
 
 /** Snapshot figé au moment de la réservation dans `price_label` — indicatif uniquement, la
- * facturation réelle reste un devis/facture séparé géré par le staff. */
+ * facturation réelle reste un devis/facture séparé géré par le staff.
+ *
+ * Bug corrigé (audit Finance/Contrats/Sponsors du 31/08/2026) : affichait le prix PLEIN TTC
+ * (offerPriceLabel) suivi de l'annotation "(-5% Club+)"/"(-10% Club+ Performance)" sans jamais
+ * appliquer la remise au montant affiché — ex. "120,00 € TTC (-5% Club+)" alors que le club paie
+ * réellement 114,00 € TTC. Incohérent avec ClubOfferCard.tsx (catalogue), qui affiche déjà
+ * offerDiscountedPriceLabel comme prix principal. Reproduit en réservant réellement "Match Photo"
+ * en Club+ Start : l'étape 3/3 du tunnel affichait "120,00 € TTC (-5% Club+)", et ce même libellé
+ * erroné était persisté tel quel dans club_bookings.price_label — la seule trace du montant
+ * indicatif convenu pour cette réservation. */
 export function fullPriceLabel(offer: Pick<ClubCatalogueOffre, "tarifType" | "prixHt" | "tvaPct"> | null, plan: ClubPlan): string {
   if (!offer) return "Sur devis";
   const advantage = offerAdvantageLabel(offer, plan);
-  return offerPriceLabel(offer) + (advantage ? ` (${advantage})` : "");
+  const discounted = offerDiscountedPriceLabel(offer, plan);
+  return (discounted ?? offerPriceLabel(offer)) + (advantage ? ` (${advantage})` : "");
 }
 
 export interface SubmitBookingInput {

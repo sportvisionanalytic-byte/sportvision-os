@@ -5,6 +5,17 @@
 // layout.tsx utilise next/font pour toutes ses polices, servies depuis le domaine propre au
 // build. Le paiement/abonnement Stripe est une redirection pleine page (window.location.href),
 // jamais un iframe/script embarqué — pas besoin d'autoriser de domaine Stripe ici.
+// script-src : 'unsafe-eval' est ajouté UNIQUEMENT en dev (jamais en production, cf. valeur figée
+// ci-dessous) — même correctif que app-connect/next.config.js (31/08/2026) : `next dev` empaquette
+// chaque module avec eval() pour le Fast Refresh/HMR (devtool eval-source-map), bloqué par la CSP
+// sans 'unsafe-eval', ce qui empêche React d'hydrater silencieusement (aucun onClick/onChange ne se
+// branche, un clic sur un bouton de formulaire retombe sur la soumission native/rechargement
+// complet). Reproduit ici lors de l'audit Finance/Contrats/Sponsors du 31/08/2026 (page /auth/login
+// : le clic sur "Se connecter" rechargeait la page de login au lieu de soumettre via React).
+// `next build`/`next start` (et donc Netlify en production) n'utilisent pas eval() pour leurs
+// bundles : ce correctif ne change rien à la CSP réellement servie en production.
+const SCRIPT_SRC = process.env.NODE_ENV === "production" ? "'self' 'unsafe-inline'" : "'self' 'unsafe-inline' 'unsafe-eval'";
+
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -19,7 +30,7 @@ const SECURITY_HEADERS = [
       // URL https:// n'autorise pas automatiquement son équivalent wss://). Même bug reproduit et
       // corrigé côté app-connect (audit du 30/08/2026, compte Connect tout neuf) — jamais vérifié
       // ici jusqu'à cet audit, mais la CSP est strictement identique.
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'",
+      `default-src 'self'; script-src ${SCRIPT_SRC}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'`,
   },
 ];
 

@@ -455,7 +455,7 @@ function BillingDocumentsView({ clientId, allowDevisDecision }: { clientId: stri
           {invoices.length > 0 && (
             <Card>
               {invoices.map((inv) => (
-            <div key={inv.id} className="flex items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
+            <div key={inv.id} className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-mono text-[12.5px] font-bold text-text">{inv.number}</span>
                 <span className="mt-0.5 block truncate text-[12px] text-text-soft">{inv.subject}</span>
