@@ -109,7 +109,11 @@ export function MessagesThread({
   }, [messages.length]);
 
   useEffect(() => {
-    if (unreadStaffIds.length === 0) return;
+    // /demo/messages (audit du 31/08/2026) : clientId="demo-client" et les ids de messages
+    // mockés ("demo-m3"...) ne sont pas des uuid — l'appel réussissait quand même à partir
+    // (aucune écriture, RPC rejetée par Postgres) mais spammait la console d'erreurs réseau
+    // 400 à chaque chargement de la démo, pour rien. Voir mock-data.ts pour ce sentinel.
+    if (unreadStaffIds.length === 0 || clientId === "demo-client") return;
     const supabase = createClient();
     // Best-effort : client_mark_message_read reconnaît un compte Joueur depuis l'exécution de
     // migration-connect-v46-client-mark-message-read-player.sql (confirmée en base le 14/08,
