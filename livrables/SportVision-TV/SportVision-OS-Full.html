@@ -4846,7 +4846,7 @@ async function loadViewData(role,view){
   if(view==='polekits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';window._kitsPoleF=S.activePoleId||'Tous';await loadKits();return;}
   if(view==='polefinance'){await loadPoleRem();return;}
   if(view==='polepipeline'){await loadPipeline();return;}
-  if(view==='polecommunication'){await loadCrmFullCom();return;}
+  if(view==='polecommunication'){setPoleCommTab(_poleCommTab||'clients');return;}
   if(view==='poleproduction'){await loadProdHub();return;}
   if(view==='polerecrutement'){await loadPoleRecrutement();return;}
   // 'rh' (migration-poles-v17/v18, 31/08/2026) : Secrétaire générale, mêmes écrans que 'sec'
@@ -8774,8 +8774,21 @@ function renderPoleEspaceShell(view){
   // pôle") : réutilisent directement les templates admin déjà écrits — RLS (migration-poles-
   // v27) fait le travail de scoping, comme pour polepre/poleclients ci-dessus.
   if(view==='polepipeline')return _buildPipelineShell('Commercial — mon pôle');
-  if(view==='polecommunication')return `<div class="sh"><div class="sh-t">Communication — mon pôle</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
-    <div id="crmfullcom-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+  // Communication — mon pôle (01/09/2026) : au départ, cette section ne réutilisait que
+  // loadCrmFullCom() (liste de clients) — un scoping minimal jamais confirmé avec Fouka. Le
+  // plan d'origine (31/08/2026) prévoyait aussi "calendriers éditoriaux, contenus prévus/
+  // publiés" (loadCmCal). Élargi ici en 2 onglets — Clients / Calendrier éditorial — plutôt
+  // qu'un 3e onglet "Contenus" (VIEWS['cm.contenus']) : ce dernier embarque des boutons vers
+  // des vues sans équivalent pôle (mediabank/videoscm/publications/rapports/analytics), le
+  // calendrier seul couvre déjà "contenus prévus/publiés" sans ce risque de boutons morts.
+  // Aucune des fonctions réutilisées (loadCrmFullCom/loadCmCal) ne gate sur S.role==='cm' —
+  // seule la RLS (contenus_responsable_pole_all, migration-poles-v27) scope les résultats.
+  if(view==='polecommunication')return `<div class="sh"><div class="sh-t">Communication — mon pôle</div></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="pct-clients" class="btn bp bs" onclick="setPoleCommTab('clients')">Clients Full Com</button>
+      <button id="pct-calendrier" class="btn bg2 bs" onclick="setPoleCommTab('calendrier')">Calendrier éditorial</button>
+    </div>
+    <div id="pcomm-body"></div>`;
   if(view==='poleproduction')return VIEWS['admin.prodhub']();
   if(view==='polerecrutement')return `<div class="sh"><div class="sh-t">Recrutement — mon pôle</div></div>
     <div id="recrut-real" style="min-height:200px">${_recrutSkel()}</div>`;
@@ -21534,6 +21547,28 @@ function setPlanningTab(tab){
   if(!body)return;
   if(tab==='production'){body.innerHTML=_cmPlanningProdTpl();loadCmPlanningMensuel();}
   else{body.innerHTML=_cmPlanningEditoTpl();loadCmCal();}
+}
+
+// Communication — mon pôle (01/09/2026) : même patron que setPlanningTab() ci-dessus, appliqué
+// à l'onglet "Clients Full Com" (loadCrmFullCom, déjà scopé pôle via RLS) / "Calendrier
+// éditorial" (_cmPlanningEditoTpl + loadCmCal, réutilisés tels quels — ni l'un ni l'autre ne
+// gate sur S.role==='cm').
+let _poleCommTab='clients';
+function setPoleCommTab(tab){
+  _poleCommTab=tab;
+  const bc=document.getElementById('pct-clients'),be=document.getElementById('pct-calendrier');
+  if(bc)bc.className='btn '+(tab==='clients'?'bp':'bg2')+' bs';
+  if(be)be.className='btn '+(tab==='calendrier'?'bp':'bg2')+' bs';
+  const body=document.getElementById('pcomm-body');
+  if(!body)return;
+  if(tab==='clients'){
+    body.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
+      <div id="crmfullcom-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+    loadCrmFullCom();
+  }else{
+    body.innerHTML=_cmPlanningEditoTpl();
+    loadCmCal();
+  }
 }
 async function loadCmCal(){
   const el=document.getElementById('cal-real');
