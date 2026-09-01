@@ -419,6 +419,15 @@ section{position:relative}
           </div>
 
           <div class="sv-field">
+            <label for="cd-pole">Sport</label>
+            <select id="cd-pole" name="pole_slug" required>
+              <option value="">Sélectionnez</option>
+              <option value="football">Football</option>
+              <option value="basket">Basket</option>
+            </select>
+          </div>
+
+          <div class="sv-field">
             <label for="cd-experience">Niveau d'expérience</label>
             <select id="cd-experience" name="experience_niveau" required>
               <option value="">Sélectionnez</option>
@@ -642,6 +651,7 @@ document.getElementById('candidature-form').addEventListener('submit', async (e)
   const fd = new FormData(form);
   const body = {
     poste: (fd.get('poste') || '').toString(),
+    pole_slug: (fd.get('pole_slug') || '').toString(),
     prenom: (fd.get('prenom') || '').toString().trim(),
     nom: (fd.get('nom') || '').toString().trim(),
     email: (fd.get('email') || '').toString().trim(),
@@ -653,8 +663,8 @@ document.getElementById('candidature-form').addEventListener('submit', async (e)
     site_web: fd.get('site_web'), // honeypot — doit rester vide
   };
 
-  if (!body.poste || !body.prenom || !body.nom || !body.email || !body.experience_niveau){
-    errEl.textContent = 'Merci de remplir les champs obligatoires (prénom, nom, e-mail, expérience).';
+  if (!body.poste || !body.pole_slug || !body.prenom || !body.nom || !body.email || !body.experience_niveau){
+    errEl.textContent = 'Merci de remplir les champs obligatoires (sport, prénom, nom, e-mail, expérience).';
     return;
   }
   // #candidature-form est en novalidate : ce contrôle de format prend le relais du type="email"

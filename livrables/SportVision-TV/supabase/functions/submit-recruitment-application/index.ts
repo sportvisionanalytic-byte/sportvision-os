@@ -73,6 +73,14 @@ const ZONE_LABELS: Record<string, string> = {
   aube: "Aube",
   autre: "Autre",
 };
+// Sélecteur "sport / pôle" du formulaire public (migration-poles-v28) — slugs figés
+// (mêmes que poles.slug en base), pas de lookup dynamique pour éviter d'exposer la
+// table poles à anon (RLS staff-only, poles_select_staff, jamais ouverte à anon).
+const POLE_SLUGS = ["football", "basket"];
+const POLE_LABELS: Record<string, string> = {
+  football: "Football",
+  basket: "Basket",
+};
 
 function safeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-120);
@@ -125,6 +133,7 @@ async function sendStaffNotification(admin: any, app: Record<string, unknown>) {
     </div>
     <div style="padding:28px 32px;font-size:14px;line-height:1.8;color:#E4EAF2">
       <p><strong>${app.prenom} ${app.nom}</strong> — ${app.email}${app.telephone ? " — " + app.telephone : ""}</p>
+      <p>Sport / pôle : ${POLE_LABELS[app.pole_slug as string] || app.pole_slug}</p>
       <p>Zone : ${ZONE_LABELS[app.zone as string] || app.zone || "Non précisée"}${app.ville ? " (" + app.ville + ")" : ""}</p>
       <p>Expérience : ${EXPERIENCE_LABELS[app.experience_niveau as string] || app.experience_niveau || "Non précisée"}</p>
       <p>Matériel personnel : ${app.materiel || "Non précisé"}</p>
@@ -191,7 +200,7 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey);
 
     const {
-      poste, prenom, nom, email, telephone, zone, ville, experience_niveau,
+      poste, pole_slug, prenom, nom, email, telephone, zone, ville, experience_niveau,
       materiel, permis, vehicule, disponibilites, portfolio_url, message,
       cv_base64, cv_filename, site_web,
     } = await req.json();
@@ -222,6 +231,9 @@ serve(async (req) => {
     if (!["photographe", "videaste", "les_deux", "community_manager"].includes(poste)) {
       return json({ error: "Poste visé invalide" }, 400);
     }
+    if (!pole_slug || !POLE_SLUGS.includes(pole_slug)) {
+      return json({ error: "Sport / pôle visé invalide" }, 400);
+    }
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("cf-connecting-ip") || "inconnu";
     const rateOk = await checkRateLimit(admin, `recrut:${ip}`);
@@ -237,11 +249,20 @@ serve(async (req) => {
     // identifiables), mais `source` ne l'était pas.
     const source = poste === "community_manager" ? "community_manager" : "photographe_videaste";
 
+    const { data: pole, error: poleErr } = await admin
+      .from("poles")
+      .select("id")
+      .eq("slug", pole_slug)
+      .maybeSingle();
+    if (poleErr) return json({ error: poleErr.message }, 500);
+    if (!pole) return json({ error: "Sport / pôle visé invalide" }, 400);
+
     const { data: created, error: createErr } = await admin
       .from("recruitment_applications")
       .insert({
         source,
         poste,
+        pole_id: pole.id,
         prenom,
         nom,
         email,
@@ -270,7 +291,7 @@ serve(async (req) => {
 
     try {
       await sendStaffNotification(admin, {
-        poste, prenom, nom, email, telephone, zone, ville, experience_niveau,
+        poste, pole_slug, prenom, nom, email, telephone, zone, ville, experience_niveau,
         materiel, permis, vehicule, disponibilites, portfolio_url, message, cv_path: cvPath,
       });
       await sendCandidateConfirmation(email, prenom);

@@ -4833,6 +4833,10 @@ async function loadViewData(role,view){
   if(view==='poleequipe'){await loadCollaborateurs();return;}
   if(view==='polekits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';window._kitsPoleF=S.activePoleId||'Tous';await loadKits();return;}
   if(view==='polefinance'){await loadPoleRem();return;}
+  if(view==='polepipeline'){await loadPipeline();return;}
+  if(view==='polecommunication'){await loadCrmFullCom();return;}
+  if(view==='poleproduction'){await loadProdHub();return;}
+  if(view==='polerecrutement'){await loadPoleRecrutement();return;}
   // 'rh' (migration-poles-v17/v18, 31/08/2026) : Secrétaire générale, mêmes écrans que 'sec'
   // mais transversal à tous les pôles (RLS pole_scope_ok bypass) — voir NAV.rh (composé depuis
   // NAV.sec) pour la liste complète des vues concernées.
@@ -7133,12 +7137,23 @@ let _recrutCache=[];
 function _recrutSkel(){
   return `<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:8px">${Array(3).fill('<div class="skel" style="flex:0 0 300px;height:220px;border-radius:12px"></div>').join('')}</div>`;
 }
+// "Mon pôle > Recrutement" (migration-poles-v27/v28, 31/08/2026) : recruitment_applications
+// n'a pas de policy RLS par pôle (is_staff() ouvre déjà à tout profil interne) — le filtre se
+// fait donc côté requête, comme devis/factures. _recrutPoleMode distingue le contexte pour
+// recrutCard() (bouton "Proposer à la Direction" au lieu de "+ Créer le collaborateur" pour un
+// Responsable non-admin/sec/rh, qui n'a de toute façon pas accès à invite-collaborateur).
+let _recrutPoleMode=false;
+async function loadPoleRecrutement(){
+  _recrutPoleMode=true;
+  await loadRecrutement();
+}
 async function loadRecrutement(){
   const el=document.getElementById('recrut-real');
   if(!el)return;
   el.innerHTML=_recrutSkel();
+  const _recrutPoleQS=_recrutPoleMode&&S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
   try{
-    const data=await sbFetch('recruitment_applications?select=id,poste,prenom,nom,email,telephone,ville,zone,experience_niveau,materiel,permis,vehicule,disponibilites,portfolio_url,cv_path,message,statut,collaborateur_id,created_at&order=created_at.desc');
+    const data=await sbFetch('recruitment_applications?select=id,poste,prenom,nom,email,telephone,ville,zone,experience_niveau,materiel,permis,vehicule,disponibilites,portfolio_url,cv_path,message,statut,collaborateur_id,pole_id,created_at&order=created_at.desc'+_recrutPoleQS);
     if(sbErr(data)){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er)">Erreur de chargement.</div>';return;}
     _recrutCache=Array.isArray(data)?data:[];
     renderRecrutement();
@@ -7174,7 +7189,12 @@ function recrutCard(c,stage){
   if(stage==='nouveau')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','a_appeler')">À appeler</button><button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerAction('Refuser cette candidature ? Un e-mail cordial sera envoyé au candidat.',()=>recrutMove('${c.id}','refuse'))">Refuser</button>`;
   else if(stage==='a_appeler')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','entretien')">Entretien</button><button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerAction('Refuser cette candidature ? Un e-mail cordial sera envoyé au candidat.',()=>recrutMove('${c.id}','refuse'))">Refuser</button>`;
   else if(stage==='entretien')actions=`<button class="btn bp bs" onclick="recrutMove('${c.id}','retenu')">Retenir</button><button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerAction('Refuser cette candidature ? Un e-mail cordial sera envoyé au candidat.',()=>recrutMove('${c.id}','refuse'))">Refuser</button>`;
-  else if(stage==='retenu')actions=c.collaborateur_id?`<button class="btn bg2 bs" onclick="switchView('equipehub');setTimeout(()=>modalFicheCollaborateur('${c.collaborateur_id}'),300)">Voir la fiche</button>`:`<button class="btn bp bs" onclick="modalRecrutCreerCollaborateur('${c.id}')">+ Créer le collaborateur</button>`;
+  else if(stage==='retenu')actions=c.collaborateur_id?`<button class="btn bg2 bs" onclick="switchView('equipehub');setTimeout(()=>modalFicheCollaborateur('${c.collaborateur_id}'),300)">Voir la fiche</button>`
+    // "Proposer à la Direction" (migration-poles-v27, 31/08/2026) : un Responsable non-admin/sec/rh
+    // n'a de toute façon pas accès à invite-collaborateur (edge function, réservée à ces 3 rôles) —
+    // jamais lui montrer un bouton qui échouerait en 403, lui proposer l'action réellement disponible.
+    :(_recrutPoleMode&&!['admin','sec','rh'].includes(S.role))?`<button class="btn bp bs" onclick="proposerCandidatureDirection('${c.id}')">Proposer à la Direction</button>`
+    :`<button class="btn bp bs" onclick="modalRecrutCreerCollaborateur('${c.id}')">+ Créer le collaborateur</button>`;
   else if(stage==='refuse')actions=`<button class="btn bg2 bs" onclick="recrutMove('${c.id}','vivier')">→ Vivier</button>`;
   else if(stage==='vivier')actions=`<button class="btn bg2 bs" onclick="recrutMove('${c.id}','nouveau')">Réexaminer</button>`;
   return `<div style="background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;gap:6px">
@@ -7189,6 +7209,14 @@ function recrutCard(c,stage){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px">${actions}</div>
   </div>`;
+}
+// "Proposer à la Direction" (migration-poles-v30, 31/08/2026) : un Responsable non-admin/sec/rh
+// n'a jamais accès à invite-collaborateur — cette action notifie la Direction (scopée à son
+// pôle) plutôt que de créer le compte elle-même, cohérent avec "propose, la Direction valide".
+async function proposerCandidatureDirection(id){
+  const r=await sbFetch('rpc/propose_candidature_direction',{method:'POST',body:{p_candidature_id:id}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'impossible de proposer cette candidature.'),'er');return;}
+  toast('Candidature proposée à la Direction.','ok');
 }
 async function candVoirCv(cvPath){
   const url=await sbSignedUrl('sportvision-media-prive',cvPath,3600);
@@ -8550,6 +8578,15 @@ function renderPoleEspaceShell(view){
     <div id="col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
   if(view==='polekits')return _kitsViewShell('admin');
   if(view==='polefinance')return VIEWS['admin.polerem']();
+  // 4 sections ajoutées sur demande de Fouka (31/08/2026, "Directeur opérationnel de son
+  // pôle") : réutilisent directement les templates admin déjà écrits — RLS (migration-poles-
+  // v27) fait le travail de scoping, comme pour polepre/poleclients ci-dessus.
+  if(view==='polepipeline')return _buildPipelineShell('Commercial — mon pôle');
+  if(view==='polecommunication')return `<div class="sh"><div class="sh-t">Communication — mon pôle</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
+    <div id="crmfullcom-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+  if(view==='poleproduction')return VIEWS['admin.prodhub']();
+  if(view==='polerecrutement')return `<div class="sh"><div class="sh-t">Recrutement — mon pôle</div></div>
+    <div id="recrut-real" style="min-height:200px">${_recrutSkel()}</div>`;
   return '';
 }
 
@@ -8561,16 +8598,33 @@ async function loadPoleDash(){
   const pole=(S.allPoles||[]).find(p=>p.id===poleId);
   const now=new Date();
   const mStart=ymdLocal(new Date(now.getFullYear(),now.getMonth(),1));
+  const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
   const today=ymdLocal();
   const in7=ymdLocal(new Date(now.getTime()+7*864e5));
   try{
-    const [presMois,presEnCours,sansEquipeRaw]=await Promise.all([
+    const [presMois,presEnCours,sansEquipeRaw,contratsRaw,clientsRaw,ventilation,remCalc,metriques]=await Promise.all([
       sbFetch('prestations?select=montant_ttc&pole_id=eq.'+poleId+'&date_prestation=gte.'+mStart+'&statut=not.in.(annulée,refusée)&montant_ttc=not.is.null').catch(()=>[]),
       sbFetch('prestations?select=id&pole_id=eq.'+poleId+'&statut=not.in.(annulée,refusée,livrée,clôturée,payée)').catch(()=>[]),
       sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&pole_id=eq.'+poleId+'&statut=in.(confirmée,planifiée)&date_prestation=gte.'+today+'&date_prestation=lte.'+in7+'&order=date_prestation.asc&limit=10').catch(()=>[]),
+      // Contrats actifs + MRR (audit v27, 31/08/2026) : contrats n'a pas de pole_id propre,
+      // scopé via le client — même embed !inner que loadDevis()/loadContrats() cette nuit.
+      sbFetch('contrats?select=id,montant_mensuel,clients!inner(pole_id)&statut=eq.actif&clients.pole_id=eq.'+poleId).catch(()=>[]),
+      sbFetch('clients?select=id&pole_id=eq.'+poleId+'&statut=in.(client,partenaire)').catch(()=>[]),
+      // Bénéfice du pôle (même RPC que l'écran Rémunération/Finance par pôle, calcul à la volée
+      // — read-only, pas d'écriture ici).
+      sbFetch('rpc/pole_finance_ventilation',{method:'POST',body:{p_pole_id:poleId,p_debut:mStart,p_fin:mNext}}).catch(()=>null),
+      // Rémunération estimée : dernier calcul déjà stocké (pole_remuneration_calculs), jamais
+      // recalculé depuis le dashboard (action volontaire réservée à l'écran Rémunération).
+      sbFetch('pole_remuneration_calculs?select=montant_total&pole_id=eq.'+poleId+'&periode=eq.'+mStart).catch(()=>[]),
+      (typeof getPoleMetriques==='function'?getPoleMetriques(poleId).catch(()=>null):Promise.resolve(null)),
     ]);
     const ca=(Array.isArray(presMois)?presMois:[]).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const enCours=(Array.isArray(presEnCours)?presEnCours:[]).length;
+    const contrats=Array.isArray(contratsRaw)?contratsRaw:[];
+    const mrr=contrats.reduce((s,c)=>s+(c.montant_mensuel||0),0);
+    const nbClients=Array.isArray(clientsRaw)?clientsRaw.length:0;
+    const benefice=ventilation&&!ventilation.erreur?(ventilation.marge_avant_fixe_responsable||0):null;
+    const remEstimee=(Array.isArray(remCalc)&&remCalc[0])?remCalc[0].montant_total:null;
     const sansEquipeAll=Array.isArray(sansEquipeRaw)?sansEquipeRaw:[];
     let sansEquipe=[];
     if(sansEquipeAll.length){
@@ -8579,12 +8633,23 @@ async function loadPoleDash(){
       sansEquipe=sansEquipeAll.filter(p=>!withTeam.has(p.id)).slice(0,5);
     }
     const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+    const roadmapPct=(metriques&&metriques.roadmapPct!=null)?metriques.roadmapPct:null;
     el.innerHTML=`
       <div class="sh"><div class="sh-t">${esc(pole?.nom||'Mon pôle')} — Tableau de bord</div></div>
       <div class="g3" style="margin-bottom:16px">
         <div class="fs"><div class="fs-l">CA du mois</div><div class="fs-v" style="color:var(--ok)">${fmt(ca)}</div></div>
+        <div class="fs"><div class="fs-l">Bénéfice éligible (mois)</div><div class="fs-v" style="color:${benefice!==null?(benefice>=0?'var(--ok)':'var(--er)'):''}">${benefice!==null?fmt(benefice):'—'}</div></div>
+        <div class="fs"><div class="fs-l">Rémunération estimée</div><div class="fs-v">${remEstimee!==null?fmt(remEstimee):'—'}</div></div>
+      </div>
+      <div class="g3" style="margin-bottom:16px">
+        <div class="fs"><div class="fs-l">Contrats actifs</div><div class="fs-v">${contrats.length}</div></div>
+        <div class="fs"><div class="fs-l">MRR</div><div class="fs-v">${fmt(mrr)}</div></div>
+        <div class="fs"><div class="fs-l">Clients actifs</div><div class="fs-v">${nbClients}</div></div>
+      </div>
+      <div class="g3" style="margin-bottom:16px">
         <div class="fs"><div class="fs-l">Prestations en cours</div><div class="fs-v">${enCours}</div></div>
         <div class="fs" style="border-color:${sansEquipe.length?'rgba(245,165,36,.25)':''}"><div class="fs-l">Sans équipe (7j)</div><div class="fs-v" style="color:${sansEquipe.length?'var(--wa)':''}">${sansEquipe.length}</div></div>
+        <div class="fs" style="cursor:pointer" onclick="switchView('poleroadmap')"><div class="fs-l">Progression roadmap</div><div class="fs-v">${roadmapPct!==null?roadmapPct+'%':'Voir →'}</div></div>
       </div>
       <div class="cd">
         <div class="cd-h"><div class="cd-t">À traiter — sans équipe cette semaine</div></div>
@@ -13816,8 +13881,12 @@ function kitsRenderKitsGrid(){
 // ── TAB MATÉRIELS ────────────────────────────────────────────────────────────
 function kitsRenderMatGrid(){
   const isAdmin=S.role==='admin';
+  // Un Responsable de pôle gère entièrement le matériel de son pôle (créer/modifier), mais ne
+  // supprime jamais rien et ne touche jamais valeur/pole_id/pole_exclusif (migration-poles-v29,
+  // 31/08/2026 — trigger côté base, ceci n'est que la première ligne de défense côté UI).
+  const canEdit=isAdmin||(S.polesResponsable&&S.polesResponsable.length>0);
   const filtered=_kitsApplyPoleFilter(_matCache);
-  if(!_matCache.length)return`<div style="padding:60px;text-align:center;color:var(--t3)"><div style="font-size:40px;opacity:.15;margin-bottom:12px">🔧</div><div>Aucun matériel enregistré</div>${isAdmin?'<div style="margin-top:12px"><button onclick="kitsModalCreerMateriel()" style="padding:8px 18px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Ajouter du matériel</button></div>':''}</div>`;
+  if(!_matCache.length)return`<div style="padding:60px;text-align:center;color:var(--t3)"><div style="font-size:40px;opacity:.15;margin-bottom:12px">🔧</div><div>Aucun matériel enregistré</div>${canEdit?'<div style="margin-top:12px"><button onclick="kitsModalCreerMateriel()" style="padding:8px 18px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Ajouter du matériel</button></div>':''}</div>`;
   if(!filtered.length)return`<div style="padding:60px;text-align:center;color:var(--t3)"><div style="font-size:40px;opacity:.15;margin-bottom:12px">🔧</div><div>Aucun matériel pour cette affectation.</div></div>`;
   const cats=[...new Set(filtered.map(m=>m.categorie))];
   return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rb);overflow:hidden">
@@ -13838,7 +13907,7 @@ function kitsRenderMatGrid(){
             <div style="font-size:11px;color:var(--t3);min-width:80px;text-align:center">${kitName}</div>
             ${(S.allPoles&&S.allPoles.length>1)?`<span class="kbadge" style="background:${pb.bg};border:1px solid ${pb.br};color:${pb.tx}">${esc(pb.lb)}</span>`:''}
             <span class="kbadge" style="background:${st.bg};border:1px solid ${st.br};color:${st.tx}">${st.lb}</span>
-            ${isAdmin?`<button onclick="kitsModalEditMateriel('${m.id}')" aria-label="Modifier ce matériel" style="padding:4px 9px;font-size:11px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff)">✎</button>`:''}
+            ${canEdit?`<button onclick="kitsModalEditMateriel('${m.id}')" aria-label="Modifier ce matériel" style="padding:4px 9px;font-size:11px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff)">✎</button>`:''}
             <button onclick="kitsModalSignalerIncidentById('${m.id}')" aria-label="Signaler un incident" style="padding:4px 9px;font-size:11px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff)">!</button>
           </div>`;
         }).join('')}
@@ -14005,6 +14074,9 @@ async function kitsOpenFiche(kitId){
     const resa=Array.isArray(resaRaw)?resaRaw:[];
     const inc=Array.isArray(incRaw)?incRaw:[];
     const isAdmin=S.role==='admin';
+    // Cf. kitsRenderMatGrid() : un Responsable modifie, jamais ne supprime ni ne touche
+    // valeur/affectation (migration-poles-v29).
+    const canEdit=isAdmin||(S.polesResponsable&&S.polesResponsable.length>0);
     const isProd=S.role==='prod'||isAdmin;
     const st=KIT_ST_CFG[kit.statut]||KIT_ST_CFG.disponible;
     const oblig=comp.filter(c=>c.obligatoire!==false);
@@ -14072,7 +14144,7 @@ async function kitsOpenFiche(kitId){
         ${isProd?`<button onclick="closeModal();kitsModalAttribuer('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-family:var(--ff)">📋 Attribuer à une prestation</button>`:''}
         ${isProd?`<button onclick="kitsModalAttribuerCollab('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer;font-family:var(--ff)">👤 Attribuer à un collaborateur</button>`:''}
         ${isAdmin?`<button onclick="kitsModalChangerStatut('${kit.id}','${kit.statut}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff)">Changer statut</button>`:''}
-        ${isAdmin?`<button onclick="kitsModalEditKit('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(255,200,20,.08);border:1px solid rgba(255,200,20,.25);border-radius:var(--rp);color:var(--wa);cursor:pointer;font-family:var(--ff)">✎ Modifier</button>`:''}
+        ${canEdit?`<button onclick="kitsModalEditKit('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(255,200,20,.08);border:1px solid rgba(255,200,20,.25);border-radius:var(--rp);color:var(--wa);cursor:pointer;font-family:var(--ff)">✎ Modifier</button>`:''}
         ${isAdmin?`<button onclick="kitsConfirmerSupprimer('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff)">🗑 Supprimer</button>`:''}
         <button onclick="closeModal();kitsSetTab('incidents');kitsRenderIncidents()" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff)">⚠ Incident</button>
       </div>
@@ -14786,6 +14858,11 @@ async function kitsMaintSubmit(maintId){
 async function kitsModalEditMateriel(materielId){
   const m=_matCache.find(x=>x.id===materielId);
   if(!m)return;
+  // Valeur comptable/Affectation entre pôles réservées à un vrai admin (migration-poles-v29,
+  // 31/08/2026) : un Responsable de pôle gère le reste (nom, catégorie, statut, marque) mais ne
+  // voit même pas ces 2 champs — cohérent avec le trigger côté base qui les rejetterait de toute
+  // façon, jamais juste une case masquée sans protection réelle derrière.
+  const isRealAdmin=S.role==='admin';
   openModal(`<div class="mh"><div class="mt">Modifier l'équipement</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Nom</label>
@@ -14799,15 +14876,15 @@ async function kitsModalEditMateriel(materielId){
           <select id="em-stat" class="fi">${Object.entries(KIT_ST_CFG).map(([v,c])=>`<option value="${v}"${v===m.statut?' selected':''}>${c.lb}</option>`).join('')}</select>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:${isRealAdmin?'1fr 1fr':'1fr'};gap:10px">
         <div class="fg"><label class="fl">Marque</label>
           <input id="em-marque" type="text" class="fi" value="${esc(m.marque||'')}">
         </div>
-        <div class="fg"><label class="fl">Valeur (€)</label>
+        ${isRealAdmin?`<div class="fg"><label class="fl">Valeur (€)</label>
           <input id="em-val" type="number" class="fi" value="${m.valeur||''}">
-        </div>
+        </div>`:''}
       </div>
-      ${(S.allPoles&&S.allPoles.length>1)?`<div class="fg"><label class="fl">Affectation</label>
+      ${(isRealAdmin&&S.allPoles&&S.allPoles.length>1)?`<div class="fg"><label class="fl">Affectation</label>
         <select id="em-pole" class="fi">${_kitPoleSelectOptions(m.pole_id||null,m.pole_id?m.pole_exclusif:null)}</select>
       </div>`:''}
     </div>
@@ -14820,17 +14897,24 @@ async function kitsModalEditMateriel(materielId){
 async function kitsEditMaterielSubmit(id){
   const nom=document.getElementById('em-nom')?.value.trim();
   if(!nom){toast('Le nom est obligatoire.','er');return;}
-  const poleSel=_kitPoleSelectParse(document.getElementById('em-pole')?.value||'');
+  const isRealAdmin=S.role==='admin';
+  const body={
+    nom,
+    categorie:document.getElementById('em-cat')?.value,
+    statut:document.getElementById('em-stat')?.value,
+    marque:document.getElementById('em-marque')?.value||null,
+  };
+  // valeur/pole_id/pole_exclusif jamais envoyés par un non-admin (champs absents du DOM de
+  // toute façon depuis ce soir, mais garde explicite ici aussi — le trigger backend les
+  // rejetterait sinon avec une erreur moins claire pour l'utilisateur).
+  if(isRealAdmin){
+    const poleSel=_kitPoleSelectParse(document.getElementById('em-pole')?.value||'');
+    body.valeur=document.getElementById('em-val')?.value?Number(document.getElementById('em-val').value):null;
+    body.pole_id=poleSel.pole_id;
+    body.pole_exclusif=poleSel.pole_exclusif;
+  }
   try{
-    const r=await sbFetch('materiels?id=eq.'+id,{method:'PATCH',body:{
-      nom,
-      categorie:document.getElementById('em-cat')?.value,
-      statut:document.getElementById('em-stat')?.value,
-      marque:document.getElementById('em-marque')?.value||null,
-      valeur:document.getElementById('em-val')?.value?Number(document.getElementById('em-val').value):null,
-      pole_id:poleSel.pole_id,
-      pole_exclusif:poleSel.pole_exclusif,
-    }});
+    const r=await sbFetch('materiels?id=eq.'+id,{method:'PATCH',body});
     if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     closeModal();toast('Équipement mis à jour.','ok');kitsLoadAll();
   }catch(e){toast('Erreur.','er');}
@@ -14847,6 +14931,9 @@ async function ajouterEquipement(){kitsModalCreerMateriel();}
 function kitsModalEditKit(kitId){
   const k=_kitsCache.find(x=>x.id===kitId);
   if(!k){toast('Kit introuvable.','er');return;}
+  // Affectation entre pôles réservée à un vrai admin (migration-poles-v29, 31/08/2026) — cf.
+  // kitsModalEditMateriel().
+  const isRealAdmin=S.role==='admin';
   openModal(`<div class="mh"><div class="mt">Modifier le kit</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Nom du kit *</label>
@@ -14866,7 +14953,7 @@ function kitsModalEditKit(kitId){
       <div class="fg"><label class="fl">Notes</label>
         <input id="ek-notes" type="text" class="fi" value="${esc(k.notes||'')}">
       </div>
-      ${(S.allPoles&&S.allPoles.length>1)?`<div class="fg"><label class="fl">Affectation</label>
+      ${(isRealAdmin&&S.allPoles&&S.allPoles.length>1)?`<div class="fg"><label class="fl">Affectation</label>
         <select id="ek-pole" class="fi">${_kitPoleSelectOptions(k.pole_id||null,k.pole_id?k.pole_exclusif:null)}</select>
       </div>`:''}
       <div id="ek-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
@@ -14881,21 +14968,25 @@ async function kitsEditKitSubmit(kitId){
   const nom=document.getElementById('ek-nom')?.value.trim();
   const type=document.getElementById('ek-type')?.value||'';
   const err=document.getElementById('ek-err');
+  const isRealAdmin=S.role==='admin';
   // Même bug/garde que kitsCreerKitSubmit (audit QA nocturne 30/08) : type_kit est
   // NOT NULL en base, un type vidé en édition faisait échouer le PATCH en 400 brut.
   if(!nom){if(err)err.textContent='Le nom est obligatoire.';else toast('Le nom est obligatoire.','er');return;}
   if(!type){if(err)err.textContent='Le type est obligatoire.';else toast('Le type est obligatoire.','er');return;}
-  const poleSel=_kitPoleSelectParse(document.getElementById('ek-pole')?.value||'');
+  const body={
+    nom,
+    type_kit:type,
+    num_interne:document.getElementById('ek-num')?.value||null,
+    localisation:document.getElementById('ek-loc')?.value||null,
+    notes:document.getElementById('ek-notes')?.value||null,
+  };
+  if(isRealAdmin){
+    const poleSel=_kitPoleSelectParse(document.getElementById('ek-pole')?.value||'');
+    body.pole_id=poleSel.pole_id;
+    body.pole_exclusif=poleSel.pole_exclusif;
+  }
   try{
-    const r=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{
-      nom,
-      type_kit:type,
-      num_interne:document.getElementById('ek-num')?.value||null,
-      localisation:document.getElementById('ek-loc')?.value||null,
-      notes:document.getElementById('ek-notes')?.value||null,
-      pole_id:poleSel.pole_id,
-      pole_exclusif:poleSel.pole_exclusif,
-    }});
+    const r=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body});
     if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'mise à jour impossible.');else toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     closeModal();toast('Kit mis à jour.','ok');kitsLoadAll();
   }catch(e){if(err)err.textContent='Erreur lors de la mise à jour.';else toast('Erreur lors de la mise à jour.','er');}
@@ -29036,9 +29127,13 @@ function _navForRole(role){
     nav=[...nav,
       {type:'sep',lb:'Mon pôle'},
       {id:'poledash',lb:'Tableau de bord',ic:'dash'},
-      {id:'polepre',lb:'Prestations',ic:'pre'},
+      {id:'polepipeline',lb:'Commercial',ic:'pipe'},
       {id:'poleclients',lb:'Clients',ic:'cli'},
+      {id:'polecommunication',lb:'Communication',ic:'msg'},
+      {id:'poleproduction',lb:'Production',ic:'pre'},
+      {id:'polepre',lb:'Prestations',ic:'pre'},
       {id:'poleequipe',lb:'Équipe',ic:'col'},
+      {id:'polerecrutement',lb:'Recrutement',ic:'col'},
       {id:'polekits',lb:'Matériel',ic:'kits'},
       {id:'polefinance',lb:'Rémunération',ic:'fin'},
       {id:'poleroadmap',lb:'Roadmap',ic:'target'},
@@ -30198,7 +30293,7 @@ function renderContent(){
   const tpl=VIEWS[key]||(S.role==='rh'?VIEWS['sec.'+S.view]:null);
   // "Mon pôle" (migration-poles-v23, 31/08/2026) : mêmes ids indépendants du rôle que
   // poleroadmap, court-circuités avant VIEWS[key] — voir _navForRole() pour la nav.
-  const POLE_ESPACE_VIEWS=['poledash','polepre','poleclients','poleequipe','polekits','polefinance'];
+  const POLE_ESPACE_VIEWS=['poledash','polepre','poleclients','poleequipe','polekits','polefinance','polepipeline','polecommunication','poleproduction','polerecrutement'];
   ct.innerHTML=S.view==='poleroadmap'?renderPoleRoadmapShell()
     :POLE_ESPACE_VIEWS.includes(S.view)?renderPoleEspaceShell(S.view)
     :(tpl||(()=>fallbackView(S.role,S.view)))();
