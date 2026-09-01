@@ -4817,6 +4817,15 @@ async function creerCollaborateur(){
 async function loadViewData(role,view){
   // Roadmap pôle (Lot 8) : indépendant du rôle fonctionnel, voir renderContent().
   if(view==='poleroadmap'){await loadPoleRoadmapData();return;}
+  // "Mon pôle" (migration-poles-v23, 31/08/2026) : idem, indépendant du rôle fonctionnel — la
+  // RLS scope déjà tout au pôle du Responsable, ces wrappers ne font que réutiliser les
+  // fonctions de chargement admin déjà écrites (voir renderPoleEspaceShell() pour le détail).
+  if(view==='poledash'){await loadPoleDash();return;}
+  if(view==='polepre'){await loadPrestations();return;}
+  if(view==='poleclients'){await loadClients();return;}
+  if(view==='poleequipe'){await loadCollaborateurs();return;}
+  if(view==='polekits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';window._kitsPoleF=S.activePoleId||'Tous';await loadKits();return;}
+  if(view==='polefinance'){await loadPoleRem();return;}
   // 'rh' (migration-poles-v17/v18, 31/08/2026) : Secrétaire générale, mêmes écrans que 'sec'
   // mais transversal à tous les pôles (RLS pole_scope_ok bypass) — voir NAV.rh (composé depuis
   // NAV.sec) pour la liste complète des vues concernées.
@@ -8513,6 +8522,69 @@ const POLE_ETAPE_STATUT={
 
 function renderPoleRoadmapShell(){
   return `<div id="poleroadmap-ct"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+
+// ── "Mon pôle" — espace Responsable (migration-poles-v23, 31/08/2026) ──────
+// Demande explicite de Fouka : "il doit avoir un peu comme une interface d'admin mais que de
+// son pôle". La RLS (migration-poles-v23/v24) scope déjà entièrement prestations/clients/
+// devis/contrats/factures/équipe/kits/matériel/finance à SON pôle, quel que soit son rôle
+// fonctionnel de base — ces écrans réutilisent donc directement les templates et fonctions de
+// chargement admin déjà écrits (modalNouvellePrestation, loadPrestations, loadClients,
+// _kitsViewShell, loadFinPoles/loadPoleRem...), sans réinventer de rendu : la RLS fait le
+// travail de scoping, pas le JS. Ids de vue indépendants du rôle (comme poleroadmap),
+// court-circuités dans renderContent() — voir _navForRole() pour la nav correspondante.
+function renderPoleEspaceShell(view){
+  if(view==='poledash')return `<div id="poledash-ct"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+  if(view==='polepre')return `<div class="sh"><div class="sh-t">Prestations — mon pôle</div><button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle prestation</button></div>
+    <div id="pre-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+  if(view==='poleclients')return `<div class="sh"><div class="sh-t">Clients — mon pôle</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
+    <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+  if(view==='poleequipe')return `<div class="sh"><div class="sh-t">Équipe — mon pôle</div></div>
+    <div id="col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+  if(view==='polekits')return _kitsViewShell('admin');
+  if(view==='polefinance')return VIEWS['admin.polerem']();
+  return '';
+}
+
+async function loadPoleDash(){
+  const el=document.getElementById('poledash-ct');
+  if(!el)return;
+  const poleId=S.activePoleId;
+  if(!poleId){el.innerHTML='<div class="cd" style="padding:28px;text-align:center;color:var(--t3)">Aucun pôle configuré.</div>';return;}
+  const pole=(S.allPoles||[]).find(p=>p.id===poleId);
+  const now=new Date();
+  const mStart=ymdLocal(new Date(now.getFullYear(),now.getMonth(),1));
+  const today=ymdLocal();
+  const in7=ymdLocal(new Date(now.getTime()+7*864e5));
+  try{
+    const [presMois,presEnCours,sansEquipeRaw]=await Promise.all([
+      sbFetch('prestations?select=montant_ttc&pole_id=eq.'+poleId+'&date_prestation=gte.'+mStart+'&statut=not.in.(annulée,refusée)&montant_ttc=not.is.null').catch(()=>[]),
+      sbFetch('prestations?select=id&pole_id=eq.'+poleId+'&statut=not.in.(annulée,refusée,livrée,clôturée,payée)').catch(()=>[]),
+      sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&pole_id=eq.'+poleId+'&statut=in.(confirmée,planifiée)&date_prestation=gte.'+today+'&date_prestation=lte.'+in7+'&order=date_prestation.asc&limit=10').catch(()=>[]),
+    ]);
+    const ca=(Array.isArray(presMois)?presMois:[]).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const enCours=(Array.isArray(presEnCours)?presEnCours:[]).length;
+    const sansEquipeAll=Array.isArray(sansEquipeRaw)?sansEquipeRaw:[];
+    let sansEquipe=[];
+    if(sansEquipeAll.length){
+      const equipeIds=await sbFetch('prestations_equipe_display?select=prestation_id').catch(()=>[]);
+      const withTeam=new Set((equipeIds||[]).map(e=>e.prestation_id));
+      sansEquipe=sansEquipeAll.filter(p=>!withTeam.has(p.id)).slice(0,5);
+    }
+    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+    el.innerHTML=`
+      <div class="sh"><div class="sh-t">${esc(pole?.nom||'Mon pôle')} — Tableau de bord</div></div>
+      <div class="g3" style="margin-bottom:16px">
+        <div class="fs"><div class="fs-l">CA du mois</div><div class="fs-v" style="color:var(--ok)">${fmt(ca)}</div></div>
+        <div class="fs"><div class="fs-l">Prestations en cours</div><div class="fs-v">${enCours}</div></div>
+        <div class="fs" style="border-color:${sansEquipe.length?'rgba(245,165,36,.25)':''}"><div class="fs-l">Sans équipe (7j)</div><div class="fs-v" style="color:${sansEquipe.length?'var(--wa)':''}">${sansEquipe.length}</div></div>
+      </div>
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">À traiter — sans équipe cette semaine</div></div>
+        ${sansEquipe.length?'<div class="tw"><table><tbody>'+sansEquipe.map(p=>`<tr style="cursor:pointer" onclick="modalDetailById('${p.id}')"><td class="tp">${esc(p.clients?.nom||p.reference||'—')}</td><td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td></tr>`).join('')+'</tbody></table></div>'
+          :'<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Rien à traiter — tout est à jour.</div>'}
+      </div>`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // Recalcule le statut de chaque étape validation='auto' depuis les métriques réelles et
@@ -28918,16 +28990,33 @@ function _navForRole(role){
     if(iContenus!==-1)nav.splice(iContenus+1,0,{id:'analytics',lb:'Performances',ic:'fin'});
   }
   // Roadmap pôle (Lot 8, 31/08/2026) : visible pour l'admin (toutes les roadmaps, sélection
-  // via S.activePoleId — le sélecteur de pôle de la barre latérale) et pour tout profil
-  // Responsable d'au moins un pôle (S.polesResponsable), quel que soit son rôle FONCTIONNEL —
-  // le rôle pôle (pole_affectations.role_pole) est orthogonal au rôle métier ROLES/NAV (un
-  // Responsable de pôle peut être admin, prod, photo... voir commentaire ligne ~27646). Insérée
-  // ici (au rendu) plutôt que dans NAV statique car S.polesResponsable n'est connu qu'après
-  // connexion, même patron que la couche pilotage CM ci-dessus.
-  if(role==='admin'||(S.polesResponsable&&S.polesResponsable.length)){
+  // via S.activePoleId — le sélecteur de pôle de la barre latérale). Insérée ici (au rendu)
+  // plutôt que dans NAV statique car S.polesResponsable n'est connu qu'après connexion, même
+  // patron que la couche pilotage CM ci-dessus.
+  if(role==='admin'){
     nav=[...nav];
     const iDash2=nav.findIndex(n=>n.id==='dash');
     nav.splice(iDash2!==-1?iDash2+1:0,0,{id:'poleroadmap',lb:'Roadmap pôle',ic:'target'});
+  }
+  // "Mon pôle" (migration-poles-v23, 31/08/2026, demande explicite de Fouka : "faut créer le
+  // poste responsable pôle il doit avoir un peu comme une interface d'admin mais que de son
+  // pôle") — pour tout profil Responsable d'au moins un pôle (S.polesResponsable), quel que
+  // soit son rôle FONCTIONNEL de base (le rôle pôle, pole_affectations.role_pole, est
+  // orthogonal au rôle métier ROLES/NAV — un Responsable peut être prod, photo, cm...).
+  // S'ajoute à la nav existante du rôle, ne la remplace jamais. Ids de vue indépendants du
+  // rôle (poledash/polepre/...), court-circuités dans renderContent()/loadViewData() — même
+  // mécanisme que poleroadmap, qui rejoint cette section pour un non-admin.
+  if(role!=='admin'&&S.polesResponsable&&S.polesResponsable.length){
+    nav=[...nav,
+      {type:'sep',lb:'Mon pôle'},
+      {id:'poledash',lb:'Tableau de bord',ic:'dash'},
+      {id:'polepre',lb:'Prestations',ic:'pre'},
+      {id:'poleclients',lb:'Clients',ic:'cli'},
+      {id:'poleequipe',lb:'Équipe',ic:'col'},
+      {id:'polekits',lb:'Matériel',ic:'kits'},
+      {id:'polefinance',lb:'Rémunération',ic:'fin'},
+      {id:'poleroadmap',lb:'Roadmap',ic:'target'},
+    ];
   }
   return nav;
 }
@@ -30081,7 +30170,12 @@ function renderContent(){
   // VIEWS['sec.*'] sous une clé 'rh.*', on retombe directement sur le template sec quand
   // aucune clé 'rh.*' dédiée n'existe (contenu déjà générique, alimenté par loadViewData()).
   const tpl=VIEWS[key]||(S.role==='rh'?VIEWS['sec.'+S.view]:null);
-  ct.innerHTML=S.view==='poleroadmap'?renderPoleRoadmapShell():(tpl||(()=>fallbackView(S.role,S.view)))();
+  // "Mon pôle" (migration-poles-v23, 31/08/2026) : mêmes ids indépendants du rôle que
+  // poleroadmap, court-circuités avant VIEWS[key] — voir _navForRole() pour la nav.
+  const POLE_ESPACE_VIEWS=['poledash','polepre','poleclients','poleequipe','polekits','polefinance'];
+  ct.innerHTML=S.view==='poleroadmap'?renderPoleRoadmapShell()
+    :POLE_ESPACE_VIEWS.includes(S.view)?renderPoleEspaceShell(S.view)
+    :(tpl||(()=>fallbackView(S.role,S.view)))();
   if(document.getElementById('mc'))finBars('mc',80);
   if(document.getElementById('fc'))finBars('fc',140);
   loadViewData(S.role,S.view);
