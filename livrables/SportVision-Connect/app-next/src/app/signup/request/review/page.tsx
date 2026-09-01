@@ -51,6 +51,8 @@ export default function RequestReviewPage() {
           ville: state.ville,
           code_postal: state.codePostal || undefined,
           site_web: state.siteWeb || undefined,
+          sport: state.sport,
+          sport_autre: state.sport === "Autre" ? state.sportAutre : undefined,
           activite_type: orgType === "coach" ? state.activiteType || undefined : undefined,
           activite_type_autre: orgType === "coach" && state.activiteType === "Autre" ? state.activiteTypeAutre : undefined,
           exerce_sous_propre_nom: orgType === "coach" ? state.exerceSousPropreNom : undefined,
@@ -119,6 +121,7 @@ export default function RequestReviewPage() {
         <dl className="mt-3 flex flex-col gap-2.5 text-[13px]">
           <Row label="Type" value={orgLabel || "—"} />
           <Row label="Nom" value={state.nom || "—"} />
+          <Row label="Sport" value={(state.sport === "Autre" ? state.sportAutre : state.sport) || "—"} />
           <Row label="Ville" value={state.ville || "—"} />
           <Row label="Code postal" value={state.codePostal || "—"} />
           <Row label="Site / Instagram" value={state.siteWeb || "—"} />

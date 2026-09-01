@@ -43,6 +43,12 @@ export interface RequestState {
   ville: string;
   codePostal: string;
   siteWeb: string;
+  /** Sport pratiqué par la structure (audit de cohérence, 01/09/2026) — même liste que le
+   * sélecteur Connect (SPORT_OPTIONS ci-dessous), résolu en pole_id réel (Football/Basket)
+   * par connect-club-signup-review au moment de la validation. Requis pour tous les types :
+   * même un tournoi/stage/association a un sport de rattachement. */
+  sport: string;
+  sportAutre: string;
   /** Coach uniquement (§12). */
   activiteType: string;
   activiteTypeAutre: string;
@@ -73,6 +79,8 @@ const EMPTY_STATE: RequestState = {
   ville: "",
   codePostal: "",
   siteWeb: "",
+  sport: "",
+  sportAutre: "",
   activiteType: "",
   activiteTypeAutre: "",
   exerceSousPropreNom: false,
@@ -169,6 +177,12 @@ export const STRUCTURE_TYPE_OPTIONS = [
   "Autre",
 ];
 
+// ── Écran 2 · Sport (audit de cohérence, 01/09/2026) — mêmes valeurs que SPORTS côté Connect
+// (app-connect/src/app/signup/signup-context.tsx), résolues par le même resolve_pole_by_sport()
+// (migration-poles-v13) — un sport hors Football/Basket reste accepté (signal de demande future,
+// pole_id retombe sur Football par défaut côté serveur, jamais un pôle inventé).
+export const SPORT_OPTIONS = ["Football", "Futsal", "Basketball", "Handball", "Rugby", "Volleyball", "Athlétisme", "Tennis", "Autre"];
+
 // ── Écran 2 · Champ conditionnel coach (§12) — verbatim ACTIVITE_TYPES côté Edge Function ──
 export const ACTIVITE_TYPE_OPTIONS = ["Coach indépendant", "Préparateur physique", "Personal trainer", "Coach personnel", "Autre"];
 
@@ -226,6 +240,8 @@ export function isRequestComplete(state: RequestState): boolean {
   if (!state.organizationType) return false;
   const structureTypeMode = STRUCTURE_TYPE_FIELD[state.organizationType];
   if (!state.nom.trim() || !state.ville.trim()) return false;
+  if (!state.sport.trim()) return false;
+  if (state.sport === "Autre" && !state.sportAutre.trim()) return false;
   if (structureTypeMode === "required" && !state.structureType.trim()) return false;
   if (state.organizationType === "coach") {
     if (!state.activiteType.trim()) return false;

@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import {
   ACTIVITE_TYPE_OPTIONS,
   REQUEST_ORG_TYPE_OPTIONS,
+  SPORT_OPTIONS,
   STRUCTURE_NAME_LABEL,
   STRUCTURE_TITLE,
   STRUCTURE_TYPE_FIELD,
@@ -28,7 +29,7 @@ const NAME_ERROR_SUFFIX: Record<string, string> = {
   projet: "de votre structure",
 };
 
-type FieldErrors = Partial<Record<"nom" | "structureType" | "ville" | "activiteType" | "activiteTypeAutre", string>>;
+type FieldErrors = Partial<Record<"nom" | "structureType" | "ville" | "sport" | "sportAutre" | "activiteType" | "activiteTypeAutre", string>>;
 
 // Écran 2 · Votre structure (master prompt §8-15). Titre et libellé du nom dynamiques selon le
 // type choisi à l'écran 1 ; jamais de select "Type de structure" ici (§11) — juste un badge
@@ -54,11 +55,14 @@ export default function RequestStructurePage() {
   const isCoach = orgType === "coach";
   const isTournoi = orgType === "tournoi";
   const showActiviteAutre = state.activiteType === "Autre";
+  const showSportAutre = state.sport === "Autre";
 
   function validate(): FieldErrors {
     const next: FieldErrors = {};
     if (!state.nom.trim()) next.nom = `Veuillez renseigner le nom ${NAME_ERROR_SUFFIX[orgType]}.`;
     if (!state.ville.trim()) next.ville = "Veuillez renseigner la ville.";
+    if (!state.sport.trim()) next.sport = "Veuillez sélectionner le sport.";
+    else if (showSportAutre && !state.sportAutre.trim()) next.sportAutre = "Veuillez préciser le sport.";
     if (structureTypeMode === "required" && !state.structureType.trim()) {
       next.structureType = "Veuillez sélectionner le statut juridique.";
     }
@@ -150,6 +154,48 @@ export default function RequestStructurePage() {
             </span>
           )}
         </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12.5px] font-bold text-text-soft">Sport *</span>
+          <select
+            value={state.sport}
+            onChange={(e) => patch({ sport: e.target.value, sportAutre: e.target.value === "Autre" ? state.sportAutre : "" })}
+            className={cn(selectClass, errors.sport && "border-danger-fg")}
+            aria-invalid={!!errors.sport}
+            aria-describedby={errors.sport ? "err-sport" : undefined}
+          >
+            <option value="">Sélectionnez…</option>
+            {SPORT_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+          {errors.sport && (
+            <span id="err-sport" role="alert" className="text-[12px] font-semibold text-danger-fg">
+              {errors.sport}
+            </span>
+          )}
+        </label>
+
+        {showSportAutre && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Précisez le sport *</span>
+            <input
+              value={state.sportAutre}
+              onChange={(e) => patch({ sportAutre: e.target.value })}
+              className={cn(inputClass, errors.sportAutre && "border-danger-fg")}
+              placeholder="Volleyball de plage"
+              aria-invalid={!!errors.sportAutre}
+              aria-describedby={errors.sportAutre ? "err-sportAutre" : undefined}
+            />
+            {errors.sportAutre && (
+              <span id="err-sportAutre" role="alert" className="text-[12px] font-semibold text-danger-fg">
+                {errors.sportAutre}
+              </span>
+            )}
+          </label>
+        )}
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[12.5px] font-bold text-text-soft">Code postal</span>

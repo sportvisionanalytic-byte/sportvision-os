@@ -131,12 +131,24 @@ serve(async (req) => {
 
     const { data: reqRow } = await admin
       .from("connect_clubplus_signup_requests")
-      .select("id, organization_type, club_nom, ville, contact_prenom, contact_nom, contact_email, contact_telephone, statut")
+      .select("id, organization_type, club_nom, ville, contact_prenom, contact_nom, contact_email, contact_telephone, statut, sport")
       .eq("id", requestId)
       .maybeSingle();
     if (!reqRow) return json({ error: "Demande introuvable." }, 404);
     if (reqRow.statut === "valide" || reqRow.statut === "refuse") {
       return json({ error: "Cette demande a déjà été traitée." }, 409);
+    }
+
+    // Sport déclaré à la demande (migration-poles-v34, 01/09/2026) -> pole_id réel s'il en
+    // existe un (Football/Basket), même résolution que Connect (resolve_pole_by_sport,
+    // migration-poles-v13) — jamais un pôle inventé, la colonne clients.pole_id retombe sur son
+    // DEFAULT (pole_football_id()) si aucun pôle actif ne couvre ce sport ou si resolve_pole_by_sport
+    // échoue pour une raison quelconque (fail-open volontaire : une demande ne doit jamais être
+    // bloquée par cette résolution, seulement mal routée en attendant une correction manuelle).
+    let poleId: string | null = null;
+    if (reqRow.sport) {
+      const { data: resolvedPole } = await admin.rpc("resolve_pole_by_sport", { p_sport: reqRow.sport });
+      poleId = resolvedPole ?? null;
     }
 
     if (action === "demander_infos") {
@@ -198,6 +210,12 @@ serve(async (req) => {
             telephone: reqRow.contact_telephone,
             ville: reqRow.ville,
             origine_prospect: "connect",
+            // clients.pole_id a un DEFAULT (pole_football_id()), mais seulement quand la colonne
+            // est OMISE de l'insert — un `pole_id: null` explicite l'écraserait avec un vrai NULL
+            // (même piège que find_or_create_client_by_email a dû contourner avec un coalesce()
+            // explicite, migration-poles-v13). Donc : la clé n'apparaît dans l'objet que si un
+            // pôle a été résolu, sinon le DEFAULT de la colonne s'applique normalement.
+            ...(poleId ? { pole_id: poleId } : {}),
           })
           .select("id")
           .single();
@@ -278,6 +296,9 @@ serve(async (req) => {
           telephone: reqRow.contact_telephone,
           ville: reqRow.ville,
           origine_prospect: "connect",
+          // Voir commentaire équivalent du chemin 'club' plus haut : clé omise si non résolu,
+          // jamais un `pole_id: null` explicite (écraserait le DEFAULT pole_football_id()).
+          ...(poleId ? { pole_id: poleId } : {}),
         })
         .select("id")
         .single();

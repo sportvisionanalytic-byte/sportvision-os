@@ -1,15 +1,15 @@
 // Persistance locale de la progression de l'onboarding — voir ACTIONS.md § 3 (Reprise :
 // bandeau sur le tableau de bord si interrompu, mémorisation de l'étape atteinte).
 //
-// Aucun backend n'est branché sur ce projet (voir README.md § Décision volontairement pas prise
-// ici) : le localStorage tient lieu de mémoire de progression pour la démo. Le mock user a déjà
-// `onboardingCompletedAt` renseigné (voir mock-data.ts) : c'est le repli par défaut tant
-// qu'aucune progression locale n'a été enregistrée, pour ne pas rouvrir l'onboarding à chaque
-// premier chargement (navigation privée, localStorage vidé...). « Revoir le tutoriel de
-// bienvenue » (ACTIONS.md § 24) reste le seul moyen de le relancer explicitement.
-
-import { mockUser } from "@/lib/mock-data";
-
+// FIX 01/09/2026 (audit de cohérence) : le repli par défaut se basait sur
+// `mockUser.onboardingCompletedAt` (toujours vrai dans mock-data.ts) — commentaire hérité de
+// l'époque "aucun backend n'est branché" (voir README.md), devenue fausse depuis que ce module
+// est réellement utilisé par de vrais comptes Club+ connectés à Supabase. Conséquence : tout
+// nouveau vrai admin de club, sans progression déjà enregistrée dans son localStorage (premier
+// login sur un appareil), héritait silencieusement de l'état "onboarding déjà terminé" du compte
+// de démo — l'overlay de bienvenue ne s'affichait donc jamais pour un vrai nouvel utilisateur.
+// Le mock user (`/demo/*`) ne passe jamais par ce module : `OnboardingOverlay` n'est monté que
+// depuis `(app)/dashboard/page.tsx`, hors du groupe de routes démo.
 const STORAGE_KEY = "sv-connect-onboarding";
 
 export interface OnboardingProgress {
@@ -17,9 +17,7 @@ export interface OnboardingProgress {
   completed: boolean;
 }
 
-const DEFAULT_PROGRESS: OnboardingProgress = mockUser.onboardingCompletedAt
-  ? { step: mockUser.onboardingStep, completed: true }
-  : { step: 0, completed: false };
+const DEFAULT_PROGRESS: OnboardingProgress = { step: 0, completed: false };
 
 export function getOnboardingProgress(): OnboardingProgress {
   if (typeof window === "undefined") return DEFAULT_PROGRESS;

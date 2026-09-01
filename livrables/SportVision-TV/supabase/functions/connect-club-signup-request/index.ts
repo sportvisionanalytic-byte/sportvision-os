@@ -107,6 +107,14 @@ const ACTIVITE_TYPES = new Set([
   "Coach indépendant", "Préparateur physique", "Personal trainer", "Coach personnel", "Autre",
 ]);
 
+// Sport de la structure (audit de cohérence, 01/09/2026) — doit rester strictement identique à
+// SPORT_OPTIONS côté frontend (signup-context.tsx) et à SPORTS côté Connect (app-connect), même
+// liste, résolue par la même resolve_pole_by_sport() (migration-poles-v13) au moment où
+// connect-club-signup-review valide la demande.
+const SPORTS = new Set([
+  "Football", "Futsal", "Basketball", "Handball", "Rugby", "Volleyball", "Athlétisme", "Tennis", "Autre",
+]);
+
 function json400(msg: string) {
   return json({ error: msg }, 400);
 }
@@ -127,6 +135,7 @@ serve(async (req) => {
       organization_type,
       // Écran 2 · Votre structure
       club_nom, structure_type, ville, code_postal, site_web,
+      sport, sport_autre,
       activite_type, activite_type_autre, exerce_sous_propre_nom,
       nom_evenement_principal,
       // Écran 3 · Vous
@@ -161,6 +170,10 @@ serve(async (req) => {
       return json400("Le type de structure est obligatoire.");
     }
     if (!ville || !String(ville).trim()) return json400("La ville est obligatoire.");
+    if (!sport || !SPORTS.has(sport)) return json400("Le sport est obligatoire.");
+    if (sport === "Autre" && (!sport_autre || !String(sport_autre).trim())) {
+      return json400("Merci de préciser le sport.");
+    }
     if (!contact_prenom || !String(contact_prenom).trim()) return json400("Le prénom est obligatoire.");
     if (!contact_nom || !String(contact_nom).trim()) return json400("Le nom est obligatoire.");
     if (!contact_email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact_email)) return json400("Adresse e-mail invalide.");
@@ -189,7 +202,7 @@ serve(async (req) => {
       [club_nom, 200], [ville, 120], [code_postal, 12], [site_web, 300],
       [contact_prenom, 100], [contact_nom, 100], [contact_telephone, 30],
       [fonction_autre, 200], [besoin_autre_precision, 500],
-      [activite_type_autre, 200], [nom_evenement_principal, 200],
+      [activite_type_autre, 200], [nom_evenement_principal, 200], [sport_autre, 200],
     ].some(([val, max]) => val && String(val).length > (max as number));
     if (tooLong) return json400("Un des champs dépasse la longueur autorisée.");
 
@@ -248,6 +261,11 @@ serve(async (req) => {
         ville: String(ville).trim(),
         code_postal: code_postal || null,
         site_web: site_web || null,
+        // Stocke directement la valeur exploitable par resolve_pole_by_sport() (texte libre
+        // ilike-matché contre poles.sport) : le sport précisé si "Autre" a été choisi, sinon la
+        // valeur de la liste fermée telle quelle — connect-club-signup-review n'a pas besoin de
+        // connaître la distinction sport/sport_autre à la validation.
+        sport: sport === "Autre" ? String(sport_autre).trim() : sport,
         activite_type: orgType === "coach" && activite_type ? String(activite_type).trim() : null,
         activite_type_autre: orgType === "coach" && activite_type === "Autre" ? String(activite_type_autre).trim() : null,
         exerce_sous_propre_nom: orgType === "coach" ? !!exerce_sous_propre_nom : false,

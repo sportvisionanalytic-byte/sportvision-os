@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClubSubscriptionInfo, type ClubSubscriptionInfo } from "@/lib/data/club/subscription";
+import { PLANS } from "@/lib/plans";
 
 // "Mon offre" (CLUB-PLUS-PRODUCT-BIBLE.md §19) — audit complet Club+ du 17/08/2026 : aucune
 // section de ce type n'existait, et les deux edge functions Stripe déjà écrites pour elle
@@ -40,9 +41,34 @@ interface OfferTier {
   featured?: boolean;
 }
 
+// Prix/crédits/plafonds lus depuis lib/plans.ts (PLANS), "source de vérité unique" (README.md) —
+// avant ce correctif (audit de cohérence, 01/09/2026), ces valeurs étaient dupliquées en dur
+// ici, exactement le type de désynchronisation déjà documentée 3 fois dans lib/plans.ts
+// (390/690€ jamais réels, Performance sans engagement 149→139€, crédits 5/20→10/40). discountPct
+// n'existe pas dans PlanDefinition (remise prestations, pas un attribut de l'abonnement lui-même)
+// : reste local, seule valeur encore propre à cette carte.
 const TIERS: OfferTier[] = [
-  { plan: "club", name: "Club+ Start", priceCommitted: 49, priceFree: 59, credits: 10, maxUsers: 5, maxTeams: 2, discountPct: 5 },
-  { plan: "performance", name: "Club+ Performance", priceCommitted: 129, priceFree: 139, credits: 40, maxUsers: null, maxTeams: null, discountPct: 10, featured: true },
+  {
+    plan: "club",
+    name: PLANS.club_plus_start.name,
+    priceCommitted: PLANS.club_plus_start.monthlyPrice!,
+    priceFree: PLANS.club_plus_start.monthlyPriceNoCommitment!,
+    credits: PLANS.club_plus_start.monthlyCredits!,
+    maxUsers: PLANS.club_plus_start.maxUsers,
+    maxTeams: PLANS.club_plus_start.maxTeams,
+    discountPct: 5,
+  },
+  {
+    plan: "performance",
+    name: PLANS.club_plus_performance.name,
+    priceCommitted: PLANS.club_plus_performance.monthlyPrice!,
+    priceFree: PLANS.club_plus_performance.monthlyPriceNoCommitment!,
+    credits: PLANS.club_plus_performance.monthlyCredits!,
+    maxUsers: PLANS.club_plus_performance.maxUsers,
+    maxTeams: PLANS.club_plus_performance.maxTeams,
+    discountPct: 10,
+    featured: true,
+  },
 ];
 
 export function ClubSubscriptionCard({ clubId }: { clubId: string }) {
