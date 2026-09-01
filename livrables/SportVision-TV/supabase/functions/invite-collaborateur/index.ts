@@ -85,7 +85,7 @@ serve(async (req) => {
       return json({ error: "Réservé aux administrateurs, à la secrétaire et à la RH" }, 403);
     }
 
-    const { email, prenom, nom, role, organization_name, redirect_url, pole_ids } = await req.json();
+    const { email, prenom, nom, role, organization_name, redirect_url, pole_ids, responsable_pole_ids } = await req.json();
     if (!email || !prenom || !nom || !role) return json({ error: "Champs manquants" }, 400);
     if (!ROLE_LABELS[role]) return json({ error: "Rôle invalide" }, 400);
     if (callerIsSec && !INVITABLE_ROLES_SEC.has(role)) {
@@ -109,6 +109,18 @@ serve(async (req) => {
       if (!poleRows || poleRows.length !== poleIds.length) return json({ error: "Pôle sportif invalide." }, 400);
     }
 
+    // Nomination directe "Responsable de pôle" à l'invitation (migration-poles-v25/v26,
+    // 31/08/2026, demande explicite de Fouka) : réservée à l'admin (accès en écriture large sur
+    // le pôle, cf. migration-poles-v23) — une secrétaire/rh ne peut pas nommer un Responsable,
+    // même si elle peut inviter des rôles opérationnels. Toujours un sous-ensemble de pole_ids :
+    // on ne rend jamais quelqu'un Responsable d'un pôle auquel il n'est pas affecté.
+    const responsablePoleIds: string[] = Array.isArray(responsable_pole_ids)
+      ? responsable_pole_ids.filter((p) => typeof p === "string" && poleIds.includes(p))
+      : [];
+    if (responsablePoleIds.length > 0 && !callerIsAdmin) {
+      return json({ error: "Seul un administrateur peut nommer un Responsable de pôle." }, 403);
+    }
+
     // Idempotence (spec : "une invitation rejouée ne crée pas deux profils") —
     // si un compte existe déjà pour cet email, ne pas retenter generateLink
     // type 'invite' (qui échoue de toute façon sur un email déjà enregistré) ;
@@ -128,7 +140,14 @@ serve(async (req) => {
       // plusieurs pôles sportifs dès sa création — jamais laissé sans aucune affectation pour un
       // rôle non-'rh' (verrouillage RLS total sinon). 2+ éléments = collaborateur flexible
       // multi-sport (migration-poles-v14, 31/08/2026).
-      options: { data: { role, prenom, nom, ...(poleIds.length > 0 ? { pole_ids: poleIds } : {}) }, redirectTo: redirect_url },
+      options: {
+        data: {
+          role, prenom, nom,
+          ...(poleIds.length > 0 ? { pole_ids: poleIds } : {}),
+          ...(responsablePoleIds.length > 0 ? { responsable_pole_ids: responsablePoleIds } : {}),
+        },
+        redirectTo: redirect_url,
+      },
     });
     if (linkErr) return json({ error: linkErr.message }, 400);
 

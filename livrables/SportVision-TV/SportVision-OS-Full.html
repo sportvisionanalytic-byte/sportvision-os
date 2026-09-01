@@ -4766,7 +4766,10 @@ function modalInviterCollaborateur(){
       </div>
       ${(S.allPoles&&S.allPoles.length>1)?`<div id="fi-pole-block"><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle(s) sportif(s) *</label>
         <div style="display:flex;flex-direction:column;gap:6px">
-          ${S.allPoles.map(p=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)"><input type="checkbox" class="fi-pole-cb" value="${p.id}"${p.slug==='football'?' checked':''}> ${esc(p.nom)}</label>`).join('')}
+          ${S.allPoles.map(p=>`<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)"><input type="checkbox" class="fi-pole-cb" value="${p.id}"${p.slug==='football'?' checked':''} onchange="document.getElementById('fi-resp-'+'${p.id}').disabled=!this.checked;if(!this.checked)document.getElementById('fi-resp-'+'${p.id}').checked=false"> ${esc(p.nom)}</label>
+            ${S.role==='admin'?`<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#C084FC"><input type="checkbox" class="fi-pole-resp-cb" id="fi-resp-${p.id}" value="${p.id}"${p.slug!=='football'?' disabled':''}> ★ Responsable de ce pôle</label>`:''}
+          </div>`).join('')}
         </div>
         <div style="font-size:10.5px;color:var(--t3);margin-top:4px">Cocher plusieurs pôles pour un collaborateur flexible, disponible sur les deux.</div>
       </div>`:''}
@@ -4793,6 +4796,10 @@ async function creerCollaborateur(){
   // le bloc est masqué) ou si aucun pôle n'est coché, le trigger DB retombe alors sur
   // Football par défaut.
   const poleIds=role==='rh'?[]:Array.from(document.querySelectorAll('.fi-pole-cb:checked')).map(el=>el.value);
+  // Nomination directe Responsable (migration-poles-v25/v26, 31/08/2026) : admin uniquement
+  // (cases masquées côté template pour les autres rôles appelants), toujours un sous-ensemble
+  // des pôles cochés.
+  const responsablePoleIds=Array.from(document.querySelectorAll('.fi-pole-resp-cb:checked')).map(el=>el.value);
   if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
   if(role!=='rh'&&document.getElementById('fi-pole-block')&&poleIds.length===0){err.textContent='Sélectionnez au moins un pôle.';return;}
   err.textContent='Envoi de l\'invitation…';
@@ -4802,7 +4809,7 @@ async function creerCollaborateur(){
     const r=await fetch(SB_URL+'/functions/v1/invite-collaborateur',{
       method:'POST',
       headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
-      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_ids:poleIds})
+      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_ids:poleIds,responsable_pole_ids:responsablePoleIds})
     });
     const d=await r.json();
     if(!r.ok||d.error){err.textContent=d.error||'Erreur.';return;}
@@ -28193,7 +28200,7 @@ async function modalFicheCollaborateur(id){
       // Pôle(s) affecté(s) (migration-poles-v14/v15, 31/08/2026, séparation collaborateurs par
       // pôle) : lecture toujours possible ici (RLS pole_affectations_self_select couvre le cas
       // "je regarde ma propre fiche"), écriture réservée admin/rh (voir canManagePoles ci-dessous).
-      sbFetch('pole_affectations?select=pole_id,poles(nom,slug)&user_id=eq.'+id).catch(()=>[]),
+      sbFetch('pole_affectations?select=pole_id,role_pole,poles(nom,slug)&user_id=eq.'+id).catch(()=>[]),
     ]);
     const prof=(Array.isArray(profRaw)?profRaw:[])[0];
     if(!prof){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">Profil introuvable.</div>');return;}
@@ -28225,7 +28232,7 @@ async function modalFicheCollaborateur(id){
     // poles-v14/v15). Aucun badge = collaborateur 'rh' (accès global par rôle, pas d'affectation).
     const poleAff=Array.isArray(poleAffRaw)?poleAffRaw:[];
     const poleBadgesHtml=poleAff.length
-      ?poleAff.map(pa=>'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(192,132,252,.12);color:#C084FC">'+esc(pa.poles?.nom||'?')+'</span>').join('')
+      ?poleAff.map(pa=>'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(192,132,252,.12);color:#C084FC">'+(pa.role_pole==='responsable'?'★ ':'')+esc(pa.poles?.nom||'?')+(pa.role_pole==='responsable'?' — Responsable':'')+'</span>').join('')
       :(prof.role==='rh'?'<span style="font-size:11px;color:var(--t3)">Tous pôles (rôle RH)</span>':'<span style="font-size:11px;color:var(--t3)">Aucun pôle</span>');
     const poleSectionHtml='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">'+poleBadgesHtml
       +(canManagePoles&&prof.role!=='rh'?'<button onclick="modalModifierPolesCollaborateur(\''+id+'\')" style="font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;font-family:var(--ff);padding:0;margin-left:4px">Modifier</button>':'')
@@ -28529,13 +28536,23 @@ async function modalFicheCollaborateur(id){
 // pôle(s) qu'à la création. Réservé admin/rh (canManagePoles, RLS
 // pole_affectations_admin_all/pole_affectations_rh_all).
 async function modalModifierPolesCollaborateur(id){
-  const current=await sbFetch('pole_affectations?select=pole_id&user_id=eq.'+id).catch(()=>[]);
-  const currentIds=new Set((Array.isArray(current)?current:[]).map(p=>p.pole_id));
+  const current=await sbFetch('pole_affectations?select=pole_id,role_pole&user_id=eq.'+id).catch(()=>[]);
+  const currentList=Array.isArray(current)?current:[];
+  const currentIds=new Set(currentList.map(p=>p.pole_id));
+  const responsableIds=new Set(currentList.filter(p=>p.role_pole==='responsable').map(p=>p.pole_id));
+  // Nomination Responsable (migration-poles-v25/v26, 31/08/2026) : réservée admin (RLS
+  // pole_affectations_rh_all n'autorise plus role_pole='responsable' pour rh) — case masquée
+  // pour les autres rôles appelants, pas juste désactivée, pour ne pas laisser croire qu'un
+  // essai échouerait silencieusement.
+  const isAdmin=S.role==='admin';
   openModal(`<div class="mh"><div class="mt">Pôle(s) sportif(s)</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:12px">
       <div style="font-size:12px;color:var(--t3)">Cocher plusieurs pôles pour un collaborateur flexible, disponible sur les deux.</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${(S.allPoles||[]).map(p=>`<label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--t2)"><input type="checkbox" class="mmp-cb" value="${p.id}"${currentIds.has(p.id)?' checked':''}> ${esc(p.nom)}</label>`).join('')}
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${(S.allPoles||[]).map(p=>`<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--t2)"><input type="checkbox" class="mmp-cb" value="${p.id}"${currentIds.has(p.id)?' checked':''} onchange="document.getElementById('mmp-resp-'+'${p.id}').disabled=!this.checked;if(!this.checked)document.getElementById('mmp-resp-'+'${p.id}').checked=false"> ${esc(p.nom)}</label>
+          ${isAdmin?`<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#C084FC"><input type="checkbox" class="mmp-resp-cb" id="mmp-resp-${p.id}" value="${p.id}"${responsableIds.has(p.id)?' checked':''}${currentIds.has(p.id)?'':' disabled'}> ★ Responsable de ce pôle</label>`:''}
+        </div>`).join('')}
       </div>
       <div id="mmp-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
@@ -28547,18 +28564,27 @@ async function modalModifierPolesCollaborateur(id){
 async function sauverPolesCollaborateur(id){
   const err=document.getElementById('mmp-err');
   const wanted=Array.from(document.querySelectorAll('.mmp-cb:checked')).map(el=>el.value);
+  const wantedResponsable=new Set(Array.from(document.querySelectorAll('.mmp-resp-cb:checked')).map(el=>el.value));
   if(wanted.length===0){err.textContent='Sélectionnez au moins un pôle.';return;}
   err.textContent='Enregistrement…';
   try{
-    const current=await sbFetch('pole_affectations?select=pole_id&user_id=eq.'+id).catch(()=>[]);
-    const currentIds=new Set((Array.isArray(current)?current:[]).map(p=>p.pole_id));
+    const current=await sbFetch('pole_affectations?select=pole_id,role_pole&user_id=eq.'+id).catch(()=>[]);
+    const currentList=Array.isArray(current)?current:[];
+    const currentIds=new Set(currentList.map(p=>p.pole_id));
     const toAdd=wanted.filter(p=>!currentIds.has(p));
     const toRemove=[...currentIds].filter(p=>!wanted.includes(p));
+    // Nomination/révocation Responsable (migration-poles-v25/v26) : sur un pôle déjà affecté, si
+    // le rôle pôle demandé diffère de l'actuel — UPDATE, jamais géré par le add/remove ci-dessus
+    // (qui ne gère que la présence/absence de la ligne, pas sa valeur role_pole).
+    const toUpdateRole=currentList.filter(c=>wanted.includes(c.pole_id)&&((wantedResponsable.has(c.pole_id)?'responsable':'membre')!==c.role_pole));
     for(const poleId of toAdd){
-      await sbFetch('pole_affectations',{method:'POST',body:{pole_id:poleId,user_id:id,role_pole:'membre'}});
+      await sbFetch('pole_affectations',{method:'POST',body:{pole_id:poleId,user_id:id,role_pole:wantedResponsable.has(poleId)?'responsable':'membre'}});
     }
     for(const poleId of toRemove){
       await sbFetch('pole_affectations?pole_id=eq.'+poleId+'&user_id=eq.'+id,{method:'DELETE'});
+    }
+    for(const c of toUpdateRole){
+      await sbFetch('pole_affectations?pole_id=eq.'+c.pole_id+'&user_id=eq.'+id,{method:'PATCH',body:{role_pole:wantedResponsable.has(c.pole_id)?'responsable':'membre'}});
     }
     closeModal();
     toast('Pôle(s) mis à jour.','ok');
