@@ -24,6 +24,11 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  // metadataBase absent (audit de cohérence, 01/09/2026) : sans cette valeur, Next.js résout les
+  // URL absolues d'Open Graph/Twitter (favicon, images de partage) sur http://localhost:3000 en
+  // build, warning à chaque page — un lien Connect partagé (ex. ShareFundingButtons.tsx) sur
+  // WhatsApp/iMessage/Slack pouvait donc afficher une prévisualisation cassée en production.
+  metadataBase: new URL("https://connect.sportvision-an.fr"),
   title: "SportVision Connect",
   description: "Votre sport. Vos contenus. Votre équipe.",
   manifest: "/manifest.json",
