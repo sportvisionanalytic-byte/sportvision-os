@@ -787,6 +787,12 @@ const NAV={
   admin:[
     {type:'sep',lb:'Opérations'},
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    // Fiche par pôle (Responsable actuel + "Changer le responsable", CA/résultat/contrats/
+    // missions/état) — master prompt multi-pôles, 01/09/2026. Réservé Direction (pas dans
+    // NAV.rh) : la nomination d'un responsable est verrouillée admin-only côté RLS
+    // (pole_affectations_rh_all n'autorise pas role_pole='responsable' pour rh, v25/v26) —
+    // afficher le bouton à rh l'exposerait à une action qui échouerait silencieusement.
+    {id:'poles',lb:'Pôles',ic:'target'},
     {id:'planning',lb:'Planning',ic:'cal'},
     {id:'pre',lb:'Prestations',ic:'pre'},
     {type:'sep',lb:'Clients & Ventes'},
@@ -1207,6 +1213,12 @@ function _finSkelKpi(n){
 
 // ── VIEW RENDERERS ────────────────────────
 const VIEWS={
+  // Fiche par pôle (master prompt multi-pôles, 01/09/2026) : liste des pôles avec Responsable
+  // actuel, CA/résultat du mois, contrats actifs, missions à venir et état de maturité — clic
+  // sur une carte ouvre modalFichePole() (Responsable + bouton "Changer le responsable").
+  'admin.poles':()=>`
+    <div class="sh"><div><div class="sh-t">Pôles</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Un coup d'œil par pôle sportif : responsable, activité, résultat</div></div></div>
+    <div id="poles-real" style="min-height:200px">${_adminEqSkelCards(2)}</div>`,
   'admin.dash':()=>`
     <div id="dash-banner" style="margin-bottom:16px;border-radius:12px;padding:20px 24px;background:linear-gradient(135deg,rgba(54,107,255,.12),rgba(54,107,255,.02));border:1px solid rgba(54,107,255,.18)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px">
@@ -4857,6 +4869,7 @@ async function loadViewData(role,view){
   // aucun effet sur cet écran (Fouka le repère ailleurs, mais même cause). Reste ajustable
   // ensuite via _kitsPoleFilterBar(), 'commun' n'étant jamais le défaut auto-sélectionné.
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';window._kitsPoleF=S.activePoleId||'Tous';await loadKits();}
+  if(role==='admin'&&view==='poles') await loadAdminPoles();
   if(role==='admin'&&view==='dash') await loadAdminDash();
   if(role==='admin'&&view==='atraiter') await loadATraiter();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
@@ -8474,12 +8487,16 @@ async function renderPolesComparatif(){
   const mStart=today.slice(0,7)+'-01';
   const now=new Date();
   const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
-  const [rentabRows,clientsRows]=await Promise.all([
+  const [rentabRows,clientsRows,contratsRows]=await Promise.all([
     sbFetch('v_rentabilite_missions?select=revenu_ht,pole_id&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext),
     sbFetch('clients?select=id,pole_id,statut&statut=in.(client,partenaire)'),
+    // Une seule requête batchée pour tous les pôles (pas de N+1 par pôle comme
+    // getPoleMetriques) : sert uniquement à dériver l'état de maturité ci-dessous.
+    sbFetch('contrats?select=id,clients!inner(pole_id)&type_contrat=eq.full_communication&statut=eq.actif'),
   ]);
   const rentab=Array.isArray(rentabRows)?rentabRows:[];
   const clients=Array.isArray(clientsRows)?clientsRows:[];
+  const contrats=Array.isArray(contratsRows)?contratsRows:[];
   el.innerHTML=`
     <div class="cd" style="margin-bottom:16px">
       <div class="cd-h"><div class="cd-t">🏢 Comparatif pôles</div></div>
@@ -8487,8 +8504,10 @@ async function renderPolesComparatif(){
         ${S.allPoles.map(p=>{
           const ca=rentab.filter(r=>r.pole_id===p.id).reduce((s,r)=>s+(r.revenu_ht||0),0);
           const nbClients=clients.filter(c=>c.pole_id===p.id).length;
+          const nbContratsRecurrents=contrats.filter(c=>c.clients?.pole_id===p.id).length;
+          const etat=_etatMaturitePole(nbContratsRecurrents);
           return`<div style="background:var(--c1);padding:16px 18px;cursor:pointer" onclick="setActivePole('${p.id}');document.querySelector('#sb-pole-selector select').value='${p.id}'">
-            <div style="font-size:12.5px;font-weight:700;color:var(--t1);margin-bottom:8px">${esc(p.nom)} ${p.statut==='lancement'?'<span class=\"bd bw\" style=\"font-size:9.5px;margin-left:4px\">Lancement</span>':''}</div>
+            <div style="font-size:12.5px;font-weight:700;color:var(--t1);margin-bottom:8px">${esc(p.nom)} <span class="bd" style="font-size:9.5px;margin-left:4px;background:${etat.c}22;color:${etat.c}">${etat.lb}</span></div>
             <div style="font-size:22px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums">${Math.round(ca).toLocaleString('fr-FR')} €</div>
             <div style="font-size:10.5px;color:var(--t3);margin-bottom:6px">CA HT ce mois</div>
             <div style="font-size:13px;font-weight:600;color:var(--t2)">${nbClients} club${nbClients>1?'s':''} actif${nbClients>1?'s':''}</div>
@@ -8496,6 +8515,179 @@ async function renderPolesComparatif(){
         }).join('')}
       </div>
     </div>`;
+}
+
+// État de maturité à 4 niveaux dérivé du nombre de contrats récurrents actifs (master prompt
+// multi-pôles, 01/09/2026) — bornes alignées sur les seuils déjà en vigueur dans
+// _PALIERS_POLE_CFG (2 = palier de rémunération, 5 = secrétaire/Responsable Production, 10 =
+// revue stratégique), pas de nouveau seuillage arbitraire. Remplace le badge "Lancement"
+// binaire (dérivé de poles.statut, jamais mis à jour automatiquement) par un état calculé.
+function _etatMaturitePole(nbContratsRecurrents){
+  if(nbContratsRecurrents>=10)return{lb:'Scale',c:'#7C3AED'};
+  if(nbContratsRecurrents>=5)return{lb:'Stable',c:'#12B76A'};
+  if(nbContratsRecurrents>=2)return{lb:'Développement',c:'#F59E0B'};
+  return{lb:'Lancement',c:'#6B7280'};
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ÉCRAN "PÔLES" (Direction) — master prompt multi-pôles, 01/09/2026
+// ══════════════════════════════════════════════════════════════════════════
+// Liste des pôles avec Responsable actuel + quelques KPI, clic → modalFichePole() (détail +
+// bouton "Changer le responsable"). Admin uniquement (voir commentaire NAV.admin) : la
+// nomination est verrouillée admin-only côté RLS, donc pas d'entrée équivalente dans NAV.rh.
+async function loadAdminPoles(){
+  const el=document.getElementById('poles-real');
+  if(!el)return;
+  const poles=(S.allPoles&&S.allPoles.length)?S.allPoles:((await sbFetch('poles?select=id,nom,slug,sport,statut&order=nom.asc').catch(()=>[]))||[]);
+  if(!Array.isArray(poles)||!poles.length){el.innerHTML='<div style="padding:20px;color:var(--t3)">Aucun pôle configuré.</div>';return;}
+  if(!S.allPoles||!S.allPoles.length)S.allPoles=poles;
+  const today=ymdLocal();
+  const{debut,fin}=_monthBounds(today.slice(0,7));
+  const [respRows,missionsRows,...ventilations]=await Promise.all([
+    sbFetch('pole_affectations?select=pole_id,user_id,affecte_le,profiles!user_id(prenom,nom,role)&role_pole=eq.responsable&actif=eq.true').catch(()=>[]),
+    sbFetch('prestations?select=id,pole_id&pole_id=in.('+poles.map(p=>p.id).join(',')+')&statut=not.in.(annulée,refusée)&date_prestation=gte.'+today).catch(()=>[]),
+    ...poles.map(p=>sbFetch('rpc/pole_finance_ventilation',{method:'POST',body:{p_pole_id:p.id,p_debut:debut,p_fin:fin}}).catch(()=>null)),
+  ]);
+  const resp=Array.isArray(respRows)?respRows:[];
+  const missions=Array.isArray(missionsRows)?missionsRows:[];
+  const metriques=await Promise.all(poles.map(p=>getPoleMetriques(p.id)));
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">'+poles.map((p,i)=>{
+    const respList=resp.filter(r=>r.pole_id===p.id);
+    const ventil=ventilations[i]||{};
+    const rev=ventil?.revenus?.total||0;
+    const marge=ventil?.marge_avant_fixe_responsable||0;
+    const m=metriques[i]||{};
+    const etat=_etatMaturitePole(m.contrats_recurrents_actifs||0);
+    const nbMissions=missions.filter(x=>x.pole_id===p.id).length;
+    const respHtml=respList.length?respList.map(r=>{
+      const prof=r.profiles||{};
+      const ini=((prof.prenom?.[0]||'')+(prof.nom?.[0]||'')).toUpperCase()||'?';
+      const name=esc([prof.prenom,prof.nom].filter(Boolean).join(' ')||'—');
+      return `<div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+        <div class="av" style="width:26px;height:26px;font-size:11px;font-weight:700;background:#C084FC">${ini}</div>
+        <span style="font-size:12.5px;color:var(--t2)">${name}</span>
+      </div>`;
+    }).join(''):'<div style="font-size:12px;color:var(--t3);margin-top:8px">Aucun responsable nommé</div>';
+    return `<div class="cd" style="margin-bottom:0;cursor:pointer" onclick="modalFichePole('${p.id}')">
+      <div class="cd-h"><div class="cd-t">${esc(p.nom)}</div><span class="bd" style="background:${etat.c}22;color:${etat.c}">${etat.lb}</span></div>
+      ${respHtml}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+        <div><div style="font-size:17px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums">${Math.round(rev).toLocaleString('fr-FR')} €</div><div style="font-size:10.5px;color:var(--t3)">CA ce mois</div></div>
+        <div><div style="font-size:17px;font-weight:700;color:${marge>=0?'var(--ok)':'var(--er)'};font-variant-numeric:tabular-nums">${Math.round(marge).toLocaleString('fr-FR')} €</div><div style="font-size:10.5px;color:var(--t3)">Résultat ce mois</div></div>
+        <div><div style="font-size:14.5px;font-weight:600;color:var(--t1)">${m.contrats_recurrents_actifs||0}</div><div style="font-size:10.5px;color:var(--t3)">Contrats actifs</div></div>
+        <div><div style="font-size:14.5px;font-weight:600;color:var(--t1)">${nbMissions}</div><div style="font-size:10.5px;color:var(--t3)">Missions à venir</div></div>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+// Fiche détail d'un pôle : Responsable actuel (nom/rôle/date d'affectation) + KPI + bouton
+// "Changer le responsable". "Depuis le <date>" utilise pole_affectations.affecte_le — date
+// d'affectation au pôle, pas forcément la date de nomination comme responsable si la
+// promotion a eu lieu après coup (pas de colonne dédiée ; approximation assumée, cf. audit
+// du 01/09/2026, plutôt qu'ajouter une colonne pour un besoin non exprimé).
+async function modalFichePole(poleId){
+  try{
+    const pole=(S.allPoles||[]).find(p=>p.id===poleId);
+    const today=ymdLocal();
+    const{debut,fin}=_monthBounds(today.slice(0,7));
+    const [resp,ventil,metriques,missionsRows]=await Promise.all([
+      sbFetch('pole_affectations?select=user_id,affecte_le,profiles!user_id(prenom,nom,role,actif)&pole_id=eq.'+poleId+'&role_pole=eq.responsable&actif=eq.true').catch(()=>[]),
+      sbFetch('rpc/pole_finance_ventilation',{method:'POST',body:{p_pole_id:poleId,p_debut:debut,p_fin:fin}}).catch(()=>null),
+      getPoleMetriques(poleId),
+      sbFetch('prestations?select=id&pole_id=eq.'+poleId+'&statut=not.in.(annulée,refusée)&date_prestation=gte.'+today).catch(()=>[]),
+    ]);
+    const respList=Array.isArray(resp)?resp:[];
+    const rev=ventil?.revenus?.total||0;
+    const marge=ventil?.marge_avant_fixe_responsable||0;
+    const nbMissions=Array.isArray(missionsRows)?missionsRows.length:0;
+    const etat=_etatMaturitePole(metriques.contrats_recurrents_actifs||0);
+    // fmtD/RLBL ne sont pas globaux dans ce fichier (déclarés en `const` locale à d'autres
+    // fonctions, ex. modalFicheCollaborateur) — repéré en vérifiant cette fiche en conditions
+    // réelles avec le vrai Responsable Football déjà en prod (01/09/2026) : invisible avec un
+    // pôle sans responsable (le .map() ne s'exécute jamais), donc jamais détecté sur Basket.
+    const _fmtDLocal=d=>d?new Date(d).toLocaleDateString('fr-FR'):'—';
+    const respHtml=respList.length?respList.map(r=>{
+      const prof=r.profiles||{};
+      const ini=((prof.prenom?.[0]||'')+(prof.nom?.[0]||'')).toUpperCase()||'?';
+      const name=esc([prof.prenom,prof.nom].filter(Boolean).join(' ')||'—');
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0">
+        <div class="av" style="width:44px;height:44px;font-size:16px;font-weight:700;background:#C084FC">${ini}</div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--t1)">${name}</div>
+          <div style="font-size:11.5px;color:var(--t3)">${ROLES[prof.role]?.r||prof.role}${prof.actif===false?' · Compte désactivé':''} · Depuis le ${_fmtDLocal(r.affecte_le)}</div>
+        </div>
+      </div>`;
+    }).join(''):'<div style="font-size:13px;color:var(--t3);padding:10px 0">Aucun responsable nommé pour ce pôle.</div>';
+    openModal(`<div class="mh"><div class="mt">${esc(pole?.nom||'Pôle')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+      <div class="mb">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--t3);margin-bottom:2px">Responsable actuel</div>
+        ${respHtml}
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0 14px">
+          <div class="fs"><div class="fs-l">CA ce mois</div><div class="fs-v">${Math.round(rev).toLocaleString('fr-FR')} €</div></div>
+          <div class="fs" style="border-color:${marge>=0?'rgba(46,204,138,.25)':'rgba(240,68,94,.25)'}"><div class="fs-l">Résultat ce mois</div><div class="fs-v" style="color:${marge>=0?'var(--ok)':'var(--er)'}">${Math.round(marge).toLocaleString('fr-FR')} €</div></div>
+          <div class="fs"><div class="fs-l">Contrats actifs</div><div class="fs-v">${metriques.contrats_recurrents_actifs||0}</div></div>
+          <div class="fs"><div class="fs-l">Missions à venir</div><div class="fs-v">${nbMissions}</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--t3);margin-bottom:16px">État du pôle : <span class="bd" style="background:${etat.c}22;color:${etat.c}">${etat.lb}</span></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+          <button class="btn bg2" onclick="closeModal();setActivePole('${poleId}');switchView('finpoles')">Voir la finance du pôle</button>
+          <button class="btn bp" onclick="modalChangerResponsablePole('${poleId}')">Changer le responsable</button>
+        </div>
+      </div>`);
+  }catch(e){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">Impossible de charger la fiche du pôle.</div>');}
+}
+
+// Sélecteur de responsable : réutilise EXACTEMENT le même patron d'écriture que
+// sauverPolesCollaborateur (POST/PATCH sur pole_affectations), déclenché depuis la fiche du
+// pôle plutôt que depuis la fiche du collaborateur. "Un seul responsable actif" n'est pas
+// contraint en base (aucune contrainte d'unicité sur pole_affectations pour role_pole=
+// 'responsable'), mais c'est le modèle attendu ici : nommer quelqu'un rétrograde
+// automatiquement l'ancien responsable en 'membre' plutôt que d'empiler les responsables.
+async function modalChangerResponsablePole(poleId){
+  try{
+    const pole=(S.allPoles||[]).find(p=>p.id===poleId);
+    const [affRows,profRows]=await Promise.all([
+      sbFetch('pole_affectations?select=user_id,role_pole&pole_id=eq.'+poleId).catch(()=>[]),
+      sbFetch('profiles?select=id,prenom,nom,role,actif&actif=eq.true&order=nom.asc').catch(()=>[]),
+    ]);
+    const aff=Array.isArray(affRows)?affRows:[];
+    const profs=Array.isArray(profRows)?profRows:[];
+    const currentResponsableIds=new Set(aff.filter(a=>a.role_pole==='responsable').map(a=>a.user_id));
+    openModal(`<div class="mh"><div class="mt">Changer le responsable — ${esc(pole?.nom||'')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+      <div class="mb" style="display:flex;flex-direction:column;gap:0;max-height:56vh;overflow-y:auto">
+        ${profs.map(p=>{
+          const ini=((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase()||'?';
+          const name=esc([p.prenom,p.nom].filter(Boolean).join(' ')||p.role);
+          const isCurrent=currentResponsableIds.has(p.id);
+          return `<div style="display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid var(--b1)">
+            <div class="av" style="width:34px;height:34px;font-size:13px;font-weight:700;background:${isCurrent?'#C084FC':'var(--s2)'};color:${isCurrent?'#fff':'var(--t2)'}">${ini}</div>
+            <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${name}</div><div style="font-size:11px;color:var(--t3)">${ROLES[p.role]?.r||p.role}</div></div>
+            ${isCurrent?'<span style="font-size:11px;font-weight:600;color:#C084FC;white-space:nowrap">★ Responsable</span>':`<button class="btn bg2 bs" onclick="nommerResponsablePole('${poleId}','${p.id}')">Nommer responsable</button>`}
+          </div>`;
+        }).join('')}
+      </div>`);
+  }catch(e){toast('Impossible de charger la liste des collaborateurs.','er');}
+}
+async function nommerResponsablePole(poleId,userId){
+  try{
+    const current=await sbFetch('pole_affectations?select=pole_id,user_id,role_pole&pole_id=eq.'+poleId).catch(()=>[]);
+    const currentList=Array.isArray(current)?current:[];
+    const oldResponsables=currentList.filter(a=>a.role_pole==='responsable'&&a.user_id!==userId);
+    for(const r of oldResponsables){
+      await sbFetch('pole_affectations?pole_id=eq.'+poleId+'&user_id=eq.'+r.user_id,{method:'PATCH',body:{role_pole:'membre'}});
+    }
+    const already=currentList.find(a=>a.user_id===userId);
+    if(already){
+      await sbFetch('pole_affectations?pole_id=eq.'+poleId+'&user_id=eq.'+userId,{method:'PATCH',body:{role_pole:'responsable'}});
+    }else{
+      await sbFetch('pole_affectations',{method:'POST',body:{pole_id:poleId,user_id:userId,role_pole:'responsable'}});
+    }
+    closeModal();
+    toast('Responsable mis à jour.','ok');
+    modalFichePole(poleId);
+    if(S.view==='poles')loadAdminPoles();
+  }catch(e){toast('Erreur lors de la nomination du responsable.','er');}
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -8615,7 +8807,10 @@ async function loadPoleDash(){
       sbFetch('rpc/pole_finance_ventilation',{method:'POST',body:{p_pole_id:poleId,p_debut:mStart,p_fin:mNext}}).catch(()=>null),
       // Rémunération estimée : dernier calcul déjà stocké (pole_remuneration_calculs), jamais
       // recalculé depuis le dashboard (action volontaire réservée à l'écran Rémunération).
-      sbFetch('pole_remuneration_calculs?select=montant_total&pole_id=eq.'+poleId+'&periode=eq.'+mStart).catch(()=>[]),
+      // Colonne réelle : "total" (pas "montant_total") — bug pré-existant repéré le 01/09/2026
+      // en vérifiant la redirection automatique du Responsable, qui rendait cet appel constant
+      // au lieu d'occasionnel (400 Postgres 42703 à chaque login, silencieux car .catch(()=>[])).
+      sbFetch('pole_remuneration_calculs?select=total&pole_id=eq.'+poleId+'&periode=eq.'+mStart).catch(()=>[]),
       (typeof getPoleMetriques==='function'?getPoleMetriques(poleId).catch(()=>null):Promise.resolve(null)),
     ]);
     const ca=(Array.isArray(presMois)?presMois:[]).reduce((s,p)=>s+(p.montant_ttc||0),0);
@@ -8624,7 +8819,7 @@ async function loadPoleDash(){
     const mrr=contrats.reduce((s,c)=>s+(c.montant_mensuel||0),0);
     const nbClients=Array.isArray(clientsRaw)?clientsRaw.length:0;
     const benefice=ventilation&&!ventilation.erreur?(ventilation.marge_avant_fixe_responsable||0):null;
-    const remEstimee=(Array.isArray(remCalc)&&remCalc[0])?remCalc[0].montant_total:null;
+    const remEstimee=(Array.isArray(remCalc)&&remCalc[0])?remCalc[0].total:null;
     const sansEquipeAll=Array.isArray(sansEquipeRaw)?sansEquipeRaw:[];
     let sansEquipe=[];
     if(sansEquipeAll.length){
@@ -29255,6 +29450,15 @@ function goApp(role){
       // _navForRole()) n'apparaît jamais pour un Responsable non-admin. Même patron que le
       // re-rendu déjà fait plus haut pour la couche pilotage CM (_myCmAutonomie).
       document.getElementById('sb-nav').innerHTML=renderSidebarNav(S.role,S.view);
+      // Un Responsable non-admin d'un seul pôle atterrit directement dans "Mon pôle" plutôt
+      // que sur le dashboard générique de son rôle métier (master prompt multi-pôles,
+      // 01/09/2026) : il doit se sentir aux commandes de son pôle dès la connexion, pas
+      // découvrir un lien de plus dans la sidebar. Garde S.view===firstNav?.id pour ne pas
+      // écraser une navigation que l'utilisateur aurait déjà faite entre-temps. Responsable
+      // de plusieurs pôles : pas de redirection (aucun pôle "par défaut" évident), il choisit.
+      if(S.role!=='admin'&&S.polesResponsable.length===1&&S.view===(firstNav?.id||'dash')){
+        switchView('poledash');
+      }
     }).catch(()=>{});
   }
   updateNavBadges(role);
