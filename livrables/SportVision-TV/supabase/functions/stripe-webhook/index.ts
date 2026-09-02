@@ -1001,6 +1001,43 @@ serve(async (req) => {
                 console.error("[stripe-webhook] notify_staff_by_role (remboursement participation cotisation) a échoué :", _e);
               }
             }
+
+            // Toujours pas trouvé : peut être un achat du moteur média générique (media_orders,
+            // migration-media-v1-moteur-generique.sql). Gap trouvé lors de l'audit backend du
+            // 02/09/2026 : ce cas n'était géré nulle part — un remboursement Stripe sur un achat
+            // photo laissait media_orders.status='paid' et l'entitlement actif indéfiniment,
+            // l'acheteur gardant l'accès après remboursement. Choix par défaut assumé (aucune règle
+            // configurable par produit n'existe encore, cf. master prompt §33 "selon règle") :
+            // remboursement total = accès révoqué, jamais décidé côté frontend.
+            if (!fundingContribution) {
+              const { data: mediaOrder } = await admin
+                .from("media_orders")
+                .select("*")
+                .eq("stripe_payment_intent_id", intentId)
+                .maybeSingle();
+
+              if (mediaOrder && mediaOrder.status !== "refunded") {
+                if (estTotal) {
+                  await admin.from("media_orders").update({ status: "refunded", refunded_at: new Date().toISOString() }).eq("id", mediaOrder.id);
+                  await admin.from("media_entitlements").update({ status: "revoked" }).eq("order_id", mediaOrder.id).eq("status", "active");
+                }
+
+                try {
+                  await admin.rpc("notify_staff_by_role", {
+                    p_roles: ["sec", "compta"],
+                    p_titre: estTotal ? "Remboursement Stripe confirmé — achat média" : "Remboursement Stripe PARTIEL — achat média",
+                    p_message: estTotal
+                      ? `L'achat média de ${((mediaOrder.amount_cents || 0) / 100).toFixed(2)} € a été intégralement remboursé. L'accès a été révoqué automatiquement.`
+                      : `Remboursement partiel détecté (${(charge.amount_refunded / 100).toFixed(2)} € sur ${(charge.amount / 100).toFixed(2)} €) sur un achat média. Aucune révocation automatique — à traiter manuellement.`,
+                    p_priorite: estTotal ? "normale" : "haute",
+                    p_prestation_id: null,
+                    p_client_id: null,
+                  });
+                } catch (_e) {
+                  console.error("[stripe-webhook] notify_staff_by_role (remboursement achat média) a échoué :", _e);
+                }
+              }
+            }
           }
         }
       }
