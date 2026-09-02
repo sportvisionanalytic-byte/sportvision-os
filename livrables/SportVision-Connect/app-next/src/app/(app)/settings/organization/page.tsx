@@ -164,6 +164,19 @@ function OrganizationForm() {
           </Link>
         </Card>
       )}
+      {organization.type === "club" && (
+        <Card className="flex items-center justify-between gap-4 p-5">
+          <div>
+            <div className="text-[13.5px] font-extrabold">Médias &amp; ventes</div>
+            <p className="mt-0.5 text-[12px] text-text-soft">
+              Le modèle de commercialisation photo/vidéo de votre club — pass saison, vente à l&apos;unité, produits actifs.
+            </p>
+          </div>
+          <Link href="/media-sales" className="flex-none text-[12.5px] font-bold text-brand-blue-electric hover:underline">
+            Consulter →
+          </Link>
+        </Card>
+      )}
       <Card className="flex items-center gap-4 p-5">
         <button
           type="button"
