@@ -397,7 +397,11 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
   const [showVenueForm, setShowVenueForm] = useState(false);
   const [venueName, setVenueName] = useState("");
   const [venueVille, setVenueVille] = useState("");
+  const [venueSaving, setVenueSaving] = useState(false);
+  const [venueError, setVenueError] = useState<string | null>(null);
   const [slotForm, setSlotForm] = useState<{ teamId: string; jour: string; heureDebut: string; heureFin: string; venueId: string } | null>(null);
+  const [slotSaving, setSlotSaving] = useState(false);
+  const [slotError, setSlotError] = useState<string | null>(null);
 
   async function reload() {
     const supabase = createClient();
@@ -435,30 +439,53 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
 
   async function handleCreateVenue() {
     if (!venueName.trim()) return;
-    await createClubVenue(createClient(), clubId, { nom: venueName.trim(), ville: venueVille.trim() || undefined });
-    setVenueName("");
-    setVenueVille("");
-    setShowVenueForm(false);
-    await reload();
+    setVenueSaving(true);
+    setVenueError(null);
+    try {
+      await createClubVenue(createClient(), clubId, { nom: venueName.trim(), ville: venueVille.trim() || undefined });
+      setVenueName("");
+      setVenueVille("");
+      setShowVenueForm(false);
+      await reload();
+    } catch (e) {
+      setVenueError(e instanceof Error ? e.message : "Impossible d'ajouter ce lieu. Réessayez.");
+    } finally {
+      setVenueSaving(false);
+    }
   }
 
   async function handleCreateSlot() {
-    if (!slotForm || !slotForm.heureDebut) return;
-    await createTrainingSlot(createClient(), {
-      teamId: slotForm.teamId,
-      jour: slotForm.jour,
-      heureDebut: slotForm.heureDebut,
-      heureFin: slotForm.heureFin || undefined,
-      venueId: slotForm.venueId || undefined,
-    });
-    setSlotForm(null);
-    await reload();
-    onSaved();
+    if (!slotForm || !slotForm.heureDebut) {
+      setSlotError("L'heure de début est obligatoire.");
+      return;
+    }
+    setSlotSaving(true);
+    setSlotError(null);
+    try {
+      await createTrainingSlot(createClient(), {
+        teamId: slotForm.teamId,
+        jour: slotForm.jour,
+        heureDebut: slotForm.heureDebut,
+        heureFin: slotForm.heureFin || undefined,
+        venueId: slotForm.venueId || undefined,
+      });
+      setSlotForm(null);
+      await reload();
+      onSaved();
+    } catch (e) {
+      setSlotError(e instanceof Error ? e.message : "Impossible d'ajouter ce créneau. Réessayez.");
+    } finally {
+      setSlotSaving(false);
+    }
   }
 
   async function handleDeleteSlot(id: string) {
-    await deleteTrainingSlot(createClient(), id);
-    await reload();
+    try {
+      await deleteTrainingSlot(createClient(), id);
+      await reload();
+    } catch {
+      setSlotError("Impossible de retirer ce créneau. Réessayez.");
+    }
   }
 
   return (
@@ -466,6 +493,8 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
       <SectionHeader title="3. Équipes & entraînements" description="Une équipe créée ici est réutilisée telle quelle par la Production, la Communication et Connect." />
 
       {(teams ?? []).length === 0 && teams !== null && <p className="text-[12.5px] text-text-soft">Aucune équipe renseignée.</p>}
+
+      {slotError && !slotForm && <p className="text-[12.5px] font-bold text-danger-fg">{slotError}</p>}
 
       <div className="flex flex-col gap-3">
         {(teams ?? []).map((team) => {
@@ -532,12 +561,13 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
                       ))}
                     </select>
                   </Field>
-                  <Button className="h-9 px-3 text-[12px]" onClick={handleCreateSlot}>
+                  <Button className="h-9 px-3 text-[12px]" loading={slotSaving} onClick={handleCreateSlot}>
                     Ajouter
                   </Button>
-                  <Button variant="secondary" className="h-9 px-3 text-[12px]" onClick={() => setSlotForm(null)}>
+                  <Button variant="secondary" className="h-9 px-3 text-[12px]" onClick={() => { setSlotForm(null); setSlotError(null); }}>
                     Annuler
                   </Button>
+                  {slotError && <p className="w-full text-[12px] font-bold text-danger-fg">{slotError}</p>}
                 </div>
               )}
             </div>
@@ -558,9 +588,10 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
           <Field label="Ville">
             <input value={venueVille} onChange={(e) => setVenueVille(e.target.value)} className={cn(fieldClass, "h-9 w-40")} />
           </Field>
-          <Button className="h-9 px-3 text-[12px]" onClick={handleCreateVenue}>
+          <Button className="h-9 px-3 text-[12px]" loading={venueSaving} onClick={handleCreateVenue}>
             Ajouter
           </Button>
+          {venueError && <p className="w-full text-[12px] font-bold text-danger-fg">{venueError}</p>}
         </div>
       )}
 
@@ -858,6 +889,8 @@ function CommunicationCard({ clubId, canEdit, onSaved }: { clubId: string; canEd
   const [ton, setTon] = useState<string | null>(null);
   const [sujetsSensibles, setSujetsSensibles] = useState("");
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [accountSaving, setAccountSaving] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
 
   async function reload() {
     const supabase = createClient();
@@ -874,16 +907,28 @@ function CommunicationCard({ clubId, canEdit, onSaved }: { clubId: string; canEd
 
   async function handleAddAccount() {
     if (!handle.trim()) return;
-    await createClubSocialAccount(createClient(), clubId, { plateforme: platform, handleOuUrl: handle.trim(), accesSportvision: acces });
-    setHandle("");
-    setAcces(false);
-    await reload();
-    onSaved();
+    setAccountSaving(true);
+    setAccountError(null);
+    try {
+      await createClubSocialAccount(createClient(), clubId, { plateforme: platform, handleOuUrl: handle.trim(), accesSportvision: acces });
+      setHandle("");
+      setAcces(false);
+      await reload();
+      onSaved();
+    } catch (e) {
+      setAccountError(e instanceof Error ? e.message : "Impossible d'ajouter ce compte. Réessayez.");
+    } finally {
+      setAccountSaving(false);
+    }
   }
 
   async function handleRemoveAccount(id: string) {
-    await deleteClubSocialAccount(createClient(), id);
-    await reload();
+    try {
+      await deleteClubSocialAccount(createClient(), id);
+      await reload();
+    } catch {
+      setAccountError("Impossible de retirer ce compte. Réessayez.");
+    }
   }
 
   function toggleObjectif(value: string) {
@@ -903,6 +948,9 @@ function CommunicationCard({ clubId, canEdit, onSaved }: { clubId: string; canEd
   return (
     <Card className="flex flex-col gap-4 p-5">
       <SectionHeader title="7. Communication" description="Réseaux sociaux, objectifs et ton — jamais de mot de passe demandé ici." />
+      <p className="-mt-2 text-[11.5px] text-text-faint">
+        Cette section est comptée comme complétée dès qu&apos;un compte réseau social et au moins un objectif sont renseignés.
+      </p>
 
       <div className="flex flex-col gap-2">
         {accounts.map((a) => (
@@ -939,9 +987,10 @@ function CommunicationCard({ clubId, canEdit, onSaved }: { clubId: string; canEd
             <input type="checkbox" checked={acces} onChange={(e) => setAcces(e.target.checked)} />
             SportVision a déjà un accès administrateur
           </label>
-          <Button className="h-9 px-3 text-[12px]" onClick={handleAddAccount}>
+          <Button className="h-9 px-3 text-[12px]" loading={accountSaving} onClick={handleAddAccount}>
             Ajouter
           </Button>
+          {accountError && <p className="w-full text-[12px] font-bold text-danger-fg">{accountError}</p>}
         </div>
       )}
       <p className="text-[11.5px] text-text-faint">Pour des raisons de sécurité, ne renseignez jamais votre mot de passe ici — utilisez une invitation administrateur depuis la plateforme concernée.</p>
