@@ -9011,11 +9011,30 @@ async function modalMediaProduit(productId){
         </div>
         <div style="display:flex;align-items:flex-end"><label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--t2)"><input id="mp-physique" type="checkbox"${p?.physical_product?' checked':''}> Produit physique (tirage…)</label></div>
       </div>
+      <div style="border:1px dashed var(--b1);border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:8px">Aperçu — ce que verra une famille dans Connect</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--s2);border-radius:8px">
+          <span id="mp-preview-nom" style="font-size:13px;font-weight:600;color:var(--t1)">${esc(p?.name||'Nom du produit')}</span>
+          <span id="mp-preview-prix" style="font-size:13px;font-weight:700;color:var(--acc)">${p?((p.price_cents||0)/100).toLocaleString('fr-FR',{style:'currency',currency:'EUR'}):'0,00 €'}</span>
+        </div>
+      </div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="btn bg2" onclick="closeModal()">Annuler</button>
         <button class="btn bp" onclick="_medSaveProduit('${clubId}','${saisonId}','${productId||''}')">${p?'Enregistrer':'Créer'}</button>
       </div>
     </div>`);
+  document.getElementById('mp-nom').addEventListener('input',_medUpdateProduitPreview);
+  document.getElementById('mp-prix').addEventListener('input',_medUpdateProduitPreview);
+}
+
+// Aperçu avant activation (master prompt §28) : "réduit les erreurs de configuration" en montrant
+// en direct, sans sauvegarder, exactement ce qu'une famille verrait dans Connect — nom + prix
+// formaté, les deux seules informations réellement montrées côté achat (voir §42, jamais de terme
+// technique type "entitlement" exposé).
+function _medUpdateProduitPreview(){
+  const nomEl=document.getElementById('mp-preview-nom'),prixEl=document.getElementById('mp-preview-prix');
+  if(nomEl)nomEl.textContent=document.getElementById('mp-nom').value.trim()||'Nom du produit';
+  if(prixEl)prixEl.textContent=(Number(document.getElementById('mp-prix').value||0)).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
 }
 
 async function _medSaveProduit(clubId,saisonId,productId){
