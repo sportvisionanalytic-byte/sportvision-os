@@ -806,6 +806,11 @@ const NAV={
     {id:'crmclubplus',lb:'Club+',ic:'cli'},
     {id:'connectcomptes',lb:'Connect',ic:'cli'},
     {id:'crm',lb:'Clubs',ic:'cli',hidden:true},
+    // Moteur générique de commercialisation média (master prompt Fouka, 02/09/2026) : configurer
+    // ici la politique + les produits d'un club/saison remplace toute demande de code par club —
+    // voir migration-media-v1-moteur-generique.sql. Admin-only comme 'poles' (configuration
+    // commerciale sensible, cf. point 37 du master prompt : ADMIN/DIRECTION configure tout).
+    {id:'medias',lb:'Médias & Ventes',ic:'med'},
     {id:'pipeline',lb:'Prospection',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
@@ -1219,6 +1224,32 @@ const VIEWS={
   'admin.poles':()=>`
     <div class="sh"><div><div class="sh-t">Pôles</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Un coup d'œil par pôle sportif : responsable, activité, résultat</div></div></div>
     <div id="poles-real" style="min-height:200px">${_adminEqSkelCards(2)}</div>`,
+  // Wizard de configuration du moteur média générique (master prompt Fouka, 02/09/2026) : choisir
+  // un club puis une saison affiche/édite sa politique par défaut et son catalogue de produits —
+  // aucune ligne de code à écrire pour signer un nouveau club, tout se configure ici.
+  'admin.medias':()=>`
+    <div class="sh"><div><div class="sh-t">Médias &amp; Ventes</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Politique de commercialisation photo/vidéo par club et par saison — 100% configurable ici, aucun code par club</div></div></div>
+    <div class="cd" style="margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--t3);display:block;margin-bottom:6px">Club</label>
+          <select id="med-club-sel" class="l-inp" style="height:38px" onchange="_medOnClubSaisonChange()"><option value="">Choisir un club…</option></select>
+        </div>
+        <div><label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--t3);display:block;margin-bottom:6px">Saison</label>
+          <select id="med-saison-sel" class="l-inp" style="height:38px" onchange="_medOnClubSaisonChange()"><option value="">Choisir une saison…</option></select>
+        </div>
+      </div>
+    </div>
+    <div id="med-body" style="display:none">
+      <div class="cd" style="margin-bottom:16px">
+        <div class="cd-h"><div class="cd-t">Politique par défaut</div></div>
+        <div id="med-policy-content"></div>
+      </div>
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">Produits</div><button class="btn bp bs" onclick="modalMediaProduit()">+ Nouveau produit</button></div>
+        <div id="med-products-content"></div>
+      </div>
+    </div>
+    <div id="med-empty" style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Choisissez un club et une saison pour configurer sa commercialisation média.</div>`,
   'admin.dash':()=>`
     <div id="dash-banner" style="margin-bottom:16px;border-radius:12px;padding:20px 24px;background:linear-gradient(135deg,rgba(54,107,255,.12),rgba(54,107,255,.02));border:1px solid rgba(54,107,255,.18)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px">
@@ -4928,6 +4959,7 @@ async function loadViewData(role,view){
   // ensuite via _kitsPoleFilterBar(), 'commun' n'étant jamais le défaut auto-sélectionné.
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';window._kitsPoleF=S.activePoleId||'Tous';await loadKits();}
   if(role==='admin'&&view==='poles') await loadAdminPoles();
+  if(role==='admin'&&view==='medias') await loadAdminMedias();
   if(role==='admin'&&view==='dash') await loadAdminDash();
   if(role==='admin'&&view==='atraiter') await loadATraiter();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
@@ -8778,6 +8810,174 @@ async function nommerResponsablePole(poleId,userId){
     modalFichePole(poleId);
     if(S.view==='poles')loadAdminPoles();
   }catch(e){toast('Erreur lors de la nomination du responsable.','er');}
+}
+
+// ── Médias & Ventes : moteur générique de commercialisation (master prompt Fouka, 02/09/2026) ──
+// Wizard OS : club + saison → politique par défaut + catalogue de produits. Aucune logique par
+// club en dur — voir migration-media-v1-moteur-generique.sql (can_access_media, resolve_media_
+// policy). team_ids porté par chaque produit (pas par la politique) : un club peut vendre un pass
+// équipe A et un pack événementiel équipe B la même saison.
+const MED_POLICY_LB={gratuit:'Gratuit',pass_saison:'Pass Saison',vente_unite:'Vente à l’unité',vente_pack:'Vente par pack',evenementiel:'Vente événementielle',hybride:'Hybride'};
+const MED_TYPE_LB={pass_saison:'Pass Saison',photo_unite:'Photo à l’unité',pack:'Pack',album_complet:'Album complet',evenementiel:'Produit événementiel',physique:'Produit physique',autre:'Autre'};
+const MED_STATUT_LB={draft:'Brouillon',active:'Actif',paused:'En pause',ended:'Terminé'};
+const MED_STATUT_CLR={draft:'bn',active:'ba',paused:'bw',ended:'br'};
+let _medClubs=[],_medSaisons=[],_medTeams=[];
+
+async function loadAdminMedias(){
+  const [clubs,saisons]=await Promise.all([
+    sbFetch('clubs?select=id,nom&order=nom.asc').catch(()=>[]),
+    sbFetch('saisons?select=id,label&order=label.desc').catch(()=>[]),
+  ]);
+  _medClubs=Array.isArray(clubs)?clubs:[];
+  _medSaisons=Array.isArray(saisons)?saisons:[];
+  const clubSel=document.getElementById('med-club-sel'), saisonSel=document.getElementById('med-saison-sel');
+  if(clubSel)clubSel.innerHTML='<option value="">Choisir un club…</option>'+_medClubs.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+  if(saisonSel)saisonSel.innerHTML='<option value="">Choisir une saison…</option>'+_medSaisons.map(s=>`<option value="${s.id}">${esc(s.label)}</option>`).join('');
+}
+
+let _medReqToken=0;
+async function _medOnClubSaisonChange(){
+  const myToken=++_medReqToken;
+  const clubId=document.getElementById('med-club-sel')?.value||'';
+  const saisonId=document.getElementById('med-saison-sel')?.value||'';
+  const body=document.getElementById('med-body'), empty=document.getElementById('med-empty');
+  if(!clubId||!saisonId){if(body)body.style.display='none';if(empty)empty.style.display='block';return;}
+  if(body)body.style.display='block';if(empty)empty.style.display='none';
+  const teams=(await sbFetch('club_teams?select=id,name&club_id=eq.'+clubId+'&order=name.asc').catch(()=>[]))||[];
+  // Garde de fraîcheur : si le club/la saison a de nouveau changé pendant cet appel, on abandonne
+  // silencieusement plutôt que d'afficher une politique/des produits qui ne correspondent plus à
+  // la sélection actuelle (repéré en QA du 02/09 comme risque théorique, corrigé par précaution).
+  if(myToken!==_medReqToken)return;
+  _medTeams=teams;
+  await Promise.all([_medLoadPolicy(clubId,saisonId),_medLoadProducts(clubId,saisonId)]);
+}
+
+async function _medLoadPolicy(clubId,saisonId){
+  const el=document.getElementById('med-policy-content');
+  if(!el)return;
+  el.innerHTML=_cmSkel(2,22);
+  const rows=(await sbFetch('media_club_policy?select=id,default_policy,revenue_share_pct,status&club_id=eq.'+clubId+'&saison_id=eq.'+saisonId+'&limit=1').catch(()=>[]))||[];
+  const p=rows[0]||null;
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+      <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Modèle</label>
+        <select id="med-pol-defaut" class="l-inp" style="height:36px">${Object.entries(MED_POLICY_LB).map(([v,l])=>`<option value="${v}"${p?.default_policy===v?' selected':''}>${l}</option>`).join('')}</select>
+      </div>
+      <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Reversement club (% — vide = SportVision garde 100%)</label>
+        <input id="med-pol-share" type="number" min="0" max="100" step="1" class="l-inp" style="height:36px" value="${p?.revenue_share_pct??''}">
+      </div>
+      <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Statut</label>
+        <select id="med-pol-statut" class="l-inp" style="height:36px">${Object.entries(MED_STATUT_LB).map(([v,l])=>`<option value="${v}"${(p?.status||'draft')===v?' selected':''}>${l}</option>`).join('')}</select>
+      </div>
+    </div>
+    <button class="btn bp bs" onclick="_medSavePolicy('${clubId}','${saisonId}','${p?.id||''}')">Enregistrer la politique</button>
+    ${!p?'<div style="font-size:11.5px;color:var(--t3);margin-top:8px">Aucune politique enregistrée pour ce club cette saison — tant qu’elle n’est pas au statut Actif, aucune vente ne s’applique (repli sécurisé).</div>':''}`;
+}
+
+async function _medSavePolicy(clubId,saisonId,policyId){
+  const default_policy=document.getElementById('med-pol-defaut').value;
+  const shareRaw=document.getElementById('med-pol-share').value;
+  const revenue_share_pct=shareRaw===''?null:Number(shareRaw);
+  const status=document.getElementById('med-pol-statut').value;
+  const body={club_id:clubId,saison_id:saisonId,default_policy,revenue_share_pct,status};
+  const r=policyId
+    ?await sbFetch('media_club_policy?id=eq.'+policyId,{method:'PATCH',body})
+    :await sbFetch('media_club_policy',{method:'POST',body});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
+  toast('Politique enregistrée.','ok');
+  _medLoadPolicy(clubId,saisonId);
+}
+
+async function _medLoadProducts(clubId,saisonId){
+  const el=document.getElementById('med-products-content');
+  if(!el)return;
+  el.innerHTML=_cmSkel(2,28);
+  const rows=(await sbFetch('media_products?select=id,name,type,price_cents,currency,scope_type,team_ids,status&club_id=eq.'+clubId+'&saison_id=eq.'+saisonId+'&order=created_at.desc').catch(()=>[]))||[];
+  if(!rows.length){el.innerHTML='<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucun produit configuré pour ce club cette saison.</div>';return;}
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+rows.map(p=>{
+    const scopeLb=p.scope_type==='club'?'Tout le club':p.scope_type==='event'?'Lié à une opération':(p.team_ids||[]).map(tid=>_medTeams.find(t=>t.id===tid)?.name||'équipe').join(', ')||'Équipe(s)';
+    const prix=((p.price_cents||0)/100).toLocaleString('fr-FR',{style:'currency',currency:(p.currency||'eur').toUpperCase()});
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--s2);border-radius:8px;cursor:pointer" onclick="modalMediaProduit('${p.id}')">
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(p.name)} <span style="font-weight:400;color:var(--t3);font-size:11.5px">· ${MED_TYPE_LB[p.type]||p.type}</span></div>
+        <div style="font-size:11.5px;color:var(--t3)">${esc(scopeLb)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <span style="font-size:13px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums">${prix}</span>
+        <span class="bd ${MED_STATUT_CLR[p.status]||'bn'}"><span class="bd-d"></span>${MED_STATUT_LB[p.status]||p.status}</span>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function modalMediaProduit(productId){
+  const clubId=document.getElementById('med-club-sel')?.value||'';
+  const saisonId=document.getElementById('med-saison-sel')?.value||'';
+  if(!clubId||!saisonId)return;
+  let p=null;
+  if(productId){
+    const rows=(await sbFetch('media_products?select=*&id=eq.'+productId+'&limit=1').catch(()=>[]))||[];
+    p=rows[0]||null;
+  }
+  const teamIds=p?.team_ids||[];
+  openModal(`<div class="mh"><div class="mt">${p?'Modifier le produit':'Nouveau produit'}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb">
+      <div id="med-prod-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Nom</label>
+        <input id="mp-nom" type="text" class="l-inp" style="height:38px" value="${esc(p?.name||'')}" placeholder="Pass Photo Saison">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Type</label>
+          <select id="mp-type" class="l-inp" style="height:38px">${Object.entries(MED_TYPE_LB).map(([v,l])=>`<option value="${v}"${p?.type===v?' selected':''}>${l}</option>`).join('')}</select>
+        </div>
+        <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Prix (€)</label>
+          <input id="mp-prix" type="number" min="0" step="0.01" class="l-inp" style="height:38px" value="${p?((p.price_cents||0)/100):''}">
+        </div>
+      </div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Portée</label>
+        <select id="mp-scope" class="l-inp" style="height:38px" onchange="document.getElementById('mp-teams-block').style.display=this.value==='team'?'block':'none'">
+          <option value="club"${p?.scope_type==='club'?' selected':''}>Tout le club</option>
+          <option value="team"${!p||p?.scope_type==='team'?' selected':''}>Équipe(s) précise(s)</option>
+          <option value="event"${p?.scope_type==='event'?' selected':''}>Liée à une opération événementielle</option>
+        </select>
+      </div>
+      <div id="mp-teams-block" style="display:${(!p||p?.scope_type==='team')?'block':'none'};margin-bottom:12px">
+        <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Équipes concernées</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">${_medTeams.map(t=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2);background:var(--s2);padding:5px 10px;border-radius:999px"><input type="checkbox" class="mp-team-cb" value="${t.id}"${teamIds.includes(t.id)?' checked':''}> ${esc(t.name)}</label>`).join('')||'<span style="font-size:12px;color:var(--t3)">Aucune équipe pour ce club.</span>'}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Statut</label>
+          <select id="mp-statut" class="l-inp" style="height:38px">${Object.entries(MED_STATUT_LB).map(([v,l])=>`<option value="${v}"${(p?.status||'draft')===v?' selected':''}>${l}</option>`).join('')}</select>
+        </div>
+        <div style="display:flex;align-items:flex-end"><label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--t2)"><input id="mp-physique" type="checkbox"${p?.physical_product?' checked':''}> Produit physique (tirage…)</label></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="_medSaveProduit('${clubId}','${saisonId}','${productId||''}')">${p?'Enregistrer':'Créer'}</button>
+      </div>
+    </div>`);
+}
+
+async function _medSaveProduit(clubId,saisonId,productId){
+  const name=document.getElementById('mp-nom').value.trim();
+  const type=document.getElementById('mp-type').value;
+  const prixEuros=Number(document.getElementById('mp-prix').value||0);
+  const scope_type=document.getElementById('mp-scope').value;
+  const status=document.getElementById('mp-statut').value;
+  const physical_product=document.getElementById('mp-physique').checked;
+  const errEl=document.getElementById('med-prod-err');
+  if(!name){errEl.textContent='Le nom est obligatoire.';return;}
+  if(!(prixEuros>=0)){errEl.textContent='Le prix doit être positif ou nul.';return;}
+  const team_ids=scope_type==='team'?Array.from(document.querySelectorAll('.mp-team-cb:checked')).map(cb=>cb.value):[];
+  if(scope_type==='team'&&!team_ids.length){errEl.textContent='Sélectionnez au moins une équipe.';return;}
+  const body={club_id:clubId,saison_id:saisonId,name,type,price_cents:Math.round(prixEuros*100),scope_type,team_ids,status,physical_product};
+  const r=productId
+    ?await sbFetch('media_products?id=eq.'+productId,{method:'PATCH',body})
+    :await sbFetch('media_products',{method:'POST',body});
+  if(sbErr(r)){errEl.textContent=r.message||'Enregistrement impossible.';return;}
+  closeModal();
+  toast(productId?'Produit mis à jour.':'Produit créé.','ok');
+  _medLoadProducts(clubId,saisonId);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
