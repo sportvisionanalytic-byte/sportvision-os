@@ -153,7 +153,12 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <Link href="/particulier/sportifs" className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
+      <Link
+        href="/particulier/sportifs"
+        // BUGFIX (audit mobile 02/09/2026, même correctif que PhotosViewClub.tsx) : zone
+        // tactile mesurée à 21px en réel sur 375px de large, sous le standard tactile ~44px.
+        className="flex min-h-11 items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]"
+      >
         <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Mes sportifs
       </Link>

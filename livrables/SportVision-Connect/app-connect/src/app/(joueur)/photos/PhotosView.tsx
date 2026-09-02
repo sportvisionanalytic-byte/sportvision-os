@@ -48,7 +48,13 @@ export function PhotosView({
   const [error, setError] = useState<string | null>(null);
 
   const hasAlbums = albums.length > 0;
-  const unlocked = albums.some((a) => a.unlocked);
+  // BUGFIX (audit mobile/desktop 02/09/2026, reproduit en réel avec un album gratuit +
+  // un album payant sur le même club) : cette section affichait le bloc d'achat seulement si
+  // AUCUN album n'était déverrouillé (albums.some(unlocked)) — un simple album gratuit/teaser
+  // (access_mode='free_members') suffisait à masquer DÉFINITIVEMENT le bouton "Obtenir" pour
+  // TOUS les autres albums encore verrouillés du même club, empêchant tout achat. Ce qui compte
+  // pour savoir s'il reste quelque chose à proposer à l'achat, c'est l'inverse : y a-t-il au
+  // moins un album encore verrouillé.
 
   // Le webhook Stripe (checkout.session.completed) confirme l'activation en tâche de fond — même
   // délai/logique que AbonnementView.tsx : un seul rafraîchissement différé après un retour
@@ -117,7 +123,7 @@ export function PhotosView({
         <EmptyState text="Aucun album publié pour le moment. Vos prochains albums photo apparaîtront ici." />
       ) : (
         <>
-          {!unlocked && products.length > 0 && (
+          {albums.some((a) => !a.unlocked) && products.length > 0 && (
             <div className="flex flex-col gap-3">
               {products.map((p) => (
                 <div key={p.id} className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-5">

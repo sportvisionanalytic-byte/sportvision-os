@@ -42,7 +42,10 @@ export function PhotosViewClub({
   const [error, setError] = useState<string | null>(null);
 
   const hasAlbums = albums.length > 0;
-  const unlocked = albums.some((a) => a.unlocked);
+  // BUGFIX (audit mobile/desktop 02/09/2026) : voir le commentaire équivalent dans
+  // PhotosView.tsx (Espace joueur) — même bug, même correctif. Le bloc d'achat doit apparaître
+  // s'il reste au moins un album encore verrouillé, pas seulement si aucun album n'est
+  // déverrouillé (un album gratuit/teaser masquait sinon l'achat des albums payants du club).
 
   useEffect(() => {
     if (returnStatus !== "succes" || !detail.club_id || !detail.team_id || !detail.saison_id) return;
@@ -76,7 +79,10 @@ export function PhotosViewClub({
     <div className="flex flex-col gap-6 animate-sv-in">
       <Link
         href={`/particulier/sportifs/${detail.kind}/${detail.ref_id}`}
-        className="flex w-fit items-center gap-2 text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]"
+        // BUGFIX (audit mobile 02/09/2026) : hauteur de zone tactile mesurée à 21px en réel
+        // (viewport 375px), bien en dessous du standard tactile ~44px — min-h-11 + items-center
+        // agrandit la zone cliquable sans déplacer le texte visuellement.
+        className="flex min-h-11 w-fit items-center gap-2 text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]"
       >
         <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         {detail.first_name}
@@ -112,7 +118,7 @@ export function PhotosViewClub({
         <EmptyState text="Aucun album publié pour le moment. Les prochains albums photo apparaîtront ici." />
       ) : (
         <>
-          {!unlocked && products.length > 0 && (
+          {albums.some((a) => !a.unlocked) && products.length > 0 && (
             <div className="flex flex-col gap-3">
               {products.map((p) => (
                 <div key={p.id} className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-5">
