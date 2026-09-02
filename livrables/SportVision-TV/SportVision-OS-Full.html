@@ -8944,9 +8944,30 @@ async function _medLoadProducts(clubId,saisonId){
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
         <span style="font-size:13px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums">${prix}</span>
         <span class="bd ${MED_STATUT_CLR[p.status]||'bn'}"><span class="bd-d"></span>${MED_STATUT_LB[p.status]||p.status}</span>
+        <button class="btn bg2 bs" onclick="event.stopPropagation();_medDuplicateProduit('${p.id}')" title="Dupliquer ce produit (utile pour une autre équipe, un autre tournoi…)">Dupliquer</button>
       </div>
     </div>`;
   }).join('')+'</div>';
+}
+
+// Duplication (master prompt §30) : copie un produit dans le même club/saison, toujours en
+// 'draft' même si l'original était actif — jamais republier automatiquement une config qui n'a
+// pas encore été relue (point 29), l'admin ajuste puis active lui-même depuis la modale ouverte
+// juste après. Utile pour une nouvelle équipe/un nouveau tournoi sans ressaisir tous les champs ;
+// dupliquer vers un AUTRE club/une autre saison reste à faire manuellement (changer le sélecteur
+// en haut d'écran puis créer) — hors périmètre de cette version simple.
+async function _medDuplicateProduit(productId){
+  const clubId=document.getElementById('med-club-sel')?.value||'';
+  const saisonId=document.getElementById('med-saison-sel')?.value||'';
+  const rows=(await sbFetch('media_products?select=*&id=eq.'+productId+'&limit=1').catch(()=>[]))||[];
+  const p=rows[0];
+  if(!p)return;
+  const body={club_id:clubId,saison_id:saisonId,name:p.name+' (copie)',type:p.type,price_cents:p.price_cents,currency:p.currency,scope_type:p.scope_type,team_ids:p.team_ids||[],physical_product:p.physical_product,status:'draft'};
+  const r=await sbFetch('media_products',{method:'POST',body});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Duplication impossible.'),'er');return;}
+  await _medLoadProducts(clubId,saisonId);
+  toast('Produit dupliqué en brouillon — à relire avant activation.','ok');
+  modalMediaProduit(Array.isArray(r)&&r[0]?.id);
 }
 
 async function modalMediaProduit(productId){
@@ -9037,9 +9058,35 @@ async function _medLoadOperations(clubId,saisonId){
         <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(o.name)} <span style="font-weight:400;color:var(--t3);font-size:11.5px">· ${MED_OP_KIND_LB[o.kind]||o.kind}</span></div>
         <div style="font-size:11.5px;color:var(--t3)">${evt?'Lié à : '+esc(evt.title):(o.date_debut?_fmtDLocal(o.date_debut)+(o.date_fin&&o.date_fin!==o.date_debut?' → '+_fmtDLocal(o.date_fin):''):'Aucune date')}</div>
       </div>
-      <span class="bd ${MED_STATUT_CLR[o.status]||'bn'}"><span class="bd-d"></span>${MED_STATUT_LB[o.status]||o.status}</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <span class="bd ${MED_STATUT_CLR[o.status]||'bn'}"><span class="bd-d"></span>${MED_STATUT_LB[o.status]||o.status}</span>
+        <button class="btn bg2 bs" onclick="event.stopPropagation();_medDuplicateOperation('${o.id}')" title="Dupliquer cette opération (utile pour un nouveau tournoi, un autre créneau…)">Dupliquer</button>
+      </div>
     </div>`;
   }).join('')+'</div>';
+}
+
+// Duplication (master prompt §30) — même principe que _medDuplicateProduit : copie dans le même
+// club/saison, toujours en 'draft', y compris les produits liés (media_sales_operation_products),
+// jamais l'event_id d'origine (une "Photo de rentrée" dupliquée pour un autre tournoi ne doit pas
+// rester accrochée à l'événement du tournoi précédent par erreur).
+async function _medDuplicateOperation(operationId){
+  const clubId=document.getElementById('med-club-sel')?.value||'';
+  const saisonId=document.getElementById('med-saison-sel')?.value||'';
+  const rows=(await sbFetch('media_sales_operations?select=*&id=eq.'+operationId+'&limit=1').catch(()=>[]))||[];
+  const o=rows[0];
+  if(!o)return;
+  const body={club_id:clubId,saison_id:saisonId,name:o.name+' (copie)',kind:o.kind,event_id:null,team_ids:o.team_ids||[],date_debut:o.date_debut,date_fin:o.date_fin,status:'draft'};
+  const r=await sbFetch('media_sales_operations',{method:'POST',body});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Duplication impossible.'),'er');return;}
+  const newId=Array.isArray(r)&&r[0]?.id;
+  const links=(await sbFetch('media_sales_operation_products?select=product_id&sales_operation_id=eq.'+operationId).catch(()=>[]))||[];
+  if(newId&&links.length){
+    await sbFetch('media_sales_operation_products',{method:'POST',body:links.map(l=>({sales_operation_id:newId,product_id:l.product_id}))});
+  }
+  await _medLoadOperations(clubId,saisonId);
+  toast('Opération dupliquée en brouillon — à relire avant activation.','ok');
+  modalMediaOperation(newId);
 }
 
 async function modalMediaOperation(operationId){
