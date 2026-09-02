@@ -9,9 +9,12 @@ import type { AthleteRow } from "@/lib/supabase/particulier";
 type Subject = { kind: "self" | "linked" | "managed"; id: string | null; label: string };
 
 export function MessagesParticulierView({ firstName, athletes }: { firstName: string; athletes: AthleteRow[] }) {
+  // 'club' (migration-connect-v79) exclu des sujets de message : connect_resolve_beneficiary_client_id
+  // ne connaît que 'self'/'linked'/'managed' (concept client_id, sans équivalent pour un enfant
+  // affilié à un vrai club) — pas de sujet plutôt qu'un canal de messagerie cassé.
   const subjects: Subject[] = [
     { kind: "self", id: null, label: "Mon compte" },
-    ...athletes.map((a) => ({ kind: a.kind, id: a.refId, label: `${a.firstName} ${a.lastName}`.trim() })),
+    ...athletes.filter((a): a is AthleteRow & { kind: "linked" | "managed" } => a.kind !== "club").map((a) => ({ kind: a.kind, id: a.refId, label: `${a.firstName} ${a.lastName}`.trim() })),
   ];
 
   const [subjectIndex, setSubjectIndex] = useState(0);

@@ -11,7 +11,7 @@ import { AthleteDetailView, type AthleteDetail } from "./AthleteDetailView";
 // Shell (ParticularShell) rendu par le layout parent (src/app/particulier/layout.tsx).
 export default async function AthleteDetailPage({ params }: { params: Promise<{ kind: string; id: string }> }) {
   const { kind, id } = await params;
-  if (kind !== "linked" && kind !== "managed") notFound();
+  if (kind !== "linked" && kind !== "managed" && kind !== "club") notFound();
 
   const supabase = await createClient();
   await requireParticulierAccount(supabase);

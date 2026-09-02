@@ -7,7 +7,7 @@ import type { AthleteNavItem } from "@/components/layout/ParticularShell";
 // une seule liste déjà enrichie côté serveur — jamais de lecture directe de player_profiles/
 // auth.users d'un tiers depuis le client (RLS ne le permettrait de toute façon pas).
 export interface AthleteRow {
-  kind: "linked" | "managed";
+  kind: "linked" | "managed" | "club";
   refId: string;
   relationshipId: string;
   firstName: string;
@@ -32,7 +32,7 @@ export interface AthleteRow {
 }
 
 interface AthleteRpcRow {
-  kind: "linked" | "managed";
+  kind: "linked" | "managed" | "club";
   ref_id: string;
   relationship_id: string;
   first_name: string;
@@ -59,8 +59,14 @@ interface AthleteRpcRow {
 // pleins par construction), un sportif lié est "actif" si les 3 droits les plus consultés
 // (voir/commandes/calendrier) sont accordés, "limité" sinon. Seuil arbitraire documenté ici :
 // aucune règle produit tranchée par le brief au-delà des 3 statuts eux-mêmes.
-function deriveStatus(kind: "linked" | "managed", rights: AthleteRpcRow): "actif" | "limite" | "gere" {
+//
+// 'club' (02/09/2026, migration-connect-v79) : un enfant réellement affilié à un club est
+// toujours "actif" par construction (l'affiliation elle-même est vérifiée server-side, contrairement
+// à 'managed') — le calcul voir/commandes/calendrier ne s'applique pas puisque ces droits sont
+// délibérément à false pour ce kind (fonctionnalités sans support backend, voir la migration).
+function deriveStatus(kind: "linked" | "managed" | "club", rights: AthleteRpcRow): "actif" | "limite" | "gere" {
   if (kind === "managed") return "gere";
+  if (kind === "club") return "actif";
   return rights.right_voir && rights.right_commandes && rights.right_calendrier ? "actif" : "limite";
 }
 

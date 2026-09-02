@@ -39,7 +39,7 @@ import { MobileSearchOverlay } from "./MobileSearchOverlay";
 // AppShell.tsx : accès unique désormais dans Topbar.tsx).
 
 export interface AthleteNavItem {
-  kind: "linked" | "managed";
+  kind: "linked" | "managed" | "club";
   refId: string;
   firstName: string;
   lastName: string;
@@ -185,7 +185,7 @@ export function ParticularShell({
   // raccourci de NAVIGATION vers la fiche du sportif (pas un filtre global in-place répercuté sur
   // toutes les pages) : les listes multi-sportifs (commandes, contenus, calendrier) filtrent via
   // leur propre sélecteur `?sportif=`, déjà couvert par chaque vue.
-  const activeAthleteMatch = pathname.match(/^\/particulier\/sportifs\/(linked|managed)\/([^/]+)/);
+  const activeAthleteMatch = pathname.match(/^\/particulier\/sportifs\/(linked|managed|club)\/([^/]+)/);
   const activeAthlete = activeAthleteMatch
     ? athletes.find((a) => a.kind === activeAthleteMatch[1] && a.refId === activeAthleteMatch[2]) || null
     : null;

@@ -9,7 +9,7 @@ import { gradientFor } from "@/lib/avatarGradients";
 import { ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR } from "@/lib/supabase/particulier";
 
 export interface AthleteDetail {
-  kind: "linked" | "managed";
+  kind: "linked" | "managed" | "club";
   ref_id: string;
   first_name: string;
   last_name: string;
@@ -21,6 +21,10 @@ export interface AthleteDetail {
   status: "actif" | "gere";
   client_id: string | null;
   relationship_id: string | null;
+  // 'club' uniquement (migration-connect-v79) — équipe/saison réelles de l'enfant, nécessaires
+  // pour le moteur média générique (photos). null pour 'linked'/'managed'.
+  team_id?: string | null;
+  saison_id?: string | null;
   rights: {
     voir: boolean;
     download: boolean;
@@ -100,6 +104,11 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
   const [removeError, setRemoveError] = useState<string | null>(null);
 
   const isManaged = detail.kind === "managed";
+  // 'club' (migration-connect-v79, 02/09/2026) — enfant réellement affilié via
+  // parent_player_relationships confirmé, vérifié côté serveur. Pas de flux de retrait construit
+  // pour ce kind (voir removeAthlete ci-dessous) : contrairement à 'linked'/'managed', il n'existe
+  // aucune RPC de révocation sûre à appeler depuis cette vue.
+  const isClub = detail.kind === "club";
   const sportifKey = `${detail.kind}:${detail.ref_id}`;
   const fullName = `${detail.first_name} ${detail.last_name}`.trim();
   // Statut dérivé des droits réels plutôt que de detail.status : même règle que la liste "Mes
@@ -107,12 +116,15 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
   // les plus consultés (voir/commandes/calendrier) ne sont pas TOUS accordés doit afficher "Accès
   // limité" ici aussi. Avant ce correctif, cette fiche affichait toujours "Accès actif" pour tout
   // sportif lié, y compris ceux marqués "Accès limité" dans la liste — contradiction directe entre
-  // les deux écrans pour la même donnée.
+  // les deux écrans pour la même donnée. 'club' est toujours "actif" par construction (même
+  // logique que deriveStatus côté liste).
   const derivedStatus: "actif" | "limite" | "gere" = isManaged
     ? "gere"
-    : rights.voir && rights.commandes && rights.calendrier
+    : isClub
       ? "actif"
-      : "limite";
+      : rights.voir && rights.commandes && rights.calendrier
+        ? "actif"
+        : "limite";
   const statusLabel = ATHLETE_STATUS_LABEL[derivedStatus];
   const statusColor = ATHLETE_STATUS_COLOR[derivedStatus];
 
@@ -178,6 +190,19 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
               >
                 <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">camera_alt</span>
                 Réserver pour {detail.first_name}
+              </Link>
+            )}
+            {/* 'club' uniquement (migration-connect-v79) : accès au moteur média générique déjà
+                construit côté Espace joueur — hors du système `rights` existant, qui ne représente
+                aucune fonctionnalité applicable à un enfant affilié à un club (voir le commentaire
+                de tête de la migration). */}
+            {isClub && detail.team_id && detail.saison_id && (
+              <Link
+                href={`/particulier/sportifs/${detail.kind}/${detail.ref_id}/photos`}
+                className="flex h-12 items-center gap-2 rounded-sv bg-sv-gradient px-5 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
+              >
+                <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">photo_camera</span>
+                Voir les photos
               </Link>
             )}
             {rights.voir && (
@@ -371,21 +396,27 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 rounded-sv-card border border-danger-border bg-danger-bg p-[18px]">
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="font-sora text-[15px] font-semibold">Retirer {isManaged ? "ce profil" : "ce sportif"}</span>
-              <span className="text-[14px] text-text-tertiary lg:text-[13px]">
-                {isManaged ? "Le profil géré est supprimé définitivement." : "La relation est supprimée. Le compte du sportif est conservé."}
-              </span>
+          {/* 'club' (migration-connect-v79) : aucun flux de retrait construit ici — une vraie
+              affiliation club se gère via une demande/révocation d'équipe, pas une suppression de
+              relation "de confort" comme pour 'linked'/'managed'. Bloc masqué plutôt que branché
+              sur une RPC qui ne connaît pas parent_player_relationships. */}
+          {!isClub && (
+            <div className="flex flex-wrap items-center gap-4 rounded-sv-card border border-danger-border bg-danger-bg p-[18px]">
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="font-sora text-[15px] font-semibold">Retirer {isManaged ? "ce profil" : "ce sportif"}</span>
+                <span className="text-[14px] text-text-tertiary lg:text-[13px]">
+                  {isManaged ? "Le profil géré est supprimé définitivement." : "La relation est supprimée. Le compte du sportif est conservé."}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmingRemove(true)}
+                className="ml-auto flex h-11 flex-none items-center rounded-sv border border-danger-border bg-[rgba(244,114,182,.08)] px-4 font-sora text-[14px] font-semibold text-danger hover:bg-[rgba(244,114,182,.16)]"
+              >
+                Retirer
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setConfirmingRemove(true)}
-              className="ml-auto flex h-11 flex-none items-center rounded-sv border border-danger-border bg-[rgba(244,114,182,.08)] px-4 font-sora text-[14px] font-semibold text-danger hover:bg-[rgba(244,114,182,.16)]"
-            >
-              Retirer
-            </button>
-          </div>
+          )}
           {removeError && <span className="text-[14px] text-danger lg:text-[13px]">{removeError}</span>}
         </div>
       )}

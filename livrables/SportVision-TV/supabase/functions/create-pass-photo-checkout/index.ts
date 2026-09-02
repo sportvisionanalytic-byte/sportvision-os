@@ -16,9 +16,16 @@
 // jamais en dur ici.
 //
 // Sécurité (inchangée sur le fond) :
-//   * l'appelant doit être authentifié (JWT Supabase), c'est un joueur qui achète pour lui-même
-//     (le cas "parent achète pour son enfant" est une évolution future, non couverte ici — voir
-//     beneficiary_person_id ci-dessous) ;
+//   * l'appelant doit être authentifié (JWT Supabase) ; deux cas (02/09/2026, master prompt §20),
+//     TOUS DEUX dans app-connect (Club+/app-next n'a plus de persona Joueur/Parent depuis le
+//     19/08/2026, commit a893f3f) :
+//     - achat pour soi-même (Espace joueur, /photos) : pas de beneficiary_player_id dans le corps,
+//       le bénéficiaire est déduit de player_profiles.user_id = auth.uid() ;
+//     - achat par un parent pour un enfant affilié à un club (Espace particulier,
+//       /particulier/sportifs/club/[id]/photos, migration-connect-v79) : le client envoie
+//       beneficiary_player_id, JAMAIS pris tel quel — vérifié serveur via parent_profiles +
+//       parent_player_relationships (statut='confirme') AVANT tout usage, même doctrine RLS que
+//       le reste du projet (jamais un id de bénéficiaire fourni par le client sans revérification) ;
 //   * le tarif n'est JAMAIS transmis par le client : seul product_id l'est, price_cents est relu
 //     depuis la ligne media_products en base (écriture réservée admin/sec côté RLS,
 //     media_staff_write()) — jamais un prix client, jamais deviné ;
@@ -74,6 +81,7 @@ serve(async (req) => {
 
     const body = await req.json();
     const productId: string = body.product_id || "";
+    const beneficiaryPlayerIdRaw: string = body.beneficiary_player_id || "";
     if (!productId) return json({ error: "product_id est requis" }, 400);
 
     const admin = createClient(supabaseUrl, serviceKey);
@@ -87,22 +95,35 @@ serve(async (req) => {
       return json({ error: "Ce produit n'est plus disponible." }, 400);
     }
 
-    // Cette fonction ne gère que le cas "un joueur achète pour lui-même" (persona Espace joueur).
-    // Le bénéficiaire du droit est toujours son propre profil joueur, distinct de purchased_by
-    // uniquement dans le futur parcours parent→enfant, pas encore construit côté UI.
-    const { data: playerProfile } = await admin
-      .from("player_profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!playerProfile) {
-      return json({ error: "Compte joueur requis pour cet achat." }, 400);
+    // Deux chemins pour résoudre le bénéficiaire (jamais mélangés) :
+    let beneficiaryPlayerId: string;
+    let isParentPurchase = false;
+    if (beneficiaryPlayerIdRaw) {
+      // Achat par un parent pour son enfant (Espace parent /children) — le player_id fourni par le
+      // client n'est JAMAIS pris tel quel : on revérifie la relation confirmée avant tout usage.
+      const { data: parentProfile } = await admin.from("parent_profiles").select("id").eq("user_id", user.id).maybeSingle();
+      if (!parentProfile) return json({ error: "Compte parent requis pour cet achat." }, 403);
+      const { data: relationship } = await admin
+        .from("parent_player_relationships")
+        .select("id")
+        .eq("parent_id", parentProfile.id)
+        .eq("player_id", beneficiaryPlayerIdRaw)
+        .eq("statut", "confirme")
+        .maybeSingle();
+      if (!relationship) return json({ error: "Cet enfant n'est pas confirmé sur votre compte." }, 403);
+      beneficiaryPlayerId = beneficiaryPlayerIdRaw;
+      isParentPurchase = true;
+    } else {
+      // Achat pour soi-même (Espace joueur, app-connect).
+      const { data: playerProfile } = await admin.from("player_profiles").select("id").eq("user_id", user.id).maybeSingle();
+      if (!playerProfile) return json({ error: "Compte joueur requis pour cet achat." }, 400);
+      beneficiaryPlayerId = playerProfile.id;
     }
 
     const { data: existing } = await admin
       .from("media_entitlements")
       .select("id")
-      .eq("beneficiary_person_id", playerProfile.id)
+      .eq("beneficiary_person_id", beneficiaryPlayerId)
       .eq("product_id", productId)
       .eq("status", "active")
       .limit(1);
@@ -116,7 +137,7 @@ serve(async (req) => {
         club_id: product.club_id,
         product_id: product.id,
         purchased_by_user_id: user.id,
-        beneficiary_person_id: playerProfile.id,
+        beneficiary_person_id: beneficiaryPlayerId,
         amount_cents: product.price_cents,
         currency: product.currency,
         status: "pending",
@@ -124,6 +145,10 @@ serve(async (req) => {
       .select("id")
       .single();
     if (orderErr || !order) return json({ error: "Impossible de créer la commande." }, 500);
+
+    const successBase = isParentPurchase
+      ? `${connectUrl}/particulier/sportifs/club/${beneficiaryPlayerId}/photos`
+      : `${connectUrl}/photos`;
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
@@ -143,8 +168,8 @@ serve(async (req) => {
           quantity: 1,
         },
       ],
-      success_url: `${connectUrl}/photos?paiement=succes`,
-      cancel_url: `${connectUrl}/photos?paiement=annule`,
+      success_url: `${successBase}?paiement=succes`,
+      cancel_url: `${successBase}?paiement=annule`,
       client_reference_id: user.id,
       // Lus par stripe-webhook sur checkout.session.completed — product:'media_pass' est le champ
       // distinctif qui branche cette session AVANT tout repli sur paiementId/contributionId (même
