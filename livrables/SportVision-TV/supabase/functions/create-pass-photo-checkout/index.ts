@@ -8,35 +8,29 @@
 // checkout, dispatch-notifications, create-guest-rdv, create-guest-request).
 
 // Supabase Edge Function — create-pass-photo-checkout
-// Crée une session Stripe Checkout en mode `payment` (achat PONCTUEL, pas un abonnement) pour le
-// "Pass Photo" — déverrouille tous les albums photo publiés (photo_albums) d'UNE équipe + UNE
-// saison pour l'utilisateur Connect payeur (migration-connect-pass-photo-v1.sql).
+// 02/09/2026 : généralisée pour le moteur média générique (migration-media-v1-moteur-generique.sql)
+// — remplace le Pass Photo figé équipe+saison (migration-connect-pass-photo-v1, jamais activé
+// commercialement, aucune vente réelle). Le nom du fichier n'a pas changé pour éviter un
+// redéploiement sous un nouveau nom (voir avertissement ci-dessus), mais elle vend désormais
+// N'IMPORTE QUEL media_products actif d'un club — le catalogue est 100% configuré depuis l'OS,
+// jamais en dur ici.
 //
-// Calque EXACT du patron déjà en prod pour l'abonnement Agent (create-agent-subscription-
-// checkout) sur les points de sécurité qui comptent, avec UNE différence volontaire : `mode:
-// "payment"` (achat ponctuel) au lieu de `mode: "subscription"`, cf. migration §2 — pas de
-// `subscription_data.metadata`, les metadata vont directement sur la session.
-//
-// Sécurité :
-//   * l'appelant doit être authentifié (JWT Supabase) — c'est lui-même qui achète, jamais pour un
-//     tiers ;
-//   * le tarif n'est JAMAIS transmis par le client : seuls club_id/team_id/season_id le sont, et le
-//     Price ID réel est relu depuis la variable d'environnement STRIPE_PRICE_PASS_PHOTO ci-dessous —
-//     JAMAIS de `price_data` dynamique calculé côté serveur (même consigne que l'abonnement Agent) ;
-//   * photo_pass_entitlements n'est JAMAIS écrit ici : c'est le webhook Stripe (paiement réellement
+// Sécurité (inchangée sur le fond) :
+//   * l'appelant doit être authentifié (JWT Supabase), c'est un joueur qui achète pour lui-même
+//     (le cas "parent achète pour son enfant" est une évolution future, non couverte ici — voir
+//     beneficiary_person_id ci-dessous) ;
+//   * le tarif n'est JAMAIS transmis par le client : seul product_id l'est, price_cents est relu
+//     depuis la ligne media_products en base (écriture réservée admin/sec côté RLS,
+//     media_staff_write()) — jamais un prix client, jamais deviné ;
+//   * media_entitlements n'est JAMAIS écrit ici : c'est le webhook Stripe (paiement réellement
 //     encaissé, checkout.session.completed) qui l'écrit, jamais l'intention de payer
-//     (MASTER-CONNECT-V1.md §25).
+//     (MASTER-CONNECT-V1.md §25) ;
+//   * un media_orders 'pending' est créé AVANT la session Stripe (séparation Order/Payment/
+//     Entitlement, point 14 du master prompt) — le webhook le fait passer à 'paid' et crée
+//     l'entitlement en référence, jamais l'inverse.
 //
-// Deploy via Supabase dashboard > Edge Functions > New Function
-// (name: create-pass-photo-checkout)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY,
-//                  CONNECT_URL, STRIPE_PRICE_PASS_PHOTO
-//
-// ACTION MANUELLE REQUISE AVANT QUE CETTE FONCTION MARCHE : créer UN Price Stripe ponctuel dans le
-// Dashboard Stripe → Product catalog (montant décidé par Fouka, décision commerciale) et renseigner
-// son Price ID (price_xxx) dans le secret STRIPE_PRICE_PASS_PHOTO. Voir le résumé en fin de
-// migration-connect-pass-photo-v1.sql. Tant que ce secret n'est pas configuré, cette fonction
-// répond une erreur JSON claire plutôt que de deviner un tarif ou de planter.
+//                  CONNECT_URL
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -79,56 +73,57 @@ serve(async (req) => {
     const user = userData.user;
 
     const body = await req.json();
-    const clubId: string = body.club_id || "";
-    const teamId: string = body.team_id || "";
-    const seasonId: string = (body.season_id || "").toString().trim();
-    if (!clubId || !teamId || !seasonId) {
-      return json({ error: "club_id, team_id et season_id sont requis" }, 400);
-    }
-
-    // Prix jamais transmis par le client, jamais deviné côté serveur : lu exclusivement depuis
-    // cette variable d'environnement — même consigne exacte que STRIPE_PRICE_AGENT_* côté
-    // create-agent-subscription-checkout. Tant que Fouka n'a pas créé le Price Stripe et posé ce
-    // secret, l'achat est proprement bloqué (pas de crash).
-    const priceId = Deno.env.get("STRIPE_PRICE_PASS_PHOTO") || "";
-    if (!priceId) {
-      return json({ error: "Pass Photo pas encore configuré" }, 500);
-    }
+    const productId: string = body.product_id || "";
+    if (!productId) return json({ error: "product_id est requis" }, 400);
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // Garde-fou : au moins un album PUBLIÉ doit exister pour cette équipe/saison — sinon rien à
-    // déverrouiller, inutile (et trompeur) de laisser payer. Lecture directe service_role (bypass
-    // RLS), volontairement : c'est la seule vérification serveur qui a besoin de voir
-    // photo_albums en dehors de la RPC photo_album_list (qui, elle, tourne avec le JWT du client).
-    const { data: albums } = await admin
-      .from("photo_albums")
-      .select("id")
-      .eq("club_id", clubId)
-      .eq("team_id", teamId)
-      .eq("season_id", seasonId)
-      .eq("status", "published")
-      .limit(1);
-    if (!albums || albums.length === 0) {
-      return json({ error: "Aucun album publié pour cette équipe et cette saison pour le moment." }, 400);
+    const { data: product } = await admin
+      .from("media_products")
+      .select("id, club_id, name, price_cents, currency, status")
+      .eq("id", productId)
+      .maybeSingle();
+    if (!product || product.status !== "active") {
+      return json({ error: "Ce produit n'est plus disponible." }, 400);
     }
 
-    // Déjà un Pass actif sur cette combinaison club/équipe/saison : pas de second paiement, même
-    // principe que create-agent-subscription-checkout ("un utilisateur déjà abonné doit passer par
-    // manage-agent-subscription pour changer de palier — créer une seconde session le ferait payer
-    // deux fois").
-    const { data: existing } = await admin
-      .from("photo_pass_entitlements")
-      .select("status, expires_at")
+    // Cette fonction ne gère que le cas "un joueur achète pour lui-même" (persona Espace joueur).
+    // Le bénéficiaire du droit est toujours son propre profil joueur, distinct de purchased_by
+    // uniquement dans le futur parcours parent→enfant, pas encore construit côté UI.
+    const { data: playerProfile } = await admin
+      .from("player_profiles")
+      .select("id")
       .eq("user_id", user.id)
-      .eq("club_id", clubId)
-      .eq("team_id", teamId)
-      .eq("season_id", seasonId)
       .maybeSingle();
-    const alreadyActive = existing?.status === "active" && (!existing.expires_at || new Date(existing.expires_at) > new Date());
-    if (alreadyActive) {
-      return json({ error: "Vous avez déjà le Pass Photo pour cette équipe et cette saison." }, 400);
+    if (!playerProfile) {
+      return json({ error: "Compte joueur requis pour cet achat." }, 400);
     }
+
+    const { data: existing } = await admin
+      .from("media_entitlements")
+      .select("id")
+      .eq("beneficiary_person_id", playerProfile.id)
+      .eq("product_id", productId)
+      .eq("status", "active")
+      .limit(1);
+    if (existing && existing.length > 0) {
+      return json({ error: "Vous avez déjà accès à ce produit." }, 400);
+    }
+
+    const { data: order, error: orderErr } = await admin
+      .from("media_orders")
+      .insert({
+        club_id: product.club_id,
+        product_id: product.id,
+        purchased_by_user_id: user.id,
+        beneficiary_person_id: playerProfile.id,
+        amount_cents: product.price_cents,
+        currency: product.currency,
+        status: "pending",
+      })
+      .select("id")
+      .single();
+    if (orderErr || !order) return json({ error: "Impossible de créer la commande." }, 500);
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
@@ -138,21 +133,27 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [
+        {
+          price_data: {
+            currency: product.currency,
+            unit_amount: product.price_cents,
+            product_data: { name: product.name },
+          },
+          quantity: 1,
+        },
+      ],
       success_url: `${connectUrl}/photos?paiement=succes`,
       cancel_url: `${connectUrl}/photos?paiement=annule`,
       client_reference_id: user.id,
-      // Lus par stripe-webhook sur checkout.session.completed pour retrouver l'utilisateur ET la
-      // combinaison club/équipe/saison à déverrouiller — product:'pass_photo' est le champ
-      // distinctif qui permet au webhook de brancher cette session-ci AVANT tout repli sur
-      // paiementId/contributionId (même principe que abonnementClubId/agentUserId, voir son
-      // en-tête).
+      // Lus par stripe-webhook sur checkout.session.completed — product:'media_pass' est le champ
+      // distinctif qui branche cette session AVANT tout repli sur paiementId/contributionId (même
+      // principe que abonnementClubId/agentUserId, voir son en-tête). order_id porte toute
+      // l'information nécessaire (club/produit/bénéficiaire déjà posés en base, jamais redupliqués
+      // ici pour éviter toute divergence entre metadata Stripe et media_orders).
       metadata: {
-        product: "pass_photo",
-        user_id: user.id,
-        club_id: clubId,
-        team_id: teamId,
-        season_id: seasonId,
+        product: "media_pass",
+        order_id: order.id,
       },
       customer_email: user.email ?? undefined,
     });

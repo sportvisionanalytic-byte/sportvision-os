@@ -33,11 +33,11 @@
 //             (donc sans déclencher payment_intent.payment_failed) laisse sa ligne paiements/
 //             team_project_contributions/funding_contributions bloquée à 'en_attente' pour
 //             toujours. Voir le commentaire du handler plus bas pour le détail.
-// AJOUT 28/08/2026 (migration-connect-pass-photo-v1.sql) : nouvelle branche checkout.session.
-//             completed pour le Pass Photo (Espace joueur, achat ponctuel, mode 'payment',
-//             metadata.product = 'pass_photo') — écrit photo_pass_entitlements. Aucun nouvel
-//             événement Stripe à ajouter côté dashboard, checkout.session.completed est déjà
-//             écouté.
+// AJOUT 02/09/2026 (migration-media-v1-moteur-generique.sql, remplace le Pass Photo du
+//             28/08/2026 jamais activé commercialement) : branche checkout.session.completed pour
+//             le moteur média générique (Espace joueur, achat ponctuel, mode 'payment',
+//             metadata.product = 'media_pass') — écrit media_entitlements. Aucun nouvel événement
+//             Stripe à ajouter côté dashboard, checkout.session.completed est déjà écouté.
 // Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
 //                  PENNYLANE_API_KEY (pour l'avoir automatique sur remboursement — optionnel : si
 //                  absente, le remboursement est quand même resynchronisé, seul l'avoir Pennylane
@@ -342,30 +342,27 @@ serve(async (req) => {
       const agentUserId = (session.mode === "subscription" && session.metadata?.user_id && session.metadata?.tier)
         ? (session.metadata.user_id as string)
         : null;
-      // Pass Photo (Espace joueur, mode 'payment', migration-connect-pass-photo-v1.sql) — même
-      // branchement EN PREMIER que abonnementClubId/agentUserId ci-dessus et pour la même raison :
-      // cette session renseigne elle aussi client_reference_id (= user_id), qui serait sinon
-      // interprété à tort comme un paiement_id Portail par le repli de paiementId plus bas.
-      // Distingué par metadata.product = 'pass_photo' (mode 'payment', comme un paiement de
-      // prestation classique — pas de champ Stripe natif pour le différencier autrement).
-      const passPhotoMeta = session.metadata?.product === "pass_photo"
-        ? {
-          userId: session.metadata.user_id as string,
-          clubId: session.metadata.club_id as string,
-          teamId: session.metadata.team_id as string,
-          seasonId: session.metadata.season_id as string,
-        }
+      // Moteur média générique (Espace joueur, mode 'payment', migration-media-v1-moteur-
+      // generique.sql, 02/09/2026 — remplace le Pass Photo figé équipe+saison, jamais activé
+      // commercialement) — même branchement EN PREMIER que abonnementClubId/agentUserId ci-dessus
+      // et pour la même raison : cette session renseigne elle aussi client_reference_id (=
+      // user_id), qui serait sinon interprété à tort comme un paiement_id Portail par le repli de
+      // paiementId plus bas. Distingué par metadata.product = 'media_pass'. order_id porte toute
+      // l'information (club/produit/bénéficiaire déjà posés dans media_orders par
+      // create-pass-photo-checkout) — jamais redupliquée dans les metadata Stripe.
+      const mediaOrderId = session.metadata?.product === "media_pass"
+        ? (session.metadata.order_id as string)
         : null;
-      const contributionId = (abonnementClubId || agentUserId || passPhotoMeta) ? null : ((session.metadata?.contribution_id as string) || null);
+      const contributionId = (abonnementClubId || agentUserId || mediaOrderId) ? null : ((session.metadata?.contribution_id as string) || null);
       // Cotisation personnelle Connect (group_fundings / funding_contributions,
       // migration-connect-v50) — même principe de branchement AVANT le repli sur
       // paiementId que contributionId ci-dessus, avec une clé de metadata distincte
       // ("funding_contribution_id") pour ne jamais être confondue avec une
       // contribution à un projet collectif Club+ (contributionId, team_project_contributions).
-      const fundingContributionId = (abonnementClubId || agentUserId || passPhotoMeta || contributionId)
+      const fundingContributionId = (abonnementClubId || agentUserId || mediaOrderId || contributionId)
         ? null
         : ((session.metadata?.funding_contribution_id as string) || null);
-      const paiementId = (abonnementClubId || agentUserId || passPhotoMeta || contributionId || fundingContributionId)
+      const paiementId = (abonnementClubId || agentUserId || mediaOrderId || contributionId || fundingContributionId)
         ? null
         : ((session.metadata?.paiement_id as string) || (session.client_reference_id as string) || null);
 
@@ -489,40 +486,73 @@ serve(async (req) => {
         }
       }
 
-      // Activation Pass Photo (Espace joueur, mode 'payment', migration-connect-pass-photo-v1.sql)
-      // — écrit photo_pass_entitlements UNIQUEMENT ici, jamais dans create-pass-photo-checkout
-      // (MASTER-CONNECT-V1.md §25, même principe que l'abonnement Agent ci-dessus et le paiement
-      // de prestation ci-dessous). Upsert sur la clé naturelle (user_id, club_id, team_id,
-      // season_id) — un second paiement pour la même combinaison prolonge/réactive l'entitlement
-      // existant plutôt que d'en créer un doublon (contrainte unique posée par la migration).
-      // expires_at laissé NULL (pas de date de fin de saison calculable simplement dans ce
-      // projet — season_id est un texte libre, pas une plage de dates réelle) ; order_id laissé
-      // NULL (aucune ligne `paiements` créée pour ce produit, voir le commentaire de tête de la
-      // migration §2 sur pourquoi).
-      if (passPhotoMeta && passPhotoMeta.userId && passPhotoMeta.clubId && passPhotoMeta.teamId && passPhotoMeta.seasonId) {
+      // Activation moteur média générique (Espace joueur, mode 'payment',
+      // migration-media-v1-moteur-generique.sql) — écrit media_entitlements UNIQUEMENT ici, jamais
+      // dans create-pass-photo-checkout (MASTER-CONNECT-V1.md §25, même principe que l'abonnement
+      // Agent ci-dessus). L'update de media_orders `status='pending' -> 'paid'` sert de verrou
+      // d'idempotence : si aucune ligne n'est retournée, cette commande a déjà été traitée par un
+      // appel webhook précédent (retry Stripe) et l'entitlement ne doit pas être recréé.
+      if (mediaOrderId) {
         try {
-          await admin.from("photo_pass_entitlements").upsert(
-            {
-              user_id: passPhotoMeta.userId,
-              club_id: passPhotoMeta.clubId,
-              team_id: passPhotoMeta.teamId,
-              season_id: passPhotoMeta.seasonId,
-              status: "active",
-              purchased_at: new Date().toISOString(),
-              expires_at: null,
-            },
-            { onConflict: "user_id,club_id,team_id,season_id" },
-          );
+          const { data: paidOrder } = await admin
+            .from("media_orders")
+            .update({ status: "paid", paid_at: new Date().toISOString(), stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null })
+            .eq("id", mediaOrderId)
+            .eq("status", "pending")
+            .select("id, club_id, product_id, purchased_by_user_id, beneficiary_person_id")
+            .maybeSingle();
 
-          await admin.from("member_notifications").insert({
-            user_id: passPhotoMeta.userId,
-            category: "payments",
-            title: "Pass Photo activé",
-            body: "Votre Pass Photo est actif — les albums de cette équipe et cette saison sont maintenant déverrouillés.",
-            target_href: "/photos",
-          });
+          if (paidOrder) {
+            const { data: product } = await admin
+              .from("media_products")
+              .select("saison_id, scope_type, team_ids")
+              .eq("id", paidOrder.product_id)
+              .maybeSingle();
+
+            if (product) {
+              let scopes: { scope_type: string; scope_id: string | null }[] = [];
+              if (product.scope_type === "team" && Array.isArray(product.team_ids) && product.team_ids.length > 0) {
+                scopes = product.team_ids.map((teamId: string) => ({ scope_type: "team", scope_id: teamId }));
+              } else if (product.scope_type === "event") {
+                const { data: opLinks } = await admin
+                  .from("media_sales_operation_products")
+                  .select("media_sales_operations(event_id)")
+                  .eq("product_id", paidOrder.product_id);
+                type OpLinkRow = { media_sales_operations: { event_id: string | null } | { event_id: string | null }[] | null };
+                for (const row of (opLinks ?? []) as OpLinkRow[]) {
+                  const op = Array.isArray(row.media_sales_operations) ? row.media_sales_operations[0] : row.media_sales_operations;
+                  if (op?.event_id) scopes.push({ scope_type: "event", scope_id: op.event_id });
+                }
+              }
+              if (scopes.length === 0) {
+                scopes = [{ scope_type: "club", scope_id: null }];
+              }
+
+              for (const scope of scopes) {
+                await admin.from("media_entitlements").insert({
+                  club_id: paidOrder.club_id,
+                  saison_id: product.saison_id,
+                  product_id: paidOrder.product_id,
+                  beneficiary_person_id: paidOrder.beneficiary_person_id,
+                  purchased_by_user_id: paidOrder.purchased_by_user_id,
+                  scope_type: scope.scope_type,
+                  scope_id: scope.scope_id,
+                  order_id: paidOrder.id,
+                  status: "active",
+                });
+              }
+            }
+
+            await admin.from("member_notifications").insert({
+              user_id: paidOrder.purchased_by_user_id,
+              category: "payments",
+              title: "Accès média activé",
+              body: "Votre achat est confirmé — les albums correspondants sont maintenant déverrouillés.",
+              target_href: "/photos",
+            });
+          }
         } catch (_e) {
-          console.error("[stripe-webhook] activation Pass Photo a échoué :", _e);
+          console.error("[stripe-webhook] activation moteur média a échoué :", _e);
         }
       }
 
