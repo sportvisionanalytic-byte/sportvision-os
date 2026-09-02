@@ -16,21 +16,26 @@ export interface UpdateClubOrganizationInput {
   couleurSecondaire?: string;
 }
 
+/**
+ * N'écrit QUE les champs réellement présents dans `input` — un appelant qui ne passe que
+ * `{ adresse, siret }` (ex. l'onboarding Identité) ne doit jamais écraser couleur_primaire/
+ * couleur_secondaire à null (bug trouvé en QA le 02/09 : chaque section de l'onboarding qui
+ * appelait cette fonction avec un sous-ensemble de champs effaçait silencieusement les autres).
+ */
 export async function updateClubOrganization(
   supabase: SupabaseClient,
   clubId: string,
   input: UpdateClubOrganizationInput,
 ): Promise<void> {
-  const { error } = await supabase
-    .from("clubs")
-    .update({
-      adresse: input.adresse?.trim() || null,
-      instagram_handle: input.instagramHandle?.trim() || null,
-      siret: input.siret?.trim() || null,
-      couleur_primaire: input.couleurPrimaire || null,
-      couleur_secondaire: input.couleurSecondaire || null,
-    })
-    .eq("id", clubId);
+  const patch: Record<string, string | null> = {};
+  if ("adresse" in input) patch.adresse = input.adresse?.trim() || null;
+  if ("instagramHandle" in input) patch.instagram_handle = input.instagramHandle?.trim() || null;
+  if ("siret" in input) patch.siret = input.siret?.trim() || null;
+  if ("couleurPrimaire" in input) patch.couleur_primaire = input.couleurPrimaire || null;
+  if ("couleurSecondaire" in input) patch.couleur_secondaire = input.couleurSecondaire || null;
+  if (Object.keys(patch).length === 0) return;
+
+  const { error } = await supabase.from("clubs").update(patch).eq("id", clubId);
   if (error) throw error;
 }
 

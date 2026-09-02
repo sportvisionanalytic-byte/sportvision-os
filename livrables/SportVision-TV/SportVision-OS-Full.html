@@ -6386,12 +6386,16 @@ async function loadClientClubIdentite(clientId){
       club=(Array.isArray(r)&&r.length)?r[0]:null;
     }
     if(!club){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Aucun workspace Club+ activé pour ce client — l\'identité, les équipes et les sponsors n\'existent qu\'après activation.</div>';return;}
-    const [teamsR,sponsorsR]=await Promise.all([
+    const [teamsR,sponsorsR,completionR,progressR]=await Promise.all([
       sbFetch('club_teams?select=id,name&club_id=eq.'+club.id+'&order=name.asc').catch(()=>[]),
       sbFetch('club_sponsors?select=id,name,niveau,montant,date_debut,date_fin&club_id=eq.'+club.id+'&order=created_at.desc&limit=50').catch(()=>[]),
+      sbFetch('rpc/club_onboarding_completion',{method:'POST',body:{p_club_id:club.id}}).catch(()=>null),
+      sbFetch('club_onboarding_progress?select=statut,submitted_at,validated_at&club_id=eq.'+club.id+'&limit=1').catch(()=>[]),
     ]);
     const teams=Array.isArray(teamsR)?teamsR:[];
     const sponsors=Array.isArray(sponsorsR)?sponsorsR:[];
+    const completion=completionR&&typeof completionR==='object'?completionR:null;
+    const progress=(Array.isArray(progressR)&&progressR.length)?progressR[0]:null;
     const colorSwatch=(lbl,hex)=>hex?`<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2)"><span style="width:16px;height:16px;border-radius:4px;background:${esc(hex)};border:1px solid var(--b1)"></span>${lbl}</div>`:'';
     el.innerHTML=`
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
@@ -6403,11 +6407,39 @@ async function loadClientClubIdentite(clientId){
           <div style="display:flex;gap:12px">${colorSwatch('Primaire',club.couleur_primaire)}${colorSwatch('Secondaire',club.couleur_secondaire)}</div>
         </div>
       </div>
+      ${_renderFicheInfosClub(completion,progress)}
       <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Équipes (${teams.length})</div>
       ${teams.length?`<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">${teams.map(t=>`<div style="padding:8px 12px;background:var(--s2);border-radius:8px;font-size:12.5px;color:var(--t1);font-weight:500">🏐 ${esc(t.name)}</div>`).join('')}</div>`:'<div style="font-size:12px;color:var(--t3);margin-bottom:16px">Aucune équipe enregistrée.</div>'}
       <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Sponsors (${sponsors.length})</div>
       ${sponsors.length?`<div style="display:flex;flex-direction:column;gap:6px">${sponsors.map(s=>`<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--s2);border-radius:8px;font-size:12.5px"><span style="color:var(--t1);font-weight:500">${esc(s.name)}${s.niveau?' · '+esc(s.niveau):''}</span><span style="color:var(--t3)">${s.montant?s.montant.toLocaleString('fr-FR')+' €':''}</span></div>`).join('')}</div>`:'<div style="font-size:12px;color:var(--t3)">Aucun sponsor enregistré.</div>'}`;
   }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Fiche "Informations club" (progression de collecte côté Club+ — master prompt Fouka
+// 02/09/2026) — volontairement PAS appelé "Onboarding" dans l'UI OS pour ne pas être confondu
+// avec l'onglet "Onboarding" déjà existant du module Full Com, qui désigne l'étape de contrat
+// brouillon (statut commercial), une notion totalement différente. Le pourcentage n'est jamais
+// stocké séparément : recalculé à chaque ouverture par club_onboarding_completion() (RPC),
+// exactement comme côté Club+.
+const _FICHE_SECTIONS_LB={identite:'Identité',responsables:'Responsables',equipes:'Équipes',entrainements:'Entraînements',calendrier:'Calendrier',branding:'Branding',sponsors:'Sponsors',communication:'Communication',droit_image:"Droit à l'image"};
+const _FICHE_STATUT_LB={not_started:'Pas encore commencé',in_progress:'En cours de remplissage',submitted:'Envoyé, à vérifier',needs_information:'Informations manquantes',validated:'Validé'};
+const _FICHE_STATUT_CLR={not_started:'bn',in_progress:'bw',submitted:'bb',needs_information:'br',validated:'ba'};
+function _renderFicheInfosClub(completion,progress){
+  if(!completion)return'';
+  const statut=progress?.statut||'not_started';
+  const missing=Object.keys(_FICHE_SECTIONS_LB).filter(k=>!completion[k]);
+  return`
+    <div style="border:1px solid var(--b1);border-radius:10px;padding:12px 14px;margin-bottom:16px;background:var(--s2)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t2)">Informations club</div>
+        <span class="bd ${_FICHE_STATUT_CLR[statut]||'bn'}"><span class="bd-d"></span>${_FICHE_STATUT_LB[statut]||statut}</span>
+      </div>
+      <div style="height:6px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;border-radius:99px;background:var(--acc);width:${completion.pourcentage||0}%"></div>
+      </div>
+      <div style="font-size:11.5px;color:var(--t3);margin-bottom:${missing.length?'8px':'0'}">${completion.sections_completees}/${completion.sections_total} sections complétées (${completion.pourcentage||0}%)</div>
+      ${missing.length?`<div style="display:flex;flex-wrap:wrap;gap:5px">${missing.map(k=>`<span style="font-size:10.5px;padding:2px 8px;border-radius:99px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);color:var(--er)">${_FICHE_SECTIONS_LB[k]}</span>`).join('')}</div>`:''}
+    </div>`;
 }
 
 // ── Statut Club+ (onglet Gestion, refonte 28/08) ─────────────────────────

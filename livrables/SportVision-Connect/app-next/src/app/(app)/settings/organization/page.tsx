@@ -151,6 +151,19 @@ function OrganizationForm() {
 
   return (
     <div className="flex max-w-2xl flex-col gap-5">
+      {canEdit && (
+        <Card className="flex items-center justify-between gap-4 p-5">
+          <div>
+            <div className="text-[13.5px] font-extrabold">Onboarding SportVision</div>
+            <p className="mt-0.5 text-[12px] text-text-soft">
+              Équipes, entraînements, calendrier, réseaux sociaux, droit à l&apos;image... tout ce dont SportVision a besoin pour démarrer la communication.
+            </p>
+          </div>
+          <Link href="/onboarding" className="flex-none text-[12.5px] font-bold text-brand-blue-electric hover:underline">
+            Compléter →
+          </Link>
+        </Card>
+      )}
       <Card className="flex items-center gap-4 p-5">
         <button
           type="button"
