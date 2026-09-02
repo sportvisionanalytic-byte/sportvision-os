@@ -8917,6 +8917,13 @@ async function _medSavePolicy(clubId,saisonId,policyId){
   const shareRaw=document.getElementById('med-pol-share').value;
   const revenue_share_pct=shareRaw===''?null:Number(shareRaw);
   const status=document.getElementById('med-pol-statut').value;
+  // Validation client (audit 02/09) : la base rejette déjà les valeurs hors 0-100 via
+  // media_club_policy_revenue_share_pct_check, mais faute de contrôle ici l'admin recevait
+  // le message Postgres brut au lieu d'un message clair — seul champ de cet écran sans
+  // validation client, contrairement au prix produit et aux dates d'opération.
+  if(revenue_share_pct!==null&&(isNaN(revenue_share_pct)||revenue_share_pct<0||revenue_share_pct>100)){
+    toast('Le reversement club doit être un nombre entre 0 et 100 (ou vide).','er');return;
+  }
   const body={club_id:clubId,saison_id:saisonId,default_policy,revenue_share_pct,status};
   const r=policyId
     ?await sbFetch('media_club_policy?id=eq.'+policyId,{method:'PATCH',body})
@@ -9146,7 +9153,11 @@ async function modalMediaOperation(operationId){
         <div style="display:flex;flex-wrap:wrap;gap:8px">${_medTeams.map(t=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2);background:var(--s2);padding:5px 10px;border-radius:999px"><input type="checkbox" class="mo-team-cb" value="${t.id}"${teamIds.includes(t.id)?' checked':''}> ${esc(t.name)}</label>`).join('')||'<span style="font-size:12px;color:var(--t3)">Aucune équipe pour ce club.</span>'}</div>
       </div>
       <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Produits inclus</label>
-        <div style="display:flex;flex-direction:column;gap:6px">${_medProducts.map(p=>`<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2)"><input type="checkbox" class="mo-prod-cb" value="${p.id}"${linkedProductIds.includes(p.id)?' checked':''}> ${esc(p.name)} <span style="color:var(--t3)">(${((p.price_cents||0)/100).toLocaleString('fr-FR',{style:'currency',currency:(p.currency||'eur').toUpperCase()})})</span></label>`).join('')||'<span style="font-size:12px;color:var(--t3)">Aucun produit créé pour ce club cette saison — créez-en un d’abord.</span>'}</div>
+        <!-- Zone de tap agrandie (padding+fond, même langage visuel que les lignes produits/opérations
+             de cet écran) — trouvé en audit mobile 02/09 : la version précédente (label nu, ~19px de
+             haut, 6px d'écart) rendait les cases à cocher trop proches pour être touchées sans erreur
+             sur téléphone. -->
+        <div style="display:flex;flex-direction:column;gap:6px">${_medProducts.map(p=>`<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2);background:var(--s2);padding:8px 10px;border-radius:8px;cursor:pointer"><input type="checkbox" class="mo-prod-cb" value="${p.id}"${linkedProductIds.includes(p.id)?' checked':''}> ${esc(p.name)} <span style="color:var(--t3)">(${((p.price_cents||0)/100).toLocaleString('fr-FR',{style:'currency',currency:(p.currency||'eur').toUpperCase()})})</span></label>`).join('')||'<span style="font-size:12px;color:var(--t3)">Aucun produit créé pour ce club cette saison — créez-en un d’abord.</span>'}</div>
       </div>
       <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Statut</label>
         <select id="mo-statut" class="l-inp" style="height:38px">${Object.entries(MED_STATUT_LB).map(([v,l])=>`<option value="${v}"${(o?.status||'draft')===v?' selected':''}>${l}</option>`).join('')}</select>
@@ -34125,7 +34136,12 @@ const MOB_MORE_ITEMS={
   // Refonte Finance (28/08, nuit) : 5 anciens raccourcis (fin/résultat/rentabilité/
   // dépenses/clôtures) remplacés par les 4 pages réelles + 1 secondaire, même patron que
   // la sidebar desktop (cf. NAV['admin'] section "Finances & Documents").
-  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finmedias',lb:'Ventes médias',ic:'📸',sub:'CA Pass Photo & opérations'},{id:'finpoles',lb:'Finance par pôle',ic:'🏢',sub:'Ventilation'},{id:'polerem',lb:'Rémunération pôle',ic:'📐',sub:'Grille responsable'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
+  // 'medias' (Médias & Ventes) ajouté ici le 02/09/2026 — présent dans NAV['admin']
+  // (sidebar desktop, section "Clients & Ventes") depuis la création du moteur générique de
+  // commercialisation le même jour, mais oublié de MOB_MORE_ITEMS.admin ET de BNAV_ITEMS.admin :
+  // un admin sur mobile n'avait aucun moyen d'atteindre cet écran (bug trouvé en audit
+  // transversal Médias & Ventes, aucun autre écran touché).
+  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'medias',lb:'Médias & Ventes',ic:'📸',sub:'Politique & produits par club'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finmedias',lb:'Ventes médias',ic:'📸',sub:'CA Pass Photo & opérations'},{id:'finpoles',lb:'Finance par pôle',ic:'🏢',sub:'Ventilation'},{id:'polerem',lb:'Rémunération pôle',ic:'📐',sub:'Grille responsable'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'agendasec',lb:'Agenda',ic:'📅',sub:'RDV & rappels'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'docrh',lb:'Documents',ic:'📁',sub:'Pièces'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
   // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
