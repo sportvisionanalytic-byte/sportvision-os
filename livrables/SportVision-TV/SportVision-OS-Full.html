@@ -845,6 +845,12 @@ const NAV={
     {id:'finrevenus',lb:'Revenus',ic:'fin'},
     {id:'findepenses',lb:'Dépenses',ic:'fin'},
     {id:'finequipe',lb:'Équipe',ic:'col'},
+    // Rapport CA médias (master prompt Fouka §35-36, 02/09/2026) : media_orders est VOLONTAIREMENT
+    // séparé de factures/paiements (doctrine "dupliquer le pattern Stripe, jamais la fonction
+    // paiements", déjà établie pour Pass Photo/Agent — cf. commentaire de _finClassifySource plus
+    // bas) — ce rapport lit donc directement media_orders/media_products, jamais injecté dans
+    // finrevenus pour ne pas fausser les KPI factures existants.
+    {id:'finmedias',lb:'Ventes médias',ic:'med'},
     // Lot 6 (31/08/2026, migration multi-pôles) : ventilation finance par pôle + grille de
     // rémunération du Responsable de pôle. Admin uniquement — même périmètre que le reste du
     // module Finance (finrevenus/findepenses/finequipe n'ont eux non plus aucun équivalent
@@ -1244,9 +1250,14 @@ const VIEWS={
         <div class="cd-h"><div class="cd-t">Politique par défaut</div></div>
         <div id="med-policy-content"></div>
       </div>
-      <div class="cd">
+      <div class="cd" style="margin-bottom:16px">
         <div class="cd-h"><div class="cd-t">Produits</div><button class="btn bp bs" onclick="modalMediaProduit()">+ Nouveau produit</button></div>
         <div id="med-products-content"></div>
+      </div>
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">Opérations commerciales</div><button class="btn bp bs" onclick="modalMediaOperation()">+ Nouvelle opération</button></div>
+        <div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Photo de rentrée, tournoi, Media Day… — remplace la politique par défaut pour les albums liés à leur événement le temps de l'opération.</div>
+        <div id="med-operations-content"></div>
       </div>
     </div>
     <div id="med-empty" style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Choisissez un club et une saison pour configurer sa commercialisation média.</div>`,
@@ -1629,7 +1640,7 @@ const VIEWS={
       <div class="fs"><div class="fs-l">En attente paiement</div><div class="fs-v" id="fin-en-attente" style="color:var(--wa)">—</div></div>
       <div class="fs"><div class="fs-l">Revenus clubs (récurrent/mois)</div><div class="fs-v" id="fin-revenus-clubs">—</div></div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:13px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:13px">
       <div class="cd" style="margin-bottom:0;padding:20px;cursor:pointer;display:flex;flex-direction:column;gap:8px" onclick="switchView('finrevenus')">
         <div style="font-size:26px">💶</div>
         <div style="font-size:14px;font-weight:700;color:var(--t1)">Revenus</div>
@@ -1644,6 +1655,11 @@ const VIEWS={
         <div style="font-size:26px">👥</div>
         <div style="font-size:14px;font-weight:700;color:var(--t1)">Équipe</div>
         <div style="font-size:12px;color:var(--t3)">Missions, rémunérations mensuelles, remboursements, commissions</div>
+      </div>
+      <div class="cd" style="margin-bottom:0;padding:20px;cursor:pointer;display:flex;flex-direction:column;gap:8px" onclick="switchView('finmedias')">
+        <div style="font-size:26px">📸</div>
+        <div style="font-size:14px;font-weight:700;color:var(--t1)">Ventes médias</div>
+        <div style="font-size:12px;color:var(--t3)">CA Pass Photo, packs, ventes événementielles — par club et par opération</div>
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
@@ -1661,6 +1677,22 @@ const VIEWS={
   // (factures/acomptes/impayes/avoirs/encaissements etc.) qui restent inchangés et
   // accessibles en hidden:true pour compat (cf. VIEWS['admin.finrapports'] plus bas qui
   // regroupe ce qu'il en reste + l'analyse/clôtures/exports/rapprochement bancaire).
+  // CA médias (master prompt Fouka §35-36, 02/09/2026) — media_orders reste VOLONTAIREMENT hors
+  // du modèle factures/paiements (même doctrine que Pass Photo/Agent, voir _finClassifySource) :
+  // ce rapport lit donc directement media_orders, jamais injecté dans finrevenus.
+  'admin.finmedias':()=>`
+    <div class="sh"><div><div class="sh-t">Ventes médias</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Pass Saison, packs, ventes événementielles — tous clubs confondus</div></div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">CA encaissé</div><div class="fs-v" id="finmed-kpi-ca" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Commandes payées</div><div class="fs-v" id="finmed-kpi-cmd">—</div></div>
+      <div class="fs"><div class="fs-l">Panier moyen</div><div class="fs-v" id="finmed-kpi-panier">—</div></div>
+    </div>
+    <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Par club</div></div>
+      <div id="finmed-clubs-content">${_finSkelRows(4,40)}</div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Par opération commerciale</div></div>
+      <div id="finmed-ops-content">${_finSkelRows(3,40)}</div>
+    </div>`,
   'admin.finrevenus':()=>`
     <div class="sh"><div><div class="sh-t">Revenus</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Factures et paiements, tous flux confondus (Full Com, Club+, Prestations, Connect, Pass Photo, Agent)</div></div></div>
     <div class="g3" style="margin-bottom:13px">
@@ -4994,6 +5026,7 @@ async function loadViewData(role,view){
   if((role==='sec'||role==='rh')&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='admin'&&view==='fin') await loadFinances();
   if(role==='admin'&&view==='finrevenus') await loadFinRevenus();
+  if(role==='admin'&&view==='finmedias') await loadFinMedias();
   if(role==='admin'&&view==='findepenses') await loadFinDepenses();
   if(role==='admin'&&view==='finequipe') await loadFinEquipe();
   if(role==='admin'&&view==='finpoles') await loadFinPoles();
@@ -8821,7 +8854,8 @@ const MED_POLICY_LB={gratuit:'Gratuit',pass_saison:'Pass Saison',vente_unite:'Ve
 const MED_TYPE_LB={pass_saison:'Pass Saison',photo_unite:'Photo à l’unité',pack:'Pack',album_complet:'Album complet',evenementiel:'Produit événementiel',physique:'Produit physique',autre:'Autre'};
 const MED_STATUT_LB={draft:'Brouillon',active:'Actif',paused:'En pause',ended:'Terminé'};
 const MED_STATUT_CLR={draft:'bn',active:'ba',paused:'bw',ended:'br'};
-let _medClubs=[],_medSaisons=[],_medTeams=[];
+const MED_OP_KIND_LB={photo_rentree:'Photo de rentrée',tournoi:'Tournoi',media_day:'Media Day',stage:'Stage',autre:'Autre'};
+let _medClubs=[],_medSaisons=[],_medTeams=[],_medEvents=[],_medProducts=[];
 
 async function loadAdminMedias(){
   const [clubs,saisons]=await Promise.all([
@@ -8843,13 +8877,17 @@ async function _medOnClubSaisonChange(){
   const body=document.getElementById('med-body'), empty=document.getElementById('med-empty');
   if(!clubId||!saisonId){if(body)body.style.display='none';if(empty)empty.style.display='block';return;}
   if(body)body.style.display='block';if(empty)empty.style.display='none';
-  const teams=(await sbFetch('club_teams?select=id,name&club_id=eq.'+clubId+'&order=name.asc').catch(()=>[]))||[];
+  const [teams,events]=await Promise.all([
+    sbFetch('club_teams?select=id,name&club_id=eq.'+clubId+'&order=name.asc').catch(()=>[]),
+    sbFetch('club_calendar_events?select=id,title,event_date&club_id=eq.'+clubId+'&order=event_date.desc&limit=100').catch(()=>[]),
+  ]);
   // Garde de fraîcheur : si le club/la saison a de nouveau changé pendant cet appel, on abandonne
   // silencieusement plutôt que d'afficher une politique/des produits qui ne correspondent plus à
   // la sélection actuelle (repéré en QA du 02/09 comme risque théorique, corrigé par précaution).
   if(myToken!==_medReqToken)return;
-  _medTeams=teams;
-  await Promise.all([_medLoadPolicy(clubId,saisonId),_medLoadProducts(clubId,saisonId)]);
+  _medTeams=teams||[];
+  _medEvents=events||[];
+  await Promise.all([_medLoadPolicy(clubId,saisonId),_medLoadProducts(clubId,saisonId),_medLoadOperations(clubId,saisonId)]);
 }
 
 async function _medLoadPolicy(clubId,saisonId){
@@ -8893,6 +8931,7 @@ async function _medLoadProducts(clubId,saisonId){
   if(!el)return;
   el.innerHTML=_cmSkel(2,28);
   const rows=(await sbFetch('media_products?select=id,name,type,price_cents,currency,scope_type,team_ids,status&club_id=eq.'+clubId+'&saison_id=eq.'+saisonId+'&order=created_at.desc').catch(()=>[]))||[];
+  _medProducts=rows;
   if(!rows.length){el.innerHTML='<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucun produit configuré pour ce club cette saison.</div>';return;}
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+rows.map(p=>{
     const scopeLb=p.scope_type==='club'?'Tout le club':p.scope_type==='event'?'Lié à une opération':(p.team_ids||[]).map(tid=>_medTeams.find(t=>t.id===tid)?.name||'équipe').join(', ')||'Équipe(s)';
@@ -8978,6 +9017,163 @@ async function _medSaveProduit(clubId,saisonId,productId){
   closeModal();
   toast(productId?'Produit mis à jour.':'Produit créé.','ok');
   _medLoadProducts(clubId,saisonId);
+}
+
+// ── Opérations commerciales (master prompt §7, §24-26) : template générique réutilisable pour
+// n'importe quel club — photo de rentrée, tournoi, Media Day, stage. Reliée à un événement du
+// calendrier club (override de politique via resolve_media_policy, voir migration-media-v1) et à
+// un sous-ensemble des produits déjà créés (media_sales_operation_products).
+async function _medLoadOperations(clubId,saisonId){
+  const el=document.getElementById('med-operations-content');
+  if(!el)return;
+  el.innerHTML=_cmSkel(2,28);
+  const rows=(await sbFetch('media_sales_operations?select=id,name,kind,event_id,date_debut,date_fin,status&club_id=eq.'+clubId+'&saison_id=eq.'+saisonId+'&order=created_at.desc').catch(()=>[]))||[];
+  if(!rows.length){el.innerHTML='<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucune opération configurée pour ce club cette saison.</div>';return;}
+  const _fmtDLocal=d=>d?new Date(d).toLocaleDateString('fr-FR'):'—';
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+rows.map(o=>{
+    const evt=_medEvents.find(e=>e.id===o.event_id);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--s2);border-radius:8px;cursor:pointer" onclick="modalMediaOperation('${o.id}')">
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(o.name)} <span style="font-weight:400;color:var(--t3);font-size:11.5px">· ${MED_OP_KIND_LB[o.kind]||o.kind}</span></div>
+        <div style="font-size:11.5px;color:var(--t3)">${evt?'Lié à : '+esc(evt.title):(o.date_debut?_fmtDLocal(o.date_debut)+(o.date_fin&&o.date_fin!==o.date_debut?' → '+_fmtDLocal(o.date_fin):''):'Aucune date')}</div>
+      </div>
+      <span class="bd ${MED_STATUT_CLR[o.status]||'bn'}"><span class="bd-d"></span>${MED_STATUT_LB[o.status]||o.status}</span>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function modalMediaOperation(operationId){
+  const clubId=document.getElementById('med-club-sel')?.value||'';
+  const saisonId=document.getElementById('med-saison-sel')?.value||'';
+  if(!clubId||!saisonId)return;
+  let o=null,linkedProductIds=[];
+  if(operationId){
+    const rows=(await sbFetch('media_sales_operations?select=*&id=eq.'+operationId+'&limit=1').catch(()=>[]))||[];
+    o=rows[0]||null;
+    const links=(await sbFetch('media_sales_operation_products?select=product_id&sales_operation_id=eq.'+operationId).catch(()=>[]))||[];
+    linkedProductIds=links.map(l=>l.product_id);
+  }
+  const teamIds=o?.team_ids||[];
+  openModal(`<div class="mh"><div class="mt">${o?'Modifier l’opération':'Nouvelle opération'}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb">
+      <div id="med-op-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Nom</label>
+        <input id="mo-nom" type="text" class="l-inp" style="height:38px" value="${esc(o?.name||'')}" placeholder="Photo de rentrée 2026">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Type</label>
+          <select id="mo-kind" class="l-inp" style="height:38px">${Object.entries(MED_OP_KIND_LB).map(([v,l])=>`<option value="${v}"${o?.kind===v?' selected':''}>${l}</option>`).join('')}</select>
+        </div>
+        <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Événement lié (calendrier club, facultatif)</label>
+          <select id="mo-event" class="l-inp" style="height:38px"><option value="">Aucun</option>${_medEvents.map(e=>`<option value="${e.id}"${o?.event_id===e.id?' selected':''}>${esc(e.title)}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Date de début</label>
+          <input id="mo-date-debut" type="date" class="l-inp" style="height:38px" value="${o?.date_debut||''}">
+        </div>
+        <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Date de fin</label>
+          <input id="mo-date-fin" type="date" class="l-inp" style="height:38px" value="${o?.date_fin||''}">
+        </div>
+      </div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Équipes concernées (facultatif — vide = tout le club)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">${_medTeams.map(t=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2);background:var(--s2);padding:5px 10px;border-radius:999px"><input type="checkbox" class="mo-team-cb" value="${t.id}"${teamIds.includes(t.id)?' checked':''}> ${esc(t.name)}</label>`).join('')||'<span style="font-size:12px;color:var(--t3)">Aucune équipe pour ce club.</span>'}</div>
+      </div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Produits inclus</label>
+        <div style="display:flex;flex-direction:column;gap:6px">${_medProducts.map(p=>`<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2)"><input type="checkbox" class="mo-prod-cb" value="${p.id}"${linkedProductIds.includes(p.id)?' checked':''}> ${esc(p.name)} <span style="color:var(--t3)">(${((p.price_cents||0)/100).toLocaleString('fr-FR',{style:'currency',currency:(p.currency||'eur').toUpperCase()})})</span></label>`).join('')||'<span style="font-size:12px;color:var(--t3)">Aucun produit créé pour ce club cette saison — créez-en un d’abord.</span>'}</div>
+      </div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Statut</label>
+        <select id="mo-statut" class="l-inp" style="height:38px">${Object.entries(MED_STATUT_LB).map(([v,l])=>`<option value="${v}"${(o?.status||'draft')===v?' selected':''}>${l}</option>`).join('')}</select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="_medSaveOperation('${clubId}','${saisonId}','${operationId||''}')">${o?'Enregistrer':'Créer'}</button>
+      </div>
+    </div>`);
+}
+
+async function _medSaveOperation(clubId,saisonId,operationId){
+  const name=document.getElementById('mo-nom').value.trim();
+  const kind=document.getElementById('mo-kind').value;
+  const event_id=document.getElementById('mo-event').value||null;
+  const date_debut=document.getElementById('mo-date-debut').value||null;
+  const date_fin=document.getElementById('mo-date-fin').value||null;
+  const status=document.getElementById('mo-statut').value;
+  const errEl=document.getElementById('med-op-err');
+  if(!name){errEl.textContent='Le nom est obligatoire.';return;}
+  if(date_debut&&date_fin&&date_fin<date_debut){errEl.textContent='La date de fin ne peut pas précéder la date de début.';return;}
+  const team_ids=Array.from(document.querySelectorAll('.mo-team-cb:checked')).map(cb=>cb.value);
+  const product_ids=Array.from(document.querySelectorAll('.mo-prod-cb:checked')).map(cb=>cb.value);
+  const body={club_id:clubId,saison_id:saisonId,name,kind,event_id,date_debut,date_fin,team_ids,status};
+  const r=operationId
+    ?await sbFetch('media_sales_operations?id=eq.'+operationId,{method:'PATCH',body})
+    :await sbFetch('media_sales_operations',{method:'POST',body});
+  if(sbErr(r)){errEl.textContent=r.message||'Enregistrement impossible.';return;}
+  const opId=operationId||(Array.isArray(r)&&r[0]?.id);
+  if(opId){
+    // Association produits : on repart d'une liste propre à chaque enregistrement plutôt que de
+    // calculer un diff — plus simple et sans risque d'incohérence, le volume par opération reste
+    // faible (quelques produits maximum).
+    await sbFetch('media_sales_operation_products?sales_operation_id=eq.'+opId,{method:'DELETE'});
+    if(product_ids.length){
+      await sbFetch('media_sales_operation_products',{method:'POST',body:product_ids.map(pid=>({sales_operation_id:opId,product_id:pid}))});
+    }
+  }
+  closeModal();
+  toast(operationId?'Opération mise à jour.':'Opération créée.','ok');
+  _medLoadOperations(clubId,saisonId);
+}
+
+// ── Rapport CA médias (master prompt §35-36) : media_orders reste volontairement hors du modèle
+// factures/paiements (doctrine déjà établie pour Pass Photo/Agent) — lu ici directement, jamais
+// injecté dans finrevenus pour ne pas fausser ses propres KPI.
+async function loadFinMedias(){
+  const elClubs=document.getElementById('finmed-clubs-content'), elOps=document.getElementById('finmed-ops-content');
+  if(!elClubs||!elOps)return;
+  try{
+    const [orders,operations]=await Promise.all([
+      sbFetch('media_orders?select=id,club_id,product_id,amount_cents,status,paid_at,clubs(nom),media_products(name)&status=eq.paid&order=paid_at.desc&limit=1000').catch(()=>[]),
+      sbFetch('media_sales_operations?select=id,name,club_id,status,clubs(nom),media_sales_operation_products(product_id)').catch(()=>[]),
+    ]);
+    const list=Array.isArray(orders)?orders:[];
+    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+    const caTotal=list.reduce((s,o)=>s+(o.amount_cents||0),0)/100;
+    const kpiCa=document.getElementById('finmed-kpi-ca'),kpiCmd=document.getElementById('finmed-kpi-cmd'),kpiPanier=document.getElementById('finmed-kpi-panier');
+    if(kpiCa)kpiCa.textContent=fmt(caTotal);
+    if(kpiCmd)kpiCmd.textContent=String(list.length);
+    if(kpiPanier)kpiPanier.textContent=list.length?fmt(caTotal/list.length):'—';
+
+    // Par club
+    const parClub={};
+    list.forEach(o=>{
+      const key=o.club_id;
+      if(!parClub[key])parClub[key]={nom:o.clubs?.nom||'—',ca:0,n:0};
+      parClub[key].ca+=(o.amount_cents||0)/100;
+      parClub[key].n++;
+    });
+    const clubRows=Object.values(parClub).sort((a,b)=>b.ca-a.ca);
+    elClubs.innerHTML=clubRows.length?'<div class="tw"><table><thead><tr><th>Club</th><th>CA</th><th>Commandes</th><th>Panier moyen</th></tr></thead><tbody>'+
+      clubRows.map(c=>`<tr><td>${esc(c.nom)}</td><td style="font-weight:700;color:var(--t1)">${fmt(c.ca)}</td><td>${c.n}</td><td>${fmt(c.ca/c.n)}</td></tr>`).join('')+
+      '</tbody></table></div>':'<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucune vente enregistrée pour le moment.</div>';
+
+    // Par opération (une commande est rattachée à une opération si son produit est lié via
+    // media_sales_operation_products — un produit peut appartenir à plusieurs opérations, son CA
+    // est alors compté dans chacune, cohérent avec "vue par opération", pas une ventilation stricte
+    // du CA total).
+    const ops=Array.isArray(operations)?operations:[];
+    const opRows=ops.map(op=>{
+      const productIds=(op.media_sales_operation_products||[]).map(l=>l.product_id);
+      const matched=list.filter(o=>productIds.includes(o.product_id));
+      const ca=matched.reduce((s,o)=>s+(o.amount_cents||0),0)/100;
+      return{nom:op.name,club:op.clubs?.nom||'—',statut:op.status,ca,n:matched.length};
+    }).filter(r=>r.n>0||r.statut==='active').sort((a,b)=>b.ca-a.ca);
+    elOps.innerHTML=opRows.length?'<div class="tw"><table><thead><tr><th>Opération</th><th>Club</th><th>Statut</th><th>CA</th><th>Commandes</th></tr></thead><tbody>'+
+      opRows.map(o=>`<tr><td>${esc(o.nom)}</td><td>${esc(o.club)}</td><td><span class="bd ${MED_STATUT_CLR[o.statut]||'bn'}"><span class="bd-d"></span>${MED_STATUT_LB[o.statut]||o.statut}</span></td><td style="font-weight:700;color:var(--t1)">${fmt(o.ca)}</td><td>${o.n}</td></tr>`).join('')+
+      '</tbody></table></div>':'<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucune opération commerciale active ou vendue pour le moment.</div>';
+  }catch(e){
+    elClubs.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';
+    elOps.innerHTML='';
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -33863,7 +34059,7 @@ const MOB_MORE_ITEMS={
   // Refonte Finance (28/08, nuit) : 5 anciens raccourcis (fin/résultat/rentabilité/
   // dépenses/clôtures) remplacés par les 4 pages réelles + 1 secondaire, même patron que
   // la sidebar desktop (cf. NAV['admin'] section "Finances & Documents").
-  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finpoles',lb:'Finance par pôle',ic:'🏢',sub:'Ventilation'},{id:'polerem',lb:'Rémunération pôle',ic:'📐',sub:'Grille responsable'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
+  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finmedias',lb:'Ventes médias',ic:'📸',sub:'CA Pass Photo & opérations'},{id:'finpoles',lb:'Finance par pôle',ic:'🏢',sub:'Ventilation'},{id:'polerem',lb:'Rémunération pôle',ic:'📐',sub:'Grille responsable'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'agendasec',lb:'Agenda',ic:'📅',sub:'RDV & rappels'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'docrh',lb:'Documents',ic:'📁',sub:'Pièces'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
   // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
