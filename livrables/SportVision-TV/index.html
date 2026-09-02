@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<!--
+  Redirection simple vers SportVision-OS-Full.html, pour que GitHub Pages
+  (solution de secours, 02/09/2026, voir .github/workflows/deploy-os-pages.yml)
+  serve quelque chose de sensé à la racine du site, comme le fait déjà
+  Netlify via son netlify.toml (redirect / -> /SportVision-OS-Full.html).
+  N'affecte pas le déploiement Netlify existant : sa règle de redirection
+  explicite dans netlify.toml reste prioritaire sur ce fichier.
+-->
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="refresh" content="0; url=./SportVision-OS-Full.html" />
+  <title>SportVision OS</title>
+</head>
+<body>
+  <p>Redirection vers <a href="./SportVision-OS-Full.html">SportVision OS</a>…</p>
+  <script>location.replace('./SportVision-OS-Full.html');</script>
+</body>
+</html>

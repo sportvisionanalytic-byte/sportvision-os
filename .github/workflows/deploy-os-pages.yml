@@ -1,0 +1,40 @@
+name: Déploiement OS (GitHub Pages — solution de secours)
+
+# Solution de secours (02/09/2026) : le déploiement Netlify habituel de l'OS
+# (bc6m3cgdz.sportvision-an.fr) est bloqué, crédits Netlify épuisés. GitHub
+# Pages sert livrables/SportVision-TV tel quel (le même contenu que ce
+# Netlify publie déjà publiquement) sans les restrictions de sécurité que
+# Supabase Storage/Edge Functions imposent aux pages HTML interactives
+# (Content-Security-Policy sandbox forcée, JS jamais exécuté). À retirer
+# (ou laisser en secours) une fois le déploiement Netlify débloqué.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "livrables/SportVision-TV/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: livrables/SportVision-TV
+      - id: deployment
+        uses: actions/deploy-pages@v4
