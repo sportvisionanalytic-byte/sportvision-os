@@ -4764,7 +4764,7 @@ function modalInviterCollaborateur(){
         <input id="fi-email" type="email" class="l-inp" style="height:38px">
       </div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Rôle *</label>
-        <select id="fi-role" class="l-inp" style="height:38px" onchange="document.getElementById('fi-pole-block')?.style.setProperty('display',this.value==='rh'?'none':'')">
+        <select id="fi-role" class="l-inp" style="height:38px" onchange="_fiOnRoleChange()">
           <option value="sec">Secrétaire</option>
           <option value="prod">Resp. Production</option>
           <option value="photo">Photographe / Vidéaste</option>
@@ -4774,6 +4774,7 @@ function modalInviterCollaborateur(){
           <option value="rh">Secrétaire générale / RH</option>
           <option value="expert_comptable">Expert-comptable (lecture seule)</option>
           <option value="auditeur">Auditeur (lecture seule)</option>
+          ${(S.role==='admin'&&S.allPoles&&S.allPoles.length>1)?`<option value="__pole_responsable">★ Responsable de pôle</option>`:''}
         </select>
       </div>
       ${(S.allPoles&&S.allPoles.length>1)?`<div id="fi-pole-block"><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle(s) sportif(s) *</label>
@@ -4785,6 +4786,32 @@ function modalInviterCollaborateur(){
         </div>
         <div style="font-size:10.5px;color:var(--t3);margin-top:4px">Cocher plusieurs pôles pour un collaborateur flexible, disponible sur les deux.</div>
       </div>`:''}
+      <!-- "★ Responsable de pôle" en tant que choix de RÔLE à part entière, pas une case
+           annexe (retour Fouka, 02/09/2026 : "faut pas le mettre comme ça c'est un rôle à
+           part entier"). Métier de base + pôle unique dont il/elle est responsable —
+           réutilise exactement le même appel invite-collaborateur (role=métier de base,
+           pole_ids=[pôle], responsable_pole_ids=[pôle]), aucun changement backend. -->
+      ${(S.role==='admin'&&S.allPoles&&S.allPoles.length>1)?`<div id="fi-pole-responsable-block" style="display:none;flex-direction:column;gap:12px;padding:14px;background:rgba(192,132,252,.06);border:1px solid rgba(192,132,252,.25);border-radius:var(--rb)">
+        <div style="font-size:11.5px;color:#C084FC;font-weight:600">★ Cette personne dirigera un pôle entier : quasi tous les droits d'un admin, mais limités à ce pôle (clients, prestations, équipe, matériel, finances, recrutement).</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Métier de base *</label>
+            <select id="fi-pole-resp-metier" class="l-inp" style="height:38px">
+              <option value="sec">Secrétaire</option>
+              <option value="prod">Resp. Production</option>
+              <option value="photo">Photographe / Vidéaste</option>
+              <option value="cm">Community Manager</option>
+              <option value="compta">Comptable</option>
+              <option value="com">Commercial</option>
+            </select>
+          </div>
+          <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle dont il/elle est responsable *</label>
+            <select id="fi-pole-resp-pole" class="l-inp" style="height:38px">
+              <option value="">Sélectionnez…</option>
+              ${S.allPoles.map(p=>`<option value="${p.id}">${esc(p.nom)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>`:''}
       <div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rb);padding:10px 14px;font-size:11.5px;color:var(--t2)">
         Un e-mail d'invitation SportVision sera envoyé automatiquement à cette adresse, avec un lien à usage unique pour définir son mot de passe. Rien à communiquer à la main.
       </div>
@@ -4795,25 +4822,56 @@ function modalInviterCollaborateur(){
       </div>
     </div>`);
 }
+// Bascule entre les 2 présentations du rôle (02/09/2026, retour Fouka) : le choix normal
+// (métier + cases pôles multiples) reste inchangé ; "★ Responsable de pôle" masque ce bloc au
+// profit du bloc dédié (métier de base + pôle unique). Le bloc "rh" (transversal, aucun pôle)
+// continue de masquer les deux.
+function _fiOnRoleChange(){
+  const v=document.getElementById('fi-role').value;
+  const normalBlock=document.getElementById('fi-pole-block');
+  const respBlock=document.getElementById('fi-pole-responsable-block');
+  if(v==='__pole_responsable'){
+    if(normalBlock)normalBlock.style.display='none';
+    if(respBlock)respBlock.style.display='flex';
+  }else{
+    if(normalBlock)normalBlock.style.display=(v==='rh'?'none':'');
+    if(respBlock)respBlock.style.display='none';
+  }
+}
 async function creerCollaborateur(){
   if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const err=document.getElementById('fi-err');
   const prenom=document.getElementById('fi-prenom').value.trim();
   const nom=document.getElementById('fi-nom').value.trim();
   const email=document.getElementById('fi-email').value.trim();
-  const role=document.getElementById('fi-role').value;
-  // Multi-pôles (migration-poles-v11/v12, étendu v14 le 31/08/2026 pour un collaborateur
-  // flexible multi-sport) : cases à cocher affichées seulement si plusieurs pôles existent
-  // (même convention que fc-pole/fce-pole) — tableau vide pour 'rh' (accès global par rôle,
-  // le bloc est masqué) ou si aucun pôle n'est coché, le trigger DB retombe alors sur
-  // Football par défaut.
-  const poleIds=role==='rh'?[]:Array.from(document.querySelectorAll('.fi-pole-cb:checked')).map(el=>el.value);
-  // Nomination directe Responsable (migration-poles-v25/v26, 31/08/2026) : admin uniquement
-  // (cases masquées côté template pour les autres rôles appelants), toujours un sous-ensemble
-  // des pôles cochés.
-  const responsablePoleIds=Array.from(document.querySelectorAll('.fi-pole-resp-cb:checked')).map(el=>el.value);
-  if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
-  if(role!=='rh'&&document.getElementById('fi-pole-block')&&poleIds.length===0){err.textContent='Sélectionnez au moins un pôle.';return;}
+  const roleRaw=document.getElementById('fi-role').value;
+  let role,poleIds,responsablePoleIds;
+  if(roleRaw==='__pole_responsable'){
+    // "★ Responsable de pôle" comme rôle à part entière (02/09/2026) : le métier de base
+    // choisi devient le vrai profiles.role, le pôle sélectionné devient à la fois le seul
+    // pôle affecté et le pôle dont la personne est responsable — même appel invite-
+    // collaborateur, même logique backend que le chemin "case à cocher" ci-dessous.
+    role=document.getElementById('fi-pole-resp-metier').value;
+    const poleId=document.getElementById('fi-pole-resp-pole').value;
+    if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
+    if(!poleId){err.textContent='Sélectionnez le pôle dont cette personne sera responsable.';return;}
+    poleIds=[poleId];
+    responsablePoleIds=[poleId];
+  }else{
+    role=roleRaw;
+    // Multi-pôles (migration-poles-v11/v12, étendu v14 le 31/08/2026 pour un collaborateur
+    // flexible multi-sport) : cases à cocher affichées seulement si plusieurs pôles existent
+    // (même convention que fc-pole/fce-pole) — tableau vide pour 'rh' (accès global par rôle,
+    // le bloc est masqué) ou si aucun pôle n'est coché, le trigger DB retombe alors sur
+    // Football par défaut.
+    poleIds=role==='rh'?[]:Array.from(document.querySelectorAll('.fi-pole-cb:checked')).map(el=>el.value);
+    // Nomination directe Responsable (migration-poles-v25/v26, 31/08/2026) : admin uniquement
+    // (cases masquées côté template pour les autres rôles appelants), toujours un sous-ensemble
+    // des pôles cochés.
+    responsablePoleIds=Array.from(document.querySelectorAll('.fi-pole-resp-cb:checked')).map(el=>el.value);
+    if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
+    if(role!=='rh'&&document.getElementById('fi-pole-block')&&poleIds.length===0){err.textContent='Sélectionnez au moins un pôle.';return;}
+  }
   err.textContent='Envoi de l\'invitation…';
   try{
     const tok=localStorage.getItem('sv_tok');
