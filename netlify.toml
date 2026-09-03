@@ -1,5 +1,9 @@
 [build]
   publish = "livrables/SportVision-TV"
+  # Économie de crédits (02/09/2026) : même filtre que les 2 sites Club+/Connect (voir leurs
+  # netlify.toml respectifs pour le détail) — sans lui, ce site relançait aussi un déploiement à
+  # chaque push sur main, y compris quand aucun fichier de ce dossier n'avait changé.
+  ignore = "git diff --quiet ${CACHED_COMMIT_REF:-HEAD^} HEAD -- livrables/SportVision-TV"
 
 # Domaine privé, non annoncé (bc6m3cgdz.sportvision-an.fr) — voir netlify/edge-functions/
 # block-default-domain.js pour le blocage de sportvision-os.netlify.app.

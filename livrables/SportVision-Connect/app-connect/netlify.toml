@@ -4,6 +4,10 @@
   # Même raison que app-next/netlify.toml : "publish" vide se résout sur le même chemin que
   # "base", ce que le plugin Next.js refuse. .next est la valeur attendue par le Next Runtime.
   publish = ".next"
+  # Économie de crédits (02/09/2026) : voir le commentaire détaillé dans app-next/netlify.toml —
+  # même filtre, sans lui ce site relançait un build complet à chaque push sur main même quand ce
+  # dossier n'avait pas changé.
+  ignore = "git diff --quiet ${CACHED_COMMIT_REF:-HEAD^} HEAD -- livrables/SportVision-Connect/app-connect"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

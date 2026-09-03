@@ -1,6 +1,19 @@
 [build]
   base = "livrables/SportVision-Connect/app-next"
   command = "npm run build"
+  # Économie de crédits (02/09/2026) : sans ce filtre, ce site relance un build complet à CHAQUE
+  # push sur main, même quand rien n'a changé dans ce dossier (ex. une migration SQL seule, ou un
+  # correctif de l'OS) — vérifié en direct via l'API Netlify, les 3 sites du repo se relançaient
+  # avec le même horodatage à chaque push, sans filtre par dossier. `git diff --quiet` sort en 0
+  # (= "silencieux", aucune différence) quand ce dossier n'a pas bougé, ce que Netlify interprète
+  # comme "ignorer ce build" ; il sort en 1 dès qu'il y a une vraie différence, ce qui déclenche le
+  # build normalement. $CACHED_COMMIT_REF (fourni par Netlify = dernier commit réellement
+  # déployé sur CE site, pas juste le parent immédiat) plutôt que HEAD^ : sinon, pousser plusieurs
+  # commits d'un coup (plusieurs correctifs groupés en un seul push, exactement pour économiser
+  # des crédits) ne comparerait que les 2 derniers commits du lot et raterait les changements plus
+  # anciens du même push. Repli sur HEAD^ uniquement si la variable n'existe pas encore (site tout
+  # juste connecté, aucun déploiement précédent en cache).
+  ignore = "git diff --quiet ${CACHED_COMMIT_REF:-HEAD^} HEAD -- livrables/SportVision-Connect/app-next"
   # "publish" vide se résout par défaut sur le même chemin que "base" (publishOrigin: default,
   # vu dans les logs de build du 09/08/2026), ce que le plugin Next.js refuse explicitement
   # ("Your publish directory cannot be the same as the base directory"). .next (sortie standard
