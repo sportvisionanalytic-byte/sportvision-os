@@ -14,6 +14,10 @@ import { NextResponse, type NextRequest } from "next/server";
 // "/demo" : démo interne à données fictives (demandée par Fouka le 19/08, voir src/app/demo/) —
 // aucune page sous /demo ne lit/écrit de données réelles (sauf catalogue_offres, public en
 // lecture). Temporaire, à retirer avec src/app/demo/ avant le lancement public si plus utile.
+// "/join" (migration-clubplus-v57, 03/09/2026) : page publique du Smart Link/QR club/équipe —
+// doit afficher "Vous rejoignez [Club] [Équipe]" AVANT authentification (preview_invite_code est
+// volontairement callable en anonyme côté base), sinon un parent qui scanne un QR sans être
+// connecté est redirigé vers /auth/login sans jamais voir ce qu'il s'apprête à rejoindre.
 const PUBLIC_PATHS = [
   "/auth/login",
   "/auth/forgot",
@@ -24,6 +28,7 @@ const PUBLIC_PATHS = [
   "/cotisation",
   "/aide",
   "/demo",
+  "/join",
 ];
 
 export async function updateSession(request: NextRequest) {

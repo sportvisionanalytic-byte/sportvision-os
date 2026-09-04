@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Check, Copy, MapPin, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Copy, MapPin, QrCode as QrCodeIcon, RotateCw, Users, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { QrCode } from "@/components/ui/QrCode";
 import { cn } from "@/lib/cn";
 import { isRealId } from "@/lib/mock/teams";
-import { createTeamInviteCode } from "@/lib/data/club/teams";
+import { createInviteLink, fetchClubTeamInviteLink, rotateInviteLink, deactivateInviteLink, buildJoinUrl, type InviteLink } from "@/lib/data/club/invite-links";
 import { createClient } from "@/lib/supabase/client";
 import type { Team } from "@/lib/types/teams";
 
@@ -60,7 +61,7 @@ export function TeamCard({ team }: { team: Team }) {
         </div>
       ) : (
         <div className="mt-4 border-t border-divider pt-3" onClick={(e) => e.preventDefault()}>
-          <InviteAction teamId={team.id} />
+          <InviteAction clubId={team.organizationId} teamId={team.id} />
         </div>
       )}
     </Card>
@@ -70,24 +71,51 @@ export function TeamCard({ team }: { team: Team }) {
   return <Link href={`/teams/${team.id}`}>{body}</Link>;
 }
 
-function InviteAction({ teamId }: { teamId: string }) {
-  const [code, setCode] = useState<string | null>(null);
+function InviteAction({ clubId, teamId }: { clubId: string; teamId: string }) {
+  const [link, setLink] = useState<InviteLink | null | undefined>(undefined); // undefined = chargement
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
+
+  useEffect(() => {
+    fetchClubTeamInviteLink(createClient(), teamId)
+      .then(setLink)
+      .catch(() => setLink(null));
+  }, [teamId]);
 
   function handleInvite() {
     setBusy(true);
     setError(null);
-    createTeamInviteCode(createClient(), teamId)
-      .then((c) => setCode(c))
-      .catch(() => setError("Impossible de générer le code. Réessayez."))
+    createInviteLink(createClient(), clubId, teamId)
+      .then(setLink)
+      .catch(() => setError("Impossible de générer le lien. Réessayez."))
+      .finally(() => setBusy(false));
+  }
+
+  function handleRotate() {
+    if (!link) return;
+    setBusy(true);
+    setError(null);
+    rotateInviteLink(createClient(), link.id)
+      .then(setLink)
+      .catch(() => setError("Impossible de régénérer le lien. Réessayez."))
+      .finally(() => setBusy(false));
+  }
+
+  function handleDeactivate() {
+    if (!link) return;
+    setBusy(true);
+    setError(null);
+    deactivateInviteLink(createClient(), link.id)
+      .then(() => setLink(null))
+      .catch(() => setError("Impossible de désactiver le lien. Réessayez."))
       .finally(() => setBusy(false));
   }
 
   function handleCopy() {
-    if (!code) return;
-    navigator.clipboard.writeText(code).then(() => {
+    if (!link) return;
+    navigator.clipboard.writeText(buildJoinUrl(link.code)).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
@@ -97,18 +125,40 @@ function InviteAction({ teamId }: { teamId: string }) {
     return <span className="text-[12px] font-bold text-danger-fg">{error}</span>;
   }
 
-  if (code) {
+  if (link === undefined) {
+    return <span className="text-[12px] text-text-faint">Chargement…</span>;
+  }
+
+  if (link) {
     return (
-      <button
-        type="button"
-        onClick={handleCopy}
-        className="flex w-full items-center justify-between gap-2 rounded-lg bg-surface-sunken px-3 py-2 text-[12.5px] font-bold text-text"
-      >
-        <span>
-          Code : <span className="font-mono tracking-[.08em]">{code}</span>
-        </span>
-        {copied ? <Check className="h-3.5 w-3.5 flex-none text-success-fg" aria-hidden /> : <Copy className="h-3.5 w-3.5 flex-none text-text-faint" aria-hidden />}
-      </button>
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex w-full items-center justify-between gap-2 rounded-lg bg-surface-sunken px-3 py-2 text-[12.5px] font-bold text-text"
+        >
+          <span>
+            Code : <span className="font-mono tracking-[.08em]">{link.code}</span>
+          </span>
+          {copied ? <Check className="h-3.5 w-3.5 flex-none text-success-fg" aria-hidden /> : <Copy className="h-3.5 w-3.5 flex-none text-text-faint" aria-hidden />}
+        </button>
+        {showQr && (
+          <div className="flex justify-center py-1">
+            <QrCode value={buildJoinUrl(link.code)} />
+          </div>
+        )}
+        <div className="flex items-center gap-3 text-[11.5px] font-bold text-text-soft">
+          <button type="button" disabled={busy} onClick={() => setShowQr((v) => !v)} className="flex items-center gap-1 hover:text-brand-blue-electric disabled:opacity-60">
+            <QrCodeIcon className="h-3.5 w-3.5" aria-hidden /> {showQr ? "Masquer le QR" : "Afficher le QR"}
+          </button>
+          <button type="button" disabled={busy} onClick={handleRotate} className="flex items-center gap-1 hover:text-brand-blue-electric disabled:opacity-60">
+            <RotateCw className="h-3.5 w-3.5" aria-hidden /> Régénérer
+          </button>
+          <button type="button" disabled={busy} onClick={handleDeactivate} className="flex items-center gap-1 hover:text-danger-fg disabled:opacity-60">
+            <X className="h-3.5 w-3.5" aria-hidden /> Désactiver
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -119,7 +169,7 @@ function InviteAction({ teamId }: { teamId: string }) {
       onClick={handleInvite}
       className="text-[12.5px] font-bold text-brand-blue-electric hover:text-brand-violet disabled:opacity-60"
     >
-      {busy ? "Génération…" : "Générer un code pour inviter des joueurs →"}
+      {busy ? "Génération…" : "Générer un lien pour inviter des joueurs →"}
     </button>
   );
 }

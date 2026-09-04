@@ -395,14 +395,16 @@ serve(async (req) => {
       return json({ ok: true, hasClub: true, orgNom: org.nom, statut: "a_verifier" });
     }
 
-    // "join_code" (19/08/2026, soir) : rejoindre directement une équipe précise via le code
-    // généré côté Club+ (create_team_invite_code, migration-connect-v26 — voir Équipes/
-    // TeamCard.tsx pour la génération). team_invite_codes n'a de policy SELECT que pour
-    // l'éducateur/l'admin du club (tic_manager_select) : un prospect ne peut pas résoudre le
-    // code en direct, d'où le passage par le service role ici. Même mécanique de profil que
+    // "join_code" (19/08/2026, soir ; généralisé au lien club entier + max_uses le 03/09/2026,
+    // migration-clubplus-v57/v58) : rejoindre une équipe précise (ou n'importe laquelle si le
+    // code est un lien club entier, team_id NULL) via le code généré côté Club+
+    // (create_invite_code/create_team_invite_code). redeem_invite_code() remplace la lecture
+    // directe de team_invite_codes qui était faite ici : elle verrouille la ligne (FOR UPDATE) et
+    // incrémente uses_count dans la même transaction, éliminant la fenêtre de course entre deux
+    // rédemptions concurrentes proches de max_uses — la validation actif/expire_at/max_uses vit
+    // maintenant uniquement en base, plus dans cette fonction. Même mécanique de profil que
     // "join" (upsertJoiningPlayerProfile), source="code_equipe" (valeur déjà prévue par le
-    // schéma, cohérente avec request_team_membership_as_player côté app-next) et invite_code_id
-    // renseigné pour la traçabilité.
+    // schéma) et invite_code_id renseigné pour la traçabilité.
     if (action === "join_code") {
       const code = String(body?.code || "").trim().toUpperCase();
       const prenom = String(body?.prenom || "").trim();
@@ -413,15 +415,9 @@ serve(async (req) => {
         return json({ error: "Prénom, nom et date de naissance requis" }, 400);
       }
 
-      const { data: invite, error: inviteErr } = await admin
-        .from("team_invite_codes")
-        .select("id, club_id, team_id, actif, expire_at")
-        .eq("code", code)
-        .maybeSingle();
-      if (inviteErr) return json({ error: inviteErr.message }, 500);
-      if (!invite || !invite.actif || (invite.expire_at && new Date(invite.expire_at).getTime() < Date.now())) {
-        return json({ error: "Code invalide ou expiré" }, 404);
-      }
+      const { data: redeemed, error: redeemErr } = await admin.rpc("redeem_invite_code", { p_code: code }).maybeSingle();
+      if (redeemErr) return json({ error: redeemErr.message || "Code invalide ou expiré" }, 404);
+      const invite = redeemed as { club_id: string; team_id: string | null; invite_code_id: string };
 
       const { data: org, error: orgLookupErr } = await admin
         .from("organizations")
@@ -442,7 +438,7 @@ serve(async (req) => {
         requested_by_user_id: user.id,
         player_id: profileResult.playerId,
         source: "code_equipe",
-        invite_code_id: invite.id,
+        invite_code_id: invite.invite_code_id,
         statut: "a_verifier",
         validation_mode: "standard",
       });

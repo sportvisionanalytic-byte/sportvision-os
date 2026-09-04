@@ -51,6 +51,18 @@ export function AddClubForm({
   const [error, setError] = useState<string | null>(null);
   const [declaredDone, setDeclaredDone] = useState(false);
 
+  // ?code=... posé par /join/[code] (Smart Link/QR, migration-clubplus-v57) — un utilisateur déjà
+  // authentifié qui suit un lien d'équipe atterrit directement sur le formulaire code prérempli,
+  // sans devoir chercher son club puis retrouver le code communiqué par ailleurs.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (code) {
+      setInviteCode(code.toUpperCase());
+      setChoice("code");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (choice !== "search" || query.trim().length < 2) {
       setResults([]);

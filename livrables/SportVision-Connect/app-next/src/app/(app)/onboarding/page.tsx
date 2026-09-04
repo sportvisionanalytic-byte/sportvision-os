@@ -13,6 +13,15 @@ import { fetchClubMembers, inviteClubMember } from "@/lib/data/club/users";
 import { ROLE_LABELS, type OrgUser } from "@/lib/types/settings";
 import { fetchClubTeams, createClubTeam } from "@/lib/data/club/teams";
 import {
+  createInviteLink,
+  fetchClubInviteLinks,
+  rotateInviteLink,
+  deactivateInviteLink,
+  buildJoinUrl,
+  type InviteLink,
+} from "@/lib/data/club/invite-links";
+import { QrCode } from "@/components/ui/QrCode";
+import {
   parseRosterCsv,
   previewRosterImport,
   confirmRosterImport,
@@ -420,6 +429,64 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
   const [importResults, setImportResults] = useState<RosterImportResult[] | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [clubLink, setClubLink] = useState<InviteLink | null | undefined>(undefined);
+  const [clubLinkBusy, setClubLinkBusy] = useState(false);
+  const [clubLinkError, setClubLinkError] = useState<string | null>(null);
+  const [showClubQr, setShowClubQr] = useState(false);
+  const [clubLinkCopied, setClubLinkCopied] = useState(false);
+
+  useEffect(() => {
+    fetchClubInviteLinks(createClient(), clubId)
+      .then((links) => setClubLink(links.find((l) => l.actif) ?? null))
+      .catch(() => setClubLink(null));
+  }, [clubId]);
+
+  async function handleCreateClubLink() {
+    setClubLinkBusy(true);
+    setClubLinkError(null);
+    try {
+      setClubLink(await createInviteLink(createClient(), clubId, null));
+    } catch (e) {
+      setClubLinkError(e instanceof Error ? e.message : "Impossible de générer le lien.");
+    } finally {
+      setClubLinkBusy(false);
+    }
+  }
+
+  async function handleRotateClubLink() {
+    if (!clubLink) return;
+    setClubLinkBusy(true);
+    setClubLinkError(null);
+    try {
+      setClubLink(await rotateInviteLink(createClient(), clubLink.id));
+    } catch (e) {
+      setClubLinkError(e instanceof Error ? e.message : "Impossible de régénérer le lien.");
+    } finally {
+      setClubLinkBusy(false);
+    }
+  }
+
+  async function handleDeactivateClubLink() {
+    if (!clubLink) return;
+    setClubLinkBusy(true);
+    setClubLinkError(null);
+    try {
+      await deactivateInviteLink(createClient(), clubLink.id);
+      setClubLink(null);
+    } catch (e) {
+      setClubLinkError(e instanceof Error ? e.message : "Impossible de désactiver le lien.");
+    } finally {
+      setClubLinkBusy(false);
+    }
+  }
+
+  function handleCopyClubLink() {
+    if (!clubLink) return;
+    navigator.clipboard.writeText(buildJoinUrl(clubLink.code)).then(() => {
+      setClubLinkCopied(true);
+      setTimeout(() => setClubLinkCopied(false), 1500);
+    });
+  }
 
   async function reload() {
     const supabase = createClient();
@@ -582,6 +649,51 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
   return (
     <Card className="flex flex-col gap-4 p-5">
       <SectionHeader title="3. Équipes & entraînements" description="Une équipe créée ici est réutilisée telle quelle par la Production, la Communication et Connect." />
+
+      {canEdit && (
+        <div className="rounded-xl border border-border-strong p-3.5">
+          <div className="text-[12.5px] font-bold">Lien du club (toutes les équipes)</div>
+          <p className="mt-0.5 text-[11.5px] text-text-soft">
+            À partager largement — le joueur ou parent qui l&apos;utilise choisit ensuite son équipe. Pour un lien direct vers une équipe
+            précise, utilisez le bouton de cette équipe ci-dessous.
+          </p>
+          {clubLinkError && <p className="mt-2 text-[12px] font-bold text-danger-fg">{clubLinkError}</p>}
+          {clubLink === undefined && <p className="mt-2 text-[12px] text-text-faint">Chargement…</p>}
+          {clubLink === null && (
+            <Button variant="secondary" className="mt-2.5 h-9 px-3 text-[12px]" loading={clubLinkBusy} onClick={handleCreateClubLink}>
+              Générer le lien du club
+            </Button>
+          )}
+          {clubLink && (
+            <div className="mt-2.5 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleCopyClubLink}
+                className="flex w-full items-center justify-between gap-2 rounded-lg bg-surface-sunken px-3 py-2 text-[12.5px] font-bold text-text"
+              >
+                <span className="font-mono tracking-[.04em]">{buildJoinUrl(clubLink.code)}</span>
+                <span className="flex-none text-[11px] text-text-faint">{clubLinkCopied ? "Copié ✓" : "Copier"}</span>
+              </button>
+              {showClubQr && (
+                <div className="flex justify-center py-1">
+                  <QrCode value={buildJoinUrl(clubLink.code)} />
+                </div>
+              )}
+              <div className="flex items-center gap-3 text-[11.5px] font-bold text-text-soft">
+                <button type="button" disabled={clubLinkBusy} onClick={() => setShowClubQr((v) => !v)} className="hover:text-brand-blue-electric disabled:opacity-60">
+                  {showClubQr ? "Masquer le QR" : "Afficher le QR"}
+                </button>
+                <button type="button" disabled={clubLinkBusy} onClick={handleRotateClubLink} className="hover:text-brand-blue-electric disabled:opacity-60">
+                  Régénérer
+                </button>
+                <button type="button" disabled={clubLinkBusy} onClick={handleDeactivateClubLink} className="hover:text-danger-fg disabled:opacity-60">
+                  Désactiver
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {(teams ?? []).length === 0 && teams !== null && <p className="text-[12.5px] text-text-soft">Aucune équipe renseignée.</p>}
 
