@@ -14,7 +14,15 @@ import { createClient } from "@/lib/supabase/client";
 // "leave" en coulisses : c'est ce qui repasse account_status à 'retire' et fait retomber
 // buildPlayerContext() sur player.club = null, débloquant /affiliations/ajouter (voir
 // session.ts:61 — condition club_id && account_status !== 'retire').
-export function LeaveAffiliationButton({ clubName, refused = false }: { clubName: string; refused?: boolean }) {
+export function LeaveAffiliationButton({
+  clubId,
+  clubName,
+  refused = false,
+}: {
+  clubId: string;
+  clubName: string;
+  refused?: boolean;
+}) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -25,7 +33,7 @@ export function LeaveAffiliationButton({ clubName, refused = false }: { clubName
     setError(null);
     const supabase = createClient();
     const { data, error: fnError } = await supabase.functions.invoke("connect-player-onboarding", {
-      body: { action: "leave" },
+      body: { action: "leave", club_id: clubId },
     });
     setBusy(false);
     if (fnError || data?.error) {

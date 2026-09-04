@@ -6,14 +6,16 @@ import { redirect } from "next/navigation";
 // n'a simplement pas encore de club (voir edge function connect-player-onboarding, action
 // "skip"/pas de player_profiles créée) — état "aucun club", pas une erreur.
 //
-// Une seule affiliation à la fois : `player_profiles.club_id` est un champ unique (pas une
-// table de relation many-to-many). Le vrai modèle "plusieurs affiliations" du nouveau design
-// (master doc Partie VI, table conceptuelle `player_affiliations`) n'existe pas encore côté
-// backend — construire cette table maintenant dupliquerait la source de vérité utilisée par
-// app-next/Club+ (qui lit exclusivement player_profiles/membership_requests) sans les
-// synchroniser, exactement ce que le master doc interdit ("un seul objet métier"). Cette page
-// gère donc la SEULE affiliation réelle possible aujourd'hui — l'extension multi-club est un
-// chantier de schéma à part entière, à trancher explicitement avec Fouka avant de coder.
+// Multi-club (04/09/2026, décision produit Fouka — audit transversal) : un compte peut désormais
+// avoir PLUSIEURS lignes player_profiles, une par club (contrainte player_user_club_unique,
+// migration-multiclub-identity.sql — remplace l'ancienne player_user_unique qui limitait à une
+// seule affiliation). Cette fonction reste le SEUL point de résolution du contexte joueur (déjà
+// appelé par ~15 écrans) : elle sélectionne une affiliation "active" (la plus récente non
+// retirée, ou celle demandée via `preferredClubId`) et expose la liste complète dans
+// `otherAffiliations` pour qu'un futur sélecteur puisse basculer — chaque écran existant continue
+// de fonctionner tel quel sur l'affiliation active, aucune réécriture des ~15 appelants requise
+// pour cette première étape. Un vrai sélecteur multi-club dans l'UI (mirroring le sélecteur
+// Moi/enfants de l'Espace particulier) reste un chantier UI à part, noté en suivi.
 //
 // "Quitter" une affiliation : `player_profiles.club_id` est NOT NULL, donc impossible de le
 // vider. On réutilise `account_status = 'retire'` (déjà dans la contrainte CHECK réelle,
@@ -48,19 +50,47 @@ export interface PlayerContext {
     // qu'aucune équipe n'a été validée pour ce joueur, jamais une équipe inventée.
     team: { id: string; name: string } | null;
   } | null;
+  // Multi-club (04/09/2026) — les AUTRES affiliations actives de ce compte (hors celle
+  // sélectionnée comme `club` ci-dessus), pour un futur sélecteur. Toujours [] pour l'immense
+  // majorité des comptes (un seul club), jamais une liste inventée.
+  otherAffiliations: { playerId: string; clubId: string; clubName: string }[];
 }
 
 export async function buildPlayerContext(
   supabase: SupabaseClient,
   userId: string,
+  preferredClubId?: string,
 ): Promise<PlayerContext | null> {
-  const { data: profile } = await supabase
+  const { data: profiles } = await supabase
     .from("player_profiles")
     .select("id, prenom, nom, club_id, account_status, created_at, client_id")
     .eq("user_id", userId)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
 
-  if (!profile) return null;
+  if (!profiles || profiles.length === 0) return null;
+
+  const active = profiles.filter((p) => p.account_status !== "retire");
+  const pool = active.length > 0 ? active : profiles;
+  const profile = (preferredClubId && pool.find((p) => p.club_id === preferredClubId)) || pool[0]!;
+
+  const otherAffiliationsRaw = pool.filter((p) => p.id !== profile.id);
+  let otherAffiliations: PlayerContext["otherAffiliations"] = [];
+  if (otherAffiliationsRaw.length > 0) {
+    const { data: otherOrgs } = await supabase
+      .from("organizations")
+      .select("id, nom")
+      .in(
+        "id",
+        otherAffiliationsRaw.map((p) => p.club_id).filter((id): id is string => Boolean(id)),
+      );
+    otherAffiliations = otherAffiliationsRaw
+      .filter((p) => p.club_id)
+      .map((p) => ({
+        playerId: p.id,
+        clubId: p.club_id as string,
+        clubName: otherOrgs?.find((o) => o.id === p.club_id)?.nom ?? "",
+      }));
+  }
 
   let club: PlayerContext["club"] = null;
   if (profile.club_id && profile.account_status !== "retire") {
@@ -116,6 +146,7 @@ export async function buildPlayerContext(
     lastName: profile.nom,
     clientId: profile.client_id ?? null,
     club,
+    otherAffiliations,
   };
 }
 

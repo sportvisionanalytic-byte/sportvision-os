@@ -122,16 +122,23 @@ async function upsertJoiningPlayerProfile(
   nom: string,
   dateNaissance: string,
 ): Promise<{ playerId: string } | { error: string }> {
+  // Multi-club (04/09/2026, décision produit Fouka) — résolution par (user_id, club_id), jamais
+  // user_id seul : un compte peut désormais avoir plusieurs fiches player_profiles, une par club
+  // (contrainte player_user_club_unique, migration-multiclub-identity.sql). Rejoindre un DEUXIÈME
+  // club doit créer une NOUVELLE affiliation, jamais réécrire club_id sur la fiche existante — ce
+  // que faisait ce code jusqu'ici (bug réel trouvé par l'audit transversal : rejoindre un 2e club
+  // effaçait silencieusement le 1er).
   const { data: existingProfile } = await admin
     .from("player_profiles")
     .select("id")
     .eq("user_id", userId)
+    .eq("club_id", clubId)
     .maybeSingle();
 
   if (existingProfile) {
     const { error: updErr } = await userClient
       .from("player_profiles")
-      .update({ club_id: clubId, prenom, nom, date_naissance: dateNaissance, account_status: "actif" })
+      .update({ prenom, nom, date_naissance: dateNaissance, account_status: "actif" })
       .eq("id", existingProfile.id);
     if (updErr) return { error: updErr.message };
     return { playerId: existingProfile.id };
@@ -482,12 +489,16 @@ serve(async (req) => {
     // existante (user_id = auth.uid()). Reste strictement scopé à la ligne du joueur
     // authentifié (jamais un id fourni par le body) et au seul champ account_status='retire'.
     if (action === "leave") {
-      const { data: profile, error: profileErr } = await admin
-        .from("player_profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      // Multi-club (04/09/2026, décision produit Fouka) — un compte peut avoir plusieurs
+      // affiliations ; club_id précise laquelle quitter (LeaveAffiliationButton.tsx). Sans
+      // club_id (anciens appels), on retombe sur la plus récente non déjà quittée — jamais une
+      // erreur .maybeSingle() sur plusieurs lignes comme avant ce correctif.
+      const clubId = typeof body.club_id === "string" ? body.club_id : null;
+      let query = admin.from("player_profiles").select("id").eq("user_id", user.id).neq("account_status", "retire");
+      query = clubId ? query.eq("club_id", clubId) : query.order("created_at", { ascending: false }).limit(1);
+      const { data: profiles, error: profileErr } = await query;
       if (profileErr) return json({ error: profileErr.message }, 500);
+      const profile = profiles?.[0];
       if (!profile) return json({ error: "Aucune affiliation à quitter" }, 404);
 
       const { error: updErr } = await userClient

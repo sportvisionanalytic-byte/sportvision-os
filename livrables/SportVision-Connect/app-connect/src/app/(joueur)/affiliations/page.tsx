@@ -14,13 +14,23 @@ function formatDate(iso: string): string {
 }
 
 // Mes affiliations — voir design-connect-personnel-12-08/README.md § Espace joueur → Mes
-// affiliations. Une seule affiliation possible pour l'instant (voir note dans session.ts) —
-// pas les sections "Actives/En attente/Clubs déclarés" du design complet, une seule fiche.
-export default async function AffiliationsPage() {
+// affiliations. Multi-club (04/09/2026, décision produit Fouka) : buildPlayerContext peut
+// désormais résoudre plusieurs affiliations pour un même compte (une par club) — cette page
+// affiche la sélectionnée (via ?club=, sinon la plus récente) en carte principale, et les autres
+// en dessous avec un lien pour basculer. Premier point d'entrée réel du multi-club côté Connect ;
+// les autres écrans (calendrier, contenus, messages...) restent scopés sur l'affiliation "active"
+// résolue par défaut — un vrai sélecteur transverse (mirroring "Vous consultez" côté Espace
+// particulier) reste un chantier UI à part.
+export default async function AffiliationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ club?: string }>;
+}) {
   const supabase = await createClient();
   const { user } = await requireJoueurAccount(supabase);
+  const { club: preferredClubId } = await searchParams;
 
-  const player = await buildPlayerContext(supabase, user.id);
+  const player = await buildPlayerContext(supabase, user.id, preferredClubId);
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
@@ -91,7 +101,7 @@ export default async function AffiliationsPage() {
                     <span className="font-sora text-[14px] font-semibold">Demande refusée</span>
                     <span className="text-[14px] text-text-tertiary lg:text-[13px]">Vous pouvez essayer un autre club.</span>
                   </div>
-                  <LeaveAffiliationButton clubName={player.club.nom} refused />
+                  <LeaveAffiliationButton clubId={player.club.id} clubName={player.club.nom} refused />
                 </div>
               ) : (
                 <div className="mt-1 flex flex-wrap items-center gap-4 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
@@ -99,7 +109,7 @@ export default async function AffiliationsPage() {
                     <span className="font-sora text-[14px] font-semibold">Quitter cette affiliation</span>
                     <span className="text-[14px] text-text-tertiary lg:text-[13px]">Votre compte Connect est conservé.</span>
                   </div>
-                  <LeaveAffiliationButton clubName={player.club.nom} />
+                  <LeaveAffiliationButton clubId={player.club.id} clubName={player.club.nom} />
                 </div>
               )}
             </div>
@@ -121,6 +131,33 @@ export default async function AffiliationsPage() {
               Ajouter un club
             </Link>
           </div>
+        )}
+
+        {player && player.otherAffiliations.length > 0 && (
+          <div className="flex flex-col gap-2.5">
+            <span className="text-[12px] font-semibold uppercase tracking-[.08em] text-text-label">
+              Vos autres structures
+            </span>
+            {player.otherAffiliations.map((a) => (
+              <Link
+                key={a.playerId}
+                href={`/affiliations?club=${a.clubId}`}
+                className="flex items-center justify-between gap-3 rounded-sv border border-border bg-surface px-4 py-3.5 hover:bg-surface-hover"
+              >
+                <span className="font-sora text-[14.5px] font-semibold">{a.clubName}</span>
+                <span className="text-[12.5px] font-medium text-brand-blue-electric">Afficher →</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {player?.club && (
+          <Link
+            href="/affiliations/ajouter"
+            className="w-fit text-[13px] font-semibold text-text-tertiary hover:text-text"
+          >
+            + Ajouter une autre structure
+          </Link>
         )}
       </div>
     );

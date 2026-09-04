@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
 import { AddClubForm } from "./AddClubForm";
@@ -19,10 +18,12 @@ export default async function AjouterClubPage() {
   const { user } = await requireJoueurAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
-  // Une seule affiliation à la fois (voir note dans lib/supabase/session.ts) : rien à faire ici
-  // si un club est déjà rattaché, même en attente ou refusé — l'utilisateur doit d'abord quitter
-  // l'affiliation existante depuis Mes affiliations.
-  if (player?.club) redirect("/affiliations");
+  // Multi-club (04/09/2026, décision produit Fouka) : un compte peut désormais avoir plusieurs
+  // affiliations actives (buildPlayerContext/connect-player-onboarding, migration-multiclub-
+  // identity.sql) — cette page ne redirige donc plus dès qu'un club existe déjà. Seul un statut
+  // "refuse" sur l'affiliation active garde un sens à bloquer ici (le formulaire ci-dessous gère
+  // déjà ce cas via LeaveAffiliationButton sur /affiliations), donc aucune garde supplémentaire
+  // n'est nécessaire : rejoindre un second club fonctionne exactement comme le premier.
 
   const metaFirst = typeof user.user_metadata?.first_name === "string" ? user.user_metadata.first_name : "";
   const metaLast = typeof user.user_metadata?.last_name === "string" ? user.user_metadata.last_name : "";
