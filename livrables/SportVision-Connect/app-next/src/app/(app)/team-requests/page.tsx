@@ -361,21 +361,16 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
 // is_club_admin() et is_team_educateur() reconnaissent déjà ce chemin (RLS), donc les actions
 // "Confirmer"/"Valider"/"Refuser" sont proposées sans distinction — le serveur retranche lui-même
 // ce qui n'est pas autorisé (ex. valider avant confirmation éducateur en mode double).
+// Lecture seule pour un CM SportVision délégué (03/09/2026, demande explicite de Fouka) : valider
+// une affiliation joueur/parent n'est pas son rôle métier et lui donnerait un moyen d'agir sur des
+// données familiales dont il n'a pas besoin — même raison que l'exclusion du CM interne. Le
+// serveur refuse déjà ces 3 actions pour un compte cm_agency (migration-clubplus-v55,
+// confirm_request_educateur/validate_team_membership/reject_team_membership n'acceptent plus que
+// is_real_club_admin()/is_real_team_educateur(), qui ignorent la délégation cm_agency_club_access)
+// — retirer les boutons ici évite juste l'erreur "Non autorisé" qu'ils obtiendraient sinon.
 function CmAgencyRequestsView() {
   const [requests, setRequests] = useState<CmAgencyJoinRequest[] | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [motif, setMotif] = useState("");
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  async function reload() {
-    try {
-      setRequests(await fetchCmAgencyJoinRequests(createClient()));
-    } catch {
-      setLoadError(true);
-    }
-  }
 
   useEffect(() => {
     let cancelled = false;
@@ -391,21 +386,6 @@ function CmAgencyRequestsView() {
       cancelled = true;
     };
   }, []);
-
-  async function runAction(action: () => Promise<void>, requestId: string) {
-    setBusyId(requestId);
-    setActionError(null);
-    try {
-      await action();
-      await reload();
-      setRejectingId(null);
-      setMotif("");
-    } catch (err) {
-      setActionError(extractErrorMessage(err, "Action impossible."));
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   if (loadError) {
     return (
@@ -430,13 +410,10 @@ function CmAgencyRequestsView() {
           {pending.length} demande{pending.length > 1 ? "s" : ""} d&apos;affiliation en attente
         </h1>
         <p className="mt-1.5 max-w-xl text-[13.5px] text-text-soft">
-          Toutes les demandes des clubs auxquels vous avez accès, tous clubs confondus.
+          Toutes les demandes des clubs auxquels vous avez accès, tous clubs confondus. La
+          validation reste réservée au coach de l&apos;équipe ou à un administrateur du club.
         </p>
       </div>
-
-      {actionError && (
-        <Card className="border-danger-fg/20 bg-danger-bg px-5 py-3.5 text-[13px] font-semibold text-danger-fg">{actionError}</Card>
-      )}
 
       {pending.length === 0 ? (
         <Card className="p-8 text-center text-[13.5px] text-text-soft">Aucune demande en attente.</Card>
@@ -444,10 +421,6 @@ function CmAgencyRequestsView() {
         <div className="flex flex-col gap-3">
           {pending.map((req) => {
             const stage = deriveStage(req);
-            const busy = busyId === req.id;
-            const canConfirm = stage === "attente_educateur";
-            const canValidate = stage === "attente_dirigeant";
-
             return (
               <Card key={req.id} className="p-4.5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -462,66 +435,6 @@ function CmAgencyRequestsView() {
                   </div>
                   <Badge tone={STAGE_TONE[stage]}>{STAGE_LABEL[stage]}</Badge>
                 </div>
-
-                {rejectingId === req.id ? (
-                  <div className="mt-3.5 flex flex-col gap-2 border-t border-divider pt-3.5">
-                    <input
-                      value={motif}
-                      onChange={(e) => setMotif(e.target.value)}
-                      placeholder="Motif du refus (optionnel)"
-                      className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13px] outline-none focus-visible:border-brand-blue"
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        variant="danger"
-                        className="h-9 px-3.5 text-[12.5px]"
-                        disabled={busy}
-                        loading={busy}
-                        onClick={() => runAction(() => rejectTeamMembership(createClient(), req.id, motif || undefined), req.id)}
-                      >
-                        Confirmer le refus
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        className="h-9 px-3.5 text-[12.5px]"
-                        onClick={() => {
-                          setRejectingId(null);
-                          setMotif("");
-                        }}
-                      >
-                        Annuler
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-divider pt-3.5">
-                    {canConfirm && (
-                      <Button
-                        variant="primary"
-                        className="h-9 px-3.5 text-[12.5px]"
-                        disabled={busy}
-                        loading={busy}
-                        onClick={() => runAction(() => confirmRequestEducateur(createClient(), req.id), req.id)}
-                      >
-                        Confirmer (éducateur)
-                      </Button>
-                    )}
-                    {canValidate && (
-                      <Button
-                        variant="primary"
-                        className="h-9 px-3.5 text-[12.5px]"
-                        disabled={busy}
-                        loading={busy}
-                        onClick={() => runAction(() => validateTeamMembership(createClient(), req.id), req.id)}
-                      >
-                        Valider l&apos;affiliation
-                      </Button>
-                    )}
-                    <Button variant="secondary" className="h-9 px-3.5 text-[12.5px]" onClick={() => setRejectingId(req.id)}>
-                      Refuser
-                    </Button>
-                  </div>
-                )}
               </Card>
             );
           })}
