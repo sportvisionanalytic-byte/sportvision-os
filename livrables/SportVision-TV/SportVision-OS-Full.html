@@ -23130,8 +23130,8 @@ async function modalNouveauContenu(statutInit,dateInit,prefill){
       <div class="fg"><label class="fl">Client</label>
         <select id="ct-cl" class="fi" onchange="refreshSponsorsRequis();refreshTemplateDisponible()"><option value="">Aucun client (SportVision)</option>${clients.map(c=>`<option value="${c.id}"${pf.clientId===c.id?' selected':''}>${esc(c.nom)}</option>`).join('')}</select></div>
       <div class="g2">
-        <div class="fg"><label class="fl">Plateforme</label>
-          <select id="ct-pl" class="fi"><option>Instagram</option><option>YouTube</option><option>Facebook</option><option>TikTok</option><option>Twitter/X</option></select></div>
+        <div class="fg"><label class="fl">Plateformes</label>
+          <div id="ct-pl-multi" style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 0">${CT_RESEAUX.map((p,i)=>`<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--t2);cursor:pointer"><input type="checkbox" class="ct-pl-cb" value="${p}"${i===0?' checked':''}>${p}</label>`).join('')}</div></div>
         <div class="fg"><label class="fl">Type</label>
           <select id="ct-ty" class="fi"><option>Vidéo</option><option>Photo</option><option>Story</option><option>Reel</option><option>Article</option><option>Post</option></select></div>
       </div>
@@ -23214,6 +23214,12 @@ async function ajouterTemplateDepuisContenu(clubId){
 // changement de client ou de catégorie dans le formulaire — jamais bloquant (le CM reste libre de
 // créer le contenu même avec un sponsor manquant), juste un rappel visuel.
 const CONTENU_CATEGORIES=['Matchday','Composition','Résultat','But / Buteur','Homme du match','Reel','Carrousel photo','Story','Interview','Autre'];
+// Multi-réseaux (audit transversal 04/09/2026, décision produit Fouka) : CONTENT ≠ PUBLICATION
+// TARGET — un contenu garde 1 seule ligne `contenus` (brief/média/statut éditorial) mais peut
+// avoir plusieurs cibles de publication (contenu_publication_targets), une par réseau/compte.
+// Taxonomie reprise telle quelle de l'ancien select mono-valeur `ct-pl` pour ne rien renommer.
+const CT_RESEAUX=['Instagram','YouTube','Facebook','TikTok','Twitter/X'];
+const CT_TARGET_STATUTS={a_programmer:{lb:'À programmer',cls:'bn'},programme:{lb:'Programmé',cls:'bb'},publie:{lb:'Publié',cls:'ba'},echec:{lb:'Échec',cls:'br'}};
 
 async function refreshSponsorsRequis(){
   const el=document.getElementById('ct-sponsors-req');
@@ -23239,7 +23245,7 @@ async function refreshSponsorsRequis(){
 async function creerContenu(){
   const ti=(document.getElementById('ct-ti')?.value||'').trim();
   const clientId=document.getElementById('ct-cl')?.value||null;
-  const pl=document.getElementById('ct-pl')?.value||'';
+  const reseaux=Array.from(document.querySelectorAll('#ct-pl-multi .ct-pl-cb:checked')).map(cb=>cb.value);
   const ty=document.getElementById('ct-ty')?.value||'';
   const cat=document.getElementById('ct-cat')?.value||'';
   const dt=document.getElementById('ct-dt')?.value||null;
@@ -23250,20 +23256,30 @@ async function creerContenu(){
   const sponsor=(document.getElementById('ct-spo')?.value||'').trim();
   const err=document.getElementById('ct-err');
   if(!ti){if(err)err.textContent='Donnez un titre au contenu.';return;}
+  if(!reseaux.length){if(err)err.textContent='Sélectionnez au moins une plateforme.';return;}
   const uid=localStorage.getItem('sv_uid');
   // Anti-double-clic (audit final 29/08, passe généralisée) : même idiome que
   // creerPrestation() — un double-clic pouvait créer deux contenus identiques.
   const btn=document.querySelector('#sv-modal .mf .btn.bp');
   if(btn){if(btn.disabled)return;btn.disabled=true;}
   try{
+    // contenus.plateforme reste renseigné (1ère plateforme cochée) pour compat ascendante avec
+    // tout ce qui lit encore cette colonne (analytics, listes) — la source de vérité pour le
+    // multi-réseaux devient contenu_publication_targets, créé juste après (audit transversal
+    // 04/09/2026, CONTENT ≠ PUBLICATION TARGET).
     const r=await sbFetch('contenus',{method:'POST',body:{
-      client_id:clientId||null,cm_id:uid,titre:ti,plateforme:pl,type_contenu:ty,categorie:cat||null,
+      client_id:clientId||null,cm_id:uid,titre:ti,plateforme:reseaux[0],type_contenu:ty,categorie:cat||null,
       date_prevue:dt||null,hook:hook||null,cta:cta||null,legende:legende||null,
       hashtags:hashtags||null,sponsor:sponsor||null,request_id:window._ctRequestId||null,
       match_id:window._ctMatchId||null
     }});
     if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');if(btn)btn.disabled=false;return;}
-    if(Array.isArray(r)&&r[0]) _logAudit('contenu_cree','contenu',r[0].id,{titre:ti});
+    const contenuId=Array.isArray(r)&&r[0]?r[0].id:null;
+    if(contenuId){
+      _logAudit('contenu_cree','contenu',contenuId,{titre:ti});
+      const targets=await sbFetch('contenu_publication_targets',{method:'POST',body:reseaux.map(n=>({contenu_id:contenuId,network:n}))});
+      if(sbErr(targets)) console.error('Cibles de publication non créées :',targets);
+    }
     window._ctRequestId=null;
     window._ctMatchId=null;
     closeModal();
@@ -23321,6 +23337,7 @@ async function modalEditContenu(id){
       </div>
       <div class="fg"><label class="fl">Statut actuel</label><div><span class="bd ${(CONTENU_STATUTS[info.statut]||CONTENU_STATUTS.brouillon).cls}"><span class="bd-d"></span>${(CONTENU_STATUTS[info.statut]||CONTENU_STATUTS.brouillon).lb}</span></div></div>
       ${['programme','publie'].includes(info.statut)?`<div class="fg"><label class="fl">Référence Metricool (si programmé/publié via Metricool)</label><input type="text" id="cte-metricool" class="fi" placeholder="ID de la publication Metricool" value="${esc(info.publication_external_id||'')}"></div>`:''}
+      <div class="fg"><label class="fl">Réseaux de publication</label><div id="cte-targets" style="font-size:12.5px;color:var(--t3)">Chargement…</div></div>
       <div id="cte-hist"></div>
     </div>
     <div class="mf" style="flex-wrap:wrap;gap:8px">
@@ -23330,6 +23347,7 @@ async function modalEditContenu(id){
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
       <button class="btn bp" onclick="sauvegarderContenu('${id}')">Sauvegarder</button>
     </div>`);
+  loadContenuTargets(id);
   // Lecture réservée à l'admin + Lead CM (migration-cm-audit-contenus.sql) —
   // pour tout autre CM la requête renvoie simplement zéro ligne (RLS), le
   // panneau reste alors vide sans qu'il soit nécessaire de le masquer
@@ -23345,6 +23363,70 @@ async function modalEditContenu(id){
         return `<div>${when} · ${esc(who)} · ${AUDIT_ACTION_LBL[a.action]||a.action}${st?' → '+(CONTENU_STATUTS[st]?.lb||st):''}</div>`;
       }).join('')+'</div>';
   }).catch(()=>{});
+}
+
+// ── Cibles de publication (multi-réseaux, audit transversal 04/09/2026) ────────────────────────
+// 1 contenu → N lignes contenu_publication_targets (1 par réseau/compte). État de livraison par
+// réseau (à programmer/programmé/publié/échec) totalement indépendant du workflow éditorial de
+// contenus.statut — un échec Facebook ne doit jamais bloquer/rétrograder Instagram ou TikTok.
+async function loadContenuTargets(contenuId){
+  const el=document.getElementById('cte-targets');
+  if(!el)return;
+  try{
+    const rows=await sbFetch('contenu_publication_targets?contenu_id=eq.'+contenuId+'&select=*&order=created_at.asc');
+    window._cteTargets=Array.isArray(rows)?rows:[];
+  }catch(e){window._cteTargets=[];}
+  window._cteTargetsContenuId=contenuId;
+  _renderContenuTargets();
+}
+function _renderContenuTargets(){
+  const el=document.getElementById('cte-targets');
+  if(!el)return;
+  const rows=window._cteTargets||[];
+  const used=rows.map(t=>t.network);
+  const dispo=CT_RESEAUX.filter(n=>!used.includes(n));
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+
+    rows.map(t=>{
+      const st=CT_TARGET_STATUTS[t.status]||CT_TARGET_STATUTS.a_programmer;
+      return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:7px 8px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp)">
+        <span style="font-weight:600;color:var(--t1);min-width:80px">${esc(t.network)}</span>
+        <select class="fi" style="width:auto;padding:4px 6px;font-size:11.5px" id="cte-tg-st-${t.id}">${Object.entries(CT_TARGET_STATUTS).map(([k,v])=>`<option value="${k}"${t.status===k?' selected':''}>${v.lb}</option>`).join('')}</select>
+        <input type="text" class="fi" style="width:140px;padding:4px 6px;font-size:11.5px" id="cte-tg-ext-${t.id}" placeholder="ID publication" value="${esc(t.external_post_id||'')}">
+        <button class="btn bg2 bs" onclick="_saveContenuTarget('${t.id}')">Enregistrer</button>
+        <button class="btn bb bs" onclick="_supprimerContenuTarget('${t.id}')">✕</button>
+      </div>`;
+    }).join('')+
+    (dispo.length?`<div style="display:flex;gap:6px;align-items:center">
+      <select class="fi" id="cte-tg-new" style="width:auto">${dispo.map(n=>`<option>${n}</option>`).join('')}</select>
+      <button class="btn bg2 bs" onclick="_ajouterContenuTarget()">+ Ajouter un réseau</button>
+    </div>`:'')+
+    (!rows.length&&!dispo.length?'<div style="color:var(--t3)">Aucun réseau disponible.</div>':'')+
+    '</div>';
+}
+async function _saveContenuTarget(targetId){
+  const status=document.getElementById('cte-tg-st-'+targetId)?.value||'a_programmer';
+  const externalId=(document.getElementById('cte-tg-ext-'+targetId)?.value||'').trim();
+  const body={status,external_post_id:externalId||null};
+  if(status==='publie')body.published_at=new Date().toISOString();
+  const r=await sbFetch('contenu_publication_targets?id=eq.'+targetId,{method:'PATCH',body});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  toast('Réseau mis à jour.','ok');
+  if(window._cteTargetsContenuId)loadContenuTargets(window._cteTargetsContenuId);
+}
+async function _ajouterContenuTarget(){
+  const network=document.getElementById('cte-tg-new')?.value;
+  const contenuId=window._cteTargetsContenuId;
+  if(!network||!contenuId)return;
+  const r=await sbFetch('contenu_publication_targets',{method:'POST',body:{contenu_id:contenuId,network}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'ajout impossible.'),'er');return;}
+  loadContenuTargets(contenuId);
+}
+function _supprimerContenuTarget(targetId){
+  confirmerAction('Retirer ce réseau de publication ?',async()=>{
+    const r=await sbFetch('contenu_publication_targets?id=eq.'+targetId,{method:'DELETE'});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+    if(window._cteTargetsContenuId)loadContenuTargets(window._cteTargetsContenuId);
+  });
 }
 
 async function sauvegarderContenu(id){
