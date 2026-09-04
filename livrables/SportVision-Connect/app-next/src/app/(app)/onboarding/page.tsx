@@ -12,6 +12,14 @@ import { updateClubOrganization, uploadClubLogo } from "@/lib/data/club/organiza
 import { fetchClubMembers, inviteClubMember } from "@/lib/data/club/users";
 import { ROLE_LABELS, type OrgUser } from "@/lib/types/settings";
 import { fetchClubTeams, createClubTeam } from "@/lib/data/club/teams";
+import {
+  parseRosterCsv,
+  previewRosterImport,
+  confirmRosterImport,
+  type RosterImportRow,
+  type RosterPreviewResult,
+  type RosterImportResult,
+} from "@/lib/data/club/roster-import";
 import { fetchClubSponsors, createClubSponsor, uploadSponsorLogo } from "@/lib/data/club/sponsors";
 import { fetchClubCalendarEvents, createClubCalendarEvent } from "@/lib/data/club/calendar";
 import type { Team } from "@/lib/types/teams";
@@ -406,6 +414,12 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
   const [coachInvite, setCoachInvite] = useState<{ teamId: string; email: string; firstName: string; lastName: string } | null>(null);
   const [coachSending, setCoachSending] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
+  const [importTeamId, setImportTeamId] = useState<string | null>(null);
+  const [importRows, setImportRows] = useState<RosterImportRow[]>([]);
+  const [importPreview, setImportPreview] = useState<RosterPreviewResult[] | null>(null);
+  const [importResults, setImportResults] = useState<RosterImportResult[] | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   async function reload() {
     const supabase = createClient();
@@ -516,6 +530,55 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
     }
   }
 
+  function openImport(teamId: string) {
+    setImportTeamId(teamId);
+    setImportRows([]);
+    setImportPreview(null);
+    setImportResults(null);
+    setImportError(null);
+  }
+
+  async function handleCsvSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !importTeamId) return;
+    setImportError(null);
+    setImportResults(null);
+    try {
+      const text = await file.text();
+      const { rows, errors } = parseRosterCsv(text);
+      if (rows.length === 0) {
+        setImportError(errors[0] ?? "Aucune ligne exploitable dans ce fichier.");
+        return;
+      }
+      setImportRows(rows);
+      setImportBusy(true);
+      const preview = await previewRosterImport(createClient(), clubId, rows);
+      setImportPreview(preview);
+      if (errors.length > 0) setImportError(`${errors.length} ligne(s) ignorée(s) : ${errors[0]}`);
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "Impossible d'analyser ce fichier.");
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  async function handleConfirmImport(teamId: string, saison: string) {
+    if (importRows.length === 0) return;
+    setImportBusy(true);
+    setImportError(null);
+    try {
+      const results = await confirmRosterImport(createClient(), clubId, teamId, saison, importRows);
+      setImportResults(results);
+      await reload();
+      onSaved();
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "Impossible d'importer cet effectif.");
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
   return (
     <Card className="flex flex-col gap-4 p-5">
       <SectionHeader title="3. Équipes & entraînements" description="Une équipe créée ici est réutilisée telle quelle par la Production, la Communication et Connect." />
@@ -550,9 +613,58 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
                     >
                       + Inviter un coach
                     </Button>
+                    <Button variant="tertiary" className="h-7 px-2 text-[11.5px]" onClick={() => openImport(team.id)}>
+                      + Importer un effectif (CSV)
+                    </Button>
                   </div>
                 )}
               </div>
+              {importTeamId === team.id && (
+                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border-strong p-3">
+                  <p className="text-[12px] text-text-soft">
+                    Fichier CSV avec les colonnes <strong>prenom</strong>, <strong>nom</strong>, <strong>date_naissance</strong> (JJ/MM/AAAA), et
+                    facultativement <strong>numero_licence</strong>. Un joueur déjà connu (même nom + même date de naissance) est retrouvé
+                    automatiquement, jamais dupliqué.
+                  </p>
+                  <label className="inline-flex h-9 w-fit cursor-pointer items-center rounded-sv border border-border-strong px-3 text-[12px] font-bold hover:border-brand-blue">
+                    Choisir un fichier CSV
+                    <input type="file" accept=".csv,text/csv" className="hidden" disabled={importBusy} onChange={handleCsvSelected} />
+                  </label>
+                  {importError && <p className="text-[12px] font-bold text-danger-fg">{importError}</p>}
+                  {importPreview && !importResults && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-2 text-[12px]">
+                        <Badge tone="success">{importPreview.filter((r) => r.categorie === "nouveau").length} nouveaux</Badge>
+                        <Badge tone="info">{importPreview.filter((r) => r.categorie === "existant").length} déjà connus</Badge>
+                        <Badge tone="warning">
+                          {importPreview.filter((r) => r.categorie === "a_verifier" || r.categorie === "ambigu").length} à vérifier
+                        </Badge>
+                        <Badge tone="danger">{importPreview.filter((r) => r.categorie === "erreur").length} en erreur</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button className="h-9 px-3 text-[12px]" loading={importBusy} onClick={() => handleConfirmImport(team.id, team.season || "2026-2027")}>
+                          Confirmer l&apos;import ({importRows.length} joueurs)
+                        </Button>
+                        <Button variant="secondary" className="h-9 px-3 text-[12px]" onClick={() => setImportTeamId(null)}>
+                          Annuler
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {importResults && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-2 text-[12px]">
+                        <Badge tone="success">{importResults.filter((r) => r.statut === "nouveau").length} créés</Badge>
+                        <Badge tone="info">{importResults.filter((r) => r.statut === "existant").length} rattachés</Badge>
+                        <Badge tone="danger">{importResults.filter((r) => r.statut === "erreur").length} erreurs</Badge>
+                      </div>
+                      <Button variant="secondary" className="h-9 w-fit px-3 text-[12px]" onClick={() => setImportTeamId(null)}>
+                        Fermer
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
               {coachInvite?.teamId === team.id && (
                 <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border-strong p-3">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
