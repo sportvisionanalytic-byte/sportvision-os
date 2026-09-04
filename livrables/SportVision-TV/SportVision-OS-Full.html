@@ -1245,6 +1245,11 @@ const VIEWS={
         </div>
       </div>
     </div>
+    <div class="cd" style="margin-bottom:16px">
+      <div class="cd-h"><div class="cd-t">Expéditions à préparer</div></div>
+      <div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Commandes de produits physiques payées, tous clubs confondus — coche une fois le colis parti.</div>
+      <div id="med-expeditions-content">${_cmSkel(2)}</div>
+    </div>
     <div id="med-body" style="display:none">
       <div class="cd" style="margin-bottom:16px">
         <div class="cd-h"><div class="cd-t">Politique par défaut</div></div>
@@ -8869,6 +8874,37 @@ async function loadAdminMedias(){
   const clubSel=document.getElementById('med-club-sel'), saisonSel=document.getElementById('med-saison-sel');
   if(clubSel)clubSel.innerHTML='<option value="">Choisir un club…</option>'+_medClubs.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
   if(saisonSel)saisonSel.innerHTML='<option value="">Choisir une saison…</option>'+_medSaisons.map(s=>`<option value="${s.id}">${esc(s.label)}</option>`).join('');
+  _medLoadExpeditions();
+}
+
+// Fulfillment produit physique (04/09/2026) — v_media_orders_a_expedier (migration-media-
+// physical-fulfillment.sql) fait déjà le filtre is_staff() + statut payé/à préparer, tous clubs
+// confondus : pas de dépendance au sélecteur club/saison ci-dessus.
+async function _medLoadExpeditions(){
+  const el=document.getElementById('med-expeditions-content');
+  if(!el)return;
+  const rows=(await sbFetch('v_media_orders_a_expedier?select=*').catch(()=>[]))||[];
+  if(!rows.length){el.innerHTML='<div style="padding:12px;color:var(--t3);font-size:12.5px">Aucune expédition en attente.</div>';return;}
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+rows.map(o=>{
+    const prix=((o.amount_cents||0)/100).toLocaleString('fr-FR',{style:'currency',currency:(o.currency||'eur').toUpperCase()});
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--s2);border-radius:8px">
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(o.shipping_name||'—')} <span style="font-weight:400;color:var(--t3);font-size:11.5px">· ${esc(o.produit_nom)} · ${esc(o.club_nom)}</span></div>
+        <div style="font-size:11.5px;color:var(--t3)">${esc(o.shipping_address_line||'')}, ${esc(o.shipping_postal_code||'')} ${esc(o.shipping_city||'')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <span style="font-size:12.5px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums">${prix}</span>
+        <button class="btn bp bs" onclick="_medMarquerExpedie('${o.id}')">Marquer expédié</button>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function _medMarquerExpedie(orderId){
+  const r=await sbFetch('rpc/staff_mark_media_order_shipped',{method:'POST',body:{p_order_id:orderId}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Action impossible.'),'er');return;}
+  toast('Marqué comme expédié.','ok');
+  _medLoadExpeditions();
 }
 
 let _medReqToken=0;

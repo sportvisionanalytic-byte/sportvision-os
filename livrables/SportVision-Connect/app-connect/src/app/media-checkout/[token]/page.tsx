@@ -14,6 +14,7 @@ export interface MediaCheckoutPreview {
   prix_cents: number | null;
   devise: string | null;
   beneficiaire_prenom: string | null;
+  produit_physique: boolean | null;
 }
 
 const RAISON_LABEL: Record<string, string> = {

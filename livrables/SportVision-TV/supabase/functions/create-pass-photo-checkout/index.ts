@@ -82,17 +82,25 @@ serve(async (req) => {
     const body = await req.json();
     const productId: string = body.product_id || "";
     const beneficiaryPlayerIdRaw: string = body.beneficiary_player_id || "";
+    const shipping = body.shipping as { name?: string; addressLine?: string; postalCode?: string; city?: string } | undefined;
     if (!productId) return json({ error: "product_id est requis" }, 400);
 
     const admin = createClient(supabaseUrl, serviceKey);
 
     const { data: product } = await admin
       .from("media_products")
-      .select("id, club_id, name, price_cents, currency, status")
+      .select("id, club_id, name, price_cents, currency, status, physical_product")
       .eq("id", productId)
       .maybeSingle();
     if (!product || product.status !== "active") {
       return json({ error: "Ce produit n'est plus disponible." }, 400);
+    }
+
+    // Fulfillment produit physique (04/09/2026) — l'adresse n'est jamais optionnelle pour un
+    // produit physical_product=true : sans elle, la commande serait payée mais impossible à
+    // expédier (voir migration-media-physical-fulfillment.sql).
+    if (product.physical_product && (!shipping?.name || !shipping.addressLine || !shipping.postalCode || !shipping.city)) {
+      return json({ error: "Adresse de livraison requise pour ce produit." }, 400);
     }
 
     // Deux chemins pour résoudre le bénéficiaire (jamais mélangés) :
@@ -141,6 +149,11 @@ serve(async (req) => {
         amount_cents: product.price_cents,
         currency: product.currency,
         status: "pending",
+        shipping_status: product.physical_product ? "a_preparer" : "non_requis",
+        shipping_name: product.physical_product ? shipping!.name : null,
+        shipping_address_line: product.physical_product ? shipping!.addressLine : null,
+        shipping_postal_code: product.physical_product ? shipping!.postalCode : null,
+        shipping_city: product.physical_product ? shipping!.city : null,
       })
       .select("id")
       .single();

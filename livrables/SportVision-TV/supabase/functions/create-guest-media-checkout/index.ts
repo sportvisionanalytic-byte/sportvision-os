@@ -75,6 +75,7 @@ serve(async (req) => {
     const body = await req.json();
     const token: string = (body.token || "").trim();
     const email: string = (body.email || "").trim().toLowerCase();
+    const shipping = body.shipping as { name?: string; addressLine?: string; postalCode?: string; city?: string } | undefined;
     if (!token || !email) return json({ error: "token et email sont requis" }, 400);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json({ error: "Adresse e-mail invalide" }, 400);
 
@@ -95,11 +96,14 @@ serve(async (req) => {
 
     const { data: product } = await admin
       .from("media_products")
-      .select("id, club_id, name, price_cents, currency, status")
+      .select("id, club_id, name, price_cents, currency, status, physical_product")
       .eq("id", tokenRow.product_id)
       .maybeSingle();
     if (!product || product.status !== "active") {
       return json({ error: "Ce produit n'est plus disponible." }, 400);
+    }
+    if (product.physical_product && (!shipping?.name || !shipping.addressLine || !shipping.postalCode || !shipping.city)) {
+      return json({ error: "Adresse de livraison requise pour ce produit." }, 400);
     }
 
     const { data: existing } = await admin
@@ -151,6 +155,11 @@ serve(async (req) => {
         amount_cents: product.price_cents,
         currency: product.currency,
         status: "pending",
+        shipping_status: product.physical_product ? "a_preparer" : "non_requis",
+        shipping_name: product.physical_product ? shipping!.name : null,
+        shipping_address_line: product.physical_product ? shipping!.addressLine : null,
+        shipping_postal_code: product.physical_product ? shipping!.postalCode : null,
+        shipping_city: product.physical_product ? shipping!.city : null,
       })
       .select("id")
       .single();

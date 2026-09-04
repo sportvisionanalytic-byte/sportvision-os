@@ -40,6 +40,12 @@ export function PhotosViewClub({
   const [albums, setAlbums] = useState(initialAlbums);
   const [busyProductId, setBusyProductId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Fulfillment produit physique (04/09/2026) — voir le commentaire équivalent dans PhotosView.tsx.
+  const [shippingProductId, setShippingProductId] = useState<string | null>(null);
+  const [shippingName, setShippingName] = useState("");
+  const [shippingAddressLine, setShippingAddressLine] = useState("");
+  const [shippingPostalCode, setShippingPostalCode] = useState("");
+  const [shippingCity, setShippingCity] = useState("");
 
   const hasAlbums = albums.length > 0;
   // BUGFIX (audit mobile/desktop 02/09/2026) : voir le commentaire équivalent dans
@@ -58,12 +64,12 @@ export function PhotosViewClub({
     return () => clearTimeout(t);
   }, [returnStatus, detail.club_id, detail.team_id, detail.saison_id, router]);
 
-  async function acheterProduit(productId: string) {
+  async function acheterProduit(productId: string, shipping?: { name: string; addressLine: string; postalCode: string; city: string }) {
     setBusyProductId(productId);
     setError(null);
     const supabase = createClient();
     const { data, error: fnError } = await supabase.functions.invoke("create-pass-photo-checkout", {
-      body: { product_id: productId, beneficiary_player_id: detail.ref_id },
+      body: { product_id: productId, beneficiary_player_id: detail.ref_id, ...(shipping ? { shipping } : {}) },
     });
     setBusyProductId(null);
     if (fnError || data?.error) {
@@ -73,6 +79,24 @@ export function PhotosViewClub({
     if (data?.url) {
       window.location.href = data.url;
     }
+  }
+
+  function handleObtenir(p: AvailableMediaProduct) {
+    if (p.physicalProduct) {
+      setShippingProductId(p.id);
+      return;
+    }
+    acheterProduit(p.id);
+  }
+
+  function submitShipping() {
+    if (!shippingProductId || !shippingName.trim() || !shippingAddressLine.trim() || !shippingPostalCode.trim() || !shippingCity.trim()) return;
+    acheterProduit(shippingProductId, {
+      name: shippingName.trim(),
+      addressLine: shippingAddressLine.trim(),
+      postalCode: shippingPostalCode.trim(),
+      city: shippingCity.trim(),
+    });
   }
 
   return (
@@ -121,17 +145,59 @@ export function PhotosViewClub({
           {albums.some((a) => !a.unlocked) && products.length > 0 && (
             <div className="flex flex-col gap-3">
               {products.map((p) => (
-                <div key={p.id} className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-5">
-                  <span className="flex h-12 w-12 flex-none items-center justify-center rounded-sv bg-contenus-bg">
-                    <span className="material-symbols-rounded !text-[24px] text-contenus" aria-hidden="true">lock</span>
-                  </span>
-                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="font-sora text-[15px] font-semibold">{p.name}</span>
-                    <span className="text-[13px] text-text-tertiary">{formatPrice(p.priceCents, p.currency)}</span>
+                <div key={p.id} className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <span className="flex h-12 w-12 flex-none items-center justify-center rounded-sv bg-contenus-bg">
+                      <span className="material-symbols-rounded !text-[24px] text-contenus" aria-hidden="true">
+                        {p.physicalProduct ? "local_shipping" : "lock"}
+                      </span>
+                    </span>
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="font-sora text-[15px] font-semibold">{p.name}</span>
+                      <span className="text-[13px] text-text-tertiary">
+                        {formatPrice(p.priceCents, p.currency)}
+                        {p.physicalProduct && " · Livré par voie postale"}
+                      </span>
+                    </div>
+                    <Button onClick={() => handleObtenir(p)} loading={busyProductId === p.id} className="flex-none">
+                      Obtenir
+                    </Button>
                   </div>
-                  <Button onClick={() => acheterProduit(p.id)} loading={busyProductId === p.id} className="flex-none">
-                    Obtenir
-                  </Button>
+
+                  {shippingProductId === p.id && (
+                    <div className="flex flex-col gap-2.5 rounded-sv border border-border-strong bg-bg px-4 py-3.5">
+                      <span className="text-[12.5px] font-semibold text-text-secondary">Adresse de livraison</span>
+                      <input
+                        value={shippingName}
+                        onChange={(e) => setShippingName(e.target.value)}
+                        placeholder="Nom et prénom"
+                        className="h-11 w-full rounded-sv border border-border-strong bg-surface px-3 text-[14px] outline-none focus-visible:border-brand-blue"
+                      />
+                      <input
+                        value={shippingAddressLine}
+                        onChange={(e) => setShippingAddressLine(e.target.value)}
+                        placeholder="Adresse"
+                        className="h-11 w-full rounded-sv border border-border-strong bg-surface px-3 text-[14px] outline-none focus-visible:border-brand-blue"
+                      />
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <input
+                          value={shippingPostalCode}
+                          onChange={(e) => setShippingPostalCode(e.target.value)}
+                          placeholder="Code postal"
+                          className="h-11 w-full rounded-sv border border-border-strong bg-surface px-3 text-[14px] outline-none focus-visible:border-brand-blue"
+                        />
+                        <input
+                          value={shippingCity}
+                          onChange={(e) => setShippingCity(e.target.value)}
+                          placeholder="Ville"
+                          className="h-11 w-full rounded-sv border border-border-strong bg-surface px-3 text-[14px] outline-none focus-visible:border-brand-blue"
+                        />
+                      </div>
+                      <Button onClick={submitShipping} loading={busyProductId === p.id}>
+                        Continuer vers le paiement
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

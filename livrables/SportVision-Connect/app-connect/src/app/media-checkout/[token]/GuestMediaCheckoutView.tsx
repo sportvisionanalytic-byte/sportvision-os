@@ -24,17 +24,37 @@ export function GuestMediaCheckoutView({
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Fulfillment produit physique (04/09/2026) — voir migration-media-physical-fulfillment.sql.
+  const [shippingName, setShippingName] = useState("");
+  const [shippingAddressLine, setShippingAddressLine] = useState("");
+  const [shippingPostalCode, setShippingPostalCode] = useState("");
+  const [shippingCity, setShippingCity] = useState("");
+  const isPhysical = preview.produit_physique === true;
 
   async function pay() {
     setTouched(true);
     if (!validEmail(email) || busy) return;
+    if (isPhysical && (!shippingName.trim() || !shippingAddressLine.trim() || !shippingPostalCode.trim() || !shippingCity.trim())) return;
     setBusy(true);
     setError(null);
     // Page 100% publique, pas de session — createClient() envoie déjà l'apikey anon nécessaire,
     // même motif que PublicFundingView.tsx (/cotisation/[token]).
     const supabase = createClient();
     const { data, error: fnError } = await supabase.functions.invoke("create-guest-media-checkout", {
-      body: { token, email: email.trim() },
+      body: {
+        token,
+        email: email.trim(),
+        ...(isPhysical
+          ? {
+              shipping: {
+                name: shippingName.trim(),
+                addressLine: shippingAddressLine.trim(),
+                postalCode: shippingPostalCode.trim(),
+                city: shippingCity.trim(),
+              },
+            }
+          : {}),
+      },
     });
     if (fnError || data?.error || !data?.url) {
       setBusy(false);
@@ -95,6 +115,38 @@ export function GuestMediaCheckoutView({
           plus tard — aucun mot de passe n&apos;est requis maintenant.
         </p>
       </div>
+
+      {isPhysical && (
+        <div className="mt-4 flex flex-col gap-2.5 rounded-lg border border-border-strong bg-input-bg px-4 py-3.5">
+          <span className="text-[12.5px] font-bold text-text-soft">Adresse de livraison</span>
+          <input
+            value={shippingName}
+            onChange={(e) => setShippingName(e.target.value)}
+            placeholder="Nom et prénom"
+            className="h-11 w-full rounded-lg border border-border-strong bg-bg px-3 text-[14px] outline-none focus-visible:border-brand-blue"
+          />
+          <input
+            value={shippingAddressLine}
+            onChange={(e) => setShippingAddressLine(e.target.value)}
+            placeholder="Adresse"
+            className="h-11 w-full rounded-lg border border-border-strong bg-bg px-3 text-[14px] outline-none focus-visible:border-brand-blue"
+          />
+          <div className="grid grid-cols-2 gap-2.5">
+            <input
+              value={shippingPostalCode}
+              onChange={(e) => setShippingPostalCode(e.target.value)}
+              placeholder="Code postal"
+              className="h-11 w-full rounded-lg border border-border-strong bg-bg px-3 text-[14px] outline-none focus-visible:border-brand-blue"
+            />
+            <input
+              value={shippingCity}
+              onChange={(e) => setShippingCity(e.target.value)}
+              placeholder="Ville"
+              className="h-11 w-full rounded-lg border border-border-strong bg-bg px-3 text-[14px] outline-none focus-visible:border-brand-blue"
+            />
+          </div>
+        </div>
+      )}
 
       {error && <p className="mt-3 text-[12.5px] font-bold text-danger-fg">{error}</p>}
 

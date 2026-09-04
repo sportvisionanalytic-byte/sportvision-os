@@ -63,6 +63,9 @@ export interface AvailableMediaProduct {
   type: string;
   priceCents: number;
   currency: string;
+  /** Fulfillment produit physique (04/09/2026, migration-media-physical-fulfillment.sql) — impose
+   * de collecter une adresse de livraison avant l'achat, voir create-pass-photo-checkout. */
+  physicalProduct: boolean;
 }
 
 /** Produits actifs que ce joueur peut acheter pour son équipe (portée club ou équipe) — alimente
@@ -74,11 +77,18 @@ export async function fetchAvailableMediaProducts(
 ): Promise<AvailableMediaProduct[]> {
   const { data, error } = await supabase
     .from("media_products")
-    .select("id, name, type, price_cents, currency, scope_type, team_ids")
+    .select("id, name, type, price_cents, currency, scope_type, team_ids, physical_product")
     .eq("club_id", clubId)
     .eq("status", "active");
   if (error || !data) return [];
   return data
     .filter((p) => p.scope_type === "club" || (p.scope_type === "team" && Array.isArray(p.team_ids) && p.team_ids.includes(teamId)))
-    .map((p) => ({ id: p.id, name: p.name, type: p.type, priceCents: p.price_cents, currency: p.currency }));
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      type: p.type,
+      priceCents: p.price_cents,
+      currency: p.currency,
+      physicalProduct: p.physical_product === true,
+    }));
 }
