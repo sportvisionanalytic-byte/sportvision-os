@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Users } from "lucide-react";
+import Link from "next/link";
+import { CalendarClock, Plus, Users } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Card } from "@/components/ui/Card";
@@ -114,6 +115,14 @@ export default function TeamsPage() {
         {/* academie_groups n'a pas encore d'équivalent createClubTeam — bouton réservé au club
             (club_teams), pas de promesse pour l'académie. */}
         <div className="flex flex-wrap gap-2">
+          {isClub && ctx.membership.role === "admin" && (
+            <Link href="/season-transition">
+              <Button variant="secondary" className="h-10 gap-1.5 px-4 text-[13px]">
+                <CalendarClock className="h-3.5 w-3.5" aria-hidden />
+                Transition de saison
+              </Button>
+            </Link>
+          )}
           {isClub && (
             <>
               <Button variant="secondary" className="h-10 gap-1.5 px-4 text-[13px]" onClick={() => setInviteTarget("parent")}>
