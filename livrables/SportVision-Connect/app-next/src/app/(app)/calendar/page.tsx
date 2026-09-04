@@ -367,6 +367,7 @@ export default function CalendarPage() {
       {importOpen && calendarOrgId && (
         <ImportMatchesModal
           clubId={calendarOrgId}
+          userId={ctx.user.id}
           onClose={() => setImportOpen(false)}
           onImported={loadEvents}
         />

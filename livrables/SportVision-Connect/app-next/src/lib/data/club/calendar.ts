@@ -8,6 +8,14 @@ import { STATUS_MAP as MATCH_STATUS_MAP } from "./matches";
 // deuxième (un match programmé est aussi un événement de calendrier). RLS : is_club_member(club_id)
 // pour les deux tables.
 
+/** Libellés humains des statuts SPORTIFS qui doivent supplanter le statut de production à
+ * l'affichage. 'scheduled' et 'completed' n'y sont volontairement pas : ils ne contredisent pas le
+ * cycle de production (un match joué reste « résultat à transmettre » tant qu'il ne l'est pas). */
+const SPORT_STATUS_OVERRIDE_LABELS: Record<string, string | undefined> = {
+  postponed: "Reporté",
+  cancelled: "Annulé",
+};
+
 const EVENT_TYPE_MAP: Record<string, CalendarEventKind> = {
   match: "match",
   entrainement: "training",
@@ -72,6 +80,14 @@ interface ClubMatchRow {
   match_date: string | null;
   lieu: string | null;
   status: string;
+  // Colonnes du Lot 0 calendrier (migration-calendrier-sync-sources-v1.sql, exécutée le
+  // 05/09/2026). kickoff_time : jusqu'ici un match apparaissait toujours en « journée entière »
+  // dans le calendrier faute de colonne heure — deux matchs du même jour étaient donc
+  // indistinguables à l'écran. sport_status : statut SPORTIF (reporté/annulé/joué), distinct de
+  // `status` qui décrit l'avancement de la production de contenu ; c'est lui qu'il faut montrer
+  // quand il dit autre chose que « programmé ».
+  kickoff_time: string | null;
+  sport_status: string | null;
 }
 
 /** teamId (optionnel) : filtre sur la fiche équipe (/teams/[id], team_id réel sur les deux
@@ -88,7 +104,7 @@ export async function fetchClubCalendarEvents(
     .eq("club_id", organizationId);
   let matchesQuery = supabase
     .from("club_matches")
-    .select("id, team, opponent, match_date, lieu, status")
+    .select("id, team, opponent, match_date, lieu, status, kickoff_time, sport_status")
     .eq("club_id", organizationId);
   if (teamId) {
     eventsQuery = eventsQuery.eq("team_id", teamId);
@@ -102,20 +118,29 @@ export async function fetchClubCalendarEvents(
 
   const matches: CalendarEvent[] = ((matchesRes.data ?? []) as ClubMatchRow[])
     .filter((row) => row.match_date)
-    .map((row) => ({
-      id: `match-${row.id}`,
-      organizationId,
-      kind: "match",
-      title: `${row.team} vs ${row.opponent}`,
-      startsAt: row.match_date!,
-      allDay: true,
-      location: row.lieu ?? undefined,
-      teamName: row.team,
-      sourceHref: "/matchcenter",
-      // Traduit le statut brut (a_venir/a_transmettre/recu) via le même mapping que Match Center
-      // (MATCH_STATUS_LABELS) — voir EventDetailPanel.tsx, qui affiche event.status tel quel.
-      status: MATCH_STATUS_LABELS[MATCH_STATUS_MAP[row.status] ?? "upcoming"],
-    }));
+    .map((row) => {
+      const time = row.kickoff_time ? row.kickoff_time.slice(0, 5) : null;
+      return {
+        id: `match-${row.id}`,
+        organizationId,
+        kind: "match" as const,
+        title: `${row.team} vs ${row.opponent}`,
+        // Un match avec heure de coup d'envoi n'est plus un événement « journée entière » : il se
+        // place à la bonne heure et deux matchs du même jour ne se confondent plus.
+        startsAt: time ? `${row.match_date}T${time}` : row.match_date!,
+        allDay: !time,
+        location: row.lieu ?? undefined,
+        teamName: row.team,
+        sourceHref: "/matchcenter",
+        // Le statut sportif prime quand il dit autre chose que « programmé » : un match reporté ou
+        // annulé doit se lire comme tel dans le calendrier, pas comme « à venir ». Sinon on garde
+        // le statut de production (a_venir/a_transmettre/recu), traduit par le même mapping que
+        // Match Center — voir EventDetailPanel.tsx, qui affiche event.status tel quel.
+        status:
+          SPORT_STATUS_OVERRIDE_LABELS[row.sport_status ?? ""] ??
+          MATCH_STATUS_LABELS[MATCH_STATUS_MAP[row.status] ?? "upcoming"],
+      };
+    });
 
   return [...events, ...matches];
 }
@@ -136,6 +161,10 @@ export async function createClubCalendarEvent(
   input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string; teamId?: string },
 ): Promise<CalendarEvent> {
   if (input.kind === "match") {
+    // `kickoff_time` (Lot 0 calendrier, 05/09/2026) : la saisie manuelle porte désormais l'heure,
+    // comme l'import. Ce n'est pas cosmétique — l'heure fait partie de la clé d'unicité de repli
+    // (club_matches_fallback_uniq), donc c'est elle qui permet de créer à la main deux matchs de
+    // la même équipe contre le même adversaire le même jour, cas d'un tournoi.
     const { data: match, error: matchError } = await supabase
       .from("club_matches")
       .insert({
@@ -143,19 +172,25 @@ export async function createClubCalendarEvent(
         team: input.team || "",
         opponent: input.title,
         match_date: input.date,
+        kickoff_time: input.time || null,
         lieu: input.location || null,
         status: "a_venir",
       })
-      .select("id, team, opponent, match_date, lieu, status")
-      .single();
-    if (matchError || !match) throw matchError ?? new Error("Création du match impossible.");
+      .select("id, team, opponent, match_date, kickoff_time, lieu, status")
+      .maybeSingle();
+    if (matchError) throw matchError;
+    // 0 ligne sans erreur : le trigger club_matches_ignore_source_duplicate (Lot 0) a annulé
+    // l'insertion parce qu'un match strictement identique existe déjà. `.single()` remontait ça
+    // comme une erreur PostgREST opaque ("JSON object requested, multiple (or no) rows returned").
+    if (!match) throw new Error("Ce match existe déjà dans le calendrier (même équipe, adversaire, date et heure).");
+    const time = match.kickoff_time ? String(match.kickoff_time).slice(0, 5) : null;
     return {
       id: `match-${match.id}`,
       organizationId,
       kind: "match",
       title: `${match.team} vs ${match.opponent}`,
-      startsAt: match.match_date,
-      allDay: true,
+      startsAt: time ? `${match.match_date}T${time}` : match.match_date,
+      allDay: !time,
       location: match.lieu ?? undefined,
       teamName: match.team,
       sourceHref: "/matchcenter",

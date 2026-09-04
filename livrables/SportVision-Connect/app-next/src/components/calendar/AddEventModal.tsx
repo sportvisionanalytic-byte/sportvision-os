@@ -43,8 +43,9 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
   // dans club_calendar_events, une table totalement déconnectée de club_matches (Match Center,
   // import calendrier, résultats, contenus liés) : deux représentations indépendantes du même
   // match réel. "Titre" devient "Adversaire" pour ce type précis (submit routé vers club_matches
-  // par calendar.ts § createClubCalendarEvent, voir son commentaire) ; "Heure" est masqué car
-  // club_matches n'a pas de colonne heure (seulement match_date).
+  // par calendar.ts § createClubCalendarEvent, voir son commentaire). "Heure" était masqué pour un
+  // match car club_matches n'avait pas de colonne heure : ce n'est plus vrai depuis le Lot 0
+  // calendrier (kickoff_time, 05/09/2026), le champ est donc proposé dans tous les cas.
   const isMatch = kind === "match";
   const canSubmit = title.trim().length > 0 && date.trim().length > 0 && (!isMatch || team.trim().length > 0);
 
@@ -98,12 +99,13 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
             <span className="text-[12.5px] font-bold text-text-soft">Date</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={fieldClass} />
           </label>
-          {!isMatch && (
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[12.5px] font-bold text-text-soft">Heure (optionnel)</span>
-              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={fieldClass} />
-            </label>
-          )}
+          {/* Heure proposee aussi pour un match depuis le Lot 0 calendrier (05/09/2026) :
+              club_matches a desormais une colonne kickoff_time, la limitation notee plus haut
+              ("club_matches n'a pas de colonne heure") n'existe plus. */}
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Heure (optionnel)</span>
+            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={fieldClass} />
+          </label>
         </div>
 
         <label className="flex flex-col gap-1.5">

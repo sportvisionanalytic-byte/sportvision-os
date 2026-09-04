@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Match, MatchScorer, MatchStatus } from "@/lib/types/studio";
+import { buildImportPreview } from "@/lib/calendar/diff";
+import type { ProviderId, SourceEvent, SportStatus } from "@/lib/calendar/types";
+import { applyCalendarImport, fetchExistingMatches } from "./calendar-sync";
 
 // club_matches (migration-clubplus-v3.sql) — 5 statuts réels depuis migration-clubplus-v37.sql
 // (a_venir/a_transmettre/recu/reportee/annulee), contrainte check en base : "content_created" (6e
@@ -132,47 +135,92 @@ export interface ImportedMatchInput {
   opponent: string;
   matchDate: string;
   lieu: string | null;
+  /** Champs de provenance, tous optionnels — un appelant qui ne les fournit pas retombe sur la
+   * clé de repli, exactement comme avant ce chantier. */
+  kickoffTime?: string | null;
+  competition?: string | null;
+  provider?: ProviderId;
+  externalEventId?: string | null;
+  externalCompetitionId?: string | null;
+  sportStatus?: SportStatus | null;
+  saisonId?: string | null;
 }
 
-/** Import calendrier (FFF/ICS/CSV, prompt #6 backlog Club+ V2) — premier chemin d'écriture
- * self-service sur club_matches (cma_member_insert, RLS déjà permissive à tout membre du club,
- * jamais exposé côté UI jusqu'ici). Statut toujours 'a_venir' à la création, comme toute nouvelle
- * ligne côté staff. Séquentiel (pas Promise.all) : un lot compte rarement plus d'une saison de
- * matchs, mieux vaut un rapport précis par ligne qu'un tout-ou-rien sur un import volumineux.
+/**
+ * Import calendrier programmatique — enveloppe fine autour du moteur commun.
  *
- * Anti-doublon réimport (audit transversal 04/09/2026, scénario 12 : "réimporter exactement le
- * même fichier -> 0 doublon") : upsert sur la contrainte club_matches_no_reimport_dup (club_id,
- * team, opponent, match_date) avec ignoreDuplicates — un match déjà présent est compté à part
- * (skipped), jamais recréé ni traité comme un échec. */
+ * 05/09/2026, phase TypeScript du chantier calendrier : cette fonction ne fait plus d'upsert sur
+ * `club_matches_no_reimport_dup` (club_id, team, opponent, match_date). Cet index interdisait deux
+ * matchs de la même équipe contre le même adversaire le même jour à des heures différentes — un
+ * tournoi, donc — et il était la dernière chose qui empêchait de le retirer.
+ *
+ * L'identité appliquée est désormais celle du Lot 0 :
+ *   external_event_id présent → (club_id, provider, external_event_id), et un changement de date
+ *   ou d'heure est une MISE À JOUR ;
+ *   sinon → (club_id, team_id, lower(opponent), match_date, kickoff_time), l'heure faisant
+ *   pleinement partie de la clé.
+ *
+ * Aucune règle n'est réimplémentée ici : la décision passe par buildImportPreview et l'écriture
+ * par applyCalendarImport (lib/data/club/calendar-sync.ts), les mêmes que l'écran d'import. Un
+ * second moteur, même minuscule, finirait par diverger du premier.
+ *
+ * La valeur de retour reste `{ succeeded, skipped, failed }` : `skipped` compte désormais les
+ * lignes déjà présentes ET inchangées, `succeeded` les créations et les mises à jour réelles.
+ */
 export async function importClubMatches(
   supabase: SupabaseClient,
   clubId: string,
   rows: ImportedMatchInput[],
+  options?: { provider?: ProviderId; saisonId?: string | null },
 ): Promise<{ succeeded: number; skipped: number; failed: number }> {
-  let succeeded = 0;
-  let skipped = 0;
-  let failed = 0;
-  for (const row of rows) {
-    const { data, error } = await supabase
-      .from("club_matches")
-      .upsert(
-        {
-          club_id: clubId,
-          team: row.teamName,
-          team_id: row.teamId,
-          opponent: row.opponent,
-          match_date: row.matchDate,
-          lieu: row.lieu,
-          status: "a_venir",
-        },
-        { onConflict: "club_id,team,opponent,match_date", ignoreDuplicates: true },
-      )
-      .select("id");
-    if (error) failed++;
-    else if (data && data.length > 0) succeeded++;
-    else skipped++;
-  }
-  return { succeeded, skipped, failed };
+  if (rows.length === 0) return { succeeded: 0, skipped: 0, failed: 0 };
+
+  const provider = options?.provider ?? rows[0]?.provider ?? "MANUAL";
+  const events: SourceEvent[] = rows.map((row, index) => ({
+    sourceLine: index + 1,
+    rawLabel: row.opponent,
+    externalEventId: row.externalEventId ?? null,
+    externalCompetitionId: row.externalCompetitionId ?? null,
+    competitionName: row.competition ?? null,
+    externalTeamId: null,
+    sourceTeamName: row.teamName || null,
+    opponent: row.opponent,
+    matchDate: row.matchDate,
+    kickoffTime: row.kickoffTime ?? null,
+    location: row.lieu,
+    isHome: null,
+    sportStatus: row.sportStatus ?? null,
+    score: null,
+    sourceUpdatedAt: null,
+  }));
+
+  const existing = await fetchExistingMatches(supabase, clubId);
+  const teams = Array.from(new Map(rows.map((r) => [r.teamId, r.teamName])).entries()).map(([id, name]) => ({ id, name }));
+  const preview = buildImportPreview({
+    provider,
+    events,
+    issues: [],
+    existing,
+    teams,
+    mappings: [],
+    defaultTeamId: null,
+    // L'équipe est donnée explicitement par l'appelant ligne par ligne : aucun rapprochement de
+    // nom à faire, et surtout aucune ligne à laisser en "à mapper".
+    overrides: { teamIdByLine: Object.fromEntries(rows.map((row, index) => [index + 1, row.teamId])) },
+  });
+
+  const result = await applyCalendarImport(supabase, {
+    clubId,
+    saisonId: options?.saisonId ?? rows[0]?.saisonId ?? null,
+    provider,
+    rows: preview.rows,
+  });
+
+  return {
+    succeeded: result.created + result.updated,
+    skipped: result.skipped + preview.counts.unchanged,
+    failed: result.failed.length,
+  };
 }
 
 /** Utilisé par le Studio pour préremplir un formulaire depuis un match réel (?matchId=uuid),

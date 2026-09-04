@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:calendar": "node --test src/lib/calendar/__tests__/run.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
