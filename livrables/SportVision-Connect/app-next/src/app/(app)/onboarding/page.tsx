@@ -696,16 +696,20 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
 
 function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: boolean; onSaved: () => void }) {
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<"match" | "event" | "training">("event");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
+  const [teamId, setTeamId] = useState("");
   const [saving, setSaving] = useState(false);
 
   function reload() {
-    fetchClubCalendarEvents(createClient(), clubId).then(setEvents).catch(() => setEvents([]));
+    const supabase = createClient();
+    fetchClubCalendarEvents(supabase, clubId).then(setEvents).catch(() => setEvents([]));
+    fetchClubTeams(supabase, clubId).then(setTeams).catch(() => setTeams([]));
   }
   useEffect(reload, [clubId]);
 
@@ -713,11 +717,21 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
     if (!title.trim() || !date) return;
     setSaving(true);
     try {
-      await createClubCalendarEvent(createClient(), clubId, { title: title.trim(), kind, date, time: time || undefined, location: location.trim() || undefined });
+      const team = teams.find((t) => t.id === teamId);
+      await createClubCalendarEvent(createClient(), clubId, {
+        title: title.trim(),
+        kind,
+        date,
+        time: time || undefined,
+        location: location.trim() || undefined,
+        team: team?.name,
+        teamId: team?.id,
+      });
       setTitle("");
       setDate("");
       setTime("");
       setLocation("");
+      setTeamId("");
       setShowForm(false);
       reload();
       onSaved();
@@ -738,6 +752,7 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
             <div key={e.id} className="flex flex-wrap items-center gap-3 py-2 first:pt-0 last:pb-0 text-[12.5px]">
               <span className="w-24 flex-none font-bold text-text">{e.startsAt.slice(0, 10)}</span>
               <span className="min-w-0 flex-1 truncate">{e.title}</span>
+              {e.teamName && <span className="text-text-soft">{e.teamName}</span>}
               {e.location && <span className="text-text-soft">{e.location}</span>}
             </div>
           ))}
@@ -769,6 +784,16 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
             </Field>
             <Field label="Lieu (facultatif)">
               <input value={location} onChange={(e) => setLocation(e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label="Équipe (facultatif)" full>
+              <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className={fieldClass}>
+                <option value="">Tout le club</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
           <div className="flex items-center gap-3">

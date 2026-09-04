@@ -38,6 +38,7 @@ export interface CalendarEvent {
   allDay: boolean;
   location?: string;
   teamName?: string;
+  teamId?: string;
   sourceHref?: string;
   status?: string;
 }

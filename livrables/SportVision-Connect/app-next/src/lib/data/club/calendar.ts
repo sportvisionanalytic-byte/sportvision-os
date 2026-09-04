@@ -39,11 +39,17 @@ interface ClubCalendarEventRow {
   type: string;
   title: string;
   team: string | null;
+  team_id: string | null;
   location: string | null;
 }
 
 // event_time/location : colonnes ajoutées par migration-clubplus-v35-calendar-event-heure-lieu.sql
 // (exécutée par Fouka le 09/08/2026) — réintègre les champs retirés lors de l'audit du même jour.
+//
+// team_id (migration-clubplus-v54, 03/09/2026) : même patron que club_matches.team_id
+// (migration-clubplus-v37) — `team` (texte) reste la source d'affichage et sert toujours aux RLS
+// famille/joueur (ccal_family_select/ccal_player_select, comparaison par nom), `team_id` est la
+// vraie FK utilisée par la RLS staff/coach (ccal_member_select/insert, is_team_educateur).
 function toCalendarEvent(row: ClubCalendarEventRow, organizationId: string): CalendarEvent {
   const hasTime = Boolean(row.event_time);
   return {
@@ -55,6 +61,7 @@ function toCalendarEvent(row: ClubCalendarEventRow, organizationId: string): Cal
     allDay: !hasTime,
     location: row.location ?? undefined,
     teamName: row.team ?? undefined,
+    teamId: row.team_id ?? undefined,
   };
 }
 
@@ -74,7 +81,7 @@ export async function fetchClubCalendarEvents(
   const [eventsRes, matchesRes] = await Promise.all([
     supabase
       .from("club_calendar_events")
-      .select("id, event_date, event_time, type, title, team, location")
+      .select("id, event_date, event_time, type, title, team, team_id, location")
       .eq("club_id", organizationId),
     supabase
       .from("club_matches")
@@ -109,7 +116,7 @@ export async function fetchClubCalendarEvents(
 export async function createClubCalendarEvent(
   supabase: SupabaseClient,
   organizationId: string,
-  input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string },
+  input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string; teamId?: string },
 ): Promise<CalendarEvent> {
   const type = CREATABLE_EVENT_TYPE_MAP[input.kind] ?? "contenu";
 
@@ -123,8 +130,9 @@ export async function createClubCalendarEvent(
       title: input.title,
       location: input.location || null,
       team: input.team || null,
+      team_id: input.teamId || null,
     })
-    .select("id, event_date, event_time, type, title, team, location")
+    .select("id, event_date, event_time, type, title, team, team_id, location")
     .single();
   if (error || !data) throw error ?? new Error("Création de l'événement impossible.");
 
