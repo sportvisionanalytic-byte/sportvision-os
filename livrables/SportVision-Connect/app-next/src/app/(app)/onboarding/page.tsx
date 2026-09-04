@@ -12,7 +12,7 @@ import { updateClubOrganization, uploadClubLogo } from "@/lib/data/club/organiza
 import { fetchClubMembers, inviteClubMember } from "@/lib/data/club/users";
 import { ROLE_LABELS, type OrgUser } from "@/lib/types/settings";
 import { fetchClubTeams, createClubTeam } from "@/lib/data/club/teams";
-import { fetchClubSponsors, createClubSponsor } from "@/lib/data/club/sponsors";
+import { fetchClubSponsors, createClubSponsor, uploadSponsorLogo } from "@/lib/data/club/sponsors";
 import { fetchClubCalendarEvents, createClubCalendarEvent } from "@/lib/data/club/calendar";
 import type { Team } from "@/lib/types/teams";
 import type { Sponsor } from "@/lib/types/sponsors";
@@ -279,6 +279,7 @@ const CLUB_INVITE_ROLES: MembershipRole[] = [
   "sports_director",
   "communication_manager",
   "team_manager",
+  "coach",
   "board_member",
   "admin_staff",
 ];
@@ -402,6 +403,9 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
   const [slotForm, setSlotForm] = useState<{ teamId: string; jour: string; heureDebut: string; heureFin: string; venueId: string } | null>(null);
   const [slotSaving, setSlotSaving] = useState(false);
   const [slotError, setSlotError] = useState<string | null>(null);
+  const [coachInvite, setCoachInvite] = useState<{ teamId: string; email: string; firstName: string; lastName: string } | null>(null);
+  const [coachSending, setCoachSending] = useState(false);
+  const [coachError, setCoachError] = useState<string | null>(null);
 
   async function reload() {
     const supabase = createClient();
@@ -488,6 +492,30 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
     }
   }
 
+  async function handleInviteCoach(teamName: string) {
+    if (!coachInvite || !coachInvite.email.trim() || !coachInvite.firstName.trim() || !coachInvite.lastName.trim()) {
+      setCoachError("Prénom, nom et e-mail sont obligatoires.");
+      return;
+    }
+    setCoachSending(true);
+    setCoachError(null);
+    try {
+      await inviteClubMember(createClient(), clubId, {
+        email: coachInvite.email.trim(),
+        firstName: coachInvite.firstName.trim(),
+        lastName: coachInvite.lastName.trim(),
+        role: "coach",
+        team: teamName,
+      });
+      setCoachInvite(null);
+      onSaved();
+    } catch (e) {
+      setCoachError(e instanceof Error ? e.message : "Impossible d'envoyer l'invitation.");
+    } finally {
+      setCoachSending(false);
+    }
+  }
+
   return (
     <Card className="flex flex-col gap-4 p-5">
       <SectionHeader title="3. Équipes & entraînements" description="Une équipe créée ici est réutilisée telle quelle par la Production, la Communication et Connect." />
@@ -507,15 +535,51 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
                   {team.category !== "—" && <span className="ml-2 text-[11.5px] text-text-soft">{team.category}</span>}
                 </div>
                 {canEdit && (
-                  <Button
-                    variant="tertiary"
-                    className="h-7 px-2 text-[11.5px]"
-                    onClick={() => setSlotForm({ teamId: team.id, jour: "mardi", heureDebut: "", heureFin: "", venueId: "" })}
-                  >
-                    + Créneau d&apos;entraînement
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="tertiary"
+                      className="h-7 px-2 text-[11.5px]"
+                      onClick={() => setSlotForm({ teamId: team.id, jour: "mardi", heureDebut: "", heureFin: "", venueId: "" })}
+                    >
+                      + Créneau d&apos;entraînement
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      className="h-7 px-2 text-[11.5px]"
+                      onClick={() => { setCoachError(null); setCoachInvite({ teamId: team.id, email: "", firstName: "", lastName: "" }); }}
+                    >
+                      + Inviter un coach
+                    </Button>
+                  </div>
                 )}
               </div>
+              {coachInvite?.teamId === team.id && (
+                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border-strong p-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <Field label="Prénom">
+                      <input value={coachInvite.firstName} onChange={(e) => setCoachInvite({ ...coachInvite, firstName: e.target.value })} className={cn(fieldClass, "h-9")} />
+                    </Field>
+                    <Field label="Nom">
+                      <input value={coachInvite.lastName} onChange={(e) => setCoachInvite({ ...coachInvite, lastName: e.target.value })} className={cn(fieldClass, "h-9")} />
+                    </Field>
+                    <Field label="E-mail">
+                      <input type="email" value={coachInvite.email} onChange={(e) => setCoachInvite({ ...coachInvite, email: e.target.value })} className={cn(fieldClass, "h-9")} />
+                    </Field>
+                  </div>
+                  {coachError && <p className="text-[12px] font-bold text-danger-fg">{coachError}</p>}
+                  <div className="flex items-center gap-2">
+                    <Button className="h-9 px-3 text-[12px]" loading={coachSending} onClick={() => handleInviteCoach(team.name)}>
+                      Envoyer l&apos;invitation
+                    </Button>
+                    <Button variant="secondary" className="h-9 px-3 text-[12px]" onClick={() => { setCoachInvite(null); setCoachError(null); }}>
+                      Annuler
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-text-faint">
+                    Le coach sera automatiquement lié à l&apos;équipe {team.name} — aucune sélection à faire de son côté après acceptation.
+                  </p>
+                </div>
+              )}
               <div className="mt-2 flex flex-col gap-1">
                 {teamSlots.length === 0 && <span className="text-[11.5px] text-text-faint">Aucun créneau d&apos;entraînement renseigné.</span>}
                 {teamSlots.map((s) => (
@@ -816,6 +880,8 @@ function SponsorsCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: b
   const [name, setName] = useState("");
   const [niveau, setNiveau] = useState<"Or" | "Argent" | "Bronze">("Bronze");
   const [saving, setSaving] = useState(false);
+  const [logoUploadingId, setLogoUploadingId] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
   function reload() {
     fetchClubSponsors(createClient(), clubId).then(setSponsors).catch(() => setSponsors([]));
@@ -836,16 +902,54 @@ function SponsorsCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: b
     }
   }
 
+  async function handleLogoChange(sponsorId: string, event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setLogoUploadingId(sponsorId);
+    setLogoError(null);
+    try {
+      await uploadSponsorLogo(createClient(), clubId, sponsorId, file);
+      reload();
+      onSaved();
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : "Impossible d'envoyer ce logo.");
+    } finally {
+      setLogoUploadingId(null);
+    }
+  }
+
   return (
     <Card className="flex flex-col gap-4 p-5">
       <SectionHeader title="6. Sponsors" description="Logos et noms des partenaires actuels du club — modifiables plus en détail depuis Sponsors." />
       {(sponsors ?? []).length === 0 && sponsors !== null && <p className="text-[12.5px] text-text-soft">Aucun sponsor renseigné.</p>}
+      {logoError && <p className="text-[12.5px] font-bold text-danger-fg">{logoError}</p>}
       {(sponsors ?? []).length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col divide-y divide-divider">
           {(sponsors ?? []).map((s) => (
-            <span key={s.id} className="rounded-full border border-border-strong px-3 py-1.5 text-[12px] font-semibold">
-              {s.name}
-            </span>
+            <div key={s.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+              <div className="flex h-10 w-10 flex-none items-center justify-center overflow-hidden rounded-lg border border-border-strong bg-surface-muted">
+                {s.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.logoUrl} alt={s.name} className="h-full w-full object-contain" />
+                ) : (
+                  <span className="text-[10px] font-bold text-text-faint">Logo</span>
+                )}
+              </div>
+              <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text">{s.name}</span>
+              {canEdit && (
+                <label className="cursor-pointer text-[12px] font-bold text-accent hover:underline">
+                  {logoUploadingId === s.id ? "Envoi…" : s.logoUrl ? "Changer le logo" : "Ajouter un logo"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="hidden"
+                    disabled={logoUploadingId !== null}
+                    onChange={(e) => handleLogoChange(s.id, e)}
+                  />
+                </label>
+              )}
+            </div>
           ))}
         </div>
       )}

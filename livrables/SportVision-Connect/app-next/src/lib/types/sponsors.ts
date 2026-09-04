@@ -21,6 +21,8 @@ export interface Sponsor {
   signatories: string[];
   sector?: string;
   commitments: SponsorCommitment[];
+  // club_sponsors.logo_url (migration-clubplus-v53) — null si jamais uploadé.
+  logoUrl: string | null;
 }
 
 /** Contrepartie suivie dans le temps — club_sponsors.commitments (jsonb, migration-clubplus-v5.sql).

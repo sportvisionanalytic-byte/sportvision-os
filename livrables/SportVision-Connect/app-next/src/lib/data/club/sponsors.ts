@@ -48,6 +48,7 @@ interface ClubSponsorRow {
   date_fin: string | null;
   montant: number;
   commitments: unknown;
+  logo_url: string | null;
 }
 
 function deriveStatus(dateFin: string | null): SponsorStatus {
@@ -62,7 +63,7 @@ function deriveStatus(dateFin: string | null): SponsorStatus {
 export async function fetchClubSponsors(supabase: SupabaseClient, organizationId: string): Promise<Sponsor[]> {
   const { data } = await supabase
     .from("club_sponsors")
-    .select("id, name, secteur, niveau, date_debut, date_fin, montant, commitments")
+    .select("id, name, secteur, niveau, date_debut, date_fin, montant, commitments, logo_url")
     .eq("club_id", organizationId)
     .order("montant", { ascending: false });
 
@@ -79,6 +80,7 @@ export async function fetchClubSponsors(supabase: SupabaseClient, organizationId
     signatories: [],
     sector: row.secteur ?? undefined,
     commitments: parseSponsorCommitments(row.commitments),
+    logoUrl: row.logo_url,
   }));
 }
 
@@ -108,6 +110,39 @@ export async function createClubSponsor(
     .single();
   if (error) throw error;
   return data as { id: string };
+}
+
+const MAX_SPONSOR_LOGO_BYTES = 2 * 1024 * 1024;
+const ACCEPTED_SPONSOR_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+
+/** Logo d'un sponsor (migration-clubplus-v53, 03/09/2026) — même bucket Storage que le logo du
+ * club (`club-logos`), chemin {club_id}/sponsor-{sponsor_id}.{ext} : reste sous le dossier du
+ * club, donc couvert par les policies is_club_admin() déjà en place (migration-clubplus-v47),
+ * aucune nouvelle policy Storage nécessaire. Écrasé à chaque nouvel upload, comme le logo club. */
+export async function uploadSponsorLogo(supabase: SupabaseClient, clubId: string, sponsorId: string, file: File): Promise<string> {
+  if (!ACCEPTED_SPONSOR_LOGO_TYPES.includes(file.type)) {
+    throw new Error("Format non accepté (PNG, JPEG, WebP ou SVG uniquement).");
+  }
+  if (file.size > MAX_SPONSOR_LOGO_BYTES) {
+    throw new Error("Fichier trop volumineux (2 Mo maximum).");
+  }
+
+  const ext = file.type === "image/svg+xml" ? "svg" : file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `${clubId}/sponsor-${sponsorId}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage.from("club-logos").upload(path, file, {
+    upsert: true,
+    contentType: file.type,
+  });
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage.from("club-logos").getPublicUrl(path);
+  const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
+
+  const { error: updateError } = await supabase.from("club_sponsors").update({ logo_url: publicUrl }).eq("id", sponsorId);
+  if (updateError) throw updateError;
+
+  return publicUrl;
 }
 
 /** Écrit la liste complète des contreparties (jsonb, remplacement total — pas de RPC dédiée,

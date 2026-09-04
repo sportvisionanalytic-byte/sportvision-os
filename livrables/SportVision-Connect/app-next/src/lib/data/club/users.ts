@@ -7,6 +7,25 @@ import { mapClubRole, mapClubRoleToReal } from "@/lib/supabase/mappers";
 // (rôle/statut) réservée à is_club_admin. Pas d'email réel exposé (auth.users n'est pas
 // accessible via PostgREST) : laissé vide plutôt qu'inventé, voir le plan de migration.
 
+// `supabase.functions.invoke()` sur une réponse non-2xx renvoie une FunctionsHttpError dont
+// `.message` est toujours le texte générique "Edge Function returned a non-2xx status code" —
+// le vrai message (`{error: "..."}` renvoyé par la fonction, ex: plafond du plan atteint) reste
+// dans `error.context` (la Response brute), jamais lu automatiquement par supabase-js. Trouvé en
+// testant l'invitation d'un coach sur un club au plan Gratuit (03/09/2026) : l'admin ne voyait que
+// le message générique, aucune indication qu'il fallait changer de plan.
+async function extractFunctionErrorMessage(error: unknown): Promise<string> {
+  const context = (error as { context?: unknown } | null)?.context;
+  if (context instanceof Response) {
+    try {
+      const body = await context.clone().json();
+      if (body?.error) return body.error;
+    } catch {
+      // corps non-JSON : on retombe sur le message générique ci-dessous.
+    }
+  }
+  return error instanceof Error ? error.message : "Impossible d'envoyer l'invitation.";
+}
+
 interface ClubMemberRow {
   id: string;
   user_id: string;
@@ -81,7 +100,7 @@ export async function inviteClubMember(
       mode: input.mode === "direct" ? "direct" : "email",
     },
   });
-  if (error) throw error;
+  if (error) throw new Error(await extractFunctionErrorMessage(error));
   if (data?.error) throw new Error(data.error);
   return {
     password: data?.password ?? null,
