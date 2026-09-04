@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Camera, FileBarChart, ListChecks, MessageCircle, MessageSquareText, Send } from "lucide-react";
+import { Calendar, Camera, FileBarChart, ListChecks, MessageCircle, MessageSquareText, Send, UserPlus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
@@ -29,6 +29,8 @@ import {
 } from "@/lib/data/shared/contenu-stats";
 import { fetchCommunityManager, type CommunityManager } from "@/lib/data/shared/community-manager";
 import { fetchClubPresences, type ClubPresence } from "@/lib/data/club/presences";
+import { deriveStage, fetchClubJoinRequests } from "@/lib/data/club/team-requests";
+import { fetchClubRequests } from "@/lib/data/club/requests";
 import { fetchClientDevis, fetchClientInvoices } from "@/lib/data/projet/billing";
 import { FinanceSummaryCard, summarizeFinance, type FinanceSummary } from "@/components/dashboard/FinanceSummaryCard";
 
@@ -137,6 +139,42 @@ function DashboardBody({ clientId }: { clientId: string }) {
   const [loadError, setLoadError] = useState(false);
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null | undefined>(undefined);
   const [financeError, setFinanceError] = useState(false);
+
+  // Action Center (04/09/2026) : un club Full Communication gère aussi son propre effectif via
+  // Connect (roster/affiliations, indépendant du service de communication vendu) — les demandes
+  // d'adhésion et de complément d'info n'étaient surfacées nulle part sur ce dashboard, comme sur
+  // ClubPlusDashboard avant ce même chantier. Même logique, réutilisée telle quelle. `role` peut
+  // valoir "admin" (dirigeant) ici comme côté Club+ classique.
+  const isCoachRole = ctx.membership.role === "coach";
+  const isAdminRole = ctx.membership.role === "admin";
+  const [pendingMembershipCount, setPendingMembershipCount] = useState(0);
+  const [pendingInfoCount, setPendingInfoCount] = useState(0);
+
+  const loadActionCenter = useCallback(async () => {
+    if (ctx.organization.type !== "club" || isTreasurer) return;
+    const supabase = createClient();
+    try {
+      const [joinRequests, visualRequests] = await Promise.all([
+        fetchClubJoinRequests(supabase, ctx.organization.id).catch(() => []),
+        fetchClubRequests(supabase, ctx.organization.id).catch(() => []),
+      ]);
+      setPendingMembershipCount(
+        joinRequests.filter((req) => {
+          const stage = deriveStage(req);
+          if (isCoachRole) return stage === "attente_educateur";
+          if (isAdminRole) return stage === "attente_dirigeant";
+          return false;
+        }).length,
+      );
+      setPendingInfoCount(visualRequests.filter((r) => r.status === "À compléter").length);
+    } catch {
+      // Signal secondaire — une panne ici ne doit jamais bloquer le reste du dashboard.
+    }
+  }, [ctx.organization.id, ctx.organization.type, isCoachRole, isAdminRole, isTreasurer]);
+
+  useEffect(() => {
+    loadActionCenter();
+  }, [loadActionCenter]);
 
   const loadFinanceSummary = useCallback(async () => {
     if (!isTreasurer) return;
@@ -274,6 +312,38 @@ function DashboardBody({ clientId }: { clientId: string }) {
           </div>
           <Button variant="dark" onClick={() => router.push("/validations")}>
             Voir ce qui attend ma validation
+          </Button>
+        </Card>
+      )}
+
+      {pendingMembershipCount > 0 && (
+        <Card className="flex flex-wrap items-center justify-between gap-3 border-warning-fg/30 bg-warning-bg px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white/60 text-warning-fg dark:bg-white/10">
+              <UserPlus className="h-4 w-4" aria-hidden />
+            </span>
+            <div className="text-[14px] font-extrabold tracking-tight text-warning-fg">
+              {pendingMembershipCount} demande{pendingMembershipCount > 1 ? "s" : ""} d&apos;adhésion à traiter
+            </div>
+          </div>
+          <Button variant="dark" onClick={() => router.push("/team-requests")}>
+            Voir les demandes
+          </Button>
+        </Card>
+      )}
+
+      {pendingInfoCount > 0 && (
+        <Card className="flex flex-wrap items-center justify-between gap-3 border-warning-fg/30 bg-warning-bg px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white/60 text-warning-fg dark:bg-white/10">
+              <ListChecks className="h-4 w-4" aria-hidden />
+            </span>
+            <div className="text-[14px] font-extrabold tracking-tight text-warning-fg">
+              {pendingInfoCount} demande{pendingInfoCount > 1 ? "s" : ""} de visuel en attente d&apos;un complément
+            </div>
+          </div>
+          <Button variant="dark" onClick={() => router.push("/requests")}>
+            Compléter
           </Button>
         </Card>
       )}
