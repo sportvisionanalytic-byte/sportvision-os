@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAccountType } from "@/lib/supabase/session";
 
 // Page publique du Smart Link/QR (migration-clubplus-v57, 03/09/2026) — SANS COMPTE, même patron
 // que /cotisation/[token]/page.tsx (server component, RPC lecture seule grantée à `anon`, aucune
@@ -40,9 +41,19 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
   // d'inscription multi-étapes n'a pas encore de mécanisme pour rejouer un code d'équipe après
   // confirmation d'e-mail (contrairement à "join"/"declare", voir pending-onboarding.ts) ; on
   // n'affiche donc jamais une promesse de préremplissage qu'on ne tient pas encore pour ce cas.
-  const continueHref = user
-    ? `/affiliations/ajouter?code=${encodeURIComponent(code)}`
-    : `/auth/login?next=${encodeURIComponent(`/affiliations/ajouter?code=${code}`)}`;
+  //
+  // Décision produit du 04/09/2026 (finding D11 de l'audit transversal) : un compte 'particulier'
+  // qui continuait vers /affiliations/ajouter se faisait rediriger en dur vers /particulier par
+  // requireJoueurAccount(), SANS jamais transmettre le code — le Smart Link était un lien mort
+  // pour ce type de compte, le plus courant côté parent. Cible désormais /particulier/rejoindre/
+  // [code], qui propose "Qui rejoint ?" parmi les sportifs déjà suivis (connect_list_my_athletes,
+  // linked/managed/club unifiés) + "Ajouter un enfant", puis fait converger vers la personne
+  // canonique (player_profiles) au lieu de créer une fiche déclarative déconnectée — jamais de
+  // Noah bis (voir connect_join_club_via_smart_link, migration-smartlink-particulier-
+  // convergence.sql).
+  const accountType = user ? await getAccountType(supabase, user.id) : null;
+  const joinPath = accountType === "particulier" ? `/particulier/rejoindre/${code}` : `/affiliations/ajouter?code=${encodeURIComponent(code)}`;
+  const continueHref = user ? joinPath : `/auth/login?next=${encodeURIComponent(joinPath)}`;
   const signupHref = "/signup";
 
   return (
