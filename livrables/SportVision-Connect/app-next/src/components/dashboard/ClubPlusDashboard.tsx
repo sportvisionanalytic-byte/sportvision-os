@@ -125,6 +125,14 @@ export function ClubPlusDashboard() {
   //
   // Trésorier (Bible §10 : "Aucun contenu sportif parasite") : ce bloc ne montre que du contenu
   // Studio (visuels/médias), jamais pertinent pour ce rôle — masqué, pas vidé silencieusement.
+  //
+  // Scope équipe (03/09/2026, chantier "Dashboard par rôle") : un coach voyait jusqu'ici le
+  // contenu de TOUT le club à valider, comme un président — trouvé en auditant l'écart avec le
+  // principe "qu'est-ce qui nécessite mon attention" pour ce rôle précis. `club_creations.team`
+  // (texte libre, comme club_calendar_events.team) filtré côté client contre
+  // ctx.membership.teamScope, même idiome que pendingResults ci-dessous : équipe vide sur l'item
+  // OU teamScope non renseigné = toujours affiché (mieux vaut montrer un peu trop qu'occulter un
+  // vrai contenu à valider), seul un item explicitement lié à une AUTRE équipe est filtré.
   const isTreasurer = ctx.membership.role === "treasurer";
   const [todo, setTodo] = useState<TodoItem[] | null>(null);
   const [error, setError] = useState(false);
@@ -136,7 +144,7 @@ export function ClubPlusDashboard() {
     try {
       const { data, error: queryError } = await supabase
         .from("club_creations")
-        .select("id, title, created_at")
+        .select("id, title, team, created_at")
         .eq("club_id", ctx.organization.id)
         .eq("status", "a_valider")
         .order("created_at", { ascending: false });
@@ -144,8 +152,13 @@ export function ClubPlusDashboard() {
         setError(true);
         return;
       }
+      const rows = (data ?? []) as { id: string; title: string; team: string | null }[];
+      const inScope =
+        ctx.membership.teamScope.length === 0
+          ? rows
+          : rows.filter((row) => !row.team || ctx.membership.teamScope.includes(row.team));
       setTodo(
-        ((data ?? []) as { id: string; title: string }[]).map((row) => ({
+        inScope.map((row) => ({
           title: row.title,
           meta: "Contenu à valider · Studio SportVision",
           action: "Valider",
@@ -154,7 +167,7 @@ export function ClubPlusDashboard() {
     } catch {
       setError(true);
     }
-  }, [ctx.organization.id, isTreasurer]);
+  }, [ctx.organization.id, ctx.membership.teamScope, isTreasurer]);
 
   useEffect(() => {
     loadTodo();
@@ -242,6 +255,12 @@ export function ClubPlusDashboard() {
   // events + club_matches, voir data/club/calendar.ts) — filtrée aux dates futures et triée ici,
   // pas une nouvelle requête. Masqué pour le trésorier (Bible §10 : "aucun contenu sportif
   // parasite"), même règle que le bloc "À traiter" ci-dessus.
+  //
+  // Scope équipe (03/09/2026) : même correction que "À traiter" ci-dessus — un coach voyait tous
+  // les événements du club, pas seulement ceux de ses équipes ("Coach U15 : voit U15, pas U12
+  // sauf s'il possède également ce scope"). Même idiome que pendingResults : event.teamName vide
+  // OU teamScope non renseigné = toujours affiché, seul un événement d'une AUTRE équipe précise
+  // est filtré.
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[] | null>(null);
   const [eventsError, setEventsError] = useState(false);
 
@@ -252,7 +271,11 @@ export function ClubPlusDashboard() {
       const supabase = createClient();
       const events = await fetchClubCalendarEvents(supabase, ctx.organization.id);
       const now = Date.now();
-      const upcoming = events
+      const inScope =
+        ctx.membership.teamScope.length === 0
+          ? events
+          : events.filter((e) => !e.teamName || ctx.membership.teamScope.includes(e.teamName));
+      const upcoming = inScope
         .filter((e) => new Date(e.startsAt).getTime() >= now)
         .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
         .slice(0, 5);
@@ -260,7 +283,7 @@ export function ClubPlusDashboard() {
     } catch {
       setEventsError(true);
     }
-  }, [ctx.organization.id, isTreasurer]);
+  }, [ctx.organization.id, ctx.membership.teamScope, isTreasurer]);
 
   useEffect(() => {
     loadUpcomingEvents();
