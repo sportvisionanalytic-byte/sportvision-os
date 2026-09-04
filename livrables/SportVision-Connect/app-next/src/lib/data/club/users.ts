@@ -124,3 +124,21 @@ export async function setClubMemberStatus(
     throw new Error("Action impossible : droits insuffisants ou membre introuvable.");
   }
 }
+
+/** Gap réel trouvé à l'audit transversal (scénario C6, 04/09/2026) : `teams` (noms d'équipes en
+ * texte libre, cf. is_team_educateur) n'était modifiable qu'à la création de l'invitation —
+ * clubplus-invite renvoie déjà-membre sans jamais mettre à jour `teams` sur un rappel. Un club
+ * admin ne pouvait donc élargir le périmètre d'un coach déjà membre (ex: U15 A → U15 A + U15 B)
+ * que par SQL manuel. La policy RLS `cm_admin_update` autorisait déjà cette écriture ; seule la
+ * fonction data-layer manquait. */
+export async function setClubMemberTeams(
+  supabase: SupabaseClient,
+  membershipId: string,
+  teams: string[],
+): Promise<void> {
+  const { data, error } = await supabase.from("club_members").update({ teams }).eq("id", membershipId).select();
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Action impossible : droits insuffisants ou membre introuvable.");
+  }
+}

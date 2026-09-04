@@ -172,7 +172,16 @@ serve(async (req) => {
         .maybeSingle();
       isFullComm = !!contratRow;
     }
-    const maxUsers = isFullComm ? null : (MAX_USERS_BY_PLAN[clubPlan] ?? MAX_USERS_BY_PLAN.club);
+    // Bug réel trouvé en testant scénario C5 de l'audit transversal (04/09/2026) : `??` traite
+    // `performance: null` (= illimité) comme une valeur manquante et retombe sur le plafond
+    // 'club' (5) — un club plan='performance' SANS contrat Full Com actif lié (donc isFullComm
+    // faux) se retrouvait plafonné à 5 users au lieu d'illimité. Même classe de bug déjà
+    // rencontrée et corrigée pour CREDITS_BY_PLAN dans clubplus-activate (cf. commentaire ligne
+    // 172-174 de ce fichier voisin) — hasOwnProperty distingue "valeur null légitime" de "clé
+    // absente", contrairement à `??`/truthy.
+    const maxUsers = isFullComm
+      ? null
+      : (Object.prototype.hasOwnProperty.call(MAX_USERS_BY_PLAN, clubPlan) ? MAX_USERS_BY_PLAN[clubPlan] : MAX_USERS_BY_PLAN.club);
     if (maxUsers !== null) {
       const { count: memberCount } = await admin
         .from("club_members")
