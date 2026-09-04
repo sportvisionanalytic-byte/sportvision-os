@@ -26,7 +26,7 @@ export function ImportMatchesModal({ clubId, onClose, onImported }: { clubId: st
   const [rows, setRows] = useState<EditableRow[] | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ succeeded: number; failed: number } | null>(null);
+  const [result, setResult] = useState<{ succeeded: number; skipped: number; failed: number } | null>(null);
 
   useEffect(() => {
     fetchClubTeams(createClient(), clubId).then(setTeams);
@@ -153,6 +153,7 @@ export function ImportMatchesModal({ clubId, onClose, onImported }: { clubId: st
         {result && (
           <p className="text-[12.5px] font-bold text-success-fg">
             {result.succeeded} match{result.succeeded > 1 ? "s" : ""} importé{result.succeeded > 1 ? "s" : ""}
+            {result.skipped > 0 && ` · ${result.skipped} déjà existant${result.skipped > 1 ? "s" : ""}`}
             {result.failed > 0 && ` · ${result.failed} échec${result.failed > 1 ? "s" : ""}`}
           </p>
         )}

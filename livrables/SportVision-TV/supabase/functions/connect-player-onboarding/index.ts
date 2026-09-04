@@ -137,6 +137,30 @@ async function upsertJoiningPlayerProfile(
     return { playerId: existingProfile.id };
   }
 
+  // Claim (audit transversal 04/09/2026, persona D / scénario 10) — un mineur qui crée son propre
+  // compte Connect après que son club a déjà créé sa fiche roster (player_profiles.user_id null)
+  // tombait systématiquement dans l'INSERT ci-dessous et créait une DEUXIÈME fiche pour la même
+  // personne. find_unclaimed_player_profile() (migration-audit-transversal-fixes-batch1.sql) ne
+  // renvoie un id que pour une correspondance FORTE et UNIQUE (nom normalisé + date de naissance
+  // exacte) parmi les fiches pas encore réclamées de ce club précis — jamais de fusion ambiguë. En
+  // cas de claim, on NE réécrit PAS prenom/nom/date_naissance (la fiche club reste la source de
+  // vérité pour la licence/le numéro de maillot déjà saisis), on ne pose que user_id+account_status.
+  const { data: unclaimedId } = await admin.rpc("find_unclaimed_player_profile", {
+    p_club_id: clubId,
+    p_prenom: prenom,
+    p_nom: nom,
+    p_date_naissance: dateNaissance,
+  });
+
+  if (unclaimedId) {
+    const { error: claimErr } = await admin
+      .from("player_profiles")
+      .update({ user_id: userId, account_status: "actif" })
+      .eq("id", unclaimedId);
+    if (claimErr) return { error: claimErr.message };
+    return { playerId: unclaimedId };
+  }
+
   const { data: created, error: insErr } = await admin
     .from("player_profiles")
     .insert({ user_id: userId, club_id: clubId, prenom, nom, date_naissance: dateNaissance, account_status: "actif" })

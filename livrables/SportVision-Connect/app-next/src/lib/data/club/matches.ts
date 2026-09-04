@@ -138,28 +138,41 @@ export interface ImportedMatchInput {
  * self-service sur club_matches (cma_member_insert, RLS déjà permissive à tout membre du club,
  * jamais exposé côté UI jusqu'ici). Statut toujours 'a_venir' à la création, comme toute nouvelle
  * ligne côté staff. Séquentiel (pas Promise.all) : un lot compte rarement plus d'une saison de
- * matchs, mieux vaut un rapport précis par ligne qu'un tout-ou-rien sur un import volumineux. */
+ * matchs, mieux vaut un rapport précis par ligne qu'un tout-ou-rien sur un import volumineux.
+ *
+ * Anti-doublon réimport (audit transversal 04/09/2026, scénario 12 : "réimporter exactement le
+ * même fichier -> 0 doublon") : upsert sur la contrainte club_matches_no_reimport_dup (club_id,
+ * team, opponent, match_date) avec ignoreDuplicates — un match déjà présent est compté à part
+ * (skipped), jamais recréé ni traité comme un échec. */
 export async function importClubMatches(
   supabase: SupabaseClient,
   clubId: string,
   rows: ImportedMatchInput[],
-): Promise<{ succeeded: number; failed: number }> {
+): Promise<{ succeeded: number; skipped: number; failed: number }> {
   let succeeded = 0;
+  let skipped = 0;
   let failed = 0;
   for (const row of rows) {
-    const { error } = await supabase.from("club_matches").insert({
-      club_id: clubId,
-      team: row.teamName,
-      team_id: row.teamId,
-      opponent: row.opponent,
-      match_date: row.matchDate,
-      lieu: row.lieu,
-      status: "a_venir",
-    });
+    const { data, error } = await supabase
+      .from("club_matches")
+      .upsert(
+        {
+          club_id: clubId,
+          team: row.teamName,
+          team_id: row.teamId,
+          opponent: row.opponent,
+          match_date: row.matchDate,
+          lieu: row.lieu,
+          status: "a_venir",
+        },
+        { onConflict: "club_id,team,opponent,match_date", ignoreDuplicates: true },
+      )
+      .select("id");
     if (error) failed++;
-    else succeeded++;
+    else if (data && data.length > 0) succeeded++;
+    else skipped++;
   }
-  return { succeeded, failed };
+  return { succeeded, skipped, failed };
 }
 
 /** Utilisé par le Studio pour préremplir un formulaire depuis un match réel (?matchId=uuid),
