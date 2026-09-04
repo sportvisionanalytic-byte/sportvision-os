@@ -1,19 +1,19 @@
 [build]
   base = "livrables/SportVision-Connect/app-next"
   command = "npm run build"
-  # Économie de crédits (02/09/2026) : sans ce filtre, ce site relance un build complet à CHAQUE
-  # push sur main, même quand rien n'a changé dans ce dossier (ex. une migration SQL seule, ou un
-  # correctif de l'OS) — vérifié en direct via l'API Netlify, les 3 sites du repo se relançaient
-  # avec le même horodatage à chaque push, sans filtre par dossier. `git diff --quiet` sort en 0
-  # (= "silencieux", aucune différence) quand ce dossier n'a pas bougé, ce que Netlify interprète
-  # comme "ignorer ce build" ; il sort en 1 dès qu'il y a une vraie différence, ce qui déclenche le
-  # build normalement. $CACHED_COMMIT_REF (fourni par Netlify = dernier commit réellement
-  # déployé sur CE site, pas juste le parent immédiat) plutôt que HEAD^ : sinon, pousser plusieurs
-  # commits d'un coup (plusieurs correctifs groupés en un seul push, exactement pour économiser
-  # des crédits) ne comparerait que les 2 derniers commits du lot et raterait les changements plus
-  # anciens du même push. Repli sur HEAD^ uniquement si la variable n'existe pas encore (site tout
-  # juste connecté, aucun déploiement précédent en cache).
-  ignore = "git diff --quiet ${CACHED_COMMIT_REF:-HEAD^} HEAD -- livrables/SportVision-Connect/app-next"
+  # Filtre `ignore` retiré (05/09/2026, incident réel) : le filtre par dossier posé le 02/09 pour
+  # économiser des crédits a silencieusement bloqué TOUS les déploiements de ce site pendant plus
+  # de 24h — vérifié en direct via l'API Netlify (listSiteDeploys) : dernier déploiement réellement
+  # publié le 03/09 11h11 (commit 093885b8), puis ~38 tentatives consécutives annulées, y compris
+  # des commits qui modifiaient réellement ce dossier (ex. 3a15c53, 0cd43e3 — l'UI du souhait de
+  # présence et le correctif d'accès aux médias HD) faussement classés "no content change". Cause
+  # racine exacte non identifiée avec certitude (logs de build insuffisamment détaillés côté
+  # Netlify pour la commande `ignore`), mais l'effet est sans ambiguïté : Fouka a testé en
+  # production un site vieux de plus d'une journée sans le savoir (404 sur /onboarding, boutons
+  # "Enregistrer"/"Envoyer à SportVision" sans effet visible). Le risque qu'un vrai changement ne
+  # se déploie jamais silencieusement l'emporte largement sur le coût de quelques builds inutiles
+  # — à réintroduire seulement avec un filtre dont le comportement est vérifié fiable dans la durée,
+  # pas juste testé une fois.
   # "publish" vide se résout par défaut sur le même chemin que "base" (publishOrigin: default,
   # vu dans les logs de build du 09/08/2026), ce que le plugin Next.js refuse explicitement
   # ("Your publish directory cannot be the same as the base directory"). .next (sortie standard
