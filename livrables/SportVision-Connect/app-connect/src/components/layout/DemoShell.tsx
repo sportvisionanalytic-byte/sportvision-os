@@ -21,47 +21,46 @@ interface NavItem {
   color: string;
 }
 
+// Connect V3 (04/09/2026) — même restructuration à 5 entrées que AppShell.tsx (voir son
+// commentaire), reproduite ici pour que la démo reflète fidèlement le vrai parcours plutôt que de
+// montrer une navigation obsolète à qui l'utilise pour se faire une idée du produit.
 const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
   { title: null, items: [{ href: "/demo/dashboard", label: "Accueil", icon: "home", color: "#8CA9FF" }] },
+  {
+    title: "Médias",
+    items: [{ href: "/demo/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" }],
+  },
   {
     title: "Mon univers",
     items: [
       { href: "/demo/affiliations", label: "Mon affiliation", icon: "shield", color: "#22D3EE" },
       { href: "/demo/equipes", label: "Mes équipes", icon: "groups", color: "#22D3EE" },
-    ],
-  },
-  {
-    title: "SportVision",
-    items: [
-      { href: "/demo/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
-      { href: "/demo/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
-      { href: "/demo/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
-      { href: "/demo/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
       { href: "/demo/calendrier", label: "Calendrier", icon: "calendar_month", color: "#8CA9FF" },
       { href: "/demo/messages", label: "Messages", icon: "forum", color: "#22D3EE" },
     ],
   },
   {
-    title: "Mon compte",
+    title: "Services",
     items: [
+      { href: "/demo/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
+      { href: "/demo/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
+      { href: "/demo/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
       { href: "/demo/factures", label: "Factures & paiements", icon: "payments", color: "#FBBF24" },
-      { href: "/demo/profil", label: "Mon profil", icon: "person", color: "#22D3EE" },
     ],
+  },
+  {
+    title: "Mon compte",
+    items: [{ href: "/demo/profil", label: "Mon profil", icon: "person", color: "#22D3EE" }],
   },
 ];
 
-const ALL_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
-
 const MOBILE_TABS: NavItem[] = [
   { href: "/demo/dashboard", label: "Accueil", icon: "home", color: "#8CA9FF" },
-  { href: "/demo/contenus", label: "Contenus", icon: "photo_library", color: "#C084FC" },
-  { href: "/demo/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
-  { href: "/demo/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
+  { href: "/demo/medias", label: "Médias", icon: "photo_library", color: "#C084FC" },
+  { href: "/demo/mon-univers", label: "Mon univers", icon: "groups", color: "#22D3EE" },
+  { href: "/demo/services", label: "Services", icon: "camera_alt", color: "#8CA9FF" },
   { href: "/demo/profil", label: "Profil", icon: "person", color: "#22D3EE" },
 ];
-const MOBILE_MORE_ITEMS: NavItem[] = ALL_ITEMS.filter(
-  (item) => !MOBILE_TABS.some((t) => t.href === item.href),
-);
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -70,7 +69,6 @@ function isActive(pathname: string, href: string) {
 export function DemoShell({ firstName, children }: { firstName: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-bg font-sans text-text">
@@ -209,39 +207,7 @@ export function DemoShell({ firstName, children }: { firstName: string; children
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setMoreOpen(true)}
-        aria-label="Plus d'options"
-        className="fixed bottom-[calc(66px+env(safe-area-inset-bottom))] right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-sv-gradient text-white shadow-lg lg:hidden"
-      >
-        <span className="material-symbols-rounded !text-[22px]" aria-hidden="true">apps</span>
-      </button>
-
-      {moreOpen && (
-        <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setMoreOpen(false)}>
-          <div
-            className="absolute inset-x-0 bottom-0 flex max-h-[70vh] flex-col gap-1 overflow-y-auto rounded-t-sv-card border-t border-border bg-bg-elevated p-3 pb-[max(16px,env(safe-area-inset-bottom))]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-white/15" />
-            <span className="px-2 pb-1 font-sora text-[15px] font-semibold">Plus</span>
-            {MOBILE_MORE_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMoreOpen(false)}
-                className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
-              >
-                <span className="material-symbols-rounded !text-[21px]" style={{ color: item.color }} aria-hidden="true">
-                  {item.icon}
-                </span>
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Connect V3 : plus de bouton "Plus" flottant, mêmes 5 onglets que le vrai Espace joueur. */}
     </div>
   );
 }
