@@ -126,6 +126,42 @@ export async function fetchClubMatches(supabase: SupabaseClient, organizationId:
   return ((data ?? []) as ClubMatchRow[]).map((row) => toMatch(row, organizationId));
 }
 
+export interface ImportedMatchInput {
+  teamId: string;
+  teamName: string;
+  opponent: string;
+  matchDate: string;
+  lieu: string | null;
+}
+
+/** Import calendrier (FFF/ICS/CSV, prompt #6 backlog Club+ V2) — premier chemin d'écriture
+ * self-service sur club_matches (cma_member_insert, RLS déjà permissive à tout membre du club,
+ * jamais exposé côté UI jusqu'ici). Statut toujours 'a_venir' à la création, comme toute nouvelle
+ * ligne côté staff. Séquentiel (pas Promise.all) : un lot compte rarement plus d'une saison de
+ * matchs, mieux vaut un rapport précis par ligne qu'un tout-ou-rien sur un import volumineux. */
+export async function importClubMatches(
+  supabase: SupabaseClient,
+  clubId: string,
+  rows: ImportedMatchInput[],
+): Promise<{ succeeded: number; failed: number }> {
+  let succeeded = 0;
+  let failed = 0;
+  for (const row of rows) {
+    const { error } = await supabase.from("club_matches").insert({
+      club_id: clubId,
+      team: row.teamName,
+      team_id: row.teamId,
+      opponent: row.opponent,
+      match_date: row.matchDate,
+      lieu: row.lieu,
+      status: "a_venir",
+    });
+    if (error) failed++;
+    else succeeded++;
+  }
+  return { succeeded, failed };
+}
+
 /** Utilisé par le Studio pour préremplir un formulaire depuis un match réel (?matchId=uuid),
  * voir studio/[template]/page.tsx. */
 export async function fetchClubMatchById(

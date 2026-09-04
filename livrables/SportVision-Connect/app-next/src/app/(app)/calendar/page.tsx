@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Download, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Plus, Upload } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
 import { CALENDAR_EVENT_KIND_LABELS, type CalendarEvent, type CalendarEventKind } from "@/lib/types/calendar";
@@ -15,6 +15,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { KIND_DOT } from "@/components/calendar/calendar-style";
 import { EventDetailPanel } from "@/components/calendar/EventDetailPanel";
 import { AddEventModal } from "@/components/calendar/AddEventModal";
+import { ImportMatchesModal } from "@/components/calendar/ImportMatchesModal";
 import { CREATABLE_EVENT_TYPE_MAP, createClubCalendarEvent, fetchClubCalendarEvents } from "@/lib/data/club/calendar";
 import { fetchOrgCalendarEvents } from "@/lib/data/shared/calendar-events";
 import { createClient } from "@/lib/supabase/client";
@@ -76,6 +77,7 @@ export default function CalendarPage() {
   const [reference, setReference] = useState<Date>(today);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [teamFilter, setTeamFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<CalendarEventKind | "">("");
 
@@ -251,6 +253,12 @@ export default function CalendarPage() {
           {/* Un joueur consulte le calendrier de son club, il ne le modifie pas (brief § 11 :
               "le joueur ne devrait pas modifier le planning officiel") — même retrait que pour
               coach/académie/sponsor (calendrier en lecture seule côté membre). */}
+          {ctx.organization.type === "club" && ctx.membership.role === "admin" && (
+            <Button variant="secondary" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" aria-hidden />
+              Importer un calendrier
+            </Button>
+          )}
           {!isGenericOrg && !isPlayer && (
             <Button disabled={!canCreate(ctx, "calendar_event")} onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" aria-hidden />
@@ -356,6 +364,13 @@ export default function CalendarPage() {
 
       {selectedEvent && <EventDetailPanel event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
       {addOpen && <AddEventModal onClose={() => setAddOpen(false)} onCreate={handleCreateEvent} teamNames={availableTeams} />}
+      {importOpen && calendarOrgId && (
+        <ImportMatchesModal
+          clubId={calendarOrgId}
+          onClose={() => setImportOpen(false)}
+          onImported={loadEvents}
+        />
+      )}
     </div>
   );
 }
