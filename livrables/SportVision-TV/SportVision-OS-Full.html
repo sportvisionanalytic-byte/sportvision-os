@@ -23039,7 +23039,7 @@ async function modalNouveauContenu(statutInit,dateInit,prefill){
     <div class="mb">
       <div class="fg"><label class="fl">Titre</label><input type="text" id="ct-ti" class="fi" placeholder="Ex: Résumé match Brunoy FC" value="${esc(pf.titre||'')}" autofocus></div>
       <div class="fg"><label class="fl">Client</label>
-        <select id="ct-cl" class="fi" onchange="refreshSponsorsRequis()"><option value="">Aucun client (SportVision)</option>${clients.map(c=>`<option value="${c.id}"${pf.clientId===c.id?' selected':''}>${esc(c.nom)}</option>`).join('')}</select></div>
+        <select id="ct-cl" class="fi" onchange="refreshSponsorsRequis();refreshTemplateDisponible()"><option value="">Aucun client (SportVision)</option>${clients.map(c=>`<option value="${c.id}"${pf.clientId===c.id?' selected':''}>${esc(c.nom)}</option>`).join('')}</select></div>
       <div class="g2">
         <div class="fg"><label class="fl">Plateforme</label>
           <select id="ct-pl" class="fi"><option>Instagram</option><option>YouTube</option><option>Facebook</option><option>TikTok</option><option>Twitter/X</option></select></div>
@@ -23047,7 +23047,7 @@ async function modalNouveauContenu(statutInit,dateInit,prefill){
           <select id="ct-ty" class="fi"><option>Vidéo</option><option>Photo</option><option>Story</option><option>Reel</option><option>Article</option><option>Post</option></select></div>
       </div>
       <div class="fg"><label class="fl">Catégorie éditoriale</label>
-        <select id="ct-cat" class="fi" onchange="refreshSponsorsRequis()"><option value="">—</option>${catOptions}</select></div>
+        <select id="ct-cat" class="fi" onchange="refreshSponsorsRequis();refreshTemplateDisponible()"><option value="">—</option>${catOptions}</select></div>
       <div class="fg"><label class="fl">Date prévue</label><input type="date" id="ct-dt" class="fi" value="${d}"></div>
       <div class="g2">
         <div class="fg"><label class="fl">Hook</label><input type="text" id="ct-hook" class="fi" placeholder="Accroche" value="${esc(pf.hook||'')}"></div>
@@ -23059,11 +23059,62 @@ async function modalNouveauContenu(statutInit,dateInit,prefill){
         <div class="fg"><label class="fl">Sponsor</label><input type="text" id="ct-spo" class="fi"></div>
       </div>
       <div id="ct-sponsors-req"></div>
+      <div id="ct-template-req"></div>
       <div id="ct-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
     </div>
     <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerContenu()">Créer</button></div>`);
   setTimeout(()=>document.getElementById('ct-ti')?.focus(),50);
   refreshSponsorsRequis();
+  refreshTemplateDisponible();
+}
+
+// ── Template disponible (Communication Hub, 03/09/2026) ────────────────────────────────────────
+// "Le système doit connaître les templates par club, sans coder les clubs en dur" —
+// brand_templates (migration-brand-templates.sql), lié à club_id + categorie (contenus.categorie,
+// migration-contenus-categorie.sql). Recalculé aux mêmes changements que refreshSponsorsRequis
+// (client, catégorie). Un template générique (categorie NULL) reste proposé si aucun template
+// spécifique à la catégorie n'existe. Permet aussi d'en ajouter un directement (le CM prépare ses
+// templates au fil de l'eau, pas de second écran séparé nécessaire pour ce premier jet).
+async function refreshTemplateDisponible(){
+  const el=document.getElementById('ct-template-req');
+  if(!el)return;
+  const clientId=document.getElementById('ct-cl')?.value||'';
+  const categorie=document.getElementById('ct-cat')?.value||'';
+  if(!clientId){el.innerHTML='';return;}
+  try{
+    const club=await sbFetch('clubs?select=id&portail_client_id=eq.'+clientId).catch(()=>[]);
+    const clubId=Array.isArray(club)&&club[0]?club[0].id:null;
+    if(!clubId){el.innerHTML='';return;}
+    const templates=await sbFetch('brand_templates?select=id,nom,asset_url,categorie&club_id=eq.'+clubId+'&statut=eq.active&order=version.desc').catch(()=>[]);
+    const rows=Array.isArray(templates)?templates:[];
+    const matching=categorie?rows.filter(t=>t.categorie===categorie||!t.categorie):rows;
+    let html='<div class="fg"><label class="fl">Template</label>';
+    if(matching.length){
+      html+='<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px">'+matching.map(t=>
+        `<a href="${esc(t.asset_url)}" target="_blank" rel="noopener" style="font-size:12.5px;color:var(--ac)">🎨 ${esc(t.nom)}${!t.categorie?' <span style="color:var(--t3)">(générique)</span>':''}</a>`
+      ).join('')+'</div>';
+    }else{
+      html+='<div style="font-size:12.5px;color:var(--t3);margin-bottom:6px">Aucun template pour ce club'+(categorie?' / '+esc(categorie):'')+'.</div>';
+    }
+    html+=`<div style="display:flex;gap:6px">
+        <input type="text" id="ct-tpl-nom" class="fi" placeholder="Nom du template" style="flex:1">
+        <input type="text" id="ct-tpl-url" class="fi" placeholder="Lien (Canva, Drive...)" style="flex:2">
+        <button type="button" class="btn bg2 bs" onclick="ajouterTemplateDepuisContenu('${clubId}')">+ Ajouter</button>
+      </div></div>`;
+    el.innerHTML=html;
+  }catch(e){el.innerHTML='';console.error(e);}
+}
+
+async function ajouterTemplateDepuisContenu(clubId){
+  const nom=(document.getElementById('ct-tpl-nom')?.value||'').trim();
+  const url=(document.getElementById('ct-tpl-url')?.value||'').trim();
+  if(!nom||!url){toast('Nom et lien du template sont obligatoires.','er');return;}
+  const categorie=document.getElementById('ct-cat')?.value||null;
+  const uid=localStorage.getItem('sv_uid');
+  const r=await sbFetch('brand_templates',{method:'POST',body:{club_id:clubId,categorie:categorie||null,nom,asset_url:url,created_by:uid}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'ajout impossible.'),'er');return;}
+  toast('Template ajouté.','ok');
+  refreshTemplateDisponible();
 }
 
 // ── Sponsors requis (Communication Hub, 03/09/2026) ────────────────────────────────────────────
