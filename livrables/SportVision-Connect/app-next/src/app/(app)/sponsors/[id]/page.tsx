@@ -11,7 +11,7 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { SPONSOR_LEVEL_LABEL, SPONSOR_LEVEL_TONE, SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/components/sponsors/format";
 import { deliverablesForSponsor, visibilityGauge } from "@/lib/mock/sponsors";
-import { fetchClubSponsors, fetchSponsorPublications, updateSponsorCommitments } from "@/lib/data/club/sponsors";
+import { fetchClubSponsors, fetchSponsorPublications, updateSponsorCommitments, updateSponsorContentTypeObligations } from "@/lib/data/club/sponsors";
 import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
 import { createClient } from "@/lib/supabase/client";
 import type { Sponsor, SponsorCommitment, SponsorPublication, SponsorPublicationStatus } from "@/lib/types/sponsors";
@@ -88,6 +88,9 @@ export default function SponsorDetailPage({ params }: { params: { id: string } }
   function handleCommitmentsChange(next: SponsorCommitment[]) {
     setClubSponsors((prev) => (prev ? prev.map((s) => (s.id === sponsorId ? { ...s, commitments: next } : s)) : prev));
   }
+  function handleContentTypeObligationsChange(next: string[]) {
+    setClubSponsors((prev) => (prev ? prev.map((s) => (s.id === sponsorId ? { ...s, contentTypeObligations: next } : s)) : prev));
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -127,7 +130,10 @@ export default function SponsorDetailPage({ params }: { params: { id: string } }
 
       {tab === "livrables" && <DeliverablesTab sponsorId={sponsor.id} />}
       {tab === "contreparties" && (
-        <CommitmentsTab sponsor={sponsor} readOnly={isPartner} onChange={handleCommitmentsChange} />
+        <div className="flex flex-col gap-4">
+          <ContentObligationsCard sponsor={sponsor} readOnly={isPartner} onChange={handleContentTypeObligationsChange} />
+          <CommitmentsTab sponsor={sponsor} readOnly={isPartner} onChange={handleCommitmentsChange} />
+        </div>
       )}
       {tab === "contrat" && <ContractTab sponsor={sponsor} />}
       {tab === "publications" && <PublicationsTab sponsorId={sponsor.id} />}
@@ -160,6 +166,73 @@ function DeliverablesTab({ sponsorId }: { sponsorId: string }) {
           </div>
         );
       })}
+    </Card>
+  );
+}
+
+// Mêmes valeurs que CONTENU_CATEGORIES côté OS (SportVision-OS-Full.html, modalNouveauContenu) —
+// dupliquées ici faute de partage de code entre l'app Next.js et le fichier vanilla OS (même
+// contrainte déjà acceptée pour d'autres constantes dans ce projet, voir clubplus-invite § plans).
+const CONTENT_CATEGORIES = ["Matchday", "Composition", "Résultat", "But / Buteur", "Homme du match", "Reel", "Carrousel photo", "Story", "Interview", "Autre"];
+
+// "Sponsors requis" (Communication Hub, 03/09/2026, migration-club-sponsors-content-obligations) —
+// le club déclare ici les catégories éditoriales où ce sponsor doit obligatoirement apparaître ;
+// le CM SportVision voit ensuite ce rappel automatiquement dans le formulaire de création de
+// contenu (OS), sans avoir à s'en souvenir. N'affecte jamais la publication elle-même — un simple
+// rappel visuel, jamais bloquant.
+function ContentObligationsCard({
+  sponsor,
+  readOnly,
+  onChange,
+}: {
+  sponsor: Sponsor;
+  readOnly: boolean;
+  onChange: (next: string[]) => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function toggle(category: string) {
+    const next = sponsor.contentTypeObligations.includes(category)
+      ? sponsor.contentTypeObligations.filter((c) => c !== category)
+      : [...sponsor.contentTypeObligations, category];
+    setPending(true);
+    setError(null);
+    const supabase = createClient();
+    updateSponsorContentTypeObligations(supabase, sponsor.id, next)
+      .then(() => onChange(next))
+      .catch(() => setError("Impossible d'enregistrer. Réessayez."))
+      .finally(() => setPending(false));
+  }
+
+  return (
+    <Card className="flex flex-col gap-3 p-5">
+      <div>
+        <div className="text-[13.5px] font-extrabold">Doit apparaître sur</div>
+        <p className="mt-0.5 text-[12px] text-text-soft">
+          Le CM SportVision voit un rappel automatique dans ces catégories de contenu, avant publication.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {CONTENT_CATEGORIES.map((category) => {
+          const active = sponsor.contentTypeObligations.includes(category);
+          return (
+            <button
+              key={category}
+              type="button"
+              disabled={readOnly || pending}
+              onClick={() => toggle(category)}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-[12px] font-bold transition-colors duration-sv disabled:cursor-not-allowed",
+                active ? "border-brand-blue bg-brand-blue/10 text-brand-blue-electric" : "border-border-strong text-text-soft hover:border-brand-blue-pale",
+              )}
+            >
+              {category}
+            </button>
+          );
+        })}
+      </div>
+      {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
     </Card>
   );
 }

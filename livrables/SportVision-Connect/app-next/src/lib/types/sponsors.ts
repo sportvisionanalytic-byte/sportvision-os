@@ -23,6 +23,10 @@ export interface Sponsor {
   commitments: SponsorCommitment[];
   // club_sponsors.logo_url (migration-clubplus-v53) — null si jamais uploadé.
   logoUrl: string | null;
+  // club_sponsors.content_type_obligations (migration-club-sponsors-content-obligations,
+  // 03/09/2026) — types de contenu (valeurs contenus.type_contenu côté OS, ex. "Matchday") où ce
+  // sponsor doit obligatoirement apparaître. Tableau vide = aucune obligation automatique.
+  contentTypeObligations: string[];
 }
 
 /** Contrepartie suivie dans le temps — club_sponsors.commitments (jsonb, migration-clubplus-v5.sql).

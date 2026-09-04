@@ -49,6 +49,7 @@ interface ClubSponsorRow {
   montant: number;
   commitments: unknown;
   logo_url: string | null;
+  content_type_obligations: string[] | null;
 }
 
 function deriveStatus(dateFin: string | null): SponsorStatus {
@@ -63,7 +64,7 @@ function deriveStatus(dateFin: string | null): SponsorStatus {
 export async function fetchClubSponsors(supabase: SupabaseClient, organizationId: string): Promise<Sponsor[]> {
   const { data } = await supabase
     .from("club_sponsors")
-    .select("id, name, secteur, niveau, date_debut, date_fin, montant, commitments, logo_url")
+    .select("id, name, secteur, niveau, date_debut, date_fin, montant, commitments, logo_url, content_type_obligations")
     .eq("club_id", organizationId)
     .order("montant", { ascending: false });
 
@@ -81,7 +82,21 @@ export async function fetchClubSponsors(supabase: SupabaseClient, organizationId
     sector: row.secteur ?? undefined,
     commitments: parseSponsorCommitments(row.commitments),
     logoUrl: row.logo_url,
+    contentTypeObligations: row.content_type_obligations ?? [],
   }));
+}
+
+/** Types de contenu où un sponsor doit obligatoirement apparaître (migration-club-sponsors-
+ * content-obligations, 03/09/2026) — alimente à la fois l'onglet Contreparties de Club+ et le
+ * panneau "Sponsors requis" côté OS (modalNouveauContenu). RLS : csp_member_update (même
+ * politique que le reste de la fiche sponsor — admin/president/sponsor_mgr/tresorier). */
+export async function updateSponsorContentTypeObligations(
+  supabase: SupabaseClient,
+  sponsorId: string,
+  contentTypeObligations: string[],
+): Promise<void> {
+  const { error } = await supabase.from("club_sponsors").update({ content_type_obligations: contentTypeObligations }).eq("id", sponsorId);
+  if (error) throw error;
 }
 
 /** Création de sponsor (19/08/2026, retour utilisateur : aucune UI ne le permettait). RLS

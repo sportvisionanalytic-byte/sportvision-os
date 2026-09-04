@@ -22764,7 +22764,7 @@ async function loadCmUpcomingMatches(){
 }
 
 function creerContenuDepuisMatch(matchId,clientId,titre){
-  modalNouveauContenu(null,null,{clientId,titre,matchId});
+  modalNouveauContenu(null,null,{clientId,titre,matchId,categorie:'Matchday'});
 }
 
 async function loadCmContenus(){
@@ -23034,17 +23034,20 @@ async function modalNouveauContenu(statutInit,dateInit,prefill){
   // le match d'un contenu précédent.
   window._ctMatchId=pf.matchId||null;
   const clients=await _cmVisibleClients();
+  const catOptions=CONTENU_CATEGORIES.map(c=>`<option value="${c}"${pf.categorie===c?' selected':''}>${c}</option>`).join('');
   openModal(`<div class="mh"><div class="mt">Nouveau contenu</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Titre</label><input type="text" id="ct-ti" class="fi" placeholder="Ex: Résumé match Brunoy FC" value="${esc(pf.titre||'')}" autofocus></div>
       <div class="fg"><label class="fl">Client</label>
-        <select id="ct-cl" class="fi"><option value="">Aucun client (SportVision)</option>${clients.map(c=>`<option value="${c.id}"${pf.clientId===c.id?' selected':''}>${esc(c.nom)}</option>`).join('')}</select></div>
+        <select id="ct-cl" class="fi" onchange="refreshSponsorsRequis()"><option value="">Aucun client (SportVision)</option>${clients.map(c=>`<option value="${c.id}"${pf.clientId===c.id?' selected':''}>${esc(c.nom)}</option>`).join('')}</select></div>
       <div class="g2">
         <div class="fg"><label class="fl">Plateforme</label>
           <select id="ct-pl" class="fi"><option>Instagram</option><option>YouTube</option><option>Facebook</option><option>TikTok</option><option>Twitter/X</option></select></div>
         <div class="fg"><label class="fl">Type</label>
           <select id="ct-ty" class="fi"><option>Vidéo</option><option>Photo</option><option>Story</option><option>Reel</option><option>Article</option><option>Post</option></select></div>
       </div>
+      <div class="fg"><label class="fl">Catégorie éditoriale</label>
+        <select id="ct-cat" class="fi" onchange="refreshSponsorsRequis()"><option value="">—</option>${catOptions}</select></div>
       <div class="fg"><label class="fl">Date prévue</label><input type="date" id="ct-dt" class="fi" value="${d}"></div>
       <div class="g2">
         <div class="fg"><label class="fl">Hook</label><input type="text" id="ct-hook" class="fi" placeholder="Accroche" value="${esc(pf.hook||'')}"></div>
@@ -23055,10 +23058,42 @@ async function modalNouveauContenu(statutInit,dateInit,prefill){
         <div class="fg"><label class="fl">Hashtags</label><input type="text" id="ct-hash" class="fi"></div>
         <div class="fg"><label class="fl">Sponsor</label><input type="text" id="ct-spo" class="fi"></div>
       </div>
+      <div id="ct-sponsors-req"></div>
       <div id="ct-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
     </div>
     <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerContenu()">Créer</button></div>`);
   setTimeout(()=>document.getElementById('ct-ti')?.focus(),50);
+  refreshSponsorsRequis();
+}
+
+// ── Sponsors requis (Communication Hub, 03/09/2026) ────────────────────────────────────────────
+// "Si le sponsor principal doit apparaître sur tous les Matchday, le CM ne devrait pas avoir à
+// s'en souvenir à chaque fois." club_sponsors.content_type_obligations (migration-club-sponsors-
+// content-obligations.sql) déclare les catégories éditoriales (contenus.categorie, migration-
+// contenus-categorie.sql) où un sponsor doit obligatoirement apparaître. Recalculé à chaque
+// changement de client ou de catégorie dans le formulaire — jamais bloquant (le CM reste libre de
+// créer le contenu même avec un sponsor manquant), juste un rappel visuel.
+const CONTENU_CATEGORIES=['Matchday','Composition','Résultat','But / Buteur','Homme du match','Reel','Carrousel photo','Story','Interview','Autre'];
+
+async function refreshSponsorsRequis(){
+  const el=document.getElementById('ct-sponsors-req');
+  if(!el)return;
+  const clientId=document.getElementById('ct-cl')?.value||'';
+  const categorie=document.getElementById('ct-cat')?.value||'';
+  if(!clientId||!categorie){el.innerHTML='';return;}
+  try{
+    const club=await sbFetch('clubs?select=id&portail_client_id=eq.'+clientId).catch(()=>[]);
+    const clubId=Array.isArray(club)&&club[0]?club[0].id:null;
+    if(!clubId){el.innerHTML='';return;}
+    const sponsors=await sbFetch('club_sponsors?select=id,name,logo_url,content_type_obligations&club_id=eq.'+clubId).catch(()=>[]);
+    const required=(Array.isArray(sponsors)?sponsors:[]).filter(s=>Array.isArray(s.content_type_obligations)&&s.content_type_obligations.includes(categorie));
+    if(!required.length){el.innerHTML='';return;}
+    el.innerHTML='<div class="fg"><label class="fl">Sponsors requis</label><div style="display:flex;flex-direction:column;gap:4px">'+
+      required.map(s=>{
+        const ok=!!s.logo_url;
+        return`<div style="display:flex;align-items:center;gap:6px;font-size:12.5px">${ok?'✅':'⚠️'} ${esc(s.name)}${ok?'':' <span style="color:var(--wa)">(logo manquant)</span>'}</div>`;
+      }).join('')+'</div></div>';
+  }catch(e){el.innerHTML='';console.error(e);}
 }
 
 async function creerContenu(){
@@ -23066,6 +23101,7 @@ async function creerContenu(){
   const clientId=document.getElementById('ct-cl')?.value||null;
   const pl=document.getElementById('ct-pl')?.value||'';
   const ty=document.getElementById('ct-ty')?.value||'';
+  const cat=document.getElementById('ct-cat')?.value||'';
   const dt=document.getElementById('ct-dt')?.value||null;
   const hook=(document.getElementById('ct-hook')?.value||'').trim();
   const cta=(document.getElementById('ct-cta')?.value||'').trim();
@@ -23081,7 +23117,7 @@ async function creerContenu(){
   if(btn){if(btn.disabled)return;btn.disabled=true;}
   try{
     const r=await sbFetch('contenus',{method:'POST',body:{
-      client_id:clientId||null,cm_id:uid,titre:ti,plateforme:pl,type_contenu:ty,
+      client_id:clientId||null,cm_id:uid,titre:ti,plateforme:pl,type_contenu:ty,categorie:cat||null,
       date_prevue:dt||null,hook:hook||null,cta:cta||null,legende:legende||null,
       hashtags:hashtags||null,sponsor:sponsor||null,request_id:window._ctRequestId||null,
       match_id:window._ctMatchId||null

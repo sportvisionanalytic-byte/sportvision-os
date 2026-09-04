@@ -55,5 +55,6 @@ export async function fetchSponsorPartnerships(supabase: SupabaseClient, sponsor
     signatories: [],
     commitments: parseSponsorCommitments(row.commitments),
     logoUrl: null,
+    contentTypeObligations: [],
   }));
 }
