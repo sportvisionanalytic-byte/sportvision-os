@@ -3121,6 +3121,11 @@ const VIEWS={
       <div class="cd-h"><div class="cd-t">Tendance missions sur 6 mois</div></div>
       <div style="font-size:11.5px;color:var(--t3);padding:0 0 8px 0">CA et coûts liés aux missions uniquement — hors masse salariale et commissions (KPIs ci-dessus, mois en cours seulement, la paie n'étant pas historisée par mois).</div>
       <div id="res-tendance-real">${_finSkelRows(4,40)}</div>
+    </div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Vue consolidée (toutes sources)</div></div>
+      <div style="font-size:11.5px;color:var(--t3);padding:0 0 8px 0">Factures (Full Com/prestations) + ventes médias, base caisse pour l'encaissé. Trésorerie volontairement absente : aucun rapprochement bancaire cumulé fiable n'existe aujourd'hui (voir Rapprochement bancaire), l'afficher ici reviendrait à fabriquer un chiffre.</div>
+      <div id="res-consolide-real">${_finSkelRows(4,40)}</div>
     </div>`,
 
   'compta.budgets':()=>`
@@ -25371,6 +25376,32 @@ async function loadComptaResultat(){
   }catch(e){
     if(elTend)elTend.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';
     console.error(e);
+  }
+  loadFinanceConsolidee();
+}
+
+// Vue consolidée Finance (§34-38, audit transversal, priorité remontée par Fouka en post-audit
+// 05/09/2026) : rpc_finance_consolidated_mensuel lit factures/media_orders/expenses/
+// prestations_equipe tels quels (pas de 4e table qui dupliquerait les transactions), une ligne
+// par mois. Chaque colonne reste isolée (CA facturé, encaissé, à encaisser, remboursé, charges,
+// coût équipe, résultat estimé) — jamais fusionnées en un seul chiffre trompeur, exactement la
+// même discipline que le correctif trésorerie≠résultat déjà appliqué plus haut sur cet écran.
+async function loadFinanceConsolidee(){
+  const el=document.getElementById('res-consolide-real');
+  if(!el)return;
+  try{
+    const rows=await sbFetch('rpc/rpc_finance_consolidated_mensuel',{method:'POST',body:{p_mois_debut:null,p_mois_fin:null}});
+    const list=(sbErr(rows)||!Array.isArray(rows))?[]:rows.slice(0,6);
+    const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+    if(!list.length){el.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Pas encore de données.</div>';return;}
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Mois</th><th>CA facturé HT</th><th>Encaissé</th><th>À encaisser</th><th>Remboursé</th><th>Charges</th><th>Coût équipe</th><th>Résultat estimé</th></tr></thead><tbody>'+
+      list.map(r=>{
+        const label=new Date(r.mois).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+        const net=r.resultat_estime_encaisse||0;
+        return`<tr><td style="text-transform:capitalize">${label}</td><td class="tm">${fmt(r.ca_facture_ht)}</td><td class="tm">${fmt(r.encaisse)}</td><td class="tm">${fmt(r.a_encaisser)}</td><td class="tm" style="color:var(--er)">${fmt(r.rembourse)}</td><td class="tm" style="color:var(--er)">${fmt(r.charges)}</td><td class="tm" style="color:var(--er)">${fmt(r.cout_equipe)}</td><td class="tm" style="font-weight:600;color:${net>=0?'var(--ok)':'var(--er)'}">${fmt(net)}</td></tr>`;
+      }).join('')+'</tbody></table></div>';
+  }catch(e){
+    el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';
   }
 }
 
