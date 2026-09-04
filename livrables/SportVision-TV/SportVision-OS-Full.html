@@ -22090,6 +22090,7 @@ function _cmPlanningProdTpl(){
         <button class="btn bg2 bs" onclick="pmNext()" aria-label="Mois suivant">›</button>
       </div>
       <div style="display:flex;gap:8px">
+        <button class="btn bg2 bs" onclick="modalPresenceDepuisMatch()">📅 Depuis un match</button>
         <button class="btn bg2 bs" onclick="modalNouvellePresence()">+ Présence</button>
         <button class="btn bp bs" id="pm-send-btn" onclick="pmEnvoyerProduction()">Envoyer à la production</button>
       </div>
@@ -22316,7 +22317,7 @@ async function loadCmPlanningMensuel(){
         const heure=p.heure_debut?' '+p.heure_debut.slice(0,5):'';
         return`<tr>
           <td class="tm">${dt}${heure}</td>
-          <td>${esc(p.equipe||'—')}</td>
+          <td>${esc(p.equipe||'—')}${p.match_id?' <span title="Liée au calendrier Club+" style="font-size:11px">🔗</span>':''}</td>
           <td>${esc(p.adversaire||'—')}</td>
           <td>${esc(p.lieu||'—')}</td>
           <td style="font-size:11.5px;color:var(--t3)">${PM_COUVERTURE_LB[p.type_couverture]||p.type_couverture}</td>
@@ -22328,20 +22329,70 @@ async function loadCmPlanningMensuel(){
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';console.error(e);}
 }
 
-function modalNouvellePresence(){
+// ── Présence planifiée depuis un match existant (Communication Hub, 03/09/2026) ────────────────
+// Réconcilie planned_presences avec club_matches (le vrai calendrier canonique déjà utilisé côté
+// Club+/matchcenter) — jusqu'ici équipe/date/adversaire/lieu étaient TOUJOURS ressaisis à la main
+// (modalNouvellePresence ci-dessous), même quand le match existait déjà dans club_matches. Cette
+// liste propose les matchs du mois affiché pour le club du client sélectionné (pont
+// clubs.portail_client_id, déjà utilisé pour "Matchs à venir" côté Contenus — RLS déjà couverte
+// par migration-club-matches-cm-select.sql, aucune nouvelle policy nécessaire ici) et pré-remplit
+// modalNouvellePresence via match_id (migration-planned-presences-match-link.sql) plutôt que de
+// dupliquer un modal de saisie séparé.
+async function modalPresenceDepuisMatch(){
   if(!_pmClientId){toast('Aucun client Full Communication affilié.','er');return;}
+  openModal(`<div class="mh"><div class="mt">Présence depuis un match</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb"><div id="ppm-list" style="min-height:80px">Chargement…</div></div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button></div>`);
+  try{
+    const club=await sbFetch('clubs?select=id&portail_client_id=eq.'+_pmClientId).catch(()=>[]);
+    const clubId=Array.isArray(club)&&club[0]?club[0].id:null;
+    const listEl=document.getElementById('ppm-list');
+    if(!clubId){if(listEl)listEl.innerHTML='<div style="color:var(--t3);font-size:13px">Ce client n\'est lié à aucun club Club+.</div>';return;}
+    const start=pmMonthStr(_pmMonthOffset);
+    const endDate=pmMonthDate(_pmMonthOffset);endDate.setMonth(endDate.getMonth()+1);
+    const end=endDate.getFullYear()+'-'+String(endDate.getMonth()+1).padStart(2,'0')+'-01';
+    const already=new Set((_pmPresences||[]).map(p=>p.match_id).filter(Boolean));
+    const matches=await sbFetch('club_matches?select=id,team,opponent,match_date,lieu&club_id=eq.'+clubId+'&match_date=gte.'+start+'&match_date=lt.'+end+'&order=match_date.asc').catch(()=>[]);
+    const rows=(Array.isArray(matches)?matches:[]).filter(m=>!already.has(m.id));
+    if(!listEl)return;
+    if(!rows.length){listEl.innerHTML='<div style="color:var(--t3);font-size:13px">Aucun match Club+ ce mois-ci (ou déjà tous ajoutés).</div>';return;}
+    listEl.innerHTML=rows.map(m=>{
+      const dt=m.match_date?new Date(m.match_date+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—';
+      const teamEsc=esc(m.team||'').replace(/'/g,"\\'");
+      const oppEsc=esc(m.opponent||'').replace(/'/g,"\\'");
+      const lieuEsc=esc(m.lieu||'').replace(/'/g,"\\'");
+      return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)">
+        <div><div style="font-weight:600">${esc(m.team)} vs ${esc(m.opponent||'—')}</div><div style="font-size:11.5px;color:var(--t3)">${dt}${m.lieu?' · '+esc(m.lieu):''}</div></div>
+        <button class="btn bp bs" onclick="presenceDepuisMatch('${m.id}','${teamEsc}','${oppEsc}','${m.match_date||''}','${lieuEsc}')">Utiliser</button>
+      </div>`;
+    }).join('');
+  }catch(e){const listEl=document.getElementById('ppm-list');if(listEl)listEl.innerHTML='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+}
+
+function presenceDepuisMatch(matchId,team,opponent,matchDate,lieu){
+  modalNouvellePresence({matchId,equipe:team,adversaire:opponent,date:matchDate,lieu});
+}
+
+function modalNouvellePresence(prefill){
+  if(!_pmClientId){toast('Aucun client Full Communication affilié.','er');return;}
+  const pf=prefill||{};
+  // Même idiome que window._ctMatchId (contenus, migration-contenus-match-event-link.sql) —
+  // remis à zéro à chaque ouverture pour ne jamais réutiliser par erreur le match d'une
+  // présence précédente.
+  window._ppMatchId=pf.matchId||null;
   openModal(`<div class="mh"><div class="mt">Nouvelle présence</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
+      ${pf.matchId?'<div style="font-size:11.5px;color:var(--ac);margin-bottom:8px">🔗 Liée au match Club+ — équipe/date/adversaire/lieu déjà remplis.</div>':''}
       <div class="g2">
-        <div class="fg"><label class="fl">Équipe</label><input type="text" id="pp-eq" class="fi" placeholder="Ex: Seniors A" autofocus></div>
-        <div class="fg"><label class="fl">Date</label><input type="date" id="pp-dt" class="fi" value="${ymdLocal()}"></div>
+        <div class="fg"><label class="fl">Équipe</label><input type="text" id="pp-eq" class="fi" placeholder="Ex: Seniors A" value="${esc(pf.equipe||'')}" autofocus></div>
+        <div class="fg"><label class="fl">Date</label><input type="date" id="pp-dt" class="fi" value="${pf.date||ymdLocal()}"></div>
       </div>
       <div class="g2">
         <div class="fg"><label class="fl">Heure</label><input type="time" id="pp-he" class="fi"></div>
-        <div class="fg"><label class="fl">Lieu</label><input type="text" id="pp-li" class="fi" placeholder="Ex: Gymnase municipal"></div>
+        <div class="fg"><label class="fl">Lieu</label><input type="text" id="pp-li" class="fi" placeholder="Ex: Gymnase municipal" value="${esc(pf.lieu||'')}"></div>
       </div>
       <div class="g2">
-        <div class="fg"><label class="fl">Adversaire</label><input type="text" id="pp-ad" class="fi"></div>
+        <div class="fg"><label class="fl">Adversaire</label><input type="text" id="pp-ad" class="fi" value="${esc(pf.adversaire||'')}"></div>
         <div class="fg"><label class="fl">Couverture</label>
           <select id="pp-tc" class="fi"><option value="photo_video" selected>Photo + Vidéo</option><option value="photo">Photo</option><option value="video">Vidéo</option></select></div>
       </div>
@@ -22378,9 +22429,11 @@ async function creerPresence(){
     }
     const r=await sbFetch('planned_presences',{method:'POST',body:{
       plan_id:_pmPlan.id,equipe:equipe||null,date_presence,heure_debut,
-      lieu:lieu||null,adversaire:adversaire||null,type_couverture,notes:notes||null
+      lieu:lieu||null,adversaire:adversaire||null,type_couverture,notes:notes||null,
+      match_id:window._ppMatchId||null
     }});
     if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'ajout impossible.');return;}
+    window._ppMatchId=null;
     closeModal();
     toast('Présence ajoutée.','ok');
     loadCmPlanningMensuel();
