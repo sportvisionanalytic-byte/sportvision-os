@@ -120,11 +120,49 @@ export async function fetchClubCalendarEvents(
   return [...events, ...matches];
 }
 
+/** Événement canonique (04/09/2026, audit transversal) — un match créé ici partait jusqu'ici dans
+ * club_calendar_events (type='match'), une représentation totalement déconnectée de club_matches
+ * (Match Center, import calendrier, résultats, contenus liés) : le même match réel pouvait exister
+ * comme deux lignes indépendantes selon le point d'entrée utilisé. `kind==="match"` route donc
+ * désormais vers club_matches — la même table que createClubMatch/importClubMatches (voir
+ * data/club/matches.ts) — pour qu'un match ait toujours exactement UN id, quel que soit le chemin
+ * de création. `input.title` porte alors le nom de l'adversaire (voir AddEventModal.tsx, qui
+ * relabellise le champ). team_id est résolu automatiquement par le trigger
+ * resolve_team_id_from_name() (migration-audit-transversal-fixes-batch1.sql) si le nom d'équipe
+ * correspond exactement à un club_teams.name existant — jamais deviné ici. */
 export async function createClubCalendarEvent(
   supabase: SupabaseClient,
   organizationId: string,
   input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string; teamId?: string },
 ): Promise<CalendarEvent> {
+  if (input.kind === "match") {
+    const { data: match, error: matchError } = await supabase
+      .from("club_matches")
+      .insert({
+        club_id: organizationId,
+        team: input.team || "",
+        opponent: input.title,
+        match_date: input.date,
+        lieu: input.location || null,
+        status: "a_venir",
+      })
+      .select("id, team, opponent, match_date, lieu, status")
+      .single();
+    if (matchError || !match) throw matchError ?? new Error("Création du match impossible.");
+    return {
+      id: `match-${match.id}`,
+      organizationId,
+      kind: "match",
+      title: `${match.team} vs ${match.opponent}`,
+      startsAt: match.match_date,
+      allDay: true,
+      location: match.lieu ?? undefined,
+      teamName: match.team,
+      sourceHref: "/matchcenter",
+      status: MATCH_STATUS_LABELS[MATCH_STATUS_MAP[match.status] ?? "upcoming"],
+    };
+  }
+
   const type = CREATABLE_EVENT_TYPE_MAP[input.kind] ?? "contenu";
 
   const { data, error } = await supabase

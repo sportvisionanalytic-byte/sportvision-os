@@ -36,7 +36,14 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = title.trim().length > 0 && date.trim().length > 0;
+  // Événement canonique (04/09/2026, audit transversal) — un match créé ici partait jusqu'ici
+  // dans club_calendar_events, une table totalement déconnectée de club_matches (Match Center,
+  // import calendrier, résultats, contenus liés) : deux représentations indépendantes du même
+  // match réel. "Titre" devient "Adversaire" pour ce type précis (submit routé vers club_matches
+  // par calendar.ts § createClubCalendarEvent, voir son commentaire) ; "Heure" est masqué car
+  // club_matches n'a pas de colonne heure (seulement match_date).
+  const isMatch = kind === "match";
+  const canSubmit = title.trim().length > 0 && date.trim().length > 0 && (!isMatch || team.trim().length > 0);
 
   function handleSubmit() {
     setSubmitting(true);
@@ -63,8 +70,13 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
         <h2 className="text-[19px] font-extrabold tracking-tight">Ajouter un événement</h2>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-bold text-text-soft">Titre</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className={fieldClass} placeholder="Réunion staff" />
+          <span className="text-[12.5px] font-bold text-text-soft">{isMatch ? "Adversaire" : "Titre"}</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className={fieldClass}
+            placeholder={isMatch ? "AS Rivage" : "Réunion staff"}
+          />
         </label>
 
         <label className="flex flex-col gap-1.5">
@@ -83,10 +95,12 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
             <span className="text-[12.5px] font-bold text-text-soft">Date</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={fieldClass} />
           </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-bold text-text-soft">Heure (optionnel)</span>
-            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={fieldClass} />
-          </label>
+          {!isMatch && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12.5px] font-bold text-text-soft">Heure (optionnel)</span>
+              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={fieldClass} />
+            </label>
+          )}
         </div>
 
         <label className="flex flex-col gap-1.5">
@@ -96,9 +110,9 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
 
         {teamNames.length > 0 && (
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-bold text-text-soft">Équipe (optionnel)</span>
+            <span className="text-[12.5px] font-bold text-text-soft">{isMatch ? "Équipe" : "Équipe (optionnel)"}</span>
             <select value={team} onChange={(e) => setTeam(e.target.value)} className={fieldClass}>
-              <option value="">Toutes les équipes</option>
+              <option value="">{isMatch ? "Choisir une équipe…" : "Toutes les équipes"}</option>
               {teamNames.map((name) => (
                 <option key={name} value={name}>
                   {name}
