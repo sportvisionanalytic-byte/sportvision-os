@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getAvatarAndProfilParticulier } from "@/lib/supabase/session";
-import { particulierSportifsLabel, particulierSportifsShortLabel, particulierRoleLabel } from "@/lib/supabase/particulier";
+import { particulierSportifsLabel, particulierRoleLabel } from "@/lib/supabase/particulier";
 import { Avatar } from "@/components/ui/Avatar";
 import { gradientFor } from "@/lib/avatarGradients";
 import { Topbar } from "./Topbar";
@@ -63,52 +63,53 @@ interface NavItem {
 // depuis la migration-connect-v67-distinction-parent-agent.sql §1 : le libellé "Mes sportifs"
 // devient "Mes enfants" pour un parent/tuteur, "Mes sportifs suivis" pour un agent — voir
 // particulierSportifsLabel()/particulierSportifsShortLabel() dans lib/supabase/particulier.ts.
+// Connect V3 (04/09/2026) — navigation mobile ramenée à 5 entrées maximum : Accueil / Médias /
+// Mon univers / Services / Profil, même restructuration que AppShell.tsx (voir son commentaire).
+// sportifsLabel migre de sa propre section vers "Mon univers", aux côtés de Calendrier/Messages
+// (qui ne vivaient jusqu'ici que dans "SportVision"/la feuille "Plus").
 function buildNavSections(sportifsLabel: string, profilParticulier: string | null): { title: string | null; items: NavItem[] }[] {
   return [
     { title: null, items: [{ href: "/particulier", label: "Accueil", icon: "home", color: "#8CA9FF" }] },
     {
-      title: sportifsLabel,
-      items: [{ href: "/particulier/sportifs", label: sportifsLabel, icon: "group", color: "#22D3EE" }],
+      title: "Médias",
+      items: [{ href: "/particulier/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" }],
     },
     {
-      title: "SportVision",
+      title: "Mon univers",
       items: [
-        { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
-        { href: "/particulier/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
-        { href: "/particulier/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
-        { href: "/particulier/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
+        { href: "/particulier/sportifs", label: sportifsLabel, icon: "group", color: "#22D3EE" },
         { href: "/particulier/calendrier", label: "Calendrier", icon: "calendar_month", color: "#8CA9FF" },
         { href: "/particulier/messages", label: "Messages", icon: "forum", color: "#22D3EE" },
       ],
     },
     {
-      title: "Mon compte",
+      title: "Services",
       items: [
+        { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
+        { href: "/particulier/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
+        { href: "/particulier/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
         { href: "/particulier/factures", label: "Factures & paiements", icon: "payments", color: "#FBBF24" },
         // Abonnement Agent (migration-connect-v57-abonnement-agent.sql) — réservé aux comptes
-        // profil_particulier='agent' (migration-connect-v67) depuis le 15/08 : un parent/tuteur/
-        // autre est plafonné à 3 sportifs de façon DURE, jamais payante (voir connect_particulier_
-        // limit() en base) — cet onglet n'a donc plus aucune utilité pour lui, contrairement à
-        // l'ancien raisonnement (repris ci-dessous par cohérence historique) qui datait d'avant
-        // cette distinction, quand le plafond payant s'appliquait uniquement via relation_type
-        // ='agent' sur chaque relation, indépendamment du compte. Retiré à la demande de Fouka.
+        // profil_particulier='agent' (migration-connect-v67) : un parent/tuteur/autre est plafonné
+        // à 3 sportifs de façon DURE, jamais payante (voir connect_particulier_limit() en base).
         ...(profilParticulier === "agent"
           ? [{ href: "/particulier/abonnement", label: "Mon abonnement", icon: "workspace_premium", color: "#22D3EE" }]
           : []),
-        { href: "/particulier/profil", label: "Mon profil", icon: "person", color: "#22D3EE" },
       ],
+    },
+    {
+      title: "Mon compte",
+      items: [{ href: "/particulier/profil", label: "Mon profil", icon: "person", color: "#22D3EE" }],
     },
   ];
 }
 
-// 5 onglets mobiles (README § Mobile → "Particulier : Accueil · Sportifs · Prestations ·
-// Contenus · Profil"), le reste dans la feuille "Plus".
-function buildMobileTabs(sportifsShortLabel: string): NavItem[] {
+function buildMobileTabs(): NavItem[] {
   return [
     { href: "/particulier", label: "Accueil", icon: "home", color: "#8CA9FF" },
-    { href: "/particulier/sportifs", label: sportifsShortLabel, icon: "group", color: "#22D3EE" },
-    { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
-    { href: "/particulier/contenus", label: "Contenus", icon: "photo_library", color: "#C084FC" },
+    { href: "/particulier/medias", label: "Médias", icon: "photo_library", color: "#C084FC" },
+    { href: "/particulier/mon-univers", label: "Mon univers", icon: "groups", color: "#22D3EE" },
+    { href: "/particulier/services", label: "Services", icon: "camera_alt", color: "#8CA9FF" },
     { href: "/particulier/profil", label: "Profil", icon: "person", color: "#22D3EE" },
   ];
 }
@@ -133,7 +134,6 @@ export function ParticularShell({
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -163,14 +163,10 @@ export function ParticularShell({
 
   const roleLabel = useMemo(() => particulierRoleLabel(profilParticulier), [profilParticulier]);
   const sportifsLabel = useMemo(() => particulierSportifsLabel(profilParticulier), [profilParticulier]);
-  const sportifsShortLabel = useMemo(() => particulierSportifsShortLabel(profilParticulier), [profilParticulier]);
   const NAV_SECTIONS = useMemo(() => buildNavSections(sportifsLabel, profilParticulier), [sportifsLabel, profilParticulier]);
-  const ALL_ITEMS = useMemo(() => NAV_SECTIONS.flatMap((s) => s.items), [NAV_SECTIONS]);
-  const MOBILE_TABS = useMemo(() => buildMobileTabs(sportifsShortLabel), [sportifsShortLabel]);
-  const MOBILE_MORE_ITEMS = useMemo(
-    () => ALL_ITEMS.filter((item) => !MOBILE_TABS.some((t) => t.href === item.href)),
-    [ALL_ITEMS, MOBILE_TABS],
-  );
+  // Connect V3 : les 5 onglets mobiles pointent vers des pages piliers fixes (medias/mon-univers/
+  // services), plus rien à reléguer dans une feuille "Plus" (bouton flottant retiré, voir plus bas).
+  const MOBILE_TABS = useMemo(() => buildMobileTabs(), []);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -474,47 +470,9 @@ export function ParticularShell({
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setMoreOpen(true)}
-        aria-label="Plus d'options"
-        className="fixed bottom-[calc(66px+env(safe-area-inset-bottom))] right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-sv-gradient text-white shadow-lg lg:hidden"
-      >
-        <span className="material-symbols-rounded !text-[22px]" aria-hidden="true">apps</span>
-      </button>
-
-      {moreOpen && (
-        <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setMoreOpen(false)}>
-          <div
-            className="absolute inset-x-0 bottom-0 flex max-h-[70vh] flex-col gap-1 overflow-y-auto rounded-t-sv-card border-t border-border bg-bg-elevated p-3 pb-[max(16px,env(safe-area-inset-bottom))]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-white/15" />
-            <span className="px-2 pb-1 font-sora text-[15px] font-semibold">Plus</span>
-            {MOBILE_MORE_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMoreOpen(false)}
-                className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
-              >
-                <span className="material-symbols-rounded !text-[21px]" style={{ color: item.color }} aria-hidden="true">
-                  {item.icon}
-                </span>
-                {item.label}
-              </Link>
-            ))}
-            <Link
-              href="/aide"
-              onClick={() => setMoreOpen(false)}
-              className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
-            >
-              <span className="material-symbols-rounded !text-[21px]" aria-hidden="true">help</span>
-              Aide
-            </Link>
-          </div>
-        </div>
-      )}
+      {/* Connect V3 : plus de bouton "Plus" flottant — les 5 onglets couvrent directement ou via
+          leur page pilier tout ce qui vivait auparavant dans cette feuille ; l'aide reste
+          accessible depuis l'icône dédiée du header mobile ci-dessus. */}
     </div>
   );
 }

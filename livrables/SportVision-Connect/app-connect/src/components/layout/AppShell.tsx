@@ -37,49 +37,57 @@ interface NavItem {
   color: string;
 }
 
+// Connect V3 (04/09/2026) — navigation mobile ramenée à 5 entrées maximum : Accueil / Médias /
+// Mon univers / Services / Profil. Les anciens onglets "Prestations"/"Paiement collectif" étaient
+// 2 entrées mobiles séparées + "Mes contenus"/"Pass Photo"/"Mon affiliation"/"Mes équipes"/
+// "Calendrier"/"Messages"/"Factures & paiements" ne vivaient que dans la feuille "Plus" — regroupés
+// désormais sous 3 pages piliers (medias/mon-univers/services, voir HubTile.tsx), chaque écran
+// d'origine reste inchangé, seul le point d'entrée change. La sidebar desktop suit le même
+// regroupement (plus de place n'y change rien : la cohérence entre les deux vaut mieux qu'une
+// sidebar "riche" et une nav mobile "pauvre" qui ne se ressembleraient plus).
 const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
   { title: null, items: [{ href: "/dashboard", label: "Accueil", icon: "home", color: "#8CA9FF" }] },
+  {
+    title: "Médias",
+    items: [
+      { href: "/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
+      { href: "/photos", label: "Pass Photo", icon: "photo_camera", color: "#34D399" },
+    ],
+  },
   {
     title: "Mon univers",
     items: [
       { href: "/affiliations", label: "Mon affiliation", icon: "shield", color: "#22D3EE" },
       { href: "/equipes", label: "Mes équipes", icon: "groups", color: "#22D3EE" },
-    ],
-  },
-  {
-    title: "SportVision",
-    items: [
-      { href: "/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
-      { href: "/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
-      { href: "/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
-      { href: "/photos", label: "Pass Photo", icon: "photo_camera", color: "#34D399" },
-      { href: "/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
       { href: "/calendrier", label: "Calendrier", icon: "calendar_month", color: "#8CA9FF" },
       { href: "/messages", label: "Messages", icon: "forum", color: "#22D3EE" },
     ],
   },
   {
-    title: "Mon compte",
+    title: "Services",
     items: [
+      { href: "/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
+      { href: "/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
+      { href: "/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
       { href: "/factures", label: "Factures & paiements", icon: "payments", color: "#FBBF24" },
-      { href: "/profil", label: "Mon profil", icon: "person", color: "#22D3EE" },
     ],
+  },
+  {
+    title: "Mon compte",
+    items: [{ href: "/profil", label: "Mon profil", icon: "person", color: "#22D3EE" }],
   },
 ];
 
-const ALL_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
-
-// 5 onglets principaux mobile (README § Mobile) : le reste passe par la feuille "Plus".
 const MOBILE_TABS: NavItem[] = [
   { href: "/dashboard", label: "Accueil", icon: "home", color: "#8CA9FF" },
-  { href: "/contenus", label: "Contenus", icon: "photo_library", color: "#C084FC" },
-  { href: "/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
-  { href: "/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
+  { href: "/medias", label: "Médias", icon: "photo_library", color: "#C084FC" },
+  { href: "/mon-univers", label: "Mon univers", icon: "groups", color: "#22D3EE" },
+  { href: "/services", label: "Services", icon: "camera_alt", color: "#8CA9FF" },
   { href: "/profil", label: "Profil", icon: "person", color: "#22D3EE" },
 ];
-const MOBILE_MORE_ITEMS: NavItem[] = ALL_ITEMS.filter(
-  (item) => !MOBILE_TABS.some((t) => t.href === item.href),
-);
+// Les 5 onglets mobiles pointent vers des pages piliers distinctes des items de la sidebar
+// desktop (medias/mon-univers/services vs. leurs pages de destination) — plus rien à reléguer
+// dans une feuille "Plus" (bouton flottant retiré, voir plus bas).
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -99,7 +107,6 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -300,48 +307,9 @@ export function AppShell({
         })}
       </div>
 
-      {/* Bouton "Plus" flottant mobile — accès aux entrées hors des 5 onglets principaux */}
-      <button
-        type="button"
-        onClick={() => setMoreOpen(true)}
-        aria-label="Plus d'options"
-        className="fixed bottom-[calc(66px+env(safe-area-inset-bottom))] right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-sv-gradient text-white shadow-lg lg:hidden"
-      >
-        <span className="material-symbols-rounded !text-[22px]" aria-hidden="true">apps</span>
-      </button>
-
-      {moreOpen && (
-        <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setMoreOpen(false)}>
-          <div
-            className="absolute inset-x-0 bottom-0 flex max-h-[70vh] flex-col gap-1 overflow-y-auto rounded-t-sv-card border-t border-border bg-bg-elevated p-3 pb-[max(16px,env(safe-area-inset-bottom))]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-white/15" />
-            <span className="px-2 pb-1 font-sora text-[15px] font-semibold">Plus</span>
-            {MOBILE_MORE_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMoreOpen(false)}
-                className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
-              >
-                <span className="material-symbols-rounded !text-[21px]" style={{ color: item.color }} aria-hidden="true">
-                  {item.icon}
-                </span>
-                {item.label}
-              </Link>
-            ))}
-            <Link
-              href="/aide"
-              onClick={() => setMoreOpen(false)}
-              className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
-            >
-              <span className="material-symbols-rounded !text-[21px]" aria-hidden="true">help</span>
-              Aide
-            </Link>
-          </div>
-        </div>
-      )}
+      {/* Connect V3 : plus de bouton "Plus" flottant — les 5 onglets couvrent directement ou via
+          leur page pilier tout ce qui vivait auparavant dans cette feuille ; l'aide reste
+          accessible depuis l'icône dédiée du header mobile ci-dessus. */}
     </div>
   );
 }
