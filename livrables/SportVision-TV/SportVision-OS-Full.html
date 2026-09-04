@@ -2534,6 +2534,8 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Programmés</div><div class="fs-v" id="cnt-kpi-prog" style="color:var(--ac)">—</div></div>
       <div class="fs"><div class="fs-l">Publiés</div><div class="fs-v" id="cnt-kpi-pub" style="color:var(--ok)">—</div></div>
     </div>
+    <div class="sh" style="margin-bottom:8px"><div class="sh-t" style="font-size:14px">Matchs à venir</div></div>
+    <div id="cm-matches-real" style="margin-bottom:16px">${_cmSkel(1,40)}</div>
     <div id="contenus-real">${_cmSkel(6,40)}</div>`,
 
   'cm.videoscm':()=>`
@@ -5093,7 +5095,7 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='planning') setPlanningTab(_planningTab||'production');
   if(role==='cm'&&view==='pilotage') await loadCmPilotage();
   if(role==='cm'&&view==='revenus') await loadCmRevenus();
-  if(role==='cm'&&view==='contenus') await loadCmContenus();
+  if(role==='cm'&&view==='contenus'){await loadCmContenus();await loadCmUpcomingMatches();}
   if(role==='cm'&&view==='videoscm') await loadCmVideosAValider();
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
   if(role==='cm'&&view==='charge') await loadCmCharge();
@@ -22671,6 +22673,47 @@ async function _cmVisibleClients(fullCols){
   }catch(e){return[];}
 }
 
+// ── Matchs à venir → contenu en un clic (Communication Hub, 03/09/2026) ────
+// Jusqu'ici les matchs Club+ (club_matches, calendrier canonique déjà utilisé côté Club+/
+// matchcenter) n'étaient JAMAIS visibles depuis l'OS — le CM devait ressaisir manuellement
+// équipe/adversaire/date/lieu dans monthly_production_plans/planned_presences, un système
+// entièrement parallèle. Ce panneau lit directement club_matches (aucune duplication) pour les
+// clubs visibles de ce CM, via le pont déjà existant clubs.portail_client_id -> clients.id
+// (même pont que _cmVisibleClients ailleurs dans ce fichier). "+ Créer un contenu" pré-remplit
+// modalNouveauContenu avec match_id (migration-contenus-match-event-link.sql) — le contenu créé
+// garde le lien vers le match, sans jamais ressaisir son contexte.
+async function loadCmUpcomingMatches(){
+  const el=document.getElementById('cm-matches-real');
+  if(!el)return;
+  try{
+    const clients=await _cmVisibleClients();
+    const clientIds=clients.map(c=>c.id).filter(Boolean);
+    if(!clientIds.length){el.innerHTML='<div class="cd"><div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun club visible.</div></div>';return;}
+    const today=ymdLocal();
+    const matches=await sbFetch('club_matches?select=id,team,opponent,match_date,lieu,competition,is_home,status,clubs!inner(id,nom,portail_client_id)&clubs.portail_client_id=in.('+clientIds.join(',')+')&match_date=gte.'+today+'&order=match_date.asc&limit=12').catch(()=>[]);
+    const rows=Array.isArray(matches)?matches:[];
+    if(!rows.length){el.innerHTML='<div class="cd"><div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun match à venir pour vos clubs.</div></div>';return;}
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Club</th><th>Match</th><th>Date</th><th>Lieu</th><th></th></tr></thead><tbody>'+
+      rows.map(m=>{
+        const titre='Matchday — '+m.team+' vs '+m.opponent;
+        const clientId=m.clubs?.portail_client_id||'';
+        const clubNom=m.clubs?.nom?esc(m.clubs.nom):'—';
+        const sens=m.is_home===false?'Extérieur':'Domicile';
+        return`<tr>
+          <td class="tp">${clubNom}</td>
+          <td>${esc(m.team)} vs ${esc(m.opponent)}${m.competition?` <span style="color:var(--t3);font-size:11px">· ${esc(m.competition)}</span>`:''}</td>
+          <td>${m.match_date?new Date(m.match_date).toLocaleDateString('fr-FR'):'—'} <span style="color:var(--t3);font-size:11px">${sens}</span></td>
+          <td>${esc(m.lieu||'—')}</td>
+          <td><button class="btn bp bs" onclick="creerContenuDepuisMatch('${m.id}','${clientId}','${esc(titre).replace(/'/g,"\\'")}')">+ Créer un contenu</button></td>
+        </tr>`;
+      }).join('')+'</tbody></table></div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement des matchs.</div>';console.error(e);}
+}
+
+function creerContenuDepuisMatch(matchId,clientId,titre){
+  modalNouveauContenu(null,null,{clientId,titre,matchId});
+}
+
 async function loadCmContenus(){
   const el=document.getElementById('contenus-real');
   if(!el)return;
@@ -22933,6 +22976,10 @@ async function modalNouveauContenu(statutInit,dateInit,prefill){
   // renseigné par creerContenu() — remis à zéro à chaque ouverture pour ne
   // jamais réutiliser par erreur l'id d'une demande précédente.
   window._ctRequestId=pf.requestId||null;
+  // Même idiome que _ctRequestId juste au-dessus (match_id, migration-contenus-match-event-
+  // link.sql, 03/09/2026) — remis à zéro à chaque ouverture pour ne jamais réutiliser par erreur
+  // le match d'un contenu précédent.
+  window._ctMatchId=pf.matchId||null;
   const clients=await _cmVisibleClients();
   openModal(`<div class="mh"><div class="mt">Nouveau contenu</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
@@ -22983,11 +23030,13 @@ async function creerContenu(){
     const r=await sbFetch('contenus',{method:'POST',body:{
       client_id:clientId||null,cm_id:uid,titre:ti,plateforme:pl,type_contenu:ty,
       date_prevue:dt||null,hook:hook||null,cta:cta||null,legende:legende||null,
-      hashtags:hashtags||null,sponsor:sponsor||null,request_id:window._ctRequestId||null
+      hashtags:hashtags||null,sponsor:sponsor||null,request_id:window._ctRequestId||null,
+      match_id:window._ctMatchId||null
     }});
     if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');if(btn)btn.disabled=false;return;}
     if(Array.isArray(r)&&r[0]) _logAudit('contenu_cree','contenu',r[0].id,{titre:ti});
     window._ctRequestId=null;
+    window._ctMatchId=null;
     closeModal();
     if(document.getElementById('contenus-real')) loadCmContenus();
     else if(document.getElementById('cal-real')) loadCmCal();
