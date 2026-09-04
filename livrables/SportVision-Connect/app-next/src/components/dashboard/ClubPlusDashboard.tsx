@@ -10,6 +10,8 @@ import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClubMatches, fetchClubRequiresResultVerification } from "@/lib/data/club/matches";
 import { fetchClubCalendarEvents } from "@/lib/data/club/calendar";
+import { deriveStage, fetchClubJoinRequests } from "@/lib/data/club/team-requests";
+import { fetchClubRequests } from "@/lib/data/club/requests";
 import { fetchClientDevis, fetchClientInvoices } from "@/lib/data/projet/billing";
 import { resolveClubPortailClientId } from "@/lib/data/club/portail-link";
 import { CALENDAR_EVENT_KIND_LABELS, type CalendarEvent } from "@/lib/types/calendar";
@@ -25,6 +27,7 @@ interface TodoItem {
   title: string;
   meta: string;
   action: string;
+  href: string;
   due?: string;
 }
 
@@ -101,37 +104,81 @@ export function ClubPlusDashboard() {
   const [todo, setTodo] = useState<TodoItem[] | null>(null);
   const [error, setError] = useState(false);
 
+  // Action Center (04/09/2026, chantier "Fiche équipe comme objet central" § Action Center) :
+  // "À traiter" ne montrait que le contenu Studio à valider — deux autres signaux réels
+  // existaient déjà en base sans jamais être surfacés sur le dashboard (visibles seulement en
+  // naviguant manuellement vers /team-requests ou /requests) : les demandes d'adhésion qu'il
+  // reste à confirmer/valider (membership_requests, même logique deriveStage que team-requests.ts,
+  // jamais réécrite ici) et les demandes de visuel en attente d'un complément d'info du club
+  // (club_requests.status='info_manquante'). RLS fait le tri par rôle exactement comme pour la
+  // lecture directe de ces tables : un coach ne reçoit que ses propres équipes
+  // (mr_educateur_select/is_team_educateur), donc pas besoin de reproduire ce filtre ici — on
+  // ne fait que choisir, une fois les lignes reçues, quelle étape concerne le rôle courant.
   const loadTodo = useCallback(async () => {
     if (isTreasurer) return;
     const supabase = createClient();
     setError(false);
     try {
-      const { data, error: queryError } = await supabase
-        .from("club_creations")
-        .select("id, title, team, created_at")
-        .eq("club_id", ctx.organization.id)
-        .eq("status", "a_valider")
-        .order("created_at", { ascending: false });
-      if (queryError) {
+      const isCoachRole = ctx.membership.role === "coach";
+      const isAdminRole = ctx.membership.role === "admin";
+
+      const [contentRes, joinRequests, visualRequests] = await Promise.all([
+        supabase
+          .from("club_creations")
+          .select("id, title, team, created_at")
+          .eq("club_id", ctx.organization.id)
+          .eq("status", "a_valider")
+          .order("created_at", { ascending: false }),
+        fetchClubJoinRequests(supabase, ctx.organization.id).catch(() => []),
+        fetchClubRequests(supabase, ctx.organization.id).catch(() => []),
+      ]);
+      if (contentRes.error) {
         setError(true);
         return;
       }
-      const rows = (data ?? []) as { id: string; title: string; team: string | null }[];
-      const inScope =
+      const contentRows = (contentRes.data ?? []) as { id: string; title: string; team: string | null }[];
+      const contentInScope =
         ctx.membership.teamScope.length === 0
-          ? rows
-          : rows.filter((row) => !row.team || ctx.membership.teamScope.includes(row.team));
-      setTodo(
-        inScope.map((row) => ({
+          ? contentRows
+          : contentRows.filter((row) => !row.team || ctx.membership.teamScope.includes(row.team));
+
+      const membershipItems: TodoItem[] = joinRequests
+        .filter((req) => {
+          const stage = deriveStage(req);
+          if (isCoachRole) return stage === "attente_educateur";
+          if (isAdminRole) return stage === "attente_dirigeant";
+          return false;
+        })
+        .map((req) => ({
+          title: `${req.playerFirstName ?? ""} ${req.playerLastName ?? ""}`.trim() || "Nouvelle demande",
+          meta: `Adhésion${req.teamName ? ` · ${req.teamName}` : ""} à confirmer`,
+          action: "Traiter",
+          href: "/team-requests",
+        }));
+
+      const requestItems: TodoItem[] = visualRequests
+        .filter((r) => r.status === "À compléter")
+        .map((r) => ({
+          title: r.requestedByName !== "—" ? r.requestedByName : "Demande de visuel",
+          meta: `Information manquante${r.teamName ? ` · ${r.teamName}` : ""}`,
+          action: "Compléter",
+          href: "/requests",
+        }));
+
+      setTodo([
+        ...membershipItems,
+        ...requestItems,
+        ...contentInScope.map((row) => ({
           title: row.title,
           meta: "Contenu à valider · Studio SportVision",
           action: "Valider",
+          href: "/content",
         })),
-      );
+      ]);
     } catch {
       setError(true);
     }
-  }, [ctx.organization.id, ctx.membership.teamScope, isTreasurer]);
+  }, [ctx.organization.id, ctx.membership.teamScope, ctx.membership.role, isTreasurer]);
 
   useEffect(() => {
     loadTodo();
@@ -402,9 +449,9 @@ export function ClubPlusDashboard() {
           ) : todo.length === 0 ? (
             <EmptyState icon={CheckCircle2} title="Rien à traiter pour le moment" />
           ) : (
-            todo.map((t) => (
+            todo.map((t, i) => (
               <div
-                key={t.title}
+                key={`${t.href}-${t.title}-${i}`}
                 className="flex items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0 hover:bg-row-hover"
               >
                 <span className="min-w-0 flex-1">
@@ -412,7 +459,7 @@ export function ClubPlusDashboard() {
                   <span className="mt-0.5 block text-[12px] text-text-soft">{t.meta}</span>
                 </span>
                 {t.due && <span className="w-28 flex-none text-right text-[12px] font-bold text-due-late">{t.due}</span>}
-                <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={() => router.push("/content")}>
+                <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={() => router.push(t.href)}>
                   {t.action}
                 </Button>
               </div>
