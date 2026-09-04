@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
@@ -75,6 +76,7 @@ import {
 // de data/club/onboarding.ts.
 export default function OnboardingPage() {
   const { ctx } = useSession();
+  const router = useRouter();
   const { organization, membership } = ctx;
   const canEdit = organization.type === "club" && membership.role === "admin";
 
@@ -110,15 +112,18 @@ export default function OnboardingPage() {
     );
   }
 
+  // Redirige vers le tableau de bord après envoi (05/09/2026, retour Fouka) : rester sur
+  // /onboarding après "Envoyer à SportVision" donnait l'impression que le clic n'avait rien fait,
+  // alors que submitOnboarding() avait bien réussi — même symptôme que les boutons "Enregistrer"
+  // des sections, mais ici la cause est un vrai manque de redirection, pas un bug d'écriture.
   async function handleSubmit() {
     setSubmitting(true);
     setSubmitError(null);
     try {
       await submitOnboarding(createClient(), organization.id);
-      await refreshCompletion();
+      router.push("/dashboard");
     } catch {
       setSubmitError("Impossible d'envoyer pour le moment. Réessayez.");
-    } finally {
       setSubmitting(false);
     }
   }
@@ -409,9 +414,12 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
   const [showTeamForm, setShowTeamForm] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [teamCategorie, setTeamCategorie] = useState("");
-  const [teamCoach, setTeamCoach] = useState("");
+  const [teamCoachFirstName, setTeamCoachFirstName] = useState("");
+  const [teamCoachLastName, setTeamCoachLastName] = useState("");
+  const [teamCoachEmail, setTeamCoachEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [coachInviteWarning, setCoachInviteWarning] = useState<string | null>(null);
   const [showVenueForm, setShowVenueForm] = useState(false);
   const [venueName, setVenueName] = useState("");
   const [venueVille, setVenueVille] = useState("");
@@ -500,6 +508,13 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clubId]);
 
+  // Coach invité au même moment que la création de l'équipe (05/09/2026, retour Fouka) : avant,
+  // le champ "Coach" de ce formulaire n'était qu'un texte libre affiché sur la fiche équipe,
+  // sans aucun accès Club+ réel — l'admin devait ensuite cliquer séparément sur "+ Inviter un
+  // coach" pour ça. Fusionné en une seule action quand un e-mail est renseigné ici ; sans e-mail,
+  // le nom reste un simple texte libre comme avant (le coach n'a peut-être pas encore d'adresse
+  // à disposition). Un échec de l'invitation n'annule jamais la création de l'équipe déjà
+  // réussie — averti séparément plutôt que de perdre le travail déjà fait.
   async function handleCreateTeam() {
     if (!teamName.trim()) {
       setError("Le nom de l'équipe est obligatoire.");
@@ -507,11 +522,30 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
     }
     setSaving(true);
     setError(null);
+    setCoachInviteWarning(null);
+    const coachDisplayName = [teamCoachFirstName.trim(), teamCoachLastName.trim()].filter(Boolean).join(" ");
     try {
-      await createClubTeam(createClient(), clubId, { name: teamName.trim(), categorie: teamCategorie.trim() || undefined, coach: teamCoach.trim() || undefined });
+      await createClubTeam(createClient(), clubId, { name: teamName.trim(), categorie: teamCategorie.trim() || undefined, coach: coachDisplayName || undefined });
+      if (teamCoachEmail.trim() && teamCoachFirstName.trim() && teamCoachLastName.trim()) {
+        try {
+          await inviteClubMember(createClient(), clubId, {
+            email: teamCoachEmail.trim(),
+            firstName: teamCoachFirstName.trim(),
+            lastName: teamCoachLastName.trim(),
+            role: "coach",
+            team: teamName.trim(),
+          });
+        } catch (e) {
+          setCoachInviteWarning(
+            `Équipe créée, mais l'invitation du coach a échoué (${e instanceof Error ? e.message : "erreur inconnue"}) — utilisez "+ Inviter un coach" pour réessayer.`,
+          );
+        }
+      }
       setTeamName("");
       setTeamCategorie("");
-      setTeamCoach("");
+      setTeamCoachFirstName("");
+      setTeamCoachLastName("");
+      setTeamCoachEmail("");
       setShowTeamForm(false);
       await reload();
       onSaved();
@@ -890,18 +924,32 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
       )}
       {canEdit && showTeamForm && (
         <div className="flex flex-col gap-3 rounded-xl border border-border-strong p-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Nom" full>
               <input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="U15 R1" className={fieldClass} />
             </Field>
             <Field label="Catégorie">
               <input value={teamCategorie} onChange={(e) => setTeamCategorie(e.target.value)} placeholder="U15" className={fieldClass} />
             </Field>
-            <Field label="Coach">
-              <input value={teamCoach} onChange={(e) => setTeamCoach(e.target.value)} className={fieldClass} />
-            </Field>
+          </div>
+          <div className="border-t border-divider pt-3">
+            <div className="mb-2 text-[12px] font-bold text-text-soft">
+              Coach (facultatif — renseignez un e-mail pour créer directement son accès Club+)
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Field label="Prénom">
+                <input value={teamCoachFirstName} onChange={(e) => setTeamCoachFirstName(e.target.value)} className={fieldClass} />
+              </Field>
+              <Field label="Nom">
+                <input value={teamCoachLastName} onChange={(e) => setTeamCoachLastName(e.target.value)} className={fieldClass} />
+              </Field>
+              <Field label="E-mail">
+                <input type="email" value={teamCoachEmail} onChange={(e) => setTeamCoachEmail(e.target.value)} className={fieldClass} />
+              </Field>
+            </div>
           </div>
           {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
+          {coachInviteWarning && <p className="text-[12.5px] font-bold text-warning-fg">{coachInviteWarning}</p>}
           <div className="flex items-center gap-3">
             <Button className="h-9 px-4 text-[12.5px]" loading={saving} onClick={handleCreateTeam}>
               Créer l&apos;équipe
