@@ -4630,6 +4630,9 @@ function modalNouveauClient(){
           <input id="fc-division" type="text" class="l-inp" placeholder="R1, Dept…" style="height:38px">
         </div>
       </div>
+      <div><label style="${L}">SIRET <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3)">(facultatif — sécurise la détection de doublon)</span></label>
+        <input id="fc-siret" type="text" class="l-inp" placeholder="123 456 789 00012" style="height:38px">
+      </div>
       <div><label style="${L}">Notes</label>
         <textarea id="fc-notes" class="l-inp" style="height:56px;resize:none;padding-top:8px" placeholder="Contexte, besoins spécifiques, points de contact…"></textarea>
       </div>
@@ -4643,37 +4646,19 @@ function modalNouveauClient(){
   window._fcDoublonConfirme=false;
 }
 
-// ── Anti-doublon V1 (refonte 28/08) : avant de créer un nouveau client Full Com, on
-// signale les correspondances probables déjà existantes (nom normalisé — sans accents/
-// casse/espaces superflus — + ville) dans `clients` ET `clubs`, sans jamais bloquer ni
-// fusionner automatiquement. Pas de comparaison de domaine/identifiant fédéral (hors
-// scope V1, aucune donnée fiable disponible pour ça côté OS).
-function _normNomDoublon(s){
-  return(s||'').toString().normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-}
-async function _chercherDoublonsClient(nom,ville){
-  const n=_normNomDoublon(nom);
-  if(!n)return[];
-  const v=_normNomDoublon(ville);
+// ── Anti-doublon club canonique (P1 audit 04-05/09, finding C1b) : avant de créer un
+// nouveau client, cherche un club existant correspondant via find_duplicate_club_
+// candidates (SIRET normalisé = correspondance forte, jamais de faux positif crédible ;
+// nom normalisé seul = correspondance possible, jamais suffisant pour bloquer ou
+// fusionner automatiquement — juste pour demander confirmation). Remplace l'ancien
+// scan client-side (limité à 500 lignes, nom+ville uniquement, jamais de SIRET) par le
+// même moteur que provisionner_club_plus_full_com côté serveur — voir
+// migration-dedup-club-canonique.sql.
+async function _chercherDoublonsClient(nom,siret){
+  if(!nom||!nom.trim())return[];
   try{
-    const [clientsR,clubsR]=await Promise.all([
-      sbFetch('clients?select=id,nom,ville&limit=500').catch(()=>[]),
-      sbFetch('clubs?select=id,nom&limit=500').catch(()=>[]),
-    ]);
-    const matches=[];
-    (Array.isArray(clientsR)?clientsR:[]).forEach(c=>{
-      const cn=_normNomDoublon(c.nom);
-      if(!cn)return;
-      const nameMatch=cn===n||cn.includes(n)||n.includes(cn);
-      const villeMatch=!v||_normNomDoublon(c.ville)===v;
-      if(nameMatch&&(villeMatch||!c.ville))matches.push({source:'client',nom:c.nom,ville:c.ville});
-    });
-    (Array.isArray(clubsR)?clubsR:[]).forEach(c=>{
-      const cn=_normNomDoublon(c.nom);
-      if(!cn)return;
-      if(cn===n||cn.includes(n)||n.includes(cn))matches.push({source:'club',nom:c.nom,ville:null});
-    });
-    return matches;
+    const r=await sbFetch('rpc/find_duplicate_club_candidates',{method:'POST',body:{p_siret:siret||null,p_nom:nom}});
+    return sbErr(r)||!Array.isArray(r)?[]:r;
   }catch(e){return[];}
 }
 async function creerClient(){
@@ -4697,15 +4682,27 @@ async function creerClient(){
   if(btn){btn.disabled=true;btn.textContent='Création…';}
   err.textContent='';
   try{
+    const fcSiretVal=document.getElementById('fc-siret')?.value.trim()||null;
     if(!window._fcDoublonConfirme){
       err.textContent='Vérification des doublons…';
-      const doublons=await _chercherDoublonsClient(nom,document.getElementById('fc-ville')?.value);
+      const doublons=await _chercherDoublonsClient(nom,fcSiretVal);
       err.textContent='';
-      if(doublons.length){
-        const lbl={client:'client',club:'club Club+'};
+      const forte=doublons.find(d=>d.match_strength==='forte');
+      if(forte){
+        // Correspondance forte (SIRET) : jamais de bypass, on ne recrée pas un club déjà
+        // identifié — un doublon de client est possible (deux fiches CRM), mais pas de
+        // "Club bis" pour la même structure réelle. Décision Fouka (item 10/14).
+        warn.innerHTML=`<div style="padding:12px 14px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.25);border-radius:var(--rb);margin-bottom:4px">
+          <div style="font-size:12.5px;color:var(--t1);font-weight:600;margin-bottom:6px">⛔ Un club avec ce SIRET existe déjà</div>
+          <div style="font-size:12px;color:var(--t2)">${esc(forte.club_nom)} — ce client ne peut pas être créé avec ce SIRET tant qu'il correspond à un club existant. Vérifiez le SIRET saisi, ou ouvrez la fiche du club existant plutôt que d'en créer un nouveau.</div>
+        </div>`;
+        return;
+      }
+      const possible=doublons.find(d=>d.match_strength==='possible');
+      if(possible){
         warn.innerHTML=`<div style="padding:12px 14px;background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.25);border-radius:var(--rb);margin-bottom:4px">
-          <div style="font-size:12.5px;color:var(--t1);font-weight:600;margin-bottom:6px">⚠ Un ${lbl[doublons[0].source]} similaire existe déjà</div>
-          <div style="font-size:12px;color:var(--t2);margin-bottom:10px">${doublons.slice(0,3).map(d=>esc(d.nom)+(d.ville?' · '+esc(d.ville):'')+' ('+lbl[d.source]+')').join(', ')}${doublons.length>3?' et '+(doublons.length-3)+' autre(s)':''} — voulez-vous quand même créer ce nouveau client ?</div>
+          <div style="font-size:12.5px;color:var(--t1);font-weight:600;margin-bottom:6px">⚠ Un club similaire existe déjà</div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:10px">${esc(possible.club_nom)} — même nom qu'un club déjà enregistré. Voulez-vous quand même créer ce nouveau client ?</div>
           <div style="display:flex;gap:10px">
             <button class="btn bg2 bs" onclick="document.getElementById('fc-doublon-warn').innerHTML=''">Annuler</button>
             <button class="btn bp bs" onclick="window._fcDoublonConfirme=true;creerClient()">Créer quand même</button>
@@ -4734,6 +4731,7 @@ async function creerClient(){
       sport:polePicked?polePicked.sport:null,
       ...(polePicked?{pole_id:polePicked.id}:{}),
       ville:document.getElementById('fc-ville').value||null,
+      siret:fcSiretVal,
       division:document.getElementById('fc-division')?.value||null,
       notes:document.getElementById('fc-notes')?.value||null,
       origine_prospect:document.getElementById('fc-origine').value||null,
@@ -6416,23 +6414,32 @@ async function chargerParcoursClient(clientId){
 // volontairement : Pass Photo actif/inactif (pas de source fiable et rapide —
 // photo_pass_entitlements est par utilisateur, pas par club/client, cf. audit) et
 // "Responsable Production" (aucun champ dédié trouvé, seul le CM assigné existe).
+// P1 audit 04-05/09 : un CM ne doit jamais lire clubs.subscription_status/stripe_* en
+// direct (voir migration-securite-clubs-cm-operationnel.sql). Un CM passe désormais
+// exclusivement par rpc_club_operational_summary (résumé dérivé, aucune donnée Stripe).
+async function chargerClubOperationnelCM(clientId){
+  const r=await sbFetch('rpc/rpc_club_operational_summary',{method:'POST',body:{p_client_id:clientId}}).catch(()=>null);
+  if(!r||sbErr(r)||!Array.isArray(r)||!r.length)return null;
+  return r[0];
+}
 async function chargerFceHeroInfo(clientId){
   const el=document.getElementById('fce-hero-info');
   if(!el)return;
   try{
     const today=ymdLocal();
+    const isCm=S.role==='cm';
     const [clubR,presR]=await Promise.all([
-      sbFetch('clubs?select=id,plan,club_plus_source,subscription_status&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>[]),
+      isCm?chargerClubOperationnelCM(clientId):sbFetch('clubs?select=id,plan,club_plus_source&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>[]),
       sbFetch('prestations?select=id,type_prestation,date_prestation&client_id=eq.'+clientId+'&date_prestation=gte.'+today+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=1').catch(()=>[]),
     ]);
-    const club=Array.isArray(clubR)&&clubR.length?clubR[0]:null;
+    const club=isCm?clubR:(Array.isArray(clubR)&&clubR.length?clubR[0]:null);
     const pre=Array.isArray(presR)&&presR.length?presR[0]:null;
     const planLb={free:'Gratuit',club:'Club',performance:'Performance'};
     const chip=(txt,clr)=>`<span class="bd ${clr}"><span class="bd-d"></span>${txt}</span>`;
     let clubChip;
     if(club){
-      const srcLb={clubplus_subscription:'Abonnement',full_com_included:'Inclus Full Com',manual:'Manuel'};
-      clubChip=chip('Club+ actif · '+(planLb[club.plan]||club.plan||'—')+' · '+(srcLb[club.club_plus_source]||club.club_plus_source||''),'ba');
+      const label=isCm?club.offre_label:((planLb[club.plan]||club.plan||'—')+' · '+({clubplus_subscription:'Abonnement',full_com_included:'Inclus Full Com',manual:'Manuel'}[club.club_plus_source]||club.club_plus_source||''));
+      clubChip=chip('Club+ actif · '+label,'ba');
     }else{
       clubChip=chip('Club+ non activé','bn');
     }
@@ -6523,6 +6530,17 @@ async function loadClientClubPlusStatut(clientId){
   const el=document.getElementById('fce-clubplus-statut');
   if(!el)return;
   try{
+    // P1 audit 04-05/09 : un CM ne voit qu'un statut dérivé (actif/action requise/inactif),
+    // jamais subscription_status brut ni les identifiants Stripe — voir
+    // migration-securite-clubs-cm-operationnel.sql.
+    if(S.role==='cm'){
+      const club=await chargerClubOperationnelCM(clientId);
+      if(!club){el.innerHTML='Club+ non activé pour ce client.';return;}
+      const svcLb={actif:'Service actif',action_requise:'Action administrative requise',inactif:'Service inactif'};
+      const svcClr={actif:'color:var(--su,#1a9)',action_requise:'color:var(--wn,#c90)',inactif:'color:var(--er)'};
+      el.innerHTML=`Offre <b style="color:var(--t1)">${esc(club.offre_label)}</b> · <span style="${svcClr[club.statut_service]||''}">${esc(svcLb[club.statut_service]||club.statut_service)}</span> · activé le ${_ccFmtD(club.created_at)}`;
+      return;
+    }
     const r=await sbFetch('clubs?select=id,plan,subscription_status,club_plus_source,created_at&portail_client_id=eq.'+clientId+'&limit=1');
     const club=Array.isArray(r)&&r.length?r[0]:null;
     if(!club){el.innerHTML='Club+ non activé pour ce client.';return;}
@@ -6701,6 +6719,10 @@ async function loadClientCommunication(clientId){
 async function chargerCreditsProjetClient(clientId){
   const el=document.getElementById('fce-credits');
   if(!el)return;
+  // P1 audit 04-05/09 : le solde de crédits est une donnée financière, un CM ne doit pas
+  // la voir (décision Fouka) — voir migration-securite-clubs-cm-operationnel.sql. Pas de
+  // proxy dérivé demandé pour cette section, on l'omet simplement pour ce rôle.
+  if(S.role==='cm'){el.innerHTML='<span style="color:var(--t3)">Géré par l\'administration.</span>';return;}
   try{
     const clubLink=await sbFetch('clubs?select=id,credits_balance,credits_reserved,credits_monthly&portail_client_id=eq.'+clientId+'&limit=1');
     if(sbErr(clubLink)){el.innerHTML='<span style="color:var(--er)">Crédits indisponibles.</span>';return;}

@@ -209,23 +209,65 @@ serve(async (req) => {
       // autorité, on n'écrase rien avec clubNom ici.
       club = existingClub;
     } else {
-      const { data: createdClub, error: clubErr } = await admin
-        .from("clubs")
-        .insert({
-          nom: clubNom,
-          plan,
-          pilot_mode: true,
-          portail_client_id: tokenRow.client_id,
-          credits_monthly: CREDITS_BY_PLAN[plan],
-          credits_balance: CREDITS_BY_PLAN[plan],
-        })
-        .select("id")
-        .single();
-      if (clubErr) {
-        await releaseToken();
-        return json({ error: clubErr.message }, 500);
+      // Dédup club canonique (P1 audit 04-05/09, finding C1b) : avant de créer un club pour
+      // ce client, cherche un club existant avec le même SIRET (correspondance forte, on le
+      // rattache au lieu d'en créer un 2e) — voir migration-dedup-club-canonique.sql. Une
+      // correspondance faible (nom seul) ne bloque jamais un dirigeant légitime qui active
+      // son compte (pas d'interlocuteur staff dans ce flux public pour trancher), elle est
+      // seulement signalée au staff pour revue a posteriori (notify_staff_by_role).
+      const { data: clientRow } = await admin
+        .from("clients")
+        .select("siret")
+        .eq("id", tokenRow.client_id)
+        .maybeSingle();
+      const { data: dupCandidates } = await admin.rpc("find_duplicate_club_candidates", {
+        p_siret: clientRow?.siret ?? null,
+        p_nom: clubNom,
+        p_exclude_client_id: tokenRow.client_id,
+      });
+      const forte = (dupCandidates ?? []).find((d: { match_strength: string }) => d.match_strength === "forte");
+      const possible = (dupCandidates ?? []).find((d: { match_strength: string }) => d.match_strength === "possible");
+
+      if (forte) {
+        const { error: relinkErr } = await admin
+          .from("clubs")
+          .update({ portail_client_id: tokenRow.client_id })
+          .eq("id", forte.club_id);
+        if (relinkErr) {
+          await releaseToken();
+          return json({ error: relinkErr.message }, 500);
+        }
+        club = { id: forte.club_id };
+      } else {
+        const { data: createdClub, error: clubErr } = await admin
+          .from("clubs")
+          .insert({
+            nom: clubNom,
+            plan,
+            pilot_mode: true,
+            portail_client_id: tokenRow.client_id,
+            credits_monthly: CREDITS_BY_PLAN[plan],
+            credits_balance: CREDITS_BY_PLAN[plan],
+          })
+          .select("id")
+          .single();
+        if (clubErr) {
+          await releaseToken();
+          return json({ error: clubErr.message }, 500);
+        }
+        club = createdClub;
+        if (possible) {
+          await admin.rpc("notify_staff_by_role", {
+            p_roles: ["admin", "sec"],
+            p_titre: "Club potentiellement en doublon",
+            p_message: `"${clubNom}" vient d'être activé et ressemble à un club déjà existant ("${possible.club_nom}"). À vérifier manuellement.`,
+            p_priorite: "normale",
+            p_prestation_id: null,
+            p_client_id: tokenRow.client_id,
+            p_clubplus_signup_request_id: null,
+          });
+        }
       }
-      club = createdClub;
     }
 
     // Rôle Connect posé par le token, jamais en dur — voir migration-connect-v44-
