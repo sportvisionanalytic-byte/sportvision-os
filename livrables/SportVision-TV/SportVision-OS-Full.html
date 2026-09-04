@@ -10819,8 +10819,8 @@ async function loadPhotoAlbums(el){
   if(!el)return;
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const rows=await sbFetch('photo_albums?select=id,title,event_date,club_id,team_id,season_id,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,clubs(nom),club_teams(name)&order=created_at.desc&limit=200');
-    if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Table photo_albums requise</div><div style="font-size:12px;text-align:center;max-width:320px">Exécutez <span style="font-family:monospace;color:var(--acc)">migration-connect-pass-photo-v1.sql</span> dans Supabase → SQL Editor pour activer ce module.</div></div>';return;}
+    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,clubs(nom),club_teams(name),saisons(label)&order=created_at.desc&limit=200');
+    if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(rows.message||'Impossible de charger les albums.')+'</div></div>';return;}
     _photoAlbums=Array.isArray(rows)?rows:[];
     renderPhotoAlbumsList(_photoAlbums);
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
@@ -10844,7 +10844,7 @@ function renderPhotoAlbumsList(albums){
       <div style="width:3px;height:40px;background:${clr};border-radius:2px;flex-shrink:0"></div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.title)}</div>
-        <div style="font-size:11px;color:var(--t3);margin-top:2px">${clubNom} · ${teamNom} · ${esc(a.season_id)} · ${dt} · ${a.photo_count||0} photo${(a.photo_count||0)>1?'s':''}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${clubNom} · ${teamNom} · ${esc(a.saisons?.label||'—')} · ${dt} · ${a.photo_count||0} photo${(a.photo_count||0)>1?'s':''}</div>
       </div>
       <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
         <span style="font-size:10px;font-weight:700;padding:2px 8px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
@@ -10874,7 +10874,7 @@ function modalCreerAlbum(albumId){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Saison *</label>
-          <input id="pa-season" type="text" class="l-inp" style="height:38px" placeholder="2026-2027" value="${esc(existing?.season_id||'')}"></div>
+          <input id="pa-season" type="text" class="l-inp" style="height:38px" placeholder="2026-2027" value="${esc(existing?.saisons?.label||'')}"></div>
         <div><label style="${L}">Date de l'événement</label>
           <input id="pa-date" type="date" class="l-inp" style="height:38px" value="${esc(existing?.event_date||'')}"></div>
       </div>
@@ -10935,11 +10935,17 @@ async function sauvegarderAlbum(albumId){
       const pres=await sbFetch('prestations?select=id&reference=ilike.%25'+encodeURIComponent(missionRef)+'%25&limit=1');
       missionId=pres?.[0]?.id||null;
     }
+    // media_albums.saison_id est un uuid (FK saisons), pas le texte libre saisi ici — corrigé
+    // le 04/09 (audit transversal, ce module interrogeait encore l'ancienne table photo_albums/
+    // season_id texte, cassé depuis le passage au moteur média générique du 02/09). Même RPC déjà
+    // utilisée ailleurs pour ce rapprochement texte→uuid.
+    const saisonRpc=await sbFetch('rpc/get_or_create_saison',{method:'POST',body:{p_label:season}});
+    if(sbErr(saisonRpc)){err.textContent='Erreur : '+(saisonRpc.message||'saison invalide.');return;}
     const body={
       title,
       club_id:clubId,
       team_id:teamId,
-      season_id:season,
+      saison_id:saisonRpc,
       event_date:document.getElementById('pa-date')?.value||null,
       cover_preview_url:document.getElementById('pa-cover')?.value?.trim()||null,
       photo_count:parseInt(document.getElementById('pa-count')?.value||'0',10)||0,
@@ -10948,10 +10954,10 @@ async function sauvegarderAlbum(albumId){
     };
     let r;
     if(albumId){
-      r=await sbFetch('photo_albums?id=eq.'+albumId,{method:'PATCH',body});
+      r=await sbFetch('media_albums?id=eq.'+albumId,{method:'PATCH',body});
     }else{
       body.created_by=S.uid;
-      r=await sbFetch('photo_albums',{method:'POST',body});
+      r=await sbFetch('media_albums',{method:'POST',body});
     }
     if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Enregistrement impossible.');return;}
     closeModal();

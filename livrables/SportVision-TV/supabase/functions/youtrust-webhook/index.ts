@@ -76,11 +76,18 @@ serve(async (req) => {
     // distinct du signature_request — on retombe alors sur une clé composée
     // stable, qui reste unique par (type d'événement, demande de signature).
     const eventId: string = event.id || event.event_id || `${eventType}:${signatureRequestId}`;
-    const { data: already } = await admin.from("youtrust_events").select("id").eq("id", eventId).maybeSingle();
-    if (already) {
-      return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 });
+    // Dédoublonnage atomique (trouvé en audit transversal, finding N6) : le select-puis-insert
+    // laissait une fenêtre de course en cas de vraie concurrence (deux livraisons quasi
+    // simultanées) — même correctif déjà appliqué à stripe-webhook, insert direct + 23505 comme
+    // seule preuve fiable de doublon.
+    const { error: insertEventErr } = await admin.from("youtrust_events").insert({ id: eventId, type: eventType });
+    if (insertEventErr) {
+      if (insertEventErr.code === "23505") {
+        return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 });
+      }
+      // Erreur inattendue (pas un doublon) : on continue quand même le traitement plutôt que de
+      // perdre une signature pour un souci de traçabilité, même logique que stripe-webhook.
     }
-    await admin.from("youtrust_events").insert({ id: eventId, type: eventType });
 
     const statutMap: Record<string, string> = {
       "signature_request.done": "signee",

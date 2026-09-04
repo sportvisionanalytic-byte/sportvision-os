@@ -872,7 +872,10 @@ serve(async (req) => {
                   .eq("statut", "payee")
                   .maybeSingle();
                 if (facture) {
-                  await admin.from("factures").update({ statut: "remboursee" }).eq("id", facture.id);
+                  // montant_paye remis à 0 (trouvé en audit transversal, finding J68) : sans ça,
+                  // renderFinRevenus() (SportVision-OS-Full.html) continue de compter l'ancien
+                  // montant_paye dans le KPI "Encaissé" pour une facture pourtant remboursée.
+                  await admin.from("factures").update({ statut: "remboursee", montant_paye: 0 }).eq("id", facture.id);
                   if (facture.pennylane_invoice_id) {
                     avoirResult = await createPennylaneAvoir(admin, facture);
                   }
