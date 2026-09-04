@@ -2622,6 +2622,10 @@ const VIEWS={
     <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Équipe CM</div></div>
       <div id="pilotage-equipe"><div style="padding:15px 19px">${_cmSkel(4,38)}</div></div>
     </div>
+    <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Tutorat CM Junior</div></div>
+      <div style="padding:0 19px 12px;font-size:11.5px;color:var(--t3)">Un CM Junior soumet ses contenus à son tuteur avant publication — le client ne voit jamais cette étape.</div>
+      <div id="pilotage-tutorat"><div style="padding:15px 19px">${_cmSkel(2,38)}</div></div>
+    </div>
     <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Structures</div></div>
       <div id="pilotage-structures"><div style="padding:15px 19px">${_cmSkel(4,38)}</div></div>
     </div>
@@ -23692,6 +23696,7 @@ async function loadCmPilotage(){
     if(nbSansCm)kpisEl.innerHTML+=`<div class="fs" style="border-color:rgba(240,68,94,.25);grid-column:span 4"><div class="fs-l" style="color:var(--er)">⚠ ${nbSansCm} structure${nbSansCm>1?'s':''} sans CM affecté</div></div>`;
   }catch(e){kpisEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
   if(equipeEl)await _renderChargeEquipe(equipeEl,true);
+  await loadPilotageTutorat();
   if(structEl){
     try{
       const [clients,affils]=await Promise.all([
@@ -23723,6 +23728,75 @@ async function loadCmPilotage(){
         '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune demande en attente.</div>';
     }catch(e){clubplusEl.innerHTML='<div style="color:var(--er);font-size:12px">Erreur de chargement.</div>';}
   }
+}
+
+// Tutorat CM Junior (04/09/2026, audit transversal) — le backend existe déjà intégralement
+// (cm_tutorships, cm_niveau_autonomie, triggers de workflow — voir migration-audit-final-schema-
+// reconciliation.sql du 29/08) mais aucune UI ne permettait jusqu'ici d'assigner réellement un
+// tuteur : cette carte comble ce seul trou. RLS cm_tutorships_write (migration-cm-tutorat-
+// completion.sql) restreint déjà l'écriture à Admin/Responsable CM — cette carte n'ajoute donc
+// pas de contrôle d'accès en plus côté frontend, le bouton reste juste inutile pour qui n'a pas
+// les droits (l'appel échouerait proprement).
+let _tutoratJuniors=[],_tutoratTuteurs=[];
+async function loadPilotageTutorat(){
+  const el=document.getElementById('pilotage-tutorat');
+  if(!el)return;
+  try{
+    const [juniors,tuteurs,tutorships]=await Promise.all([
+      sbFetch('profiles?select=id,prenom,nom&role=eq.cm&cm_niveau_autonomie=eq.junior&order=nom.asc').catch(()=>[]),
+      sbFetch('profiles?select=id,prenom,nom&role=eq.cm&cm_niveau_autonomie=in.(autonome,responsable)&order=nom.asc').catch(()=>[]),
+      sbFetch('cm_tutorships?select=id,junior_id,tuteur_id,profiles!cm_tutorships_tuteur_id_fkey(prenom,nom)&statut=eq.actif').catch(()=>[]),
+    ]);
+    _tutoratJuniors=Array.isArray(juniors)?juniors:[];
+    _tutoratTuteurs=Array.isArray(tuteurs)?tuteurs:[];
+    const byJunior={};
+    (Array.isArray(tutorships)?tutorships:[]).forEach(t=>{byJunior[t.junior_id]=t;});
+    if(!_tutoratJuniors.length){el.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucun CM Junior pour le moment.</div>';return;}
+    el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px;padding:0 19px 15px">'+_tutoratJuniors.map(j=>{
+      const t=byJunior[j.id];
+      const tuteurNom=t?.profiles?[t.profiles.prenom,t.profiles.nom].filter(Boolean).join(' '):null;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--s2);border-radius:8px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc([j.prenom,j.nom].filter(Boolean).join(' '))}</div>
+          <div style="font-size:11.5px;color:var(--t3)">${tuteurNom?'Tuteur : '+esc(tuteurNom):'Aucun tuteur assigné'}</div>
+        </div>
+        <button class="btn bg2 bs" onclick="modalAssignerTuteur('${j.id}'${t?`,'${t.id}'`:''})">${tuteurNom?'Changer':'Assigner'}</button>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){el.innerHTML='<div style="color:var(--er);font-size:12px;padding:0 19px 15px">Erreur de chargement.</div>';}
+}
+
+function modalAssignerTuteur(juniorId,currentTutorshipId){
+  const junior=_tutoratJuniors.find(j=>j.id===juniorId);
+  if(!junior)return;
+  openModal(`<div class="mh"><div class="mt">Assigner un tuteur — ${esc([junior.prenom,junior.nom].filter(Boolean).join(' '))}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb">
+      <div id="tut-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="margin-bottom:14px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Tuteur</label>
+        <select id="tut-sel" class="l-inp" style="height:38px">${_tutoratTuteurs.map(t=>`<option value="${t.id}">${esc([t.prenom,t.nom].filter(Boolean).join(' '))}</option>`).join('')||'<option value="">Aucun CM autonome disponible</option>'}</select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" ${_tutoratTuteurs.length?'':'disabled'} onclick="_confirmerAssignationTuteur('${juniorId}',${currentTutorshipId?`'${currentTutorshipId}'`:'null'})">Assigner</button>
+      </div>
+    </div>`);
+}
+
+async function _confirmerAssignationTuteur(juniorId,currentTutorshipId){
+  const tuteurId=document.getElementById('tut-sel').value;
+  const errEl=document.getElementById('tut-err');
+  if(!tuteurId){errEl.textContent='Choisissez un tuteur.';return;}
+  // Une affectation à la fois (statut='actif') : on clôt l'éventuelle précédente avant d'en créer
+  // une nouvelle, jamais deux tutorats actifs simultanés pour le même junior.
+  if(currentTutorshipId){
+    const rEnd=await sbFetch('cm_tutorships?id=eq.'+currentTutorshipId,{method:'PATCH',body:{statut:'termine',fin:new Date().toISOString().slice(0,10)}});
+    if(sbErr(rEnd)){errEl.textContent=rEnd.message||'Impossible de clôturer le tutorat précédent.';return;}
+  }
+  const r=await sbFetch('cm_tutorships',{method:'POST',body:{junior_id:juniorId,tuteur_id:tuteurId,created_by:localStorage.getItem('sv_uid')}});
+  if(sbErr(r)){errEl.textContent=r.message||'Assignation impossible.';return;}
+  closeModal();
+  toast('Tuteur assigné.','ok');
+  loadPilotageTutorat();
 }
 
 // ── CM — Mes revenus (spec §47-48) : lecture seule depuis Finance (employee_costs),
