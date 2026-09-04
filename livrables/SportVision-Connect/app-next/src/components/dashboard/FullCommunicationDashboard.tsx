@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, Camera, FileBarChart, ListChecks, MessageCircle, MessageSquareText, Send } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -29,9 +29,18 @@ import {
 } from "@/lib/data/shared/contenu-stats";
 import { fetchCommunityManager, type CommunityManager } from "@/lib/data/shared/community-manager";
 import { fetchClubPresences, type ClubPresence } from "@/lib/data/club/presences";
+import { fetchClientDevis, fetchClientInvoices } from "@/lib/data/projet/billing";
+import { FinanceSummaryCard, summarizeFinance, type FinanceSummary } from "@/components/dashboard/FinanceSummaryCard";
 
 // Tableau de bord Full Communication — ACTIONS.md § 5 « Full Communication ». Le titre varie par
-// type d'organisation (voir heroContent), le contenu est identique pour tous.
+// type d'organisation (voir heroContent). Le contenu varie aussi désormais par
+// ctx.membership.role pour le trésorier (03/09/2026, chantier "Dashboard par rôle") : jusqu'ici
+// un trésorier voyait exactement le même écran de communication (métriques CM, planning
+// éditorial) qu'un président ou un coach — sans donnée financière irrelevante pour ce rôle, ni
+// harmonisation avec le comportement déjà correct côté ClubPlusDashboard (voir Bible §10). Réutilise
+// FinanceSummaryCard/summarizeFinance (components/dashboard/FinanceSummaryCard.tsx), extrait de
+// ClubPlusDashboard.tsx pour ce chantier — une seule implémentation, jamais deux logiques
+// divergentes.
 //
 // 11/08/2026 — jusqu'à cette nuit, cet écran lisait intégralement lib/mock/communication.ts (CM,
 // publications, présences, rapports fictifs). Un bug de session.ts (buildClubActiveContext lisait
@@ -119,14 +128,37 @@ function DashboardBody({ clientId }: { clientId: string }) {
   // organization_entitlements réel (voir data/club/presences.ts et permissions.ts) — jamais
   // affiché pour un espace qui n'a pas ce module sur son contrat.
   const canSeePresences = ctx.organization.type === "club" && canAccess(ctx, "presences");
+  const isTreasurer = ctx.membership.role === "treasurer";
 
   const [contenus, setContenus] = useState<Contenu[] | null>(null);
   const [monthlyReports, setMonthlyReports] = useState<MonthlyReport[]>([]);
   const [cm, setCm] = useState<CommunityManager | null>(null);
   const [presences, setPresences] = useState<ClubPresence[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null | undefined>(undefined);
+  const [financeError, setFinanceError] = useState(false);
+
+  const loadFinanceSummary = useCallback(async () => {
+    if (!isTreasurer) return;
+    setFinanceError(false);
+    try {
+      const supabase = createClient();
+      const [invoices, devis] = await Promise.all([
+        fetchClientInvoices(supabase, clientId),
+        fetchClientDevis(supabase, clientId),
+      ]);
+      setFinanceSummary(summarizeFinance(invoices, devis.filter((d) => d.decidable).length));
+    } catch {
+      setFinanceError(true);
+    }
+  }, [clientId, isTreasurer]);
+
+  useEffect(() => {
+    loadFinanceSummary();
+  }, [loadFinanceSummary]);
 
   async function reload() {
+    if (isTreasurer) return;
     setLoadError(false);
     setContenus(null);
     try {
@@ -162,6 +194,17 @@ function DashboardBody({ clientId }: { clientId: string }) {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
+
+  if (isTreasurer) {
+    return (
+      <FinanceSummaryCard
+        summary={financeSummary}
+        error={financeError}
+        onRetry={loadFinanceSummary}
+        onOpenBilling={() => router.push("/billing")}
+      />
+    );
+  }
 
   if (loadError) {
     return (
