@@ -74,20 +74,27 @@ interface ClubMatchRow {
   status: string;
 }
 
+/** teamId (optionnel) : filtre sur la fiche équipe (/teams/[id], team_id réel sur les deux
+ * tables — club_calendar_events depuis migration-clubplus-v54, club_matches depuis
+ * migration-clubplus-v37). Omis = comportement inchangé (tout le calendrier du club). */
 export async function fetchClubCalendarEvents(
   supabase: SupabaseClient,
   organizationId: string,
+  teamId?: string,
 ): Promise<CalendarEvent[]> {
-  const [eventsRes, matchesRes] = await Promise.all([
-    supabase
-      .from("club_calendar_events")
-      .select("id, event_date, event_time, type, title, team, team_id, location")
-      .eq("club_id", organizationId),
-    supabase
-      .from("club_matches")
-      .select("id, team, opponent, match_date, lieu, status")
-      .eq("club_id", organizationId),
-  ]);
+  let eventsQuery = supabase
+    .from("club_calendar_events")
+    .select("id, event_date, event_time, type, title, team, team_id, location")
+    .eq("club_id", organizationId);
+  let matchesQuery = supabase
+    .from("club_matches")
+    .select("id, team, opponent, match_date, lieu, status")
+    .eq("club_id", organizationId);
+  if (teamId) {
+    eventsQuery = eventsQuery.eq("team_id", teamId);
+    matchesQuery = matchesQuery.eq("team_id", teamId);
+  }
+  const [eventsRes, matchesRes] = await Promise.all([eventsQuery, matchesQuery]);
 
   const events: CalendarEvent[] = ((eventsRes.data ?? []) as ClubCalendarEventRow[]).map((row) =>
     toCalendarEvent(row, organizationId),
