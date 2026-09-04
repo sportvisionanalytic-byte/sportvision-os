@@ -8954,6 +8954,7 @@ async function _medLoadProducts(clubId,saisonId){
         <span style="font-size:13px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums">${prix}</span>
         <span class="bd ${MED_STATUT_CLR[p.status]||'bn'}"><span class="bd-d"></span>${MED_STATUT_LB[p.status]||p.status}</span>
         <button class="btn bg2 bs" onclick="event.stopPropagation();_medDuplicateProduit('${p.id}')" title="Dupliquer ce produit (utile pour une autre équipe, un autre tournoi…)">Dupliquer</button>
+        ${p.status==='active'?`<button class="btn bg2 bs" onclick="event.stopPropagation();modalMediaLienInvite('${p.id}')" title="Générer un lien d'achat pour une famille sans compte Connect">Lien invité</button>`:''}
       </div>
     </div>`;
   }).join('')+'</div>';
@@ -9066,6 +9067,54 @@ async function _medSaveProduit(clubId,saisonId,productId){
   closeModal();
   toast(productId?'Produit mis à jour.':'Produit créé.','ok');
   _medLoadProducts(clubId,saisonId);
+}
+
+// ── Checkout invité (04/09/2026, prompt #8 backlog Club+ V2, décision Fouka : construire le
+// parcours invité) — un lien scope UN produit + UN bénéficiaire précis, jamais une recherche de
+// joueur ouverte à qui tombe dessus (voir migration-media-guest-checkout.sql). Le sélecteur ne
+// liste donc que les joueurs déjà affiliés (team_memberships actif) au club du produit, pas une
+// recherche libre.
+async function modalMediaLienInvite(productId){
+  const rows=(await sbFetch('media_products?select=id,name,club_id&id=eq.'+productId+'&limit=1').catch(()=>[]))||[];
+  const product=rows[0];
+  if(!product)return;
+  const players=(await sbFetch('team_memberships?select=player_id,statut,player_profiles(id,prenom,nom)&club_id=eq.'+product.club_id+'&statut=eq.active').catch(()=>[]))||[];
+  const seen=new Set();
+  const options=players.filter(r=>r.player_profiles&&!seen.has(r.player_profiles.id)&&seen.add(r.player_profiles.id))
+    .map(r=>r.player_profiles).sort((a,b)=>(a.nom||'').localeCompare(b.nom||'','fr'));
+  openModal(`<div class="mh"><div class="mt">Lien d'achat invité — ${esc(product.name)}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb">
+      <p style="font-size:12.5px;color:var(--t3);margin-bottom:14px">Génère un lien à envoyer à une famille qui n'a pas encore de compte SportVision Connect — l'accès sera réservé au joueur choisi ci-dessous, valable 30 jours, usage unique.</p>
+      <div id="mli-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="margin-bottom:14px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Joueur bénéficiaire</label>
+        <select id="mli-player" class="l-inp" style="height:38px">${options.length?options.map(p=>`<option value="${p.id}">${esc(p.nom)} ${esc(p.prenom)}</option>`).join(''):'<option value="">Aucun joueur affilié à ce club</option>'}</select>
+      </div>
+      <div id="mli-result" style="display:none;margin-bottom:14px">
+        <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Lien à transmettre</label>
+        <div style="display:flex;gap:8px">
+          <input id="mli-link" type="text" class="l-inp" style="height:38px;flex:1" readonly>
+          <button class="btn bg2" onclick="copierLien(encodeURIComponent(document.getElementById('mli-link').value))">Copier</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Fermer</button>
+        <button class="btn bp" ${options.length?'':'disabled'} onclick="_medGenererLienInvite('${productId}','${product.club_id}')">Générer le lien</button>
+      </div>
+    </div>`);
+}
+
+async function _medGenererLienInvite(productId,clubId){
+  const playerId=document.getElementById('mli-player').value;
+  const errEl=document.getElementById('mli-err');
+  if(!playerId){errEl.textContent='Choisissez un joueur.';return;}
+  const r=await sbFetch('media_guest_checkout_tokens',{method:'POST',body:{club_id:clubId,product_id:productId,beneficiary_person_id:playerId},headers:{Prefer:'return=representation'}});
+  if(sbErr(r)){errEl.textContent=r.message||'Génération impossible.';return;}
+  const token=Array.isArray(r)&&r[0]?.token;
+  if(!token){errEl.textContent='Génération impossible.';return;}
+  const url='https://connect.sportvision-an.fr/media-checkout/'+token;
+  document.getElementById('mli-link').value=url;
+  document.getElementById('mli-result').style.display='block';
+  toast('Lien généré.','ok');
 }
 
 // ── Opérations commerciales (master prompt §7, §24-26) : template générique réutilisable pour

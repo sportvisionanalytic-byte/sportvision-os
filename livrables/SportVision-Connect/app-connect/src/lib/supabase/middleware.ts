@@ -29,6 +29,7 @@ const PUBLIC_PATHS = [
   "/aide",
   "/demo",
   "/join",
+  "/media-checkout",
 ];
 
 export async function updateSession(request: NextRequest) {
