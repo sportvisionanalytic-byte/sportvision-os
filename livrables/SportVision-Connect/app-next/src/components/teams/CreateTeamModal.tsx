@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -9,6 +9,7 @@ import { fetchClubMembers } from "@/lib/data/club/users";
 import { createClient } from "@/lib/supabase/client";
 import { TEAM_CATEGORY_OPTIONS } from "@/lib/types/teams";
 import type { OrgUser } from "@/lib/types/settings";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 // Modale "Créer une équipe" (19/08/2026, retour utilisateur : aucune UI ne permettait de créer
 // une équipe. Puis affinée le même soir : catégorie en liste déroulante (TEAM_CATEGORY_OPTIONS)
@@ -36,6 +37,8 @@ export function CreateTeamModal({ clubId, existingNames, onClose, onCreate }: Cr
   const [members, setMembers] = useState<OrgUser[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  useModalA11y(containerRef, onClose);
 
   useEffect(() => {
     fetchClubMembers(createClient(), clubId)
@@ -67,7 +70,7 @@ export function CreateTeamModal({ clubId, existingNames, onClose, onCreate }: Cr
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
+    <div ref={containerRef} role="dialog" aria-modal="true" aria-label="Créer une équipe" className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
       <Card className="animate-svfade relative flex w-full max-w-[440px] flex-col gap-4 rounded-sv-modal p-6 shadow-sv-modal">
         <button
           aria-label="Fermer"

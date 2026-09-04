@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 // Modale "Ajouter un sponsor" (19/08/2026, retour utilisateur : aucune UI ne le permettait).
 // Même pattern que AddEventModal.tsx / CreateTeamModal.tsx. Niveau limité à Or/Argent/Bronze
@@ -20,6 +21,8 @@ export function CreateSponsorModal({ onClose, onCreate }: CreateSponsorModalProp
   const [montant, setMontant] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  useModalA11y(containerRef, onClose);
 
   const canSubmit = name.trim().length > 0;
 
@@ -36,7 +39,7 @@ export function CreateSponsorModal({ onClose, onCreate }: CreateSponsorModalProp
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
+    <div ref={containerRef} role="dialog" aria-modal="true" aria-label="Ajouter un sponsor" className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
       <Card className="animate-svfade relative flex w-full max-w-[440px] flex-col gap-4 rounded-sv-modal p-6 shadow-sv-modal">
         <button
           aria-label="Fermer"

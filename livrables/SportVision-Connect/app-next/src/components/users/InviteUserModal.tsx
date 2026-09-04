@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, Copy, X } from "lucide-react";
 import type { MembershipRole } from "@/lib/types";
 import { ROLE_LABELS } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 // Résultat renvoyé par onInvite — inviteClubMember (data/club/users.ts) renvoie un mot de passe
 // en mode "direct" ; les autres types d'organisation (non branchés sur une vraie edge function
@@ -53,6 +54,8 @@ export function InviteUserModal({ roles, allowDirectMode, onClose, onInvite }: I
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{ password: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  useModalA11y(containerRef, onClose);
 
   const canSubmit = /\S+@\S+\.\S+/.test(email) && firstName.trim().length > 0 && lastName.trim().length > 0;
 
@@ -85,7 +88,7 @@ export function InviteUserModal({ roles, allowDirectMode, onClose, onInvite }: I
 
   if (credentials) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label="Identifiants créés" className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
         <Card className="animate-svfade relative flex w-full max-w-[420px] flex-col gap-4 rounded-sv-modal p-6 shadow-sv-modal">
           <button
             aria-label="Fermer"
@@ -121,7 +124,7 @@ export function InviteUserModal({ roles, allowDirectMode, onClose, onInvite }: I
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
+    <div ref={containerRef} role="dialog" aria-modal="true" aria-label="Inviter un utilisateur" className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
       <Card className="animate-svfade relative flex w-full max-w-[420px] flex-col gap-4 rounded-sv-modal p-6 shadow-sv-modal">
         <button
           aria-label="Fermer"

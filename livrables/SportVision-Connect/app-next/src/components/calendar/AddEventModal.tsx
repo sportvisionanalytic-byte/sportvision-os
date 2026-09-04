@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { CalendarEventKind } from "@/lib/types/calendar";
 import { CALENDAR_EVENT_KIND_LABELS } from "@/lib/types/calendar";
 import { CREATABLE_EVENT_TYPE_MAP } from "@/lib/data/club/calendar";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 // Modale « Ajouter un événement » — voir ACTIONS.md § 15. Champs Heure/Lieu réintégrés le
 // 09/08/2026 : migration-clubplus-v35-calendar-event-heure-lieu.sql (exécutée par Fouka) ajoute
@@ -35,6 +36,8 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
   const [team, setTeam] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  useModalA11y(containerRef, onClose);
 
   // Événement canonique (04/09/2026, audit transversal) — un match créé ici partait jusqu'ici
   // dans club_calendar_events, une table totalement déconnectée de club_matches (Match Center,
@@ -57,7 +60,7 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
+    <div ref={containerRef} role="dialog" aria-modal="true" aria-label="Ajouter un événement" className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
       <Card className="animate-svfade relative flex w-full max-w-[440px] flex-col gap-4 rounded-sv-modal p-6 shadow-sv-modal">
         <button
           aria-label="Fermer"

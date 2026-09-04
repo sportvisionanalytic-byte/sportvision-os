@@ -3108,14 +3108,14 @@ const VIEWS={
     </div>`,
 
   'compta.resultat':()=>`
-    <div class="sh"><div><div class="sh-t">Compte de résultat</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Vue de pilotage interne — pas un document comptable légal</div></div></div>
+    <div class="sh"><div><div class="sh-t">Compte de résultat</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Vue de pilotage interne — pas un document comptable légal. Base CAISSE (missions réellement payées) — pas un résultat comptable au sens strict (facturé), et pas non plus un solde de trésorerie de l'entreprise (voir Rapprochement bancaire pour ça). Périmètre missions/prestations uniquement : les revenus Full Communication récurrents et les ventes médias sont suivis ailleurs, jamais additionnés ici.</div></div></div>
     <div class="kpi-g" style="grid-template-columns:repeat(6,1fr);margin-bottom:13px">
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Revenus (mois)</div><div class="kpi-v" id="res-kpi-rev" style="font-size:18px">—</div><span class="kpi-d dnt">missions payées</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA missions encaissé (mois)</div><div class="kpi-v" id="res-kpi-rev" style="font-size:18px">—</div><span class="kpi-d dnt">missions au statut "payée" uniquement</span></div>
       <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Coûts missions (mois)</div><div class="kpi-v" id="res-kpi-cm" style="font-size:18px">—</div><span class="kpi-d dnt">rém. + frais + dép. + indirects</span></div>
       <div class="kpi" style="--kl:#E85D75;cursor:pointer" onclick="switchView('depenses')"><div class="kpi-ey">Charges générales (mois)</div><div class="kpi-v" id="res-kpi-chg" style="font-size:18px">—</div><span class="kpi-d dnt">hors mission (loyer, logiciels…)</span></div>
       <div class="kpi" style="--kl:#E8A33D"><div class="kpi-ey">Masse salariale chargée</div><div class="kpi-v" id="res-kpi-sal" style="font-size:18px">—</div><span class="kpi-d dnt">salariés actifs, mensualisée</span></div>
       <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Commissions (mois)</div><div class="kpi-v" id="res-kpi-com" style="font-size:18px">—</div><span class="kpi-d dnt">équipe commerciale</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Résultat net (mois)</div><div class="kpi-v" id="res-kpi-net" style="font-size:18px">—</div><span class="kpi-d dnt">tous coûts déduits</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Résultat missions encaissées (mois)</div><div class="kpi-v" id="res-kpi-net" style="font-size:18px">—</div><span class="kpi-d dnt">tous coûts déduits, base caisse</span></div>
     </div>
     <div class="cd">
       <div class="cd-h"><div class="cd-t">Tendance missions sur 6 mois</div></div>
@@ -8889,15 +8889,16 @@ async function _medLoadExpeditions(){
   if(!el)return;
   const rows=(await sbFetch('v_media_orders_a_expedier?select=*').catch(()=>[]))||[];
   if(!rows.length){el.innerHTML='<div style="padding:12px;color:var(--t3);font-size:12.5px">Aucune expédition en attente.</div>';return;}
+  // amount_cents retiré de v_media_orders_a_expedier et de cet écran (finding P1 audit
+  // transversal 04/09/2026) : un écran de préparation de colis n'a jamais besoin du prix payé, et
+  // is_staff() (donc prod/photo, pas seulement admin/sec/compta) y avait accès en clair.
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+rows.map(o=>{
-    const prix=((o.amount_cents||0)/100).toLocaleString('fr-FR',{style:'currency',currency:(o.currency||'eur').toUpperCase()});
     return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--s2);border-radius:8px">
       <div style="min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(o.shipping_name||'—')} <span style="font-weight:400;color:var(--t3);font-size:11.5px">· ${esc(o.produit_nom)} · ${esc(o.club_nom)}</span></div>
         <div style="font-size:11.5px;color:var(--t3)">${esc(o.shipping_address_line||'')}, ${esc(o.shipping_postal_code||'')} ${esc(o.shipping_city||'')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-        <span style="font-size:12.5px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums">${prix}</span>
         <button class="btn bp bs" onclick="_medMarquerExpedie('${o.id}')">Marquer expédié</button>
       </div>
     </div>`;
@@ -25308,7 +25309,15 @@ async function loadComptaResultat(){
       sbFetch('expenses?select=montant_ht&prestation_id=is.null&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext+'&statut=in.(engagee,payee,comptabilisee)'+_resPoleQS).catch(()=>[]),
     ]);
     const list=Array.isArray(missions)?missions:[];
-    const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart&&p.date_prestation<mNext);
+    // Finding trésorerie≠résultat (audit transversal, 04/09/2026, décision Fouka) : la tuile dit
+    // "missions payées" depuis toujours (voir le sous-titre HTML) mais sommait revenu_ht pour
+    // TOUTE mission de la période, y compris non_facturée/en_préparation — le libellé mentait sur
+    // ce qui était réellement affiché (une "valeur de pipeline programmé", pas un vrai encaissé).
+    // Filtré ici pour que le code corresponde enfin à ce que l'écran affirme déjà : seules les
+    // missions réellement payées comptent dans ce "Résultat net" (base caisse, pas base
+    // facturation — volontaire, cohérent avec le sous-titre existant plutôt qu'un nouveau
+    // concept inventé).
+    const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart&&p.date_prestation<mNext&&p.statut_financier==='payée');
     const revenus=moisList.reduce((s,p)=>s+(p.revenu_ht||0),0);
     const coutsMissions=moisList.reduce((s,p)=>s+(p.cout_remunerations||0)+(p.cout_frais||0)+(p.cout_depenses_directes||0)+(p.cout_indirect_alloue||0),0);
     const masseSalariale=(Array.isArray(employeeCosts)?employeeCosts:[]).reduce((s,e)=>s+(e.salaire_brut_mensuel||0)*(1+(e.charges_patronales_pct||0)/100),0);
@@ -25318,21 +25327,24 @@ async function loadComptaResultat(){
     set('res-kpi-rev',fmt(revenus));set('res-kpi-cm',fmt(coutsMissions));set('res-kpi-chg',fmt(chargesGen));set('res-kpi-sal',fmt(masseSalariale));set('res-kpi-com',fmt(commissionsMois));
     const netEl=document.getElementById('res-kpi-net');if(netEl){netEl.textContent=fmt(net);netEl.style.color=net>=0?'var(--ok)':'var(--er)';}
     if(elTend){
+      // Même correctif que ci-dessus : seules les missions statut_financier='payée' entrent dans
+      // ce tableau — sinon la tendance 6 mois mélangeait du pipeline non facturé avec du CA réel.
       const byMonth={};
-      list.forEach(p=>{
+      list.filter(p=>p.statut_financier==='payée').forEach(p=>{
         const m=(p.date_prestation||'').slice(0,7);
         if(!byMonth[m])byMonth[m]={ca:0,couts:0};
         byMonth[m].ca+=(p.revenu_ht||0);
         byMonth[m].couts+=(p.cout_remunerations||0)+(p.cout_frais||0)+(p.cout_depenses_directes||0)+(p.cout_indirect_alloue||0);
       });
       const mois=Object.keys(byMonth).sort();
-      elTend.innerHTML=mois.length?'<div class="tw"><table><thead><tr><th>Mois</th><th>CA missions HT</th><th>Coûts missions</th><th>Marge missions</th></tr></thead><tbody>'+
+      elTend.innerHTML=(mois.length?'<div class="tw"><table><thead><tr><th>Mois</th><th>CA missions HT</th><th>Coûts missions</th><th>Marge missions</th></tr></thead><tbody>'+
         mois.map(m=>{
           const v=byMonth[m];const marge=v.ca-v.couts;
           const label=new Date(m+'-01').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
           return`<tr><td style="text-transform:capitalize">${label}</td><td class="tm">${fmt(v.ca)}</td><td class="tm" style="color:var(--er)">${fmt(v.couts)}</td><td class="tm" style="font-weight:600;color:${marge>=0?'var(--ok)':'var(--er)'}">${fmt(marge)}</td></tr>`;
         }).join('')+'</tbody></table></div>':
-        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Pas encore de données.</div>';
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Pas encore de données.</div>')
+        +'<div style="margin-top:10px;padding:10px 12px;background:var(--s2);border-radius:8px;font-size:11.5px;color:var(--t3);line-height:1.5">Base caisse (missions réellement payées uniquement), périmètre missions/prestations seulement — n\'inclut pas les revenus Full Communication récurrents (voir "Revenus clubs" sur Vue d\'ensemble) ni les ventes médias (voir "Ventes médias"). Ce n\'est pas un chiffre de trésorerie globale de l\'entreprise.</div>';
     }
   }catch(e){
     if(elTend)elTend.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';

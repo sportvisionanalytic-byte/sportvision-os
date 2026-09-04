@@ -1,0 +1,13 @@
+-- Point vérifié suite au parcours final (audit transversal, 04/09/2026) : un opérateur bloqué par
+-- ml_write/ml_read (prestation_pole_scope_ok) semblait au premier abord une dépendance technique
+-- accidentelle. Vérifié avant de toucher à quoi que ce soit : c'est une vraie règle métier déjà
+-- durcie en défense en profondeur (migration-poles-v11/v12-fix-onboarding-affectation*.sql) —
+-- ensure_default_pole_affectation() affecte automatiquement TOUT nouveau collaborateur invité via
+-- le vrai flux (invite-collaborateur) à un pôle (Football par défaut si aucun choisi), sur les deux
+-- chemins triggers (on_auth_user_created ET on_auth_user_invited, tous deux actifs en prod, vérifié
+-- en direct). Confirmé sur données réelles : 0 compte role='prod'/'photo' actif sans pôle en prod
+-- aujourd'hui — seul un compte créé hors du vrai flux d'invitation (ex. SQL manuel, comme un
+-- persona de test construit directement) peut se retrouver sans pôle et bloqué ici. Documenté pour
+-- la prochaine fois que ce blocage sera rencontré : ne pas le prendre pour un bug avant d'avoir
+-- vérifié comment le compte concerné a été créé.
+comment on policy "ml_write" on media_liens is 'is_staff() + prestation_pole_scope_ok(prestation_id) : un opérateur doit être affecté (pole_affectations) au pôle de la mission, ou admin/rh. Règle métier voulue (isolation Football/Basket), pas un accident — voir ensure_default_pole_affectation() qui garantit ce pôle automatiquement à tout compte créé via le vrai flux invite-collaborateur (migration-poles-v11/v12). Un blocage ici sur un compte réel signale une création de compte hors du flux normal, pas un bug RLS.';
