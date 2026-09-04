@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
-import { fetchPhotoAlbums, type AvailableMediaProduct, type PhotoAlbumTeaser } from "@/lib/supabase/photoPass";
+import { fetchAlbumLink, fetchPhotoAlbums, type AvailableMediaProduct, type PhotoAlbumTeaser } from "@/lib/supabase/photoPass";
 
 // Moteur média générique (Espace joueur) — voir page.tsx pour le contexte. Achat via l'edge
 // function create-pass-photo-checkout (mode Stripe 'payment', ponctuel, product_id désormais
@@ -13,9 +13,11 @@ import { fetchPhotoAlbums, type AvailableMediaProduct, type PhotoAlbumTeaser } f
 // rafraîchissement différé après un retour de paiement réussi, même mécanisme que
 // AbonnementView.tsx.
 //
-// RÈGLE DE SÉCURITÉ : secureCollectionRef n'apparaît QUE sur un album où `unlocked` est déjà true
-// (calculé côté serveur par la RPC media_album_list — jamais recalculé/deviné ici). Un album
-// verrouillé n'affiche jamais qu'un teaser (titre, date, aperçu, nombre de photos).
+// RÈGLE DE SÉCURITÉ (P2 audit 04-05/09, finding H47) : le lien HD réel n'est plus jamais présent
+// dans la liste d'albums (media_album_list ne le renvoie plus du tout). "Ouvrir l'album" déclenche
+// un appel serveur dédié (fetchAlbumLink → media_album_get_link) qui revérifie l'entitlement à cet
+// instant précis et journalise l'accès, plutôt que d'exposer un lien permanent dès le chargement
+// de la page. Un album verrouillé n'affiche jamais qu'un teaser (titre, date, aperçu, nb photos).
 function formatDate(iso: string | null): string {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
@@ -221,6 +223,22 @@ export function PhotosView({
 }
 
 function AlbumCard({ album }: { album: PhotoAlbumTeaser }) {
+  const [loading, setLoading] = useState(false);
+  const [linkError, setLinkError] = useState(false);
+
+  async function handleOpen() {
+    setLoading(true);
+    setLinkError(false);
+    const supabase = createClient();
+    const link = await fetchAlbumLink(supabase, album.id);
+    setLoading(false);
+    if (!link) {
+      setLinkError(true);
+      return;
+    }
+    window.open(link, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface">
       <div
@@ -246,21 +264,21 @@ function AlbumCard({ album }: { album: PhotoAlbumTeaser }) {
         <span className="font-sora text-[16px] font-semibold">{album.title}</span>
         <span className="text-[13px] text-text-tertiary">{formatDate(album.eventDate) || "Date non précisée"}</span>
         {album.unlocked ? (
-          album.secureCollectionRef ? (
-            <a
-              href={album.secureCollectionRef}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus"
+          <>
+            <button
+              onClick={handleOpen}
+              disabled={loading}
+              className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus disabled:opacity-60"
             >
-              Ouvrir l&apos;album
-              <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>
-            </a>
-          ) : (
-            <span className="mt-1 text-[13px] leading-relaxed text-text-tertiary">
-              Accès activé — contactez SportVision pour le lien complet s&apos;il n&apos;apparaît pas ici.
-            </span>
-          )
+              {loading ? "Ouverture…" : "Ouvrir l'album"}
+              {!loading && <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>}
+            </button>
+            {linkError && (
+              <span className="mt-1 text-[13px] leading-relaxed text-danger">
+                Accès indisponible pour le moment — contactez SportVision si cela persiste.
+              </span>
+            )}
+          </>
         ) : (
           <span className="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-text-faint">
             <span className="material-symbols-rounded !text-[15px]" aria-hidden="true">lock</span>

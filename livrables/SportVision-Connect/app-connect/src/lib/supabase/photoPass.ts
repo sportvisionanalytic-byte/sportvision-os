@@ -7,10 +7,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // jamais en dur ici.
 //
 // Lecture exclusivement via la RPC media_album_list() — jamais un SELECT direct sur `media_albums`
-// (aucune policy SELECT authenticated n'existe sur cette table, volontairement : voir le
-// commentaire de tête de la migration sur pourquoi secure_collection_ref ne peut pas être protégée
-// par RLS seule). `unlocked` et `secureCollectionRef` sont recalculés côté serveur à CHAQUE appel
-// via can_access_media(), jamais mis en cache côté client au-delà du rendu courant.
+// (aucune policy SELECT authenticated n'existe sur cette table, volontairement).
+// P2 audit 04-05/09 (finding H47), priorité remontée avant vente à grande échelle : le lien HD
+// réel (secure_collection_ref) n'est PLUS jamais renvoyé par ce listing — il fuitait dans chaque
+// chargement de page dès qu'un album était déverrouillé, sans re-vérification ni trace au moment
+// de l'accès réel. Il ne s'obtient désormais que via fetchAlbumLink(), appelée au clic explicite
+// sur "Ouvrir la collection", qui revérifie l'entitlement à cet instant précis côté serveur et
+// journalise l'accès (media_link_access_log) — voir migration-media-hd-acces-controle.sql.
 export interface PhotoAlbumTeaser {
   id: string;
   title: string;
@@ -19,7 +22,6 @@ export interface PhotoAlbumTeaser {
   photoCount: number;
   publishedAt: string | null;
   unlocked: boolean;
-  secureCollectionRef: string | null;
 }
 
 interface AlbumListRpcRow {
@@ -30,7 +32,6 @@ interface AlbumListRpcRow {
   photo_count: number;
   published_at: string | null;
   unlocked: boolean;
-  secure_collection_ref: string | null;
 }
 
 export async function fetchPhotoAlbums(
@@ -53,8 +54,16 @@ export async function fetchPhotoAlbums(
     photoCount: r.photo_count ?? 0,
     publishedAt: r.published_at,
     unlocked: r.unlocked === true,
-    secureCollectionRef: r.secure_collection_ref,
   }));
+}
+
+/** Révèle le lien HD réel d'un album déjà déverrouillé — jamais pré-chargé, appelée seulement au
+ * clic. Renvoie null si l'entitlement a été révoqué entre-temps (revérifié à chaque appel) ou en
+ * cas d'erreur réseau ; l'appelant doit afficher un message plutôt que de supposer un lien mort. */
+export async function fetchAlbumLink(supabase: SupabaseClient, albumId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("media_album_get_link", { p_album_id: albumId });
+  if (error) return null;
+  return (data as string | null) ?? null;
 }
 
 export interface AvailableMediaProduct {

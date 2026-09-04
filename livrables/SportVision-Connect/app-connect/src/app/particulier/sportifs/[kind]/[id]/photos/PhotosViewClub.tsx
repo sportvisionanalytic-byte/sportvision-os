@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
-import { fetchPhotoAlbums, type AvailableMediaProduct, type PhotoAlbumTeaser } from "@/lib/supabase/photoPass";
+import { fetchAlbumLink, fetchPhotoAlbums, type AvailableMediaProduct, type PhotoAlbumTeaser } from "@/lib/supabase/photoPass";
 import type { AthleteDetail } from "../AthleteDetailView";
 
 // Photos d'un enfant affilié à un club, achetées par le parent (master prompt §20) — mêmes
@@ -215,6 +215,25 @@ export function PhotosViewClub({
 }
 
 function AlbumCard({ album }: { album: PhotoAlbumTeaser }) {
+  const [loading, setLoading] = useState(false);
+  const [linkError, setLinkError] = useState(false);
+
+  // P2 audit 04-05/09 (finding H47) : même correctif que PhotosView.tsx (Espace joueur) — le lien
+  // HD n'est plus dans le listing, il s'obtient au clic via fetchAlbumLink (revérification +
+  // journalisation serveur), voir migration-media-hd-acces-controle.sql.
+  async function handleOpen() {
+    setLoading(true);
+    setLinkError(false);
+    const supabase = createClient();
+    const link = await fetchAlbumLink(supabase, album.id);
+    setLoading(false);
+    if (!link) {
+      setLinkError(true);
+      return;
+    }
+    window.open(link, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface">
       <div
@@ -240,21 +259,21 @@ function AlbumCard({ album }: { album: PhotoAlbumTeaser }) {
         <span className="font-sora text-[16px] font-semibold">{album.title}</span>
         <span className="text-[13px] text-text-tertiary">{formatDate(album.eventDate) || "Date non précisée"}</span>
         {album.unlocked ? (
-          album.secureCollectionRef ? (
-            <a
-              href={album.secureCollectionRef}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus"
+          <>
+            <button
+              onClick={handleOpen}
+              disabled={loading}
+              className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus disabled:opacity-60"
             >
-              Ouvrir l&apos;album
-              <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>
-            </a>
-          ) : (
-            <span className="mt-1 text-[13px] leading-relaxed text-text-tertiary">
-              Accès activé — contactez SportVision pour le lien complet s&apos;il n&apos;apparaît pas ici.
-            </span>
-          )
+              {loading ? "Ouverture…" : "Ouvrir l'album"}
+              {!loading && <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>}
+            </button>
+            {linkError && (
+              <span className="mt-1 text-[13px] leading-relaxed text-danger">
+                Accès indisponible pour le moment — contactez SportVision si cela persiste.
+              </span>
+            )}
+          </>
         ) : (
           <span className="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-text-faint">
             <span className="material-symbols-rounded !text-[15px]" aria-hidden="true">lock</span>
