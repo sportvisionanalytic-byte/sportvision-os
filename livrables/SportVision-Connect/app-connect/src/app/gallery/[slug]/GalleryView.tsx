@@ -411,9 +411,13 @@ export function GalleryView({
                   <div className="text-[13.5px] font-bold">
                     {selected.length} / {quota} photo{quota! > 1 ? "s" : ""}
                   </div>
+                  {/* py-1.5 -mt-0.5 : le bouton ne faisait que 18 px de haut. Ce n'est pas un
+                      lien decoratif dans une phrase, c'est la seule facon de revenir sur son
+                      choix de formule une fois la selection commencee. Le padding vertical est
+                      compense par une marge negative pour ne pas repousser la barre. */}
                   <button
                     onClick={() => setOffresOpen(true)}
-                    className="truncate text-[12px] text-text-tertiary underline underline-offset-2"
+                    className="-mt-0.5 truncate py-1.5 text-[12px] text-text-tertiary underline underline-offset-2"
                   >
                     {offreChoisie.name} — changer de formule
                   </button>
