@@ -647,7 +647,13 @@ serve(async (req) => {
                     numero: String(paidOrder.id).slice(0, 8).toUpperCase(),
                     montant,
                   },
-                  p_scheduled_at: null,
+                  // Surtout PAS null : le DEFAULT now() de la fonction ne s'applique que si
+                  // l'argument est omis, et `notification_outbox.scheduled_at` est NOT NULL. Ce
+                  // null a empêché tout envoi d'e-mail de commande galerie depuis la v5, sans
+                  // qu'aucune alerte ne le signale — le try/catch qui protège le webhook avalait
+                  // l'erreur. La fonction retombe désormais sur now() (v11), mais on envoie une
+                  // date réelle plutôt que de compter sur ce rattrapage.
+                  p_scheduled_at: new Date().toISOString(),
                 });
               }
             }
