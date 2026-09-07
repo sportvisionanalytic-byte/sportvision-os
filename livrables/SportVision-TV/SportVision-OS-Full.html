@@ -11456,6 +11456,7 @@ const GAL_AUDIENCES={
 
 let _galProduitsCache=null;
 let _galLiensCache=[];
+let _galOffresParLien={};
 async function _galProduits(){
   if(_galProduitsCache===null){
     _galProduitsCache=(await sbFetch('media_products?select=id,name,type,price_cents,currency,metadata&club_id=eq.'+_galAlbum.club_id+'&status=eq.active&order=price_cents.asc').catch(()=>[]))||[];
@@ -11493,6 +11494,14 @@ async function _galChargerLien(){
   const liens=Array.isArray(stats)?stats:[];
   _galLiensCache=liens;
 
+  // Les offres de chaque lien, pour resumer la liste sans l'ouvrir. media_album_links_stats ne
+  // les renvoie pas : elle compte des ventes, elle ne decrit pas ce qui est vendu.
+  _galOffresParLien={};
+  await Promise.all(liens.map(async l=>{
+    const r=await sbFetch('rpc/media_link_offers',{method:'POST',body:{p_link_id:l.id}}).catch(()=>[]);
+    _galOffresParLien[l.id]=Array.isArray(r)?r:[];
+  }));
+
   const entete=`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:9px">
     <div style="display:flex;align-items:center;gap:8px">
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Liens de vente</span>
@@ -11514,20 +11523,26 @@ async function _galChargerLien(){
     <div style="display:flex;flex-direction:column;gap:9px">
       ${liens.map(l=>{
         const url=GAL_CONNECT_URL+'/gallery/'+l.slug+'?k='+encodeURIComponent(l.token);
-        const offre=_galOffreTexte(l,produits);
+        const off=(_galOffresParLien[l.id]||[]);
+        // On resume les offres plutot que d'en afficher une seule : un lien qui en vend sept doit
+        // se lire d'un coup d'oeil dans la liste, sans avoir a l'ouvrir.
+        const resume=off.length
+          ? off.length+' offre'+(off.length>1?'s':'')+' · a partir de '+_galPrix(Math.min.apply(null,off.map(x=>x.price_cents)),'eur')
+          : 'Aucune offre — galerie en consultation';
         return `<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:10px 11px;${l.is_enabled?'':'opacity:.55'}">
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px">
             <span style="font-size:12.5px;font-weight:600">${esc(l.label||'Lien sans nom')}</span>
             ${l.audience?`<span class="bd bw" style="font-size:9.5px"><span class="bd-d"></span>${esc(GAL_AUDIENCES[l.audience]||l.audience)}</span>`:''}
             ${l.is_enabled?'':'<span class="bd bw" style="font-size:9.5px"><span class="bd-d"></span>Desactive</span>'}
           </div>
-          <div style="font-size:11.5px;color:${offre.c};margin-bottom:6px">${offre.t}</div>
+          <div style="font-size:11.5px;color:${off.length?'var(--t1)':'var(--t3)'};margin-bottom:6px">${esc(resume)}</div>
           <div style="font-size:11px;color:var(--t3);margin-bottom:7px">
             ${l.view_count||0} vue(s) · ${l.unique_visitor_count||0} visiteur(s) · <strong style="color:var(--t1)">${l.orders_count||0} vente(s)</strong> · ${_galPrix(l.revenue_cents||0,'eur')}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <input readonly value="${esc(url)}" class="l-inp" style="height:31px;flex:1;min-width:200px;font-size:11px" onclick="this.select()">
             <button class="btn bg2 bs" onclick="galCopierLien('${esc(url)}')">Copier</button>
+            <button class="btn bg2 bs" onclick="galQrCode('${esc(url)}')">QR Code</button>
             <button class="btn bg2 bs" onclick="window.open('${esc(url)}','_blank')">Ouvrir</button>
             ${peut?`<button class="btn bg2 bs" onclick="galModifierLien('${l.id}')">Modifier</button>`:''}
           </div>
@@ -11537,28 +11552,49 @@ async function _galChargerLien(){
   </div>`;
 }
 
-// Un seul formulaire pour la creation et la modification : les champs sont les memes, et deux
-// ecrans qui doivent rester identiques finissent toujours par diverger.
-async function galNouveauLien(){ _galFormLien(null); }
-async function galModifierLien(id){ _galFormLien(_galLiensCache.find(l=>l.id===id)||null); }
+// ── Constructeur d'offres ─────────────────────────────────────────────────
+// Un lien peut vendre autant de formules qu'on veut. AUCUN tarif, AUCUNE quantite et AUCUN nombre
+// d'offres n'est ecrit ici : tout est saisi dans cet ecran, offre par offre. « 17 photos » veut
+// dire 17 parce que quelqu'un a tape 17.
+//
+// L'enregistrement passe par media_link_save() : lien + offres en UNE transaction. Ecrire les
+// offres une par une depuis le navigateur laisserait, au premier echec reseau, un lien a moitie
+// configure — deja copiable, vendant trois formules au lieu de sept, sans que personne ne le voie
+// avant qu'un parent ne paie.
+//
+// Le catalogue ne grossit plus d'un produit par taille de pack : media_link_save resout deux
+// produits par club, « selection de photos » et « galerie complete », qui ne servent QUE de type.
 
-async function _galFormLien(lien){
-  const produits=await _galProduits();
-  const edition=!!lien;
-  // media_album_links_stats ne renvoie pas product_id ni price_override_cents (elle est faite pour
-  // afficher des resultats, pas pour editer). On relit la ligne pour la remplir sans deviner.
-  let d={label:'',audience:'',product_id:'',price_override_cents:'',is_enabled:true,preview_limit:null};
-  if(edition){
-    const rows=await sbFetch('media_album_links?select=label,audience,product_id,price_override_cents,is_enabled,preview_limit&id=eq.'+lien.id).catch(()=>[]);
-    if(Array.isArray(rows)&&rows[0])d=rows[0];
+let _galOffres=[];        // offres en cours d'edition
+let _galLienEdite=null;   // lien ouvert, null en creation
+
+async function galNouveauLien(){ _galOuvrirConstructeur(null); }
+async function galModifierLien(id){ _galOuvrirConstructeur(id); }
+
+async function _galOuvrirConstructeur(linkId){
+  _galLienEdite=null; _galOffres=[];
+  let d={label:'',audience:'',expires_at:null,is_enabled:true,preview_limit:null};
+
+  if(linkId){
+    const r=await sbFetch('rpc/media_link_editor',{method:'POST',body:{p_link_id:linkId}});
+    if(sbErr(r)||!r){toast('Lien introuvable.','error');return;}
+    _galLienEdite=r;
+    d=r;
+    _galOffres=(r.offres||[]).map(o=>({
+      type:o.type, name:o.name||'',
+      prix:(o.price_cents||0)/100,
+      quota:o.photos_allowance,
+      featured:!!o.featured, actif:o.is_enabled!==false
+    }));
   }
 
   openModal(`
-    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px">${edition?'Modifier le lien':'Nouveau lien de vente'}</div>
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:3px">${linkId?'Modifier le lien':'Nouveau lien de vente'}</div>
+    <div style="font-size:11.5px;color:var(--t3);margin-bottom:13px">${esc(_galAlbum.title)}</div>
 
     <label class="l-lbl">Nom du lien</label>
-    <input id="gl-label" class="l-inp" value="${esc(d.label||'')}" placeholder="Parents Villeneuve">
-    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">Pour vous reperer dans vos liens. Le visiteur ne le voit pas.</div>
+    <input id="gl-label" class="l-inp" value="${esc(d.label||'')}" placeholder="Parents U12">
+    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">Pour vous reperer. Le visiteur ne le voit pas.</div>
 
     <label class="l-lbl">Public</label>
     <select id="gl-audience" class="l-inp">
@@ -11567,59 +11603,124 @@ async function _galFormLien(lien){
     </select>
     <div style="height:11px"></div>
 
-    <label class="l-lbl">Ce que ce lien vend</label>
-    <select id="gl-produit" class="l-inp" onchange="_galFormLienPrix()">
-      <option value="">Catalogue du club (ancien parcours, prix par photo)</option>
-      ${produits.map(p=>`<option value="${p.id}" data-prix="${p.price_cents}"${d.product_id===p.id?' selected':''}>${esc(p.name)} — ${_galPrix(p.price_cents,p.currency)}</option>`).join('')}
-    </select>
-    <div id="gl-produit-aide" style="font-size:11px;color:var(--t3);margin:4px 0 11px"></div>
-
-    <label class="l-lbl">Tarif de ce lien</label>
-    <input id="gl-prix" class="l-inp" inputmode="decimal" value="${d.price_override_cents!==null&&d.price_override_cents!==undefined?(d.price_override_cents/100).toString().replace('.',','):''}" placeholder="Laisser vide = prix du produit">
-    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">En euros. C’est ici qu’on vend le meme album 15 EUR aux parents et 30 EUR a l’equipe adverse.</div>
-
     <label class="l-lbl">Photos visibles avant achat</label>
-    <input id="gl-apercu" class="l-inp" inputmode="numeric" value="${d.preview_limit!==null&&d.preview_limit!==undefined?d.preview_limit:''}" placeholder="Laisser vide = 12">
-    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">La vitrine. Ce sont les PREMIERES photos de l’album : reordonnez l’album pour choisir lesquelles. Les autres ne sont pas envoyees au navigateur du visiteur.</div>
+    <input id="gl-apercu" class="l-inp" inputmode="numeric" value="${d.preview_limit!==null&&d.preview_limit!==undefined?d.preview_limit:''}" placeholder="Laisser vide = toutes">
+    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">Laissez vide sur un tournoi : le parent doit pouvoir parcourir toutes les photos pour retrouver son enfant. Plafonnez seulement un lien que vous ne voulez pas exposer entierement.</div>
 
     <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:4px">
       <input type="checkbox" id="gl-actif"${d.is_enabled!==false?' checked':''}> Lien actif
     </label>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:14px">Desactiver arrete les nouveaux achats. Les commandes deja payees restent accessibles.</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:16px">Desactiver arrete les nouveaux achats. Les commandes deja payees restent accessibles.</div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px">
+      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Offres proposees</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn bg2 bs" onclick="galAjouterOffre('pack')">+ Selection de photos</button>
+        <button class="btn bg2 bs" onclick="galAjouterOffre('album_complet')">+ Galerie complete</button>
+      </div>
+    </div>
+    <div id="gl-offres" style="display:flex;flex-direction:column;gap:8px;margin-bottom:13px"></div>
+
+    <div id="gl-apercu-client" style="margin-bottom:14px"></div>
 
     <div style="display:flex;gap:9px;justify-content:flex-end">
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
-      <button class="btn bp" onclick="galEnregistrerLien(${edition?`'${lien.id}'`:'null'})">${edition?'Enregistrer':'Creer le lien'}</button>
+      <button class="btn bp" onclick="galEnregistrerLien()">${linkId?'Enregistrer':'Creer le lien'}</button>
     </div>
   `);
-  _galFormLienPrix();
+  _galRendreOffres();
 }
 
-// Aide contextuelle : « pack de 5 » et « galerie complete » ne s'achetent pas pareil, et le staff
-// doit le savoir AVANT d'envoyer le lien a 200 parents.
-function _galFormLienPrix(){
-  const sel=document.getElementById('gl-produit');
-  const aide=document.getElementById('gl-produit-aide');
-  if(!sel||!aide)return;
-  const produits=_galProduitsCache||[];
-  const p=produits.find(x=>x.id===sel.value);
-  if(!p){aide.textContent='Le visiteur construit son panier photo par photo, comme avant. A eviter pour un nouveau lien.';return;}
-  if(p.type==='album_complet'){aide.textContent='Le visiteur paie une fois et recoit toutes les photos de la galerie, figees au moment de son achat.';return;}
-  const n=(p.metadata&&p.metadata.photo_count)||null;
-  if(p.type==='pack'&&n){aide.textContent='Le visiteur paie, puis choisit '+n+' photo(s) parmi toute la galerie. Son choix est definitif.';return;}
-  aide.textContent='Ce produit n’est pas une formule d’acces : verifiez qu’il convient a une galerie.';
+function galAjouterOffre(type){
+  // Aucune valeur suggeree : un prix ou un quota pre-rempli finirait par etre envoye tel quel a
+  // des parents parce que personne ne l'aurait relu.
+  _galOffres.push({type:type, name:'', prix:'', quota:type==='pack'?'':null, featured:false, actif:true});
+  _galRendreOffres();
+}
+function galRetirerOffre(i){ _galOffres.splice(i,1); _galRendreOffres(); }
+function galDupliquerOffre(i){ _galOffres.splice(i+1,0,Object.assign({},_galOffres[i],{featured:false})); _galRendreOffres(); }
+function galDeplacerOffre(i,d){
+  const j=i+d; if(j<0||j>=_galOffres.length)return;
+  const t=_galOffres[i]; _galOffres[i]=_galOffres[j]; _galOffres[j]=t;
+  _galRendreOffres();
+}
+function galOffreChamp(i,champ,valeur){
+  _galOffres[i][champ]=valeur;
+  // Une seule offre mise en avant : cocher la nouvelle decoche l'ancienne, plutot que de laisser
+  // une configuration que la base refusera a l'enregistrement.
+  if(champ==='featured'&&valeur)_galOffres.forEach((o,j)=>{if(j!==i)o.featured=false;});
+  _galRendreOffres();
 }
 
-async function galEnregistrerLien(id){
+function _galRendreOffres(){
+  const el=document.getElementById('gl-offres');
+  if(!el)return;
+  if(!_galOffres.length){
+    el.innerHTML=`<div style="border:1px dashed var(--b1);border-radius:var(--rp);padding:16px;text-align:center;font-size:12px;color:var(--t3)">
+      Aucune offre. Ce lien ouvrira la galerie en consultation, sans rien vendre.
+    </div>`;
+    _galApercuClient(); return;
+  }
+  el.innerHTML=_galOffres.map((o,i)=>`
+    <div style="border:1px solid var(--b1);border-radius:var(--rp);padding:10px 11px;${o.actif?'':'opacity:.5'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
+        <span style="font-size:11px;font-weight:600;color:var(--t3)">${o.type==='pack'?'Selection de photos':'Galerie complete'}</span>
+        <div style="display:flex;gap:4px">
+          <button class="btn bg2 bs" onclick="galDeplacerOffre(${i},-1)" ${i===0?'disabled':''} title="Monter">&uarr;</button>
+          <button class="btn bg2 bs" onclick="galDeplacerOffre(${i},1)" ${i===_galOffres.length-1?'disabled':''} title="Descendre">&darr;</button>
+          <button class="btn bg2 bs" onclick="galDupliquerOffre(${i})" title="Dupliquer">&#10697;</button>
+          <button class="btn bg2 bs" onclick="galRetirerOffre(${i})" title="Retirer">&times;</button>
+        </div>
+      </div>
+      <input class="l-inp" style="height:34px;margin-bottom:6px;font-size:12.5px" placeholder="Nom vu par le client (ex : Pack souvenirs)"
+             value="${esc(o.name||'')}" oninput="_galOffres[${i}].name=this.value;_galApercuClient()">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${o.type==='pack'?`<input class="l-inp" style="height:34px;flex:1;min-width:110px;font-size:12.5px" inputmode="numeric"
+             placeholder="Nombre de photos" value="${o.quota??''}" oninput="_galOffres[${i}].quota=this.value;_galApercuClient()">`:''}
+        <input class="l-inp" style="height:34px;flex:1;min-width:110px;font-size:12.5px" inputmode="decimal"
+             placeholder="Prix en euros" value="${o.prix===''||o.prix===null?'':o.prix}" oninput="_galOffres[${i}].prix=this.value;_galApercuClient()">
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:7px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2)">
+          <input type="checkbox" ${o.featured?'checked':''} onchange="galOffreChamp(${i},'featured',this.checked)"> Mettre en avant
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2)">
+          <input type="checkbox" ${o.actif?'checked':''} onchange="galOffreChamp(${i},'actif',this.checked)"> Active
+        </label>
+      </div>
+    </div>`).join('');
+  _galApercuClient();
+}
+
+// Ce que le parent verra, montre AVANT d'envoyer le lien a 200 familles. C'est le seul garde-fou
+// contre une erreur de quantite ou de tarif, et il ne coute rien.
+function _galApercuClient(){
+  const el=document.getElementById('gl-apercu-client');
+  if(!el)return;
+  const vis=_galOffres.filter(o=>o.actif);
+  if(!vis.length){el.innerHTML='';return;}
+  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:11px 12px;background:rgba(255,255,255,.02)">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Ce que verra le client</div>
+    ${vis.map(o=>{
+      const p=Number(String(o.prix).replace(',','.'));
+      const prix=(!isFinite(p)||o.prix==='')
+        ? '<span style="color:var(--wa)">prix a saisir</span>'
+        : (p===0 ? 'Offert' : _galPrix(Math.round(p*100),'eur'));
+      const q=o.type==='pack'?(o.quota?o.quota+' photo(s) au choix':'<span style="color:var(--wa)">nombre a saisir</span>'):'Toutes les photos';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:12.5px">
+        <span>${esc(o.name||'<span style="color:var(--wa)">nom a saisir</span>')} <span style="color:var(--t3)">· ${q}</span>${o.featured?' <span class="bd bw" style="font-size:9px"><span class="bd-d"></span>Recommande</span>':''}</span>
+        <strong>${prix}</strong>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+async function galEnregistrerLien(){
   const label=(document.getElementById('gl-label').value||'').trim();
   const audience=document.getElementById('gl-audience').value||null;
-  const produit=document.getElementById('gl-produit').value||null;
-  const prixTxt=(document.getElementById('gl-prix').value||'').trim().replace(',','.');
   const apercuTxt=(document.getElementById('gl-apercu').value||'').trim();
   const actif=document.getElementById('gl-actif').checked;
 
-  // Une vitrine a zero photo ne se vend pas : la base la refuse, autant le dire ici plutot que de
-  // laisser remonter une erreur de contrainte.
   let apercu=null;
   if(apercuTxt!==''){
     const v=parseInt(apercuTxt,10);
@@ -11627,40 +11728,60 @@ async function galEnregistrerLien(id){
     apercu=v;
   }
 
-  let prix=null;
-  if(prixTxt!==''){
-    const v=Number(prixTxt);
-    if(!isFinite(v)||v<0){toast('Tarif invalide.','error');return;}
-    prix=Math.round(v*100);
+  // On guide la saisie ici, mais c'est media_link_save qui fait foi : les memes regles y sont
+  // reappliquees, et une requete forgee ne passera pas davantage.
+  const offres=[];
+  for(let i=0;i<_galOffres.length;i++){
+    const o=_galOffres[i];
+    const nom=(o.name||'').trim();
+    if(!nom){toast('Offre '+(i+1)+' : donnez-lui un nom.','error');return;}
+    const p=Number(String(o.prix).replace(',','.'));
+    if(o.prix===''||o.prix===null||!isFinite(p)||p<0){toast('Offre '+(i+1)+' : prix invalide.','error');return;}
+    let quota=null;
+    if(o.type==='pack'){
+      quota=parseInt(o.quota,10);
+      if(!isFinite(quota)||quota<1){toast('Offre '+(i+1)+' : indiquez le nombre de photos.','error');return;}
+    }
+    offres.push({type:o.type,name:nom,price_cents:Math.round(p*100),photos_allowance:quota,
+                 display_order:i+1,featured:!!o.featured,is_enabled:o.actif!==false});
   }
-  // Un tarif sans produit ne veut rien dire : sans formule attachee, le prix vient du catalogue et
-  // cette valeur serait ignoree en silence. Mieux vaut le refuser que de laisser croire.
-  if(prix!==null&&!produit){toast('Choisissez d’abord ce que ce lien vend.','error');return;}
 
-  const body={label:label||null,audience:audience,product_id:produit,price_override_cents:prix,preview_limit:apercu,is_enabled:actif};
-
-  let r;
-  if(id){
-    r=await sbFetch('media_album_links?id=eq.'+id,{method:'PATCH',body:body});
-  }else{
-    const slugRpc=await sbFetch('rpc/media_gallery_unique_slug',{method:'POST',body:{p_text:label||_galAlbum.title}});
-    if(sbErr(slugRpc)){toast('Erreur : '+(slugRpc.message||'slug impossible'),'error');return;}
-    body.album_id=_galAlbum.id; body.slug=slugRpc; body.created_by=S.uid;
-    r=await sbFetch('media_album_links',{method:'POST',body:body,headers:{Prefer:'return=representation'}});
-  }
-  if(sbErr(r)){
-    // La RLS est la vraie barriere : si elle refuse, on dit pourquoi plutot que de recracher
-    // « new row violates row-level security policy ».
-    if(r.code==='42501'){toast('Reserve a la direction, a la production et aux responsables de pole.','error');return;}
-    toast('Erreur : '+(r.message||'enregistrement impossible'),'error');return;
+  const r=await sbFetch('rpc/media_link_save',{method:'POST',body:{
+    p_album_id:_galAlbum.id, p_offers:offres, p_link_id:_galLienEdite?_galLienEdite.id:null,
+    p_label:label||null, p_audience:audience, p_expires_at:null,
+    p_is_enabled:actif, p_preview_limit:apercu
+  }});
+  const res=Array.isArray(r)?r[0]:r;
+  if(sbErr(r)||!res){toast('Erreur : '+((r&&r.message)||'enregistrement impossible'),'error');return;}
+  if(!res.ok){
+    toast(res.raison==='non_autorise'
+      ?'Reserve a la direction, a la production, au secretariat et aux responsables de pole.'
+      :'Erreur : '+res.raison,'error');
+    return;
   }
   closeModal();
-  toast(id?'Lien mis a jour.':'Lien cree.','ok');
+  toast(_galLienEdite?'Lien mis a jour.':'Lien cree.','ok');
   _galChargerLien();
 }
 
 function galCopierLien(url){
   navigator.clipboard.writeText(url).then(()=>toast('Lien copie.','ok')).catch(()=>toast('Copie impossible — selectionnez le lien a la main.','error'));
+}
+
+// QR Code genere a la demande par une image, sans embarquer de bibliotheque : le lien est deja
+// public, et l'OS n'a pas besoin d'un paquet de plus pour afficher un carre.
+function galQrCode(url){
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:11px">QR Code du lien</div>
+    <div style="text-align:center;background:#fff;padding:16px;border-radius:var(--rp)">
+      <img alt="QR Code" style="width:240px;height:240px" src="https://api.qrserver.com/v1/create-qr-code/?size=480x480&data=${encodeURIComponent(url)}">
+    </div>
+    <div style="font-size:11.5px;color:var(--t3);margin:11px 0 14px;text-align:center">A afficher au club ou a projeter. Il ouvre exactement le meme lien.</div>
+    <div style="display:flex;gap:9px;justify-content:flex-end">
+      <button class="btn bg2" onclick="galCopierLien('${esc(url)}')">Copier le lien</button>
+      <button class="btn bp" onclick="closeModal()">Fermer</button>
+    </div>
+  `);
 }
 
 async function galBasculerFiligrane(actif){

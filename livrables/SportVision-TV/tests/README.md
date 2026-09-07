@@ -241,3 +241,26 @@ python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()})
 curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
   -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
 ```
+
+## `galerie-constructeur-offres.test.sql`
+
+25 scénarios sur le constructeur d'offres de l'OS, joués EN TANT QUE SECRÉTARIAT (c'est lui qui
+prépare les liens au quotidien). Transaction annulée.
+
+Enregistre les sept offres du cahier des charges en une seule fois — 3 photos à 0 €, 5 à 6 €, 12 à
+9 €, 17 à 17 €, 25 à 19 €, 50 à 22 €, galerie complète à 35 € — et vérifie que les quotas et les
+prix ressortent exacts, que deux produits de catalogue suffisent pour sept offres, et que la mise
+en avant est conservée.
+
+Vérifie surtout l'ATOMICITÉ : cinq configurations invalides (pack sans nombre, offre sans nom,
+prix négatif, pack de 0 photo, deux offres mises en avant) sont refusées, et après ces cinq refus
+les sept offres d'origine sont toujours intactes. Vérifie aussi qu'une modification ne change
+jamais le slug ni le jeton — des familles ont déjà le lien — et que photographe, CM et
+comptabilité sont refusés.
+
+```bash
+python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()}))' \
+  livrables/SportVision-TV/tests/galerie-constructeur-offres.test.sql > /tmp/q.json
+curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
+  -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
+```

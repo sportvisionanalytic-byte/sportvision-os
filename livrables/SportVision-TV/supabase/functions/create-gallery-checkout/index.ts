@@ -134,7 +134,9 @@ serve(async (req) => {
       console.error("[create-gallery-checkout] media_gallery_quote :", quoteError);
       return json({ error: "Impossible de calculer le prix de votre sélection." }, 500);
     }
-    if (!quote || !quote.total_cents) {
+    // `!quote.total_cents` traitait 0 comme un devis absent : une offre gratuite aurait ete
+    // refusee alors qu'elle est parfaitement valide. On teste l'ABSENCE de devis, pas sa nullite.
+    if (!quote || quote.total_cents === null || quote.total_cents === undefined) {
       // Un devis vide a deux causes très différentes, et les confondre donne un message faux :
       // un lien cassé s'entendrait dire « aucune photo sélectionnée », ce qui envoie le visiteur
       // cocher des photos alors que son lien ne vaut plus rien. On demande donc à la base ce
@@ -277,9 +279,72 @@ serve(async (req) => {
       }
     }
 
+    // ── Offre gratuite : aucune session Stripe ────────────────────────────────────────────
+    // Stripe refuse un paiement a 0, et il n'y aurait de toute facon rien a encaisser. Mais RIEN
+    // n'est allege pour autant : le lien, l'offre, le quota et les photos ont ete valides plus
+    // haut exactement comme pour un achat payant, et le montant vient du DEVIS, jamais du client
+    // — envoyer price:0 depuis le navigateur ne rend pas une offre payante gratuite.
+    const connectUrlBase = Deno.env.get("CONNECT_URL") ?? "https://connect.sportvision-an.fr";
+    if (totalCents === 0) {
+      const { error: freeError } = await admin
+        .from("media_orders")
+        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .eq("id", order.id)
+        .eq("status", "pending");
+      if (freeError) {
+        console.error("[create-gallery-checkout] commande gratuite :", freeError);
+        return json({ error: "Impossible de finaliser votre commande." }, 500);
+      }
+      // Le droit de telechargement est cree par le webhook pour un paiement Stripe ; ici il n'y
+      // aura pas de webhook, donc on l'ecrit tout de suite. Meme table, meme duree, meme suite du
+      // parcours : la page de commande ne fait aucune difference entre gratuit et payant.
+      const { data: grant } = await admin
+        .from("media_download_grants")
+        .insert({ order_id: order.id, email })
+        .select("token")
+        .single();
+      if (!grant?.token) {
+        console.error("[create-gallery-checkout] droit gratuit non cree pour", order.id);
+        return json({ error: "Impossible de finaliser votre commande." }, 500);
+      }
+      // Meme e-mail que pour un achat payant : sans lui, quelqu'un qui ferme l'onglet perd
+      // l'acces a ses photos, gratuites ou non. Le webhook ne passera pas ici, on l'envoie donc
+      // nous-memes, avec le meme gabarit et la meme cle d'idempotence.
+      try {
+        const { data: albumGratuit } = await admin
+          .from("media_albums").select("title").eq("id", quote.album_id).maybeSingle();
+        await admin.rpc("enqueue_notification", {
+          p_event_type: "galerie.commande_prete",
+          p_template_key: "galerie.commande_prete",
+          p_channel: "EMAIL",
+          p_idempotency_key: "galerie.commande_prete:v1:" + order.id,
+          p_recipient_email: email,
+          p_entity_type: "media_order",
+          p_entity_id: order.id,
+          p_payload: {
+            prenom: nom.split(" ")[0] ?? "",
+            album: albumGratuit?.title ?? "votre galerie",
+            consigne: `Vos ${validIds.length} photo${validIds.length > 1 ? "s" : ""} sont disponibles. Telechargez-les en pleine qualite, sans filigrane.`,
+            cta: "Telecharger mes photos",
+            lien: `${connectUrlBase}/gallery/commande/${encodeURIComponent(grant.token)}`,
+            expiration: "dans 30 jours",
+            numero: String(order.id).slice(0, 8).toUpperCase(),
+            montant: "Offert",
+          },
+          p_scheduled_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        // Un e-mail qui ne part pas ne doit pas priver le client de ses photos : il est deja
+        // redirige vers sa commande.
+        console.error("[create-gallery-checkout] e-mail commande gratuite :", e);
+      }
+
+      return json({ url: `${connectUrlBase}/gallery/commande/${encodeURIComponent(grant.token)}` });
+    }
+
     // ── Paiement ──────────────────────────────────────────────────────────────────────────
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", { apiVersion: "2023-10-16" });
-    const connectUrl = Deno.env.get("CONNECT_URL") ?? "https://connect.sportvision-an.fr";
+    const connectUrl = connectUrlBase;
     const { data: album } = await admin
       .from("media_albums")
       .select("title, clubs(nom)")
