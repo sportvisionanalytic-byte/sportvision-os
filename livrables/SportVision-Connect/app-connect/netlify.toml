@@ -4,10 +4,16 @@
   # Même raison que app-next/netlify.toml : "publish" vide se résout sur le même chemin que
   # "base", ce que le plugin Next.js refuse. .next est la valeur attendue par le Next Runtime.
   publish = ".next"
-  # Économie de crédits (02/09/2026) : voir le commentaire détaillé dans app-next/netlify.toml —
-  # même filtre, sans lui ce site relançait un build complet à chaque push sur main même quand ce
-  # dossier n'avait pas changé.
-  ignore = "git diff --quiet ${CACHED_COMMIT_REF:-HEAD^} HEAD -- livrables/SportVision-Connect/app-connect"
+  # Filtre `ignore` RETIRÉ le 07/09/2026, deuxième incident du même filtre. Il a annulé le
+  # déploiement de la galerie publique ("Canceled build due to no content change") alors que le
+  # commit ajoutait six fichiers dans ce dossier même. Exactement ce qui était arrivé à app-next
+  # le 05/09, où il avait bloqué TOUS les déploiements pendant plus de 24 h sans que personne ne
+  # le voie : Fouka avait testé en production un site vieux d'une journée.
+  #
+  # La cause exacte reste non identifiée (les logs Netlify ne détaillent pas la commande `ignore`),
+  # mais l'effet est sans ambiguïté et s'est reproduit. Le risque qu'un vrai changement ne se
+  # déploie jamais silencieusement l'emporte largement sur le coût de quelques builds inutiles.
+  # À ne réintroduire qu'avec un filtre dont le comportement est vérifié fiable dans la durée.
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
