@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { GalleryProduct } from "./pricing";
+import type { CartLine, GalleryProduct, PriceLadderEntry } from "./pricing";
 
 // Lecture de la galerie publique. Tout passe par les quatre RPC de
 // migration-galeries-v3-publique.sql, jamais par un SELECT direct : media_albums et media_assets
@@ -151,4 +151,118 @@ export async function trackGalleryView(
   sessionId: string,
 ): Promise<void> {
   await supabase.rpc("media_gallery_track_view", { p_slug: slug, p_token: token, p_session: sessionId });
+}
+
+/**
+ * Grille tarifaire pré-calculée par la base : « pour 1 photo, 2 photos, 3 photos… voilà le prix ».
+ *
+ * Chargée une fois à l'ouverture de la galerie. C'est ce qui permet d'afficher un total
+ * instantanément à chaque photo cochée sans aller-retour réseau, tout en gardant UN SEUL moteur de
+ * prix — celui de la base, qui est aussi celui qui facture.
+ */
+export async function fetchPriceLadder(
+  supabase: SupabaseClient,
+  slug: string,
+  token: string,
+  password?: string | null,
+): Promise<PriceLadderEntry[]> {
+  const { data, error } = await supabase.rpc("media_gallery_price_ladder", {
+    p_slug: slug,
+    p_token: token,
+    p_password: password ?? null,
+  });
+  if (error || !Array.isArray(data)) return [];
+  return (data as Record<string, unknown>[]).map((r) => ({
+    photos: Number(r.photos ?? 0),
+    totalCents: Number(r.total_cents ?? 0),
+    wholeAlbum: r.whole_album === true,
+    baselineCents: r.baseline_cents === null || r.baseline_cents === undefined ? null : Number(r.baseline_cents),
+    lines: ((r.lines as Record<string, unknown>[] | null) ?? []).map((l) => ({
+      productId: String(l.product_id),
+      name: String(l.name),
+      type: String(l.type),
+      quantity: Number(l.quantity ?? 1),
+      unitPriceCents: Number(l.unit_price_cents ?? 0),
+      coversPhotos: Number(l.covers_photos ?? 0),
+    })) as CartLine[],
+  }));
+}
+
+export interface CheckoutRequest {
+  slug: string;
+  token: string;
+  password?: string | null;
+  assetIds: string[];
+  email: string;
+  nom: string;
+}
+
+/**
+ * Démarre le paiement.
+ *
+ * Le MONTANT N'EST PAS TRANSMIS : la fonction serveur le recalcule depuis les mêmes règles que la
+ * grille affichée. Un client qui poste sa propre requête ne peut donc pas choisir son prix, et
+ * l'écran ne peut pas afficher un total différent de celui qui sera débité.
+ *
+ * Passe par une Edge Function Supabase, comme tous les autres paiements du projet
+ * (create-guest-media-checkout, create-pass-photo-checkout…) : la clé Stripe y vit déjà, et le
+ * webhook qui encaisse est au même endroit. Un deuxième chemin de paiement côté Netlify aurait
+ * imposé d'y dupliquer la clé secrète.
+ */
+export async function startGalleryCheckout(
+  supabase: SupabaseClient,
+  req: CheckoutRequest,
+): Promise<{ url: string } | { error: string }> {
+  const { data, error } = await supabase.functions.invoke("create-gallery-checkout", { body: req });
+  const payload = data as { url?: string; error?: string } | null;
+  if (error || !payload?.url) {
+    return { error: payload?.error ?? "Le paiement n'a pas pu démarrer. Réessayez dans un instant." };
+  }
+  return { url: payload.url };
+}
+
+export interface OrderPhoto {
+  id: string;
+  thumbUrl: string;
+  previewUrl: string;
+  filename: string;
+}
+
+export interface OrderSummary {
+  orderId: string;
+  albumTitre: string | null;
+  clubNom: string | null;
+  email: string;
+  totalCents: number;
+  currency: string;
+  expiresAt: string;
+  expiree: boolean;
+  dejaRattachee: boolean;
+  photos: OrderPhoto[];
+}
+
+/** Récapitulatif d'une commande payée, lisible avec le seul jeton reçu par e-mail. La fonction
+ * en base revérifie le paiement et l'expiration à chaque appel, et ne renvoie jamais de chemin
+ * d'original : c'est la route de téléchargement qui signe une URL, une par une, au clic. */
+export async function fetchOrderSummary(supabase: SupabaseClient, token: string): Promise<OrderSummary | null> {
+  const { data, error } = await supabase.rpc("media_gallery_order_summary", { p_token: token });
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  if (error || !row) return null;
+  return {
+    orderId: row.order_id as string,
+    albumTitre: (row.album_titre as string) ?? null,
+    clubNom: (row.club_nom as string) ?? null,
+    email: (row.email as string) ?? "",
+    totalCents: Number(row.total_cents ?? 0),
+    currency: (row.currency as string) ?? "eur",
+    expiresAt: row.expires_at as string,
+    expiree: row.expiree === true,
+    dejaRattachee: row.deja_rattachee === true,
+    photos: ((row.photos as Record<string, unknown>[] | null) ?? []).map((p) => ({
+      id: p.id as string,
+      thumbUrl: publicMediaUrl(p.thumb_path as string),
+      previewUrl: publicMediaUrl((p.preview_path as string) ?? (p.thumb_path as string)),
+      filename: (p.filename as string) ?? "photo.jpg",
+    })),
+  };
 }

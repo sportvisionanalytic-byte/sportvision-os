@@ -58,3 +58,37 @@ SLUG=villneuve-cup-u18 TOKEN=... SHOTS=/tmp \
 
 Les captures d'écran sont écrites dans `$SHOTS` : elles servent à juger le rendu, pas seulement à
 vérifier que ça marche.
+
+## `galerie-tarifs.test.sql`
+
+17 scénarios sur le **moteur de prix**, qui vit en base et nulle part ailleurs : c'est le même code
+qui affiche un total à l'écran et qui facture. Tout tourne dans une transaction annulée.
+
+Couvre : tarif unitaire, bascule automatique vers le pack dès qu'il devient plus avantageux,
+combinaison pack + unités, pack qui déborde volontairement, album complet qui devient optimal,
+absence d'album complet, galerie vendue uniquement en album complet (aucune économie annoncée sans
+référence unitaire), pack sans taille configurée (ignoré, jamais appliqué au hasard), égalité de
+prix (le plus petit produit gagne), devis ferme, photo étrangère à l'album, mauvais jeton.
+
+```bash
+python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()}))' \
+  livrables/SportVision-TV/tests/galerie-tarifs.test.sql > /tmp/q.json
+curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
+  -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
+```
+
+## `galerie-checkout.test.sh`
+
+Chaîne de paiement complète, sur la vraie base et les fonctions réellement déployées. **Aucun
+paiement n'est encaissé** : on vérifie que la commande est créée au bon prix, que ce prix ne peut
+pas être forcé depuis le client, puis on place la commande dans l'état que produit le webhook pour
+tester la livraison. Tout est supprimé à la fin, et le script le vérifie.
+
+Couvre : session Stripe créée, prix calculé en base, commande invitée sans compte ni bénéficiaire
+inventé, montant forcé par le client ignoré, mauvais jeton, photo étrangère à la galerie, e-mail
+invalide, récapitulatif de commande, signature d'un original acheté, photo non achetée refusée,
+jeton invalide, droit expiré, commande non payée.
+
+```bash
+bash livrables/SportVision-TV/tests/galerie-checkout.test.sh
+```

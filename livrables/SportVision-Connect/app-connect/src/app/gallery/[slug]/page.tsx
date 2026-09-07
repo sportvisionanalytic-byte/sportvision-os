@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { fetchGalleryPhotos, fetchGalleryProducts, openGallery, type GalleryDenial } from "@/lib/gallery/data";
+import {
+  fetchGalleryPhotos,
+  fetchGalleryProducts,
+  fetchPriceLadder,
+  openGallery,
+  type GalleryDenial,
+} from "@/lib/gallery/data";
 import { GalleryView } from "./GalleryView";
 import { GalleryPasswordGate } from "./GalleryPasswordGate";
 
@@ -97,9 +103,10 @@ export default async function GalleryPage({
 
   // Première page rendue côté serveur : le visiteur voit des photos immédiatement, sans attendre
   // un aller-retour depuis son navigateur. La suite arrive au défilement.
-  const [page, products] = await Promise.all([
+  const [page, products, ladder] = await Promise.all([
     fetchGalleryPhotos(supabase, slug, token, { limit: 60 }),
     fetchGalleryProducts(supabase, slug, token),
+    fetchPriceLadder(supabase, slug, token),
   ]);
 
   return (
@@ -110,6 +117,7 @@ export default async function GalleryPage({
       initialPhotos={page.photos}
       initialTotal={page.total || result.header.photoCount}
       initialProducts={products}
+      initialLadder={ladder}
     />
   );
 }

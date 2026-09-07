@@ -16,13 +16,16 @@ import {
   type GalleryHeader,
   type GalleryPhoto,
 } from "@/lib/gallery/data";
+import { GalleryCheckout } from "./GalleryCheckout";
 import {
   formatPrice,
   isSellable,
-  quoteSelection,
+  quoteFromLadder,
   sellableProducts,
   type CartLine,
+  type CartQuote,
   type GalleryProduct,
+  type PriceLadderEntry,
 } from "@/lib/gallery/pricing";
 
 const PAGE_SIZE = 60;
@@ -35,6 +38,7 @@ export function GalleryView({
   initialPhotos,
   initialTotal,
   initialProducts,
+  initialLadder,
 }: {
   slug: string;
   token: string;
@@ -45,14 +49,17 @@ export function GalleryView({
   initialPhotos: GalleryPhoto[];
   initialTotal: number;
   initialProducts: GalleryProduct[];
+  initialLadder: PriceLadderEntry[];
 }) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>(initialPhotos);
   const [total] = useState(initialTotal);
   const [products] = useState<GalleryProduct[]>(initialProducts);
+  const [ladder] = useState<PriceLadderEntry[]>(initialLadder);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [shared, setShared] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -126,9 +133,11 @@ export function GalleryView({
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }, []);
 
+  // Lecture dans la grille pré-calculée par la base, jamais un calcul local : le total affiché
+  // est exactement celui qui sera débité.
   const quote = useMemo(
-    () => quoteSelection(selected.length, products, header.photoCount),
-    [selected.length, products, header.photoCount],
+    () => quoteFromLadder(selected.length, ladder, products[0]?.currency ?? "eur"),
+    [selected.length, ladder, products],
   );
 
   // ── Visionneuse ────────────────────────────────────────────────────────
@@ -276,7 +285,7 @@ export function GalleryView({
       </main>
 
       {/* ── Barre de sélection ───────────────────────────────────────────── */}
-      {vendable && selected.length > 0 && !cartOpen && lightbox === null && (
+      {vendable && selected.length > 0 && !cartOpen && !checkoutOpen && lightbox === null && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border-strong bg-bg-elevated/95 backdrop-blur">
           <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
             <div className="min-w-0">
@@ -315,6 +324,21 @@ export function GalleryView({
             setSelected([]);
             setCartOpen(false);
           }}
+          onCheckout={() => {
+            setCartOpen(false);
+            setCheckoutOpen(true);
+          }}
+        />
+      )}
+
+      {checkoutOpen && quote && (
+        <GalleryCheckout
+          slug={slug}
+          token={token}
+          password={password}
+          assetIds={selected}
+          quote={quote}
+          onClose={() => setCheckoutOpen(false)}
         />
       )}
 
@@ -493,13 +517,15 @@ function CartSheet({
   wholeAlbumProduct,
   onClose,
   onClear,
+  onCheckout,
 }: {
-  quote: NonNullable<ReturnType<typeof quoteSelection>>;
+  quote: CartQuote;
   count: number;
   totalPhotos: number;
   wholeAlbumProduct: GalleryProduct | null;
   onClose: () => void;
   onClear: () => void;
+  onCheckout: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={onClose}>
@@ -557,10 +583,10 @@ function CartSheet({
         </div>
 
         <button
-          disabled
-          className="mt-4 w-full cursor-not-allowed rounded-sv-pill bg-sv-gradient py-3.5 text-[14.5px] font-bold text-white opacity-60"
+          onClick={onCheckout}
+          className="mt-4 w-full rounded-sv-pill bg-sv-gradient py-3.5 text-[14.5px] font-bold text-white"
         >
-          Paiement — bientôt disponible
+          Continuer vers le paiement
         </button>
         <p className="mt-2 text-center text-[11.5px] text-text-faint">
           Aucun compte n&apos;est nécessaire pour acheter vos photos.

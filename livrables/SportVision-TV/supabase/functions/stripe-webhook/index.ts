@@ -353,16 +353,23 @@ serve(async (req) => {
       const mediaOrderId = session.metadata?.product === "media_pass"
         ? (session.metadata.order_id as string)
         : null;
-      const contributionId = (abonnementClubId || agentUserId || mediaOrderId) ? null : ((session.metadata?.contribution_id as string) || null);
+      // Commande de galerie publique (07/09/2026, Lot 3 Galeries) — même branchement AVANT le
+      // repli sur paiementId que les autres produits, et pour la même raison : cette session ne
+      // renseigne pas client_reference_id, mais un `metadata.order_id` sans discriminant serait
+      // confondu avec la commande média du Pass Photo. `product = 'gallery_order'` les sépare.
+      const galleryOrderId = session.metadata?.product === "gallery_order"
+        ? (session.metadata.order_id as string)
+        : null;
+      const contributionId = (abonnementClubId || agentUserId || mediaOrderId || galleryOrderId) ? null : ((session.metadata?.contribution_id as string) || null);
       // Cotisation personnelle Connect (group_fundings / funding_contributions,
       // migration-connect-v50) — même principe de branchement AVANT le repli sur
       // paiementId que contributionId ci-dessus, avec une clé de metadata distincte
       // ("funding_contribution_id") pour ne jamais être confondue avec une
       // contribution à un projet collectif Club+ (contributionId, team_project_contributions).
-      const fundingContributionId = (abonnementClubId || agentUserId || mediaOrderId || contributionId)
+      const fundingContributionId = (abonnementClubId || agentUserId || mediaOrderId || galleryOrderId || contributionId)
         ? null
         : ((session.metadata?.funding_contribution_id as string) || null);
-      const paiementId = (abonnementClubId || agentUserId || mediaOrderId || contributionId || fundingContributionId)
+      const paiementId = (abonnementClubId || agentUserId || mediaOrderId || galleryOrderId || contributionId || fundingContributionId)
         ? null
         : ((session.metadata?.paiement_id as string) || (session.client_reference_id as string) || null);
 
@@ -553,6 +560,88 @@ serve(async (req) => {
           }
         } catch (_e) {
           console.error("[stripe-webhook] activation moteur média a échoué :", _e);
+        }
+      }
+
+      // ── Commande de galerie publique ───────────────────────────────────────────────────────
+      // Écrit media_download_grants, JAMAIS media_entitlements : ce dernier exige un
+      // beneficiary_person_id (un joueur), et un parent qui achète trois photos depuis un lien
+      // WhatsApp n'est rattaché à aucun joueur connu. Lui en inventer un serait écrire une donnée
+      // fausse. Le droit de télécharger EST le jeton, temporaire pour un invité, rendu permanent
+      // quand il crée son compte Connect (media_gallery_claim_order).
+      //
+      // Même verrou d'idempotence que le Pass Photo : l'update `pending -> paid` ne rend une ligne
+      // qu'une fois, donc un rejeu de webhook par Stripe ne recrée pas un second jeton.
+      if (galleryOrderId) {
+        try {
+          const { data: paidOrder } = await admin
+            .from("media_orders")
+            .update({
+              status: "paid",
+              paid_at: new Date().toISOString(),
+              stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
+            })
+            .eq("id", galleryOrderId)
+            .eq("status", "pending")
+            .select("id, club_id, album_id, guest_email, guest_name, amount_cents, currency, purchased_by_user_id")
+            .maybeSingle();
+
+          if (paidOrder) {
+            const email = (paidOrder.guest_email as string | null) || (session.customer_email as string | null);
+            if (email) {
+              const { data: grant } = await admin
+                .from("media_download_grants")
+                .insert({ order_id: paidOrder.id, email })
+                .select("token, expires_at")
+                .single();
+
+              const { data: album } = await admin
+                .from("media_albums")
+                .select("title")
+                .eq("id", paidOrder.album_id)
+                .maybeSingle();
+              const { count: nbPhotos } = await admin
+                .from("media_order_items")
+                .select("id", { count: "exact", head: true })
+                .eq("order_id", paidOrder.id);
+
+              if (grant?.token) {
+                const connectUrl = Deno.env.get("CONNECT_URL") ?? "https://connect.sportvision-an.fr";
+                const prenom = ((paidOrder.guest_name as string | null) || "").split(" ")[0] || "";
+                const montant = ((paidOrder.amount_cents ?? 0) / 100)
+                  .toLocaleString("fr-FR", { style: "currency", currency: (paidOrder.currency || "eur").toUpperCase() });
+                // Gabarit `galerie.commande_prete` (migration-galeries-v5) : mandatory, donc jamais
+                // filtré par les préférences de notification. C'est le SEUL moyen pour l'acheteur
+                // de retrouver ses photos s'il ferme l'onglet après le paiement.
+                await admin.rpc("enqueue_notification", {
+                  p_event_type: "galerie.commande_prete",
+                  p_template_key: "galerie.commande_prete",
+                  p_channel: "EMAIL",
+                  p_idempotency_key: "galerie.commande_prete:v1:" + paidOrder.id,
+                  p_recipient_email: email,
+                  p_recipient_phone: null,
+                  p_recipient_user_id: paidOrder.purchased_by_user_id,
+                  p_recipient_client_id: null,
+                  p_entity_type: "media_order",
+                  p_entity_id: paidOrder.id,
+                  p_payload: {
+                    prenom,
+                    album: album?.title ?? "votre galerie",
+                    nb_photos: nbPhotos ?? 0,
+                    lien: `${connectUrl}/gallery/commande/${encodeURIComponent(grant.token)}`,
+                    expiration: new Date(grant.expires_at as string).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+                    numero: String(paidOrder.id).slice(0, 8).toUpperCase(),
+                    montant,
+                  },
+                  p_scheduled_at: null,
+                });
+              }
+            }
+          }
+        } catch (_e) {
+          // Le paiement est encaissé : une erreur ici ne doit jamais faire échouer le webhook,
+          // sinon Stripe rejoue et l'acheteur voit un paiement en attente alors qu'il a payé.
+          console.error("[stripe-webhook] livraison commande galerie a échoué :", _e);
         }
       }
 

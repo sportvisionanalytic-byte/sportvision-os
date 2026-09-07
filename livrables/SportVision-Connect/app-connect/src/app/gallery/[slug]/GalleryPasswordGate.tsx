@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { fetchGalleryPhotos, fetchGalleryProducts, openGallery, type GalleryHeader, type GalleryPhoto } from "@/lib/gallery/data";
-import type { GalleryProduct } from "@/lib/gallery/pricing";
+import {
+  fetchGalleryPhotos,
+  fetchGalleryProducts,
+  fetchPriceLadder,
+  openGallery,
+  type GalleryHeader,
+  type GalleryPhoto,
+} from "@/lib/gallery/data";
+import type { GalleryProduct, PriceLadderEntry } from "@/lib/gallery/pricing";
 import { GalleryView } from "./GalleryView";
 
 // Galerie protégée par mot de passe (§10 du socle). Le mot de passe n'est jamais mis dans l'URL :
@@ -19,6 +26,7 @@ export function GalleryPasswordGate({ slug, token }: { slug: string; token: stri
     photos: GalleryPhoto[];
     total: number;
     products: GalleryProduct[];
+    ladder: PriceLadderEntry[];
   } | null>(null);
 
   async function submit(e: React.FormEvent) {
@@ -37,11 +45,12 @@ export function GalleryPasswordGate({ slug, token }: { slug: string; token: stri
       setBusy(false);
       return;
     }
-    const [page, products] = await Promise.all([
+    const [page, products, ladder] = await Promise.all([
       fetchGalleryPhotos(supabase, slug, token, { password, limit: 60 }),
       fetchGalleryProducts(supabase, slug, token, password),
+      fetchPriceLadder(supabase, slug, token, password),
     ]);
-    setUnlocked({ header: result.header, photos: page.photos, total: page.total || result.header.photoCount, products });
+    setUnlocked({ header: result.header, photos: page.photos, total: page.total || result.header.photoCount, products, ladder });
     setBusy(false);
   }
 
@@ -55,6 +64,7 @@ export function GalleryPasswordGate({ slug, token }: { slug: string; token: stri
         initialPhotos={unlocked.photos}
         initialTotal={unlocked.total}
         initialProducts={unlocked.products}
+        initialLadder={unlocked.ladder}
       />
     );
   }
