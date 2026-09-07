@@ -1,8 +1,33 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { fetchOrderSummary } from "@/lib/gallery/data";
-import { OrderView } from "./OrderView";
+import { OrderView, type ArchiveInfo } from "./OrderView";
 import { OrderSelect } from "./OrderSelect";
+
+/**
+ * Combien d'archives « tout télécharger » proposer, et de quel poids.
+ *
+ * La réponse vient de la fonction qui FABRIQUE les archives, jamais d'un calcul refait ici : le
+ * découpage dépend du poids des fichiers, que cette page ne connaît pas, et deux implémentations
+ * d'une même règle divergent toujours — la page finirait par afficher deux boutons là où il en
+ * faut trois, et l'acheteur perdrait des photos sans jamais le savoir.
+ *
+ * Un échec n'est pas bloquant : la page s'affiche sans le bouton groupé, et les téléchargements
+ * photo par photo restent disponibles.
+ */
+async function fetchArchiveInfo(token: string): Promise<ArchiveInfo | null> {
+  try {
+    const r = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/gallery-download-zip?info=1&token=${encodeURIComponent(token)}`,
+      { cache: "no-store" },
+    );
+    if (!r.ok) return null;
+    const d = (await r.json()) as ArchiveInfo;
+    return Array.isArray(d?.parties) && d.parties.length > 0 ? d : null;
+  } catch {
+    return null;
+  }
+}
 
 // Page de commande — /gallery/commande/<jeton>
 //
@@ -38,7 +63,7 @@ export default async function OrderPage({ params }: { params: Promise<{ token: s
     return <OrderSelect token={token} allowance={order.photosAllowance} albumTitre={order.albumTitre} />;
   }
 
-  return <OrderView token={token} order={order} />;
+  return <OrderView token={token} order={order} archive={await fetchArchiveInfo(token)} />;
 }
 
 function OrderClosed({ titre, texte }: { titre: string; texte: string }) {

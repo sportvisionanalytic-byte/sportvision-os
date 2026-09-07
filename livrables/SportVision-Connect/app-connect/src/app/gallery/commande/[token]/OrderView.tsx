@@ -15,7 +15,22 @@ import type { OrderSummary } from "@/lib/gallery/data";
 // donc : télécharger, puis Connect. Un client qui vient de payer veut ses fichiers, pas un
 // formulaire d'inscription.
 
-export function OrderView({ token, order }: { token: string; order: OrderSummary }) {
+/** Découpage annoncé par la fonction qui fabrique les archives, jamais recalculé ici. */
+export interface ArchiveInfo {
+  photos: number;
+  octets: number;
+  parties: { index: number; photos: number; octets: number }[];
+}
+
+export function OrderView({
+  token,
+  order,
+  archive,
+}: {
+  token: string;
+  order: OrderSummary;
+  archive: ArchiveInfo | null;
+}) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +66,19 @@ export function OrderView({ token, order }: { token: string; order: OrderSummary
     year: "numeric",
   });
 
+  // « Tout télécharger » : une navigation directe, pas un appel JavaScript. C'est le navigateur qui
+  // reçoit l'archive et l'écrit sur le disque au fur et à mesure ; la passer par du JavaScript
+  // obligerait à la tenir entièrement en mémoire, ce qui fait tomber l'onglet d'un téléphone sur
+  // une grosse commande. Même raison pour ne pas enchaîner N téléchargements : Chrome demande une
+  // autorisation dès le deuxième, et Safari sur iPhone les refuse.
+  const urlArchive = (partie: number) =>
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/gallery-download-zip?token=${encodeURIComponent(token)}${partie > 0 ? `&partie=${partie}` : ""}`;
+
+  const poids = (o: number) =>
+    o >= 1024 * 1024 * 1024
+      ? `${(o / 1024 / 1024 / 1024).toFixed(1)} Go`
+      : `${Math.max(1, Math.round(o / 1024 / 1024))} Mo`;
+
   return (
     <div className="min-h-screen bg-bg pb-16 text-text">
       <header className="mx-auto max-w-[720px] px-5 pt-7 sm:px-6">
@@ -79,6 +107,48 @@ export function OrderView({ token, order }: { token: string; order: OrderSummary
           <p className="mt-5 rounded-sv border border-danger-border bg-danger-bg px-3.5 py-3 text-[12.5px] font-semibold text-danger">
             {error}
           </p>
+        )}
+
+        {/* Tout télécharger, AVANT la grille : c'est ce que veut faire la quasi-totalité des
+            acheteurs. Les boutons photo par photo restent en dessous pour qui n'en veut qu'une. */}
+        {archive && archive.parties.length > 0 && (
+          <section className="mt-6">
+            {archive.parties.length === 1 ? (
+              <a
+                href={urlArchive(0)}
+                className="flex w-full items-center justify-center gap-2 rounded-sv-pill bg-sv-gradient py-3.5 text-[14.5px] font-bold text-white"
+              >
+                Tout télécharger ({archive.photos} photo{archive.photos > 1 ? "s" : ""} · {poids(archive.octets)})
+              </a>
+            ) : (
+              <>
+                {/* Au-delà d'une certaine taille, une seule archive a toutes les chances de se
+                    couper en route sur une connexion mobile. Mieux vaut plusieurs archives qui
+                    aboutissent, et le dire franchement plutôt que de laisser un échec arriver. */}
+                <p className="mb-2.5 text-[12.5px] leading-relaxed text-text-tertiary">
+                  Vos {archive.photos} photos ({poids(archive.octets)}) sont réparties en{" "}
+                  {archive.parties.length} archives, pour que le téléchargement aboutisse même en
+                  connexion mobile.
+                </p>
+                <div className="flex flex-col gap-2">
+                  {archive.parties.map((p) => (
+                    <a
+                      key={p.index}
+                      href={urlArchive(p.index)}
+                      className="flex w-full items-center justify-between gap-3 rounded-sv border border-border-strong bg-surface px-4 py-3 text-[13.5px] font-semibold"
+                    >
+                      <span>
+                        Partie {p.index + 1} sur {archive.parties.length}
+                      </span>
+                      <span className="text-[12px] font-normal text-text-tertiary">
+                        {p.photos} photos · {poids(p.octets)}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
         )}
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
