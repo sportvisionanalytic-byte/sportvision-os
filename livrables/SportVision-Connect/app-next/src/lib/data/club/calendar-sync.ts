@@ -353,64 +353,79 @@ export async function applyCalendarImport(
   params: { clubId: string; saisonId: string | null; provider: ProviderId; rows: PreviewRow[] },
 ): Promise<ApplyResult> {
   const now = new Date().toISOString();
-  const result: ApplyResult = {
-    created: 0,
-    updated: 0,
-    skipped: 0,
-    cancelledOrPostponed: 0,
-    failed: [],
-    changes: [],
-  };
+  const result: ApplyResult = { created: 0, updated: 0, skipped: 0, cancelledOrPostponed: 0, failed: [], changes: [] };
   const touchedUnchangedIds: string[] = [];
 
+  const toInsert: PreviewRow[] = [];
+  const toUpdate: PreviewRow[] = [];
   for (const row of params.rows) {
     if (!row.include) {
       if (row.verdict === "unchanged" && row.existingId) touchedUnchangedIds.push(row.existingId);
       continue;
     }
+    if (row.verdict === "updated" && row.existingId) toUpdate.push(row);
+    else toInsert.push(row);
+  }
+
+  // ── Créations, par lots ───────────────────────────────────────────────────────────────────
+  // Une insertion par ligne coûtait un aller-retour réseau par match. Sur un calendrier de saison
+  // (plusieurs centaines de lignes), ça dépasse le temps d'exécution d'une fonction Netlify : la
+  // synchronisation nocturne n'aurait jamais pu aller au bout. Trouvé en préparant le test de bout
+  // en bout sur un vrai flux de 209 événements, pas en théorie.
+  for (let i = 0; i < toInsert.length; i += INSERT_CHUNK) {
+    const chunk = toInsert.slice(i, i + INSERT_CHUNK);
+    const payloads = chunk.map((row) =>
+      buildInsertPayload(params.clubId, params.saisonId, params.provider, row.source, row.teamId, row.teamName ?? "", now),
+    );
+    const { data, error } = await supabase.from("club_matches").insert(payloads).select("id, opponent, match_date, team");
+
+    if (error) {
+      // Un lot qui échoue échoue en entier, et rien n'indique quelle ligne l'a fait tomber. On le
+      // rejoue ligne par ligne : seule la vraie fautive est écartée, et l'utilisateur reçoit son
+      // numéro de ligne exact.
+      await insertOneByOne(supabase, chunk, params, now, result);
+      continue;
+    }
+
+    const inserted = (data ?? []) as { id: string; opponent: string; match_date: string; team: string }[];
+    result.created += inserted.length;
+    // Les lignes non renvoyées ont été annulées par le trigger de dédup (RETURN NULL) : elles
+    // existaient déjà à l'identique. C'est l'idempotence attendue d'un réimport, pas un échec.
+    result.skipped += chunk.length - inserted.length;
+    for (const row of chunk) {
+      if (row.source.sportStatus === "postponed" || row.source.sportStatus === "cancelled") {
+        result.cancelledOrPostponed += 1;
+      }
+    }
+    for (const line of inserted) {
+      // Le journal reprend ce que la base a réellement écrit, pas ce qu'on croyait écrire.
+      result.changes.push({ line: 0, kind: "created", opponent: line.opponent, date: line.match_date, team: line.team || null });
+    }
+  }
+
+  // ── Mises à jour ──────────────────────────────────────────────────────────────────────────
+  // Une par une, et c'est normal : chaque ligne a son propre id et son propre correctif. Elles
+  // sont par nature peu nombreuses — c'est un diff, pas un import.
+  for (const row of toUpdate) {
     const event = row.source;
     const label = `${event.opponent} (${event.matchDate})`;
-    const teamName = row.teamName ?? "";
-
     try {
-      if (row.verdict === "updated" && row.existingId) {
-        const patch = buildUpdatePayload(event, row.changes, row.teamId, teamName, params.provider, now);
-        const { data, error } = await supabase.from("club_matches").update(patch).eq("id", row.existingId).select("id");
-        if (error) throw error;
-        if (!data || data.length === 0) {
-          result.failed.push({ line: row.key, label, message: "Mise à jour refusée (match introuvable ou accès refusé)." });
-          continue;
-        }
-        result.updated += 1;
-        if (event.sportStatus === "postponed" || event.sportStatus === "cancelled") result.cancelledOrPostponed += 1;
-        result.changes.push({
-          line: row.key,
-          kind: "updated",
-          opponent: event.opponent,
-          date: event.matchDate,
-          team: row.teamName,
-          fields: row.changes.map((c) => ({ field: c.field, before: c.before, after: c.after })),
-        });
-        continue;
-      }
-
-      const payload = buildInsertPayload(params.clubId, params.saisonId, params.provider, event, row.teamId, teamName, now);
-      const { data, error } = await supabase.from("club_matches").insert(payload).select("id");
+      const patch = buildUpdatePayload(event, row.changes, row.teamId, row.teamName ?? "", params.provider, now);
+      const { data, error } = await supabase.from("club_matches").update(patch).eq("id", row.existingId!).select("id");
       if (error) throw error;
       if (!data || data.length === 0) {
-        // Le trigger de dédup a annulé l'insertion : la ligne existait déjà à l'identique. Ce
-        // n'est pas un échec, c'est l'idempotence attendue d'un réimport.
-        result.skipped += 1;
+        result.failed.push({ line: row.key, label, message: "Mise à jour refusée (match introuvable ou accès refusé)." });
         continue;
       }
-      result.created += 1;
+      result.updated += 1;
       if (event.sportStatus === "postponed" || event.sportStatus === "cancelled") result.cancelledOrPostponed += 1;
       result.changes.push({
         line: row.key,
-        kind: "created",
+        kind: "updated",
         opponent: event.opponent,
         date: event.matchDate,
         team: row.teamName,
+        fields: row.changes.map((c) => ({ field: c.field, before: c.before, after: c.after })),
       });
     } catch (error) {
       result.failed.push({
@@ -421,14 +436,63 @@ export async function applyCalendarImport(
     }
   }
 
-  // §29 « dernière synchronisation » : une ligne inchangée a bien été revue par cette sync, même
-  // si rien n'a bougé. Un seul UPDATE groupé, aucun trigger déclenché (le trigger de statut est en
-  // `update of sport_status, saison_id`).
-  if (touchedUnchangedIds.length > 0) {
-    await supabase.from("club_matches").update({ last_synced_at: now }).in("id", touchedUnchangedIds);
+  // §29 « dernière synchronisation » : une ligne inchangée a bien été revue par cette sync, même si
+  // rien n'a bougé. Aucun trigger déclenché (celui du statut est en `update of sport_status,
+  // saison_id`).
+  for (let i = 0; i < touchedUnchangedIds.length; i += TOUCH_CHUNK) {
+    await supabase
+      .from("club_matches")
+      .update({ last_synced_at: now })
+      .in("id", touchedUnchangedIds.slice(i, i + TOUCH_CHUNK));
   }
 
   return result;
+}
+
+/** 100 lignes par requête : assez pour qu'un calendrier de saison tienne en quelques allers-retours,
+ * assez peu pour qu'un lot rejoué ligne par ligne après erreur reste rapide. */
+const INSERT_CHUNK = 100;
+/** `.in()` construit une URL : au-delà, PostgREST refuse la requête (URI trop longue). */
+const TOUCH_CHUNK = 200;
+
+/** Repli après l'échec d'un lot : chaque ligne est réessayée seule, pour n'écarter que la fautive. */
+async function insertOneByOne(
+  supabase: SupabaseClient,
+  rows: PreviewRow[],
+  params: { clubId: string; saisonId: string | null; provider: ProviderId },
+  now: string,
+  result: ApplyResult,
+): Promise<void> {
+  for (const row of rows) {
+    const event = row.source;
+    const label = `${event.opponent} (${event.matchDate})`;
+    try {
+      const payload = buildInsertPayload(
+        params.clubId,
+        params.saisonId,
+        params.provider,
+        event,
+        row.teamId,
+        row.teamName ?? "",
+        now,
+      );
+      const { data, error } = await supabase.from("club_matches").insert(payload).select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        result.skipped += 1;
+        continue;
+      }
+      result.created += 1;
+      if (event.sportStatus === "postponed" || event.sportStatus === "cancelled") result.cancelledOrPostponed += 1;
+      result.changes.push({ line: row.key, kind: "created", opponent: event.opponent, date: event.matchDate, team: row.teamName });
+    } catch (error) {
+      result.failed.push({
+        line: row.key,
+        label,
+        message: error instanceof Error ? error.message : "Erreur inconnue lors de l'écriture.",
+      });
+    }
+  }
 }
 
 export interface SyncRunInput {
