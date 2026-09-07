@@ -98,6 +98,12 @@ export function GalleryView({
   // est calculée sur `photos.length` et non sur la limite annoncée : un album de 8 photos avec une
   // vitrine réglée à 12 ne doit pas afficher « et 4 autres photos » qui n'existent pas.
   const restantes = Math.max(0, header.photoCount - photos.length);
+  // Le premier prix PAYANT. Annoncer « à partir de 0 € » parce qu'une photo est offerte laisse
+  // croire que toute la galerie est gratuite, et dévalorise les formules payantes juste à côté.
+  const payantes = offres.filter((o) => o.priceCents > 0);
+  const prixDAppel = payantes.length > 0
+    ? `À partir de ${formatPrice(Math.min(...payantes.map((o) => o.priceCents)), payantes[0]!.currency)}`
+    : "Offert";
 
   // §18 : la sélection survit à l'ouverture d'une photo, à un retour arrière et à un rechargement
   // accidentel. sessionStorage et pas de commande en base : un panier non payé n'a rien à faire
@@ -321,7 +327,9 @@ export function GalleryView({
                 />
               ))}
             </div>
-            <div ref={sentinelRef} className="h-10" />
+            {/* La sentinelle ne sert qu'a declencher la page suivante : sur une galerie deja
+                entierement chargee, elle ne laissait qu'un vide sous les photos. */}
+            {photos.length < total && <div ref={sentinelRef} className="h-10" />}
             {loadingMore && <p className="pb-6 text-center text-[12.5px] text-text-faint">Chargement…</p>}
 
             {/* Ce qui n'est pas montré est ANNONCÉ, pas caché. Le nombre restant est l'argument de
@@ -383,9 +391,7 @@ export function GalleryView({
                       : `${offres.length} formules disponibles`}
                   </div>
                   <div className="truncate text-[12px] text-text-tertiary">
-                    {offres.length === 1
-                      ? offerSummary(offres[0]!, header.photoCount)
-                      : `À partir de ${formatPrice(Math.min(...offres.map((o) => o.priceCents)), offres[0]!.currency)}`}
+                    {offres.length === 1 ? offerSummary(offres[0]!, header.photoCount) : prixDAppel}
                   </div>
                 </div>
                 <button
@@ -683,7 +689,9 @@ function Lightbox({
       role="dialog"
       aria-modal="true"
       aria-label={`Photo ${index + 1} sur ${count}`}
-      className="fixed inset-0 z-50 flex flex-col bg-black/95"
+      // Noir franc et non 95 % : a 95 %, la galerie reste lisible derriere la photo et attire
+      // l'oeil. On regarde UNE photo, pas une photo posee sur une page.
+      className="fixed inset-0 z-50 flex flex-col bg-black"
       onTouchStart={(e) => {
         touchX.current = e.touches[0]?.clientX ?? null;
       }}
@@ -707,7 +715,9 @@ function Lightbox({
         </button>
       </div>
 
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden px-2">
+      {/* Bord a bord : sur un telephone etroit, une photo au format paysage est deja petite, et
+          lui retirer encore 16 px de chaque cote la rend inutilement minuscule. */}
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         <img src={photo.previewUrl} alt="" className="max-h-full max-w-full object-contain" />
         <button
           onClick={onPrev}
