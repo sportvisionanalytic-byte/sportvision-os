@@ -4556,9 +4556,17 @@ function demanderConfirmation(texte,opts){
 function confirmerAction(msg,onConfirm){
   _confirmOuvrir(`<p>${msg}</p>`).then(ok=>{if(ok&&onConfirm)onConfirm();});
 }
+// Le type est normalise avant tout : l'OS ecrit indifferemment 'er', 'err', 'error', 'ok',
+// 'wa' ou 'warn' selon l'endroit. Seuls 'ok' et 'warn' etaient reconnus, si bien que les 26
+// avertissements passes en 'wa' s'affichaient en ROUGE avec une croix — alors qu'ils disent
+// tous « l'action a bien eu lieu, mais un effet secondaire n'a pas suivi » (« Ajoute au kit,
+// mais le statut du materiel n'a pas pu etre synchronise »). Annoncer un echec la ou il y a un
+// succes partiel pousse a refaire l'operation, donc a la faire deux fois.
+const _TOAST_TYPE={ok:'ok',succes:'ok',success:'ok',wa:'warn',warn:'warn',warning:'warn',attention:'warn'};
 function toast(msg,type='error'){
-  const typeCls=type==='ok'?'toast-ok':type==='warn'?'toast-warn':'toast-error';
-  const icon=type==='ok'?'✓':type==='warn'?'!':'✕';
+  const kind=_TOAST_TYPE[String(type||'').toLowerCase()]||'error';
+  const typeCls='toast-'+kind;
+  const icon=kind==='ok'?'✓':kind==='warn'?'!':'✕';
   let wrap=document.getElementById('toast-wrap');
   if(!wrap){
     wrap=document.createElement('div');

@@ -97,6 +97,33 @@ t(`aucun \`x.message||'…'\` restant (${brutes.length} trouve(s))`, brutes.leng
 const inspections = html.split("\n").filter((l) => /\/description\/i\.test\(r\.message/.test(l));
 t("les tests logiques sur le message continuent de lire le message brut", inspections.length === 2, `${inspections.length} trouve(s)`);
 
+// ── 6. La couleur des notifications dit la verite ───────────────────────────
+// toast(msg, type) ne reconnaissait que 'ok' et 'warn'. Or l'OS ecrit 'er', 'error', 'wa'…
+// selon l'endroit, et les 26 appels en 'wa' tombaient donc en ERREUR : un bandeau rouge avec
+// une croix pour annoncer « l'action a bien eu lieu, mais un effet secondaire n'a pas suivi ».
+// Annoncer un echec la ou il y a un succes partiel pousse a refaire l'operation.
+console.log("\n6. Les notifications ont la couleur de ce qu'elles annoncent");
+const classeToast = (type) =>
+  page.evaluate((ty) => {
+    document.getElementById("toast-wrap")?.remove();
+    ty === undefined ? toast("Message") : toast("Message", ty);
+    const el = document.querySelector("#toast-wrap .toast-i");
+    const cls = el.className;
+    const icone = el.querySelector(".toast-ic").textContent;
+    document.getElementById("toast-wrap").remove();
+    return cls.includes("toast-ok") ? "ok:" + icone : cls.includes("toast-warn") ? "warn:" + icone : "error:" + icone;
+  }, type);
+
+for (const [type, attendu] of [["ok", "ok:✓"], ["wa", "warn:!"], ["warn", "warn:!"], ["er", "error:✕"], ["error", "error:✕"], ["err", "error:✕"]]) {
+  const r = await classeToast(type);
+  t(`toast(…, '${type}') → ${r}`, r === attendu, `attendu ${attendu}`);
+}
+t("sans type, c'est une erreur (comportement inchange)", (await classeToast(undefined)) === "error:✕");
+
+// Les 26 avertissements du fichier passent bien par la voie 'warn' desormais.
+const wa = (html.match(/toast\([^;]*,'wa'\)/g) || []).length;
+t(`les ${wa} appels en 'wa' sont reconnus comme des avertissements`, wa > 0 && (await classeToast("wa")) === "warn:!");
+
 console.log(`\n${ok}/${ok + ko} verifications passees.`);
 await nav.close();
 srv.close();
