@@ -22,7 +22,10 @@ export const SERVICES_SPORTVISION: ServiceCta[] = [
     id: "prestations",
     titre: "Réserver une prestation",
     texte: "Photo ou vidéo sur un prochain match de votre équipe.",
-    href: "/services",
+    // Le site vitrine, PUBLIC. /services est une page interne de Connect : un parent qui vient de
+    // payer sans compte y était renvoyé vers un écran de connexion, c'est-à-dire un cul-de-sac
+    // juste après un achat.
+    href: "https://sportvision-an.fr/prestations",
     actif: true,
   },
   {
@@ -34,7 +37,7 @@ export const SERVICES_SPORTVISION: ServiceCta[] = [
   },
   // Annoncés seulement quand ils auront une vraie page derrière. Gardés ici pour qu'il n'y ait
   // qu'un endroit à modifier le jour où ils existent.
-  { id: "suivi-joueur", titre: "Suivi joueur", texte: "Vos photos et vidéos tout au long de la saison.", href: "/services", actif: false },
-  { id: "highlight", titre: "Montage Highlight", texte: "Une vidéo de vos meilleures actions.", href: "/services", actif: false },
-  { id: "pass-saison", titre: "Pass Saison", texte: "Retrouvez vos contenus toute la saison.", href: "/services", actif: false },
+  { id: "suivi-joueur", titre: "Suivi joueur", texte: "Vos photos et vidéos tout au long de la saison.", href: "https://sportvision-an.fr/prestations", actif: false },
+  { id: "highlight", titre: "Montage Highlight", texte: "Une vidéo de vos meilleures actions.", href: "https://sportvision-an.fr/prestations", actif: false },
+  { id: "pass-saison", titre: "Pass Saison", texte: "Retrouvez vos contenus toute la saison.", href: "https://sportvision-an.fr/prestations", actif: false },
 ];

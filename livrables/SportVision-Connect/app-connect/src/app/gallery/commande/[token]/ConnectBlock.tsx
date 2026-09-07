@@ -172,7 +172,11 @@ export function ConnectBlock({
       </form>
 
       <Link
-        href={`/auth/login?claim=${encodeURIComponent(token)}`}
+        // `next` et non un parametre invente : c'est celui que /auth/login sait lire. Le
+        // rattachement, lui, passe par le jeton memorise juste avant (savePendingClaim) — il n'a
+        // pas besoin de transiter par l'URL, et un jeton n'a rien a faire dans une adresse de
+        // connexion.
+        href={`/auth/login?next=${encodeURIComponent(`/gallery/commande/${token}`)}`}
         onClick={() => savePendingClaim(token)}
         className="mt-3 block w-full py-2 text-center text-[12.5px] text-text-tertiary underline underline-offset-2"
       >

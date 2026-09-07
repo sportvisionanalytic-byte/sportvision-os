@@ -90,7 +90,17 @@ export async function updateSession(request: NextRequest) {
       url.searchParams.set("email", email);
       return NextResponse.redirect(url);
     }
+    // La destination voulue est conservée dans `next`, que /auth/login sait déjà lire : sans ça,
+    // quelqu'un qui clique sur un lien vers une page protégée se connecte puis atterrit sur son
+    // accueil, sans jamais voir ce qu'il avait demandé. Le cas s'est vu depuis la page de
+    // commande d'une galerie : « J'ai déjà un compte » ramenait sur /dashboard.
+    //
+    // On ne recopie QUE le chemin, jamais la chaîne de requête : elle peut contenir un jeton de
+    // galerie, et un jeton n'a rien à faire dans l'URL d'une page de connexion.
+    const voulu = pathname;
     url.pathname = "/auth/login";
+    url.search = "";
+    if (voulu && voulu !== "/" && !voulu.startsWith("//")) url.searchParams.set("next", voulu);
     return NextResponse.redirect(url);
   }
 
