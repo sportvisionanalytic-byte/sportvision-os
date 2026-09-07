@@ -11580,7 +11580,10 @@ async function _galOuvrirConstructeur(linkId){
     if(sbErr(r)||!r){toast('Lien introuvable.','error');return;}
     _galLienEdite=r;
     d=r;
+    // On garde l'identifiant de chaque offre : sans lui, l'enregistrement recreerait des offres
+    // neuves et les ventes deja realisees perdraient leur rattachement (voir migration v22).
     _galOffres=(r.offres||[]).map(o=>({
+      id:o.id,
       type:o.type, name:o.name||'',
       prix:(o.price_cents||0)/100,
       quota:o.photos_allowance,
@@ -11639,11 +11642,13 @@ async function _galOuvrirConstructeur(linkId){
 function galAjouterOffre(type){
   // Aucune valeur suggeree : un prix ou un quota pre-rempli finirait par etre envoye tel quel a
   // des parents parce que personne ne l'aurait relu.
-  _galOffres.push({type:type, name:'', prix:'', quota:type==='pack'?'':null, featured:false, actif:true});
+  _galOffres.push({id:null, type:type, name:'', prix:'', quota:type==='pack'?'':null, featured:false, actif:true});
   _galRendreOffres();
 }
 function galRetirerOffre(i){ _galOffres.splice(i,1); _galRendreOffres(); }
-function galDupliquerOffre(i){ _galOffres.splice(i+1,0,Object.assign({},_galOffres[i],{featured:false})); _galRendreOffres(); }
+// La copie n'herite PAS de l'identifiant : ce doit etre une offre neuve, sinon enregistrer
+// reviendrait a modifier l'originale et a laisser la copie de cote.
+function galDupliquerOffre(i){ _galOffres.splice(i+1,0,Object.assign({},_galOffres[i],{id:null,featured:false})); _galRendreOffres(); }
 function galDeplacerOffre(i,d){
   const j=i+d; if(j<0||j>=_galOffres.length)return;
   const t=_galOffres[i]; _galOffres[i]=_galOffres[j]; _galOffres[j]=t;
@@ -11747,7 +11752,7 @@ async function galEnregistrerLien(){
       quota=parseInt(o.quota,10);
       if(!isFinite(quota)||quota<1){toast('Offre '+(i+1)+' : indiquez le nombre de photos.','error');return;}
     }
-    offres.push({type:o.type,name:nom,price_cents:Math.round(p*100),photos_allowance:quota,
+    offres.push({id:o.id||null,type:o.type,name:nom,price_cents:Math.round(p*100),photos_allowance:quota,
                  display_order:i+1,featured:!!o.featured,is_enabled:o.actif!==false});
   }
 

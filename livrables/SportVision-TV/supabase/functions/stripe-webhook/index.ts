@@ -969,6 +969,33 @@ serve(async (req) => {
       const estTotal = charge.amount_refunded >= charge.amount;
 
       if (intentId) {
+        // ── Commande de galerie remboursee ──────────────────────────────────────────────
+        // Ce bloc manquait : `charge.refunded` ne touchait que paiements/prestations/factures,
+        // donc une commande galerie remboursee restait « payee » pour toujours, et son montant
+        // continuait d'etre compte dans le chiffre d'affaires. Trouve en preparant les
+        // statistiques commerciales — le CA aurait ete faux sans que rien ne le signale.
+        //
+        // Un remboursement PARTIEL ne fait pas basculer la commande : elle a bien ete payee, et
+        // la marquer « remboursee » retirerait tout son montant du CA au lieu d'une partie. On ne
+        // traite donc que le remboursement total, et on documente la limite.
+        if (estTotal) {
+          const { data: cmdRemboursee } = await admin
+            .from("media_orders")
+            .update({ status: "refunded", refunded_at: new Date().toISOString() })
+            .eq("stripe_payment_intent_id", intentId)
+            .eq("status", "paid")
+            .select("id")
+            .maybeSingle();
+          if (cmdRemboursee) {
+            // Le droit de telecharger tombe avec le remboursement : garder l'acces aux originaux
+            // apres avoir rendu l'argent reviendrait a les offrir.
+            await admin
+              .from("media_download_grants")
+              .update({ expires_at: new Date().toISOString() })
+              .eq("order_id", cmdRemboursee.id);
+          }
+        }
+
         const { data: paiement } = await admin
           .from("paiements")
           .select("*")

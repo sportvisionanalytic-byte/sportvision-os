@@ -345,3 +345,32 @@ Les comptes de test sont créés puis supprimés autour de l'exécution.
 ```bash
 node livrables/SportVision-TV/tests/connect-menu-accessibilite.test.mjs
 ```
+
+## `galerie-offre-gratuite-parcours.test.mjs`
+
+17 scénarios : le parcours COMPLET d'une offre gratuite dans un vrai navigateur, en contexte neuf
+(ni session ni stockage), sans aucun appel serveur direct. Galerie ouverte sans compte, formule
+« Offert » choisie, quota respecté, aucun passage par Stripe, commande créée, et **archive ZIP
+réellement téléchargée** puis vérifiée (taille et signature PK).
+
+## `galerie-analytics.test.sql`
+
+31 scénarios sur les statistiques commerciales, avec le jeu de données du cahier des charges
+(10 vues + 2×10 € + 1×20 € côté club, 5 vues + 1×30 € côté adverse). Transaction annulée.
+
+Les totaux globaux sont mesurés EN ÉCART avant/après : ces fonctions agrègent aussi les vraies
+galeries, et comparer à des totaux absolus rendrait le test dépendant de l'activité réelle.
+
+Couvre : le CA qui exclut les sessions abandonnées, les commandes annulées et les remboursements ;
+la commande gratuite comptée comme commande mais pas comme CA ; le panier moyen calculé sur les
+seules commandes payantes ; l'attribution par lien ; **le CA par offre calculé sur les montants
+réellement encaissés** — une offre passée de 10 à 12 € garde ses anciennes ventes à 10 € ; une
+offre vendue qu'on ne peut plus supprimer ; les audiences lues depuis les données ; le comptage
+des acheteurs par personne et non par commande ; la courbe dont la somme égale le CA ; et une
+période vide qui ne renvoie AUCUN taux inventé.
+
+## `galerie-analytics-permissions.test.sql`
+
+10 scénarios sur le cloisonnement. Fondateur : tout. Responsable de pôle Football : son album
+Football, ni le Basket, **ni un album sans pôle** — et son CA ne contient que le sien.
+Photographe : aucun accès, périmètre vide, CA à zéro.
