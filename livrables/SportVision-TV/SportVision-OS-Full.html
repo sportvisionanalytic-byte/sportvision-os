@@ -10847,7 +10847,7 @@ async function loadPhotoAlbums(el){
   if(!el)return;
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,clubs(nom),club_teams(name),saisons(label)&order=created_at.desc&limit=200');
+    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,watermark_previews,cover_asset_id,clubs(nom),club_teams(name),saisons(label)&order=created_at.desc&limit=200');
     if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(rows.message||'Impossible de charger les albums.')+'</div></div>';return;}
     _photoAlbums=Array.isArray(rows)?rows:[];
     renderPhotoAlbumsList(_photoAlbums);
@@ -10878,6 +10878,7 @@ function renderPhotoAlbumsList(albums){
         <span style="font-size:10px;font-weight:700;padding:2px 8px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
       </div>
       <div style="flex-shrink:0;display:flex;gap:5px">
+        <button onclick="event.stopPropagation();modalMediasAlbum('${a.id}')" aria-label="Gerer les photos de l'album" style="padding:5px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">Photos</button>
         ${a.status==='published'
           ?`<button onclick="event.stopPropagation();depublierAlbum('${a.id}')" aria-label="Dépublier l'album" style="padding:5px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">Dépublier</button>`
           :`<button onclick="event.stopPropagation();publierAlbum('${a.id}')" aria-label="Publier l'album" style="padding:5px 9px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:600;cursor:pointer">Publier</button>`}
@@ -10994,19 +10995,461 @@ async function sauvegarderAlbum(albumId){
   }catch(e){err.textContent="Erreur lors de l'enregistrement.";}
 }
 
+// 07/09/2026 : ces deux fonctions ciblaient `photo_albums`, table renommee en `media_albums` lors
+// du passage au moteur media generique du 02/09 et qui n'existe plus. Verifie en base : aucun
+// album n'etait donc publiable ni depubliable depuis l'OS, le bouton renvoyait une erreur
+// PostgREST. Trouve en branchant l'upload, puisque publier un album est l'etape juste apres.
 async function publierAlbum(id){
-  const r=await sbFetch('photo_albums?id=eq.'+id,{method:'PATCH',body:{status:'published',published_at:new Date().toISOString()}});
+  const r=await sbFetch('media_albums?id=eq.'+id,{method:'PATCH',body:{status:'published',published_at:new Date().toISOString()}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Publication impossible.'),'error');return;}
   toast('Album publié — visible dans le Pass Photo Connect','ok');
   loadPhotoAlbums();
 }
 
 async function depublierAlbum(id){
-  const r=await sbFetch('photo_albums?id=eq.'+id,{method:'PATCH',body:{status:'draft'}});
+  const r=await sbFetch('media_albums?id=eq.'+id,{method:'PATCH',body:{status:'draft'}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Dépublication impossible.'),'error');return;}
   toast('Album repassé en brouillon','ok');
   loadPhotoAlbums();
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GALERIES — MÉDIAS RÉELS (07/09/2026)
+// ═══════════════════════════════════════════════════════════════════════════
+// Jusqu'ici un album n'était qu'une fiche : `photo_count` était un nombre tapé à la main et
+// `secure_collection_ref` un lien externe collé par le staff. SportVision ne vendait pas des
+// photos, il vendait l'accès à un lien. Ce module dépose les vraies photos, celles que la galerie
+// publique, Club+ et Connect utiliseront ensuite.
+//
+// Deux fichiers dérivés sont produits DANS LE NAVIGATEUR au moment du dépôt, jamais à l'ouverture
+// d'une galerie (décision Fouka du 07/09) :
+//   thumbnail  petite, pour que la grille d'une galerie de 500 photos s'affiche vite sur mobile
+//   preview    consultable avant achat, filigranée si l'album le demande
+// L'ORIGINAL n'est jamais retouché ni filigrané : c'est le fichier vendu.
+//
+// Où va quoi, et pourquoi :
+//   original  → sportvision-media-prive/media/<album_id>/<asset_id>.<ext>   bucket PRIVÉ
+//               La policy de lecture existante adosse déjà ce chemin à can_access_media() : le
+//               droit d'accès au fichier payant est vérifié par la base, pas par cet écran.
+//   dérivés   → galerie-previews/<album_id>/<asset_id>-t.webp | -p.webp     bucket PUBLIC
+//               Basse résolution et filigranés : leur diffusion est le but. Détenir l'URL d'une
+//               preview ne donne aucun accès à l'original, qui vit dans l'autre bucket.
+
+// Toutes les valeurs de qualité au même endroit (§4 du prompt : « ne disperse pas ces valeurs en
+// dur partout dans le code »). Modifier une seule ligne ici change tous les dépôts suivants.
+const GAL_MEDIA_CFG={
+  thumb:{max:480,quality:.72,mime:'image/webp'},
+  // 1600px : assez pour qu'un parent juge vraiment la photo sur un grand écran avant d'acheter,
+  // assez peu pour rester sous ~250 Ko et rester agréable en 4G au bord d'un terrain.
+  preview:{max:1600,quality:.82,mime:'image/webp'},
+  // Le filigrane n'est posé QUE sur la preview. Sur une vignette de 480px il serait illisible et
+  // ne ferait que salir la grille.
+  // Répétition serrée et non une marque unique : une marque centrale disparaît d'un simple
+  // recadrage, ce qu'on cherche justement à décourager. Valeurs réglées en mesurant la couverture
+  // réelle sur une photo 1600 px (voir le test des dérivés) : ~9 % des pixels touchés, assez pour
+  // dissuader sans rendre la photo impossible à juger avant achat.
+  watermark:{texte:'SportVision',opacite:.26,anglesDeg:-30,espacement:110,taillePct:.042},
+  // 3 fichiers en parallèle : au-delà, un dépôt de 500 photos sature la mémoire du navigateur et
+  // le décodage devient plus lent que le réseau.
+  concurrence:3,
+  tailleMaxOctets:50*1024*1024,
+  typesAcceptes:['image/jpeg','image/png','image/webp'],
+};
+
+let _galAlbum=null;      // album ouvert
+let _galAssets=[];       // médias déjà en base
+let _galQueue=[];        // dépôts en cours, uniquement à l'écran
+
+function _galPublicUrl(path){return SB_URL+'/storage/v1/object/public/galerie-previews/'+path;}
+
+/** Dépôt d'un blob. Renvoie le message d'erreur de Supabase plutôt qu'un simple échec : sur un
+ * dépôt de 300 fichiers, « échec » sans raison est inexploitable. */
+async function _galUpload(bucket,path,blob,contentType){
+  if(DEMO_MODE)return{ok:false,error:'Mode démo'};
+  const tok=localStorage.getItem('sv_tok')||'';
+  try{
+    const res=await fetch(SB_URL+'/storage/v1/object/'+bucket+'/'+encodeURI(path),{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok,'Content-Type':contentType||'application/octet-stream','x-upsert':'true'},
+      body:blob,
+    });
+    if(res.ok)return{ok:true,error:null};
+    let msg='HTTP '+res.status;
+    try{const d=await res.json();msg=d.message||d.error||msg;}catch(e){}
+    return{ok:false,error:msg};
+  }catch(e){return{ok:false,error:'Réseau indisponible'};}
+}
+
+async function _galDeleteObject(bucket,path){
+  if(!path||DEMO_MODE)return;
+  const tok=localStorage.getItem('sv_tok')||'';
+  try{
+    await fetch(SB_URL+'/storage/v1/object/'+bucket+'/'+encodeURI(path),{
+      method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok},
+    });
+  }catch(e){}
+}
+
+/** Empreinte du fichier source, qui rend le dépôt idempotent : l'index unique (album, checksum)
+ * fait qu'un envoi relancé après interruption ne recrée pas ce qui est déjà passé.
+ *
+ * `crypto.subtle` n'existe QUE dans un contexte sécurisé (https, ou localhost). L'OS est servi en
+ * https, mais le fichier ouvert directement depuis le disque (file://) n'en est pas un : sans ce
+ * repli, chaque dépôt échouerait au premier fichier avec une erreur incompréhensible. On renvoie
+ * alors null — la colonne est nullable et l'index unique est partiel (where checksum is not null),
+ * donc on perd seulement la détection des doublons, jamais la possibilité de déposer. */
+async function _galChecksum(buffer){
+  if(!crypto||!crypto.subtle)return null;
+  try{
+    const digest=await crypto.subtle.digest('SHA-256',buffer);
+    return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }catch(e){return null;}
+}
+
+/** Même raison que ci-dessus : crypto.randomUUID() est réservé aux contextes sécurisés. */
+function _galUuid(){
+  if(crypto&&crypto.randomUUID)return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+    const r=Math.random()*16|0;
+    return (c==='x'?r:((r&0x3)|0x8)).toString(16);
+  });
+}
+
+/** Redimensionne en respectant le ratio, sans jamais agrandir : une photo de 900px ne doit pas
+ * être « upscalée » à 1600, ça ne fait qu'alourdir le fichier sans ajouter un pixel d'information. */
+function _galDessiner(bitmap,maxSize,filigrane){
+  const ratio=Math.min(1,maxSize/Math.max(bitmap.width,bitmap.height));
+  const w=Math.max(1,Math.round(bitmap.width*ratio));
+  const h=Math.max(1,Math.round(bitmap.height*ratio));
+  const canvas=document.createElement('canvas');
+  canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  ctx.imageSmoothingQuality='high';
+  ctx.drawImage(bitmap,0,0,w,h);
+  if(filigrane)_galFiligrane(ctx,w,h);
+  return canvas;
+}
+
+function _galFiligrane(ctx,w,h){
+  const cfg=GAL_MEDIA_CFG.watermark;
+  const taille=Math.max(14,Math.round(Math.min(w,h)*cfg.taillePct));
+  ctx.save();
+  ctx.globalAlpha=cfg.opacite;
+  ctx.fillStyle='#ffffff';
+  ctx.strokeStyle='rgba(0,0,0,.35)';
+  ctx.lineWidth=Math.max(1,taille/14);
+  ctx.font='700 '+taille+'px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.textBaseline='middle';
+  ctx.translate(w/2,h/2);
+  ctx.rotate(cfg.anglesDeg*Math.PI/180);
+  // Répété en diagonale plutôt qu'une marque unique au centre : un recadrage suffit à faire
+  // disparaître une marque unique, et c'est justement ce qu'on veut décourager.
+  const diag=Math.sqrt(w*w+h*h);
+  const pas=Math.max(120,cfg.espacement*(taille/26));
+  for(let y=-diag/2;y<diag/2;y+=pas){
+    for(let x=-diag/2;x<diag/2;x+=pas*1.6){
+      ctx.strokeText(cfg.texte,x,y);
+      ctx.fillText(cfg.texte,x,y);
+    }
+  }
+  ctx.restore();
+}
+
+function _galToBlob(canvas,mime,quality){
+  return new Promise(resolve=>canvas.toBlob(b=>resolve(b),mime,quality));
+}
+
+// ── Dépôt d'un fichier, de bout en bout ───────────────────────────────────
+// Ordre volontaire : on DÉCODE et on fabrique les dérivés AVANT d'écrire quoi que ce soit. Un
+// fichier que le navigateur ne sait pas décoder (un HEIC d'iPhone hors Safari, un PDF renommé)
+// échoue donc sans avoir laissé ni ligne en base ni fichier orphelin dans le stockage.
+async function _galTraiterFichier(entry){
+  const file=entry.file;
+  const setEtat=(etat,detail)=>{entry.etat=etat;entry.detail=detail||'';_galRenderQueue();};
+
+  if(GAL_MEDIA_CFG.typesAcceptes.indexOf(file.type)===-1){
+    setEtat('erreur','Format non pris en charge ('+(file.type||'inconnu')+'). JPEG, PNG ou WebP.');
+    return;
+  }
+  if(file.size>GAL_MEDIA_CFG.tailleMaxOctets){
+    setEtat('erreur','Fichier trop lourd ('+Math.round(file.size/1048576)+' Mo, maximum 50 Mo).');
+    return;
+  }
+
+  let bitmap=null;
+  try{
+    setEtat('traitement','Lecture…');
+    const buffer=await file.arrayBuffer();
+    entry.checksum=await _galChecksum(buffer);
+
+    // imageOrientation: 'from-image' applique l'orientation EXIF. Sans ça, toutes les photos
+    // prises en portrait ressortent couchées dans les vignettes.
+    bitmap=await createImageBitmap(new Blob([buffer],{type:file.type}),{imageOrientation:'from-image'});
+    entry.width=bitmap.width;entry.height=bitmap.height;
+
+    setEtat('traitement','Génération des versions…');
+    const filigrane=_galAlbum.watermark_previews!==false;
+    const thumbBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.thumb.max,false),GAL_MEDIA_CFG.thumb.mime,GAL_MEDIA_CFG.thumb.quality);
+    const previewBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.preview.max,filigrane),GAL_MEDIA_CFG.preview.mime,GAL_MEDIA_CFG.preview.quality);
+    if(!thumbBlob||!previewBlob)throw new Error('Génération des versions impossible');
+
+    const assetId=entry.assetId||_galUuid();
+    entry.assetId=assetId;
+    const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+    const originalPath='media/'+_galAlbum.id+'/'+assetId+'.'+ext;
+    const thumbPath=_galAlbum.id+'/'+assetId+'-t.webp';
+    const previewPath=_galAlbum.id+'/'+assetId+'-p.webp';
+
+    // La ligne est créée AVANT le dépôt du fichier : si le même fichier a déjà été déposé,
+    // l'index unique (album, checksum) le refuse ici, et on s'arrête sans avoir rien téléversé.
+    setEtat('upload','Envoi de l’original…');
+    const row=await sbFetch('media_assets',{method:'POST',body:{
+      id:assetId,album_id:_galAlbum.id,club_id:_galAlbum.club_id,
+      original_path:originalPath,original_filename:file.name,mime_type:file.type,
+      checksum:entry.checksum,width:bitmap.width,height:bitmap.height,bytes:file.size,
+      status:'uploading',position:entry.position,created_by:S.uid,
+    }});
+    if(sbErr(row)){
+      const msg=(row&&row.message)||'';
+      if(/duplicate key|unique/i.test(msg)){setEtat('doublon','Déjà présent dans cet album.');return;}
+      setEtat('erreur',msg||'Enregistrement refusé.');return;
+    }
+
+    const up1=await _galUpload('sportvision-media-prive',originalPath,file,file.type);
+    if(!up1.ok){
+      await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{status:'failed',processing_error:up1.error}});
+      setEtat('erreur','Original : '+up1.error);return;
+    }
+
+    setEtat('upload','Envoi des versions…');
+    await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{status:'processing'}});
+    const up2=await _galUpload('galerie-previews',thumbPath,thumbBlob,'image/webp');
+    const up3=await _galUpload('galerie-previews',previewPath,previewBlob,'image/webp');
+    if(!up2.ok||!up3.ok){
+      const msg=(up2.error||up3.error||'Envoi des versions impossible');
+      await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{status:'failed',processing_error:msg}});
+      setEtat('erreur','Versions : '+msg);return;
+    }
+
+    // 'ready' en dernier, et seulement là : une photo n'apparaît dans une galerie que lorsque ses
+    // trois fichiers existent réellement (§7).
+    const fin=await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{
+      thumb_path:thumbPath,preview_path:previewPath,status:'ready',processing_error:null,
+    }});
+    if(sbErr(fin)){setEtat('erreur','Finalisation : '+(fin.message||'échec'));return;}
+    setEtat('termine','');
+  }catch(e){
+    setEtat('erreur',(e&&e.message)||'Traitement impossible (image illisible ?)');
+  }finally{
+    if(bitmap&&bitmap.close)bitmap.close();
+  }
+}
+
+/** File d'attente à parallélisme borné : `concurrence` fichiers à la fois, pas plus. */
+async function _galLancerQueue(){
+  const pending=()=>_galQueue.filter(e=>e.etat==='attente');
+  const workers=[];
+  for(let i=0;i<GAL_MEDIA_CFG.concurrence;i++){
+    workers.push((async()=>{
+      for(;;){
+        const next=pending()[0];
+        if(!next)return;
+        next.etat='traitement';
+        await _galTraiterFichier(next);
+      }
+    })());
+  }
+  await Promise.all(workers);
+  await _galChargerAssets();
+  const ko=_galQueue.filter(e=>e.etat==='erreur').length;
+  const ok=_galQueue.filter(e=>e.etat==='termine').length;
+  toast(ok+' photo'+(ok>1?'s':'')+' ajoutée'+(ok>1?'s':'')+(ko?' · '+ko+' en échec':''),ko?'error':'ok');
+}
+
+function _galAjouterFichiers(fileList){
+  const files=Array.from(fileList||[]);
+  if(!files.length)return;
+  const base=_galAssets.length+_galQueue.length;
+  files.forEach((file,i)=>_galQueue.push({file,etat:'attente',detail:'',position:base+i}));
+  _galRenderQueue();
+  _galLancerQueue();
+}
+
+function _galRelancer(index){
+  const entry=_galQueue[index];
+  if(!entry)return;
+  entry.etat='attente';entry.detail='';
+  _galRenderQueue();
+  _galLancerQueue();
+}
+
+// ── Rendu ─────────────────────────────────────────────────────────────────
+
+const GAL_ETAT_LB={attente:'En attente',traitement:'Traitement',upload:'Envoi',termine:'Terminé',erreur:'Erreur',doublon:'Déjà présent'};
+const GAL_ETAT_CLR={attente:'var(--t3)',traitement:'var(--wa)',upload:'var(--wa)',termine:'var(--ok)',erreur:'var(--er)',doublon:'var(--t3)'};
+const GAL_STATUS_LB={uploading:'Envoi',processing:'Traitement',ready:'Prête',failed:'Échec',hidden:'Masquée'};
+const GAL_STATUS_CLR={uploading:'var(--wa)',processing:'var(--wa)',ready:'var(--ok)',failed:'var(--er)',hidden:'var(--t3)'};
+
+function _galRenderQueue(){
+  const el=document.getElementById('gal-queue');
+  if(!el)return;
+  if(!_galQueue.length){el.innerHTML='';return;}
+  const restants=_galQueue.filter(e=>e.etat==='attente'||e.etat==='traitement'||e.etat==='upload').length;
+  const total=_galQueue.length;
+  el.innerHTML=`
+    <div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--t2)">
+      ${total-restants} / ${total} traitées${restants?' · '+restants+' en cours':''}
+    </div>
+    <div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">
+      ${_galQueue.map((e,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;font-size:11.5px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${GAL_ETAT_CLR[e.etat]};flex-shrink:0"></span>
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t2)">${esc(e.file.name)}</span>
+          <span style="color:${GAL_ETAT_CLR[e.etat]};flex-shrink:0">${GAL_ETAT_LB[e.etat]}${e.detail?' — '+esc(e.detail):''}</span>
+          ${e.etat==='erreur'?`<button onclick="_galRelancer(${i})" style="flex-shrink:0;padding:2px 7px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:10.5px;cursor:pointer">Relancer</button>`:''}
+        </div>`).join('')}
+    </div>`;
+}
+
+function _galRenderGrille(){
+  const el=document.getElementById('gal-grid');
+  if(!el)return;
+  if(!_galAssets.length){
+    el.innerHTML='<div style="padding:28px;text-align:center;color:var(--t3);font-size:12px">Aucune photo pour l’instant. Déposez vos fichiers ci-dessus.</div>';
+    return;
+  }
+  el.innerHTML=_galAssets.map((a,i)=>{
+    const src=a.thumb_path?_galPublicUrl(a.thumb_path):'';
+    const clr=GAL_STATUS_CLR[a.status]||'var(--t3)';
+    return`<div style="position:relative;border:1px solid ${a.is_cover?'var(--ac)':'var(--b1)'};border-radius:var(--rp);overflow:hidden;background:var(--s2)">
+      <div style="aspect-ratio:4/3;background:var(--s3) center/cover no-repeat${src?";background-image:url('"+src+"')":''}"></div>
+      <div style="padding:5px 6px;display:flex;flex-direction:column;gap:3px">
+        <div style="font-size:10px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.original_filename||'—')}</div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-size:9.5px;font-weight:700;padding:1px 5px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr}">${GAL_STATUS_LB[a.status]||a.status}</span>
+          ${a.is_cover?'<span style="font-size:9.5px;color:var(--ac);font-weight:700">Couverture</span>':''}
+        </div>
+        ${a.processing_error?`<div style="font-size:9.5px;color:var(--er)">${esc(a.processing_error)}</div>`:''}
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          <button title="Définir comme couverture" onclick="galDefinirCouverture('${a.id}')" ${a.status!=='ready'?'disabled':''} style="padding:2px 6px;background:var(--s3);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:10px;cursor:pointer">★</button>
+          <button title="Monter" onclick="galDeplacer(${i},-1)" style="padding:2px 6px;background:var(--s3);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:10px;cursor:pointer">◀</button>
+          <button title="Descendre" onclick="galDeplacer(${i},1)" style="padding:2px 6px;background:var(--s3);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:10px;cursor:pointer">▶</button>
+          <button title="${a.status==='hidden'?'Réafficher':'Masquer'}" onclick="galBasculerVisibilite('${a.id}','${a.status}')" style="padding:2px 6px;background:var(--s3);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:10px;cursor:pointer">${a.status==='hidden'?'◉':'◎'}</button>
+          <button title="Supprimer" onclick="galSupprimerAsset('${a.id}')" style="padding:2px 6px;background:var(--s3);border:1px solid var(--b1);border-radius:var(--rp);color:var(--er);font-size:10px;cursor:pointer">✕</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function _galChargerAssets(){
+  const rows=await sbFetch('rpc/media_album_assets',{method:'POST',body:{p_album_id:_galAlbum.id,p_limit:500,p_offset:0}}).catch(()=>[]);
+  _galAssets=Array.isArray(rows)?rows:[];
+  const c=document.getElementById('gal-count');
+  if(c)c.textContent=_galAssets.filter(a=>a.status==='ready').length+' photo(s) publiable(s) · '+_galAssets.length+' au total';
+  _galRenderGrille();
+}
+
+async function modalMediasAlbum(albumId){
+  const album=_photoAlbums.find(a=>a.id===albumId);
+  if(!album){toast('Album introuvable','error');return;}
+  _galAlbum=album;_galAssets=[];_galQueue=[];
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:3px">📸 Médias — ${esc(album.title)}</div>
+    <div id="gal-count" style="font-size:11.5px;color:var(--t3);margin-bottom:12px">Chargement…</div>
+
+    <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);margin-bottom:10px;cursor:pointer">
+      <input type="checkbox" id="gal-wm" ${album.watermark_previews!==false?'checked':''} onchange="galBasculerFiligrane(this.checked)">
+      Filigrane SportVision sur les aperçus (jamais sur l’original)
+    </label>
+
+    <div id="gal-drop"
+      ondragover="event.preventDefault();this.style.borderColor='var(--ac)'"
+      ondragleave="this.style.borderColor='var(--b1)'"
+      ondrop="event.preventDefault();this.style.borderColor='var(--b1)';_galAjouterFichiers(event.dataTransfer.files)"
+      style="border:2px dashed var(--b1);border-radius:var(--rp);padding:22px;text-align:center;margin-bottom:12px">
+      <div style="font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:4px">Glissez vos photos ici</div>
+      <div style="font-size:11px;color:var(--t3);margin-bottom:9px">JPEG, PNG ou WebP · 50 Mo maximum par fichier</div>
+      <label class="btn bp bs" style="cursor:pointer;display:inline-flex">Choisir des fichiers
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="_galAjouterFichiers(this.files);this.value=''">
+      </label>
+    </div>
+
+    <div id="gal-queue" style="margin-bottom:12px"></div>
+    <div id="gal-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:44vh;overflow-y:auto"></div>
+
+    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:14px">
+      <button class="btn bg2 bs" onclick="galTrierParDate()">Trier par date d’ajout</button>
+      <button class="btn bg2" onclick="closeModal();loadPhotoAlbums()">Fermer</button>
+    </div>`);
+  await _galChargerAssets();
+}
+
+async function galBasculerFiligrane(actif){
+  const r=await sbFetch('media_albums?id=eq.'+_galAlbum.id,{method:'PATCH',body:{watermark_previews:!!actif}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'modification impossible'),'error');return;}
+  _galAlbum.watermark_previews=!!actif;
+  // Les aperçus déjà produits ne sont pas régénérés : le réglage vaut pour les dépôts suivants.
+  // Le dire plutôt que de laisser croire à un effet rétroactif.
+  toast(actif?'Filigrane activé pour les prochains dépôts':'Filigrane désactivé pour les prochains dépôts','ok');
+}
+
+async function galDefinirCouverture(assetId){
+  const asset=_galAssets.find(a=>a.id===assetId);
+  if(!asset||!asset.preview_path)return;
+  // cover_preview_url est écrite en même temps : c'est elle que lisent déjà Connect et l'ancien
+  // écran OS. Le nouveau lien (cover_asset_id) n'oblige donc personne à changer de code.
+  const r=await sbFetch('media_albums?id=eq.'+_galAlbum.id,{method:'PATCH',body:{
+    cover_asset_id:assetId,cover_preview_url:_galPublicUrl(asset.preview_path),
+  }});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'impossible'),'error');return;}
+  toast('Couverture mise à jour','ok');
+  _galChargerAssets();
+}
+
+async function galBasculerVisibilite(assetId,statut){
+  const cible=statut==='hidden'?'ready':'hidden';
+  const r=await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{status:cible}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'impossible'),'error');return;}
+  _galChargerAssets();
+}
+
+async function galSupprimerAsset(assetId){
+  const asset=_galAssets.find(a=>a.id===assetId);
+  if(!asset)return;
+  if(!confirm('Supprimer définitivement « '+(asset.original_filename||'cette photo')+' » ?\n\nL’original, l’aperçu et la vignette seront effacés.'))return;
+  // Les fichiers d'abord, la ligne ensuite : dans l'autre sens, un échec de suppression en base
+  // laisserait une photo affichée dont les fichiers n'existent plus.
+  await _galDeleteObject('sportvision-media-prive',asset.original_path);
+  await _galDeleteObject('galerie-previews',asset.preview_path);
+  await _galDeleteObject('galerie-previews',asset.thumb_path);
+  const r=await sbFetch('media_assets?id=eq.'+assetId,{method:'DELETE'});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible'),'error');return;}
+  toast('Photo supprimée','ok');
+  _galChargerAssets();
+}
+
+async function galDeplacer(index,sens){
+  const cible=index+sens;
+  if(cible<0||cible>=_galAssets.length)return;
+  const copie=_galAssets.slice();
+  const tmp=copie[index];copie[index]=copie[cible];copie[cible]=tmp;
+  _galAssets=copie;
+  _galRenderGrille();
+  // Une seule requête pour tout l'album : réordonner 300 vignettes ne doit pas produire 300
+  // allers-retours (RPC media_assets_reorder).
+  const r=await sbFetch('rpc/media_assets_reorder',{method:'POST',body:{p_album_id:_galAlbum.id,p_asset_ids:copie.map(a=>a.id)}});
+  if(sbErr(r)){toast('Erreur : ordre non enregistré','error');_galChargerAssets();}
+}
+
+async function galTrierParDate(){
+  const copie=_galAssets.slice().sort((a,b)=>(a.created_at||'').localeCompare(b.created_at||''));
+  const r=await sbFetch('rpc/media_assets_reorder',{method:'POST',body:{p_album_id:_galAlbum.id,p_asset_ids:copie.map(a=>a.id)}});
+  if(sbErr(r)){toast('Erreur : ordre non enregistré','error');return;}
+  toast('Trié par date d’ajout','ok');
+  _galChargerAssets();
+}
+
 
 function renderMediaLiensList(liens){
   const el=document.getElementById('prod-media-real');
