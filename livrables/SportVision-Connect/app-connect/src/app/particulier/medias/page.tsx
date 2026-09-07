@@ -9,6 +9,13 @@ export default function MediasParticulierHubPage() {
       title="Médias"
       tiles={[
         {
+          href: "/galeries",
+          label: "Mes galeries",
+          description: "Les photos que vous avez achetées",
+          icon: "collections",
+          color: "#A855F7",
+        },
+        {
           href: "/particulier/contenus",
           label: "Mes contenus",
           description: "Photos et vidéos livrées par SportVision",

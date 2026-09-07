@@ -106,6 +106,9 @@ serve(async (req) => {
     if (!slug || !token) return json({ error: "Lien de galerie manquant." }, 400);
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json({ error: "Adresse e-mail invalide." }, 400);
     if (nom.length < 2) return json({ error: "Merci d'indiquer votre nom." }, 400);
+    // NB : quand l'acheteur est connecte, c'est l'adresse VERIFIEE de son compte qui sera retenue
+    // plus bas, pas celle saisie dans le formulaire. Un compte connecte ne peut donc pas se
+    // rattacher une commande a une adresse qui n'est pas la sienne.
     // Une sélection vide n'est plus une erreur en soi : un lien qui vend une formule se paie sans
     // que rien n'ait été coché. C'est le devis qui tranchera, plus bas — lui seul sait ce que ce
     // lien vend.
@@ -114,6 +117,28 @@ serve(async (req) => {
     // ferait échouer la requête entière avec une erreur technique illisible pour l'utilisateur.
     if (!assetIds.every((id) => typeof id === "string" && UUID_RE.test(id))) {
       return json({ error: "Sélection invalide." }, 400);
+    }
+
+    // ── L'acheteur est-il deja connecte a Connect ? ───────────────────────────────────────
+    // On ne lit AUCUN identifiant envoye par le navigateur : on relit le jeton de session que le
+    // client SDK joint deja a l'appel, et on demande a Supabase qui c'est. Faire confiance a un
+    // user_id poste dans le corps de la requete reviendrait a laisser n'importe qui s'attribuer
+    // la commande de quelqu'un d'autre.
+    //
+    // Et il faut que son adresse soit CONFIRMEE : une session sur une adresse non verifiee ne
+    // prouve pas qu'elle lui appartient. Dans ce cas on retombe sur le parcours invite, qui est
+    // sur — le rattachement se fera apres verification, comme pour tout le monde.
+    let acheteur: { id: string; email: string } | null = null;
+    {
+      const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+      // La cle anonyme est envoyee dans le meme en-tete par le SDK quand personne n'est connecte :
+      // getUser la rejette, on ne fait donc rien de special pour la distinguer.
+      if (jwt) {
+        const { data: { user } } = await admin.auth.getUser(jwt).catch(() => ({ data: { user: null } }));
+        if (user?.email && user.email_confirmed_at) {
+          acheteur = { id: user.id, email: user.email.toLowerCase() };
+        }
+      }
     }
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnu";
@@ -213,7 +238,11 @@ serve(async (req) => {
         offer_id: quote.offer_id ?? null,
         product_id: quote.product_id ?? lines[0]?.product_id ?? null,
         photos_allowance: allowance,
-        guest_email: email,
+        // Commande rattachee au compte des le depart quand l'acheteur est connecte et verifie :
+        // le droit sera permanent d'emblee, sans passer par 30 jours puis un claim de sa propre
+        // commande. Un seul type de commande pour autant — c'est la meme table, la meme colonne.
+        purchased_by_user_id: acheteur?.id ?? null,
+        guest_email: acheteur?.email ?? email,
         guest_name: nom,
         amount_cents: totalCents,
         currency,
@@ -300,7 +329,19 @@ serve(async (req) => {
       // parcours : la page de commande ne fait aucune difference entre gratuit et payant.
       const { data: grant } = await admin
         .from("media_download_grants")
-        .insert({ order_id: order.id, email })
+        .insert({
+          order_id: order.id,
+          email: acheteur?.email ?? email,
+          // Acheteur connecte et verifie : le droit est permanent tout de suite. Rien a reclamer,
+          // la galerie apparait dans « Mes galeries » des le retour.
+          ...(acheteur
+            ? {
+                claimed_by_user_id: acheteur.id,
+                claimed_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + 100 * 365 * 24 * 3600 * 1000).toISOString(),
+              }
+            : {}),
+        })
         .select("token")
         .single();
       if (!grant?.token) {
@@ -363,7 +404,7 @@ serve(async (req) => {
       : `${a?.title ?? "Galerie"} — ${photoCount} photo${photoCount > 1 ? "s" : ""}`;
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      customer_email: email,
+      customer_email: acheteur?.email ?? email,
       line_items: [{
         price_data: {
           currency,

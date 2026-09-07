@@ -263,6 +263,8 @@ export interface OrderPhoto {
 
 export interface OrderSummary {
   orderId: string;
+  /** Pour renvoyer un acheteur déjà connecté vers CETTE galerie, pas vers la liste. */
+  albumId: string | null;
   albumTitre: string | null;
   clubNom: string | null;
   email: string;
@@ -287,6 +289,7 @@ export async function fetchOrderSummary(supabase: SupabaseClient, token: string)
   if (error || !row) return null;
   return {
     orderId: row.order_id as string,
+    albumId: (row.album_id as string) ?? null,
     albumTitre: (row.album_titre as string) ?? null,
     clubNom: (row.club_nom as string) ?? null,
     email: (row.email as string) ?? "",

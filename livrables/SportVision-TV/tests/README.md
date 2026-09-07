@@ -294,3 +294,17 @@ for t in galerie-claim-connect galerie-clubplus; do
     -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
 done
 ```
+
+## `galerie-achat-connecte.test.sql`
+
+12 scénarios sur l'achat en étant déjà connecté, et sur le fait que le parcours invité n'a pas
+bougé. Transaction annulée.
+
+Cas A (invité) : droit de 30 jours, non réclamé, commande qui n'appartient à personne — comme
+avant. Cas B (Connect vérifié) : la galerie apparaît immédiatement sans aucun claim, droit
+permanent dès le paiement, deux commandes mais une seule galerie, et un claim rejoué ne trouve
+plus rien à rattacher. Cas C : un compte NON vérifié est refusé même en fournissant le jeton de la
+commande. Cas D (offre gratuite) : commande à 0 présente et droit permanent.
+
+Vérifié en plus contre la fonction déployée, avec une vraie session : une adresse forgée dans le
+formulaire est ignorée au profit de l'adresse vérifiée du compte.

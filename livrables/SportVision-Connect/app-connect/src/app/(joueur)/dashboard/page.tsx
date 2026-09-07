@@ -11,6 +11,7 @@ import {
   prestationStatusLabel,
 } from "@/lib/supabase/dashboard";
 import { formatEUR } from "@/lib/prestations/format";
+import { DernieresGaleries } from "@/components/gallery/DernieresGaleries";
 
 // Accueil — voir design-connect-personnel-12-08/README.md § Espace joueur → Accueil, et
 // Connect Espace Joueur.dc.html (bloc ACCUEIL) pour le texte exact de chaque carte. Cartes
@@ -48,6 +49,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
+      {/* Dernières galeries achetées — composant serveur partagé, aucune photo chargée ici. */}
+      <DernieresGaleries />
+
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div className="flex flex-col gap-2">
             <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Bonjour {firstName} 👋</h1>

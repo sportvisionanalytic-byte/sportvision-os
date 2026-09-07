@@ -174,6 +174,7 @@ export function OrderView({
           token={token}
           email={order.email}
           dejaRattachee={order.dejaRattachee}
+          albumId={order.albumId}
           expiration={expiration}
         />
 

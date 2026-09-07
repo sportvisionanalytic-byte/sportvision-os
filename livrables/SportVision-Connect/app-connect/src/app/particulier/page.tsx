@@ -12,6 +12,7 @@ import { gradientFor } from "@/lib/avatarGradients";
 import { formatDateLong, formatEUR } from "@/lib/prestations/format";
 import type { PlayerOrder } from "@/lib/prestations/types";
 import { fetchAgentSubscriptionInfo, AGENT_TIER_LABEL, type AgentSubscriptionInfo } from "@/lib/supabase/agentSubscription";
+import { DernieresGaleries } from "@/components/gallery/DernieresGaleries";
 
 // Accueil Espace particulier — voir design-connect-personnel-12-08/README.md § Espace
 // particulier → Accueil. "Bonjour [Prénom]" + cartes sportifs + activité filtrée par le contexte
@@ -95,6 +96,9 @@ export default async function ParticulierHomePage() {
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
+      {/* Dernières galeries achetées — composant serveur partagé, aucune photo chargée ici. */}
+      <DernieresGaleries />
+
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div className="flex flex-col gap-2">
             <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Bonjour {firstName} 👋</h1>

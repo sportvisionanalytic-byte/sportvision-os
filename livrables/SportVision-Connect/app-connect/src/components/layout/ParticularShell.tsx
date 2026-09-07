@@ -72,7 +72,12 @@ function buildNavSections(sportifsLabel: string, profilParticulier: string | nul
     { title: null, items: [{ href: "/particulier", label: "Accueil", icon: "home", color: "#8CA9FF" }] },
     {
       title: "Médias",
-      items: [{ href: "/particulier/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" }],
+      items: [
+        { href: "/particulier/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
+        // Même entrée que dans l'espace joueur, et même page : /galeries n'appartient à aucun
+        // des deux espaces, parce qu'un acheteur de photos n'a ni joueur, ni équipe, ni club.
+        { href: "/galeries", label: "Mes galeries", icon: "collections", color: "#A855F7" },
+      ],
     },
     {
       title: "Mon univers",

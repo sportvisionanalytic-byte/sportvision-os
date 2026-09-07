@@ -26,11 +26,14 @@ export function ConnectBlock({
   token,
   email,
   dejaRattachee,
+  albumId,
   expiration,
 }: {
   token: string;
   email: string;
   dejaRattachee: boolean;
+  /** Pour renvoyer directement vers CETTE galerie plutôt que vers la liste. */
+  albumId: string | null;
   expiration: string;
 }) {
   const [mdp, setMdp] = useState("");
@@ -38,6 +41,9 @@ export function ConnectBlock({
   const [error, setError] = useState<string | null>(null);
   const [envoye, setEnvoye] = useState(false);
 
+  // Achat deja rattache a un compte : soit l'acheteur etait connecte au moment de payer, soit il
+  // a cree son compte depuis cette page. Dans les deux cas, lui proposer « Creer mon compte »
+  // serait absurde — on lui montre la porte vers ses photos.
   if (dejaRattachee) {
     return (
       <section className="mt-10 rounded-sv-card border border-border bg-surface p-6">
@@ -47,12 +53,22 @@ export function ConnectBlock({
         <p className="mt-2 text-[13px] leading-relaxed text-text-tertiary">
           Vos photos y restent disponibles sans limite de durée, avec vos prochaines galeries.
         </p>
-        <Link
-          href="/galeries"
-          className="mt-4 inline-flex rounded-sv-pill bg-sv-gradient px-6 py-3 text-[14px] font-bold text-white"
-        >
-          Ouvrir mes galeries
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          {albumId && (
+            <Link
+              href={`/galeries/${albumId}`}
+              className="inline-flex rounded-sv-pill bg-sv-gradient px-6 py-3 text-[14px] font-bold text-white"
+            >
+              Voir mes photos
+            </Link>
+          )}
+          <Link
+            href="/galeries"
+            className="inline-flex rounded-sv-pill border border-border-strong px-6 py-3 text-[14px] font-bold text-text-secondary"
+          >
+            Mes galeries
+          </Link>
+        </div>
       </section>
     );
   }

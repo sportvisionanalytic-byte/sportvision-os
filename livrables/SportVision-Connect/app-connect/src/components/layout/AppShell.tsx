@@ -51,6 +51,11 @@ const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
     title: "Médias",
     items: [
       { href: "/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
+      // Achats de galeries publiques (07/09/2026). Visible pour TOUT compte Connect, sans
+      // condition de joueur, d'équipe ni de club : un parent qui a créé son compte depuis une
+      // commande de tournoi doit y accéder tout de suite. La page se charge elle-même de dire
+      // « aucune galerie » quand il n'en a pas.
+      { href: "/galeries", label: "Mes galeries", icon: "collections", color: "#A855F7" },
       { href: "/photos", label: "Pass Photo", icon: "photo_camera", color: "#34D399" },
     ],
   },

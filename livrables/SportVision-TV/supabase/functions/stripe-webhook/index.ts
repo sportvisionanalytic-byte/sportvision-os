@@ -589,9 +589,24 @@ serve(async (req) => {
           if (paidOrder) {
             const email = (paidOrder.guest_email as string | null) || (session.customer_email as string | null);
             if (email) {
+              // Commande deja rattachee a un compte Connect verifie (l'acheteur etait connecte au
+              // moment de payer) : le droit est permanent tout de suite. Le detour « 30 jours puis
+              // reclamer sa propre commande » n'a aucun sens pour quelqu'un qui etait deja
+              // identifie. Le claim reste necessaire, et inchange, pour les achats invites.
+              const dejaConnecte = Boolean(paidOrder.purchased_by_user_id);
               const { data: grant } = await admin
                 .from("media_download_grants")
-                .insert({ order_id: paidOrder.id, email })
+                .insert({
+                  order_id: paidOrder.id,
+                  email,
+                  ...(dejaConnecte
+                    ? {
+                        claimed_by_user_id: paidOrder.purchased_by_user_id,
+                        claimed_at: new Date().toISOString(),
+                        expires_at: new Date(Date.now() + 100 * 365 * 24 * 3600 * 1000).toISOString(),
+                      }
+                    : {}),
+                })
                 .select("token, expires_at")
                 .single();
 
