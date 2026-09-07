@@ -150,6 +150,14 @@ export function coerceSportStatus(raw: string | null | undefined, fallback: Spor
   return detectSportStatus(raw) ?? "unknown";
 }
 
+/** `webcal://` est ce que copient beaucoup de sites pour un abonnement calendrier. Ce n'est pas un
+ * protocole réseau : c'est du https que le système d'exploitation redirige vers l'application
+ * agenda. Un fetch dessus échoue toujours, on le normalise donc dès la saisie. */
+export function normalizeCalendarUrl(raw: string): string {
+  const value = raw.trim();
+  return /^webcal:\/\//i.test(value) ? value.replace(/^webcal:\/\//i, "https://") : value;
+}
+
 /** "3-1", "3 - 1", "3:1" → "3-1". Tout le reste → null (jamais un score inventé). */
 export function normalizeScore(raw: string | null | undefined): string | null {
   if (!raw) return null;

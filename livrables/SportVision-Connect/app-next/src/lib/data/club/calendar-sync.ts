@@ -173,6 +173,75 @@ export async function saveTeamSourceMappings(
   return { saved: error ? 0 : payload.length, error: error ? error.message : null };
 }
 
+// ─────────────────────── Source distante (URL d'abonnement) ───────────────────────
+
+export interface CalendarSourceRow {
+  id: string;
+  saisonId: string;
+  provider: ProviderId;
+  sourceUrl: string | null;
+  lastSyncAt: string | null;
+  syncStatus: string;
+  lastError: string | null;
+  isEnabled: boolean;
+}
+
+export async function fetchCalendarSource(
+  supabase: SupabaseClient,
+  clubId: string,
+  saisonId: string,
+  provider: ProviderId,
+): Promise<CalendarSourceRow | null> {
+  const { data, error } = await supabase
+    .from("club_calendar_sources")
+    .select("id, saison_id, provider, source_url, last_sync_at, sync_status, last_error, is_enabled")
+    .eq("club_id", clubId)
+    .eq("saison_id", saisonId)
+    .eq("provider", provider)
+    .maybeSingle();
+  // RLS admin-only : un membre non admin lit `null` et se contente de l'import par fichier.
+  if (error || !data) return null;
+  const row = data as Record<string, unknown>;
+  return {
+    id: row.id as string,
+    saisonId: row.saison_id as string,
+    provider: toProvider((row.provider as string) ?? null),
+    sourceUrl: (row.source_url as string) ?? null,
+    lastSyncAt: (row.last_sync_at as string) ?? null,
+    syncStatus: (row.sync_status as string) ?? "never",
+    lastError: (row.last_error as string) ?? null,
+    isEnabled: (row.is_enabled as boolean) ?? true,
+  };
+}
+
+/**
+ * Mémorise l'adresse d'abonnement du club. C'est ce qui transforme l'import en synchronisation :
+ * une fois l'URL enregistrée, le club n'a plus de fichier à aller chercher, et la tâche nocturne
+ * a de quoi travailler.
+ *
+ * Aucune credential n'est stockée, par construction : une URL d'abonnement est publique par
+ * nature (c'est ce qui la distingue d'un accès Footclubs). Si l'adresse fournie exige une
+ * authentification, le relais le détecte et le dit, plutôt que de demander un mot de passe.
+ */
+export async function saveCalendarSourceUrl(
+  supabase: SupabaseClient,
+  params: { clubId: string; saisonId: string; provider: ProviderId; url: string | null; userId: string | null },
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from("club_calendar_sources").upsert(
+    {
+      club_id: params.clubId,
+      saison_id: params.saisonId,
+      provider: params.provider,
+      source_url: params.url,
+      is_enabled: params.url !== null,
+      created_by: params.userId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "club_id,saison_id,provider" },
+  );
+  return { error: error ? error.message : null };
+}
+
 export interface ApplyFailure {
   line: number;
   label: string;

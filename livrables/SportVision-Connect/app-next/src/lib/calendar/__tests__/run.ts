@@ -24,6 +24,7 @@ import { fallbackIdentityKey, externalIdentityKey } from "../identity.ts";
 import { parseFlexibleDate, parseFlexibleTime, coerceSportStatus, detectSportStatus } from "../normalize.ts";
 import { readXlsx } from "../xlsx.ts";
 import { detectTabularLayout } from "../autodetect.ts";
+import { isBlockedHost, validateCalendarUrl } from "../remote.ts";
 import type { ProviderId, SourceEvent } from "../types.ts";
 
 const TEAMS: ClubTeamRef[] = [
@@ -707,6 +708,43 @@ test("CSV : ni le nom ni le contenu ne donnent l adversaire -> message explicite
   const parsed = parseCsvSource(["Journee;Points", "1;3", "2;0"].join("\n"));
   assert.equal(parsed.events.length, 0);
   assert.match(parsed.issues[0]!.reason, /ni par son nom ni par son contenu/);
+});
+
+// ─────────────────────── Recuperation d une source distante ───────────────────────
+
+test("URL distante : webcal normalise, schemas et hotes internes refuses", () => {
+  const ok = validateCalendarUrl("webcal://calendrier.exemple.fr/club.ics");
+  assert.ok("url" in ok);
+  assert.equal(ok.url.protocol, "https:", "webcal n est pas un protocole reseau, c est du https");
+
+  for (const bad of [
+    "file:///etc/passwd",
+    "gopher://exemple.fr",
+    "http://localhost:3000/interne",
+    "http://127.0.0.1/interne",
+    "http://169.254.169.254/latest/meta-data/",
+    "http://10.0.0.5/interne",
+    "http://192.168.1.10/interne",
+    "http://172.20.0.3/interne",
+    "http://base.internal/dump",
+    "pas une url",
+  ]) {
+    const result = validateCalendarUrl(bad);
+    assert.ok("error" in result, `${bad} aurait du etre refusee`);
+  }
+
+  assert.ok("url" in validateCalendarUrl("https://calendrier.exemple.fr/club.ics"));
+});
+
+test("URL distante : plages privees et publiques correctement separees", () => {
+  // Faire recuperer une URL arbitraire par notre serveur, c est lui preter son identite reseau.
+  // 169.254.169.254 est l adresse des metadonnees d instance chez tous les hebergeurs.
+  for (const host of ["127.0.0.1", "10.1.2.3", "192.168.0.1", "172.31.255.255", "169.254.169.254", "100.64.0.1", "::1"]) {
+    assert.equal(isBlockedHost(host), true, `${host} doit etre bloque`);
+  }
+  for (const host of ["8.8.8.8", "172.32.0.1", "192.169.0.1", "calendrier.fff.fr", "100.128.0.1"]) {
+    assert.equal(isBlockedHost(host), false, `${host} ne doit pas etre bloque`);
+  }
 });
 
 // ─────────────────────────── Compatibilité ───────────────────────────

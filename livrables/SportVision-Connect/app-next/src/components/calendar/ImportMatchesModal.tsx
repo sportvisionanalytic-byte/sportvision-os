@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Check, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, Link2, RefreshCw, Upload, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
@@ -10,16 +10,20 @@ import { fetchClubTeams } from "@/lib/data/club/teams";
 import { fetchClubCurrentSaison } from "@/lib/data/club/season-transition";
 import {
   applyCalendarImport,
+  fetchCalendarSource,
   fetchExistingMatches,
   fetchSaisons,
   fetchTeamSourceMappings,
   recordCalendarSyncRun,
   resolveDefaultSaisonId,
+  saveCalendarSourceUrl,
   saveTeamSourceMappings,
   type ApplyResult,
+  type CalendarSourceRow,
   type SaisonRef,
 } from "@/lib/data/club/calendar-sync";
-import { CALENDAR_ACCEPT, detectProvider } from "@/lib/calendar/providers";
+import { CALENDAR_ACCEPT, detectProvider, getProvider } from "@/lib/calendar/providers";
+import { normalizeCalendarUrl } from "@/lib/calendar/normalize";
 import { detectXlsxLayout } from "@/lib/calendar/providers/xlsx";
 import { layoutToMapping, type DetectedLayout } from "@/lib/calendar/autodetect";
 import {
@@ -118,6 +122,12 @@ export function ImportMatchesModal({
   const [mapping, setMapping] = useState<TabularMapping | null>(null);
   const [parsed, setParsed] = useState<ParseResult | null>(null);
 
+  // Source distante (URL d'abonnement)
+  const [savedSource, setSavedSource] = useState<CalendarSourceRow | null>(null);
+  const [urlInput, setUrlInput] = useState("");
+  /** URL réellement utilisée pour la lecture en cours ; enregistrée seulement si l'import aboutit. */
+  const [urlUsed, setUrlUsed] = useState<string | null>(null);
+
   // Décisions humaines
   const [defaultTeamId, setDefaultTeamId] = useState<string>("");
   const [teamIdByLine, setTeamIdByLine] = useState<Record<number, string>>({});
@@ -167,6 +177,21 @@ export function ImportMatchesModal({
       cancelled = true;
     };
   }, [clubId, provider, saisonId]);
+
+  // Adresse d'abonnement déjà enregistrée par le club, s'il y en a une. C'est elle qui permet de
+  // proposer « Synchroniser » plutôt que « Importer un fichier » dès la deuxième fois.
+  useEffect(() => {
+    if (!saisonId) return;
+    let cancelled = false;
+    fetchCalendarSource(createClient(), clubId, saisonId, "ICS").then((row) => {
+      if (cancelled) return;
+      setSavedSource(row);
+      if (row?.sourceUrl) setUrlInput(row.sourceUrl);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, saisonId]);
 
   const preview: ImportPreview | null = useMemo(() => {
     if (!provider || !parsed) return null;
@@ -227,6 +252,7 @@ export function ImportMatchesModal({
         setInspection(null);
         setLayout(null);
         setMapping(null);
+        setUrlUsed(null);
 
         // .xlsx : on inspecte pour pouvoir MONTRER quelles colonnes ont été reconnues, puis on
         // parse avec ce qui a été détecté. L'écran de mapping n'apparaît que si ça échoue.
@@ -251,6 +277,58 @@ export function ImportMatchesModal({
     [runParse, teams],
   );
 
+  /**
+   * Lecture depuis une adresse d'abonnement. Le fetch passe par une route serveur : aucun serveur
+   * de fédération n'envoie d'en-tête CORS, le navigateur ne peut donc pas y aller lui-même. Une
+   * fois le texte récupéré, tout se passe comme pour un fichier déposé — même moteur, même
+   * preview, même validation avant écriture.
+   */
+  const handleUrl = useCallback(
+    async (rawUrl: string) => {
+      const url = normalizeCalendarUrl(rawUrl);
+      if (!url) return;
+      const icsProvider = getProvider("ICS");
+      if (!icsProvider) return;
+
+      setFatalError(null);
+      setResult(null);
+      setBusy(true);
+      try {
+        const response = await fetch("/clubplus/api/calendar/fetch", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ url }),
+        });
+        const payload = (await response.json()) as { text?: string; error?: string };
+        if (!response.ok || !payload.text) {
+          setFatalError(payload.error ?? "Impossible de récupérer ce calendrier.");
+          return;
+        }
+
+        setFileName(new URL(url).hostname);
+        setFileBytes(null);
+        setFileText(payload.text);
+        setProvider(icsProvider);
+        setInspection(null);
+        setLayout(null);
+        setMapping(null);
+        setTeamIdByLine({});
+        setExcludedLines([]);
+        setIncludedLines([]);
+        setAdjustOpen(false);
+        setUrlUsed(url);
+
+        setParsed(await icsProvider.parse({ fileName: url, text: payload.text, teams }));
+        setStep("review");
+      } catch {
+        setFatalError("Impossible de récupérer ce calendrier.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [teams],
+  );
+
   async function applyMappingChange(next: TabularMapping) {
     if (!provider) return;
     setMapping(next);
@@ -273,6 +351,11 @@ export function ImportMatchesModal({
     try {
       const applied = await applyCalendarImport(supabase, { clubId, saisonId, provider: provider.id, rows: preview.rows });
       setResult(applied);
+
+      // L'adresse n'est mémorisée qu'une fois l'import réellement abouti : une URL qui n'a jamais
+      // rien produit n'a rien à faire dans la configuration du club, et surtout pas dans la tâche
+      // nocturne.
+      if (urlUsed) await saveCalendarSourceUrl(supabase, { clubId, saisonId, provider: provider.id, url: urlUsed, userId: userId ?? null });
 
       const mappingResult = await saveTeamSourceMappings(supabase, {
         clubId,
@@ -352,17 +435,81 @@ export function ImportMatchesModal({
 
         {step === "source" && (
           <>
+            {/* Adresse déjà enregistrée : c'est le chemin le plus court, il passe donc en premier.
+                Un club qui a fait ça une fois ne cherche plus jamais de fichier. */}
+            {savedSource?.sourceUrl && (
+              <div className="flex flex-col gap-2 rounded-xl border border-brand-blue-pale bg-[rgba(36,84,255,.05)] px-4 py-3.5">
+                <div className="flex items-center gap-2 text-[12.5px] font-bold text-text">
+                  <Link2 className="h-4 w-4 flex-none text-brand-blue-electric" aria-hidden />
+                  Calendrier abonné : {safeHost(savedSource.sourceUrl)}
+                </div>
+                <p className="text-[11.5px] text-text-faint">
+                  {savedSource.lastSyncAt
+                    ? `Dernière synchronisation le ${new Date(savedSource.lastSyncAt).toLocaleString("fr-FR", {
+                        day: "numeric",
+                        month: "long",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}.`
+                    : "Jamais synchronisé pour l'instant."}{" "}
+                  La mise à jour se fait aussi toute seule chaque nuit.
+                </p>
+                <Button variant="primary" disabled={busy} onClick={() => handleUrl(savedSource.sourceUrl!)}>
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  {busy ? "Récupération…" : "Synchroniser maintenant"}
+                </Button>
+              </div>
+            )}
+
             <p className="text-[12.5px] leading-relaxed text-text-soft">
-              Déposez l&apos;export de votre fédération ou de votre logiciel de club. On reconnaît les colonnes tout
-              seuls et on vous montre ce qui va changer avant d&apos;écrire quoi que ce soit.
+              {savedSource?.sourceUrl
+                ? "Ou repartez d'un fichier, ou changez d'adresse d'abonnement."
+                : "Deux façons de faire. La plus simple est de coller l'adresse d'abonnement de votre calendrier : elle se met à jour toute seule ensuite, vous n'aurez plus rien à faire."}
             </p>
-            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong px-6 py-12 text-center hover:border-brand-blue-pale">
+
+            <div className="flex flex-col gap-2">
+              <label className="text-[11px] font-bold uppercase tracking-[.04em] text-text-faint" htmlFor="calendar-url">
+                Adresse d&apos;abonnement (.ics)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  id="calendar-url"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && urlInput.trim()) {
+                      e.preventDefault();
+                      void handleUrl(urlInput);
+                    }
+                  }}
+                  placeholder="https://… ou webcal://…"
+                  inputMode="url"
+                  className="h-11 min-w-[220px] flex-1 rounded-lg border border-border-strong bg-input-bg px-3 text-[12.5px] font-semibold outline-none focus-visible:border-brand-blue"
+                />
+                <Button variant="secondary" disabled={busy || !urlInput.trim()} onClick={() => handleUrl(urlInput)}>
+                  {busy ? "Récupération…" : "Récupérer"}
+                </Button>
+              </div>
+              <p className="text-[11px] leading-relaxed text-text-faint">
+                Sur le site de votre fédération ou de votre club, cherchez « S&apos;abonner au calendrier », « Exporter
+                vers mon agenda » ou une icône d&apos;agenda, puis copiez le lien. Aucun mot de passe ne vous sera
+                jamais demandé.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="h-px flex-1 bg-divider" aria-hidden />
+              <span className="text-[11px] font-bold uppercase tracking-[.04em] text-text-faint">ou</span>
+              <span className="h-px flex-1 bg-divider" aria-hidden />
+            </div>
+
+            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong px-6 py-8 text-center hover:border-brand-blue-pale">
               <Upload className="h-5 w-5 text-text-faint" aria-hidden />
               <span className="text-[13px] font-bold text-text">
-                {busy ? "Lecture du fichier…" : "Choisir un fichier .ics, .csv ou .xlsx"}
+                {busy ? "Lecture du fichier…" : "Déposer un fichier .ics, .csv ou .xlsx"}
               </span>
               <span className="text-[11.5px] text-text-faint">
-                Aucun mot de passe de votre compte fédéral ne vous sera jamais demandé.
+                On reconnaît les colonnes tout seuls et on vous montre ce qui va changer avant d&apos;écrire.
               </span>
               <input
                 type="file"
@@ -643,6 +790,15 @@ function AttentionRow({
       </p>
     </div>
   );
+}
+
+/** Affiche le domaine d'une URL sans faire planter l'écran si elle est malformée. */
+function safeHost(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
