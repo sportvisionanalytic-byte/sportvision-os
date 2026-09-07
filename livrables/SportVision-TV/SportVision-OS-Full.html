@@ -419,6 +419,23 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 .btn.loading::after{content:'';position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:btnspin .6s linear infinite}
 .bg2.loading::after{border-color:rgba(255,255,255,.15);border-top-color:var(--t1)}
 @keyframes btnspin{to{transform:rotate(360deg)}}
+/* Couche de confirmation, AU-DESSUS de #sv-modal (10000) et non a sa place.
+   openModal() n'a qu'une seule couche : il remplace le contenu de #sv-modal-ct. Demander
+   confirmation depuis l'interieur d'une modale y effacait donc le formulaire en cours de
+   saisie, et c'est la raison pour laquelle une douzaine d'endroits utilisaient le confirm()
+   natif du navigateur a la place. Une couche distincte supprime ce compromis : la meme
+   mecanique de confirmation fonctionne partout, y compris par-dessus un formulaire ouvert,
+   qui reste intact derriere. */
+#sv-confirm{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.62);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,visibility .16s ease;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+#sv-confirm.on{opacity:1;visibility:visible;pointer-events:auto}
+#sv-confirm>div{background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:24px;width:min(440px,calc(100vw - 24px));max-height:86dvh;overflow-y:auto;transform:scale(.96) translateY(8px);transition:transform .18s cubic-bezier(.4,0,.2,1)}
+#sv-confirm.on>div{transform:scale(1) translateY(0)}
+#sv-confirm .cf-t{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:8px}
+#sv-confirm .cf-m{font-size:13.5px;line-height:1.55;color:var(--t2)}
+#sv-confirm .cf-m p{margin:0 0 8px}
+#sv-confirm .cf-m p:last-child{margin-bottom:0}
+#sv-confirm .cf-a{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap}
+@media(max-width:420px){#sv-confirm .cf-a{flex-direction:column-reverse}#sv-confirm .cf-a .btn{width:100%}}
 .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:10001;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
 .toast-i{display:flex;align-items:center;gap:9px;padding:12px 16px;border-radius:11px;background:var(--s1);border:1px solid var(--b2);color:var(--t1);font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.45);max-width:340px;opacity:0;transform:translateX(16px) scale(.97);transition:opacity .22s cubic-bezier(.4,0,.2,1),transform .22s cubic-bezier(.4,0,.2,1)}
 .toast-i.on{opacity:1;transform:translateX(0) scale(1)}
@@ -651,6 +668,11 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
     <button onclick="closeModal()" aria-label="Fermer" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1">✕</button>
     <div id="sv-modal-ct"></div>
   </div>
+</div>
+
+<!-- Confirmation (couche au-dessus de #sv-modal, cf. CSS #sv-confirm) -->
+<div id="sv-confirm" role="alertdialog" aria-modal="true" aria-labelledby="sv-confirm-t" aria-describedby="sv-confirm-m">
+  <div><div class="cf-t" id="sv-confirm-t"></div><div class="cf-m" id="sv-confirm-m"></div><div class="cf-a" id="sv-confirm-a"></div></div>
 </div>
 
 <!-- Offline -->
@@ -4369,12 +4391,31 @@ function _modalFocusFirst(){
     if(ct){ct.setAttribute('tabindex','-1');ct.focus();}
   }
 }
+// _svRendreVisible : poser la classe d'ouverture PUIS forcer le navigateur a recalculer le
+// style avant de donner le focus.
+//
+// Sans cette attente, focus() est appele alors que l'element porte encore visibility:hidden (la
+// classe vient d'etre ajoutee, la transition n'a pas demarre) — et le focus sur un element
+// invisible est purement et simplement ignore. Consequence, verifiee dans Chromium : le focus
+// n'entrait dans AUCUNE des modales de l'OS. _modalFocusFirst() s'executait bien mais ne
+// produisait rien, et un utilisateur au clavier restait sur le fond de page, sans savoir ou il
+// se trouvait.
+//
+// Une frame d'ecart suffit et c'est la seule methode retenue apres mesure : forcer un recalcul
+// (lecture de offsetWidth) ne suffit pas, la transition sur visibility n'a pas encore commence.
+// transitionend fonctionnerait aussi, mais ne se declencherait jamais chez un utilisateur qui a
+// desactive les animations — le focus serait alors perdu pour precisement les personnes qui en
+// dependent le plus.
+function _svRendreVisible(el,focaliser){
+  el.classList.add('on');
+  requestAnimationFrame(focaliser);
+}
 function openModal(html){
   if(_modalCloseTimer){clearTimeout(_modalCloseTimer);_modalCloseTimer=null;}
   _modalPrevFocus=document.activeElement;
   document.getElementById('sv-modal-ct').innerHTML=html;
   const m=document.getElementById('sv-modal');
-  requestAnimationFrame(()=>{m.classList.add('on');_modalFocusFirst();});
+  requestAnimationFrame(()=>_svRendreVisible(m,_modalFocusFirst));
 }
 function closeModal(){
   const m=document.getElementById('sv-modal');
@@ -4394,17 +4435,61 @@ function copier(txt){
     const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Copié.','ok');
   });
 }
-let _pendingConfirm=null;
+// ── CONFIRMATION D'UNE ACTION ────────────────────────────────────────────────
+// Un seul mecanisme pour tout l'OS, dans une couche posee au-dessus de #sv-modal (cf. le
+// CSS #sv-confirm). Il fonctionne donc aussi bien depuis une page que depuis l'interieur
+// d'un formulaire deja ouvert, sans rien detruire derriere lui.
+//
+// Deux portes d'entree, un seul moteur :
+//   demanderConfirmation(texte, opts) -> Promise<bool>   pour `if(!await ...) return;`
+//   confirmerAction(msgHtml, callback)                    forme historique, 16 appels
+//
+// Le bouton pre-selectionne est TOUJOURS « Annuler » : sur une action destructrice, une
+// touche Entree restee enfoncee ne doit jamais suffire a valider. Echap et un clic hors du
+// cadre annulent aussi.
+let _confirmResolve=null;
+function _confirmFermer(reponse){
+  // La promesse est resolue AVANT tout test sur l'etat visuel, et sans condition. Sortir plus
+  // tot parce que la couche n'a pas encore recu sa classe d'ouverture (elle est posee a la
+  // frame suivante) laisserait l'appelant suspendu indefiniment : son `await` ne reviendrait
+  // jamais, et l'action attendue ne se ferait ni dans un sens ni dans l'autre.
+  const r=_confirmResolve;_confirmResolve=null;
+  const c=document.getElementById('sv-confirm');
+  if(c)c.classList.remove('on');
+  if(_confirmPrevFocus&&document.contains(_confirmPrevFocus)&&typeof _confirmPrevFocus.focus==='function')_confirmPrevFocus.focus();
+  _confirmPrevFocus=null;
+  if(r)r(reponse);
+}
+let _confirmPrevFocus=null;
+/** Coeur commun. `corpsHtml` est insere tel quel : les appelants qui interpolent une donnee
+ *  la passent deja par esc(). demanderConfirmation() echappe pour eux. */
+function _confirmOuvrir(corpsHtml,{titre='Confirmation',action='Confirmer',danger=true}={}){
+  // Une confirmation deja ouverte est annulee avant d'en presenter une autre : sa promesse
+  // doit se resoudre, sinon l'appelant precedent resterait suspendu pour toujours.
+  if(_confirmResolve)_confirmFermer(false);
+  _confirmPrevFocus=document.activeElement;
+  document.getElementById('sv-confirm-t').textContent=titre;
+  document.getElementById('sv-confirm-m').innerHTML=corpsHtml;
+  document.getElementById('sv-confirm-a').innerHTML=
+    `<button class="btn bg2" id="sv-confirm-non">Annuler</button>`
+   +`<button class="btn${danger?'':' bp'}" id="sv-confirm-oui"${danger?' style="background:var(--er);color:#fff;border:none"':''}>${esc(action)}</button>`;
+  document.getElementById('sv-confirm-non').onclick=()=>_confirmFermer(false);
+  document.getElementById('sv-confirm-oui').onclick=()=>_confirmFermer(true);
+  const c=document.getElementById('sv-confirm');
+  c.onclick=e=>{if(e.target===c)_confirmFermer(false);};
+  return new Promise(res=>{
+    _confirmResolve=res;
+    requestAnimationFrame(()=>_svRendreVisible(c,()=>document.getElementById('sv-confirm-non').focus()));
+  });
+}
+/** Texte brut, echappe ici. Une ligne vide separe deux paragraphes, comme le confirm() natif
+ *  qu'elle remplace (dont les messages etaient ecrits avec des \n\n). */
+function demanderConfirmation(texte,opts){
+  const corps=String(texte||'').split(/\n\s*\n/).map(par=>`<p>${esc(par).replace(/\n/g,'<br>')}</p>`).join('');
+  return _confirmOuvrir(corps,opts);
+}
 function confirmerAction(msg,onConfirm){
-  _pendingConfirm=onConfirm;
-  openModal(`<div class="mh"><div class="mt">Confirmation</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
-    <div class="mb">
-      <div style="font-size:13.5px;color:var(--t1);margin-bottom:20px">${msg}</div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn bg2" onclick="closeModal()">Annuler</button>
-        <button class="btn" style="background:var(--er)" onclick="closeModal();if(_pendingConfirm){const cb=_pendingConfirm;_pendingConfirm=null;cb();}">Confirmer</button>
-      </div>
-    </div>`);
+  _confirmOuvrir(`<p>${msg}</p>`).then(ok=>{if(ok&&onConfirm)onConfirm();});
 }
 function toast(msg,type='error'){
   const typeCls=type==='ok'?'toast-ok':type==='warn'?'toast-warn':'toast-error';
@@ -7033,7 +7118,7 @@ async function loadClientOrganigramme(clientId){
           <span style="font-weight:600;color:var(--t1)">${esc(p.role)}</span>
           <span style="color:var(--t3)"> · ${esc([p.prenom,p.nom].filter(Boolean).join(' ')||'—')}${p.email?' · '+esc(p.email):''}${p.telephone?' · '+esc(p.telephone):''}</span>
         </div>
-        <button class="btn bg2 bs" onclick="supprimerOrganigrammeEntry('${p.id}','${clientId}')">Retirer</button>
+        <button class="btn bg2 bs" onclick="supprimerOrganigrammeEntry('${p.id}','${clientId}','${escJs((p.prenom||'')+' '+(p.nom||''))}')">Retirer</button>
       </div>`).join(''):'<div style="font-size:12px;color:var(--t3);margin-bottom:8px">Aucune personne enregistrée pour ce club.</div>';
     el.innerHTML=rows+`
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:6px;margin-top:10px">
@@ -7065,7 +7150,10 @@ async function ajouterOrganigrammeEntry(clientId){
   loadClientOrganigramme(clientId);
 }
 
-async function supprimerOrganigrammeEntry(id,clientId){
+async function supprimerOrganigrammeEntry(id,clientId,nom){
+  if(!await demanderConfirmation(
+    'Retirer '+(nom||'ce contact')+" de l'organigramme de ce client ?\n\nSon nom, sa fonction, son e-mail et son telephone seront effaces. Il faudra les ressaisir pour l'ajouter a nouveau.",
+    {titre:"Retirer de l'organigramme",action:'Retirer'}))return;
   const r=await sbFetch('client_organigramme?id=eq.'+id,{method:'DELETE'});
   if(sbErr(r)){toast('Erreur lors du retrait.','er');return;}
   loadClientOrganigramme(clientId);
@@ -11877,7 +11965,7 @@ async function _galPeutTarifer(){
 async function galRegenererApercus(){
   const total=_galAssets.filter(a=>a.status==='ready'&&a.original_path).length;
   if(!total){toast('Aucune photo a regenerer.','error');return;}
-  if(!confirm('Regenerer les apercus de '+total+' photo(s) ?\n\nLes originaux ne sont pas modifies. Les vignettes et apercus publics seront remplaces par des versions filigranees avec le reglage actuel.'))return;
+  if(!await demanderConfirmation('Regenerer les apercus de '+total+' photo(s) ?\n\nLes originaux ne sont pas modifies. Les vignettes et apercus publics seront remplaces par des versions filigranees avec le reglage actuel.',{titre:'Regenerer les apercus',action:'Regenerer',danger:false}))return;
 
   const filigrane=_galAlbum.watermark_previews!==false;
   let faits=0, echecs=0;
@@ -12322,7 +12410,7 @@ async function galBasculerVisibilite(assetId,statut){
 async function galSupprimerAsset(assetId){
   const asset=_galAssets.find(a=>a.id===assetId);
   if(!asset)return;
-  if(!confirm('Supprimer définitivement « '+(asset.original_filename||'cette photo')+' » ?\n\nL’original, l’aperçu et la vignette seront effacés.'))return;
+  if(!await demanderConfirmation('Supprimer définitivement « '+(asset.original_filename||'cette photo')+' » ?\n\nL’original, l’aperçu et la vignette seront effacés.',{titre:'Supprimer cette photo',action:'Supprimer definitivement'}))return;
   // Les fichiers d'abord, la ligne ensuite : dans l'autre sens, un échec de suppression en base
   // laisserait une photo affichée dont les fichiers n'existent plus.
   await _galDeleteObject('sportvision-media-prive',asset.original_path);
@@ -15706,7 +15794,7 @@ async function ajouterMembreEquipe(prestationId,ref){
         const conflits=await sbFetch('prestations_equipe_display?select=id,prestations!inner(reference,date_prestation,statut)&collaborateur_id=eq.'+colId+'&prestation_id=neq.'+prestationId+'&statut=in.(invitation_envoyée,en_attente,acceptée)&prestations.date_prestation=eq.'+datePres+'&prestations.statut=not.in.(annulée,refusée,clôturée)').catch(()=>[]);
         if(Array.isArray(conflits)&&conflits.length){
           const refs=conflits.map(c=>c.prestations?.reference).filter(Boolean).join(', ')||'une autre prestation';
-          if(!confirm('⚠️ Ce collaborateur est déjà affecté le '+new Date(datePres).toLocaleDateString('fr-FR')+' à : '+refs+'.\n\nConfirmer quand même cette affectation ?')){
+          if(!await demanderConfirmation('⚠️ Ce collaborateur est déjà affecté le '+new Date(datePres).toLocaleDateString('fr-FR')+' à : '+refs+'.\n\nConfirmer quand même cette affectation ?',{titre:'Conflit de planning',action:'Affecter quand meme',danger:false})){
             if(btn)btn.disabled=false;
             return;
           }
@@ -15723,7 +15811,7 @@ async function ajouterMembreEquipe(prestationId,ref){
     {
       const colProfileActif=_eqOperateursCache.find(p=>p.id===colId);
       if(colProfileActif&&colProfileActif.actif===false){
-        if(!confirm('⚠️ '+(colProfileActif.prenom||'Ce collaborateur')+' est marqué inactif (onboarding non finalisé ou compte désactivé).\n\nConfirmer quand même cette affectation ?')){
+        if(!await demanderConfirmation('⚠️ '+(colProfileActif.prenom||'Ce collaborateur')+' est marqué inactif (onboarding non finalisé ou compte désactivé).\n\nConfirmer quand même cette affectation ?',{titre:'Collaborateur inactif',action:'Affecter quand meme',danger:false})){
           if(btn)btn.disabled=false;
           return;
         }
@@ -15748,7 +15836,7 @@ async function ajouterMembreEquipe(prestationId,ref){
         const manquantes=requis.filter(fid=>!faites.has(fid)).map(fid=>FORMATIONS_CATALOG.find(f=>f.id===fid)?.titre||fid);
         if(manquantes.length){
           const nomCol=colProfile.prenom||'Ce collaborateur';
-          if(!confirm('⚠️ '+nomCol+' n\'a pas terminé '+(manquantes.length>1?'les formations obligatoires suivantes : ':'la formation obligatoire suivante : ')+manquantes.join(', ')+'.\n\nConfirmer quand même cette affectation ?')){
+          if(!await demanderConfirmation('⚠️ '+nomCol+' n\'a pas terminé '+(manquantes.length>1?'les formations obligatoires suivantes : ':'la formation obligatoire suivante : ')+manquantes.join(', ')+'.\n\nConfirmer quand même cette affectation ?',{titre:'Formation obligatoire manquante',action:'Affecter quand meme',danger:false})){
             if(btn)btn.disabled=false;
             return;
           }
@@ -16363,7 +16451,7 @@ async function kitsOpenFiche(kitId){
             </div>
             ${c.quantite>1?`<span style="font-size:11px;color:var(--t3)">×${c.quantite}</span>`:''}
             <span class="kbadge" style="background:${mst.bg};border:1px solid ${mst.br};color:${mst.tx};font-size:9.5px">${mst.lb}</span>
-            ${isAdmin?`<button onclick="kitsRetirerMateriel('${c.id}','${kit.id}')" aria-label="Retirer ce matériel" style="padding:3px 7px;font-size:10px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:5px;color:var(--er);cursor:pointer;font-family:var(--ff)">✕</button>`:''}
+            ${isAdmin?`<button onclick="kitsRetirerMateriel('${c.id}','${kit.id}','${escJs(m.nom||'')}')" aria-label="Retirer ce matériel du kit" style="padding:3px 7px;font-size:10px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:5px;color:var(--er);cursor:pointer;font-family:var(--ff)">✕</button>`:''}
           </div>`;
         }).join('')}
       </div>
@@ -16632,7 +16720,10 @@ async function kitsAddMaterielSubmit(kitId){
   }catch(e){toast(e.message?.includes('duplicate')?'Déjà dans ce kit.':'Erreur.','er');}
 }
 
-async function kitsRetirerMateriel(compId,kitId){
+async function kitsRetirerMateriel(compId,kitId,nomMat){
+  if(!await demanderConfirmation(
+    'Retirer '+(nomMat||'ce materiel')+' de ce kit ?\n\nIl repassera en statut « disponible » et pourra etre affecte a un autre kit.',
+    {titre:'Retirer du kit',action:'Retirer',danger:false}))return;
   try{
     const comp=await sbFetch('kit_compositions?select=materiel_id&id=eq.'+compId);
     const rDel=await sbFetch('kit_compositions?id=eq.'+compId,{method:'DELETE'});
@@ -17556,7 +17647,7 @@ function docsRenderFactures(){
 }
 async function envoyerFacturePennylane(prestationId){
   if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
-  if(!confirm('Envoyer cette facture en facturation électronique via Pennylane ? Cette action crée un vrai document, non annulable (seul un avoir permet de le corriger).'))return;
+  if(!await demanderConfirmation('Envoyer cette facture en facturation électronique via Pennylane ? Cette action crée un vrai document, non annulable (seul un avoir permet de le corriger).',{titre:'Facturation electronique',action:'Envoyer a Pennylane'}))return;
   try{
     const fact=await getOrCreateFacture(prestationId);
     if(!fact){toast('Impossible de générer la facture.','er');return;}
@@ -19027,7 +19118,7 @@ ${apercuBanner}
 // cette action est irréversible et engage une numérotation séquentielle
 // légale (seul un avoir permet de la corriger ensuite).
 async function emettreFacture(prestationId){
-  if(!confirm('Cette action émet une facture définitive et numérotée pour cette prestation. Elle ne pourra plus être modifiée (seul un avoir permettra de la corriger). Confirmer ?'))return;
+  if(!await demanderConfirmation('Cette action émet une facture définitive et numérotée pour cette prestation. Elle ne pourra plus être modifiée (seul un avoir permettra de la corriger). Confirmer ?',{titre:'Emettre la facture',action:'Emettre la facture'}))return;
   try{
     const fact=await getOrCreateFacture(prestationId);
     if(!fact){toast('Émission impossible : prestation ou devis introuvable.','er');return;}
@@ -22790,6 +22881,9 @@ async function adminAjouterQuestion(formId,formTitre){
 }
 
 async function adminSupprimerQuestion(qId,formId,formTitre){
+  if(!await demanderConfirmation(
+    'Supprimer cette question du quiz ?\n\nSon enonce, ses quatre reponses et l\'indication de la bonne reponse seront perdus. Il faudra la ressaisir entierement.',
+    {titre:'Supprimer la question',action:'Supprimer'}))return;
   const r=await sbFetch('formations_quiz_custom?id=eq.'+qId,{method:'DELETE'});
   if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
   toast('Question supprimée.','ok');
@@ -23912,7 +24006,7 @@ async function creerPresence(){
 }
 
 async function pmSupprimerPresence(id){
-  if(!confirm('Supprimer cette présence ?'))return;
+  if(!await demanderConfirmation('Supprimer cette présence ?',{titre:'Supprimer cette presence',action:'Supprimer'}))return;
   const r=await sbFetch('planned_presences?id=eq.'+id,{method:'DELETE'});
   if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
   toast('Présence supprimée.','ok');
@@ -27328,7 +27422,7 @@ async function loadComptaClotures(){
 }
 
 async function cloturerPeriode(periode,label){
-  if(!confirm(`Clôturer ${label} ? Aucune nouvelle dépense ou commission ne pourra plus être ajoutée sur cette période. Cette action est réversible via « Rouvrir ».`))return;
+  if(!await demanderConfirmation(`Clôturer ${label} ? Aucune nouvelle dépense ou commission ne pourra plus être ajoutée sur cette période. Cette action est réversible via « Rouvrir ».`,{titre:'Cloturer la periode',action:'Cloturer',danger:false}))return;
   const uid=localStorage.getItem('sv_uid');
   const r=await sbFetch('accounting_periods',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{periode,statut:'cloturee',cloturee_par:uid||null,cloturee_le:new Date().toISOString()}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Clôture impossible.'),'er');return;}
@@ -27337,7 +27431,7 @@ async function cloturerPeriode(periode,label){
 }
 
 async function reouvrirPeriode(periode){
-  if(!confirm('Rouvrir cette période clôturée ?'))return;
+  if(!await demanderConfirmation('Rouvrir cette période clôturée ?',{titre:'Rouvrir la periode',action:'Rouvrir',danger:false}))return;
   const r=await sbFetch('accounting_periods?periode=eq.'+periode,{method:'PATCH',body:{statut:'ouverte',cloturee_par:null,cloturee_le:null}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Réouverture impossible.'),'er');return;}
   logFinancialAudit('reouverture','accounting_periods',r?.[0]?.id,null,null,{periode});
@@ -30429,7 +30523,7 @@ async function poleRemCalculer(){
 }
 async function poleRemValider(calculId,statut){
   const lbl={valide:'valider ce calcul',paye:'marquer ce calcul comme payé'}[statut]||'mettre à jour ce calcul';
-  if(!confirm('Confirmer : '+lbl+' ?'))return;
+  if(!await demanderConfirmation('Confirmer : '+lbl+' ?',{action:'Confirmer',danger:false}))return;
   try{
     const r=await sbFetch('rpc/pole_valider_remuneration_responsable',{method:'POST',body:{p_calcul_id:calculId,p_statut:statut,p_ajustement_montant:null,p_ajustement_motif:null}});
     if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
@@ -31197,7 +31291,7 @@ async function modalFicheCollaborateur(id){
         +'<span style="font-size:16px;flex-shrink:0">'+(d.statut==='present'?'📄':'⬜')+'</span>'
         +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">'+esc(d.nom)+'</div><div style="font-size:11px;color:var(--t3)">'+(DOC_TYPE_LBL[d.type]||d.type)+(d.notes?' · '+esc(d.notes):'')+'</div></div>'
         +'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:'+(d.statut==='present'?'rgba(46,204,138,.12)':'rgba(240,68,94,.12)')+';color:'+(d.statut==='present'?'var(--ok)':'var(--er)')+'">'+(d.statut==='present'?'Présent':'Manquant')+'</span>'
-        +(canManage?'<button class="btn bg2 bs" onclick="ficheDocSupprimer(\''+d.id+'\',\''+id+'\')">Retirer</button>':'')
+        +(canManage?'<button class="btn bg2 bs" onclick="ficheDocSupprimer(\''+d.id+'\',\''+id+'\',\''+escJs(d.nom||'')+'\')">Retirer</button>':'')
         +'</div>').join('')+'</div>':'<div style="text-align:center;padding:32px 24px;color:var(--t3);font-size:13px;margin-bottom:14px">Aucun document enregistré.</div>')
       +(canManage?'<button class="btn bp bs" onclick="modalFicheDocAjouter(\''+id+'\')">+ Ajouter un document</button>':'')
     ):'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Accès réservé admin/comptable.</div>';
@@ -31378,7 +31472,10 @@ async function ficheDocAjouter(collabId){
   closeModal();
   setTimeout(()=>modalFicheCollaborateur(collabId),200);
 }
-async function ficheDocSupprimer(docId,collabId){
+async function ficheDocSupprimer(docId,collabId,nomDoc){
+  if(!await demanderConfirmation(
+    'Retirer '+(nomDoc?'« '+nomDoc+' »':'ce document')+' du dossier de ce collaborateur ?\n\nLe document ne sera plus rattache a sa fiche. Cette action ne se defait pas depuis l\'OS.',
+    {titre:'Retirer le document',action:'Retirer'}))return;
   const r=await sbFetch('collaborateur_documents?id=eq.'+docId,{method:'DELETE'});
   if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
   toast('Document retiré.','ok');
@@ -31671,10 +31768,29 @@ if(DEMO_MODE){
 
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();if(S.screen==='app')openSearch();}
-  if(e.key==='Escape'){closeModal();}
+  // La confirmation est la couche du dessus : Echap l'annule elle, et laisse intacte la
+  // modale eventuellement ouverte derriere. Sans cette priorite, annuler une confirmation
+  // fermerait aussi le formulaire qu'on etait en train de remplir.
+  if(e.key==='Escape'){
+    if(document.getElementById('sv-confirm')?.classList.contains('on'))_confirmFermer(false);
+    else closeModal();
+  }
   // Piège de focus : tant qu'une modale est ouverte, Tab/Shift+Tab reste
   // cantonné à ses éléments focusables (cf. commentaire sur openModal/closeModal).
   if(e.key==='Tab'){
+    // La confirmation passe avant : quand elle est ouverte, le piege se referme sur ses deux
+    // boutons, sinon Tab s'echapperait vers le formulaire masque derriere elle.
+    const cf=document.getElementById('sv-confirm');
+    if(cf&&cf.classList.contains('on')){
+      const cels=[document.getElementById('sv-confirm-non'),document.getElementById('sv-confirm-oui')].filter(Boolean);
+      if(cels.length){
+        const cf1=cels[0],cf2=cels[cels.length-1],act=document.activeElement;
+        if(e.shiftKey&&act===cf1){e.preventDefault();cf2.focus();}
+        else if(!e.shiftKey&&act===cf2){e.preventDefault();cf1.focus();}
+        else if(!cf.contains(act)){e.preventDefault();cf1.focus();}
+      }
+      return;
+    }
     const m=document.getElementById('sv-modal');
     if(m&&m.classList.contains('on')){
       const els=_modalFocusEls();
@@ -32613,7 +32729,7 @@ async function marquerRealiseRdvClient(id){
   await loadRdvClients();
 }
 async function annulerRdvClient(id){
-  if(!confirm('Annuler ce rendez-vous ?'))return;
+  if(!await demanderConfirmation('Annuler ce rendez-vous ?',{titre:'Annuler le rendez-vous',action:'Annuler le RDV'}))return;
   const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'annule'}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
   toast('Rendez-vous annulé.','ok');
@@ -32806,7 +32922,7 @@ async function saveRealisation(id){
   await loadRealisations();
 }
 async function deleteRealisation(id){
-  if(!confirm('Supprimer cette réalisation ?'))return;
+  if(!await demanderConfirmation('Supprimer cette réalisation ?',{titre:'Supprimer cette realisation',action:'Supprimer'}))return;
   const r=await sbFetch('realisations?id=eq.'+id,{method:'DELETE'});
   if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
   toast('Réalisation supprimée.','ok');
@@ -32852,7 +32968,7 @@ async function saveComptePortail(id){
 async function deleteComptePortail(id){
   if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const cu=_comptesPortailCache.find(x=>x.id===id);
-  if(!confirm('Supprimer l\'accès Connect de '+(cu?.clients?.nom||'ce client')+' ? Si la fiche n\'a aucune prestation ni devis, elle sera aussi supprimée entièrement. Sinon, seule la connexion à Connect saute, la fiche et son historique restent.'))return;
+  if(!await demanderConfirmation('Supprimer l\'accès Connect de '+(cu?.clients?.nom||'ce client')+' ? Si la fiche n\'a aucune prestation ni devis, elle sera aussi supprimée entièrement. Sinon, seule la connexion à Connect saute, la fiche et son historique restent.',{titre:"Supprimer l'acces Connect",action:'Supprimer'}))return;
   try{
     const res=await fetch(SB_URL+'/functions/v1/admin-delete-portal-account',{
       method:'POST',

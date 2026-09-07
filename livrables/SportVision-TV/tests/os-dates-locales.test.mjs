@@ -131,12 +131,14 @@ const restants = lignes
   .map((l) => l.n);
 // Seul usage legitime restant : l'expiration d'un devis, calculee a partir d'une chaine deja
 // interpretee en UTC (new Date("YYYY-MM-DD")) — entree et sortie dans le meme repere, pas de
-// decalage possible. Toute nouvelle ligne doit etre justifiee ici ou corrigee.
-const AUTORISES = [18527];
+// decalage possible. Identifie par son contenu et non par son numero de ligne, pour que le test
+// ne se mette pas a echouer au premier ajout ailleurs dans le fichier.
+const AUTORISE = /const expiration=envoi\?new Date\(new Date\(envoi\)/;
+const suspects = restants.filter((n) => !AUTORISE.test(lignes[n - 1]));
 t(
-  `lignes restantes = ${JSON.stringify(restants)}`,
-  restants.length === AUTORISES.length && restants.every((l) => AUTORISES.includes(l)),
-  `autorisees : ${JSON.stringify(AUTORISES)}`,
+  `un seul usage restant, sur l'expiration des devis (${restants.length} trouve(s))`,
+  restants.length === 1 && suspects.length === 0,
+  suspects.length ? `a corriger : lignes ${suspects.join(", ")}` : `${restants.length} usages`,
 );
 
 // ── 6. Import CSV bancaire : la date venue du fichier est validee ────────────
