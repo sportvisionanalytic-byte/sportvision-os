@@ -264,3 +264,33 @@ python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()})
 curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
   -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
 ```
+
+## `galerie-claim-connect.test.sql`
+
+20 scénarios sur le rattachement automatique d'un achat à un compte Connect. Transaction annulée.
+
+Trois achats invités de la même adresse (deux payés, un en attente), puis : e-mail NON vérifié →
+aucun rattachement ; adresse vérifiée → les DEUX commandes payées récupérées d'un coup, pas
+seulement celle d'où vient l'utilisateur ; la commande non payée reste dehors ; les droits
+deviennent permanents ; rejeu idempotent (0 nouvelle commande, toujours 2 et pas 4). Vérifie
+ensuite l'espace Connect : UNE galerie malgré deux achats dessus, union des photos sans doublon
+(8 et non 10), mais bien deux commandes distinctes. Enfin, un autre compte vérifié qui connaît
+même le jeton ne récupère rien.
+
+## `galerie-clubplus.test.sql`
+
+10 scénarios sur ce que Club+ voit — et surtout ne voit pas. Transaction annulée.
+
+Un album avec trois liens dont un seul confié au club : le club voit sa galerie, le bon nombre de
+photos, et UN seul des trois liens. Aucun tarif ne remonte. Un club ne voit rien d'un autre club,
+ne lit ni les offres ni les liens en direct, et ne peut pas fixer de prix. Un album non publié
+reste invisible.
+
+```bash
+for t in galerie-claim-connect galerie-clubplus; do
+  python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()}))' \
+    livrables/SportVision-TV/tests/$t.test.sql > /tmp/q.json
+  curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
+    -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
+done
+```

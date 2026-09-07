@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
 import { consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { consumePendingClaim } from "@/lib/gallery/pending-claim";
 import { LEGAL_URLS } from "@/lib/legal-links";
 
 // /auth/login — port du design de référence design-connect-personnel-12-08/README.md
@@ -70,6 +71,10 @@ export default function LoginPage() {
     // pour la connexion elle-même — même filet que app-next.
     try {
       await consumePendingOnboarding(supabase);
+        // Rattachement des achats galerie, au meme moment et pour la meme raison : c'est
+        // le premier instant ou une vraie session existe. Appele meme sans achat en
+        // attente, pour recuperer les commandes invitees eligibles d'un compte existant.
+        await consumePendingClaim(supabase).catch(() => null);
     } catch (e) {
       console.error("[login] rejeu de l'inscription en attente échoué :", e);
     }

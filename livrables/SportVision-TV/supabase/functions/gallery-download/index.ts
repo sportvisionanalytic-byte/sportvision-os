@@ -79,9 +79,53 @@ serve(async (req) => {
       return json({ token: g.token });
     }
 
-    // ── Signature d'un original acheté ────────────────────────────────────────────────────
     const token: string = (body.token || "").trim();
     const assetId: string = (body.assetId || "").trim();
+
+    // ── Chemin CONNECT : l'acheteur est connecté, il n'a pas de jeton sous la main ─────────
+    // Depuis « Mes galeries », le navigateur ne connaît pas le jeton de la commande qui couvre
+    // cette photo — et il n'a pas à le connaître. On identifie l'appelant par sa session, puis on
+    // vérifie que l'une de SES commandes payées contient bien cette photo. Le contrôle est le
+    // même que pour un invité, seule la façon de prouver qui on est change.
+    if (!token && assetId) {
+      const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+      if (!jwt) return json({ error: "Requête incomplète." }, 400);
+
+      const { data: { user } } = await admin.auth.getUser(jwt);
+      if (!user) return json({ error: "Connectez-vous pour télécharger cette photo." }, 401);
+
+      const { data: possede } = await admin
+        .from("media_order_items")
+        .select("asset_id, media_orders!inner(purchased_by_user_id, status)")
+        .eq("asset_id", assetId)
+        .eq("media_orders.purchased_by_user_id", user.id)
+        .eq("media_orders.status", "paid")
+        .limit(1)
+        .maybeSingle();
+      if (!possede) return json({ error: "Cette photo ne fait pas partie de vos achats." }, 403);
+
+      const { data: a } = await admin
+        .from("media_assets")
+        .select("storage_bucket, original_path, original_filename")
+        .eq("id", assetId)
+        .maybeSingle();
+      if (!a?.original_path) return json({ error: "Fichier introuvable." }, 404);
+
+      // Signature de cinq minutes, comme partout ailleurs : un droit permanent n'est PAS une URL
+      // permanente, c'est le droit d'en redemander une.
+      const { data: sig, error: sigErr } = await admin.storage
+        .from((a.storage_bucket as string) || "sportvision-media-prive")
+        .createSignedUrl(a.original_path as string, SIGNED_URL_TTL, {
+          download: (a.original_filename as string) || "photo.jpg",
+        });
+      if (sigErr || !sig?.signedUrl) {
+        console.error("[gallery-download] signature Connect impossible :", sigErr);
+        return json({ error: "Téléchargement momentanément indisponible." }, 500);
+      }
+      return json({ url: sig.signedUrl });
+    }
+
+    // ── Signature d'un original acheté, par jeton (invité) ─────────────────────────────────
     if (!token || !assetId) return json({ error: "Requête incomplète." }, 400);
 
     const { data: grant } = await admin

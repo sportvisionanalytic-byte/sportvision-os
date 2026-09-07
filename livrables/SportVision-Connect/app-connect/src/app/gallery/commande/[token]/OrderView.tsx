@@ -3,10 +3,11 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useState } from "react";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice } from "@/lib/gallery/pricing";
 import type { OrderSummary } from "@/lib/gallery/data";
+import { ConnectBlock } from "./ConnectBlock";
+import { ServicesBlock } from "./ServicesBlock";
 
 // Page de commande — c'est ici que l'achat se termine, et c'est ici que SportVision se présente.
 //
@@ -167,26 +168,17 @@ export function OrderView({
           ))}
         </div>
 
-        {/* Connect APRÈS les photos, jamais avant : le §21 est explicite, le CTA reste secondaire
-            tant que le client n'a pas ce pour quoi il a payé. */}
-        <section className="mt-10 rounded-sv-card border border-border bg-surface p-6">
-          <h2 className="font-sora text-[17px] font-extrabold tracking-tight">
-            Gardez vos photos sans limite de durée
-          </h2>
-          <p className="mt-2 text-[13px] leading-relaxed text-text-tertiary">
-            {order.dejaRattachee
-              ? "Cette commande est rattachée à votre compte SportVision Connect : vos photos y restent disponibles en permanence."
-              : `Ce lien reste actif jusqu'au ${expiration}. En créant votre compte SportVision Connect avec ${order.email}, vos photos y sont conservées définitivement, avec vos prochaines galeries et vos avantages.`}
-          </p>
-          {!order.dejaRattachee && (
-            <Link
-              href={`/signup?email=${encodeURIComponent(order.email)}&commande=${encodeURIComponent(token)}`}
-              className="mt-4 inline-flex rounded-sv-pill bg-sv-gradient px-6 py-3 text-[14px] font-bold text-white"
-            >
-              Créer mon compte gratuitement
-            </Link>
-          )}
-        </section>
+        {/* Connect APRÈS les photos, jamais avant : le client doit d'abord obtenir ce pour
+            quoi il a payé. Le CTA reste une proposition, pas un péage. */}
+        <ConnectBlock
+          token={token}
+          email={order.email}
+          dejaRattachee={order.dejaRattachee}
+          expiration={expiration}
+        />
+
+        {/* Et les autres services encore après : c'est le dernier bloc de la page. */}
+        <ServicesBlock />
 
         <p className="mt-8 text-center text-[11.5px] text-text-faint">
           Un souci avec votre commande ? Écrivez-nous à contact@sportvision-an.fr

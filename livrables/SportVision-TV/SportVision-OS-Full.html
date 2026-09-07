@@ -11610,7 +11610,12 @@ async function _galOuvrirConstructeur(linkId){
     <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:4px">
       <input type="checkbox" id="gl-actif"${d.is_enabled!==false?' checked':''}> Lien actif
     </label>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:16px">Desactiver arrete les nouveaux achats. Les commandes deja payees restent accessibles.</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:11px">Desactiver arrete les nouveaux achats. Les commandes deja payees restent accessibles.</div>
+
+    <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:4px">
+      <input type="checkbox" id="gl-clubplus"${d.visible_in_clubplus?' checked':''}> Confier ce lien au club dans Club+
+    </label>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:16px">Le club pourra le copier et le diffuser lui-meme. Il ne verra aucun tarif et ne pourra rien modifier. Laissez decoche pour un lien qui reste interne a SportVision (equipe adverse, promotion...).</div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px">
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Offres proposees</span>
@@ -11746,10 +11751,12 @@ async function galEnregistrerLien(){
                  display_order:i+1,featured:!!o.featured,is_enabled:o.actif!==false});
   }
 
+  const clubplus=document.getElementById('gl-clubplus').checked;
+
   const r=await sbFetch('rpc/media_link_save',{method:'POST',body:{
     p_album_id:_galAlbum.id, p_offers:offres, p_link_id:_galLienEdite?_galLienEdite.id:null,
     p_label:label||null, p_audience:audience, p_expires_at:null,
-    p_is_enabled:actif, p_preview_limit:apercu
+    p_is_enabled:actif, p_preview_limit:apercu, p_visible_in_clubplus:clubplus
   }});
   const res=Array.isArray(r)?r[0]:r;
   if(sbErr(r)||!res){toast('Erreur : '+((r&&r.message)||'enregistrement impossible'),'error');return;}

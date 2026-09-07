@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { consumePendingClaim } from "@/lib/gallery/pending-claim";
 
 // Étape intermédiaire après /auth/callback (session déjà posée côté serveur à ce stade) :
 // rejoue le pending onboarding — voir lib/signup/pending-onboarding.ts, ne peut se faire que
@@ -18,6 +19,10 @@ export default function ConfirmingPage() {
       const supabase = createClient();
       try {
         await consumePendingOnboarding(supabase);
+        // Rattachement des achats galerie, au meme moment et pour la meme raison : c'est
+        // le premier instant ou une vraie session existe. Appele meme sans achat en
+        // attente, pour recuperer les commandes invitees eligibles d'un compte existant.
+        await consumePendingClaim(supabase).catch(() => null);
       } catch (e) {
         console.error("[auth/confirming] rejeu de l'inscription en attente échoué :", e);
       }

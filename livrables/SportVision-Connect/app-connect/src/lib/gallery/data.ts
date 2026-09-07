@@ -362,3 +362,102 @@ export async function submitOrderSelection(
   if (row.ok === true) return { ok: true, selectionnees: Number(row.selectionnees ?? assetIds.length) };
   return { ok: false, raison: ((row.raison as SelectionRefus) ?? "introuvable") };
 }
+
+// ── L'espace Connect de l'acheteur ────────────────────────────────────────────────────────────
+// Tout passe par des RPC : media_albums n'est lisible que par le staff, et un compte Connect ne
+// doit pas se voir ouvrir une table entière pour afficher un titre de match. Aucune de ces
+// fonctions ne renvoie de chemin d'original — le téléchargement reste signé au clic par
+// gallery-download, exactement comme pour un invité. Un droit permanent n'est PAS une URL
+// permanente : c'est le droit d'en redemander une.
+
+export interface MyGallery {
+  albumId: string;
+  titre: string;
+  clubNom: string | null;
+  equipe: string | null;
+  eventDate: string | null;
+  coverUrl: string | null;
+  /** Photos réellement possédées, union de toutes ses commandes sans doublon. Ce n'est PAS le
+   * quota vendu : un pack de 17 dont l'acheteur n'a retenu que 13 photos en affiche 13. */
+  photosAcquises: number;
+  albumPhotos: number;
+  accesComplet: boolean;
+  accesPermanent: boolean;
+  expiresAt: string | null;
+  commandes: number;
+}
+
+export async function fetchMyGalleries(supabase: SupabaseClient): Promise<MyGallery[]> {
+  const { data, error } = await supabase.rpc("media_my_galleries");
+  if (error || !Array.isArray(data)) return [];
+  return (data as Record<string, unknown>[]).map((r) => ({
+    albumId: r.album_id as string,
+    titre: (r.titre as string) ?? "Galerie",
+    clubNom: (r.club_nom as string) ?? null,
+    equipe: (r.equipe as string) ?? null,
+    eventDate: (r.event_date as string) ?? null,
+    coverUrl: (r.cover_url as string) ?? null,
+    photosAcquises: Number(r.photos_acquises ?? 0),
+    albumPhotos: Number(r.album_photos ?? 0),
+    accesComplet: r.acces_complet === true,
+    accesPermanent: r.acces_permanent === true,
+    expiresAt: (r.expires_at as string) ?? null,
+    commandes: Number(r.commandes ?? 0),
+  }));
+}
+
+export async function fetchMyGalleryPhotos(
+  supabase: SupabaseClient,
+  albumId: string,
+): Promise<OrderPhoto[]> {
+  const { data, error } = await supabase.rpc("media_my_gallery_photos", { p_album_id: albumId });
+  if (error || !Array.isArray(data)) return [];
+  return (data as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    thumbUrl: publicMediaUrl(r.thumb_path as string),
+    previewUrl: publicMediaUrl((r.preview_path as string) ?? (r.thumb_path as string)),
+    filename: (r.filename as string) ?? "photo.jpg",
+  }));
+}
+
+export interface MyOrder {
+  orderId: string;
+  albumId: string | null;
+  albumTitre: string | null;
+  clubNom: string | null;
+  equipe: string | null;
+  eventDate: string | null;
+  coverUrl: string | null;
+  offreNom: string | null;
+  offreType: string | null;
+  totalCents: number;
+  currency: string;
+  paidAt: string | null;
+  photosCount: number;
+  accesPermanent: boolean;
+  expiresAt: string | null;
+  token: string;
+}
+
+export async function fetchMyOrders(supabase: SupabaseClient): Promise<MyOrder[]> {
+  const { data, error } = await supabase.rpc("media_my_gallery_orders");
+  if (error || !Array.isArray(data)) return [];
+  return (data as Record<string, unknown>[]).map((r) => ({
+    orderId: r.order_id as string,
+    albumId: (r.album_id as string) ?? null,
+    albumTitre: (r.album_titre as string) ?? null,
+    clubNom: (r.club_nom as string) ?? null,
+    equipe: (r.equipe as string) ?? null,
+    eventDate: (r.event_date as string) ?? null,
+    coverUrl: (r.cover_url as string) ?? null,
+    offreNom: (r.offre_nom as string) ?? null,
+    offreType: (r.offre_type as string) ?? null,
+    totalCents: Number(r.total_cents ?? 0),
+    currency: (r.currency as string) ?? "eur",
+    paidAt: (r.paid_at as string) ?? null,
+    photosCount: Number(r.photos_count ?? 0),
+    accesPermanent: r.acces_permanent === true,
+    expiresAt: (r.expires_at as string) ?? null,
+    token: r.token as string,
+  }));
+}
