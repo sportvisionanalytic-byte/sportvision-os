@@ -374,3 +374,8 @@ période vide qui ne renvoie AUCUN taux inventé.
 10 scénarios sur le cloisonnement. Fondateur : tout. Responsable de pôle Football : son album
 Football, ni le Basket, **ni un album sans pôle** — et son CA ne contient que le sien.
 Photographe : aucun accès, périmètre vide, CA à zéro.
+
+Depuis la v24, `galerie-analytics.test.sql` couvre aussi le drapeau d'exclusion : une galerie
+marquée comme essai disparaît du CA, des visites et du classement ; on peut la réintégrer à la
+demande ; et l'exclusion d'un SEUL lien retire ses ventes sans toucher aux autres liens de la
+même galerie.

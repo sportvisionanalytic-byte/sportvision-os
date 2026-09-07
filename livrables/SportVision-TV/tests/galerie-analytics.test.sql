@@ -201,6 +201,41 @@ begin
     case when v_ca = (select ca_cents from media_stats_resume(d, f)) then 'identiques' else v_ca::text end,
     v_ca = (select ca_cents from media_stats_resume(d, f)));
 
+  -- ── 8. Le drapeau d'exclusion ──────────────────────────────────────────
+  -- On marque la galerie de test comme essai : elle doit disparaitre des chiffres, et revenir
+  -- quand on le demande explicitement.
+  update media_albums set analytics_excluded = true where id = (select val::uuid from _ctx where nom='album');
+  select * into r from media_stats_resume(d, f);
+  insert into _res values ('8','galerie exclue : son CA disparait','+0 c',
+    '+'||(r.ca_cents - (select val::bigint from _ctx where nom='ca_avant'))::text,
+    r.ca_cents = (select val::bigint from _ctx where nom='ca_avant'));
+  insert into _res values ('8','ses vues aussi','+0',
+    '+'||(r.visites - (select val::integer from _ctx where nom='vues_avant'))::text,
+    r.visites = (select val::integer from _ctx where nom='vues_avant'));
+  select count(*)::integer into v_n from media_stats_galeries(d, f, 50)
+   where album_id = (select val::uuid from _ctx where nom='album');
+  insert into _res values ('8','et elle sort du classement','0', v_n::text, v_n = 0);
+
+  select * into r from media_stats_resume(d, f, true);
+  insert into _res values ('8','on peut la reintegrer a la demande','+7000 c',
+    '+'||(r.ca_cents - (select val::bigint from _ctx where nom='ca_avant'))::text,
+    r.ca_cents - (select val::bigint from _ctx where nom='ca_avant') = 7000);
+  update media_albums set analytics_excluded = false where id = (select val::uuid from _ctx where nom='album');
+
+  -- Exclusion d'un SEUL lien : la galerie reste comptee, ce lien non.
+  update media_album_links set analytics_excluded = true where id = (select val::uuid from _ctx where nom='lAdv');
+  select * into r from media_stats_resume(d, f);
+  insert into _res values ('8','lien exclu : seuls ses 30 EUR partent','+4000 c',
+    '+'||(r.ca_cents - (select val::bigint from _ctx where nom='ca_avant'))::text,
+    r.ca_cents - (select val::bigint from _ctx where nom='ca_avant') = 4000);
+  select count(*)::integer into v_n from media_stats_liens((select val::uuid from _ctx where nom='album'), d, f)
+   where link_id = (select val::uuid from _ctx where nom='lAdv');
+  insert into _res values ('8','et il sort de la liste des liens','0', v_n::text, v_n = 0);
+  select count(*)::integer into v_n from media_stats_liens((select val::uuid from _ctx where nom='album'), d, f, true)
+   where link_id = (select val::uuid from _ctx where nom='lAdv');
+  insert into _res values ('8','sauf si on demande les essais','1', v_n::text, v_n = 1);
+  update media_album_links set analytics_excluded = false where id = (select val::uuid from _ctx where nom='lAdv');
+
   -- ── 7. Une periode sans rien ───────────────────────────────────────────
   select * into r from media_stats_resume(current_date - 400, current_date - 300);
   insert into _res values ('7','periode vide : CA a 0','0', r.ca_cents::text, r.ca_cents = 0);
