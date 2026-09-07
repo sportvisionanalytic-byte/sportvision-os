@@ -308,3 +308,23 @@ commande. Cas D (offre gratuite) : commande à 0 présente et droit permanent.
 
 Vérifié en plus contre la fonction déployée, avec une vraie session : une adresse forgée dans le
 formulaire est ignorée au profit de l'adresse vérifiée du compte.
+
+## `connect-navigation-galeries.test.mjs`
+
+22 scénarios dans un vrai Chromium, en production, iPhone et bureau, avec un compte connecté.
+
+Le compte de test possède DEUX commandes sur la MÊME galerie : l'accueil et la liste doivent
+afficher UNE galerie et DEUX commandes. Vérifie le bloc « dernières galeries » sur l'accueil, le
+nombre réellement acquis (et non le quota), l'entrée de menu visible (tiroir sur mobile, sidebar
+sur bureau), l'ouverture de la liste, l'accès permanent annoncé, l'entrée dans le détail et le
+retour — aucun cul-de-sac.
+
+Deux pièges appris ici : la sidebar existe dans le DOM même sur mobile (masquée en CSS), il faut
+donc cibler `:visible` ; et compter les occurrences d'un titre mélange les galeries et les
+commandes, il faut compter les liens.
+
+Le compte et les commandes de test sont créés puis supprimés autour de l'exécution.
+
+```bash
+node livrables/SportVision-TV/tests/connect-navigation-galeries.test.mjs
+```
