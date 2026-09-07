@@ -17,6 +17,7 @@ export function GalleryCheckout({
   slug,
   token,
   password,
+  offerId,
   assetIds,
   libelle,
   totalCents,
@@ -26,6 +27,8 @@ export function GalleryCheckout({
   slug: string;
   token: string;
   password?: string;
+  /** L'offre choisie. Le serveur revérifie qu'elle appartient bien à ce lien. */
+  offerId?: string | null;
   /** Vide quand le lien vend une formule : le prix ne dépend alors pas de la sélection, et pour un
    * pack l'acheteur n'a encore rien choisi. C'est le serveur qui retrouve ce qui est vendu. */
   assetIds: string[];
@@ -53,6 +56,7 @@ export function GalleryCheckout({
       slug,
       token,
       password: password ?? null,
+      offerId: offerId ?? null,
       assetIds,
       email: email.trim(),
       nom: nom.trim(),

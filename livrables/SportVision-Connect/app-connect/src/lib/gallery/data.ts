@@ -20,11 +20,14 @@ export interface GalleryHeader {
    * existe, on ne le montre jamais (§25). */
   livraisonExterne: boolean;
   watermark: boolean;
-  /** La formule vendue par ce lien précis. null = lien historique, ancien parcours au catalogue. */
-  offre: LinkOffer | null;
-  /** Nombre de photos montrées AVANT achat. `photoCount` reste le total réel de l'album : c'est
-   * l'écart entre les deux qui donne « et 188 autres ». */
-  apercuLimite: number;
+  /** TOUTES les formules vendues par ce lien, dans l'ordre configuré dans l'OS. Tableau vide =
+   * galerie de consultation, ou lien historique qui retombe sur le catalogue du club. Le nombre
+   * d'offres est libre : la page doit s'afficher correctement avec 1 comme avec 7. */
+  offres: LinkOffer[];
+  /** Plafond de photos montrées AVANT achat. null = toutes, et c'est le cas par défaut : sur un
+   * tournoi, un parent doit pouvoir parcourir les 500 photos pour retrouver son enfant. Le
+   * plafond ne sert qu'aux liens qu'on ne veut pas exposer entièrement. */
+  apercuLimite: number | null;
 }
 
 export type GalleryDenial =
@@ -87,32 +90,29 @@ export async function openGallery(
       photoCount: (row.photo_count as number) ?? 0,
       livraisonExterne: row.livraison_externe === true,
       watermark: row.watermark !== false,
-      offre: parseOffer(row.offre),
-      apercuLimite: Number(row.apercu_limite ?? 12),
+      offres: parseOffers(row.offres),
+      apercuLimite: row.apercu_limite === null || row.apercu_limite === undefined ? null : Number(row.apercu_limite),
     },
   };
 }
 
-/** `offre` est un jsonb côté base : un objet quand le lien vend une formule, null sinon. On ne
- * fabrique jamais d'objet par défaut à la place d'un null — un lien historique et un lien dont la
- * formule est indisponible ne se comportent pas pareil, et les confondre ferait réapparaître les
- * tarifs publics sur un lien préférentiel. */
-function parseOffer(raw: unknown): LinkOffer | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  if (o.configured !== true) return null;
-  return {
-    configured: true,
-    available: o.available === true,
-    productId: (o.product_id as string) ?? null,
-    type: (o.type as string) ?? null,
-    name: (o.name as string) ?? null,
-    priceCents: o.price_cents === null || o.price_cents === undefined ? null : Number(o.price_cents),
-    currency: (o.currency as string) ?? "eur",
-    photosAllowance:
-      o.photos_allowance === null || o.photos_allowance === undefined ? null : Number(o.photos_allowance),
-    audience: (o.audience as string) ?? null,
-  };
+/** `offres` est un tableau jsonb côté base. On ne fabrique jamais d'offre par défaut, et on
+ * n'invente jamais de prix : ce qui n'est pas configuré n'est pas vendu. */
+function parseOffers(raw: unknown): LinkOffer[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object")
+    .map((o) => ({
+      offerId: (o.offer_id as string) ?? null,
+      productId: (o.product_id as string) ?? null,
+      type: (o.type as string) ?? null,
+      name: (o.name as string) ?? "Accès aux photos",
+      priceCents: Number(o.price_cents ?? 0),
+      currency: (o.currency as string) ?? "eur",
+      photosAllowance:
+        o.photos_allowance === null || o.photos_allowance === undefined ? null : Number(o.photos_allowance),
+      featured: o.featured === true,
+    }));
 }
 
 export interface GalleryPage {
@@ -221,6 +221,10 @@ export interface CheckoutRequest {
   slug: string;
   token: string;
   password?: string | null;
+  /** L'offre choisie parmi celles du lien. Le serveur revérifie qu'elle appartient bien à ce
+   * lien-là : envoyer l'identifiant d'une offre moins chère trouvée ailleurs ne sert à rien. */
+  offerId?: string | null;
+  /** Les photos choisies, pour une offre à quota. Vide pour un album complet. */
   assetIds: string[];
   email: string;
   nom: string;

@@ -24,33 +24,24 @@ export type ProductType =
   | "autre";
 
 /**
- * La formule vendue par CE lien, telle que media_gallery_open la renvoie.
+ * UNE offre proposée par un lien.
  *
- * Un même album peut être vendu 15 € aux parents du club et 30 € à l'équipe adverse sans être
- * dupliqué : c'est le lien qui porte le tarif, pas l'album. Le navigateur ne recalcule rien, il
- * affiche ce que la base a décidé — `media_link_offer` est la seule fonction qui sait quel prix
- * s'applique, et c'est aussi elle qui sert au moment d'encaisser.
+ * Rien de commercial n'est décidé ici. Le nom, le prix, le nombre de photos, l'ordre d'affichage
+ * et la mise en avant viennent tous de la configuration faite dans l'OS, lien par lien. Il n'y a
+ * aucune règle du type « 10 € = 15 photos » nulle part dans ce code, et il ne doit jamais y en
+ * avoir : `photosAllowance` vaut 17 quand SportVision a saisi 17.
  *
- * Trois états, et non deux :
- *   `offre = null`                        le lien n'a pas de formule : ancien parcours au catalogue
- *   `configured && available`             une formule est vendable
- *   `configured && !available`            une formule existe mais son produit a été désactivé.
- *                                         La galerie se consulte, elle ne vend plus. Elle ne
- *                                         retombe SURTOUT pas sur le catalogue public du club :
- *                                         quelqu'un venu par un lien préférentiel à 15 € verrait
- *                                         soudain les tarifs publics.
+ * `photosAllowance = null` signifie « pas de quota » : c'est un album complet.
  */
 export interface LinkOffer {
-  configured: boolean;
-  available: boolean;
+  offerId: string | null;
   productId: string | null;
   type: ProductType | string | null;
-  name: string | null;
-  priceCents: number | null;
+  name: string;
+  priceCents: number;
   currency: string;
-  /** Nombre de photos que l'acheteur choisira APRÈS avoir payé. null pour une galerie complète. */
   photosAllowance: number | null;
-  audience: string | null;
+  featured: boolean;
 }
 
 /** Ce que l'acheteur d'une formule obtient, en une phrase. Sert de récapitulatif au paiement et

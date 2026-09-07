@@ -17,6 +17,7 @@ import {
   type GalleryPhoto,
 } from "@/lib/gallery/data";
 import { GalleryCheckout } from "./GalleryCheckout";
+import { OffersSheet } from "./OffersSheet";
 import {
   formatPrice,
   isSellable,
@@ -72,6 +73,10 @@ export function GalleryView({
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  // La formule choisie. Tant qu'elle est nulle, la galerie se parcourt librement : on ne fait pas
+  // choisir avant d'avoir laissé regarder, c'est en trouvant son enfant qu'on décide d'acheter.
+  const [offreChoisie, setOffreChoisie] = useState<LinkOffer | null>(null);
+  const [offresOpen, setOffresOpen] = useState(false);
   const [shared, setShared] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -79,10 +84,15 @@ export function GalleryView({
   // L'offre du lien commande tout le reste de l'écran. Quand elle existe, la mécanique de panier
   // disparaît entièrement : pas de coche sur les photos, pas de total qui grimpe, pas de sélection
   // à conserver entre deux pages.
-  const offre: LinkOffer | null = header.offre;
-  const formule = offre !== null;
-  const enVente = formule ? offre.available : isSellable(products);
+  // Le nombre d'offres est libre : la page ne suppose jamais qu'il y en a une, ni trois.
+  const offres = header.offres;
+  const formule = offres.length > 0;
+  const enVente = formule || isSellable(products);
   const vendable = !formule && isSellable(products);
+  // Une offre à quota fait passer la galerie en mode sélection ; un album complet non.
+  const quota = offreChoisie?.photosAllowance ?? null;
+  const enSelection = quota !== null;
+  const complet = enSelection && selected.length >= quota;
   const { wholeAlbum } = sellableProducts(products);
   // Ce que la galerie contient VRAIMENT, moins ce que la base a accepté de servir. La différence
   // est calculée sur `photos.length` et non sur la limite annoncée : un album de 8 photos avec une
@@ -151,9 +161,16 @@ export function GalleryView({
     return () => observer.disconnect();
   }, [loadMore]);
 
+  // On bloque à la source plutôt qu'au moment de payer : découvrir qu'on a coché 18 photos pour
+  // une formule qui en couvre 17, après avoir parcouru 500 vignettes, est la pire façon de
+  // l'apprendre. Le serveur revérifie de toute façon.
   const toggle = useCallback((id: string) => {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  }, []);
+    setSelected((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (quota !== null && prev.length >= quota) return prev;
+      return [...prev, id];
+    });
+  }, [quota]);
 
   // Lecture dans la grille pré-calculée par la base, jamais un calcul local : le total affiché
   // est exactement celui qui sera débité.
@@ -271,9 +288,11 @@ export function GalleryView({
             )}
             {formule && (
               <p className="mt-0.5 text-[12px] text-text-faint">
-                {enVente
-                  ? "Regardez toutes les photos librement. Vous ne payez qu'une fois, pour y accéder en pleine qualité."
-                  : "Cette galerie est consultable, elle n'est plus proposée à la vente."}
+                {enSelection
+                  ? `Touchez ✓ pour choisir vos photos — ${selected.length} sur ${quota}.`
+                  : offreChoisie
+                    ? "Toutes les photos de la galerie sont comprises."
+                    : "Parcourez toutes les photos librement, puis choisissez votre formule."}
               </p>
             )}
           </div>
@@ -295,7 +314,8 @@ export function GalleryView({
                   photo={photo}
                   index={index}
                   selected={selected.includes(photo.id)}
-                  selectable={vendable}
+                  selectable={vendable || enSelection}
+                  disabled={enSelection && complet && !selected.includes(photo.id)}
                   onOpen={() => setLightbox(index)}
                   onToggle={() => toggle(photo.id)}
                 />
@@ -323,16 +343,16 @@ export function GalleryView({
                   {restantes > 1 ? "ent" : ""}
                 </h2>
                 <p className="mx-auto mt-2 max-w-[420px] text-[13px] leading-relaxed text-text-tertiary">
-                  {formule && offre && enVente
-                    ? `Vous voyez ${photos.length} photo${photos.length > 1 ? "s" : ""} sur les ${header.photoCount} de cette galerie. ${offre.name ?? "L'accès"} vous donne les ${header.photoCount}, en pleine qualité et sans filigrane.`
+                  {formule && enVente
+                    ? `Vous voyez ${photos.length} photo${photos.length > 1 ? "s" : ""} sur les ${header.photoCount} de cette galerie. Nos formules vous donnent accès aux originaux, en pleine qualité et sans filigrane.`
                     : `Cette galerie contient ${header.photoCount} photos au total.`}
                 </p>
-                {formule && offre && enVente && (
+                {formule && enVente && (
                   <button
-                    onClick={() => setCheckoutOpen(true)}
+                    onClick={() => (offres.length === 1 ? setOffreChoisie(offres[0]!) : setOffresOpen(true))}
                     className="mt-4 rounded-sv-pill bg-sv-gradient px-7 py-3 text-[14px] font-bold text-white"
                   >
-                    Tout débloquer — {formatPrice(offre.priceCents ?? 0, offre.currency)}
+                    {offres.length === 1 ? "Choisir cette formule" : "Voir les formules"}
                   </button>
                 )}
               </div>
@@ -347,25 +367,77 @@ export function GalleryView({
         </footer>
       </main>
 
-      {/* ── Barre d'achat, parcours FORMULE ──────────────────────────────── */}
-      {/* Toujours visible, dès la première seconde et sans rien avoir coché : le visiteur doit
-          savoir ce que ça coûte avant de faire défiler 200 photos, pas après. Le montant ne bouge
-          jamais pendant la visite. */}
-      {formule && offre && enVente && !checkoutOpen && lightbox === null && photos.length > 0 && (
+      {/* ── Barre d'achat, parcours FORMULE ─────────────────────────────── */}
+      {/* Trois états, dans l'ordre où le parent les rencontre : il regarde, il a choisi une
+          formule à quota et il coche, il a choisi l'album entier. La barre est là dès la première
+          seconde : il doit savoir ce que ça coûte avant de faire défiler 500 photos. */}
+      {formule && enVente && !checkoutOpen && !offresOpen && lightbox === null && photos.length > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border-strong bg-bg-elevated/95 backdrop-blur">
           <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-            <div className="min-w-0">
-              <div className="truncate text-[13.5px] font-bold">{offre.name ?? "Accès aux photos"}</div>
-              <div className="truncate text-[12px] text-text-tertiary">
-                {offerSummary(offre, header.photoCount)}
-              </div>
-            </div>
-            <button
-              onClick={() => setCheckoutOpen(true)}
-              className="flex-none rounded-sv-pill bg-sv-gradient px-5 py-2.5 text-[13.5px] font-bold text-white"
-            >
-              {formatPrice(offre.priceCents ?? 0, offre.currency)}
-            </button>
+            {!offreChoisie ? (
+              <>
+                <div className="min-w-0">
+                  <div className="text-[13.5px] font-bold">
+                    {offres.length === 1
+                      ? offres[0]!.name
+                      : `${offres.length} formules disponibles`}
+                  </div>
+                  <div className="truncate text-[12px] text-text-tertiary">
+                    {offres.length === 1
+                      ? offerSummary(offres[0]!, header.photoCount)
+                      : `À partir de ${formatPrice(Math.min(...offres.map((o) => o.priceCents)), offres[0]!.currency)}`}
+                  </div>
+                </div>
+                <button
+                  onClick={() => (offres.length === 1 ? setOffreChoisie(offres[0]!) : setOffresOpen(true))}
+                  className="flex-none rounded-sv-pill bg-sv-gradient px-5 py-2.5 text-[13.5px] font-bold text-white"
+                >
+                  {offres.length === 1 ? "Choisir" : "Voir les formules"}
+                </button>
+              </>
+            ) : enSelection ? (
+              <>
+                <div className="min-w-0">
+                  <div className="text-[13.5px] font-bold">
+                    {selected.length} / {quota} photo{quota! > 1 ? "s" : ""}
+                  </div>
+                  <button
+                    onClick={() => setOffresOpen(true)}
+                    className="truncate text-[12px] text-text-tertiary underline underline-offset-2"
+                  >
+                    {offreChoisie.name} — changer de formule
+                  </button>
+                </div>
+                {/* Le prix ne bouge JAMAIS pendant la sélection : c'est tout l'objet d'une
+                    formule. Acheter avec moins de photos que le quota est permis — un parent qui
+                    ne trouve que 11 photos de son enfant doit pouvoir acheter quand même. */}
+                <button
+                  onClick={() => setCheckoutOpen(true)}
+                  disabled={selected.length === 0}
+                  className="flex-none rounded-sv-pill bg-sv-gradient px-5 py-2.5 text-[13.5px] font-bold text-white disabled:opacity-40"
+                >
+                  Continuer — {formatPrice(offreChoisie.priceCents, offreChoisie.currency)}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="min-w-0">
+                  <div className="truncate text-[13.5px] font-bold">{offreChoisie.name}</div>
+                  <button
+                    onClick={() => setOffresOpen(true)}
+                    className="truncate text-[12px] text-text-tertiary underline underline-offset-2"
+                  >
+                    {offerSummary(offreChoisie, header.photoCount)} — changer
+                  </button>
+                </div>
+                <button
+                  onClick={() => setCheckoutOpen(true)}
+                  className="flex-none rounded-sv-pill bg-sv-gradient px-5 py-2.5 text-[13.5px] font-bold text-white"
+                >
+                  {formatPrice(offreChoisie.priceCents, offreChoisie.currency)}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -420,15 +492,22 @@ export function GalleryView({
       {/* Un seul écran de paiement pour les deux parcours : ce qui change, c'est le récapitulatif
           et la sélection transmise. La formule n'en transmet aucune — le serveur retrouve le prix
           depuis le lien, il ne l'apprend pas du navigateur. */}
-      {checkoutOpen && formule && offre && (
+      {checkoutOpen && formule && offreChoisie && (
         <GalleryCheckout
           slug={slug}
           token={token}
           password={password}
-          assetIds={[]}
-          libelle={offre.name ?? "Accès aux photos"}
-          totalCents={offre.priceCents ?? 0}
-          currency={offre.currency}
+          offerId={offreChoisie.offerId}
+          // Une formule à quota transmet les photos choisies ; un album complet n'en transmet
+          // aucune, le serveur fige lui-même tout ce que contient la galerie à cet instant.
+          assetIds={enSelection ? selected : []}
+          libelle={
+            enSelection
+              ? `${offreChoisie.name} · ${selected.length} photo${selected.length > 1 ? "s" : ""}`
+              : offreChoisie.name
+          }
+          totalCents={offreChoisie.priceCents}
+          currency={offreChoisie.currency}
           onClose={() => setCheckoutOpen(false)}
         />
       )}
@@ -446,23 +525,48 @@ export function GalleryView({
         />
       )}
 
+      {offresOpen && (
+        <OffersSheet
+          offres={offres}
+          photoCount={header.photoCount}
+          selection={selected.length}
+          onChoisir={(o) => {
+            // Changer de formule NE VIDE PAS la sélection : quelqu'un qui monte d'un pack garde
+            // ce qu'il a déjà trouvé. On rogne seulement ce qui dépasse le nouveau quota, et
+            // toujours par la fin, pour ne pas retirer un choix fait en premier.
+            setOffreChoisie(o);
+            setOffresOpen(false);
+            if (o.photosAllowance !== null) setSelected((prev) => prev.slice(0, o.photosAllowance!));
+            else setSelected([]);
+          }}
+          onClose={() => setOffresOpen(false)}
+        />
+      )}
+
       {lightbox !== null && photos[lightbox] && (
         <Lightbox
           photo={photos[lightbox]}
           index={lightbox}
           count={total || photos.length}
           selected={selected.includes(photos[lightbox].id)}
-          selectable={vendable}
+          selectable={vendable || enSelection}
+          quotaAtteint={enSelection && complet && !selected.includes(photos[lightbox].id)}
           onToggle={() => toggle(photos[lightbox]!.id)}
           // Le moment où l'on regarde une photo en grand est celui où l'on a envie de l'avoir :
           // le bouton d'achat suit jusque dans la visionneuse plutôt que d'obliger à en sortir.
           achat={
-            formule && offre && enVente
+            // En mode sélection, la visionneuse sert à cocher, pas à acheter : le bouton d'achat
+            // y ferait quitter la photo qu'on est en train de juger.
+            formule && enVente && !enSelection
               ? {
-                  libelle: `Débloquer — ${formatPrice(offre.priceCents ?? 0, offre.currency)}`,
+                  libelle: offreChoisie
+                    ? `Débloquer — ${formatPrice(offreChoisie.priceCents, offreChoisie.currency)}`
+                    : "Choisir ma formule",
                   onAchat: () => {
                     closeLightbox();
-                    setCheckoutOpen(true);
+                    if (offreChoisie) setCheckoutOpen(true);
+                    else if (offres.length === 1) setOffreChoisie(offres[0]!);
+                    else setOffresOpen(true);
                   },
                 }
               : null
@@ -481,6 +585,7 @@ function PhotoTile({
   index,
   selected,
   selectable,
+  disabled,
   onOpen,
   onToggle,
 }: {
@@ -488,6 +593,8 @@ function PhotoTile({
   index: number;
   selected: boolean;
   selectable: boolean;
+  /** Quota atteint : la photo reste visible et agrandissable, elle ne se coche simplement plus. */
+  disabled?: boolean;
   onOpen: () => void;
   onToggle: () => void;
 }) {
@@ -527,11 +634,12 @@ function PhotoTile({
           <button
             onClick={onToggle}
             aria-pressed={selected}
+            disabled={disabled}
             aria-label={selected ? "Retirer de la sélection" : "Ajouter à la sélection"}
             className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full text-[15px] font-bold leading-none transition ${
               selected
                 ? "bg-sv-gradient text-white shadow-[0_2px_10px_rgba(0,0,0,.45)]"
-                : "border-[1.5px] border-white/80 text-white/80 hover:bg-white/20"
+                : "border-[1.5px] border-white/80 text-white/80 hover:bg-white/20 disabled:opacity-30"
             }`}
           >
             ✓
@@ -548,6 +656,7 @@ function Lightbox({
   count,
   selected,
   selectable,
+  quotaAtteint,
   onToggle,
   achat,
   onPrev,
@@ -559,6 +668,8 @@ function Lightbox({
   count: number;
   selected: boolean;
   selectable: boolean;
+  /** Quota atteint et cette photo non cochée : on l'annonce plutôt que d'ignorer l'appui. */
+  quotaAtteint?: boolean;
   onToggle: () => void;
   /** Parcours formule : un seul bouton d'achat, aucune sélection. null dans l'ancien parcours. */
   achat: { libelle: string; onAchat: () => void } | null;
@@ -618,11 +729,16 @@ function Lightbox({
         <div className="flex-none px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button
             onClick={onToggle}
-            className={`w-full rounded-sv-pill py-3 text-[14px] font-bold transition ${
+            disabled={quotaAtteint}
+            className={`w-full rounded-sv-pill py-3 text-[14px] font-bold transition disabled:opacity-45 ${
               selected ? "border border-border-strong bg-surface text-text" : "bg-sv-gradient text-white"
             }`}
           >
-            {selected ? "Retirer de ma sélection" : "Sélectionner cette photo"}
+            {selected
+              ? "Retirer de ma sélection"
+              : quotaAtteint
+                ? "Votre formule est complète"
+                : "Sélectionner cette photo"}
           </button>
         </div>
       )}
