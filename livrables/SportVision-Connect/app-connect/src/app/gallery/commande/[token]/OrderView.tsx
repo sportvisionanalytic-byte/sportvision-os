@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { formatPrice } from "@/lib/gallery/pricing";
+import { formatMontant } from "@/lib/gallery/pricing";
 import type { OrderSummary } from "@/lib/gallery/data";
 import { ConnectBlock } from "./ConnectBlock";
 import { ServicesBlock } from "./ServicesBlock";
@@ -98,7 +98,7 @@ export function OrderView({
           {order.photos.length > 0 && ` · ${order.photos.length} photo${order.photos.length > 1 ? "s" : ""}`}
         </p>
         <p className="mt-0.5 text-[12px] text-text-faint">
-          Commande {order.orderId.slice(0, 8).toUpperCase()} · {formatPrice(order.totalCents, order.currency)}
+          Commande {order.orderId.slice(0, 8).toUpperCase()} · {formatMontant(order.totalCents, order.currency)}
           {!order.dejaRattachee && ` · disponible jusqu'au ${expiration}`}
         </p>
       </header>

@@ -146,3 +146,17 @@ export function formatPrice(cents: number, currency = "eur"): string {
     minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
   }).format(cents / 100);
 }
+
+/**
+ * Un montant tel qu'on le dit au client.
+ *
+ * « 0 € » est exact mais ne se dit pas : on annonce « Offert » dans la liste des formules, et
+ * afficher « 0 € » deux écrans plus loin donne l'impression que quelque chose a changé. Un seul
+ * endroit décide de cette formulation, sinon elle diverge d'un écran à l'autre — c'est exactement
+ * ce qui s'est produit entre la feuille des offres et la page de commande.
+ *
+ * Le 0 reste 0 en base : c'est une question de mots, pas de comptabilité.
+ */
+export function formatMontant(cents: number, currency = "eur"): string {
+  return cents === 0 ? "Offert" : formatPrice(cents, currency);
+}

@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
-import { formatPrice } from "@/lib/gallery/pricing";
+import { formatMontant } from "@/lib/gallery/pricing";
 import type { MyGallery, MyOrder } from "@/lib/gallery/data";
 
 // Même univers que la galerie publique : mêmes typographies, même dégradé, mêmes arrondis. Le
@@ -91,10 +91,10 @@ export function GaleriesView({ galeries, commandes }: { galeries: MyGallery[]; c
                         .join(" · ")}
                     </span>
                   </span>
-                  {/* « Offert » plutôt que « 0,00 € » : c'est ce qu'on lui a annoncé à l'achat.
-                      Le 0 reste en base pour la comptabilité. */}
+                  {/* « Offert » plutôt que « 0 € » : c'est ce qu'on lui a annoncé à l'achat, et
+                      la formulation vit à un seul endroit (formatMontant). */}
                   <span className="flex-none text-[13.5px] font-bold tabular-nums">
-                    {c.totalCents === 0 ? "Offert" : formatPrice(c.totalCents, c.currency)}
+                    {formatMontant(c.totalCents, c.currency)}
                   </span>
                 </Link>
               ))}

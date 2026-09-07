@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { startGalleryCheckout } from "@/lib/gallery/data";
-import { formatPrice } from "@/lib/gallery/pricing";
+import { formatMontant } from "@/lib/gallery/pricing";
 
 // Checkout invité — le §14 du prompt : « demander uniquement les informations nécessaires ».
 // Prénom/nom et e-mail, rien d'autre. Pas de mot de passe, pas de compte, pas d'adresse : une
@@ -125,7 +125,7 @@ export function GalleryCheckout({
         <div className="mt-4 flex items-center justify-between border-t border-border pt-3.5">
           <span className="text-[13px] text-text-secondary">{libelle}</span>
           <span className="font-sora text-[20px] font-extrabold tabular-nums">
-            {formatPrice(totalCents, currency)}
+            {formatMontant(totalCents, currency)}
           </span>
         </div>
 
