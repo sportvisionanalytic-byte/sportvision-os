@@ -181,6 +181,30 @@ await page.keyboard.press("Tab");
 t("Tab boucle sur le premier element", (await page.evaluate(() => document.activeElement?.id)) === "m1");
 await page.evaluate(() => closeModal());
 
+// ── 10. La course entre les focus differes ──────────────────────────────────
+// Modale et confirmation posent toutes deux leur focus a la frame suivante. Enchainer les
+// deux faisait atterrir le focus dans le formulaire cache derriere la question, ou nulle part.
+// Un seul essai ne suffit pas a le voir : le defaut ne se produisait qu'environ deux fois sur
+// douze, d'ou la repetition ici.
+console.log("\n10. Le focus ne se fait pas voler quand modale et confirmation s'enchainent");
+const oublis = await page.evaluate(async () => {
+  const rates = [];
+  for (let i = 0; i < 15; i++) {
+    openModal('<input id="ch"><button id="bt">Ok</button>');
+    await new Promise((r) => setTimeout(r, 110));
+    closeModal();
+    demanderConfirmation("Test ?");
+    await new Promise((r) => setTimeout(r, 450));
+    if (document.activeElement?.id !== "sv-confirm-non") {
+      rates.push(document.activeElement?.id || document.activeElement?.tagName);
+    }
+    _confirmFermer(false);
+    await new Promise((r) => setTimeout(r, 60));
+  }
+  return rates;
+});
+t(`le focus tient sur 15 enchainements (${oublis.length} rate(s))`, oublis.length === 0, oublis.join(" "));
+
 t("aucune erreur JavaScript pendant tout le test", erreursJs.length === 0, erreursJs.join(" | "));
 
 console.log(`\n${ok}/${ok + ko} verifications passees.`);

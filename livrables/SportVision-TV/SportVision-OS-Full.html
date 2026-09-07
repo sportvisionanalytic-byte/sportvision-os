@@ -3519,7 +3519,7 @@ async function doLogin(){
     if(profs[0].prenom)localStorage.setItem('sv_prenom',profs[0].prenom);
     goApp(profs[0].role);
   }catch(e){
-    errEl.textContent=e.message||'Erreur de connexion.';
+    errEl.textContent=msgErreur(e,'Erreur de connexion.');
     btn.textContent='Se connecter';btn.disabled=false;
   }
 }
@@ -4065,6 +4065,49 @@ async function sbFetch(path,opts={}){
 // ni ignorer silencieusement un objet d'erreur comme si c'était un succès.
 function sbErr(r){return !!(r&&typeof r==='object'&&!Array.isArray(r)&&(r.code||r.message));}
 
+// ── TRADUIRE UNE ERREUR AVANT DE L'AFFICHER ─────────────────────────────────
+// Jusqu'ici, environ 180 endroits ecrivaient `msgErreur(r,'Action impossible.')`. La phrase
+// francaise n'etait donc utilisee que si Postgres ne disait rien — c'est-a-dire presque
+// jamais. Ce qui arrivait a l'ecran, c'etait le message technique : « duplicate key value
+// violates unique constraint "clients_email_key" », ou « new row violates row-level security
+// policy for table "prestations" ». Illisible, inquietant, et cela expose au passage des noms
+// de tables et de contraintes.
+//
+// msgErreur tranche selon la provenance :
+//   - P0001, c'est une regle metier levee par nos propres fonctions SQL (RAISE EXCEPTION),
+//     toujours rédigée en français et destinée à l'utilisateur : on l'affiche telle quelle ;
+//   - un code Postgres connu : une phrase française qui explique la situation ;
+//   - tout le reste : la phrase de repli fournie par l'appelant, jamais le texte brut.
+const _ERREURS_SQL={
+  '23505':'Cette valeur existe déjà.',
+  '23503':'Cet élément est encore utilisé ailleurs, il ne peut pas être supprimé.',
+  '23502':'Un champ obligatoire n\'a pas été rempli.',
+  '23514':'Une des valeurs saisies n\'est pas acceptée.',
+  '23P01':'Cette période chevauche une autre déjà enregistrée.',
+  '22P02':'Une des valeurs saisies n\'a pas le bon format.',
+  '22001':'Un texte saisi est trop long.',
+  '22003':'Un nombre saisi est trop grand.',
+  '42501':'Vous n\'avez pas les droits nécessaires pour cette action.',
+  '42703':'Cet écran n\'est plus à jour. Rechargez la page.',
+  '42P01':'Cet écran n\'est plus à jour. Rechargez la page.',
+  'PGRST301':'Votre session a expiré. Reconnectez-vous.',
+  'PGRST204':'Cet écran n\'est plus à jour. Rechargez la page.',
+  'PGRST116':'Cet élément n\'existe plus.',
+  '57014':'L\'opération a pris trop de temps. Réessayez.',
+  '53300':'Le service est momentanément saturé. Réessayez dans un instant.',
+  'network_error':'Connexion perdue. Vérifiez votre réseau et réessayez.',
+};
+function msgErreur(r,repli){
+  const defaut=repli||'Action impossible.';
+  if(!r||typeof r!=='object')return defaut;
+  const code=String(r.code||'');
+  if(code==='P0001'&&r.message)return String(r.message);
+  if(_ERREURS_SQL[code])return _ERREURS_SQL[code];
+  // Une erreur reseau remonte comme une exception, sans code : elle se reconnait au texte.
+  if(/failed to fetch|networkerror|load failed/i.test(String(r.message||'')))return _ERREURS_SQL.network_error;
+  return defaut;
+}
+
 // ── REALTIME (Supabase postgres_changes) ────────────────────────────────
 // Sync live pour les écrans les plus consultés en continu par le staff :
 // Centre documentaire (devis/contrats — onglet "Signatures en cours"),
@@ -4384,12 +4427,16 @@ function _modalFocusEls(){
     .filter(el=>!el.disabled&&el.offsetParent!==null);
 }
 function _modalFocusFirst(){
+  // La modale place son focus a la frame suivante. Si une confirmation s'est ouverte entre
+  // temps (elle est au-dessus), ce focus differe arriverait apres celui de la confirmation et
+  // le lui volerait : l'utilisateur se retrouverait a taper dans le formulaire cache derriere
+  // la question qu'on vient de lui poser. La couche du dessus garde la main.
+  if(_confirmResolve)return null;
   const els=_modalFocusEls();
-  if(els.length){els[0].focus();}
-  else{
-    const ct=document.getElementById('sv-modal-ct');
-    if(ct){ct.setAttribute('tabindex','-1');ct.focus();}
-  }
+  if(els.length){els[0].focus();return els[0];}
+  const ct=document.getElementById('sv-modal-ct');
+  if(ct){ct.setAttribute('tabindex','-1');ct.focus();return ct;}
+  return null;
 }
 // _svRendreVisible : poser la classe d'ouverture PUIS forcer le navigateur a recalculer le
 // style avant de donner le focus.
@@ -4406,9 +4453,20 @@ function _modalFocusFirst(){
 // transitionend fonctionnerait aussi, mais ne se declencherait jamais chez un utilisateur qui a
 // desactive les animations — le focus serait alors perdu pour precisement les personnes qui en
 // dependent le plus.
+// `focaliser` doit RENVOYER l'element qu'elle a tente de focaliser, pour qu'on puisse verifier
+// que le focus a bien pris. On reessaie tant que ce n'est pas le cas, sur quelques instants
+// decroissants : une seule tentative, meme bien placee, s'avere insuffisante dans un fichier de
+// cette taille ou d'autres focus differes (ouverture/fermeture de modale) peuvent se croiser.
+// Mesure a l'appui : une tentative unique echouait environ deux fois sur douze.
 function _svRendreVisible(el,focaliser){
   el.classList.add('on');
-  requestAnimationFrame(focaliser);
+  let essais=0;
+  const tenter=()=>{
+    const cible=focaliser();
+    if(!cible||document.activeElement===cible)return;
+    if(++essais<5)setTimeout(tenter,40*essais);
+  };
+  requestAnimationFrame(tenter);
 }
 function openModal(html){
   if(_modalCloseTimer){clearTimeout(_modalCloseTimer);_modalCloseTimer=null;}
@@ -4424,10 +4482,13 @@ function closeModal(){
     document.getElementById('sv-modal-ct').innerHTML='';
     _modalCloseTimer=null;
   },220);
-  if(_modalPrevFocus&&document.contains(_modalPrevFocus)&&typeof _modalPrevFocus.focus==='function'){
+  // Meme raison qu'au-dessus : ne pas rendre le focus a l'element d'origine tant qu'une
+  // confirmation est ouverte, sinon fermer la modale sous une confirmation deplacerait le
+  // focus hors de celle-ci.
+  if(!_confirmResolve&&_modalPrevFocus&&document.contains(_modalPrevFocus)&&typeof _modalPrevFocus.focus==='function'){
     _modalPrevFocus.focus();
   }
-  _modalPrevFocus=null;
+  if(!_confirmResolve)_modalPrevFocus=null;
 }
 function copier(txt){
   if(!txt)return;
@@ -4479,7 +4540,11 @@ function _confirmOuvrir(corpsHtml,{titre='Confirmation',action='Confirmer',dange
   c.onclick=e=>{if(e.target===c)_confirmFermer(false);};
   return new Promise(res=>{
     _confirmResolve=res;
-    requestAnimationFrame(()=>_svRendreVisible(c,()=>document.getElementById('sv-confirm-non').focus()));
+    requestAnimationFrame(()=>_svRendreVisible(c,()=>{
+      const b=document.getElementById('sv-confirm-non');
+      if(b)b.focus();
+      return b;
+    }));
   });
 }
 /** Texte brut, echappe ici. Une ligne vide separe deux paragraphes, comme le confirm() natif
@@ -4619,7 +4684,7 @@ async function creerPrestation(){
       created_by:localStorage.getItem('sv_uid')
     };
     const r=await sbFetch('prestations',{method:'POST',body});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Création impossible.');if(btn){btn.disabled=false;btn.textContent='Créer la prestation';}return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Création impossible.'));if(btn){btn.disabled=false;btn.textContent='Créer la prestation';}return;}
     closeModal();
     toast('Prestation créée.','ok');
     loadViewData(S.role,S.view);
@@ -4844,7 +4909,7 @@ async function creerClient(){
       origine_prospect:document.getElementById('fc-origine').value||null,
       created_by:localStorage.getItem('sv_uid')
     }});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Création impossible.');if(btn){btn.disabled=false;btn.textContent='Créer le client';}return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Création impossible.'));if(btn){btn.disabled=false;btn.textContent='Créer le client';}return;}
     const created=Array.isArray(r)&&r[0];
     // Offre sélectionnée au même écran (28/08/2026, demande Fouka) : évite
     // l'aller-retour "créer le client" puis "ouvrir Nouveau contrat" séparé
@@ -4864,7 +4929,7 @@ async function creerClient(){
       if(!sbErr(rc)){
         contratMsg=' Contrat créé.';
         if(contratPayload.statut==='actif')await sbFetch('clients?id=eq.'+created.id,{method:'PATCH',body:{statut:'partenaire'}});
-      }else contratMsg=' (contrat non créé : '+(rc.message||'erreur')+')';
+      }else contratMsg=' (contrat non créé : '+(msgErreur(rc,'erreur'))+')';
     }
     closeModal();
     toast('Client créé.'+contratMsg,'ok');
@@ -5468,7 +5533,7 @@ async function avancerStatutPrestation(id,statut){
   if(!next)return;
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:next}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
     toast('→ '+(SL[next]||next),'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
@@ -5592,7 +5657,7 @@ function modalDetailPrestation(idx){
 async function validerPrestation(id,nouveauStatut){
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:nouveauStatut}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Validation impossible.')),'er');return;}
     closeModal();
     const lbl=nouveauStatut==='confirmée'?'Prestation validée et confirmée.':'Prestation refusée.';
     const type=nouveauStatut==='confirmée'?'ok':'er';
@@ -5633,7 +5698,7 @@ async function modifierPrestation(id){
       livrables_demandes:document.getElementById('pd-livr')?.value||null,
     };
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Modification impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Modification impossible.'));return;}
     closeModal();
     toast('Prestation mise à jour.','ok');
     loadViewData(S.role,S.view);
@@ -5646,7 +5711,7 @@ function supprimerPrestation(id){
   confirmerAction('Supprimer cette prestation ? Cette action est irréversible.',async()=>{
     try{
       const r=await sbFetch('prestations?id=eq.'+id,{method:'DELETE'});
-      if(sbErr(r)){toast('Erreur : '+(r.message||'Suppression impossible.'),'er');return;}
+      if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Suppression impossible.')),'er');return;}
       toast('Prestation supprimée.','ok');
       loadViewData(S.role,S.view);
       updateNavBadges(S.role);
@@ -5802,7 +5867,7 @@ function renderClientsTable(){
 
 async function crmAvancerStatut(id,statut){
   const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
   const lb={qualifié:'Client qualifié.',devis_envoyé:'Devis à envoyer.',négociation:'En négociation.',partenaire:'Nouveau partenaire !',client:'Client signé !'}[statut]||'Statut mis à jour.';
   toast(lb,'ok');
   loadClients();
@@ -6900,7 +6965,7 @@ async function crediterOrganisationProjet(clientId){
   if(!amount){err.textContent='Indiquez un montant non nul (positif pour créditer, négatif pour corriger).';return;}
   err.textContent='Enregistrement…';
   const r=await sbFetch('rpc/credit_organization',{method:'POST',body:{p_organization_id:clientId,p_amount:amount,p_label:lblInp.value.trim()||null}});
-  if(sbErr(r)){err.textContent=r.message||'Erreur lors du crédit.';return;}
+  if(sbErr(r)){err.textContent=msgErreur(r,'Erreur lors du crédit.');return;}
   toast('Crédits mis à jour','ok');
   inp.value='';lblInp.value='';
   chargerCreditsProjetClient(clientId);
@@ -7070,7 +7135,7 @@ async function modifierClient(id){
       code_postal:document.getElementById('fce-cp')?.value.trim()||null,
       notes:document.getElementById('fce-notes').value.trim()||null,
     }});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Modification impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Modification impossible.'));return;}
     closeModal();
     toast('Client mis à jour.','ok');
     loadViewData(S.role,S.view);
@@ -7091,7 +7156,7 @@ async function uploaderLogoClient(clientId){
     const url=await sbUpload('club-logos','clients/'+sbUploadSafePath(file),file);
     if(!url){if(statusEl)statusEl.textContent='Échec de l\'envoi.';return;}
     const r=await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{logo_url:url}});
-    if(sbErr(r)){if(statusEl)statusEl.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+    if(sbErr(r)){if(statusEl)statusEl.textContent='Erreur : '+(msgErreur(r,'enregistrement impossible.'));return;}
     const idx=_clientsCache.findIndex(c=>c.id===clientId);
     if(idx>=0)_clientsCache[idx].logo_url=url;
     const preview=document.getElementById('fce-logo-preview');
@@ -7146,7 +7211,7 @@ async function ajouterOrganigrammeEntry(clientId){
     telephone:document.getElementById('corg-tel')?.value.trim()||null,
     created_by:S.uid,
   }});
-  if(sbErr(r)){if(errEl)errEl.textContent=r.message||'Erreur lors de l\'ajout.';return;}
+  if(sbErr(r)){if(errEl)errEl.textContent=msgErreur(r,'Erreur lors de l\'ajout.');return;}
   loadClientOrganigramme(clientId);
 }
 
@@ -7526,7 +7591,7 @@ function recrutCard(c,stage){
 // pôle) plutôt que de créer le compte elle-même, cohérent avec "propose, la Direction valide".
 async function proposerCandidatureDirection(id){
   const r=await sbFetch('rpc/propose_candidature_direction',{method:'POST',body:{p_candidature_id:id}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'impossible de proposer cette candidature.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'impossible de proposer cette candidature.')),'er');return;}
   toast('Candidature proposée à la Direction.','ok');
 }
 async function candVoirCv(cvPath){
@@ -7536,7 +7601,7 @@ async function candVoirCv(cvPath){
 }
 async function recrutMove(id,statut){
   const r=await sbFetch('recruitment_applications?id=eq.'+id,{method:'PATCH',body:{statut}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'action impossible.')),'er');return;}
   const c=_recrutCache.find(x=>x.id===id);if(c)c.statut=statut;
   renderRecrutement();
   if(statut==='refuse'){
@@ -7562,7 +7627,7 @@ async function envoyerEmailRefusCandidature(applicationId){
     if(!res.ok)throw new Error(j.error||('Erreur serveur ('+res.status+')'));
     toast('E-mail de refus envoyé au candidat.','ok');
   }catch(e){
-    toast('Candidature refusée, mais l\'e-mail n\'a pas pu être envoyé : '+(e.message||'erreur réseau.'),'wa');
+    toast('Candidature refusée, mais l\'e-mail n\'a pas pu être envoyé : '+(msgErreur(e,'erreur réseau.')),'wa');
   }
 }
 function modalRecrutCreerCollaborateur(id){
@@ -7956,13 +8021,13 @@ async function renderChecklistEvenement(orgId,orgNom){
 
 async function toggleChecklistItem(id,checked,orgId,orgNom){
   const r=await sbFetch('event_checklist_items?id=eq.'+id,{method:'PATCH',body:{fait:checked}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Modification impossible.'),'er');}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Modification impossible.')),'er');}
   renderChecklistEvenement(orgId,orgNom);
 }
 
 async function genererChecklistStandard(orgId,orgNom){
   const r=await sbFetch('rpc/seed_event_checklist',{method:'POST',body:{p_organization_id:orgId}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Génération impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Génération impossible.')),'er');return;}
   toast('Checklist standard générée.','ok');
   renderChecklistEvenement(orgId,orgNom);
 }
@@ -8114,7 +8179,7 @@ async function creerAccesCmAgency(){
       granted_by:S.uid,
     }});
     if(sbErr(r)){
-      if(err)err.textContent=r.code==='23505'?'Ce club a déjà un accès délégué pour cette agence.':'Erreur : '+(r.message||'Délégation impossible.');
+      if(err)err.textContent=r.code==='23505'?'Ce club a déjà un accès délégué pour cette agence.':'Erreur : '+(msgErreur(r,'Délégation impossible.'));
       if(btn){btn.disabled=false;btn.textContent='Déléguer';}
       return;
     }
@@ -8240,7 +8305,7 @@ async function creerMembreCmAgency(){
       cm_super_access:false,
     }});
     if(sbErr(r)){
-      if(err)err.textContent=r.code==='23505'?'Cette personne est déjà membre de cette agence.':'Erreur : '+(r.message||'Ajout impossible.');
+      if(err)err.textContent=r.code==='23505'?'Cette personne est déjà membre de cette agence.':'Erreur : '+(msgErreur(r,'Ajout impossible.'));
       if(btn){btn.disabled=false;btn.textContent='Ajouter';}
       return;
     }
@@ -8257,7 +8322,7 @@ function supprimerClient(id){
   confirmerAction('Supprimer ce client ? Cette action est irréversible.',async()=>{
     try{
       const r=await sbFetch('clients?id=eq.'+id,{method:'DELETE'});
-      if(sbErr(r)){toast('Erreur : '+(r.message||'Suppression impossible.'),'er');return;}
+      if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Suppression impossible.')),'er');return;}
       toast('Client supprimé.','ok');
       loadViewData(S.role,S.view);
       updateNavBadges(S.role);
@@ -8491,7 +8556,7 @@ async function sauvegarderContact(clientId){
       next_action:next||null,
       next_action_date:nextDate||null,
     }});
-    if(sbErr(rContact)){if(err)err.textContent='Erreur : '+(rContact.message||'Enregistrement impossible.');return;}
+    if(sbErr(rContact)){if(err)err.textContent='Erreur : '+(msgErreur(rContact,'Enregistrement impossible.'));return;}
     const patchCli={};
     if(next||nextDate){patchCli.prochaine_action=next||null;patchCli.date_prochaine_action=nextDate||null;}
     // Auto-calcul score_priorite
@@ -9039,7 +9104,7 @@ async function _medLoadExpeditions(){
 
 async function _medMarquerExpedie(orderId){
   const r=await sbFetch('rpc/staff_mark_media_order_shipped',{method:'POST',body:{p_order_id:orderId}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Action impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Action impossible.')),'er');return;}
   toast('Marqué comme expédié.','ok');
   _medLoadExpeditions();
 }
@@ -9103,7 +9168,7 @@ async function _medSavePolicy(clubId,saisonId,policyId){
   const r=policyId
     ?await sbFetch('media_club_policy?id=eq.'+policyId,{method:'PATCH',body})
     :await sbFetch('media_club_policy',{method:'POST',body});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Enregistrement impossible.')),'er');return;}
   toast('Politique enregistrée.','ok');
   _medLoadPolicy(clubId,saisonId);
 }
@@ -9147,7 +9212,7 @@ async function _medDuplicateProduit(productId){
   if(!p)return;
   const body={club_id:clubId,saison_id:saisonId,name:p.name+' (copie)',type:p.type,price_cents:p.price_cents,currency:p.currency,scope_type:p.scope_type,team_ids:p.team_ids||[],physical_product:p.physical_product,status:'draft'};
   const r=await sbFetch('media_products',{method:'POST',body});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Duplication impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Duplication impossible.')),'er');return;}
   await _medLoadProducts(clubId,saisonId);
   toast('Produit dupliqué en brouillon — à relire avant activation.','ok');
   modalMediaProduit(Array.isArray(r)&&r[0]?.id);
@@ -9249,7 +9314,7 @@ async function _medSaveProduit(clubId,saisonId,productId){
   const r=productId
     ?await sbFetch('media_products?id=eq.'+productId,{method:'PATCH',body})
     :await sbFetch('media_products',{method:'POST',body});
-  if(sbErr(r)){errEl.textContent=r.message||'Enregistrement impossible.';return;}
+  if(sbErr(r)){errEl.textContent=msgErreur(r,'Enregistrement impossible.');return;}
   closeModal();
   toast(productId?'Produit mis à jour.':'Produit créé.','ok');
   _medLoadProducts(clubId,saisonId);
@@ -9294,7 +9359,7 @@ async function _medGenererLienInvite(productId,clubId){
   const errEl=document.getElementById('mli-err');
   if(!playerId){errEl.textContent='Choisissez un joueur.';return;}
   const r=await sbFetch('media_guest_checkout_tokens',{method:'POST',body:{club_id:clubId,product_id:productId,beneficiary_person_id:playerId},headers:{Prefer:'return=representation'}});
-  if(sbErr(r)){errEl.textContent=r.message||'Génération impossible.';return;}
+  if(sbErr(r)){errEl.textContent=msgErreur(r,'Génération impossible.');return;}
   const token=Array.isArray(r)&&r[0]?.token;
   if(!token){errEl.textContent='Génération impossible.';return;}
   const url='https://connect.sportvision-an.fr/media-checkout/'+token;
@@ -9341,7 +9406,7 @@ async function _medDuplicateOperation(operationId){
   if(!o)return;
   const body={club_id:clubId,saison_id:saisonId,name:o.name+' (copie)',kind:o.kind,event_id:null,team_ids:o.team_ids||[],date_debut:o.date_debut,date_fin:o.date_fin,status:'draft'};
   const r=await sbFetch('media_sales_operations',{method:'POST',body});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Duplication impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Duplication impossible.')),'er');return;}
   const newId=Array.isArray(r)&&r[0]?.id;
   const links=(await sbFetch('media_sales_operation_products?select=product_id&sales_operation_id=eq.'+operationId).catch(()=>[]))||[];
   if(newId&&links.length){
@@ -9422,7 +9487,7 @@ async function _medSaveOperation(clubId,saisonId,operationId){
   const r=operationId
     ?await sbFetch('media_sales_operations?id=eq.'+operationId,{method:'PATCH',body})
     :await sbFetch('media_sales_operations',{method:'POST',body});
-  if(sbErr(r)){errEl.textContent=r.message||'Enregistrement impossible.';return;}
+  if(sbErr(r)){errEl.textContent=msgErreur(r,'Enregistrement impossible.');return;}
   const opId=operationId||(Array.isArray(r)&&r[0]?.id);
   if(opId){
     // Association produits : on repart d'une liste propre à chaque enregistrement plutôt que de
@@ -9979,8 +10044,8 @@ async function computeATraiterItems(roleFilter){
   [...kitConflitMap.entries()].filter(([,g])=>g.length>1).forEach(([key,g])=>{
     add('production','important','Conflit matériel',`${g.length} réservations sur le même kit — ${g[0].prestations?.clients?.nom||g[0].prestations?.reference||'—'}`,`switchView('kits')`,'prod','kit_reservations',key,g[0].prestations?.date_prestation);
   });
-  notifRefus.forEach(n=>add('production','important','Opérateur a refusé',n.prestations?.clients?.nom||n.message||'—',n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
-  notifCm.forEach(n=>add('production','important','Mission modifiée par le CM',n.prestations?.clients?.nom||n.message||'—',n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
+  notifRefus.forEach(n=>add('production','important','Opérateur a refusé',n.prestations?.clients?.nom||msgErreur(n,'—'),n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
+  notifCm.forEach(n=>add('production','important','Mission modifiée par le CM',n.prestations?.clients?.nom||msgErreur(n,'—'),n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
   // Livraison soumise → à valider (§18) : statut='livrée' = seul statut que
   // validate_production() sait faire transitionner (même règle que loadProdDash).
   pre.filter(p=>p.statut==='livrée').forEach(p=>add('production','normal','Livraison à valider',p.clients?.nom||p.reference||'—',`modalDetailById('${p.id}')`,'prod','prestations',p.id,p.date_prestation));
@@ -10128,7 +10193,7 @@ async function atraiterSetStatut(key,type,titre,statut){
     const uid=localStorage.getItem('sv_uid');
     const body={item_key:key,type,titre,statut,user_id:uid||null};
     const r=await sbFetch('atraiter_overrides?on_conflict=item_key',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'action impossible')),'er');return;}
     _atraiterOverrides.set(key,{statut});
   }
   toast('Mis à jour.','ok');
@@ -10397,8 +10462,8 @@ async function loadProdDash(){
       &&!e.collaborateur?.materiel_personnel
       &&!kitRes.some(r=>r.prestation_id===p.id))).slice(0,3)
       .forEach(p=>prioItems.push({lvl:'er',txt:`Kit à attribuer : ${esc(p.clients?.nom||'—')} (opérateur sans matériel perso)`,action:`switchView('kits')`}));
-    notifRefus.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`Opérateur a refusé : ${esc(n.prestations?.clients?.nom||n.message||'—')}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
-    notifCm.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`Mission modifiée par le CM : ${esc(n.prestations?.clients?.nom||n.message||'—')}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
+    notifRefus.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`Opérateur a refusé : ${esc(n.prestations?.clients?.nom||msgErreur(n,'—'))}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
+    notifCm.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`Mission modifiée par le CM : ${esc(n.prestations?.clients?.nom||msgErreur(n,'—'))}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
     livraisonsAValider.slice(0,3).forEach(p=>prioItems.push({lvl:'ok',txt:`Livraison à valider : ${esc(p.clients?.nom||'—')}`,action:`modalDetailById('${p.id}')`}));
     inc.filter(al=>al.niveau==='critique').slice(0,2).forEach(al=>prioItems.push({lvl:'er',txt:`Incident critique : ${esc(al.type_incident||al.description?.slice(0,40)||'—')}`,action:`switchView('incidents')`}));
     const elPrio=document.getElementById('prod-dash-priorite');
@@ -11355,7 +11420,7 @@ async function loadPhotoAlbums(el){
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
     const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,watermark_previews,cover_asset_id,clubs(nom),club_teams(name),saisons(label)&order=created_at.desc&limit=200');
-    if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(rows.message||'Impossible de charger les albums.')+'</div></div>';return;}
+    if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(msgErreur(rows,'Impossible de charger les albums.'))+'</div></div>';return;}
     _photoAlbums=Array.isArray(rows)?rows:[];
     renderPhotoAlbumsList(_photoAlbums);
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
@@ -11476,7 +11541,7 @@ async function sauvegarderAlbum(albumId){
     // season_id texte, cassé depuis le passage au moteur média générique du 02/09). Même RPC déjà
     // utilisée ailleurs pour ce rapprochement texte→uuid.
     const saisonRpc=await sbFetch('rpc/get_or_create_saison',{method:'POST',body:{p_label:season}});
-    if(sbErr(saisonRpc)){err.textContent='Erreur : '+(saisonRpc.message||'saison invalide.');return;}
+    if(sbErr(saisonRpc)){err.textContent='Erreur : '+(msgErreur(saisonRpc,'saison invalide.'));return;}
     const body={
       title,
       club_id:clubId,
@@ -11495,7 +11560,7 @@ async function sauvegarderAlbum(albumId){
       body.created_by=S.uid;
       r=await sbFetch('media_albums',{method:'POST',body});
     }
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Enregistrement impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Enregistrement impossible.'));return;}
     closeModal();
     toast(albumId?'Album mis à jour':'Album créé — encore en brouillon','ok');
     loadPhotoAlbums();
@@ -11508,14 +11573,14 @@ async function sauvegarderAlbum(albumId){
 // PostgREST. Trouve en branchant l'upload, puisque publier un album est l'etape juste apres.
 async function publierAlbum(id){
   const r=await sbFetch('media_albums?id=eq.'+id,{method:'PATCH',body:{status:'published',published_at:new Date().toISOString()}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Publication impossible.'),'error');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Publication impossible.')),'error');return;}
   toast('Album publié — visible dans le Pass Photo Connect','ok');
   loadPhotoAlbums();
 }
 
 async function depublierAlbum(id){
   const r=await sbFetch('media_albums?id=eq.'+id,{method:'PATCH',body:{status:'draft'}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Dépublication impossible.'),'error');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Dépublication impossible.')),'error');return;}
   toast('Album repassé en brouillon','ok');
   loadPhotoAlbums();
 }
@@ -11776,7 +11841,7 @@ async function _galTraiterFichier(entry){
     const fin=await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{
       thumb_path:thumbPath,preview_path:previewPath,status:'ready',processing_error:null,
     }});
-    if(sbErr(fin)){setEtat('erreur','Finalisation : '+(fin.message||'échec'));return;}
+    if(sbErr(fin)){setEtat('erreur','Finalisation : '+(msgErreur(fin,'échec')));return;}
     setEtat('termine','');
   }catch(e){
     setEtat('erreur',(e&&e.message)||'Traitement impossible (image illisible ?)');
@@ -12380,7 +12445,7 @@ function galQrCode(url){
 
 async function galBasculerFiligrane(actif){
   const r=await sbFetch('media_albums?id=eq.'+_galAlbum.id,{method:'PATCH',body:{watermark_previews:!!actif}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'modification impossible'),'error');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'modification impossible')),'error');return;}
   _galAlbum.watermark_previews=!!actif;
   // Les aperçus déjà produits ne sont pas régénérés : le réglage vaut pour les dépôts suivants.
   // Le dire plutôt que de laisser croire à un effet rétroactif.
@@ -12395,7 +12460,7 @@ async function galDefinirCouverture(assetId){
   const r=await sbFetch('media_albums?id=eq.'+_galAlbum.id,{method:'PATCH',body:{
     cover_asset_id:assetId,cover_preview_url:_galPublicUrl(asset.preview_path),
   }});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'impossible'),'error');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'impossible')),'error');return;}
   toast('Couverture mise à jour','ok');
   _galChargerAssets();
 }
@@ -12403,7 +12468,7 @@ async function galDefinirCouverture(assetId){
 async function galBasculerVisibilite(assetId,statut){
   const cible=statut==='hidden'?'ready':'hidden';
   const r=await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{status:cible}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'impossible'),'error');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'impossible')),'error');return;}
   _galChargerAssets();
 }
 
@@ -12417,7 +12482,7 @@ async function galSupprimerAsset(assetId){
   await _galDeleteObject('galerie-previews',asset.preview_path);
   await _galDeleteObject('galerie-previews',asset.thumb_path);
   const r=await sbFetch('media_assets?id=eq.'+assetId,{method:'DELETE'});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible'),'error');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible')),'error');return;}
   toast('Photo supprimée','ok');
   _galChargerAssets();
 }
@@ -12596,7 +12661,7 @@ function copierLien(encodedUrl){
 async function validerLienMedia(id){
   try{
     const r=await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{statut:'valide',updated_at:new Date().toISOString()}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Validation impossible.')),'er');return;}
     toast('Lien validé','ok');
     await logMediaHistory(null,S.uid,'Lien validé','lien',id,'a_verifier','valide');
     loadProdMedias();
@@ -12632,7 +12697,7 @@ async function executerDemandeCorrection(id,ajouteurId,prestationId){
   if(!motif){err.textContent='Le motif est obligatoire.';return;}
   err.textContent='En cours…';
   const r=await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{statut:'correction_demandee',commentaire:motif,updated_at:new Date().toISOString()}});
-  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'opération impossible.');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'opération impossible.'));return;}
   await logMediaHistory(prestationId||null,S.uid,'Correction demandée','lien',id,'a_verifier','correction_demandee');
   if(ajouteurId){
     await creerNotifSiActive(ajouteurId,'taches',{type:'correction_media',titre:'Correction demandée sur un lien',message:motif,lue:false,prestation_id:prestationId||null}).catch(()=>{});
@@ -12693,7 +12758,7 @@ async function taguerMediaBank(id){
   const cat=(document.getElementById('mb-cat')?.value||'').trim();
   if(!sport||!cat){if(err)err.textContent='Sport et catégorie sont obligatoires.';return;}
   const r=await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{is_media_bank:true,media_bank_sport:sport,media_bank_category:cat,updated_at:new Date().toISOString()}});
-  if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'opération impossible.');return;}
+  if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'opération impossible.'));return;}
   closeModal();
   toast('Ajouté à la Media Bank','ok');
   loadProdMedias();
@@ -12701,7 +12766,7 @@ async function taguerMediaBank(id){
 
 async function retirerMediaBank(id){
   const r=await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{is_media_bank:false,media_bank_sport:null,media_bank_category:null,updated_at:new Date().toISOString()}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'opération impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'opération impossible.')),'er');return;}
   closeModal();
   toast('Retiré de la Media Bank','ok');
   loadProdMedias();
@@ -12945,10 +13010,10 @@ async function executerRemplacement(ancienId){
       commentaire:motif?'Remplacement: '+motif:anc.commentaire,
       ajouteur_id:S.uid,statut:'a_verifier'
     }});
-    if(sbErr(newRes)){err.textContent='Erreur : '+(newRes.message||'Création du nouveau lien impossible.');return;}
+    if(sbErr(newRes)){err.textContent='Erreur : '+(msgErreur(newRes,'Création du nouveau lien impossible.'));return;}
     // Marquer l'ancien comme remplacé
     const rOld=await sbFetch('media_liens?id=eq.'+ancienId,{method:'PATCH',body:{statut:'remplace',remplace_par_id:newRes?.[0]?.id}});
-    if(sbErr(rOld)){err.textContent='Erreur : '+(rOld.message||'Mise à jour de l\'ancien lien impossible.');return;}
+    if(sbErr(rOld)){err.textContent='Erreur : '+(msgErreur(rOld,'Mise à jour de l\'ancien lien impossible.'));return;}
     await logMediaHistory(anc.prestation_id,S.uid,'Lien remplacé','lien',ancienId,anc.url,nouvelUrl);
     closeModal();
     toast('Lien remplacé','ok');
@@ -13000,7 +13065,7 @@ async function sauvegarderBibliotheque(){
       description:document.getElementById('bib-desc')?.value||null,
       ajouteur_id:S.uid
     }});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Ajout impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Ajout impossible.'));return;}
     closeModal();
     toast('Lien ajouté à la bibliothèque','ok');
     loadProdMedias();
@@ -13223,7 +13288,7 @@ async function sauvegarderPostprod(){
       created_by:S.uid
     };
     const rpp=await sbFetch('media_postproductions',{method:'POST',body});
-    if(sbErr(rpp)){err.textContent='Erreur : '+(rpp.message||'Création impossible.');return;}
+    if(sbErr(rpp)){err.textContent='Erreur : '+(msgErreur(rpp,'Création impossible.'));return;}
     await logMediaHistory(pres[0].id,S.uid,'Postproduction créée','postproduction',null,null,body.type_travail);
     closeModal();
     toast('Postproduction créée','ok');
@@ -13346,7 +13411,7 @@ async function sauvegarderVersion(postprodId){
       fournisseur:document.getElementById('ver-four')?.value||'autre',
       prestation_id:pp.prestation_id,ajouteur_id:S.uid,statut:'a_verifier'
     }});
-    if(sbErr(lienRes)){err.textContent='Erreur : '+(lienRes.message||'Création du lien impossible.');return;}
+    if(sbErr(lienRes)){err.textContent='Erreur : '+(msgErreur(lienRes,'Création du lien impossible.'));return;}
     // Créer la version
     const rVer=await sbFetch('media_versions',{method:'POST',body:{
       postproduction_id:postprodId,
@@ -13359,7 +13424,7 @@ async function sauvegarderVersion(postprodId){
       date_limite_validation:document.getElementById('ver-delai')?.value||null,
       commentaire:document.getElementById('ver-com')?.value||null
     }});
-    if(sbErr(rVer)){err.textContent='Erreur : '+(rVer.message||'Création de la version impossible.');return;}
+    if(sbErr(rVer)){err.textContent='Erreur : '+(msgErreur(rVer,'Création de la version impossible.'));return;}
     // Mettre à jour le statut de la postprod. La version elle-même est déjà
     // créée (rVer vérifié ci-dessus) : cette écriture ne doit donc jamais
     // bloquer, mais un échec silencieux laissait le statut de la postprod
@@ -13437,7 +13502,7 @@ async function sauvegarderCorrection(postprodId){
       lien_capture:document.getElementById('cor-lien')?.value?.trim()||null,
       statut:'nouvelle'
     }});
-    if(sbErr(rCor)){err.textContent='Erreur : '+(rCor.message||'Envoi impossible.');return;}
+    if(sbErr(rCor)){err.textContent='Erreur : '+(msgErreur(rCor,'Envoi impossible.'));return;}
     await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'corrections_demandees'}}).catch(()=>{});
     if(pp) await logMediaHistory(pp.prestation_id,S.uid,'Correction demandée','correction',null,null,desc.slice(0,60));
     closeModal();
@@ -13449,7 +13514,7 @@ async function sauvegarderCorrection(postprodId){
 async function changerStatutPostprod(id,nouveauStatut){
   try{
     const r=await sbFetch('media_postproductions?id=eq.'+id,{method:'PATCH',body:{statut:nouveauStatut}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
     const ppData=await sbFetch('media_postproductions?select=prestation_id&id=eq.'+id);
     if(ppData?.[0]) await logMediaHistory(ppData[0].prestation_id,S.uid,'Statut postproduction','postproduction',id,null,nouveauStatut);
     toast('Statut mis à jour','ok');
@@ -13602,7 +13667,7 @@ function renderLivrables(){
 async function validerLivrable(id){
   try{
     const r=await sbFetch('media_livrables?id=eq.'+id,{method:'PATCH',body:{statut:'pret_a_livrer',date_validation:new Date().toISOString(),validateur_id:S.uid}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Validation impossible.')),'er');return;}
     const lvData=await sbFetch('media_livrables?select=prestation_id,nom&id=eq.'+id);
     if(lvData?.[0]) await logMediaHistory(lvData[0].prestation_id,S.uid,'Livrable validé','livrable',id,'a_valider','pret_a_livrer');
     toast('Livrable validé — prêt à livrer','ok');
@@ -13663,7 +13728,7 @@ async function sauvegarderLivrable(){
       date_expiration:document.getElementById('lv-exp')?.value||null,
       statut:'valide'
     }});
-    if(sbErr(lienRes)){err.textContent='Erreur : '+(lienRes.message||'Création du lien impossible.');return;}
+    if(sbErr(lienRes)){err.textContent='Erreur : '+(msgErreur(lienRes,'Création du lien impossible.'));return;}
     const rLivr=await sbFetch('media_livrables',{method:'POST',body:{
       nom,
       type_livrable:document.getElementById('lv-type')?.value||'dossier_complet',
@@ -13673,7 +13738,7 @@ async function sauvegarderLivrable(){
       instructions:document.getElementById('lv-inst')?.value||null,
       statut:'a_valider'
     }});
-    if(sbErr(rLivr)){err.textContent='Erreur : '+(rLivr.message||'Création du livrable impossible.');return;}
+    if(sbErr(rLivr)){err.textContent='Erreur : '+(msgErreur(rLivr,'Création du livrable impossible.'));return;}
     if(presId) await logMediaHistory(presId,S.uid,'Livrable créé','livrable',null,null,nom);
     closeModal();
     toast('Livrable créé — en attente de validation','ok');
@@ -13777,7 +13842,7 @@ async function confirmerLivraison(livrableId){
       expediteur_id:S.uid,
       statut:'envoyee'
     }});
-    if(sbErr(rEnvoi)){err.textContent='Erreur : '+(rEnvoi.message||'Enregistrement de la livraison impossible.');if(btn)btn.disabled=false;return;}
+    if(sbErr(rEnvoi)){err.textContent='Erreur : '+(msgErreur(rEnvoi,'Enregistrement de la livraison impossible.'));if(btn)btn.disabled=false;return;}
     // Idem : l'événement de livraison est déjà enregistré (rEnvoi vérifié
     // ci-dessus, le client a déjà reçu son fichier) — cette écriture ne doit
     // pas bloquer, mais si elle échoue en silence le livrable reste "à
@@ -13947,7 +14012,7 @@ async function loadProdFrais(){
 async function validerFrais(id){
   try{
     const r=await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'validé'}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Validation impossible.')),'er');return;}
     logFinancialAudit('validation','frais',id,null,r?.[0]?.montant,{statut:'validé'});
     toast('Frais validés.','ok');
     loadViewData(S.role,S.view);
@@ -13957,7 +14022,7 @@ async function validerFrais(id){
 async function rembourserFrais(id){
   try{
     const r=await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'remboursé'}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Remboursement impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Remboursement impossible.')),'er');return;}
     logFinancialAudit('remboursement','frais',id,null,r?.[0]?.montant,{statut:'remboursé'});
     toast('Frais marqués comme remboursés.','ok');
     loadViewData(S.role,S.view);
@@ -13969,7 +14034,7 @@ async function majStatutPaiement(id,statut){
     const body={statut_paiement:statut};
     if(statut==='payé')body.date_paiement=ymdLocal();
     const r=await sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
     if(statut==='payé')logFinancialAudit('paiement','prestations_equipe',id,null,r?.[0]?.remuneration,{statut_paiement:statut});
     const labels={validé:'Rémunération validée.',transmis_compta:'Transmis à la comptabilité.',payé:'Paiement enregistré.'};
     toast(labels[statut]||'Statut mis à jour.','ok');
@@ -14029,7 +14094,7 @@ async function soumettrefrais(prestationId){
   if(prestationId)body.prestation_id=prestationId;
   try{
     const r=await sbFetch('frais',{method:'POST',body});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'table frais non disponible.');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'table frais non disponible.'));return;}
     closeModal();toast('Frais déclarés.','ok');
     loadViewData(S.role,S.view);
   }catch(e){if(err)err.textContent='Erreur : table frais non disponible.';}
@@ -14678,7 +14743,7 @@ async function repondreInvitation(equipeId,statut,motif){
     const body={statut,date_reponse:new Date().toISOString()};
     if(motif)body.notes_refus=motif;
     const r=await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Réponse impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Réponse impossible.')),'er');return;}
     toast(statut==='acceptée'?'Mission acceptée !':'Mission refusée.', statut==='acceptée'?'ok':'warn');
     // Avancement automatique (28/08/2026, demande Fouka — "il reçoit, il
     // accepte" doit faire avancer le déroulé sans clic manuel séparé) :
@@ -14795,7 +14860,7 @@ async function signalerRetardCbk(hp,he,mo,co){
       declare_par:localStorage.getItem('sv_uid'),
       cloture:false,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Signalement impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Signalement impossible.')),'er');return;}
     toast('Retard signalé. Le responsable est prévenu.','warn');
     updateNavBadges(S.role);
   }catch(e){toast('Erreur lors du signalement.','er');}
@@ -15024,7 +15089,7 @@ async function creerTache(){
     const r=await sbFetch('notifications',{method:'POST',body:{
       type:'tache',titre,message:msg||null,lue:false,destinataire_id:uid
     }});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'Création impossible.');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'Création impossible.'));return;}
     closeModal();toast('Tâche créée.','ok');loadTaches();
   }catch(e){if(err)err.textContent='Erreur lors de la création.';}
 }
@@ -15032,7 +15097,7 @@ async function creerTache(){
 async function toggleTache(id,estFaite){
   try{
     const r=await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:!estFaite}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
     loadTaches();
   }catch(e){toast('Erreur réseau : mise à jour impossible.','er');}
 }
@@ -15041,7 +15106,7 @@ function supprimerTache(id){
   confirmerAction('Supprimer cette tâche ?',async()=>{
     try{
       const r=await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
-      if(sbErr(r)){toast('Erreur : '+(r.message||'Suppression impossible.'),'er');return;}
+      if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Suppression impossible.')),'er');return;}
       loadTaches();
     }catch(e){toast('Erreur réseau : suppression impossible.','er');}
   });
@@ -15129,14 +15194,14 @@ async function creerEvenementAgenda(){
     const r=await sbFetch('secretariat_agenda_events',{method:'POST',body:{
       type,titre,description:desc||null,date_heure:new Date(dateHeure).toISOString(),created_by:uid
     }});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'Création impossible.');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'Création impossible.'));return;}
     closeModal();toast('Événement ajouté à l\'agenda.','ok');loadAgendaSec();
   }catch(e){if(err)err.textContent='Erreur lors de la création.';}
 }
 
 async function terminerEvenementAgenda(id){
   const r=await sbFetch('secretariat_agenda_events?id=eq.'+id,{method:'PATCH',body:{statut:'termine'}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
   toast('Marqué terminé.','ok');loadAgendaSec();
 }
 
@@ -15160,7 +15225,7 @@ async function confirmerReportEvenementAgenda(id){
   const r=await sbFetch('secretariat_agenda_events?id=eq.'+id,{method:'PATCH',body:{
     statut:'reporte',date_heure_initiale:evt?evt.date_heure:null,date_heure:new Date(newDate).toISOString()
   }});
-  if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'Report impossible.');return;}
+  if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'Report impossible.'));return;}
   closeModal();toast('Événement reporté.','ok');loadAgendaSec();
 }
 
@@ -15317,7 +15382,7 @@ async function toggleNotifPref(uid,categorie,actif){
   try{
     const prefs={...(_myNotifPrefs||{}),[categorie]:actif};
     const r=await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{notification_prefs:prefs}});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'Modification impossible.');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'Modification impossible.'));return;}
     _myNotifPrefs=prefs;
     if(err)err.textContent='';
   }catch(e){if(err)err.textContent='Erreur lors de la sauvegarde.';}
@@ -15339,7 +15404,7 @@ async function sauvegarderProfil(uid){
     };
     if(window._pendingAvatar){body.avatar_url=window._pendingAvatar;window._pendingAvatar=null;}
     const r=await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body});
-    if(sbErr(r)){if(err){err.style.color='var(--er)';err.textContent='Erreur : '+(r.message||'Modification impossible.');}return;}
+    if(sbErr(r)){if(err){err.style.color='var(--er)';err.textContent='Erreur : '+(msgErreur(r,'Modification impossible.'));}return;}
     toast('Profil mis à jour.','ok');
     if(err)err.style.color='var(--ok)',err.textContent='Profil mis à jour.';
     const prenom=body.prenom||'';const nom=body.nom||'';
@@ -15721,7 +15786,7 @@ async function attribuerKitPrestation(prestationId,ref){
       kit_id:kitId,prestation_id:prestationId,collaborateur_id:colId,statut:'réservé',
       date_sortie:date?.[0]?.date_prestation||null,responsable_id:S.uid,created_by:S.uid,
     }});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'attribution impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'attribution impossible.'));return;}
     await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'réservé'}}).catch(()=>{});
     err.textContent='';
     toast('Kit attribué.','ok');
@@ -15732,7 +15797,7 @@ async function libererKitPrestation(reservationId,prestationId,ref){
   try{
     const resa=await sbFetch('kit_reservations?id=eq.'+reservationId+'&select=kit_id');
     const r=await sbFetch('kit_reservations?id=eq.'+reservationId,{method:'PATCH',body:{statut:'retourné',date_retour_effective:new Date().toISOString()}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'libération impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'libération impossible.')),'er');return;}
     if(resa?.[0]?.kit_id)await sbFetch('kits?id=eq.'+resa[0].kit_id,{method:'PATCH',body:{statut:'disponible'}}).catch(()=>{});
     toast('Kit libéré.','ok');
     chargerKitsPrestation(prestationId,ref);
@@ -15745,7 +15810,7 @@ function modifierRemunerationMembre(equipeId,prestationId,ref,current){
   const n=v.trim()===''?null:Number(v);
   if(v.trim()!==''&&(isNaN(n)||n<0)){toast('Montant invalide.','er');return;}
   sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body:{remuneration:n}}).then(r=>{
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Modification impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Modification impossible.')),'er');return;}
     toast('Rémunération mise à jour.','ok');
     chargerEquipe(prestationId,ref);
   }).catch(()=>toast('Erreur lors de la modification.','er'));
@@ -15869,7 +15934,7 @@ async function ajouterMembreEquipe(prestationId,ref){
       // signifie que l'affectation existe déjà (créée entre-temps par
       // l'autre appel) — pas un vrai échec.
       if(rAddId?.code==='23505'){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
-      err.textContent='Erreur : '+(rAddId.message||'Ajout impossible.');if(btn)btn.disabled=false;return;
+      err.textContent='Erreur : '+(msgErreur(rAddId,'Ajout impossible.'));if(btn)btn.disabled=false;return;
     }
     creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
     document.getElementById('eq-col').value='';
@@ -15894,7 +15959,7 @@ function retirerMembreEquipe(equipeId,prestationId,ref,collaborateurId){
       // retrait était envoyée à l'opérateur, alors qu'il restait affecté en base. RPC
       // SECURITY DEFINER (même patron que rpc_ajouter_membre_equipe ci-dessus).
       const r=await sbFetch('rpc/rpc_retirer_membre_equipe',{method:'POST',body:{p_equipe_id:equipeId}});
-      if(sbErr(r)){toast('Erreur : '+(r.message||'Retrait impossible.'),'er');return;}
+      if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Retrait impossible.')),'er');return;}
       if(collaborateurId){
         creerNotifSiActive(collaborateurId,'invitations',{type:'invitation',titre:'Mission annulée — '+(ref||'prestation'),message:'Tu as été retiré(e) de cette prestation.',lue:false,prestation_id:prestationId}).catch(()=>{});
       }
@@ -16542,7 +16607,7 @@ async function kitsCreerKitSubmit(){
       pole_id:poleSel.pole_id,
       pole_exclusif:poleSel.pole_exclusif,
     }});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');else toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'création impossible.'));else toast('Erreur : '+(msgErreur(r,'création impossible.')),'er');return;}
     closeModal();toast('Kit créé.','ok');kitsLoadAll();
   }catch(e){if(err)err.textContent='Erreur lors de la création.';else toast('Erreur lors de la création.','er');}
 }
@@ -16635,7 +16700,7 @@ async function kitsCreerMaterielSubmit(){
       pole_id:poleSel.pole_id,
       pole_exclusif:poleSel.pole_exclusif,
     }});
-    if(sbErr(newMat)){toast('Erreur : '+(newMat.message||'enregistrement impossible.'),'er');return;}
+    if(sbErr(newMat)){toast('Erreur : '+(msgErreur(newMat,'enregistrement impossible.')),'er');return;}
     // Si kit sélectionné, créer la composition. Le matériel existe déjà (newMat
     // vérifié ci-dessus) : ne pas bloquer sur cet échec, mais si le lien vers
     // le kit échoue en silence, l'équipement est créé "orphelin" — absent de la
@@ -16713,7 +16778,7 @@ async function kitsAddMaterielSubmit(kitId){
       kit_id:kitId,materiel_id:matId,quantite:qty,obligatoire:oblig,notes,
       ajoute_par:localStorage.getItem('sv_uid'),
     }});
-    if(sbErr(rComp)){toast((rComp.code==='23505'||rComp.message?.includes('duplicate'))?'Déjà dans ce kit.':'Erreur : '+(rComp.message||'ajout impossible.'),'er');return;}
+    if(sbErr(rComp)){toast((rComp.code==='23505'||rComp.message?.includes('duplicate'))?'Déjà dans ce kit.':'Erreur : '+(msgErreur(rComp,'ajout impossible.')),'er');return;}
     const rMat=await sbFetch('materiels?id=eq.'+matId,{method:'PATCH',body:{kit_id:kitId,statut:'affecte_kit'}}).catch(()=>({code:'network_error'}));
     if(sbErr(rMat))toast('Ajouté au kit, mais le statut du matériel n\'a pas pu être synchronisé.','wa');
     closeModal();toast('Équipement ajouté au kit.','ok');kitsLoadAll();
@@ -16727,7 +16792,7 @@ async function kitsRetirerMateriel(compId,kitId,nomMat){
   try{
     const comp=await sbFetch('kit_compositions?select=materiel_id&id=eq.'+compId);
     const rDel=await sbFetch('kit_compositions?id=eq.'+compId,{method:'DELETE'});
-    if(sbErr(rDel)){toast('Erreur : '+(rDel.message||'retrait impossible.'),'er');return;}
+    if(sbErr(rDel)){toast('Erreur : '+(msgErreur(rDel,'retrait impossible.')),'er');return;}
     if(comp&&comp[0]){
       const rMat=await sbFetch('materiels?id=eq.'+comp[0].materiel_id,{method:'PATCH',body:{kit_id:null,statut:'disponible'}}).catch(()=>({code:'network_error'}));
       if(sbErr(rMat))toast('Retiré du kit, mais le statut du matériel n\'a pas pu être synchronisé.','wa');
@@ -16756,7 +16821,7 @@ async function kitsAppliquerStatut(id){
   if(!val)return;
   try{
     const r=await sbFetch('kits?id=eq.'+id,{method:'PATCH',body:{statut:val}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     closeModal();toast('Statut mis à jour.','ok');kitsLoadAll();updateNavBadges(S.role);
   }catch(e){toast('Erreur.','er');}
 }
@@ -16844,7 +16909,7 @@ async function kitsAttribuerSubmit(kitId){
       lieu_recuperation:document.getElementById('attr-lieu')?.value||null,
       consignes:document.getElementById('attr-cons')?.value||null,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'attribution impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'attribution impossible.')),'er');return;}
     const rKit=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'réservé'}}).catch(()=>({code:'network_error'}));
     if(sbErr(rKit))toast('Réservation enregistrée, mais le statut du kit n\'a pas pu être synchronisé.','wa');
     // Contrôle "avant" : jusqu'ici, aucune ligne kit_controles n'était jamais
@@ -16922,7 +16987,7 @@ async function attribuerKitCollaborateur(kitId){
       statut:'sorti',
       heure_sortie:new Date().toISOString(),
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'attribution impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'attribution impossible.')),'er');return;}
     const rKit=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'sorti'}}).catch(()=>({code:'network_error'}));
     if(sbErr(rKit))toast('Attribution enregistrée, mais le statut du kit n\'a pas pu être synchronisé.','wa');
     closeModal();
@@ -16934,7 +16999,7 @@ async function attribuerKitCollaborateur(kitId){
 async function libererKitCollaborateur(kitId,resaId){
   try{
     const r=await sbFetch('kit_reservations?id=eq.'+resaId,{method:'PATCH',body:{statut:'retourné',heure_retour_reelle:new Date().toISOString()}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'libération impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'libération impossible.')),'er');return;}
     const rKit=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'disponible'}}).catch(()=>({code:'network_error'}));
     if(sbErr(rKit))toast('Retour enregistré, mais le statut du kit n\'a pas pu être synchronisé — vérifiez la fiche kit.','wa');
     closeModal();
@@ -17023,7 +17088,7 @@ async function kitsIncidentSubmit(materielId){
       impactPrestation:document.getElementById('inc-impact')?.value||null,
       actionImmediate:document.getElementById('inc-action')?.value||null,
     });
-    if(sbErr(r)){toast('Erreur : '+(r.message||'déclaration impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'déclaration impossible.')),'er');return;}
     // Notifier prod + admin si critique
     if(gravite==='critique'){
       await dispatchSVEvent('prestation.confirmed',{prestation_id:null}).catch(()=>{});
@@ -17038,7 +17103,7 @@ async function kitsResoudreIncident(incId){
     const r=await sbFetch('materiel_incidents?id=eq.'+incId,{method:'PATCH',body:{
       statut:'resolu',resolu_par:localStorage.getItem('sv_uid'),resolu_at:new Date().toISOString(),
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     toast('Incident marqué résolu.','ok');kitsRenderIncidents();
   }catch(e){toast('Erreur.','er');}
 }
@@ -17121,7 +17186,7 @@ async function kitsControleSubmit(controleId){
       statut,signature_at:new Date().toISOString(),
       items_total:vals.length,items_ok:ok,items_reserve:reserve,items_ko:def,items_absent:absent,
     }});
-    if(sbErr(rCtrl)){toast('Erreur : '+(rCtrl.message||'validation impossible.'),'er');return;}
+    if(sbErr(rCtrl)){toast('Erreur : '+(msgErreur(rCtrl,'validation impossible.')),'er');return;}
     // Un contrôle "après" validé sans anomalie bloquante ne remettait jamais
     // le kit à "disponible" nulle part (ni trigger, ni appel JS) — il fallait
     // le faire manuellement via "Changer statut", facilement oublié. À
@@ -17184,7 +17249,7 @@ async function kitsMaintSubmit(maintId){
       date_retour_reelle:document.getElementById('maint-retour')?.value||null,
       notes:document.getElementById('maint-notes')?.value||null,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     closeModal();toast('Maintenance mise à jour.','ok');kitsRenderMaintenance();
   }catch(e){toast('Erreur.','er');}
 }
@@ -17250,7 +17315,7 @@ async function kitsEditMaterielSubmit(id){
   }
   try{
     const r=await sbFetch('materiels?id=eq.'+id,{method:'PATCH',body});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     closeModal();toast('Équipement mis à jour.','ok');kitsLoadAll();
   }catch(e){toast('Erreur.','er');}
 }
@@ -17322,7 +17387,7 @@ async function kitsEditKitSubmit(kitId){
   }
   try{
     const r=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'mise à jour impossible.');else toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'mise à jour impossible.'));else toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     closeModal();toast('Kit mis à jour.','ok');kitsLoadAll();
   }catch(e){if(err)err.textContent='Erreur lors de la mise à jour.';else toast('Erreur lors de la mise à jour.','er');}
 }
@@ -17345,7 +17410,7 @@ async function kitsSupprimerConfirme(kitId){
   try{
     await sbFetch('kit_compositions?kit_id=eq.'+kitId,{method:'DELETE'}).catch(()=>{});
     const r=await sbFetch('kits?id=eq.'+kitId,{method:'DELETE'});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible.')),'er');return;}
     closeModal();toast('Kit supprimé.','ok');kitsLoadAll();
   }catch(e){toast('Erreur lors de la suppression.','er');}
 }
@@ -17725,7 +17790,7 @@ async function retractationSubmit(id,statut){
   const r=await sbFetch('retractation_demandes?id=eq.'+id,{method:'PATCH',body:{
     statut, traitee_par:S.uid, traitee_at:new Date().toISOString(), note_staff:note||null,
   }});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'action impossible.')),'er');return;}
   closeModal();
   toast(statut==='acceptee'?'Demande de rétractation acceptée.':'Demande de rétractation refusée.','ok');
   await docsLoadAll();
@@ -17813,7 +17878,7 @@ async function refuserSignatureDoc(docType,id,ref){
   const table=docType==='devis'?'devis':'contrats';
   try{
     const r=await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:{signature_statut:'refusee'}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     await logDocEvent('annulation',ref,docType,'Signature refusée — '+ref);
     toast('Signature marquée comme refusée.','ok');
     await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
@@ -18239,7 +18304,7 @@ async function _sendContratEmailConfirm(id){
     closeModal();
     toast('Contrat envoyé par email.','ok');
   }catch(e){
-    if(errEl)errEl.textContent=e.message||'Erreur lors de l\'envoi.';
+    if(errEl)errEl.textContent=msgErreur(e,'Erreur lors de l\'envoi.');
   }finally{
     if(btn){btn.disabled=false;btn.textContent='✉ Envoyer';}
   }
@@ -18380,7 +18445,7 @@ async function avoirSubmit(){
       numero:numAvoir,client_id:clientId,prestation_id:prestId,
       motif,montant_ht:ht,tva_pct:tva,montant_ttc:ttc,statut:'emis',created_by:S.uid,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'création impossible.')),'er');return;}
     // logDocEvent trace l'événement documentaire (journal Documents) ; logFinancialAudit
     // trace l'impact financier (financial_audit_log) — même distinction que partout
     // ailleurs dans le fichier pour les actions sensibles (encaissement, remboursement…),
@@ -18629,7 +18694,7 @@ async function creerDevis(){
       created_by:localStorage.getItem('sv_uid'),
     }});
     if(sbErr(r)){
-      if(err)err.textContent='Erreur : '+(r.message||'création impossible.');
+      if(err)err.textContent='Erreur : '+(msgErreur(r,'création impossible.'));
       if(btn){btn.disabled=false;btn.textContent='Créer le devis';}
       return;
     }
@@ -18712,7 +18777,7 @@ async function sauvegarderDevis(id){
       date_envoi:document.getElementById('dv-env2')?.value||null,
     }});
     if(sbErr(r)){
-      if(err)err.textContent='Erreur : '+(r.message||'sauvegarde impossible.');
+      if(err)err.textContent='Erreur : '+(msgErreur(r,'sauvegarde impossible.'));
       if(btn){btn.disabled=false;btn.textContent='Sauvegarder';}
       return;
     }
@@ -18753,7 +18818,7 @@ function supprimerDevis(id){
   confirmerAction('Supprimer ce devis ?',async()=>{
     try{
       const r=await sbFetch('devis?id=eq.'+id,{method:'DELETE'});
-      if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+      if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible.')),'er');return;}
       closeModal();
       toast('Devis supprimé.','ok');
       loadDevis();
@@ -18765,7 +18830,7 @@ async function envoyerDevis(id){
   try{
     const today=ymdLocal();
     const r=await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:today}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     toast('Devis marqué comme envoyé.','ok');loadDevis();updateNavBadges(S.role);
     creerTachesAuto('devis.envoye',{source_type:'devis',source_id:id}).catch(()=>{});
     // Avancer automatiquement le client en pipeline → devis_envoyé
@@ -19611,7 +19676,7 @@ async function exportCSV(type){
       });
       downloadCSV(rows,'SportVision-Budget-Previsionnel-'+ymdLocal()+'.csv');
     }
-  }catch(e){toast('Erreur export : '+(e.message||'inconnue'));}
+  }catch(e){toast('Erreur export : '+(msgErreur(e,'inconnue')));}
 }
 
 // ── Incidents production ─────────────────────────────────────────────────────
@@ -19657,7 +19722,7 @@ function cloreIncident(id){
   confirmerAction('Clôturer cet incident ?',async()=>{
     try{
       const r=await sbFetch('incidents?id=eq.'+id,{method:'PATCH',body:{cloture:true,cloture_at:new Date().toISOString(),cloture_par:localStorage.getItem('sv_uid')}});
-      if(sbErr(r)){toast('Erreur : '+(r.message||'clôture impossible.'),'er');return;}
+      if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'clôture impossible.')),'er');return;}
       toast('Incident clôturé.','ok');
       loadIncidents();
       updateNavBadges(S.role);
@@ -19732,7 +19797,7 @@ async function signalerIncident(){
       declare_par:localStorage.getItem('sv_uid'),
       prestation_id:pid||null,
     }});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'envoi impossible.');if(btn)btn.disabled=false;return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'envoi impossible.'));if(btn)btn.disabled=false;return;}
     closeModal();
     toast('Incident signalé.','ok');
     if(S.view==='incidents')loadIncidents();
@@ -19859,7 +19924,7 @@ function renderPipeline(){
 async function avancerPipeline(id,statut){
   try{
     const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     const lb={prospect:'Prospect',qualifié:'Qualifié',devis_envoyé:'Devis envoyé',négociation:'Négociation',partenaire:'Partenaire',client:'Client'}[statut]||statut;
     toast('→ '+lb,'ok');
     // Visibilité Secrétariat/Admin (audit final 29/08, §10.4) : le rôle com peut conclure
@@ -20177,7 +20242,7 @@ async function msgSubmitCrTache(){
     const r=destFinal===uid
       ?await sbFetch('notifications',{method:'POST',body:{...body,destinataire_id:destFinal}})
       :await creerNotifSiActive(destFinal,'taches',body);
-    if(r&&sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
+    if(r&&sbErr(r)){toast('Erreur : '+(msgErreur(r,'création impossible.')),'er');return;}
     closeModal();toast('Tâche créée.','ok');
     updateNavBadges(S.role);
   }catch(e){toast('Erreur lors de la création.','er');}
@@ -22715,7 +22780,7 @@ async function sauvegarderNouvelleFormation(){
     description:document.getElementById('nf-desc')?.value.trim()||null,
     modules,statut:'publiée',created_by:S.uid||null};
   const r=await sbFetch('formations_custom',{method:'POST',body:payload});
-  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Table manquante — exécutez migration-formations-admin.sql');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Table manquante — exécutez migration-formations-admin.sql'));return;}
   closeModal();toast('Formation créée.','ok');afTab('catalogue');
 }
 
@@ -22774,7 +22839,7 @@ async function sauvegarderEditionFormation(id){
     description:document.getElementById('ef-desc')?.value.trim()||null,
     modules};
   const r=await sbFetch('formations_custom?id=eq.'+id,{method:'PATCH',body:payload});
-  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible de modifier.');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Impossible de modifier.'));return;}
   closeModal();toast('Formation mise à jour.','ok');afTab('catalogue');
 }
 
@@ -22791,7 +22856,7 @@ function confirmerSupprimerFormation(id,titre){
 
 async function supprimerFormationCustom(id){
   const r=await sbFetch('formations_custom?id=eq.'+id,{method:'DELETE'});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible.')),'er');return;}
   closeModal();toast('Formation supprimée.','ok');
   FORMATIONS_CATALOG=FORMATIONS_CATALOG.filter(f=>f.id!==id);
   _customFormsCache=_customFormsCache.filter(f=>f.id!==id);
@@ -22885,7 +22950,7 @@ async function adminSupprimerQuestion(qId,formId,formTitre){
     'Supprimer cette question du quiz ?\n\nSon enonce, ses quatre reponses et l\'indication de la bonne reponse seront perdus. Il faudra la ressaisir entierement.',
     {titre:'Supprimer la question',action:'Supprimer'}))return;
   const r=await sbFetch('formations_quiz_custom?id=eq.'+qId,{method:'DELETE'});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible.')),'er');return;}
   toast('Question supprimée.','ok');
   await _reloadQuizAdmin(formId,formTitre);
 }
@@ -22904,7 +22969,7 @@ async function _ensureBuiltinInDB(id,fData){
     headers:{'Prefer':'resolution=merge-duplicates'},
     body:payload,
   });
-  if(sbErr(r))throw new Error(r.message||'Table manquante — exécutez migration-formations-admin.sql');
+  if(sbErr(r))throw new Error(msgErreur(r,'Table manquante — exécutez migration-formations-admin.sql'));
   _customFormsCache.push(payload);
 }
 
@@ -22984,7 +23049,7 @@ async function sauvegarderSession(){
       formateur_id:formateurId,capacite:parseInt(g('ns-capacite'))||20,
       statut:'planifiee',created_by:uid,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'création impossible.')),'er');return;}
     toast('Session créée avec succès.','ok');
     closeModal();
     loadAdminFormSessions();
@@ -23375,13 +23440,13 @@ async function loadCmDemandes(){
 
 async function avancerDemande(id,statut){
   const r=await sbFetch('rpc/staff_update_club_request_status',{method:'POST',body:{p_request_id:id,p_status:statut}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   toast('Demande mise à jour.','ok');
   loadCmDemandes();
 }
 async function prendreEnChargeDemande(id){
   const r=await sbFetch('rpc/claim_club_request',{method:'POST',body:{p_request_id:id}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'prise en charge impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'prise en charge impossible.')),'er');return;}
   toast('Demande prise en charge.','ok');
   loadCmDemandes();
 }
@@ -23447,13 +23512,13 @@ async function loadCmClubContentSubmissions(){
 let _cmClubContentCache={creations:[],newsroom:[]};
 async function avancerClubCreation(id,statut){
   const r=await sbFetch('club_creations?id=eq.'+id,{method:'PATCH',body:{status:statut,updated_at:new Date().toISOString()}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   toast('Demande de création mise à jour.','ok');
   loadCmClubContentSubmissions();
 }
 async function avancerClubNewsroom(id,statut){
   const r=await sbFetch('club_newsroom_items?id=eq.'+id,{method:'PATCH',body:{status:statut,updated_at:new Date().toISOString()}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   toast('Actualité mise à jour.','ok');
   loadCmClubContentSubmissions();
 }
@@ -23532,7 +23597,7 @@ async function creerBriefCm(){
       created_by:localStorage.getItem('sv_uid')
     };
     const r=await sbFetch('prestations',{method:'POST',body});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'envoi impossible.');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'envoi impossible.'));return;}
     closeModal();
     toast('Brief envoyé à la production.','ok');
     loadCmBriefs();
@@ -23780,16 +23845,16 @@ async function cmSoumettreSemaine(clientId){
     let planning=(await sbFetch('plannings_hebdo?client_id=eq.'+clientId+'&semaine_debut=eq.'+monday))?.[0];
     if(!planning){
       const created=await sbFetch('plannings_hebdo',{method:'POST',body:{client_id:clientId,cm_id:uid,semaine_debut:monday}});
-      if(sbErr(created)){toast('Erreur : '+(created.message||'création impossible.'),'er');return;}
+      if(sbErr(created)){toast('Erreur : '+(msgErreur(created,'création impossible.')),'er');return;}
       planning=created[0];
     }
     if(planning.statut==='refuse'){
       const back=await sbFetch('plannings_hebdo?id=eq.'+planning.id,{method:'PATCH',body:{statut:'brouillon'}});
-      if(sbErr(back)){toast('Erreur : '+(back.message||'action impossible.'),'er');return;}
+      if(sbErr(back)){toast('Erreur : '+(msgErreur(back,'action impossible.')),'er');return;}
     }
     await sbFetch('contenus?client_id=eq.'+clientId+'&date_prevue=gte.'+monday+'&date_prevue=lte.'+sunday,{method:'PATCH',body:{planning_hebdo_id:planning.id}});
     const sub=await sbFetch('plannings_hebdo?id=eq.'+planning.id,{method:'PATCH',body:{statut:'soumis'}});
-    if(sbErr(sub)){toast('Erreur : '+(sub.message||'soumission impossible.'),'er');return;}
+    if(sbErr(sub)){toast('Erreur : '+(msgErreur(sub,'soumission impossible.')),'er');return;}
     toast('Semaine soumise pour validation.','ok');
     loadCmCal();
   }catch(e){toast('Erreur lors de la soumission.','er');}
@@ -23988,7 +24053,7 @@ async function creerPresence(){
         // entre-temps (autre onglet) : on récupère la ligne existante plutôt
         // que d'échouer.
         const existing=await sbFetch('monthly_production_plans?client_id=eq.'+_pmClientId+'&mois=eq.'+mois);
-        if(!Array.isArray(existing)||!existing[0]){if(err)err.textContent='Erreur : '+(created.message||'création du plan impossible.');return;}
+        if(!Array.isArray(existing)||!existing[0]){if(err)err.textContent='Erreur : '+(msgErreur(created,'création du plan impossible.'));return;}
         _pmPlan=existing[0];
       }else{_pmPlan=created[0];}
     }
@@ -23997,7 +24062,7 @@ async function creerPresence(){
       lieu:lieu||null,adversaire:adversaire||null,type_couverture,notes:notes||null,
       match_id:window._ppMatchId||null
     }});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'ajout impossible.');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'ajout impossible.'));return;}
     window._ppMatchId=null;
     closeModal();
     toast('Présence ajoutée.','ok');
@@ -24008,7 +24073,7 @@ async function creerPresence(){
 async function pmSupprimerPresence(id){
   if(!await demanderConfirmation('Supprimer cette présence ?',{titre:'Supprimer cette presence',action:'Supprimer'}))return;
   const r=await sbFetch('planned_presences?id=eq.'+id,{method:'DELETE'});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible.')),'er');return;}
   toast('Présence supprimée.','ok');
   loadCmPlanningMensuel();
 }
@@ -24018,7 +24083,7 @@ async function pmEnvoyerProduction(){
     toast('Ajoutez au moins une présence prévue avant d\'envoyer.','er');return;
   }
   const r=await sbFetch('rpc/generate_missions_from_plan',{method:'POST',body:{p_plan_id:_pmPlan.id}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'envoi impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'envoi impossible.')),'er');return;}
   const n=Number(r)||0;
   toast(n>0?(n+' mission'+(n>1?'s':'')+' créée'+(n>1?'s':'')+' et envoyée'+(n>1?'s':'')+' à la production.'):'Planning envoyé (rien de nouveau à traiter).','ok');
   loadCmPlanningMensuel();
@@ -24072,7 +24137,7 @@ async function phTraiter(id,statut,motif){
   const body={statut};
   if(motif)body.motif_refus=motif;
   const r=await sbFetch('plannings_hebdo?id=eq.'+id,{method:'PATCH',body});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'action impossible.')),'er');return;}
   toast(statut==='valide'?'Planning validé.':'Planning refusé.','ok');
   await phReloadList();
 }
@@ -24233,7 +24298,7 @@ const CONTENU_NEXT_JUNIOR_OWN={
 async function tuteurValiderContenu(id,btn){
   if(btn){if(btn.disabled)return;btn.disabled=true;}
   const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{statut:'pret',valide_par:localStorage.getItem('sv_uid'),valide_at:new Date().toISOString(),updated_at:new Date().toISOString()}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'validation impossible.'),'er');if(btn)btn.disabled=false;return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'validation impossible.')),'er');if(btn)btn.disabled=false;return;}
   _logAudit('contenu_statut_change','contenu',id,{statut:'pret',action:'validation_tuteur'});
   toast('Contenu validé.','ok');
   loadViewData(S.role,S.view);
@@ -24255,7 +24320,7 @@ async function executerCorrigerContenuJunior(id){
   const motif=(document.getElementById('corr-cnt-motif')?.value||'').trim();
   if(!motif){err.textContent='Le commentaire est obligatoire.';return;}
   const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{statut:'corrections',commentaire_validation:motif,updated_at:new Date().toISOString()}});
-  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'opération impossible.');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'opération impossible.'));return;}
   _logAudit('contenu_statut_change','contenu',id,{statut:'corrections',action:'correction_tuteur'});
   closeModal();
   toast('Correction demandée.','warn');
@@ -24472,7 +24537,7 @@ async function envoyerCorrectionCmVideo(postprodId){
       description:desc,
       statut:'nouvelle'
     }});
-    if(sbErr(rCor)){if(errEl)errEl.textContent='Erreur : '+(rCor.message||'Envoi impossible.');return;}
+    if(sbErr(rCor)){if(errEl)errEl.textContent='Erreur : '+(msgErreur(rCor,'Envoi impossible.'));return;}
     if(pp?.responsable_id){
       await creerNotifSiActive(pp.responsable_id,'taches',{
         type:'correction_cm_video',
@@ -24489,7 +24554,7 @@ async function envoyerCorrectionCmVideo(postprodId){
 
 async function avancerContenu(id,statut){
   const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{statut,updated_at:new Date().toISOString(),...(statut==='publie'?{date_publication:ymdLocal()}:{})}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   _logAudit('contenu_statut_change','contenu',id,{statut});
   toast('Statut mis à jour.','ok');
   loadViewData(S.role,S.view);
@@ -24677,7 +24742,7 @@ async function ajouterTemplateDepuisContenu(clubId){
   const categorie=document.getElementById('ct-cat')?.value||null;
   const uid=localStorage.getItem('sv_uid');
   const r=await sbFetch('brand_templates',{method:'POST',body:{club_id:clubId,categorie:categorie||null,nom,asset_url:url,created_by:uid}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'ajout impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'ajout impossible.')),'er');return;}
   toast('Template ajouté.','ok');
   refreshTemplateDisponible();
 }
@@ -24749,7 +24814,7 @@ async function creerContenu(){
       hashtags:hashtags||null,sponsor:sponsor||null,request_id:window._ctRequestId||null,
       match_id:window._ctMatchId||null
     }});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');if(btn)btn.disabled=false;return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'création impossible.'));if(btn)btn.disabled=false;return;}
     const contenuId=Array.isArray(r)&&r[0]?r[0].id:null;
     if(contenuId){
       _logAudit('contenu_cree','contenu',contenuId,{titre:ti});
@@ -24885,7 +24950,7 @@ async function _saveContenuTarget(targetId){
   const body={status,external_post_id:externalId||null};
   if(status==='publie')body.published_at=new Date().toISOString();
   const r=await sbFetch('contenu_publication_targets?id=eq.'+targetId,{method:'PATCH',body});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   toast('Réseau mis à jour.','ok');
   if(window._cteTargetsContenuId)loadContenuTargets(window._cteTargetsContenuId);
 }
@@ -24894,13 +24959,13 @@ async function _ajouterContenuTarget(){
   const contenuId=window._cteTargetsContenuId;
   if(!network||!contenuId)return;
   const r=await sbFetch('contenu_publication_targets',{method:'POST',body:{contenu_id:contenuId,network}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'ajout impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'ajout impossible.')),'er');return;}
   loadContenuTargets(contenuId);
 }
 function _supprimerContenuTarget(targetId){
   confirmerAction('Retirer ce réseau de publication ?',async()=>{
     const r=await sbFetch('contenu_publication_targets?id=eq.'+targetId,{method:'DELETE'});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible.')),'er');return;}
     if(window._cteTargetsContenuId)loadContenuTargets(window._cteTargetsContenuId);
   });
 }
@@ -24928,7 +24993,7 @@ async function sauvegarderContenu(id){
       updated_at:new Date().toISOString(),
       ...(metricoolEl?{publication_external_id:metricoolRef||null,publication_provider:metricoolRef?'metricool':'manuel'}:{})
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'sauvegarde impossible.')),'er');return;}
     _logAudit('contenu_modifie','contenu',id,{titre:ti});
     closeModal();
     if(document.getElementById('contenus-real')) loadCmContenus();
@@ -24941,7 +25006,7 @@ function supprimerContenu(id){
   confirmerAction('Supprimer ce contenu ?',async()=>{
     try{
       const r=await sbFetch('contenus?id=eq.'+id,{method:'DELETE'});
-      if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+      if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible.')),'er');return;}
       _logAudit('contenu_supprime','contenu',id,{});
       closeModal();
       toast('Contenu supprimé.','ok');
@@ -25348,10 +25413,10 @@ async function _confirmerAssignationTuteur(juniorId,currentTutorshipId){
   // une nouvelle, jamais deux tutorats actifs simultanés pour le même junior.
   if(currentTutorshipId){
     const rEnd=await sbFetch('cm_tutorships?id=eq.'+currentTutorshipId,{method:'PATCH',body:{statut:'termine',fin:ymdLocal()}});
-    if(sbErr(rEnd)){errEl.textContent=rEnd.message||'Impossible de clôturer le tutorat précédent.';return;}
+    if(sbErr(rEnd)){errEl.textContent=msgErreur(rEnd,'Impossible de clôturer le tutorat précédent.');return;}
   }
   const r=await sbFetch('cm_tutorships',{method:'POST',body:{junior_id:juniorId,tuteur_id:tuteurId,created_by:localStorage.getItem('sv_uid')}});
-  if(sbErr(r)){errEl.textContent=r.message||'Assignation impossible.';return;}
+  if(sbErr(r)){errEl.textContent=msgErreur(r,'Assignation impossible.');return;}
   closeModal();
   toast('Tuteur assigné.','ok');
   loadPilotageTutorat();
@@ -25416,7 +25481,7 @@ function _rapportActionsHtml(id,statut){
 
 async function marquerRapportPret(id){
   const r=await sbFetch('monthly_reports?id=eq.'+id,{method:'PATCH',body:{statut:'pret'}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   toast('Rapport marqué prêt.','ok');
   const actions=document.getElementById('rap-actions');
   if(actions&&actions.dataset.id===id)actions.outerHTML=_rapportActionsHtml(id,'pret');
@@ -25426,7 +25491,7 @@ async function marquerRapportPret(id){
 async function marquerRapportEnvoye(id){
   const uid=localStorage.getItem('sv_uid');
   const r=await sbFetch('monthly_reports?id=eq.'+id+'&statut=eq.pret',{method:'PATCH',body:{statut:'envoye',envoye_at:new Date().toISOString(),envoye_par:uid}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   toast('Rapport marqué envoyé.','ok');
   const actions=document.getElementById('rap-actions');
   if(actions&&actions.dataset.id===id)actions.outerHTML=_rapportActionsHtml(id,'envoye');
@@ -25573,7 +25638,7 @@ async function sauvegarderStats(){
   };
   try{
     const r=await sbFetch('contenu_stats?on_conflict=contenu_id',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'enregistrement impossible.'));return;}
   }catch(e){if(err)err.textContent='Erreur : enregistrement impossible.';return;}
   closeModal();toast('Statistiques enregistrées.','ok');loadCmAnalytics();
 }
@@ -26408,7 +26473,7 @@ async function toutPayerCollab(ids,btn){
 async function marquerPayeRem(id,btn){
   try{
     const r=await sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body:{statut_paiement:'payé',date_paiement:new Date().toISOString()}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'paiement impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'paiement impossible.')),'er');return;}
     logFinancialAudit('paiement','prestations_equipe',id,null,r?.[0]?.remuneration,{statut_paiement:'payé'});
     if(btn){btn.textContent='✓ Payé';btn.disabled=true;btn.style.background='rgba(46,204,138,.15)';btn.style.color='var(--ok)';btn.style.border='1px solid rgba(46,204,138,.3)';}
     const item=_comptaRemData.find(r=>r.id===id);if(item)item.statut_paiement='payé';
@@ -26455,7 +26520,7 @@ async function comptaConfirmerAcompte(id){
       date_paiement:document.getElementById('ac-date')?.value||null,
       mode_paiement:document.getElementById('ac-mode')?.value||null,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Enregistrement impossible.')),'er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.acompte_montant||r?.[0]?.montant_ttc,{type:'acompte',mode_paiement:r?.[0]?.mode_paiement});
     _syncFactureApresAcompte(id,r?.[0]?.acompte_montant,r?.[0]?.mode_paiement);
     closeModal();toast('Acompte enregistré.','ok');loadComptaAcomptes();
@@ -26494,7 +26559,7 @@ async function comptaConfirmerImpaye(id){
       date_paiement:document.getElementById('imp-date')?.value||null,
       mode_paiement:document.getElementById('imp-mode')?.value||null,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Enregistrement impossible.')),'er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{type:'impaye_regle',mode_paiement:r?.[0]?.mode_paiement});
     _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
     closeModal();toast('Paiement enregistré.','ok');loadComptaImpayes();
@@ -26508,7 +26573,7 @@ async function comptaRembourserFrais(id,source,btn){
   if(btn){if(btn.disabled)return;btn.disabled=true;}
   try{
     const r=await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'remboursé'}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Remboursement impossible.'),'er');if(btn)btn.disabled=false;return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Remboursement impossible.')),'er');if(btn)btn.disabled=false;return;}
     logFinancialAudit('remboursement','frais',id,null,r?.[0]?.montant,{statut:'remboursé'});
     toast('Frais marqué remboursé.','ok');
     if(source==='fra')loadComptaFrais();else loadComptaDepenses();
@@ -26603,7 +26668,7 @@ async function sauvegarderNouvelleDepense(){
     created_by:localStorage.getItem('sv_uid')||null,
   };
   const r=await sbFetch('expenses',{method:'POST',body});
-  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Impossible d\'enregistrer.'));return;}
   logFinancialAudit('creation','expenses',r?.[0]?.id,null,body.montant_ttc,{libelle,categorie:body.categorie});
   closeModal();toast('Dépense enregistrée.','ok');loadComptaDepenses();
 }
@@ -26643,7 +26708,7 @@ async function sauvegarderFournisseur(){
     created_by:localStorage.getItem('sv_uid')||null,
   };
   const r=await sbFetch('vendors',{method:'POST',body});
-  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Impossible d\'enregistrer.'));return;}
   logFinancialAudit('creation','vendors',r?.[0]?.id,null,null,{nom});
   closeModal();toast('Fournisseur ajouté.','ok');loadComptaDepenses();
 }
@@ -26739,9 +26804,9 @@ async function sauvegarderCoutsIndirects(){
     // Upsert sur la contrainte unique (methode) — cost_allocations n'a qu'une
     // ligne active par méthode (migration-finance-lot0b.sql).
     const r1=await sbFetch('cost_allocations?on_conflict=methode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{methode:'forfait_par_mission',valeur:forfait,actif:true}});
-    if(sbErr(r1)){err.textContent='Erreur : '+(r1.message||'impossible d\'enregistrer.');return;}
+    if(sbErr(r1)){err.textContent='Erreur : '+(msgErreur(r1,'impossible d\'enregistrer.'));return;}
     const r2=await sbFetch('cost_allocations?on_conflict=methode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{methode:'pourcentage_ca',valeur:pct,actif:true}});
-    if(sbErr(r2)){err.textContent='Erreur : '+(r2.message||'impossible d\'enregistrer.');return;}
+    if(sbErr(r2)){err.textContent='Erreur : '+(msgErreur(r2,'impossible d\'enregistrer.'));return;}
   }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
   logFinancialAudit('modification','cost_allocations',null,null,forfait,{forfait_par_mission:forfait,pourcentage_ca:pct});
   closeModal();toast('Réglages enregistrés.','ok');loadComptaRentabilite();
@@ -27020,7 +27085,7 @@ async function sauvegarderScenario(type){
   const notes=document.getElementById('bes-notes')?.value||'';
   try{
     const r=await sbFetch('forecast_scenarios?type=eq.'+type,{method:'PATCH',body:{taux_croissance_ca_pct:ca,taux_evolution_charges_pct:ch,notes,updated_at:new Date().toISOString()}});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'enregistrement impossible.'));return;}
     logFinancialAudit('modification','forecast_scenarios',r?.[0]?.id,null,null,{type,taux_croissance_ca_pct:ca,taux_evolution_charges_pct:ch});
   }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
   closeModal();toast('Scénario mis à jour.','ok');loadComptaBudgets();
@@ -27057,13 +27122,13 @@ async function loadComptaCommissions(){
 }
 async function validerCommission(id){
   const r=await sbFetch('commissions?id=eq.'+id,{method:'PATCH',body:{statut:'validee'}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Validation impossible.')),'er');return;}
   logFinancialAudit('validation','commissions',id,null,r?.[0]?.montant_commission,{statut:'validee'});
   toast('Commission validée.','ok');loadComptaCommissions();
 }
 async function marquerCommissionPayee(id){
   const r=await sbFetch('commissions?id=eq.'+id,{method:'PATCH',body:{statut:'payee',date_paiement:ymdLocal()}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
   logFinancialAudit('paiement','commissions',id,null,r?.[0]?.montant_commission,{statut:'payee'});
   toast('Commission marquée payée.','ok');loadComptaCommissions();
 }
@@ -27116,7 +27181,7 @@ async function sauvegarderCommission(){
     created_by:localStorage.getItem('sv_uid')||null,
   };
   const r=await sbFetch('commissions',{method:'POST',body});
-  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Impossible d\'enregistrer.'));return;}
   logFinancialAudit('creation','commissions',r?.[0]?.id,null,body.montant_commission,{commercial_id:commercialId,prestation_id:prestationId});
   closeModal();toast('Commission enregistrée.','ok');loadComptaCommissions();
 }
@@ -27243,7 +27308,7 @@ async function genererExportFEC(){
     await sbFetch('fec_exports',{method:'POST',body:{periode,genere_par:localStorage.getItem('sv_uid')||null,nb_lignes:rows.length-1}});
     toast('Export FEC généré ('+(rows.length-1)+' lignes) — à valider avec ton expert-comptable.','ok');
     loadComptaFec();
-  }catch(e){toast('Erreur : '+(e.message||'génération impossible.'),'er');console.error(e);}
+  }catch(e){toast('Erreur : '+(msgErreur(e,'génération impossible.')),'er');console.error(e);}
 }
 async function modalMappingPCG(){
   let rows=[];
@@ -27273,7 +27338,7 @@ async function sauvegarderMappingPCG(){
       const id=inp.dataset.id;
       const lib=document.querySelector(`.pcg-lib[data-id="${id}"]`)?.value||'';
       const r=await sbFetch('pcg_mapping?id=eq.'+id,{method:'PATCH',body:{compte_numero:inp.value.trim(),compte_libelle:lib.trim()}});
-      if(sbErr(r)){err.textContent='Erreur : '+(r.message||'impossible d\'enregistrer.');return;}
+      if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'impossible d\'enregistrer.'));return;}
     }
     logFinancialAudit('modification','pcg_mapping',null,null,null,{});
   }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
@@ -27425,7 +27490,7 @@ async function cloturerPeriode(periode,label){
   if(!await demanderConfirmation(`Clôturer ${label} ? Aucune nouvelle dépense ou commission ne pourra plus être ajoutée sur cette période. Cette action est réversible via « Rouvrir ».`,{titre:'Cloturer la periode',action:'Cloturer',danger:false}))return;
   const uid=localStorage.getItem('sv_uid');
   const r=await sbFetch('accounting_periods',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{periode,statut:'cloturee',cloturee_par:uid||null,cloturee_le:new Date().toISOString()}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Clôture impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Clôture impossible.')),'er');return;}
   logFinancialAudit('cloture','accounting_periods',r?.[0]?.id,null,null,{periode});
   toast(`${label} clôturé.`,'ok');loadComptaClotures();
 }
@@ -27433,7 +27498,7 @@ async function cloturerPeriode(periode,label){
 async function reouvrirPeriode(periode){
   if(!await demanderConfirmation('Rouvrir cette période clôturée ?',{titre:'Rouvrir la periode',action:'Rouvrir',danger:false}))return;
   const r=await sbFetch('accounting_periods?periode=eq.'+periode,{method:'PATCH',body:{statut:'ouverte',cloturee_par:null,cloturee_le:null}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Réouverture impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Réouverture impossible.')),'er');return;}
   logFinancialAudit('reouverture','accounting_periods',r?.[0]?.id,null,null,{periode});
   toast('Période rouverte.','ok');loadComptaClotures();
 }
@@ -27622,14 +27687,14 @@ async function provisionnerTva(){
     tva_nette:_tvaCalc.nette,
   };
   const r=await sbFetch('tax_reserves?on_conflict=periode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Provisionnement impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Provisionnement impossible.')),'er');return;}
   logFinancialAudit('provisionnement','tax_reserves',r?.[0]?.id,null,_tvaCalc.nette,{periode:_tvaCalc.periode});
   toast('Provision enregistrée pour ce mois.','ok');
   loadComptaTva();
 }
 async function changerStatutTva(id,statut){
   const r=await sbFetch('tax_reserves?id=eq.'+id,{method:'PATCH',body:{statut}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
   logFinancialAudit('modification','tax_reserves',id,null,null,{statut});
   toast('Statut mis à jour.','ok');
   loadComptaTva();
@@ -27660,7 +27725,7 @@ async function exportComptaMois(moisKey){
       (Array.isArray(frais)?frais:[]).forEach(f=>rowsFrais.push([f.date_frais||'',f.type||'',f.description||'',f.montant||'']));
       downloadCSV(rowsFrais,`Compta-Frais-${moisKey}-${ts}.csv`);
     }
-  }catch(e){toast('Erreur export : '+(e.message||'inconnue'),'er');}
+  }catch(e){toast('Erreur export : '+(msgErreur(e,'inconnue')),'er');}
 }
 
 // ── Dashboard secrétaire ─────────────────────────────────────────────────────
@@ -28107,7 +28172,7 @@ function modalReservationClub(id){
 async function envoyerReservationEnProduction(id){
   try{
     const r=await sbFetch('rpc/club_booking_send_to_production',{method:'POST',body:{p_booking_id:id}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Envoi en Production impossible.'),'error');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Envoi en Production impossible.')),'error');return;}
     closeModal();
     toast('Réservation envoyée en Production.','ok');
     loadClubBookings();
@@ -28120,7 +28185,7 @@ async function secEnregistrerStatutReservation(id){
   if(!status)return;
   try{
     const r=await sbFetch('club_bookings?id=eq.'+id,{method:'PATCH',body:{status}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'error');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'error');return;}
     closeModal();toast('Statut mis à jour : '+CBK_STATUS_LABEL[status]+'.','ok');
     loadClubBookings();
   }catch(e){toast('Erreur lors de la mise à jour.','error');}
@@ -28132,7 +28197,7 @@ async function secAvancerReservation(id,current){
   const next=CBK_STEPS[idx+1];
   try{
     const r=await sbFetch('club_bookings?id=eq.'+id,{method:'PATCH',body:{status:next}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'error');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'error');return;}
     toast('Réservation passée à « '+CBK_STATUS_LABEL[next]+' ».','ok');
     loadClubBookings();
   }catch(e){toast('Erreur lors de la mise à jour.','error');}
@@ -28493,12 +28558,12 @@ async function exportSecRapport(type){
       // acompte en cours de facturation/à relancer (par opposition à
       // 'non_facturée', où rien n'a encore été engagé côté facturation).
       const data=await sbFetch('prestations?select=reference,statut,statut_financier,date_prestation,montant_ttc,clients(nom,email,telephone)&statut_financier=in.(en_préparation,partiellement_payée,facturée)&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=500');
-      if(!Array.isArray(data)){toast('Erreur export : '+(data&&data.message||'requête invalide.'),'er');return;}
+      if(!Array.isArray(data)){toast('Erreur export : '+(data&&msgErreur(data,'requête invalide.')),'er');return;}
       const rows=[['Référence','Client','Email','Téléphone','Date','Montant TTC','Statut financier']];
       data.forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.clients?.email||'',p.clients?.telephone||'',p.date_prestation||'',p.montant_ttc||'',p.statut_financier||'']));
       dlCSV(`relances-${ts}.csv`,rows);
     }
-  }catch(e){toast('Erreur export : '+(e.message||'inconnue'),'er');}
+  }catch(e){toast('Erreur export : '+(msgErreur(e,'inconnue')),'er');}
 }
 function dlCSV(fname,rows){
   const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
@@ -28585,7 +28650,7 @@ async function loadSecRapports(){
 async function secQualifierDemande(id){
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:'offre_en_préparation'}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'qualification impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'qualification impossible.')),'er');return;}
     toast('Demande qualifiée — devis en préparation.','ok');loadSecDemandes();
   }catch(e){toast('Erreur lors de la qualification.','er');}
 }
@@ -28634,7 +28699,7 @@ async function secConfirmerPaye(id){
       date_paiement:document.getElementById('paye-date')?.value||null,
       mode_paiement:document.getElementById('paye-mode')?.value||null,
     }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'enregistrement impossible.'),'er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'enregistrement impossible.')),'er');if(btn){btn.disabled=false;btn.textContent='Confirmer';}return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{mode_paiement:r?.[0]?.mode_paiement});
     _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
     closeModal();toast('Paiement enregistré.','ok');loadSecRelances();
@@ -28653,7 +28718,7 @@ async function secConfirmerPaye(id){
 async function secMarquerLivre(id){
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:'livrée'}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     loadSecLivraisons();
     const liv=await sbFetch('media_livrables?select=id&prestation_id=eq.'+id+'&statut=eq.livre&limit=1').catch(()=>[]);
     if(Array.isArray(liv)&&liv.length){toast('Prestation marquée livrée.','ok');return;}
@@ -28879,7 +28944,7 @@ function resetChecklist(){
 async function avanJourJ(id,newStatut){
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:newStatut}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     toast(SL[newStatut]||newStatut,'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
@@ -28967,7 +29032,7 @@ function renderComptaFactures(){
 async function majStatutFacture(id,statut){
   try{
     const r=await sbFetch('factures?id=eq.'+id,{method:'PATCH',body:{statut}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
     const row=Array.isArray(r)?r[0]:r;
     if(statut==='payee'){
       logFinancialAudit('encaissement','factures',id,null,row?.montant_ttc,{statut});
@@ -29154,7 +29219,7 @@ async function sauvegarderHeures(equipeId){
     if(frais>0)body.frais_declares=frais;
     if(notes)body.notes_declaration=notes;
     const r=await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'enregistrement impossible.'));return;}
     closeModal();
     toast('Heures enregistrées.','ok');
   }catch(e){err.textContent='Erreur lors de l\'enregistrement.';}
@@ -29289,7 +29354,7 @@ async function validerProduction(prestationId){
   if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='Validation…';}
   const r=await sbFetch('rpc/validate_production',{method:'POST',body:{p_prestation_id:prestationId}});
   if(sbErr(r)){
-    toast('Erreur : '+(r.message||'Validation impossible.'),'er');
+    toast('Erreur : '+(msgErreur(r,'Validation impossible.')),'er');
     if(btn){btn.disabled=false;btn.textContent='✓ Valider la production';}
     return;
   }
@@ -30019,7 +30084,7 @@ async function loadFinances(){
 async function majStatutFinancier(id,statut){
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut_financier:statut}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
     if(statut==='payée'){
       logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{statut_financier:statut});
       _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
@@ -30236,7 +30301,7 @@ function renderFinDepenses(){
 async function genererDepensesRecurrentes(){
   try{
     const r=await sbFetch('rpc/fin_generer_depenses_recurrentes',{method:'POST',body:{}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'génération impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'génération impossible.')),'er');return;}
     const n=Array.isArray(r)?r.length:0;
     toast(n>0?n+' échéance(s) générée(s).':'Aucune échéance due pour le moment.','ok');
     loadFinDepenses();
@@ -30516,7 +30581,7 @@ async function poleRemCalculer(){
   const{debut}=_monthBounds(mois);
   try{
     const r=await sbFetch('rpc/pole_calculer_remuneration_responsable',{method:'POST',body:{p_pole_id:poleId,p_periode:debut}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'calcul impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'calcul impossible.')),'er');return;}
     toast('Calcul effectué.','ok');
     loadPoleRem();
   }catch(e){toast('Erreur lors du calcul.','er');}
@@ -30526,7 +30591,7 @@ async function poleRemValider(calculId,statut){
   if(!await demanderConfirmation('Confirmer : '+lbl+' ?',{action:'Confirmer',danger:false}))return;
   try{
     const r=await sbFetch('rpc/pole_valider_remuneration_responsable',{method:'POST',body:{p_calcul_id:calculId,p_statut:statut,p_ajustement_montant:null,p_ajustement_motif:null}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'action impossible.')),'er');return;}
     toast(statut==='paye'?'Marqué comme payé.':'Validé.','ok');
     loadPoleRem();
   }catch(e){toast('Erreur lors de la mise à jour.','er');}
@@ -30539,7 +30604,7 @@ async function poleRemAjuster(calculId){
   const motif=prompt('Motif de l\'ajustement :','')||null;
   try{
     const r=await sbFetch('rpc/pole_valider_remuneration_responsable',{method:'POST',body:{p_calcul_id:calculId,p_statut:null,p_ajustement_montant:montant,p_ajustement_motif:motif}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'ajustement impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'ajustement impossible.')),'er');return;}
     toast('Ajustement enregistré.','ok');
     loadPoleRem();
   }catch(e){toast('Erreur lors de l\'ajustement.','er');}
@@ -30653,7 +30718,7 @@ async function confirmerRapprochement(txId,cibleType,cibleId){
     const body={p_transaction_id:txId};
     if(cibleType==='facture')body.p_facture_id=cibleId;else body.p_expense_id=cibleId;
     const r=await sbFetch('rpc/fin_rapprocher_transaction',{method:'POST',body});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'rapprochement impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'rapprochement impossible.')),'er');return;}
     toast(r.already_reconciled?'Déjà rapprochée.':'Transaction rapprochée.','ok');
     closeModal();
     loadRapprochementBancaire();
@@ -30771,7 +30836,7 @@ async function _finConfirmerImportCSV(){
     const r=await sbFetch('bank_transactions?on_conflict=provider,provider_account_id,provider_transaction_id',{
       method:'POST',body,headers:{Prefer:'return=representation,resolution=ignore-duplicates'},
     });
-    if(sbErr(r)){toast('Erreur : '+(r.message||'import impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'import impossible.')),'er');return;}
     const nInserted=Array.isArray(r)?r.length:0;
     logFinancialAudit('import_csv_bancaire','bank_transactions',null,null,null,{lignes_fichier:_finCsvRows.length,lignes_nouvelles:nInserted});
     toast(nInserted+' nouvelle(s) transaction(s) importée(s)'+(_finCsvRows.length-nInserted>0?' ('+(_finCsvRows.length-nInserted)+' déjà connue(s), ignorée(s))':'')+'.','ok');
@@ -30940,7 +31005,7 @@ async function modifierCollaborateur(id){
   const typeContratEl=document.getElementById('fco-typecontrat');
   if(typeContratEl)body.type_contrat=typeContratEl.value;
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body});
-  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible de modifier.');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Impossible de modifier.'));return;}
   if(typeContratEl){
     const salaireEl=document.getElementById('fco-salaire'),chargesEl=document.getElementById('fco-charges');
     if(typeContratEl.value==='salarie'&&salaireEl){
@@ -30950,7 +31015,7 @@ async function modifierCollaborateur(id){
         salaire_brut_mensuel:nouveauSalaire,
         charges_patronales_pct:parseFloat(chargesEl.value||'42'),
       }});
-      if(sbErr(r2)){err.textContent='Collaborateur mis à jour, mais erreur sur la paie : '+(r2.message||'');return;}
+      if(sbErr(r2)){err.textContent='Collaborateur mis à jour, mais erreur sur la paie : '+(msgErreur(r2,''));return;}
       logFinancialAudit('modification','employee_costs',id,null,nouveauSalaire,{collaborateur_id:id});
     }
   }
@@ -30975,7 +31040,7 @@ async function executerChangerNiveauOperateur(id){
   const err=document.getElementById('niv-op-err');
   const niveau=Number(document.getElementById('niv-op-select')?.value);
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{niveau_operateur:niveau}});
-  if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'Modification impossible.');return;}
+  if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'Modification impossible.'));return;}
   closeModal();
   toast('Niveau opérateur mis à jour.','ok');
   modalFicheCollaborateur(id);
@@ -31356,7 +31421,7 @@ async function modalFicheCollaborateur(id){
       +'</div>');
     const mw=document.querySelector('#sv-modal > div');
     if(mw){mw.style.width='min(720px,calc(100vw - 16px))';mw.style.padding='0';mw.style.overflow='hidden';const ob=mw.querySelector(':scope > button');if(ob)ob.style.display='none';}
-  }catch(e){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">'+(e.message||'Impossible de charger la fiche.')+'</div>');}
+  }catch(e){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">'+(msgErreur(e,'Impossible de charger la fiche.'))+'</div>');}
 }
 
 // ── Pôle(s) d'un collaborateur existant (migration-poles-v14/v15, 31/08/2026,
@@ -31467,7 +31532,7 @@ async function ficheDocAjouter(collabId){
   if(!nom){err.textContent='Le nom du document est obligatoire.';return;}
   const uid=localStorage.getItem('sv_uid');
   const r=await sbFetch('collaborateur_documents',{method:'POST',body:{collaborateur_id:collabId,type,nom,statut,notes,uploaded_by:uid}});
-  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'enregistrement impossible.'));return;}
   toast('Document ajouté.','ok');
   closeModal();
   setTimeout(()=>modalFicheCollaborateur(collabId),200);
@@ -31477,7 +31542,7 @@ async function ficheDocSupprimer(docId,collabId,nomDoc){
     'Retirer '+(nomDoc?'« '+nomDoc+' »':'ce document')+' du dossier de ce collaborateur ?\n\nLe document ne sera plus rattache a sa fiche. Cette action ne se defait pas depuis l\'OS.',
     {titre:'Retirer le document',action:'Retirer'}))return;
   const r=await sbFetch('collaborateur_documents?id=eq.'+docId,{method:'DELETE'});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible.')),'er');return;}
   toast('Document retiré.','ok');
   setTimeout(()=>modalFicheCollaborateur(collabId),150);
 }
@@ -32684,7 +32749,7 @@ async function sendMsgClient(clientId,prestationId,idx){
   const contenu=input.value.trim();
   if(!contenu)return;
   const r=await sbFetch('messages_client',{method:'POST',body:{client_id:clientId,prestation_id:prestationId,auteur_type:'staff',auteur_staff_id:localStorage.getItem('sv_uid'),contenu}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'message non envoyé.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'message non envoyé.')),'er');return;}
   input.value='';
   await loadMsgClients();
 }
@@ -32714,7 +32779,7 @@ function renderRdvClients(){
 }
 async function confirmerRdvClient(id){
   const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'confirme',confirme_par:localStorage.getItem('sv_uid')}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   toast('Rendez-vous confirmé.','ok');
   await loadRdvClients();
 }
@@ -32724,14 +32789,14 @@ async function confirmerRdvClient(id){
 // restait bloqué sans action possible une fois passé.
 async function marquerRealiseRdvClient(id){
   const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'realise'}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   toast('Rendez-vous marqué réalisé.','ok');
   await loadRdvClients();
 }
 async function annulerRdvClient(id){
   if(!await demanderConfirmation('Annuler ce rendez-vous ?',{titre:'Annuler le rendez-vous',action:'Annuler le RDV'}))return;
   const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'annule'}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   toast('Rendez-vous annulé.','ok');
   await loadRdvClients();
 }
@@ -32816,7 +32881,7 @@ async function saveCatalogueOffre(id){
     body.image_url=imageUrl||null;
   }
   const r=id?await sbFetch('catalogue_offres?id=eq.'+id,{method:'PATCH',body}):await sbFetch('catalogue_offres',{method:'POST',body});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'sauvegarde impossible.')),'er');return;}
   toast(id?'Offre mise à jour.':'Offre créée.','ok');
   closeModal();
   await loadCatalogueOffres();
@@ -32916,7 +32981,7 @@ async function saveRealisation(id){
     actif:document.getElementById('real-actif').checked,
   };
   const r=id?await sbFetch('realisations?id=eq.'+id,{method:'PATCH',body}):await sbFetch('realisations',{method:'POST',body});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'sauvegarde impossible.')),'er');return;}
   toast(id?'Réalisation mise à jour.':'Réalisation ajoutée.','ok');
   closeModal();
   await loadRealisations();
@@ -32924,7 +32989,7 @@ async function saveRealisation(id){
 async function deleteRealisation(id){
   if(!await demanderConfirmation('Supprimer cette réalisation ?',{titre:'Supprimer cette realisation',action:'Supprimer'}))return;
   const r=await sbFetch('realisations?id=eq.'+id,{method:'DELETE'});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible.')),'er');return;}
   toast('Réalisation supprimée.','ok');
   await loadRealisations();
 }
@@ -32961,7 +33026,7 @@ async function saveComptePortail(id){
     telephone:document.getElementById('cp-tel-'+id).value.trim()||null,
   };
   const r=await sbFetch('client_users?id=eq.'+id,{method:'PATCH',body});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'sauvegarde impossible.')),'er');return;}
   toast('Compte mis à jour.','ok');
   await loadComptesPortail();
 }
@@ -33022,7 +33087,7 @@ function renderAvisClients(){
 }
 async function toggleAvisStatut(id,statut){
   const r=await sbFetch('avis_clients?id=eq.'+id,{method:'PATCH',body:{statut}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
   toast(statut==='visible'?'Avis affiché.':'Avis masqué.','ok');
   await loadAvisClients();
 }
@@ -33548,7 +33613,7 @@ async function sauvegarderContrat(){
       r=await sbFetch('contrats',{method:'POST',body:payloadSansDescription});
       descriptionNonEnregistree=!sbErr(r);
     }
-    if(sbErr(r)){if(err){err.textContent='Erreur: '+(r.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}if(btn){btn.disabled=false;btn.textContent='Créer le contrat';}return;}
+    if(sbErr(r)){if(err){err.textContent='Erreur: '+(msgErreur(r,'Table "contrats" manquante. Exécutez la migration SQL.'));err.style.display='block';}if(btn){btn.disabled=false;btn.textContent='Créer le contrat';}return;}
     if(payload.statut==='actif'&&clientId){
       try{
         const cl=await sbFetch('clients?select=id,statut&id=eq.'+clientId);
@@ -33741,7 +33806,7 @@ async function mettreAJourContrat(id){
     r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payloadSansDescription});
     descriptionNonEnregistree=!sbErr(r);
   }
-  if(sbErr(r)){const e=document.getElementById('ecf-err');if(e){e.textContent='Erreur: '+(r.message||'Impossible de modifier.');e.style.display='block';}return;}
+  if(sbErr(r)){const e=document.getElementById('ecf-err');if(e){e.textContent='Erreur: '+(msgErreur(r,'Impossible de modifier.'));e.style.display='block';}return;}
   let cidPourCascade=null;
   if(payload.statut==='actif'){
     try{
@@ -33822,14 +33887,14 @@ function confirmerDesactiverUser(id,prenom,nom){
 // l'ancien écran séparé "Utilisateurs & accès" n'existe plus.
 async function desactiverUser(id){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{actif:false}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'désactivation impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'désactivation impossible.')),'er');return;}
   closeModal();toast('Utilisateur désactivé.','ok');
   if(document.getElementById('col-real'))await loadCollaborateurs();
 }
 
 async function reactiverUser(id){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{actif:true}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'réactivation impossible.'),'er');return;}
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'réactivation impossible.')),'er');return;}
   toast('Utilisateur réactivé.','ok');
   if(document.getElementById('col-real'))await loadCollaborateurs();
 }
@@ -34212,7 +34277,7 @@ async function loadCentreSection(section){
     'admin-centre':renderCentreAdminDash,
   };
   const fn=renderers[section];
-  if(fn)try{ct.innerHTML=await fn();}catch(e){ct.innerHTML=`<div style="padding:40px;color:var(--er);text-align:center">Erreur de chargement.<br><small>${e.message||''}</small></div>`;}
+  if(fn)try{ct.innerHTML=await fn();}catch(e){ct.innerHTML=`<div style="padding:40px;color:var(--er);text-align:center">Erreur de chargement.<br><small>${msgErreur(e,'')}</small></div>`;}
   else ct.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Section en cours de construction.</div>';
 }
 
@@ -35048,11 +35113,11 @@ async function centreAttribuerXPSubmit(userId){
     if(!targetProf||targetProf.role!=='photo'){toast('XP/Grade réservé au rôle Photographe/Vidéaste.','er');return;}
     const uid=localStorage.getItem('sv_uid');
     const rXp=await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:userId,montant,type,description:desc,attribue_par:uid}});
-    if(sbErr(rXp)){toast('Erreur : '+(rXp.message||'attribution impossible.'),'er');return;}
+    if(sbErr(rXp)){toast('Erreur : '+(msgErreur(rXp,'attribution impossible.')),'er');return;}
     // Mettre à jour le champ xp dans profiles
     const xpActuel=targetProf.xp||0;
     const rProf=await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{xp:xpActuel+montant}});
-    if(sbErr(rProf)){toast('Erreur : '+(rProf.message||'mise à jour du solde impossible.'),'er');return;}
+    if(sbErr(rProf)){toast('Erreur : '+(msgErreur(rProf,'mise à jour du solde impossible.')),'er');return;}
     await _checkGradePromotion(userId,xpActuel+montant);
     closeModal();toast(`+${montant} XP attribués.`,'ok');
     if(S.view==='centre')await loadCentre(S.role);
@@ -35111,7 +35176,7 @@ async function centreValidateGradeChange(userId,gradeActuel){
   try{
     const uid=localStorage.getItem('sv_uid');
     const rGrade=await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{grade:newGrade,grade_valide_at:new Date().toISOString(),grade_valide_par:uid}});
-    if(sbErr(rGrade)){toast('Erreur : '+(rGrade.message||'mise à jour impossible.'),'er');return;}
+    if(sbErr(rGrade)){toast('Erreur : '+(msgErreur(rGrade,'mise à jour impossible.')),'er');return;}
     // Créer un log dans grade_recommendations
     await sbFetch('grade_recommendations',{method:'POST',body:{
       collaborateur_id:userId,grade_actuel:gradeActuel,grade_propose:newGrade,
@@ -35137,11 +35202,11 @@ async function centreValiderGrade(recoId,decision,btn){
     const reco=await sbFetch('grade_recommendations?select=collaborateur_id,grade_propose&id=eq.'+recoId);
     if(!reco||!reco[0]){if(btn)btn.disabled=false;return;}
     const rReco=await sbFetch('grade_recommendations?id=eq.'+recoId,{method:'PATCH',body:{statut:decision,valide_par:uid}});
-    if(sbErr(rReco)){toast('Erreur : '+(rReco.message||'mise à jour impossible.'),'er');if(btn)btn.disabled=false;return;}
+    if(sbErr(rReco)){toast('Erreur : '+(msgErreur(rReco,'mise à jour impossible.')),'er');if(btn)btn.disabled=false;return;}
     if(decision==='valide'){
       const {collaborateur_id,grade_propose}=reco[0];
       const rProf=await sbFetch('profiles?id=eq.'+collaborateur_id,{method:'PATCH',body:{grade:grade_propose,grade_valide_at:new Date().toISOString(),grade_valide_par:uid}});
-      if(sbErr(rProf)){toast('Erreur : '+(rProf.message||'attribution du grade impossible.'),'er');if(btn)btn.disabled=false;return;}
+      if(sbErr(rProf)){toast('Erreur : '+(msgErreur(rProf,'attribution du grade impossible.')),'er');if(btn)btn.disabled=false;return;}
       toast('Grade validé et attribué.','ok');
     }else{toast('Recommandation refusée.','ok');}
     if(S.view==='centre')await loadCentreSection('grades');
@@ -35259,7 +35324,7 @@ async function sauvegarderRessourceCentre(id){
   };
   try{
     const r=id?await sbFetch('centre_ressources?id=eq.'+id,{method:'PATCH',body}):await sbFetch('centre_ressources',{method:'POST',body:{...body,created_by:localStorage.getItem('sv_uid')}});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'enregistrement impossible.'));return;}
     closeModal();
     toast(id?'Ressource mise à jour.':'Ressource publiée.','ok');
     loadCentreSection('ressources');
@@ -35269,7 +35334,7 @@ function supprimerRessourceCentre(id){
   confirmerAction('Supprimer définitivement cette ressource ?',async()=>{
     try{
       const r=await sbFetch('centre_ressources?id=eq.'+id,{method:'DELETE'});
-      if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+      if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'suppression impossible.')),'er');return;}
       closeModal();
       toast('Ressource supprimée.','ok');
       loadCentreSection('ressources');
@@ -35912,7 +35977,7 @@ async function sauvegarderTemplate(code){
   if(!sujet){toast('Le sujet est requis.','er');return;}
   try{
     const r=await sbFetch('email_templates?code=eq.'+code,{method:'PATCH',body:{sujet,corps,modifie_par:S.uid}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'sauvegarde impossible.')),'er');return;}
     toast('Template enregistré.','ok');
     closeModal();
     await loadEmailTemplates();
@@ -36318,7 +36383,7 @@ async function jourJAction(prestationId,newStatut,btn){
   btn.disabled=true;btn.textContent='…';
   try{
     const r=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:newStatut}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');btn.disabled=false;return;}
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');btn.disabled=false;return;}
     toast('Statut mis à jour.','ok');
     await enterJourJ(prestationId);
   }catch(e){toast('Erreur mise à jour.','er');btn.disabled=false;}
@@ -36362,7 +36427,7 @@ async function submitIncidentJJ(prestationId){
     // ('Retard', etc.) sans ajouter de champ à ce modal volontairement court.
     const typeIncident=kitId?'Matériel':'Terrain';
     const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,type_incident:typeIncident,description:desc,niveau:niv,declare_par:uid,cloture:false,date_incident:ymdLocal()}});
-    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'déclaration impossible.');return;}
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(msgErreur(r,'déclaration impossible.'));return;}
     // Si un kit a été précisé, on crée AUSSI la ligne materiel_incidents
     // (même RPC que le module Kits — voir reportMaterielIncidentRPC) pour que
     // le statut du kit bascule automatiquement en cas d'incident critique.
