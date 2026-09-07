@@ -54,9 +54,75 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const MAX_ATTEMPTS = 5;
 const BACKOFF_MINUTES = [1, 5, 15, 60, 360]; // 1min,5min,15min,1h,6h — section 15.2 du cahier des charges
 
-function renderTemplate(str: string | null | undefined, vars: Record<string, unknown>): string {
+/** Échappe une valeur avant de l'insérer dans du HTML. Les variables des gabarits sont toutes du
+ *  texte ou des URL (vérifié sur les 12 gabarits actifs : aucune n'attend du HTML), et certaines
+ *  viennent de ce qu'un client a tapé — le prénom saisi au moment du paiement, par exemple. Sans
+ *  cela, une apostrophe typographique passe, mais un chevron casse la mise en page de l'e-mail, et
+ *  une valeur mal intentionnée peut y glisser un lien qui n'est pas le nôtre.
+ *  Dans un href, `&` doit d'ailleurs bien s'écrire `&amp;` : l'échappement est aussi ce qui rend
+ *  une URL à plusieurs paramètres correcte. */
+function escHtml(v: unknown): string {
+  return String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+}
+
+function renderTemplate(
+  str: string | null | undefined,
+  vars: Record<string, unknown>,
+  { escape = false }: { escape?: boolean } = {},
+): string {
   if (!str) return "";
-  return str.replace(/\{\{(\w+)\}\}/g, (_, key) => (vars[key] !== undefined && vars[key] !== null ? String(vars[key]) : ""));
+  return str.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    const v = vars[key];
+    if (v === undefined || v === null) return "";
+    return escape ? escHtml(v) : String(v);
+  });
+}
+
+/** Enveloppe le fragment du gabarit dans un vrai document HTML.
+ *
+ *  Jusqu'ici, Brevo recevait le fragment nu : ni doctype, ni <head>, ni viewport. Deux
+ *  conséquences concrètes. D'une part les clients mobiles rendent alors la page à une largeur de
+ *  bureau puis dézooment, ce qui donne un texte minuscule. D'autre part le fond sombre n'était
+ *  porté que par un <div> intérieur : dès qu'un client réécrit ou ignore ce fond, il reste du
+ *  texte gris clair (#c7c7de) sur du blanc, à la limite du lisible. Le poser sur <body> le rend
+ *  beaucoup plus difficile à perdre. */
+function documentHtml(fragment: string, titre: string): string {
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>${escHtml(titre)}</title>
+</head>
+<body style="margin:0;padding:0;background:#09081a;color:#f7f7fb">
+${fragment}
+</body>
+</html>`;
+}
+
+/** Version texte de l'e-mail, deduite du HTML.
+ *
+ *  Un e-mail envoye en HTML seul est penalise par les filtres anti-spam, et reste illisible pour
+ *  qui affiche ses messages en texte. Les liens sont conserves entre parentheses apres le libelle
+ *  du bouton, sinon la version texte d'un e-mail de telechargement ne contiendrait plus le lien —
+ *  c'est-a-dire plus rien d'utile. */
+function versionTexte(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<head[\s\S]*?<\/head>/gi, "")
+    .replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_m, href, txt) => {
+      const libelle = txt.replace(/<[^>]+>/g, "").trim();
+      return libelle ? `${libelle} : ${href}` : href;
+    })
+    .replace(/<\/(p|div|h1|h2|h3|tr|li)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .split("\n").map((l) => l.trim()).filter((l, i, a) => l !== "" || a[i - 1] !== "")
+    .join("\n").trim();
 }
 
 async function sendViaBrevo(
@@ -65,6 +131,7 @@ async function sendViaBrevo(
   to: string,
   subject: string,
   html: string,
+  text: string,
 ): Promise<{ ok: boolean; providerMessageId?: string; error?: string }> {
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
@@ -78,6 +145,7 @@ async function sendViaBrevo(
       to: [{ email: to }],
       subject,
       htmlContent: html,
+      textContent: text,
     }),
   });
   const data = await res.json().catch(() => ({}));
@@ -180,8 +248,12 @@ serve(async (req) => {
       }
 
       const vars = row.payload_json || {};
+      // Le sujet n'est pas du HTML : il ne doit surtout pas etre echappe, sinon une apostrophe
+      // s'afficherait « &#39; » dans la liste des messages.
       const subject = renderTemplate(tv.subject_template, vars);
-      const html = renderTemplate(tv.body_html_template, vars);
+      const corps = renderTemplate(tv.body_html_template, vars, { escape: true });
+      const html = documentHtml(corps, subject);
+      const texte = versionTexte(corps);
       const to = row.recipient_email;
 
       if (!to) {
@@ -253,7 +325,7 @@ serve(async (req) => {
         }
       }
 
-      const result = await sendViaBrevo(brevoApiKey, fromEmail, to, subject, html);
+      const result = await sendViaBrevo(brevoApiKey, fromEmail, to, subject, html, texte);
 
       if (result.ok) {
         await admin.from("notification_attempts").insert({
