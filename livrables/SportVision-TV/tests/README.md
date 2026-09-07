@@ -166,3 +166,21 @@ python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()})
 curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
   -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
 ```
+
+## `galerie-formules-ui.test.mjs`
+
+26 scénarios dans un vrai Chromium, sur la galerie EN PRODUCTION, en iPhone et en bureau.
+
+Vérifie que le nouveau parcours est bien celui qui est servi : le prix visible sans rien avoir
+coché, la formule nommée, plus aucun panier ni coche de sélection, aucun défilement horizontal, le
+bouton d'achat présent jusque dans la visionneuse, le même montant sur l'écran de paiement que sur
+la barre d'achat, et le récapitulatif qui reprend la formule. Vérifie aussi, en écoutant le réseau,
+qu'aucun original n'est servi à la page publique et que les aperçus viennent bien du bucket public.
+
+Deux pièges appris ici : `Intl.NumberFormat("fr-FR")` insère une espace fine insécable avant le €
+(chercher « 4 € » avec une espace ordinaire ne trouve rien), et `innerText` rend les libellés de
+champs en majuscules à cause du `text-transform` CSS.
+
+```bash
+node livrables/SportVision-TV/tests/galerie-formules-ui.test.mjs
+```
