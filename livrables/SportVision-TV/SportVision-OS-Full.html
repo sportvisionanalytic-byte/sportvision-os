@@ -9066,11 +9066,19 @@ async function modalMediaProduit(productId){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
         <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Type</label>
-          <select id="mp-type" class="l-inp" style="height:38px">${Object.entries(MED_TYPE_LB).map(([v,l])=>`<option value="${v}"${p?.type===v?' selected':''}>${l}</option>`).join('')}</select>
+          <select id="mp-type" class="l-inp" style="height:38px" onchange="{const w=document.getElementById('mp-pack-wrap');if(w)w.style.display=this.value==='pack'?'block':'none';}">${Object.entries(MED_TYPE_LB).map(([v,l])=>`<option value="${v}"${p?.type===v?' selected':''}>${l}</option>`).join('')}</select>
         </div>
         <div><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Prix (€)</label>
           <input id="mp-prix" type="number" min="0" step="0.01" class="l-inp" style="height:38px" value="${p?((p.price_cents||0)/100):''}">
         </div>
+      </div>
+      <!-- Taille du pack (07/09/2026) : sans elle, impossible d'appliquer « 5 photos = 15 € ».
+           Stockee dans metadata.photo_count, colonne jsonb deja prevue pour ca. Un pack sans
+           taille n'est simplement pas propose dans la galerie publique, plutot qu'applique au
+           hasard sur un nombre de photos invente. -->
+      <div id="mp-pack-wrap" style="margin-bottom:12px;display:${p?.type==='pack'?'block':'none'}">
+        <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Nombre de photos du pack</label>
+        <input id="mp-pack" type="number" min="1" step="1" class="l-inp" style="height:38px" value="${esc(String(p?.metadata?.photo_count||''))}" placeholder="5">
       </div>
       <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:6px">Portée</label>
         <select id="mp-scope" class="l-inp" style="height:38px" onchange="document.getElementById('mp-teams-block').style.display=this.value==='team'?'block':'none'">
@@ -9127,7 +9135,12 @@ async function _medSaveProduit(clubId,saisonId,productId){
   if(!(prixEuros>=0)){errEl.textContent='Le prix doit être positif ou nul.';return;}
   const team_ids=scope_type==='team'?Array.from(document.querySelectorAll('.mp-team-cb:checked')).map(cb=>cb.value):[];
   if(scope_type==='team'&&!team_ids.length){errEl.textContent='Sélectionnez au moins une équipe.';return;}
-  const body={club_id:clubId,saison_id:saisonId,name,type,price_cents:Math.round(prixEuros*100),scope_type,team_ids,status,physical_product};
+  // Taille du pack (07/09/2026) : un produit de type 'pack' sans nombre de photos ne peut pas
+  // etre applique, donc la galerie publique ne le proposera pas du tout. Autant le dire ici.
+  const packPhotos=type==='pack'?parseInt(document.getElementById('mp-pack')?.value||'',10):null;
+  if(type==='pack'&&!(packPhotos>0)){errEl.textContent='Indiquez le nombre de photos du pack.';return;}
+  const body={club_id:clubId,saison_id:saisonId,name,type,price_cents:Math.round(prixEuros*100),scope_type,team_ids,status,physical_product,
+    metadata:type==='pack'?{photo_count:packPhotos}:{}};
   const r=productId
     ?await sbFetch('media_products?id=eq.'+productId,{method:'PATCH',body})
     :await sbFetch('media_products',{method:'POST',body});
@@ -11375,6 +11388,8 @@ async function modalMediasAlbum(albumId){
       </label>
     </div>
 
+    <div id="gal-lien" style="margin-bottom:12px"></div>
+
     <div id="gal-queue" style="margin-bottom:12px"></div>
     <div id="gal-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:44vh;overflow-y:auto"></div>
 
@@ -11383,6 +11398,62 @@ async function modalMediasAlbum(albumId){
       <button class="btn bg2" onclick="closeModal();loadPhotoAlbums()">Fermer</button>
     </div>`);
   await _galChargerAssets();
+  await _galChargerLien();
+}
+
+// ── Lien public de la galerie ─────────────────────────────────────────────
+// Le slug est lisible (il finit sur une affiche ou dans un message WhatsApp), le JETON fait la
+// securite : un slug se devine, pas 24 caracteres aleatoires. C'est ce lien, et lui seul, qui
+// ouvre la galerie a quelqu'un sans compte — `access_mode` n'est pas touche.
+const GAL_CONNECT_URL='https://connect.sportvision-an.fr';
+
+function _galUrlPublique(lien){
+  return GAL_CONNECT_URL+'/gallery/'+lien.slug+'?k='+encodeURIComponent(lien.token);
+}
+
+async function _galChargerLien(){
+  const el=document.getElementById('gal-lien');
+  if(!el)return;
+  const rows=(await sbFetch('media_album_links?select=id,slug,token,is_enabled,view_count,unique_visitor_count&album_id=eq.'+_galAlbum.id+'&order=created_at.asc').catch(()=>[]))||[];
+  const lien=Array.isArray(rows)?rows[0]:null;
+
+  if(!lien){
+    el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="font-size:12px;color:var(--t2)">Aucun lien public. ${_galAlbum.status==='published'?'':'<span style="color:var(--wa)">Publiez l\'album pour que le lien fonctionne.</span>'}</div>
+      <button class="btn bp bs" onclick="galCreerLien()">Créer le lien public</button>
+    </div>`;
+    return;
+  }
+
+  const url=_galUrlPublique(lien);
+  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Lien public</span>
+      <span style="font-size:11px;color:var(--t3)">${lien.view_count||0} vue(s) · ${lien.unique_visitor_count||0} visiteur(s)</span>
+      ${_galAlbum.status==='published'?'':'<span style="font-size:11px;color:var(--wa)">Album non publié : le lien affiche « pas encore ouverte »</span>'}
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      <input id="gal-lien-url" readonly value="${esc(url)}" class="l-inp" style="height:34px;flex:1;min-width:220px;font-size:11.5px">
+      <button class="btn bg2 bs" onclick="galCopierLien()">Copier</button>
+      <button class="btn bg2 bs" onclick="window.open('${esc(url)}','_blank')">Ouvrir</button>
+    </div>
+  </div>`;
+}
+
+async function galCreerLien(){
+  const slugRpc=await sbFetch('rpc/media_gallery_unique_slug',{method:'POST',body:{p_text:_galAlbum.title}});
+  if(sbErr(slugRpc)){toast('Erreur : '+(slugRpc.message||'slug impossible'),'error');return;}
+  const r=await sbFetch('media_album_links',{method:'POST',body:{album_id:_galAlbum.id,slug:slugRpc,created_by:S.uid},headers:{Prefer:'return=representation'}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible'),'error');return;}
+  toast('Lien public créé.','ok');
+  _galChargerLien();
+}
+
+function galCopierLien(){
+  const inp=document.getElementById('gal-lien-url');
+  if(!inp)return;
+  inp.select();
+  navigator.clipboard.writeText(inp.value).then(()=>toast('Lien copié.','ok')).catch(()=>toast('Copie impossible — sélectionnez le lien à la main.','error'));
 }
 
 async function galBasculerFiligrane(actif){

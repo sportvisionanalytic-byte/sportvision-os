@@ -30,6 +30,10 @@ const PUBLIC_PATHS = [
   "/demo",
   "/join",
   "/media-checkout",
+  // Galerie publique (07/09/2026) : ouverte sans compte, presque toujours depuis un lien
+  // WhatsApp. Le jeton du lien fait la securite, verifie par les RPC media_gallery_* ; sans cette
+  // ligne le middleware redirigerait chaque parent vers /auth/login.
+  "/gallery",
 ];
 
 export async function updateSession(request: NextRequest) {

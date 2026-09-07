@@ -34,3 +34,27 @@ bash livrables/SportVision-TV/tests/galerie-stockage.test.sh
 
 Nécessite `.env` (SUPABASE_MANAGEMENT_TOKEN) et
 `livrables/SportVision-Connect/app-next/.env.local` (clés Supabase).
+
+## `galerie-publique.test.mjs`
+
+Parcours réel de la galerie publique dans Chromium, sur la vraie base et les vraies photos :
+iPhone 13, iPad, desktop 1440 et petit écran 320 px.
+
+Couvre : ouverture sans compte, lien invalide / jeton absent / galerie inexistante, affichage des
+seules photos publiables, absence de tout chemin d'original dans la page, réservation de la place
+des vignettes, sélection et désélection, bascule automatique vers le pack le plus avantageux,
+panier, visionneuse (compteur, aperçu 1600 px, swipe tactile réel via le protocole Chrome, flèches
+clavier, Échap), persistance de la sélection après visionneuse et après rechargement, nombre de
+colonnes par format d'écran, absence de débordement horizontal.
+
+```bash
+# 1. lancer l'app localement
+cd livrables/SportVision-Connect/app-connect && npm run build && npx next start -p 3311
+
+# 2. dans un autre terminal, avec le lien d'une galerie publiée
+SLUG=villneuve-cup-u18 TOKEN=... SHOTS=/tmp \
+  node livrables/SportVision-TV/tests/galerie-publique.test.mjs
+```
+
+Les captures d'écran sont écrites dans `$SHOTS` : elles servent à juger le rendu, pas seulement à
+vérifier que ça marche.
