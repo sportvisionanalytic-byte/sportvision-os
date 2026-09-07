@@ -10823,6 +10823,59 @@ function setMediaTab(tab){
   loadProdMedias();
 }
 
+
+// ── Problemes a verifier ──────────────────────────────────────────────────
+// Nous entrons en production reelle. Une commande payee sans droit, un e-mail definitivement
+// echoue ou un depot bloque ne doivent pas se decouvrir parce qu'un client ecrit.
+//
+// Rien n'est corrige automatiquement : sur des donnees d'argent, une correction decidee par une
+// regle ecrite un soir fait plus de degats qu'un defaut visible. On montre, on n'agit pas.
+async function _statsSante(){
+  const rows=await sbFetch('rpc/media_sante',{method:'POST',body:{}}).catch(()=>[]);
+  const l=Array.isArray(rows)?rows:[];
+  _santeCache=l;
+  if(!l.length){
+    return `<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--t3)">
+      Aucune anomalie detectee.
+    </div>`;
+  }
+  const critiques=l.filter(x=>x.gravite==='critique');
+  return `<div style="border:1px solid ${critiques.length?'var(--er)':'var(--wa)'};border-radius:var(--rp);padding:11px 12px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:${critiques.length?'var(--er)':'var(--wa)'}">
+        ${critiques.length?'A traiter en priorite':'A verifier'}
+      </span>
+      <span style="font-size:11px;color:var(--t3)">${l.length} point(s)</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${l.map((x,i)=>`<div style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px">
+        <span style="flex-shrink:0;width:7px;height:7px;border-radius:50%;margin-top:5px;background:${x.gravite==='critique'?'var(--er)':'var(--wa)'}"></span>
+        <div style="min-width:0;flex:1">
+          <div><strong>${x.nombre}</strong> · ${esc(x.probleme)}</div>
+          <div style="font-size:11px;color:var(--t3)">${esc(x.domaine)}</div>
+          ${x.detail&&x.detail.length?`<button class="btn bg2 bs" style="font-size:10.5px;margin-top:4px" onclick="_statsDetailSante(${i})">Voir le detail</button>`:''}
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+let _santeCache=[];
+function _statsDetailSante(i){
+  const x=_santeCache[i];
+  if(!x)return;
+  // Le detail est brut, volontairement : c'est un ecran de diagnostic pour l'equipe, pas une
+  // interface client. Ce qu'on veut, c'est pouvoir copier un identifiant et aller voir.
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:3px">${esc(x.probleme)}</div>
+    <div style="font-size:11.5px;color:var(--t3);margin-bottom:12px">${esc(x.domaine)} · ${x.nombre} cas</div>
+    <pre style="max-height:46vh;overflow:auto;background:rgba(255,255,255,.03);border:1px solid var(--b1);border-radius:var(--rp);padding:11px;font-size:11px;line-height:1.55;white-space:pre-wrap;word-break:break-all">${esc(JSON.stringify(x.detail,null,2))}</pre>
+    <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:13px">
+      <button class="btn bp" onclick="closeModal()">Fermer</button>
+    </div>
+  `);
+}
+
 // ── Statistiques commerciales des galeries ────────────────────────────────
 // Tout vient des fonctions d'agregation en base : cet ecran ne calcule AUCUN chiffre. Il ne fait
 // que demander une periode et mettre en forme la reponse. Un total recalcule ici finirait par
@@ -10868,7 +10921,8 @@ async function renderStatsGaleries(el){
   const {d,f}=_statsPlage();
   const args={p_debut:d,p_fin:f,p_inclure_exclus:_statsAvecTests};
 
-  const [res,evo,gal,aud,con]=await Promise.all([
+  const [sante,res,evo,gal,aud,con]=await Promise.all([
+    _statsSante(),
     sbFetch('rpc/media_stats_resume',{method:'POST',body:args}).catch(()=>null),
     sbFetch('rpc/media_stats_evolution',{method:'POST',body:args}).catch(()=>[]),
     sbFetch('rpc/media_stats_galeries',{method:'POST',body:Object.assign({p_limit:15},args)}).catch(()=>[]),
@@ -10883,6 +10937,7 @@ async function renderStatsGaleries(el){
   }
 
   el.innerHTML=`
+    ${sante}
     ${_statsBarrePeriode(d,f)}
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px;margin-bottom:14px">

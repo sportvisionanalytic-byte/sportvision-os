@@ -415,3 +415,15 @@ python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()})
 curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
   -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
 ```
+
+## `audit-sante.test.sql`
+
+7 scénarios sur la détection d'anomalies (`media_sante`). Transaction annulée.
+
+Fabrique de vraies anomalies — commande payée sans droit, e-mail définitivement échoué, photo
+publiable sans aperçu — et vérifie qu'elles remontent avec la bonne gravité et de quoi les
+retrouver. Vérifie surtout qu'un cas NORMAL ne déclenche rien : un pack payé dont la sélection
+n'est pas encore faite n'est pas une commande sans photos. Une liste qui crie au loup devient une
+liste qu'on cesse de lire.
+
+Vérifie enfin qu'un photographe ne voit aucune anomalie.
