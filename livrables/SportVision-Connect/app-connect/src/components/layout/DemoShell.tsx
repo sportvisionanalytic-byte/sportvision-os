@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/Avatar";
+import { MenuButton } from "@/components/layout/MenuButton";
 
 // Shell de démonstration — copie volontairement simplifiée de AppShell.tsx pour /demo/* :
 // mêmes sections de navigation, mais tous les liens pointent vers /demo/... (routes publiques,
@@ -136,13 +137,13 @@ export function DemoShell({ firstName, children }: { firstName: string; children
         <span className="bg-sv-gradient bg-clip-text text-[10px] font-medium uppercase tracking-[.14em] text-transparent">
           Connect · Démo
         </span>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv bg-surface"
-        >
-          <Avatar url={null} label={firstName} size={32} className="text-[12px]" />
-        </button>
+        <MenuButton
+          open={menuOpen}
+          onToggle={() => setMenuOpen((v) => !v)}
+          avatarUrl={null}
+          label={firstName}
+          className="ml-auto"
+        />
       </div>
 
       {menuOpen && (

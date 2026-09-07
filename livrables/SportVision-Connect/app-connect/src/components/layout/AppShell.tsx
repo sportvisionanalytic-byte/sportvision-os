@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Topbar } from "./Topbar";
 import { NotificationBell } from "./NotificationBell";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
+import { MenuButton } from "@/components/layout/MenuButton";
 
 // Shell de l'espace joueur — voir design-connect-personnel-12-08/README.md § Shell et
 // navigation. Structure consolidée le 14/08 une fois tous les écrans du design réellement
@@ -226,17 +227,12 @@ export function AppShell({
         >
           <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">help</span>
         </Link>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          // Ce bouton n'a qu'un avatar pour contenu : sans libellé, un lecteur d'écran n'annonce
-          // rien du tout, et c'est pourtant le seul accès au menu complet sur mobile.
-          aria-label="Menu de navigation"
-          aria-expanded={menuOpen}
-          className="flex h-10 w-10 items-center justify-center rounded-sv bg-surface"
-        >
-          <Avatar url={avatarUrl} label={firstName} size={32} className="text-[12px]" />
-        </button>
+        <MenuButton
+          open={menuOpen}
+          onToggle={() => setMenuOpen((v) => !v)}
+          avatarUrl={avatarUrl}
+          label={firstName}
+        />
       </div>
 
       {mobileSearchOpen && <MobileSearchOverlay space="joueur" onClose={() => setMobileSearchOpen(false)} />}

@@ -12,6 +12,7 @@ import { gradientFor } from "@/lib/avatarGradients";
 import { Topbar } from "./Topbar";
 import { NotificationBell } from "./NotificationBell";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
+import { MenuButton } from "@/components/layout/MenuButton";
 
 // Shell de l'Espace particulier — voir design-connect-personnel-12-08/README.md § Shell et
 // navigation ("Espace particulier") + § Espace particulier. NE remplace PAS AppShell.tsx (shell
@@ -376,13 +377,12 @@ export function ParticularShell({
           >
             <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">help</span>
           </Link>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            className="flex h-10 w-10 items-center justify-center rounded-sv bg-surface"
-          >
-            <Avatar url={avatarUrl} label={firstName} size={32} className="text-[12px]" />
-          </button>
+          <MenuButton
+            open={menuOpen}
+            onToggle={() => setMenuOpen((v) => !v)}
+            avatarUrl={avatarUrl}
+            label={firstName}
+          />
         </div>
         {contextSelector}
       </div>
