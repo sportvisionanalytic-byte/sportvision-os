@@ -17,12 +17,13 @@ import test from "node:test";
 
 import { parseCsvSource } from "../providers/csv.ts";
 import { parseIcsSource } from "../providers/ics.ts";
-import { xlsxProvider } from "../providers/xlsx.ts";
+import { xlsxProvider, detectXlsxLayout } from "../providers/xlsx.ts";
 import { detectProvider } from "../providers/index.ts";
 import { buildImportPreview, type ClubTeamRef, type ExistingMatch, type TeamSourceMapping } from "../diff.ts";
 import { fallbackIdentityKey, externalIdentityKey } from "../identity.ts";
 import { parseFlexibleDate, parseFlexibleTime, coerceSportStatus, detectSportStatus } from "../normalize.ts";
 import { readXlsx } from "../xlsx.ts";
+import { detectTabularLayout } from "../autodetect.ts";
 import type { ProviderId, SourceEvent } from "../types.ts";
 
 const TEAMS: ClubTeamRef[] = [
@@ -578,34 +579,134 @@ test("lecture .xlsx — entrées compressées (deflate)", async () => {
   assert.deepEqual(workbook.sheets[0]!.rows[0], ["Date de rencontre", "Club recevant", "Horaire"]);
 });
 
-test("provider XLSX — aucune colonne devinée, mapping manuel obligatoire", async () => {
+test("provider XLSX — colonnes reconnues sans mapping manuel, sur des intitulés jamais vus", async () => {
   const buffer = await makeZip(XLSX_FILES, false);
 
   const inspection = await xlsxProvider.inspect!({ fileName: "export.xlsx", bytes: buffer });
   assert.equal(inspection.sheets[0]!.name, "Rencontres");
   assert.deepEqual(inspection.sheets[0]!.rows[0], ["Date de rencontre", "Club recevant", "Horaire"]);
 
-  const withoutMapping = await xlsxProvider.parse({ fileName: "export.xlsx", bytes: buffer });
-  assert.equal(withoutMapping.events.length, 0);
-  assert.match(withoutMapping.issues[0]!.reason, /mapping/i);
+  // Aucun `options` : la structure est deduite du CONTENU des cellules. "Club recevant" et
+  // "Horaire" ne figurent dans aucune liste d'intitules, c'est bien la donnee qui parle.
+  const auto = await xlsxProvider.parse({ fileName: "export.xlsx", bytes: buffer });
+  assert.equal(auto.events.length, 2);
+  assert.equal(auto.events[0]!.matchDate, "2026-09-12");
+  assert.equal(auto.events[0]!.kickoffTime, "15:00");
+  assert.equal(auto.events[0]!.opponent, "AS Rivage & Co");
+  assert.equal(auto.events[0]!.sourceLine, 2, "numero de ligne Excel");
 
-  const partial = await xlsxProvider.parse({
+  // Ce que l'ecran affiche a l'utilisateur pour qu'il verifie la deduction.
+  const { sheetIndex, layout } = detectXlsxLayout(inspection);
+  assert.equal(sheetIndex, 0);
+  assert.equal(layout.headerRow, 0);
+  assert.deepEqual(layout.missingRequired, []);
+  assert.equal(layout.columns.date, 0);
+  assert.equal(layout.columns.opponent, 1);
+  assert.equal(layout.columns.time, 2);
+
+  // Le mapping manuel reste disponible et prime sur la detection.
+  const forced = await xlsxProvider.parse({
     fileName: "export.xlsx",
     bytes: buffer,
-    options: { sheetIndex: 0, headerRow: 0, columns: { date: 0 } },
+    options: { sheetIndex: 0, headerRow: 0, firstDataRow: 1, columns: { date: 0, opponent: 2, time: 1 } },
   });
-  assert.match(partial.issues[0]!.reason, /Adversaire/);
+  assert.equal(forced.events[0]!.opponent, "0.625", "le mapping impose a la main prime sur la detection");
+  // Deux signalements attendus : la colonne designee comme heure contient du texte, et la
+  // derniere ligne n a rien dans la colonne designee comme adversaire.
+  assert.equal(forced.issues.length, 2);
+});
 
-  const mapped = await xlsxProvider.parse({
-    fileName: "export.xlsx",
-    bytes: buffer,
-    options: { sheetIndex: 0, headerRow: 0, columns: { date: 0, opponent: 1, time: 2 } },
-  });
-  assert.equal(mapped.events.length, 2);
-  assert.equal(mapped.events[0]!.matchDate, "2026-09-12");
-  assert.equal(mapped.events[0]!.kickoffTime, "15:00");
-  assert.equal(mapped.events[0]!.opponent, "AS Rivage & Co");
-  assert.equal(mapped.events[0]!.sourceLine, 2, "numéro de ligne Excel");
+// ─────────────────────────── Detection par le contenu ───────────────────────────
+
+test("detection : lignes de titre ignorees, en-tete trouvee toute seule", () => {
+  const rows = [
+    ["Calendrier des rencontres"],
+    ["Villneuve 340 SC", "edite le 07/09/2026"],
+    [],
+    ["Journee", "Rencontre", "Le", "A"],
+    ["1", "AS Rivage", "12/09/2026", "15:00"],
+    ["2", "FC Melun", "19/09/2026", "17:00"],
+    ["3", "US Ville", "26/09/2026", "15:00"],
+  ];
+  const layout = detectTabularLayout(rows, { now: new Date("2026-09-07T00:00:00Z") });
+  assert.equal(layout.headerRow, 3);
+  assert.equal(layout.firstDataRow, 4);
+  assert.equal(layout.columns.date, 2, '"Le" est la colonne date parce qu elle contient des dates');
+  assert.equal(layout.columns.time, 3, '"A" est l heure parce qu elle contient des heures');
+  assert.equal(layout.columns.opponent, 1);
+  assert.deepEqual(layout.missingRequired, []);
+});
+
+test("detection : intitules anglais inconnus, reconnus par la donnee", () => {
+  const rows = [
+    ["Matchday", "Versus", "When", "KO"],
+    ["1", "AS Rivage", "2026-09-12", "15:00"],
+    ["2", "FC Melun", "2026-09-19", "17:00"],
+    ["3", "US Ville", "2026-09-26", "15:00"],
+  ];
+  const layout = detectTabularLayout(rows, { now: new Date("2026-09-07T00:00:00Z") });
+  assert.deepEqual(layout.missingRequired, []);
+  assert.equal(layout.columns.date, 2);
+  assert.equal(layout.columns.opponent, 1);
+});
+
+test("detection : une colonne d identifiants n est pas prise pour la colonne date", () => {
+  // 46277 est un numero de serie Excel parfaitement valide : sans la fenetre temporelle, une
+  // colonne d identifiants a 5 chiffres serait detectee comme la colonne date.
+  const rows = [
+    ["Id", "Adversaire", "Date"],
+    ["900001", "AS Rivage", "12/09/2026"],
+    ["900002", "FC Melun", "19/09/2026"],
+    ["900003", "US Ville", "26/09/2026"],
+  ];
+  const layout = detectTabularLayout(rows, { now: new Date("2026-09-07T00:00:00Z") });
+  assert.equal(layout.columns.date, 2);
+  assert.equal(layout.columns.externalEventId, 0);
+});
+
+test("detection : la colonne qui contient MES equipes est l equipe, l autre est l adversaire", () => {
+  const rows = [
+    ["A", "B", "C"],
+    ["U18 D2", "AS Rivage", "12/09/2026"],
+    ["U16 D3", "FC Melun", "19/09/2026"],
+    ["U18 D2", "US Ville", "26/09/2026"],
+  ];
+  const layout = detectTabularLayout(rows, { teams: TEAMS, now: new Date("2026-09-07T00:00:00Z") });
+  assert.equal(layout.columns.team, 0);
+  assert.equal(layout.columns.opponent, 1);
+  assert.equal(layout.columns.date, 2);
+});
+
+test("detection : statut, domicile/exterieur et competition reconnus par leur vocabulaire", () => {
+  const rows = [
+    ["X1", "X2", "X3", "X4", "X5"],
+    ["12/09/2026", "AS Rivage", "Reporte", "Dom", "Championnat D2"],
+    ["19/09/2026", "FC Melun", "Prevu", "Ext", "Championnat D2"],
+    ["26/09/2026", "US Ville", "Annule", "Dom", "Championnat D2"],
+    ["03/10/2026", "AS Nord", "Prevu", "Ext", "Championnat D2"],
+  ];
+  const layout = detectTabularLayout(rows, { now: new Date("2026-09-07T00:00:00Z") });
+  assert.equal(layout.columns.status, 2);
+  assert.equal(layout.columns.home, 3);
+  assert.equal(layout.columns.competition, 4);
+});
+
+test("CSV : intitules inconnus, la lecture bascule sur le contenu au lieu d echouer", () => {
+  const parsed = parseCsvSource(
+    ["Matchday;Versus;When;KO", "1;AS Rivage;12/09/2026;15:00", "2;FC Melun;19/09/2026;17:00", "3;US Ville;26/09/2026;15:00"].join(
+      "\n",
+    ),
+  );
+  assert.equal(parsed.events.length, 3, "avant ce correctif, ce fichier renvoyait zero ligne");
+  assert.equal(parsed.events[0]!.opponent, "AS Rivage");
+  assert.equal(parsed.events[0]!.matchDate, "2026-09-12");
+  assert.equal(parsed.events[0]!.kickoffTime, "15:00");
+});
+
+test("CSV : ni le nom ni le contenu ne donnent l adversaire -> message explicite", () => {
+  const parsed = parseCsvSource(["Journee;Points", "1;3", "2;0"].join("\n"));
+  assert.equal(parsed.events.length, 0);
+  assert.match(parsed.issues[0]!.reason, /ni par son nom ni par son contenu/);
 });
 
 // ─────────────────────────── Compatibilité ───────────────────────────

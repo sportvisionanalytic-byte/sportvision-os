@@ -98,12 +98,67 @@ export interface ParseResult {
 }
 
 /** Ce qu'un provider reçoit. `text` pour les formats texte (CSV/ICS), `bytes` pour les formats
- * binaires (XLSX). `options` porte le mapping de colonnes des providers qui en exigent un. */
+ * binaires (XLSX). `options` porte le mapping de colonnes des providers qui en exigent un.
+ * `teams` : les équipes réelles du club, quand l'appelant les connaît. Ce n'est PAS une décision
+ * métier confiée au provider — c'est un indice de lecture : une colonne dont les valeurs sont des
+ * équipes du club est l'équipe, donc l'autre colonne texte est l'adversaire. Facultatif, la
+ * lecture reste correcte sans. */
 export interface ProviderInput {
   fileName: string;
   text?: string;
   bytes?: ArrayBuffer;
   options?: unknown;
+  teams?: { id: string; name: string }[];
+}
+
+// ─────────────────────────── Sources tabulaires ───────────────────────────
+// CSV et XLSX décrivent la même chose : des colonnes à rattacher à des champs. Les définitions
+// vivent ici, et pas dans un provider, pour que la détection automatique (autodetect.ts) puisse
+// s'en servir sans dépendre d'un provider en particulier — et donc sans cycle d'import.
+
+/** `opponent` et `date` sont les seuls obligatoires : ce sont aussi les seuls sans lesquels un
+ * match n'existe pas. */
+export const TABULAR_FIELDS = [
+  "opponent",
+  "date",
+  "time",
+  "team",
+  "competition",
+  "status",
+  "location",
+  "score",
+  "home",
+  "externalEventId",
+  "externalTeamId",
+  "externalCompetitionId",
+] as const;
+
+export type TabularField = (typeof TABULAR_FIELDS)[number];
+
+export const TABULAR_FIELD_LABELS: Record<TabularField, string> = {
+  opponent: "Adversaire",
+  date: "Date",
+  time: "Heure",
+  team: "Équipe du club",
+  competition: "Compétition",
+  status: "Statut du match",
+  location: "Lieu",
+  score: "Score",
+  home: "Domicile / extérieur",
+  externalEventId: "Identifiant du match chez la source",
+  externalTeamId: "Identifiant de l'équipe chez la source",
+  externalCompetitionId: "Identifiant de la compétition chez la source",
+};
+
+export const TABULAR_REQUIRED_FIELDS: TabularField[] = ["opponent", "date"];
+
+export interface TabularMapping {
+  sheetIndex: number;
+  /** Index 0-based de la ligne d'en-tête dans la feuille. -1 quand le fichier n'en a pas. */
+  headerRow: number;
+  /** Index 0-based de la première ligne de données (par défaut headerRow + 1). */
+  firstDataRow?: number;
+  columns: Partial<Record<TabularField, number>>;
 }
 
 /** Résultat d'`inspect()` : ce qu'on peut montrer à l'humain AVANT de savoir lire le fichier —

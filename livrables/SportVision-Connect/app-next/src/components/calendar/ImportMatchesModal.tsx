@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ChevronRight, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, Upload, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
@@ -20,13 +20,8 @@ import {
   type SaisonRef,
 } from "@/lib/data/club/calendar-sync";
 import { CALENDAR_ACCEPT, detectProvider } from "@/lib/calendar/providers";
-import {
-  XLSX_FIELDS,
-  XLSX_FIELD_LABELS,
-  XLSX_REQUIRED_FIELDS,
-  type XlsxColumnMapping,
-  type XlsxField,
-} from "@/lib/calendar/providers/xlsx";
+import { detectXlsxLayout } from "@/lib/calendar/providers/xlsx";
+import { layoutToMapping, type DetectedLayout } from "@/lib/calendar/autodetect";
 import {
   buildImportPreview,
   CHANGED_FIELD_LABELS,
@@ -38,19 +33,37 @@ import {
   type RowVerdict,
   type TeamSourceMapping,
 } from "@/lib/calendar/diff";
-import { SPORT_STATUS_LABELS, type CalendarProvider, type ParseResult, type SourceInspection } from "@/lib/calendar/types";
+import {
+  SPORT_STATUS_LABELS,
+  TABULAR_FIELDS,
+  TABULAR_FIELD_LABELS,
+  type CalendarProvider,
+  type ParseResult,
+  type SourceInspection,
+  type TabularField,
+  type TabularMapping,
+} from "@/lib/calendar/types";
 
-// Import / synchronisation de calendrier — écran unique du chantier "calendriers externes"
-// (phase TypeScript, 05/09/2026). Le fil conducteur est inchangé depuis la première version :
-// RIEN n'est écrit sans que l'admin ait vu ligne par ligne ce qui va se passer. Ce qui change,
-// c'est qu'il voit maintenant AVANT confirmation ce que chaque ligne va faire — créer, modifier,
-// ou ne rien faire — au lieu d'un simple "X match(s)".
+// Import de calendrier — écran volontairement réduit à DEUX gestes : déposer le fichier, cliquer
+// sur Importer.
 //
-// Trois écrans : dépôt du fichier → (mapping des colonnes, .xlsx uniquement) → preview + diff.
-// Toute la logique de décision est dans lib/calendar (pure, testée hors navigateur) et l'écriture
-// dans lib/data/club/calendar-sync.ts. Ce composant ne fait qu'orchestrer et afficher.
+// La version précédente demandait, dans l'ordre : le fichier, la feuille, la ligne d'en-tête,
+// douze colonnes, la saison, l'équipe par défaut, puis une relecture de 500 lignes. Sept gestes
+// pour une action que le club fait une ou deux fois par saison, sans s'en souvenir d'une fois sur
+// l'autre. Ce qui a été supprimé n'est pas la rigueur, c'est le travail qu'on faisait faire à
+// l'utilisateur alors qu'on pouvait le faire nous-mêmes :
+//
+//   * les colonnes sont reconnues par le CONTENU des cellules (lib/calendar/autodetect.ts), pas
+//     par leur intitulé — donc plus d'écran de mapping dans le cas normal ;
+//   * la saison et l'équipe sont déduites et affichées en une ligne, modifiables d'un clic ;
+//   * seules les lignes qui demandent VRAIMENT un avis sont affichées. Les autres sont derrière
+//     un « voir le détail », consultable mais jamais imposé.
+//
+// Rien n'est écrit sans validation, et tout ce qui a été deviné est montré avec ce sur quoi la
+// déduction s'appuie. Une preview qu'on ne lit pas parce qu'elle fait 500 lignes ne protège
+// personne ; une preview de 4 lignes, si.
 
-type Step = "source" | "mapping" | "preview" | "done";
+type Step = "source" | "review" | "done";
 
 const VERDICT_STYLES: Record<RowVerdict, string> = {
   new: "bg-[rgba(36,84,255,.12)] text-brand-blue-electric",
@@ -61,7 +74,13 @@ const VERDICT_STYLES: Record<RowVerdict, string> = {
   error: "bg-[rgba(239,91,103,.12)] text-danger-fg",
 };
 
-const COUNT_ORDER: RowVerdict[] = ["new", "updated", "unchanged", "needs_mapping", "ambiguous", "error"];
+/** Les verdicts qui appellent une décision humaine. Ce sont les seules lignes affichées d'office. */
+const NEEDS_ATTENTION: RowVerdict[] = ["needs_mapping", "ambiguous"];
+
+const SELECT_CLASS =
+  "h-9 rounded-lg border border-border-strong bg-input-bg px-2.5 text-[12.5px] font-semibold outline-none focus-visible:border-brand-blue";
+
+const LINK_CLASS = "text-[12px] font-bold text-brand-blue-electric underline underline-offset-2";
 
 export function ImportMatchesModal({
   clubId,
@@ -89,20 +108,23 @@ export function ImportMatchesModal({
   const [existing, setExisting] = useState<ExistingMatch[]>([]);
   const [mappings, setMappings] = useState<TeamSourceMapping[]>([]);
 
-  // Fichier en cours
+  // Fichier
   const [fileName, setFileName] = useState("");
   const [fileBytes, setFileBytes] = useState<ArrayBuffer | null>(null);
   const [fileText, setFileText] = useState<string | null>(null);
   const [provider, setProvider] = useState<CalendarProvider | null>(null);
   const [inspection, setInspection] = useState<SourceInspection | null>(null);
-  const [mapping, setMapping] = useState<XlsxColumnMapping>({ sheetIndex: 0, headerRow: 0, columns: {} });
+  const [layout, setLayout] = useState<DetectedLayout | null>(null);
+  const [mapping, setMapping] = useState<TabularMapping | null>(null);
   const [parsed, setParsed] = useState<ParseResult | null>(null);
 
-  // Décisions humaines sur la preview
+  // Décisions humaines
   const [defaultTeamId, setDefaultTeamId] = useState<string>("");
   const [teamIdByLine, setTeamIdByLine] = useState<Record<number, string>>({});
   const [excludedLines, setExcludedLines] = useState<number[]>([]);
   const [includedLines, setIncludedLines] = useState<number[]>([]);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [columnsOpen, setColumnsOpen] = useState(false);
 
   // Résultat
   const [result, setResult] = useState<ApplyResult | null>(null);
@@ -123,6 +145,9 @@ export function ImportMatchesModal({
         setSaisons(saisonRows);
         setSaisonId(resolveDefaultSaisonId(saisonRows, clubSaison));
         setExisting(matches);
+        // Un club d'une seule équipe n'a aucune décision d'équipe à prendre : on la choisit pour
+        // lui. C'est le cas de la totalité des comptes Club+ Gratuit.
+        if (teamRows.length === 1) setDefaultTeamId(teamRows[0]!.id);
       })
       .catch(() => {
         if (!cancelled) setFatalError("Impossible de charger le contexte du club (équipes, saisons, calendrier existant).");
@@ -132,8 +157,6 @@ export function ImportMatchesModal({
     };
   }, [clubId]);
 
-  // Les mappings sont scopés (club, saison, provider) : ils ne peuvent être lus qu'une fois les
-  // deux derniers connus.
   useEffect(() => {
     if (!provider || !saisonId) return;
     let cancelled = false;
@@ -159,6 +182,24 @@ export function ImportMatchesModal({
     });
   }, [provider, parsed, existing, teams, mappings, defaultTeamId, teamIdByLine, excludedLines, includedLines]);
 
+  const runParse = useCallback(
+    async (
+      target: CalendarProvider,
+      source: { text: string | null; bytes: ArrayBuffer | null; name: string },
+      options?: TabularMapping,
+    ) => {
+      const parseResult = await target.parse({
+        fileName: source.name,
+        text: source.text ?? undefined,
+        bytes: source.bytes ?? undefined,
+        options,
+        teams,
+      });
+      setParsed(parseResult);
+    },
+    [teams],
+  );
+
   const handleFile = useCallback(
     async (file: File) => {
       setFatalError(null);
@@ -166,8 +207,6 @@ export function ImportMatchesModal({
       setBusy(true);
       try {
         const bytes = await file.arrayBuffer();
-        // Le sniff de contenu ne sert qu'aux formats texte (un .ics renommé). Décoder un binaire
-        // en UTF-8 produirait du bruit, jamais une détection utile.
         const isProbablyText = !file.name.toLowerCase().endsWith(".xlsx");
         const text = isProbablyText ? new TextDecoder("utf-8").decode(bytes) : "";
         const found = detectProvider(file.name, text.slice(0, 1024));
@@ -183,37 +222,43 @@ export function ImportMatchesModal({
         setTeamIdByLine({});
         setExcludedLines([]);
         setIncludedLines([]);
+        setAdjustOpen(false);
+        setColumnsOpen(false);
+        setInspection(null);
+        setLayout(null);
+        setMapping(null);
 
-        if (found.needsColumnMapping && found.inspect) {
-          const found_inspection = await found.inspect({ fileName: file.name, bytes });
+        // .xlsx : on inspecte pour pouvoir MONTRER quelles colonnes ont été reconnues, puis on
+        // parse avec ce qui a été détecté. L'écran de mapping n'apparaît que si ça échoue.
+        let detectedMapping: TabularMapping | undefined;
+        if (found.inspect) {
+          const found_inspection = await found.inspect({ fileName: file.name, bytes, teams });
+          const detection = detectXlsxLayout(found_inspection, teams);
           setInspection(found_inspection);
-          setMapping({ sheetIndex: 0, headerRow: 0, columns: {} });
-          setStep("mapping");
-          return;
+          setLayout(detection.layout);
+          detectedMapping = layoutToMapping(detection.layout, detection.sheetIndex);
+          setMapping(detectedMapping);
         }
 
-        const parseResult = await found.parse({ fileName: file.name, text, bytes });
-        setParsed(parseResult);
-        setStep("preview");
+        await runParse(found, { text, bytes, name: file.name }, detectedMapping);
+        setStep("review");
       } catch (error) {
         setFatalError(error instanceof Error ? error.message : "Fichier illisible.");
       } finally {
         setBusy(false);
       }
     },
-    [],
+    [runParse, teams],
   );
 
-  async function applyMapping() {
-    if (!provider || !fileBytes) return;
+  async function applyMappingChange(next: TabularMapping) {
+    if (!provider) return;
+    setMapping(next);
     setBusy(true);
-    setFatalError(null);
     try {
-      const parseResult = await provider.parse({ fileName, bytes: fileBytes, text: fileText ?? undefined, options: mapping });
-      setParsed(parseResult);
-      setStep("preview");
+      await runParse(provider, { text: fileText, bytes: fileBytes, name: fileName }, next);
     } catch (error) {
-      setFatalError(error instanceof Error ? error.message : "Lecture du tableur impossible.");
+      setFatalError(error instanceof Error ? error.message : "Lecture impossible avec ces colonnes.");
     } finally {
       setBusy(false);
     }
@@ -226,12 +271,7 @@ export function ImportMatchesModal({
     const supabase = createClient();
     const startedAt = new Date().toISOString();
     try {
-      const applied = await applyCalendarImport(supabase, {
-        clubId,
-        saisonId,
-        provider: provider.id,
-        rows: preview.rows,
-      });
+      const applied = await applyCalendarImport(supabase, { clubId, saisonId, provider: provider.id, rows: preview.rows });
       setResult(applied);
 
       const mappingResult = await saveTeamSourceMappings(supabase, {
@@ -279,8 +319,10 @@ export function ImportMatchesModal({
     }
   }
 
-  const headerRowCells = inspection?.sheets[mapping.sheetIndex]?.rows[mapping.headerRow] ?? [];
-  const mappingComplete = XLSX_REQUIRED_FIELDS.every((field) => mapping.columns[field] !== undefined);
+  const attentionRows = preview?.rows.filter((r) => NEEDS_ATTENTION.includes(r.verdict)) ?? [];
+  const readyRows = preview?.rows.filter((r) => !NEEDS_ATTENTION.includes(r.verdict)) ?? [];
+  const saisonLabel = saisons.find((s) => s.id === saisonId)?.label ?? "aucune";
+  const headerCells = inspection?.sheets[mapping?.sheetIndex ?? 0]?.rows[layout?.headerRow ?? -1] ?? [];
 
   return (
     <div
@@ -290,7 +332,7 @@ export function ImportMatchesModal({
       aria-label="Importer un calendrier"
       className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4"
     >
-      <Card className="animate-svfade relative flex max-h-[88vh] w-full max-w-[820px] flex-col gap-4 overflow-y-auto rounded-sv-modal p-6 shadow-sv-modal">
+      <Card className="animate-svfade relative flex max-h-[88vh] w-full max-w-[720px] flex-col gap-4 overflow-y-auto rounded-sv-modal p-6 shadow-sv-modal">
         <button
           aria-label="Fermer"
           onClick={onClose}
@@ -299,14 +341,7 @@ export function ImportMatchesModal({
           <X className="h-4 w-4" aria-hidden />
         </button>
 
-        <div>
-          <h2 className="text-[19px] font-extrabold tracking-tight">Importer un calendrier</h2>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-text-soft">
-            Déposez l&apos;export de votre fédération ou de votre logiciel de club (.ics), un tableur (.csv) ou un fichier
-            Excel (.xlsx). Vous verrez exactement ce qui sera créé et ce qui sera modifié avant que quoi que ce soit
-            n&apos;entre dans le calendrier.
-          </p>
-        </div>
+        <h2 className="text-[19px] font-extrabold tracking-tight">Importer un calendrier</h2>
 
         {fatalError && (
           <p className="flex items-start gap-2 rounded-lg bg-[rgba(239,91,103,.1)] px-3 py-2.5 text-[12.5px] font-bold text-danger-fg">
@@ -316,195 +351,213 @@ export function ImportMatchesModal({
         )}
 
         {step === "source" && (
-          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong px-6 py-10 text-center hover:border-brand-blue-pale">
-            <Upload className="h-5 w-5 text-text-faint" aria-hidden />
-            <span className="text-[13px] font-bold text-text">
-              {busy ? "Lecture du fichier…" : "Choisir un fichier .csv, .ics ou .xlsx"}
-            </span>
-            <span className="text-[11.5px] text-text-faint">
-              Aucun mot de passe de votre compte fédéral ne vous sera jamais demandé.
-            </span>
-            <input
-              type="file"
-              accept={CALENDAR_ACCEPT}
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-            />
-          </label>
+          <>
+            <p className="text-[12.5px] leading-relaxed text-text-soft">
+              Déposez l&apos;export de votre fédération ou de votre logiciel de club. On reconnaît les colonnes tout
+              seuls et on vous montre ce qui va changer avant d&apos;écrire quoi que ce soit.
+            </p>
+            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong px-6 py-12 text-center hover:border-brand-blue-pale">
+              <Upload className="h-5 w-5 text-text-faint" aria-hidden />
+              <span className="text-[13px] font-bold text-text">
+                {busy ? "Lecture du fichier…" : "Choisir un fichier .ics, .csv ou .xlsx"}
+              </span>
+              <span className="text-[11.5px] text-text-faint">
+                Aucun mot de passe de votre compte fédéral ne vous sera jamais demandé.
+              </span>
+              <input
+                type="file"
+                accept={CALENDAR_ACCEPT}
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+              />
+            </label>
+          </>
         )}
 
-        {step === "mapping" && inspection && (
+        {step === "review" && preview && (
           <div className="flex flex-col gap-3.5">
-            <div className="rounded-lg bg-[rgba(245,158,11,.1)] px-3 py-2.5 text-[12px] font-semibold leading-relaxed text-[#B45309]">
-              Le format exact des exports Footclubs n&apos;est pas encore connu de SportVision : aucune colonne
-              n&apos;est devinée. Indiquez vous-même où se trouvent l&apos;adversaire et la date. Ce que vous
-              choisissez ici sera réutilisé pour les prochains imports du même fichier.
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Field label="Feuille">
-                <select
-                  value={mapping.sheetIndex}
-                  onChange={(e) => setMapping({ sheetIndex: Number(e.target.value), headerRow: 0, columns: {} })}
-                  className={SELECT_CLASS}
-                >
-                  {inspection.sheets.map((sheet) => (
-                    <option key={sheet.index} value={sheet.index}>
-                      {sheet.name} ({sheet.rowCount} lignes)
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Ligne d'en-tête">
-                <select
-                  value={mapping.headerRow}
-                  onChange={(e) => setMapping((m) => ({ ...m, headerRow: Number(e.target.value), columns: {} }))}
-                  className={SELECT_CLASS}
-                >
-                  {(inspection.sheets[mapping.sheetIndex]?.rows ?? []).map((row, index) => (
-                    <option key={index} value={index}>
-                      Ligne {index + 1} — {row.slice(0, 4).filter(Boolean).join(" / ") || "(vide)"}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2">
-              {XLSX_FIELDS.map((field) => (
-                <Field key={field} label={XLSX_FIELD_LABELS[field]}>
-                  <select
-                    value={mapping.columns[field] ?? ""}
-                    onChange={(e) =>
-                      setMapping((m) => {
-                        const columns = { ...m.columns };
-                        if (e.target.value === "") delete columns[field];
-                        else columns[field] = Number(e.target.value);
-                        return { ...m, columns };
-                      })
-                    }
-                    className={SELECT_CLASS}
-                  >
-                    <option value="">— non utilisé —</option>
-                    {headerRowCells.map((header, index) => (
-                      <option key={index} value={index}>
-                        {header || `Colonne ${index + 1}`}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              ))}
-            </div>
-
-            <Button variant="primary" disabled={!mappingComplete || busy} onClick={applyMapping}>
-              {busy ? "Lecture…" : "Voir ce qui sera importé"}
-              <ChevronRight className="h-4 w-4" aria-hidden />
-            </Button>
-          </div>
-        )}
-
-        {step === "preview" && preview && (
-          <div className="flex flex-col gap-3.5">
-            <div className="flex flex-wrap gap-3">
-              <Field label="Saison">
-                <select value={saisonId ?? ""} onChange={(e) => setSaisonId(e.target.value || null)} className={SELECT_CLASS}>
-                  {saisons.length === 0 && <option value="">Aucune saison</option>}
-                  {saisons.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label}
-                      {s.active ? " (active)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Équipe par défaut">
-                <select value={defaultTeamId} onChange={(e) => setDefaultTeamId(e.target.value)} className={SELECT_CLASS}>
-                  <option value="">— aucune —</option>
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-
-            <div className="flex flex-wrap gap-1.5">
-              {COUNT_ORDER.map((verdict) => (
-                <span
-                  key={verdict}
-                  className={`rounded-full px-2.5 py-1 text-[11.5px] font-bold ${VERDICT_STYLES[verdict]}`}
-                >
-                  {VERDICT_LABELS[verdict]} : {preview.counts[verdict]}
+            <p className="text-[14px] font-extrabold leading-relaxed text-text">
+              {preview.rows.length} match{preview.rows.length > 1 ? "s" : ""} lu{preview.rows.length > 1 ? "s" : ""}.{" "}
+              {attentionRows.length === 0 ? (
+                <span className="text-success-fg">Tout est prêt.</span>
+              ) : (
+                <span className="text-[#B45309]">
+                  {attentionRows.length} demande{attentionRows.length > 1 ? "nt" : ""} votre avis.
                 </span>
-              ))}
+              )}
+            </p>
+
+            {/* Ce qui a été déduit, en une ligne. Visible mais jamais bloquant. */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-text-faint">
+              <span>{fileName}</span>
+              <span aria-hidden>·</span>
+              <span>Saison {saisonLabel}</span>
+              {defaultTeamId && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>Équipe {teams.find((t) => t.id === defaultTeamId)?.name}</span>
+                </>
+              )}
+              <button type="button" onClick={() => setAdjustOpen((v) => !v)} className={LINK_CLASS}>
+                {adjustOpen ? "masquer" : "ajuster"}
+              </button>
             </div>
 
-            {preview.issues.length > 0 && (
-              <div className="rounded-lg border border-[rgba(239,91,103,.35)] px-3 py-2.5">
-                <div className="text-[12px] font-extrabold text-danger-fg">
-                  {preview.issues.length} ligne{preview.issues.length > 1 ? "s" : ""} non lue
-                  {preview.issues.length > 1 ? "s" : ""} — le reste du fichier reste importable
+            {adjustOpen && (
+              <div className="flex flex-col gap-3 rounded-lg border border-divider px-3 py-3">
+                <div className="flex flex-wrap gap-3">
+                  <Field label="Saison">
+                    <select value={saisonId ?? ""} onChange={(e) => setSaisonId(e.target.value || null)} className={SELECT_CLASS}>
+                      {saisons.length === 0 && <option value="">Aucune saison</option>}
+                      {saisons.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.label}
+                          {s.active ? " (active)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Équipe par défaut">
+                    <select value={defaultTeamId} onChange={(e) => setDefaultTeamId(e.target.value)} className={SELECT_CLASS}>
+                      <option value="">— aucune —</option>
+                      {teams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
                 </div>
-                <ul className="mt-1.5 flex flex-col gap-1">
-                  {preview.issues.slice(0, 12).map((issue, index) => (
-                    <li key={index} className="text-[11.5px] leading-relaxed text-text-soft">
-                      <span className="font-bold">Ligne {issue.line}</span> — {issue.reason}
-                      {issue.raw && <span className="text-text-faint"> · {issue.raw.slice(0, 90)}</span>}
-                    </li>
-                  ))}
-                  {preview.issues.length > 12 && (
-                    <li className="text-[11.5px] text-text-faint">… et {preview.issues.length - 12} autre(s).</li>
-                  )}
-                </ul>
+
+                {layout && mapping && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-text-soft">
+                      <Check className="h-3.5 w-3.5 flex-none text-success-fg" aria-hidden />
+                      <span>
+                        Colonnes reconnues :{" "}
+                        {layout.detected
+                          .filter((d) => d.field === "date" || d.field === "opponent" || d.field === "time" || d.field === "team")
+                          .map((d) => `${TABULAR_FIELD_LABELS[d.field]} = « ${d.header || `colonne ${d.index + 1}`} »`)
+                          .join(", ")}
+                      </span>
+                      <button type="button" onClick={() => setColumnsOpen((v) => !v)} className={LINK_CLASS}>
+                        {columnsOpen ? "masquer" : "corriger"}
+                      </button>
+                    </div>
+
+                    {columnsOpen && (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {inspection && inspection.sheets.length > 1 && (
+                          <Field label="Feuille">
+                            <select
+                              value={mapping.sheetIndex}
+                              onChange={(e) => {
+                                const sheetIndex = Number(e.target.value);
+                                void applyMappingChange({ ...mapping, sheetIndex });
+                              }}
+                              className={SELECT_CLASS}
+                            >
+                              {inspection.sheets.map((sheet) => (
+                                <option key={sheet.index} value={sheet.index}>
+                                  {sheet.name} ({sheet.rowCount} lignes)
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                        )}
+                        {TABULAR_FIELDS.map((field) => (
+                          <Field key={field} label={TABULAR_FIELD_LABELS[field]}>
+                            <select
+                              value={mapping.columns[field] ?? ""}
+                              onChange={(e) => {
+                                const columns = { ...mapping.columns };
+                                if (e.target.value === "") delete columns[field as TabularField];
+                                else columns[field as TabularField] = Number(e.target.value);
+                                void applyMappingChange({ ...mapping, columns });
+                              }}
+                              className={SELECT_CLASS}
+                            >
+                              <option value="">— non utilisée —</option>
+                              {headerCells.map((header, index) => (
+                                <option key={index} value={index}>
+                                  {header || `Colonne ${index + 1}`}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
-            <div className="flex max-h-[36vh] flex-col gap-2 overflow-y-auto">
-              {preview.rows.map((row) => (
-                <div key={row.key} className="flex flex-wrap items-center gap-2 rounded-lg border border-divider px-3 py-2.5">
-                  <input
-                    type="checkbox"
-                    checked={row.include}
-                    onChange={() => toggleRow(row)}
-                    aria-label={`Importer ${row.source.opponent} du ${row.source.matchDate}`}
-                    className="h-4 w-4"
-                  />
-                  <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-extrabold ${VERDICT_STYLES[row.verdict]}`}>
-                    {VERDICT_LABELS[row.verdict]}
-                  </span>
-                  <span className="w-[104px] flex-none text-[12px] font-semibold text-text-soft">
-                    {row.source.matchDate}
-                    {row.source.kickoffTime ? ` · ${row.source.kickoffTime}` : ""}
-                  </span>
-                  <span className="min-w-[120px] flex-1 text-[12.5px] font-bold text-text">{row.source.opponent}</span>
-                  <select
-                    value={row.teamId ?? ""}
-                    onChange={(e) => setTeamIdByLine((prev) => ({ ...prev, [row.key]: e.target.value }))}
-                    aria-label="Équipe"
-                    className={SELECT_CLASS}
-                  >
-                    <option value="">Équipe…</option>
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="w-full text-[11.5px] leading-relaxed text-text-faint">
-                    {row.source.sportStatus && row.source.sportStatus !== "scheduled" && (
-                      <span className="mr-2 font-bold text-[#B45309]">{SPORT_STATUS_LABELS[row.source.sportStatus]}</span>
-                    )}
-                    {row.changes.length > 0 &&
-                      row.changes
-                        .map((c) => `${CHANGED_FIELD_LABELS[c.field]} : ${c.before ?? "—"} → ${c.after ?? "—"}`)
-                        .join(" · ")}
-                    {row.changes.length === 0 && row.reason}
-                    {row.fromConfirmedMapping && <span className="ml-2">Équipe reconnue automatiquement.</span>}
-                  </div>
+            {attentionRows.length > 0 && (
+              <div className="flex max-h-[34vh] flex-col gap-2 overflow-y-auto">
+                {attentionRows.map((row) => (
+                  <AttentionRow key={row.key} row={row} teams={teams} onTeam={(id) => setTeamIdByLine((p) => ({ ...p, [row.key]: id }))} />
+                ))}
+              </div>
+            )}
+
+            {preview.issues.length > 0 && (
+              <details className="rounded-lg border border-[rgba(239,91,103,.35)] px-3 py-2.5">
+                <summary className="cursor-pointer text-[12px] font-extrabold text-danger-fg">
+                  {preview.issues.length} ligne{preview.issues.length > 1 ? "s" : ""} non lue
+                  {preview.issues.length > 1 ? "s" : ""} — le reste du fichier reste importable
+                </summary>
+                <ul className="mt-1.5 flex flex-col gap-1">
+                  {preview.issues.slice(0, 20).map((issue, index) => (
+                    <li key={index} className="text-[11.5px] leading-relaxed text-text-soft">
+                      <span className="font-bold">Ligne {issue.line}</span> — {issue.reason}
+                    </li>
+                  ))}
+                  {preview.issues.length > 20 && (
+                    <li className="text-[11.5px] text-text-faint">… et {preview.issues.length - 20} autre(s).</li>
+                  )}
+                </ul>
+              </details>
+            )}
+
+            {readyRows.length > 0 && (
+              <details className="rounded-lg border border-divider px-3 py-2.5">
+                <summary className="cursor-pointer text-[12px] font-bold text-text-soft">
+                  Voir le détail des {readyRows.length} ligne{readyRows.length > 1 ? "s" : ""} ({preview.counts.new} nouvelle
+                  {preview.counts.new > 1 ? "s" : ""}, {preview.counts.updated} modifiée{preview.counts.updated > 1 ? "s" : ""},{" "}
+                  {preview.counts.unchanged} inchangée{preview.counts.unchanged > 1 ? "s" : ""})
+                </summary>
+                <div className="mt-2 flex max-h-[30vh] flex-col gap-1.5 overflow-y-auto">
+                  {readyRows.map((row) => (
+                    <div key={row.key} className="flex flex-wrap items-center gap-2 border-b border-divider pb-1.5 last:border-0">
+                      <input
+                        type="checkbox"
+                        checked={row.include}
+                        onChange={() => toggleRow(row)}
+                        aria-label={`Importer ${row.source.opponent} du ${row.source.matchDate}`}
+                        className="h-4 w-4"
+                      />
+                      <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-extrabold ${VERDICT_STYLES[row.verdict]}`}>
+                        {VERDICT_LABELS[row.verdict]}
+                      </span>
+                      <span className="w-[100px] flex-none text-[11.5px] font-semibold text-text-soft">
+                        {row.source.matchDate}
+                        {row.source.kickoffTime ? ` · ${row.source.kickoffTime}` : ""}
+                      </span>
+                      <span className="min-w-[110px] flex-1 text-[12px] font-bold text-text">{row.source.opponent}</span>
+                      <span className="text-[11px] text-text-faint">{row.teamName ?? ""}</span>
+                      {row.changes.length > 0 && (
+                        <span className="w-full text-[11px] text-text-faint">
+                          {row.changes
+                            .map((c) => `${CHANGED_FIELD_LABELS[c.field]} : ${c.before ?? "—"} → ${c.after ?? "—"}`)
+                            .join(" · ")}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </details>
+            )}
 
             {!saisonId && (
               <p className="text-[12px] font-bold text-danger-fg">
@@ -513,9 +566,7 @@ export function ImportMatchesModal({
             )}
 
             <Button variant="primary" disabled={busy || !saisonId || preview.selectedCount === 0} onClick={submit}>
-              {busy
-                ? "Import…"
-                : `Importer ${preview.selectedCount} ligne${preview.selectedCount > 1 ? "s" : ""} (${preview.counts.new} nouveau${preview.counts.new > 1 ? "x" : ""}, ${preview.counts.updated} modifié${preview.counts.updated > 1 ? "s" : ""})`}
+              {busy ? "Import…" : `Importer ${preview.selectedCount} match${preview.selectedCount > 1 ? "s" : ""}`}
             </Button>
           </div>
         )}
@@ -559,8 +610,40 @@ export function ImportMatchesModal({
   );
 }
 
-const SELECT_CLASS =
-  "h-9 rounded-lg border border-border-strong bg-input-bg px-2.5 text-[12.5px] font-semibold outline-none focus-visible:border-brand-blue";
+/** Une ligne qui demande une décision : on montre pourquoi, et on met le choix juste à côté. */
+function AttentionRow({
+  row,
+  teams,
+  onTeam,
+}: {
+  row: PreviewRow;
+  teams: ClubTeamRef[];
+  onTeam: (teamId: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[rgba(245,158,11,.4)] bg-[rgba(245,158,11,.06)] px-3 py-2.5">
+      <span className="w-[100px] flex-none text-[12px] font-semibold text-text-soft">
+        {row.source.matchDate}
+        {row.source.kickoffTime ? ` · ${row.source.kickoffTime}` : ""}
+      </span>
+      <span className="min-w-[110px] flex-1 text-[12.5px] font-bold text-text">{row.source.opponent}</span>
+      <select value={row.teamId ?? ""} onChange={(e) => onTeam(e.target.value)} aria-label="Équipe" className={SELECT_CLASS}>
+        <option value="">Choisir l&apos;équipe…</option>
+        {teams.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+      <p className="w-full text-[11.5px] leading-relaxed text-text-faint">
+        {row.source.sportStatus && row.source.sportStatus !== "scheduled" && (
+          <span className="mr-2 font-bold text-[#B45309]">{SPORT_STATUS_LABELS[row.source.sportStatus]}</span>
+        )}
+        {row.reason}
+      </p>
+    </div>
+  );
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

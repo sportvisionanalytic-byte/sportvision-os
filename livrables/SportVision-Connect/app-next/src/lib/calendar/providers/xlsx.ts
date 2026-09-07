@@ -1,114 +1,59 @@
-// Provider FOOTCLUBS_XLSX — lecture technique prête, mapping métier volontairement VIDE.
+// Provider FOOTCLUBS_XLSX — lecture d'un fichier Excel déposé par un club.
 //
-// ── Ce qui est fait ici ──
-// Lire un .xlsx déposé par un club : ouvrir l'archive, lister ses feuilles, afficher les
-// en-têtes et les premières lignes telles quelles, puis produire des matchs à partir d'un mapping
-// de colonnes que l'HUMAIN a désigné à l'écran.
+// ── Ce qui a changé (07/09/2026) ──
+// La première version exigeait que l'utilisateur désigne douze colonnes à la main. C'était le mur
+// de l'import. Le provider s'appuie maintenant sur la détection PAR CONTENU (autodetect.ts) :
+// une colonne dont les cellules se lisent comme des dates est la colonne date, une colonne dont
+// les valeurs sont les équipes du club est l'équipe, donc l'autre colonne texte est l'adversaire.
+// Le mapping manuel reste disponible, mais seulement quand la détection échoue ou que
+// l'utilisateur veut corriger — plus comme passage obligé.
 //
-// ── Ce qui n'est pas fait, et pourquoi ──
-// Aucun nom de colonne Footclubs n'est écrit en dur. Ni "Equipe", ni "Adversaire", ni "Date", ni
-// "Heure", ni "Compétition" : le format réel de l'export Footclubs n'a jamais été vu (Footclubs
-// est derrière l'authentification du club, aucun export réel n'a encore été fourni). Deviner ces
-// libellés produirait un mapping faux qui marche sur un fichier et casse sur le suivant, et
-// surtout un import silencieusement décalé d'une colonne — le pire cas possible pour un club qui
+// ── Ce qui n'a pas changé, et pourquoi ──
+// Toujours AUCUN nom de colonne Footclubs en dur. Ni "Equipe", ni "Adversaire", ni "Date". Le
+// format réel n'a jamais été vu (Footclubs est derrière l'authentification du club) et le deviner
+// produirait un import silencieusement décalé d'une colonne, le pire cas possible pour un club qui
 // ferait confiance au résultat.
 //
-// Ce provider n'hérite donc PAS des listes d'en-têtes de providers/csv.ts, alors qu'elles
-// existent : elles ont été écrites pour du CSV générique, pas pour Footclubs. Les réutiliser ici
-// reviendrait à prétendre connaître le format.
+// La détection par contenu n'est pas un contournement de cette règle, c'est l'inverse : elle ne
+// suppose RIEN du format, elle lit les données. Et sa proposition est affichée à l'utilisateur
+// avec le nom des colonnes reconnues, donc vérifiable d'un coup d'œil avant le moindre écrit.
 //
-// Quand un vrai export Footclubs sera fourni : lire ses colonnes réelles, poser le mapping par
-// défaut dans DEFAULT_MAPPING_BY_SIGNATURE ci-dessous, tester sur plusieurs compétitions, et
-// passer `isReady` à true. Rien d'autre à changer — le moteur, la preview, le diff et la sync
-// sont déjà communs à tous les providers.
+// Ce provider n'utilise volontairement pas les listes d'intitulés de header-hints.ts comme signal
+// principal : elles ont été écrites pour du CSV générique. Elles ne servent ici que d'arbitre,
+// via autodetect, quand deux colonnes ont exactement le même profil.
 
-import {
-  coerceSportStatus,
-  normalizeOpponentValue,
-  normalizeScore,
-  parseFlexibleDate,
-  parseFlexibleTime,
-  teamMatchKey,
-} from "../normalize.ts";
+import { detectTabularLayout, layoutToMapping, type DetectedLayout } from "../autodetect.ts";
+import { rowsToSourceEvents } from "../tabular.ts";
 import { readXlsx } from "../xlsx.ts";
-import type { CalendarProvider, ParseResult, ProviderInput, SourceEvent, SourceIssue, SourceInspection } from "../types.ts";
-
-/** Champs qu'une colonne du tableur peut alimenter. `opponent` et `date` sont les seuls
- * obligatoires — ce sont aussi les seuls sans lesquels un match n'existe pas. */
-export const XLSX_FIELDS = [
-  "opponent",
-  "date",
-  "time",
-  "team",
-  "competition",
-  "status",
-  "location",
-  "score",
-  "home",
-  "externalEventId",
-  "externalTeamId",
-  "externalCompetitionId",
-] as const;
-
-export type XlsxField = (typeof XLSX_FIELDS)[number];
-
-export const XLSX_FIELD_LABELS: Record<XlsxField, string> = {
-  opponent: "Adversaire (obligatoire)",
-  date: "Date (obligatoire)",
-  time: "Heure",
-  team: "Équipe du club",
-  competition: "Compétition",
-  status: "Statut du match",
-  location: "Lieu",
-  score: "Score",
-  home: "Domicile / extérieur",
-  externalEventId: "Identifiant du match chez la source",
-  externalTeamId: "Identifiant de l'équipe chez la source",
-  externalCompetitionId: "Identifiant de la compétition chez la source",
-};
-
-export const XLSX_REQUIRED_FIELDS: XlsxField[] = ["opponent", "date"];
-
-export interface XlsxColumnMapping {
-  sheetIndex: number;
-  /** Index 0-based de la ligne d'en-tête dans la feuille. */
-  headerRow: number;
-  /** Index 0-based de la première ligne de données (par défaut headerRow + 1). */
-  firstDataRow?: number;
-  /** Champ → index de colonne, tel que désigné par l'utilisateur. */
-  columns: Partial<Record<XlsxField, number>>;
-}
-
-/**
- * Emplacement prévu pour les mappings connus, indexés par signature de fichier (la liste de ses
- * en-têtes). VIDE À DESSEIN tant qu'aucun export Footclubs réel n'a été fourni. Le jour où c'est
- * le cas, une entrée ici suffit à pré-remplir l'écran de mapping, sans toucher au reste.
- */
-export const DEFAULT_MAPPING_BY_SIGNATURE: Record<string, XlsxColumnMapping> = {};
-
-/** Signature d'une feuille = ses en-têtes normalisés, dans l'ordre. Sert à reconnaître un format
- * déjà mappé une fois — sans jamais deviner un format inconnu. */
-export function sheetSignature(headerRow: string[]): string {
-  return headerRow.map((h) => teamMatchKey(h)).join("|");
-}
+import {
+  TABULAR_FIELD_LABELS,
+  TABULAR_REQUIRED_FIELDS,
+  type CalendarProvider,
+  type ParseResult,
+  type ProviderInput,
+  type SourceInspection,
+  type TabularMapping,
+} from "../types.ts";
 
 async function toWorkbook(input: ProviderInput) {
   if (!input.bytes) throw new Error("Fichier .xlsx vide ou illisible.");
   return readXlsx(input.bytes);
 }
 
-/** Nombre de lignes montrées dans l'écran de mapping. Assez pour reconnaître la structure d'un
- * export (parfois précédé de 2-3 lignes de titre), pas assez pour noyer l'écran. */
-const PREVIEW_ROWS = 12;
+/** Lignes remontées par `inspect()`. Assez pour que la détection ait de la matière et pour
+ * reconnaître un export précédé de lignes de titre ; l'écran, lui, n'en affiche qu'une poignée. */
+const INSPECT_ROWS = 40;
 
 export const xlsxProvider: CalendarProvider = {
   id: "FOOTCLUBS_XLSX",
   label: "Fichier Excel .xlsx (export Footclubs ou autre tableur)",
   accept: ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  needsColumnMapping: true,
+  // false : la détection par contenu suffit dans le cas normal. Le mapping n'est demandé que
+  // lorsqu'elle échoue, ce que l'appelant constate via `detectTabularLayout().missingRequired`.
+  needsColumnMapping: false,
   reads: "binary",
-  // false : la lecture marche, mais aucun mapping Footclubs réel n'est connu. L'UI le dit
-  // explicitement à l'utilisateur plutôt que de laisser croire à un import automatique.
+  // Le format Footclubs reste inconnu : on ne promet pas un import Footclubs clé en main, on
+  // promet de lire un tableur et de montrer ce qu'on a compris. L'UI le dit ainsi.
   isReady: false,
 
   detect(fileName) {
@@ -121,99 +66,78 @@ export const xlsxProvider: CalendarProvider = {
       sheets: workbook.sheets.map((sheet, index) => ({
         index,
         name: sheet.name,
-        rows: sheet.rows.slice(0, PREVIEW_ROWS).map((row) => row.map((cell) => cell ?? "")),
+        rows: sheet.rows.slice(0, INSPECT_ROWS).map((row) => row.map((cell) => cell ?? "")),
         rowCount: sheet.rows.length,
       })),
     };
   },
 
   async parse(input: ProviderInput): Promise<ParseResult> {
-    const mapping = input.options as XlsxColumnMapping | undefined;
-    if (!mapping) {
-      return {
-        events: [],
-        issues: [{ line: 0, raw: input.fileName, reason: "Aucun mapping de colonnes : désignez au minimum l'adversaire et la date." }],
-      };
-    }
-
-    const missing = XLSX_REQUIRED_FIELDS.filter((field) => mapping.columns[field] === undefined);
-    if (missing.length > 0) {
-      return {
-        events: [],
-        issues: [
-          {
-            line: 0,
-            raw: input.fileName,
-            reason: `Colonne(s) obligatoire(s) non désignée(s) : ${missing.map((f) => XLSX_FIELD_LABELS[f]).join(", ")}.`,
-          },
-        ],
-      };
-    }
-
     const workbook = await toWorkbook(input);
-    const sheet = workbook.sheets[mapping.sheetIndex];
+    const provided = input.options as TabularMapping | undefined;
+    const sheetIndex = provided?.sheetIndex ?? pickBestSheet(workbook.sheets, input.teams);
+    const sheet = workbook.sheets[sheetIndex];
     if (!sheet) {
       return { events: [], issues: [{ line: 0, raw: input.fileName, reason: "Feuille de calcul introuvable." }] };
     }
 
-    const firstDataRow = mapping.firstDataRow ?? mapping.headerRow + 1;
-    const events: SourceEvent[] = [];
-    const issues: SourceIssue[] = [];
-
-    const at = (row: string[], field: XlsxField): string | undefined => {
-      const index = mapping.columns[field];
-      return index === undefined ? undefined : row[index];
-    };
-
-    for (let i = firstDataRow; i < sheet.rows.length; i++) {
-      const row = sheet.rows[i] ?? [];
-      const humanLine = i + 1; // numéro de ligne tel qu'affiché par Excel
-      const opponentRaw = at(row, "opponent")?.trim() ?? "";
-      const dateRaw = at(row, "date")?.trim() ?? "";
-
-      if (!opponentRaw && !dateRaw) continue;
-      if (!opponentRaw) {
-        issues.push({ line: humanLine, raw: row.join(" | "), reason: "Adversaire manquant." });
-        continue;
+    // Mapping fourni (l'utilisateur a corrigé) : il fait foi. Sinon on détecte.
+    let mapping = provided;
+    let updatedAtColumn: number | null = null;
+    if (!mapping || TABULAR_REQUIRED_FIELDS.some((f) => mapping!.columns[f] === undefined)) {
+      const layout = detectTabularLayout(sheet.rows, { teams: input.teams });
+      if (layout.missingRequired.length > 0) {
+        return {
+          events: [],
+          issues: [
+            {
+              line: 0,
+              raw: input.fileName,
+              reason: `Impossible de reconnaître ${layout.missingRequired
+                .map((f) => TABULAR_FIELD_LABELS[f].toLowerCase())
+                .join(" et ")} dans « ${sheet.name} ». Désignez les colonnes vous-même.`,
+            },
+          ],
+        };
       }
-      const matchDate = parseFlexibleDate(dateRaw);
-      if (!matchDate) {
-        issues.push({
-          line: humanLine,
-          raw: row.join(" | "),
-          reason: dateRaw ? `Date illisible ("${dateRaw}").` : "Date manquante.",
-        });
-        continue;
-      }
-
-      const timeRaw = at(row, "time")?.trim();
-      const kickoffTime = timeRaw ? parseFlexibleTime(timeRaw) : null;
-      if (timeRaw && !kickoffTime) {
-        issues.push({ line: humanLine, raw: row.join(" | "), reason: `Heure illisible ("${timeRaw}") — match importé sans heure.` });
-      }
-
-      const homeRaw = at(row, "home")?.trim();
-      const homeKey = homeRaw ? teamMatchKey(homeRaw) : "";
-
-      events.push({
-        sourceLine: humanLine,
-        rawLabel: opponentRaw,
-        externalEventId: at(row, "externalEventId")?.trim() || null,
-        externalCompetitionId: at(row, "externalCompetitionId")?.trim() || null,
-        competitionName: at(row, "competition")?.trim() || null,
-        externalTeamId: at(row, "externalTeamId")?.trim() || null,
-        sourceTeamName: at(row, "team")?.trim() || null,
-        opponent: normalizeOpponentValue(opponentRaw),
-        matchDate,
-        kickoffTime,
-        location: at(row, "location")?.trim() || null,
-        isHome: homeKey ? ["dom", "domicile", "d", "home", "h", "oui", "o"].includes(homeKey) : null,
-        sportStatus: at(row, "status")?.trim() ? coerceSportStatus(at(row, "status")) : null,
-        score: normalizeScore(at(row, "score")),
-        sourceUpdatedAt: null,
-      });
+      mapping = layoutToMapping(layout, sheetIndex);
+      updatedAtColumn = layout.updatedAtColumn;
     }
 
-    return { events, issues };
+    return rowsToSourceEvents(sheet.rows, { mapping, updatedAtColumn });
   },
 };
+
+/** Ce que l'écran d'import a besoin de savoir pour AFFICHER ce qui a été compris : quelle feuille
+ * a été retenue et quelles colonnes ont été reconnues. Sans ça, l'utilisateur devrait faire
+ * confiance à une détection invisible. */
+export function detectXlsxLayout(
+  inspection: SourceInspection,
+  teams?: { name: string }[],
+): { sheetIndex: number; layout: DetectedLayout } {
+  const sheets = inspection.sheets.map((s) => ({ name: s.name, rows: s.rows }));
+  const sheetIndex = pickBestSheet(sheets, teams);
+  return { sheetIndex, layout: detectTabularLayout(sheets[sheetIndex]?.rows ?? [], { teams }) };
+}
+
+/**
+ * Un classeur Footclubs peut contenir plusieurs feuilles (une par équipe, ou des feuilles
+ * annexes). On retient celle où la détection trouve le plus de champs, à égalité celle qui a le
+ * plus de lignes. Bien meilleur défaut que « la première feuille », qui est souvent une page de
+ * garde.
+ */
+function pickBestSheet(sheets: { name: string; rows: string[][] }[], teams?: { name: string }[]): number {
+  let bestIndex = 0;
+  let bestScore = -1;
+  for (let i = 0; i < sheets.length; i++) {
+    const sheet = sheets[i]!;
+    const layout = detectTabularLayout(sheet.rows, { teams });
+    const complete = layout.missingRequired.length === 0 ? 100 : 0;
+    const score = complete + Object.keys(layout.columns).length * 5 + Math.min(sheet.rows.length, 50) / 50;
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+  return bestIndex;
+}
