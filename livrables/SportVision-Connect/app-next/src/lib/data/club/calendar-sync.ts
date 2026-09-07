@@ -499,6 +499,11 @@ export interface SyncRunInput {
   clubId: string;
   saisonId: string | null;
   provider: ProviderId;
+  /** Miroir de calendar_sync_runs.trigger_kind : 'import' quand un humain a cliqué, 'scheduled'
+   * pour la tâche nocturne. Sans ça, le journal présentait les passages automatiques comme des
+   * imports manuels et le club ne pouvait plus distinguer ce qu'il avait fait de ce qui s'était
+   * fait tout seul — constaté sur le test de bout en bout du 07/09/2026. */
+  triggerKind?: "manual" | "scheduled" | "import";
   startedAt: string;
   created: number;
   updated: number;
@@ -532,7 +537,7 @@ export async function recordCalendarSyncRun(supabase: SupabaseClient, input: Syn
     p_club_id: input.clubId,
     p_saison_id: input.saisonId,
     p_provider: input.provider,
-    p_trigger_kind: "import",
+    p_trigger_kind: input.triggerKind ?? "import",
     p_started_at: input.startedAt,
     p_status: status,
     p_created: input.created,
