@@ -328,3 +328,20 @@ Le compte et les commandes de test sont créés puis supprimés autour de l'exé
 ```bash
 node livrables/SportVision-TV/tests/connect-navigation-galeries.test.mjs
 ```
+
+## `connect-menu-accessibilite.test.mjs`
+
+22 scénarios sur le bouton de menu mobile, en production, dans les deux espaces Connect (joueur
+et particulier), en viewport iPhone — le seul contexte où ce bouton est visible.
+
+Vérifie le NOM ACCESSIBLE, c'est-à-dire ce qu'une synthèse vocale prononce (il était vide avant),
+que ce nom dit ce que fait le bouton, que l'état ouvert/fermé est annoncé, que le bouton est
+atteignable au clavier par Tab et activable par Entrée, que le menu contient bien « Mes galeries »,
+que la taille visuelle n'a pas changé (40×40), que la navigation fonctionne toujours et que
+l'accueil s'affiche sans erreur.
+
+Les comptes de test sont créés puis supprimés autour de l'exécution.
+
+```bash
+node livrables/SportVision-TV/tests/connect-menu-accessibilite.test.mjs
+```
