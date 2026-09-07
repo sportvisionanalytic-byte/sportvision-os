@@ -204,3 +204,23 @@ python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()})
 curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
   -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
 ```
+
+## `galerie-offres-multiples.test.sql`
+
+35 scénarios sur le cas tournoi : un lien, trois formules, sélection AVANT paiement. Album de
+30 photos. Transaction annulée.
+
+Couvre : trois formules sur un lien, le prix ET le quota du lien qui priment sur le catalogue
+(un seul produit « pack » sert à 10 photos ici et 20 ailleurs), toutes les photos parcourables
+avant achat (indispensable pour retrouver son enfant sur un tournoi), le prix qui ne bouge pas
+pendant la sélection, moins que le quota permis mais jamais plus, la galerie complète sans
+sélection, et toutes les manipulations : offre d'un autre lien, offre inventée, photo étrangère
+à l'album, jeton invalide, prix forcé, offre désactivée, produit retiré du catalogue, lien
+désactivé. Vérifie enfin les permissions par rôle (secrétariat inclus depuis le 07/09 au soir).
+
+```bash
+python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()}))' \
+  livrables/SportVision-TV/tests/galerie-offres-multiples.test.sql > /tmp/q.json
+curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
+  -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
+```

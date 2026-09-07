@@ -26,8 +26,16 @@
 // cas la sélection du client n'entre pas dans le prix : c'est le lien qui fixe le tarif, et deux
 // liens vers le même album peuvent le vendre à deux prix différents. Cette fonction ne décide
 // rien de tout cela — media_gallery_quote lui répond, et elle se contente d'enregistrer ce que la
-// base a calculé. C'est pour ça qu'elle n'exige plus de sélection : un pack se paie AVANT que
-// l'acheteur ait choisi ses photos.
+// base a calculé.
+//
+// Un lien propose désormais PLUSIEURS formules (v14/v15) : 10 photos à 10 €, 20 à 15 €, toute la
+// galerie à 50 €. Le client envoie l'identifiant de celle qu'il a choisie, et la base revérifie
+// qu'elle appartient bien à CE lien — sinon il suffirait d'envoyer l'identifiant de l'offre à
+// 10 € trouvée sur un autre lien pour obtenir cette galerie au tarif du voisin.
+//
+// La sélection d'un pack se fait AVANT le paiement (décision du 07/09 au soir) : sur un tournoi,
+// personne ne met 10 € sans avoir vérifié qu'il y a bien dix photos de son enfant. Les photos
+// retenues par le devis sont donc figées dans la commande dès l'achat.
 //
 // media_download_grants n'est PAS écrit ici : c'est le webhook Stripe qui l'écrit, une fois le
 // paiement réellement confirmé (même principe que media_entitlements pour le Pass Photo).
@@ -88,6 +96,12 @@ serve(async (req) => {
     const email: string = (body.email || "").trim().toLowerCase();
     const nom: string = (body.nom || "").trim();
     const assetIds: string[] = Array.isArray(body.assetIds) ? body.assetIds : [];
+    // L'offre choisie parmi celles du lien. Le serveur revérifie qu'elle appartient bien à CE
+    // lien : sans ça, il suffirait d'envoyer l'identifiant de l'offre à 10 € trouvée sur un autre
+    // lien pour obtenir cette galerie au tarif du voisin.
+    const offerId: string | null = body.offerId && UUID_RE.test(String(body.offerId))
+      ? String(body.offerId)
+      : null;
 
     if (!slug || !token) return json({ error: "Lien de galerie manquant." }, 400);
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json({ error: "Adresse e-mail invalide." }, 400);
@@ -113,6 +127,7 @@ serve(async (req) => {
       p_token: token,
       p_asset_ids: assetIds.length > 0 ? assetIds : null,
       p_password: password,
+      p_offer_id: offerId,
     });
     const quote = Array.isArray(quoteRows) ? quoteRows[0] : quoteRows;
     if (quoteError) {
@@ -131,11 +146,38 @@ serve(async (req) => {
       });
       const open = Array.isArray(openRows) ? openRows[0] : openRows;
       const lienValide = open?.valide === true;
-      const offre = open?.offre ?? null;
+      // `offres` au pluriel depuis la v15 : un lien porte plusieurs formules. Lire `offre` au
+      // singulier renverrait toujours undefined.
+      type Offre = { offer_id: string | null; photos_allowance: number | null };
+      const offres: Offre[] = Array.isArray(open?.offres) ? open.offres : [];
 
-      // Galerie au catalogue : sans sélection, elle ne sait pas quoi facturer. Le dire.
-      if (lienValide && !offre && assetIds.length === 0) {
-        return json({ error: "Aucune photo sélectionnée." }, 400);
+      if (lienValide) {
+        // On répond dans l'ordre où les choses tournent mal, du plus précis au plus général.
+        // Renvoyer « galerie indisponible » à quelqu'un qui a simplement coché une photo de trop
+        // l'envoie fermer l'onglet alors qu'il lui suffisait d'en décocher une.
+        const choisie = offerId ? offres.find((o) => o.offer_id === offerId) : null;
+
+        if (offerId && !choisie) {
+          return json({ error: "Cette formule n'est plus proposée. Rechargez la page." }, 409);
+        }
+        if (choisie?.photos_allowance != null) {
+          if (assetIds.length === 0) {
+            return json({ error: "Choisissez vos photos avant de payer." }, 400);
+          }
+          if (assetIds.length > choisie.photos_allowance) {
+            return json({
+              error: `Vous avez choisi ${assetIds.length} photos, cette formule en couvre ${choisie.photos_allowance}.`,
+            }, 400);
+          }
+        }
+        // Galerie au catalogue : sans sélection, elle ne sait pas quoi facturer. Le dire.
+        if (offres.length === 0 && assetIds.length === 0) {
+          return json({ error: "Aucune photo sélectionnée." }, 400);
+        }
+        // Plusieurs formules et aucune choisie : on ne devine pas laquelle il voulait.
+        if (offres.length > 1 && !offerId) {
+          return json({ error: "Choisissez une formule avant de payer." }, 400);
+        }
       }
       // Lien invalide, galerie dépubliée, formule retirée de la vente, photos supprimées entre
       // temps. On ne détaille pas davantage : le visiteur n'a rien à en apprendre, et détailler
@@ -148,8 +190,13 @@ serve(async (req) => {
     const currency: string = quote.currency || "eur";
     const lines: { name?: string; product_id: string; unit_price_cents: number; quantity: number; covers_photos: number }[] =
       quote.lines ?? [];
-    // Un quota non nul, c'est un pack : le client paie N photos qu'il choisira ensuite.
     const allowance: number | null = quote.photos_allowance ?? null;
+    // Depuis le 07/09 au soir, un pack se choisit AVANT de payer : sur un tournoi, personne ne
+    // met 10 € sans avoir vérifié qu'il y a bien dix photos de son enfant. Les photos retenues
+    // par le devis sont donc figées dans la commande tout de suite, quota compris.
+    // media_gallery_order_select reste en place pour les commandes de packs passées avant ce
+    // changement, qui attendent encore leur sélection.
+    const selectionFaite = validIds.length > 0;
 
     // ── Commande ──────────────────────────────────────────────────────────────────────────
     // link_id, product_id et photos_allowance sont écrits ici et pas ailleurs : c'est ce qui
@@ -161,6 +208,7 @@ serve(async (req) => {
         club_id: quote.club_id,
         album_id: quote.album_id,
         link_id: quote.link_id ?? null,
+        offer_id: quote.offer_id ?? null,
         product_id: quote.product_id ?? lines[0]?.product_id ?? null,
         photos_allowance: allowance,
         guest_email: email,
@@ -185,7 +233,7 @@ serve(async (req) => {
     // définitif). Écrire ici une ligne « en attendant » fermerait la sélection avant qu'elle
     // n'ait eu lieu.
     const perPhotoProduct = quote.product_id ?? lines[0]?.product_id ?? null;
-    const items = (allowance === null ? validIds : []).map((assetId) => ({
+    const items = validIds.map((assetId) => ({
       order_id: order.id,
       product_id: perPhotoProduct,
       asset_id: assetId,
@@ -245,8 +293,8 @@ serve(async (req) => {
     // nombre de photos achetées (il n'en a encore choisi aucune) mais par son intitulé commercial,
     // celui-là même qui était affiché à l'écran.
     const photoCount = quote.whole_album ? items.length : validIds.length;
-    const libelle = allowance !== null
-      ? `${a?.title ?? "Galerie"} — ${lines[0]?.name ?? `${allowance} photo${allowance > 1 ? "s" : ""} au choix`}`
+    const libelle = quote.offer_name
+      ? `${a?.title ?? "Galerie"} — ${quote.offer_name}${allowance !== null && selectionFaite ? ` (${validIds.length} photo${validIds.length > 1 ? "s" : ""})` : ""}`
       : `${a?.title ?? "Galerie"} — ${photoCount} photo${photoCount > 1 ? "s" : ""}`;
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
