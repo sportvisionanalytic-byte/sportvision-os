@@ -136,6 +136,21 @@ serve(async (req) => {
     if (!grant) return json({ error: "Lien de téléchargement invalide." }, 404);
 
     if (grant.expires_at && new Date(grant.expires_at as string).getTime() < Date.now()) {
+      // Un droit expire et un droit REVOQUE par remboursement se ressemblent en base (les deux ont
+      // une date passee), mais ne se disent pas pareil. Inviter quelqu'un qu'on vient de rembourser
+      // a « creer un compte pour retrouver ses photos » est faux : il ne les aura pas, et il
+      // ecrira au support en croyant a un bug.
+      const { data: cmd } = await admin
+        .from("media_orders")
+        .select("status")
+        .eq("id", grant.order_id as string)
+        .maybeSingle();
+      if (cmd?.status === "refunded") {
+        return json({
+          error: "Cette commande a été remboursée. L'accès aux photos a été retiré.",
+          refunded: true,
+        }, 410);
+      }
       return json({
         error: "Ce lien a expiré. Créez votre compte SportVision Connect pour retrouver vos photos.",
         expired: true,

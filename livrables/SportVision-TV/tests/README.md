@@ -399,3 +399,19 @@ d'opacité ne produit aucun pixel « quasi blanc », et la mesure concluait à t
 ```bash
 node livrables/SportVision-TV/tests/galerie-filigrane-public.test.mjs
 ```
+
+## `audit-acces-roles.test.sql`
+
+Matrice d'accès RÉELLE, jouée en RLS avec de vrais comptes des six rôles internes. Transaction
+annulée.
+
+Ne vérifie pas si un bouton est caché — un bouton caché n'est pas une sécurité. Demande à la base
+ce que chaque rôle peut réellement lire (albums, commandes, droits, liens, offres) et faire
+(fixer un prix, déposer des médias, voir les statistiques, périmètre de statistiques).
+
+```bash
+python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()}))' \
+  livrables/SportVision-TV/tests/audit-acces-roles.test.sql > /tmp/q.json
+curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
+  -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
+```

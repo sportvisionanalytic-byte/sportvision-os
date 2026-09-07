@@ -124,6 +124,12 @@ serve(async (req) => {
     if (!grant) return json({ error: "Lien de téléchargement invalide." }, 404);
 
     if (grant.expires_at && new Date(grant.expires_at as string).getTime() < Date.now()) {
+      // Meme distinction que dans gallery-download : rembourse et expire ne se disent pas pareil.
+      const { data: cmd } = await admin
+        .from("media_orders").select("status").eq("id", grant.order_id as string).maybeSingle();
+      if (cmd?.status === "refunded") {
+        return json({ error: "Cette commande a été remboursée. L'accès aux photos a été retiré.", refunded: true }, 410);
+      }
       return json({ error: "Ce lien a expiré.", expired: true }, 410);
     }
     if (grant.max_downloads && (grant.download_count as number) >= (grant.max_downloads as number)) {

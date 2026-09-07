@@ -20,6 +20,7 @@ select x.nom, x.val from (
   union all select 'pay_avant', commandes_payantes::text from media_stats_resume(current_date - 1, current_date + 1)
   union all select 'grat_avant', commandes_gratuites::text from media_stats_resume(current_date - 1, current_date + 1)
   union all select 'vues_avant', visites::text from media_stats_resume(current_date - 1, current_date + 1)
+  union all select 'ca_avant_essais', ca_cents::text from media_stats_resume(current_date - 1, current_date + 1, true)
 ) x;
 reset role;
 
@@ -216,10 +217,12 @@ begin
    where album_id = (select val::uuid from _ctx where nom='album');
   insert into _res values ('8','et elle sort du classement','0', v_n::text, v_n = 0);
 
+  -- Reference « essais inclus » et non « essais exclus » : le lien de production est lui-meme
+  -- marque comme essai, les deux references different donc de son chiffre d'affaires.
   select * into r from media_stats_resume(d, f, true);
   insert into _res values ('8','on peut la reintegrer a la demande','+7000 c',
-    '+'||(r.ca_cents - (select val::bigint from _ctx where nom='ca_avant'))::text,
-    r.ca_cents - (select val::bigint from _ctx where nom='ca_avant') = 7000);
+    '+'||(r.ca_cents - (select val::bigint from _ctx where nom='ca_avant_essais'))::text,
+    r.ca_cents - (select val::bigint from _ctx where nom='ca_avant_essais') = 7000);
   update media_albums set analytics_excluded = false where id = (select val::uuid from _ctx where nom='album');
 
   -- Exclusion d'un SEUL lien : la galerie reste comptee, ce lien non.
