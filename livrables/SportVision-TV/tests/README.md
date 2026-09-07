@@ -224,3 +224,20 @@ python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()})
 curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
   -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
 ```
+
+## `galerie-offres-illimitees.test.sql`
+
+17 scénarios prouvant qu'AUCUNE limite commerciale n'est codée. Transaction annulée.
+
+Sept offres sur un même lien, adossées à deux produits de catalogue seulement, avec des quantités
+et des prix arbitraires (5/12/25/17/50 photos à 6/9/14/17/22/35 €), dont une offre gratuite.
+Vérifie que 17 veut dire 17 (18 photos refusées), qu'un lien peut ne vendre aucun album complet,
+qu'un lien peut n'avoir qu'une seule offre (achetable sans la désigner), que l'ordre affiché est
+celui configuré, et que la mise en avant est celle choisie — pas déduite du prix le plus élevé.
+
+```bash
+python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()}))' \
+  livrables/SportVision-TV/tests/galerie-offres-illimitees.test.sql > /tmp/q.json
+curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
+  -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
+```
