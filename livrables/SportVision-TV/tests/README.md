@@ -125,3 +125,24 @@ python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()})
 curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
   -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
 ```
+
+## `galerie-permissions-tarifs.test.sql`
+
+24 scénarios sur « qui a le droit de fixer un prix de galerie ». Transaction annulée.
+
+Vérifie la règle rôle par rôle sur de vrais comptes de la base (fondateur, admin, responsable
+production, secrétariat, photographe, CM, comptabilité), et pas seulement la fonction :
+`media_pricing_staff()` d'un côté, la RLS réelle sur `media_album_links` de l'autre (lire,
+créer, modifier le prix, supprimer). Vérifie aussi que le secrétariat garde tous ses autres
+droits médias inchangés (`media_staff_write`, `media_upload_staff`, `media_commerce_staff`, et la
+lecture du lien pour l'envoyer aux parents), que le photographe garde son album, que le CM ne voit
+rien, que le responsable de pôle actif peut vraiment écrire, qu'il perd le droit dès qu'il est
+retiré du pôle, qu'un simple membre ne l'a jamais, et que le chiffre d'affaires par lien reste
+réservé.
+
+```bash
+python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()}))' \
+  livrables/SportVision-TV/tests/galerie-permissions-tarifs.test.sql > /tmp/q.json
+curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
+  -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
+```

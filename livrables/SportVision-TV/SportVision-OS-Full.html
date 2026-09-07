@@ -11411,6 +11411,19 @@ function _galUrlPublique(lien){
   return GAL_CONNECT_URL+'/gallery/'+lien.slug+'?k='+encodeURIComponent(lien.token);
 }
 
+// Créer un lien public, c'est fixer un tarif : réservé à la direction, à la production et aux
+// responsables de pôle. On ne redéfinit PAS la règle ici, on demande la réponse au serveur
+// (media_pricing_staff, la fonction que la RLS applique elle-même). Deux écritures de la même
+// règle finissent toujours par diverger, et c'est l'interface qui mentirait.
+let _galPeutTariferCache=null;
+async function _galPeutTarifer(){
+  if(_galPeutTariferCache===null){
+    const r=await sbFetch('rpc/media_pricing_staff',{method:'POST',body:{}}).catch(()=>false);
+    _galPeutTariferCache=(r===true);
+  }
+  return _galPeutTariferCache;
+}
+
 async function _galChargerLien(){
   const el=document.getElementById('gal-lien');
   if(!el)return;
@@ -11418,9 +11431,12 @@ async function _galChargerLien(){
   const lien=Array.isArray(rows)?rows[0]:null;
 
   if(!lien){
+    const peut=await _galPeutTarifer();
     el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div style="font-size:12px;color:var(--t2)">Aucun lien public. ${_galAlbum.status==='published'?'':'<span style="color:var(--wa)">Publiez l\'album pour que le lien fonctionne.</span>'}</div>
-      <button class="btn bp bs" onclick="galCreerLien()">Créer le lien public</button>
+      ${peut
+        ?`<button class="btn bp bs" onclick="galCreerLien()">Créer le lien public</button>`
+        :`<span style="font-size:11.5px;color:var(--t3)">Création réservée à la direction, à la production et aux responsables de pôle.</span>`}
     </div>`;
     return;
   }
@@ -11444,7 +11460,12 @@ async function galCreerLien(){
   const slugRpc=await sbFetch('rpc/media_gallery_unique_slug',{method:'POST',body:{p_text:_galAlbum.title}});
   if(sbErr(slugRpc)){toast('Erreur : '+(slugRpc.message||'slug impossible'),'error');return;}
   const r=await sbFetch('media_album_links',{method:'POST',body:{album_id:_galAlbum.id,slug:slugRpc,created_by:S.uid},headers:{Prefer:'return=representation'}});
-  if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible'),'error');return;}
+  if(sbErr(r)){
+    // La RLS est la vraie barrière : si elle refuse, on dit pourquoi plutôt que de recracher
+    // « new row violates row-level security policy ».
+    if(r.code==='42501'){toast('Création réservée à la direction, à la production et aux responsables de pôle.','error');return;}
+    toast('Erreur : '+(r.message||'création impossible'),'error');return;
+  }
   toast('Lien public créé.','ok');
   _galChargerLien();
 }
