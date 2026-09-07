@@ -13,6 +13,7 @@ import { Topbar } from "./Topbar";
 import { NotificationBell } from "./NotificationBell";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
 import { MenuButton } from "@/components/layout/MenuButton";
+import { VersionBadge } from "@/components/support/VersionBadge";
 
 // Shell de l'Espace particulier — voir design-connect-personnel-12-08/README.md § Shell et
 // navigation ("Espace particulier") + § Espace particulier. NE remplace PAS AppShell.tsx (shell
@@ -352,6 +353,8 @@ export function ParticularShell({
             <span className="text-[11px] text-text-tertiary">Se déconnecter</span>
           </span>
         </button>
+              {/* Version deployee — outil de support, invisible pour qui ne la cherche pas. */}
+        <VersionBadge />
       </aside>
 
       {/* ============ HEADER MOBILE ============ */}

@@ -706,6 +706,10 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3l4 4-4 4M14 7H5M8 1H2a1 1 0 00-1 1v11a1 1 0 001 1h6"/></svg>
         </div>
       </div>
+      <!-- Version deployee : sans elle, « je ne vois pas le nouveau bouton » ne se diagnostique
+           qu'en devinant. Discret, cliquable pour copier, jamais montre a un client. -->
+      <div id="sv-version" onclick="svCopierVersion()" title="Cliquer pour copier"
+           style="padding:2px 8px 6px;font-size:9.5px;color:var(--t3);cursor:pointer;user-select:none"></div>
     </div>
   </aside>
   <div class="main">
@@ -36645,6 +36649,37 @@ async function loadMobileComDash(ct){
       </div>`).join(''):`<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Rien d'urgent — beau travail.</div>`;
     ct.innerHTML=html;
   }catch(e){ct.innerHTML=`<div style="padding:32px;color:var(--er);text-align:center;font-size:13px">Erreur de chargement.</div>`;}
+}
+
+// ── Version deployee ──────────────────────────────────────────────────────
+// Ecrite au build par scripts/stamp-version.mjs a partir des variables Netlify. Affichee en bas
+// de la barre laterale : quand quelqu'un dit « je n'ai pas le nouveau bouton », on compare deux
+// chaines au lieu de supposer.
+let _svVersion=null;
+(async function chargerVersion(){
+  const el=document.getElementById('sv-version');
+  if(!el)return;
+  try{
+    // no-store : ce fichier change a chaque deploiement, un cache le rendrait mensonger — et un
+    // marqueur de version qui ment est pire que pas de marqueur du tout.
+    const r=await fetch('/version.json?_='+Date.now(),{cache:'no-store'});
+    if(!r.ok)throw new Error('absent');
+    const v=await r.json();
+    _svVersion=v;
+    const d=new Date(v.date);
+    const quand=isNaN(d)?'':d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const ctx=v.contexte==='production'?'Production':(v.contexte==='local'?'Local':v.contexte);
+    el.textContent=ctx+' · build '+v.commit+(quand?' · '+quand:'');
+  }catch(e){
+    // Un marqueur absent est une information : le build n'a pas produit le fichier.
+    el.textContent='Version inconnue';
+  }
+})();
+
+function svCopierVersion(){
+  const t=document.getElementById('sv-version');
+  if(!t)return;
+  navigator.clipboard.writeText(t.textContent||'').then(()=>toast('Version copiee.','ok')).catch(()=>{});
 }
 
 // Désactiver tout service worker existant (évite les interférences avec Supabase)

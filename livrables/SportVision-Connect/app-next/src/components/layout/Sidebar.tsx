@@ -12,6 +12,7 @@ import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { fetchPlayerClubInfo, type PlayerClubInfo } from "@/lib/data/player/club-info";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
+import { VersionBadge } from "@/components/support/VersionBadge";
 
 interface SidebarProps {
   // Drawer mobile (sous `lg`, voir AppShell.tsx) — au-delà de `lg` la sidebar reste statique
@@ -258,7 +259,9 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             </button>
           </div>
         </div>
-      </aside>
+            {/* Version deployee — meme marqueur que Connect et l'OS. */}
+      <VersionBadge />
+    </aside>
     </>
   );
 }

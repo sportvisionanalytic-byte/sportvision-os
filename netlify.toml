@@ -1,9 +1,16 @@
 [build]
   publish = "livrables/SportVision-TV"
-  # Économie de crédits (02/09/2026) : même filtre que les 2 sites Club+/Connect (voir leurs
-  # netlify.toml respectifs pour le détail) — sans lui, ce site relançait aussi un déploiement à
-  # chaque push sur main, y compris quand aucun fichier de ce dossier n'avait changé.
-  ignore = "git diff --quiet ${CACHED_COMMIT_REF:-HEAD^} HEAD -- livrables/SportVision-TV"
+  # Marqueur de version : écrit le commit et la date du build dans version.json, que l'OS affiche
+  # discrètement. Sans lui, « je ne vois pas le nouveau bouton » ne se diagnostique qu'en devinant.
+  command = "node scripts/stamp-version.mjs"
+  # Filtre `ignore` RETIRÉ le 08/09/2026. C'était le TROISIÈME site à le porter, et le seul qui
+  # l'avait encore : il a été retiré d'app-next le 05/09 après avoir bloqué tous les déploiements
+  # pendant plus de 24 h sans que personne ne le voie, puis d'app-connect le 07/09 après un second
+  # incident identique. Le laisser ici revenait à garder la même mine sur le troisième site.
+  #
+  # Le coût est quelques builds inutiles. Le risque évité est qu'un changement réel ne parte
+  # jamais en production, silencieusement, et qu'on teste pendant des heures une version ancienne
+  # en croyant que le correctif ne marche pas.
 
 # Domaine privé, non annoncé (bc6m3cgdz.sportvision-an.fr) — voir netlify/edge-functions/
 # block-default-domain.js pour le blocage de sportvision-os.netlify.app.

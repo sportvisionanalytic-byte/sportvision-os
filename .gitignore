@@ -14,3 +14,7 @@ Thumbs.db
 
 # Supabase CLI (cache local de liaison de projet, recréé à chaque `functions deploy`)
 livrables/SportVision-TV/supabase/.temp/
+
+# Marqueur de version : ecrit au build par scripts/stamp-version.mjs, jamais versionne — sinon le
+# fichier du depot ecraserait celui du build et mentirait sur la version reellement servie.
+livrables/SportVision-TV/version.json

@@ -11,6 +11,7 @@ import { Topbar } from "./Topbar";
 import { NotificationBell } from "./NotificationBell";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
 import { MenuButton } from "@/components/layout/MenuButton";
+import { VersionBadge } from "@/components/support/VersionBadge";
 
 // Shell de l'espace joueur — voir design-connect-personnel-12-08/README.md § Shell et
 // navigation. Structure consolidée le 14/08 une fois tous les écrans du design réellement
@@ -203,6 +204,8 @@ export function AppShell({
             <span className="text-[11px] text-text-tertiary">Se déconnecter</span>
           </span>
         </button>
+              {/* Version deployee — outil de support, invisible pour qui ne la cherche pas. */}
+        <VersionBadge />
       </aside>
 
       {/* ============ HEADER MOBILE ============ */}

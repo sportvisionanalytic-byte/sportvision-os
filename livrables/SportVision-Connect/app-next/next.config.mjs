@@ -40,6 +40,13 @@ const SECURITY_HEADERS = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Meme marqueur de version que Connect et l'OS : trois surfaces, une seule facon de savoir quelle
+  // version quelqu'un a reellement sous les yeux.
+  env: {
+    NEXT_PUBLIC_BUILD_COMMIT: (process.env.COMMIT_REF || "local").slice(0, 7),
+    NEXT_PUBLIC_BUILD_CONTEXT: process.env.CONTEXT || "local",
+    NEXT_PUBLIC_BUILD_DATE: new Date().toISOString(),
+  },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },

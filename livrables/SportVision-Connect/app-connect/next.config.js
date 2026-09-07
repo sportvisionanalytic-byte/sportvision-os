@@ -42,6 +42,14 @@ const SECURITY_HEADERS = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Version deployee, figee au build. COMMIT_REF/CONTEXT sont fournis par Netlify ; en local ils
+  // sont absents, et « local » est exactement l'information utile. Sert au panneau support : sans
+  // lui, « je ne vois pas le nouveau bouton » ne se diagnostique qu'en devinant.
+  env: {
+    NEXT_PUBLIC_BUILD_COMMIT: (process.env.COMMIT_REF || "local").slice(0, 7),
+    NEXT_PUBLIC_BUILD_CONTEXT: process.env.CONTEXT || "local",
+    NEXT_PUBLIC_BUILD_DATE: new Date().toISOString(),
+  },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
