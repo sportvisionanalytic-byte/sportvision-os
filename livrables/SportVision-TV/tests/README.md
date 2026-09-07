@@ -106,3 +106,22 @@ compte Connect quand il existe.
 ```bash
 bash livrables/SportVision-TV/tests/galerie-paiement-reel.verif.sh <slug-de-la-galerie>
 ```
+
+## `galerie-offres-par-lien.test.sql`
+
+25 scénarios sur le modèle « une galerie, plusieurs liens, plusieurs tarifs ». Transaction annulée.
+
+Couvre : deux liens vers le même album à 15 € et 30 €, mêmes photos des deux côtés, une seule
+offre affichée sur un lien configuré, lien historique qui garde le catalogue complet, prix
+indépendant de la sélection, pack avec quota et aucune photo figée à l'achat, sélection
+post-paiement (trop de photos refusée, photo étrangère refusée, second choix refusé car
+définitif), récapitulatif, attribution de la commande au lien, changement de prix sans effet sur
+une commande payée, produit désactivé (le lien cesse de vendre au lieu de retomber sur le
+catalogue), lien désactivé, et permissions par rôle.
+
+```bash
+python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()}))' \
+  livrables/SportVision-TV/tests/galerie-offres-par-lien.test.sql > /tmp/q.json
+curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
+  -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
+```
