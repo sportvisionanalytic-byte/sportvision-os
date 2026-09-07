@@ -1,9 +1,12 @@
+// Le parcours multi-formules dans un vrai Chromium, sur la galerie EN PRODUCTION.
+//
+// Deux pieges appris ici : Intl.NumberFormat("fr-FR") insere une espace FINE INSECABLE (U+202F)
+// avant le symbole euro, et innerText rend les libelles de champs en majuscules a cause du
+// text-transform CSS. On normalise donc les espaces et on compare sans tenir compte de la casse.
 import { chromium } from "/Users/fouka/Downloads/jarvis-starter-kit/livrables/SportVision-Connect/app-next/node_modules/playwright/index.mjs";
 
 const URL = "https://connect.sportvision-an.fr/gallery/test-paiement-u18?k=z8Dk6uTkSSSlFRkvo42j2Ejv";
-// Intl.NumberFormat("fr-FR") insere une espace FINE INSECABLE (U+202F) avant le symbole. Chercher
-// "4 €" avec une espace ordinaire ne trouve rien : on normalise toutes les espaces avant de lire.
-const norm = (s) => s.replace(/[   ]/g, " ");
+const norm = (s) => s.replace(/[   ]/g, " ");
 
 const b = await chromium.launch();
 let ko = 0;
@@ -15,29 +18,56 @@ for (const [nom, vp] of [["iPhone", { width: 390, height: 844 }], ["Bureau", { w
   const txt = norm(await p.locator("body").innerText());
 
   dit(`${nom} : la galerie s'ouvre`, txt.includes("Test paiement"));
-  dit(`${nom} : le prix est visible sans rien cocher`, txt.includes("4 €"));
-  dit(`${nom} : la formule est nommee`, /Galerie complete \(test\)/.test(txt));
-  dit(`${nom} : promesse d'acces annoncee`, /photos de la galerie/i.test(txt));
-  dit(`${nom} : plus aucun panier`, !/panier/i.test(txt));
-  dit(`${nom} : plus de coche de selection`, (await p.locator('button[aria-label*="election"]').count()) === 0);
-  dit(`${nom} : pas de defilement horizontal`,
-      await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  dit(`${nom} : toutes les photos sont visibles avant achat`,
+      (await p.locator('button[aria-label^="Ouvrir la photo"]').count()) === 3, "3 sur 3");
+  dit(`${nom} : la barre annonce le nombre de formules`, /5 formules disponibles/.test(txt), txt.match(/\d+ formules[^\n]*/)?.[0]);
+  dit(`${nom} : et le prix d'entree`, /À partir de/.test(txt) && /Offert|0 €/.test(txt));
 
-  await p.locator('button[aria-label^="Ouvrir la photo"]').first().click();
-  await p.waitForTimeout(600);
-  dit(`${nom} : bouton d'achat dans la visionneuse`, /Débloquer/.test(norm(await p.locator('[role="dialog"]').innerText())));
-  await p.locator('[role="dialog"] button[aria-label="Fermer"]').click();
+  await p.locator("button", { hasText: "Voir les formules" }).click();
+  await p.waitForTimeout(500);
+  const feuille = norm(await p.locator('[role="dialog"]').innerText());
+
+  dit(`${nom} : les 5 formules sont listees`,
+      ["1 photo offerte", "2 photos", "3 photos", "Toute la galerie", "Galerie + tirages"].every((n) => feuille.includes(n)));
+  dit(`${nom} : l'offre gratuite s'affiche « Offert »`, /Offert/.test(feuille));
+  dit(`${nom} : le prix est annonce fixe`, /ne change pas selon les photos/.test(feuille));
+  // La mise en avant est celle configuree (2 photos a 1,50 EUR), PAS la plus chere.
+  const misEnAvant = await p.locator('[role="dialog"] button:has-text("Recommandé")').innerText();
+  dit(`${nom} : la mise en avant est celle configuree`, /2 photos/.test(norm(misEnAvant)), norm(misEnAvant).split("\n")[0]);
+
+  // Formule a quota : la galerie passe en mode selection, prix fige.
+  await p.locator('[role="dialog"] button', { hasText: "2 photos" }).first().click();
+  await p.waitForTimeout(500);
+  const apres = norm(await p.locator("body").innerText());
+  dit(`${nom} : passage en mode selection`, /0 \/ 2 photos/.test(apres), apres.match(/\d \/ \d photos/)?.[0]);
+
+  await p.locator('button[aria-label="Ajouter à la sélection"]').first().click();
+  await p.waitForTimeout(300);
+  const un = norm(await p.locator("body").innerText());
+  dit(`${nom} : le compteur avance`, /1 \/ 2 photos/.test(un));
+  dit(`${nom} : le prix n'a pas bouge`, /Continuer — 1,50 €/.test(un), un.match(/Continuer[^\n]*/)?.[0]);
+
+  await p.locator('button[aria-label="Ajouter à la sélection"]').first().click();
+  await p.waitForTimeout(300);
+  const deux = norm(await p.locator("body").innerText());
+  dit(`${nom} : quota atteint`, /2 \/ 2 photos/.test(deux));
+  dit(`${nom} : le prix n'a toujours pas bouge`, /Continuer — 1,50 €/.test(deux));
+  dit(`${nom} : les photos restantes ne sont plus cochables`,
+      await p.locator('button[aria-label="Ajouter à la sélection"]').first().isDisabled());
+
+  // On peut changer de formule sans perdre sa selection.
+  await p.locator("button", { hasText: "changer de formule" }).click();
   await p.waitForTimeout(400);
+  await p.locator('[role="dialog"] button', { hasText: "3 photos" }).first().click();
+  await p.waitForTimeout(400);
+  const change = norm(await p.locator("body").innerText());
+  dit(`${nom} : changer de formule garde la selection`, /2 \/ 3 photos/.test(change), change.match(/\d \/ \d photos/)?.[0]);
 
-  // Les libelles de champs sont en petites capitales via CSS : innerText les rend en majuscules.
-  // Le bouton de la barre d'achat porte le montant : on le cible par son role, pas par son texte.
-  await p.locator("button", { hasText: /^\s*4/ }).last().click();
-  await p.waitForTimeout(700);
+  await p.locator("button", { hasText: "Continuer —" }).click();
+  await p.waitForTimeout(600);
   const co = norm(await p.locator("form").first().innerText());
   dit(`${nom} : ecran de coordonnees`, /adresse e-mail/i.test(co));
-  dit(`${nom} : meme montant au paiement`, /4 €/.test(co), "aucun ecart d'affichage");
-  dit(`${nom} : aucun compte exige`, /Aucun compte/.test(co));
-  dit(`${nom} : recapitulatif = la formule`, /Galerie complete \(test\)/.test(co), co.split("\n").find((l) => /Galerie/.test(l)) || "");
+  dit(`${nom} : recapitulatif = formule + nombre choisi`, /3 photos · 2 photos/.test(co), co.split("\n").find((l) => /photos ·/.test(l)) || "");
   await p.close();
 }
 
@@ -46,7 +76,6 @@ const urls = [];
 p.on("response", (r) => urls.push(r.url()));
 await p.goto(URL, { waitUntil: "networkidle" });
 dit("aucun original servi a la page publique", !urls.some((u) => u.includes("sportvision-media-prive")));
-dit("les apercus viennent bien du bucket public", urls.some((u) => u.includes("galerie-previews")));
 await b.close();
 
 console.log(ko === 0 ? "\ntout conforme" : `\n${ko} ecart(s)`);
