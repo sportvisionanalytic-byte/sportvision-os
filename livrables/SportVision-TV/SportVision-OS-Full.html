@@ -11058,10 +11058,19 @@ const GAL_MEDIA_CFG={
   // Le filigrane n'est posé QUE sur la preview. Sur une vignette de 480px il serait illisible et
   // ne ferait que salir la grille.
   // Répétition serrée et non une marque unique : une marque centrale disparaît d'un simple
-  // recadrage, ce qu'on cherche justement à décourager. Valeurs réglées en mesurant la couverture
-  // réelle sur une photo 1600 px (voir le test des dérivés) : ~9 % des pixels touchés, assez pour
-  // dissuader sans rendre la photo impossible à juger avant achat.
-  watermark:{texte:'SportVision',opacite:.26,anglesDeg:-30,espacement:110,taillePct:.042},
+  // recadrage, ce qu'on cherche justement à décourager.
+  //
+  // 07/09/2026 — RENFORCÉ avec le passage aux formules d'accès. Le modèle a changé : le visiteur
+  // parcourt désormais TOUTE la galerie librement avant de payer, au lieu de débloquer photo par
+  // photo. L'aperçu filigrané n'est plus un extrait, c'est la seule chose qu'il verra s'il décide
+  // de ne pas acheter — et une capture d'écran est toujours possible, quoi qu'on fasse. Le
+  // filigrane doit donc rendre la capture inutilisable, pas seulement signaler la propriété.
+  // Il est cuit dans le fichier au dépôt, jamais posé en CSS : une surcouche CSS s'enlève en dix
+  // secondes depuis l'inspecteur du navigateur.
+  // Valeurs réglées en MESURANT la couverture réelle sur une photo 1600 px (test des dérivés) :
+  // 18 % des pixels touchés, contre 7 % avant. Assez pour dissuader, assez peu pour que le
+  // parent juge encore le cadrage et reconnaisse son enfant — sans quoi il n'achète pas.
+  watermark:{texte:'SportVision',opacite:.42,anglesDeg:-30,espacement:66,taillePct:.05},
   // 3 fichiers en parallèle : au-delà, un dépôt de 500 photos sature la mémoire du navigateur et
   // le décodage devient plus lent que le réseau.
   concurrence:3,
@@ -11366,7 +11375,9 @@ async function _galChargerAssets(){
 async function modalMediasAlbum(albumId){
   const album=_photoAlbums.find(a=>a.id===albumId);
   if(!album){toast('Album introuvable','error');return;}
-  _galAlbum=album;_galAssets=[];_galQueue=[];
+  // Les caches produits/liens sont remis a zero a chaque album : ils sont propres a UN club, et
+  // les garder ferait proposer le catalogue du club precedent dans le formulaire de tarif.
+  _galAlbum=album;_galAssets=[];_galQueue=[];_galProduitsCache=null;_galLiensCache=[];
   openModal(`
     <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:3px">📸 Médias — ${esc(album.title)}</div>
     <div id="gal-count" style="font-size:11.5px;color:var(--t3);margin-bottom:12px">Chargement…</div>
@@ -11424,57 +11435,218 @@ async function _galPeutTarifer(){
   return _galPeutTariferCache;
 }
 
+// ── Liens commerciaux d'un album ──────────────────────────────────────────
+// Un album, PLUSIEURS liens. C'est la decision du 07/09 : le match Villeneuve vs Gennevilliers,
+// ce sont les MEMES photos, mais on ne les vend pas au meme prix aux parents du club partenaire
+// et a l'equipe adverse. Dupliquer l'album pour avoir deux tarifs, ce serait dupliquer 200
+// fichiers, doubler le stockage et tenir deux albums a jour. Le lien porte donc sa propre
+// configuration commerciale, l'album ne porte que les photos.
+//
+// LA regle de prix n'est PAS reecrite ici : l'ecran affiche le prix effectif, mais c'est
+// media_link_offer() en base qui le decide, et c'est elle aussi qui sert au moment d'encaisser.
+// Un deuxieme calcul cote navigateur finirait par diverger de celui qui facture.
+
+const GAL_AUDIENCES={
+  club_partenaire:'Parents du club',
+  equipe_adverse:'Equipe adverse',
+  public:'Public',
+  evenementiel:'Evenementiel',
+  personnalise:'Personnalise'
+};
+
+let _galProduitsCache=null;
+let _galLiensCache=[];
+async function _galProduits(){
+  if(_galProduitsCache===null){
+    _galProduitsCache=(await sbFetch('media_products?select=id,name,type,price_cents,currency,metadata&club_id=eq.'+_galAlbum.club_id+'&status=eq.active&order=price_cents.asc').catch(()=>[]))||[];
+    if(!Array.isArray(_galProduitsCache))_galProduitsCache=[];
+  }
+  return _galProduitsCache;
+}
+
+function _galPrix(cents,devise){
+  if(cents===null||cents===undefined)return '—';
+  return (cents/100).toLocaleString('fr-FR',{style:'currency',currency:(devise||'eur').toUpperCase(),minimumFractionDigits:cents%100===0?0:2});
+}
+
+// Ce que le lien vend, en une ligne lisible. Trois etats et non deux : un lien sans offre garde
+// l'ancien parcours (catalogue du club), un lien dont le produit a ete desactive cesse de vendre
+// SANS retomber sur le catalogue — sinon un lien preferentiel a 15 EUR se mettrait a afficher les
+// tarifs publics.
+function _galOffreTexte(lien,produits){
+  if(!lien.product_id)return {t:'Catalogue du club (ancien parcours)',c:'var(--t3)'};
+  const p=produits.find(x=>x.id===lien.product_id);
+  if(!p)return {t:'Produit supprime — ce lien ne vend plus',c:'var(--wa)'};
+  const prix=(lien.price_override_cents!==null&&lien.price_override_cents!==undefined)?lien.price_override_cents:p.price_cents;
+  const surcharge=(lien.price_override_cents!==null&&lien.price_override_cents!==undefined&&lien.price_override_cents!==p.price_cents);
+  return {t:p.name+' — '+_galPrix(prix,p.currency)+(surcharge?' <span style="color:var(--t3)">(tarif du lien)</span>':''),c:'var(--t1)'};
+}
+
 async function _galChargerLien(){
   const el=document.getElementById('gal-lien');
   if(!el)return;
-  const rows=(await sbFetch('media_album_links?select=id,slug,token,is_enabled,view_count,unique_visitor_count&album_id=eq.'+_galAlbum.id+'&order=created_at.asc').catch(()=>[]))||[];
-  const lien=Array.isArray(rows)?rows[0]:null;
+  const [stats,produits,peut]=await Promise.all([
+    sbFetch('rpc/media_album_links_stats',{method:'POST',body:{p_album_id:_galAlbum.id}}).catch(()=>[]),
+    _galProduits(),
+    _galPeutTarifer()
+  ]);
+  const liens=Array.isArray(stats)?stats:[];
+  _galLiensCache=liens;
 
-  if(!lien){
-    const peut=await _galPeutTarifer();
-    el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div style="font-size:12px;color:var(--t2)">Aucun lien public. ${_galAlbum.status==='published'?'':'<span style="color:var(--wa)">Publiez l\'album pour que le lien fonctionne.</span>'}</div>
-      ${peut
-        ?`<button class="btn bp bs" onclick="galCreerLien()">Créer le lien public</button>`
-        :`<span style="font-size:11.5px;color:var(--t3)">Création réservée à la direction, à la production et aux responsables de pôle.</span>`}
+  const entete=`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:9px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Liens de vente</span>
+      ${_galAlbum.status==='published'?'':'<span style="font-size:11px;color:var(--wa)">Album non publie : les liens affichent « pas encore ouverte »</span>'}
+    </div>
+    ${peut?`<button class="btn bp bs" onclick="galNouveauLien()">+ Nouveau lien</button>`:''}
+  </div>`;
+
+  if(!liens.length){
+    el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px">${entete}
+      <div style="font-size:12px;color:var(--t2)">Aucun lien. ${peut
+        ?'Creez-en un par public a servir : les parents du club, l’equipe adverse… Chacun peut avoir son tarif, sans dupliquer les photos.'
+        :'<span style="color:var(--t3)">Creation reservee a la direction, a la production et aux responsables de pole.</span>'}</div>
     </div>`;
     return;
   }
 
-  const url=_galUrlPublique(lien);
-  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
-      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Lien public</span>
-      <span style="font-size:11px;color:var(--t3)">${lien.view_count||0} vue(s) · ${lien.unique_visitor_count||0} visiteur(s)</span>
-      ${_galAlbum.status==='published'?'':'<span style="font-size:11px;color:var(--wa)">Album non publié : le lien affiche « pas encore ouverte »</span>'}
-    </div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap">
-      <input id="gal-lien-url" readonly value="${esc(url)}" class="l-inp" style="height:34px;flex:1;min-width:220px;font-size:11.5px">
-      <button class="btn bg2 bs" onclick="galCopierLien()">Copier</button>
-      <button class="btn bg2 bs" onclick="window.open('${esc(url)}','_blank')">Ouvrir</button>
+  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px">${entete}
+    <div style="display:flex;flex-direction:column;gap:9px">
+      ${liens.map(l=>{
+        const url=GAL_CONNECT_URL+'/gallery/'+l.slug+'?k='+encodeURIComponent(l.token);
+        const offre=_galOffreTexte(l,produits);
+        return `<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:10px 11px;${l.is_enabled?'':'opacity:.55'}">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px">
+            <span style="font-size:12.5px;font-weight:600">${esc(l.label||'Lien sans nom')}</span>
+            ${l.audience?`<span class="bd bw" style="font-size:9.5px"><span class="bd-d"></span>${esc(GAL_AUDIENCES[l.audience]||l.audience)}</span>`:''}
+            ${l.is_enabled?'':'<span class="bd bw" style="font-size:9.5px"><span class="bd-d"></span>Desactive</span>'}
+          </div>
+          <div style="font-size:11.5px;color:${offre.c};margin-bottom:6px">${offre.t}</div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:7px">
+            ${l.view_count||0} vue(s) · ${l.unique_visitor_count||0} visiteur(s) · <strong style="color:var(--t1)">${l.orders_count||0} vente(s)</strong> · ${_galPrix(l.revenue_cents||0,'eur')}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <input readonly value="${esc(url)}" class="l-inp" style="height:31px;flex:1;min-width:200px;font-size:11px" onclick="this.select()">
+            <button class="btn bg2 bs" onclick="galCopierLien('${esc(url)}')">Copier</button>
+            <button class="btn bg2 bs" onclick="window.open('${esc(url)}','_blank')">Ouvrir</button>
+            ${peut?`<button class="btn bg2 bs" onclick="galModifierLien('${l.id}')">Modifier</button>`:''}
+          </div>
+        </div>`;
+      }).join('')}
     </div>
   </div>`;
 }
 
-async function galCreerLien(){
-  const slugRpc=await sbFetch('rpc/media_gallery_unique_slug',{method:'POST',body:{p_text:_galAlbum.title}});
-  if(sbErr(slugRpc)){toast('Erreur : '+(slugRpc.message||'slug impossible'),'error');return;}
-  const r=await sbFetch('media_album_links',{method:'POST',body:{album_id:_galAlbum.id,slug:slugRpc,created_by:S.uid},headers:{Prefer:'return=representation'}});
-  if(sbErr(r)){
-    // La RLS est la vraie barrière : si elle refuse, on dit pourquoi plutôt que de recracher
-    // « new row violates row-level security policy ».
-    if(r.code==='42501'){toast('Création réservée à la direction, à la production et aux responsables de pôle.','error');return;}
-    toast('Erreur : '+(r.message||'création impossible'),'error');return;
+// Un seul formulaire pour la creation et la modification : les champs sont les memes, et deux
+// ecrans qui doivent rester identiques finissent toujours par diverger.
+async function galNouveauLien(){ _galFormLien(null); }
+async function galModifierLien(id){ _galFormLien(_galLiensCache.find(l=>l.id===id)||null); }
+
+async function _galFormLien(lien){
+  const produits=await _galProduits();
+  const edition=!!lien;
+  // media_album_links_stats ne renvoie pas product_id ni price_override_cents (elle est faite pour
+  // afficher des resultats, pas pour editer). On relit la ligne pour la remplir sans deviner.
+  let d={label:'',audience:'',product_id:'',price_override_cents:'',is_enabled:true};
+  if(edition){
+    const rows=await sbFetch('media_album_links?select=label,audience,product_id,price_override_cents,is_enabled&id=eq.'+lien.id).catch(()=>[]);
+    if(Array.isArray(rows)&&rows[0])d=rows[0];
   }
-  toast('Lien public créé.','ok');
+
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px">${edition?'Modifier le lien':'Nouveau lien de vente'}</div>
+
+    <label class="l-lbl">Nom du lien</label>
+    <input id="gl-label" class="l-inp" value="${esc(d.label||'')}" placeholder="Parents Villeneuve">
+    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">Pour vous reperer dans vos liens. Le visiteur ne le voit pas.</div>
+
+    <label class="l-lbl">Public</label>
+    <select id="gl-audience" class="l-inp">
+      <option value="">Non precise</option>
+      ${Object.entries(GAL_AUDIENCES).map(([k,v])=>`<option value="${k}"${d.audience===k?' selected':''}>${v}</option>`).join('')}
+    </select>
+    <div style="height:11px"></div>
+
+    <label class="l-lbl">Ce que ce lien vend</label>
+    <select id="gl-produit" class="l-inp" onchange="_galFormLienPrix()">
+      <option value="">Catalogue du club (ancien parcours, prix par photo)</option>
+      ${produits.map(p=>`<option value="${p.id}" data-prix="${p.price_cents}"${d.product_id===p.id?' selected':''}>${esc(p.name)} — ${_galPrix(p.price_cents,p.currency)}</option>`).join('')}
+    </select>
+    <div id="gl-produit-aide" style="font-size:11px;color:var(--t3);margin:4px 0 11px"></div>
+
+    <label class="l-lbl">Tarif de ce lien</label>
+    <input id="gl-prix" class="l-inp" inputmode="decimal" value="${d.price_override_cents!==null&&d.price_override_cents!==undefined?(d.price_override_cents/100).toString().replace('.',','):''}" placeholder="Laisser vide = prix du produit">
+    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">En euros. C’est ici qu’on vend le meme album 15 EUR aux parents et 30 EUR a l’equipe adverse.</div>
+
+    <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:4px">
+      <input type="checkbox" id="gl-actif"${d.is_enabled!==false?' checked':''}> Lien actif
+    </label>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:14px">Desactiver arrete les nouveaux achats. Les commandes deja payees restent accessibles.</div>
+
+    <div style="display:flex;gap:9px;justify-content:flex-end">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="galEnregistrerLien(${edition?`'${lien.id}'`:'null'})">${edition?'Enregistrer':'Creer le lien'}</button>
+    </div>
+  `);
+  _galFormLienPrix();
+}
+
+// Aide contextuelle : « pack de 5 » et « galerie complete » ne s'achetent pas pareil, et le staff
+// doit le savoir AVANT d'envoyer le lien a 200 parents.
+function _galFormLienPrix(){
+  const sel=document.getElementById('gl-produit');
+  const aide=document.getElementById('gl-produit-aide');
+  if(!sel||!aide)return;
+  const produits=_galProduitsCache||[];
+  const p=produits.find(x=>x.id===sel.value);
+  if(!p){aide.textContent='Le visiteur construit son panier photo par photo, comme avant. A eviter pour un nouveau lien.';return;}
+  if(p.type==='album_complet'){aide.textContent='Le visiteur paie une fois et recoit toutes les photos de la galerie, figees au moment de son achat.';return;}
+  const n=(p.metadata&&p.metadata.photo_count)||null;
+  if(p.type==='pack'&&n){aide.textContent='Le visiteur paie, puis choisit '+n+' photo(s) parmi toute la galerie. Son choix est definitif.';return;}
+  aide.textContent='Ce produit n’est pas une formule d’acces : verifiez qu’il convient a une galerie.';
+}
+
+async function galEnregistrerLien(id){
+  const label=(document.getElementById('gl-label').value||'').trim();
+  const audience=document.getElementById('gl-audience').value||null;
+  const produit=document.getElementById('gl-produit').value||null;
+  const prixTxt=(document.getElementById('gl-prix').value||'').trim().replace(',','.');
+  const actif=document.getElementById('gl-actif').checked;
+
+  let prix=null;
+  if(prixTxt!==''){
+    const v=Number(prixTxt);
+    if(!isFinite(v)||v<0){toast('Tarif invalide.','error');return;}
+    prix=Math.round(v*100);
+  }
+  // Un tarif sans produit ne veut rien dire : sans formule attachee, le prix vient du catalogue et
+  // cette valeur serait ignoree en silence. Mieux vaut le refuser que de laisser croire.
+  if(prix!==null&&!produit){toast('Choisissez d’abord ce que ce lien vend.','error');return;}
+
+  const body={label:label||null,audience:audience,product_id:produit,price_override_cents:prix,is_enabled:actif};
+
+  let r;
+  if(id){
+    r=await sbFetch('media_album_links?id=eq.'+id,{method:'PATCH',body:body});
+  }else{
+    const slugRpc=await sbFetch('rpc/media_gallery_unique_slug',{method:'POST',body:{p_text:label||_galAlbum.title}});
+    if(sbErr(slugRpc)){toast('Erreur : '+(slugRpc.message||'slug impossible'),'error');return;}
+    body.album_id=_galAlbum.id; body.slug=slugRpc; body.created_by=S.uid;
+    r=await sbFetch('media_album_links',{method:'POST',body:body,headers:{Prefer:'return=representation'}});
+  }
+  if(sbErr(r)){
+    // La RLS est la vraie barriere : si elle refuse, on dit pourquoi plutot que de recracher
+    // « new row violates row-level security policy ».
+    if(r.code==='42501'){toast('Reserve a la direction, a la production et aux responsables de pole.','error');return;}
+    toast('Erreur : '+(r.message||'enregistrement impossible'),'error');return;
+  }
+  closeModal();
+  toast(id?'Lien mis a jour.':'Lien cree.','ok');
   _galChargerLien();
 }
 
-function galCopierLien(){
-  const inp=document.getElementById('gal-lien-url');
-  if(!inp)return;
-  inp.select();
-  navigator.clipboard.writeText(inp.value).then(()=>toast('Lien copié.','ok')).catch(()=>toast('Copie impossible — sélectionnez le lien à la main.','error'));
+function galCopierLien(url){
+  navigator.clipboard.writeText(url).then(()=>toast('Lien copie.','ok')).catch(()=>toast('Copie impossible — selectionnez le lien a la main.','error'));
 }
 
 async function galBasculerFiligrane(actif){

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { startGalleryCheckout } from "@/lib/gallery/data";
-import { formatPrice, type CartQuote } from "@/lib/gallery/pricing";
+import { formatPrice } from "@/lib/gallery/pricing";
 
 // Checkout invité — le §14 du prompt : « demander uniquement les informations nécessaires ».
 // Prénom/nom et e-mail, rien d'autre. Pas de mot de passe, pas de compte, pas d'adresse : une
@@ -18,14 +18,22 @@ export function GalleryCheckout({
   token,
   password,
   assetIds,
-  quote,
+  libelle,
+  totalCents,
+  currency,
   onClose,
 }: {
   slug: string;
   token: string;
   password?: string;
+  /** Vide quand le lien vend une formule : le prix ne dépend alors pas de la sélection, et pour un
+   * pack l'acheteur n'a encore rien choisi. C'est le serveur qui retrouve ce qui est vendu. */
   assetIds: string[];
-  quote: CartQuote;
+  /** Ce que l'acheteur voit résumé au-dessus du bouton : « Galerie complète », « 5 photos au
+   * choix », « 3 photos »… Calculé par l'appelant, qui sait dans quel parcours on est. */
+  libelle: string;
+  totalCents: number;
+  currency: string;
   onClose: () => void;
 }) {
   const [nom, setNom] = useState("");
@@ -111,11 +119,9 @@ export function GalleryCheckout({
         {error && <p className="mt-3 text-[12.5px] font-semibold text-danger">{error}</p>}
 
         <div className="mt-4 flex items-center justify-between border-t border-border pt-3.5">
-          <span className="text-[13px] text-text-secondary">
-            {quote.wholeAlbum ? "Galerie complète" : `${assetIds.length} photo${assetIds.length > 1 ? "s" : ""}`}
-          </span>
+          <span className="text-[13px] text-text-secondary">{libelle}</span>
           <span className="font-sora text-[20px] font-extrabold tabular-nums">
-            {formatPrice(quote.totalCents, quote.currency)}
+            {formatPrice(totalCents, currency)}
           </span>
         </div>
 

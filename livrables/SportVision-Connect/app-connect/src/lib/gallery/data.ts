@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CartLine, GalleryProduct, PriceLadderEntry } from "./pricing";
+import type { CartLine, GalleryProduct, LinkOffer, PriceLadderEntry } from "./pricing";
 
 // Lecture de la galerie publique. Tout passe par les quatre RPC de
 // migration-galeries-v3-publique.sql, jamais par un SELECT direct : media_albums et media_assets
@@ -20,6 +20,8 @@ export interface GalleryHeader {
    * existe, on ne le montre jamais (§25). */
   livraisonExterne: boolean;
   watermark: boolean;
+  /** La formule vendue par ce lien précis. null = lien historique, ancien parcours au catalogue. */
+  offre: LinkOffer | null;
 }
 
 export type GalleryDenial =
@@ -82,7 +84,30 @@ export async function openGallery(
       photoCount: (row.photo_count as number) ?? 0,
       livraisonExterne: row.livraison_externe === true,
       watermark: row.watermark !== false,
+      offre: parseOffer(row.offre),
     },
+  };
+}
+
+/** `offre` est un jsonb côté base : un objet quand le lien vend une formule, null sinon. On ne
+ * fabrique jamais d'objet par défaut à la place d'un null — un lien historique et un lien dont la
+ * formule est indisponible ne se comportent pas pareil, et les confondre ferait réapparaître les
+ * tarifs publics sur un lien préférentiel. */
+function parseOffer(raw: unknown): LinkOffer | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  if (o.configured !== true) return null;
+  return {
+    configured: true,
+    available: o.available === true,
+    productId: (o.product_id as string) ?? null,
+    type: (o.type as string) ?? null,
+    name: (o.name as string) ?? null,
+    priceCents: o.price_cents === null || o.price_cents === undefined ? null : Number(o.price_cents),
+    currency: (o.currency as string) ?? "eur",
+    photosAllowance:
+      o.photos_allowance === null || o.photos_allowance === undefined ? null : Number(o.photos_allowance),
+    audience: (o.audience as string) ?? null,
   };
 }
 
@@ -238,6 +263,10 @@ export interface OrderSummary {
   expiresAt: string;
   expiree: boolean;
   dejaRattachee: boolean;
+  /** Pack : nombre de photos que l'acheteur a le droit de choisir. null pour une galerie complète
+   * ou un achat à la photo, où il n'y a rien à choisir. */
+  photosAllowance: number | null;
+  selectionFaite: boolean;
   photos: OrderPhoto[];
 }
 
@@ -258,6 +287,9 @@ export async function fetchOrderSummary(supabase: SupabaseClient, token: string)
     expiresAt: row.expires_at as string,
     expiree: row.expiree === true,
     dejaRattachee: row.deja_rattachee === true,
+    photosAllowance:
+      row.photos_allowance === null || row.photos_allowance === undefined ? null : Number(row.photos_allowance),
+    selectionFaite: row.selection_faite === true,
     photos: ((row.photos as Record<string, unknown>[] | null) ?? []).map((p) => ({
       id: p.id as string,
       thumbUrl: publicMediaUrl(p.thumb_path as string),
@@ -265,4 +297,60 @@ export async function fetchOrderSummary(supabase: SupabaseClient, token: string)
       filename: (p.filename as string) ?? "photo.jpg",
     })),
   };
+}
+
+/**
+ * Photos parmi lesquelles choisir après avoir acheté un pack.
+ *
+ * L'acheteur arrive ici avec le seul jeton reçu par e-mail : il n'a plus forcément le lien de la
+ * galerie, et celui-ci peut avoir été désactivé entre-temps. Son droit de voir ces photos vient de
+ * sa commande payée, pas du lien.
+ */
+export async function fetchOrderChoices(
+  supabase: SupabaseClient,
+  token: string,
+  options: { limit?: number; offset?: number } = {},
+): Promise<GalleryPage> {
+  const { data, error } = await supabase.rpc("media_gallery_order_choices", {
+    p_token: token,
+    p_limit: options.limit ?? 200,
+    p_offset: options.offset ?? 0,
+  });
+  if (error || !Array.isArray(data)) return { photos: [], total: 0 };
+  const rows = data as Record<string, unknown>[];
+  return {
+    total: rows.length > 0 ? Number(rows[0]!.total ?? rows.length) : 0,
+    photos: rows.map((r) => ({
+      id: r.id as string,
+      thumbUrl: publicMediaUrl(r.thumb_path as string),
+      previewUrl: publicMediaUrl((r.preview_path as string) ?? (r.thumb_path as string)),
+      width: (r.width as number) ?? null,
+      height: (r.height as number) ?? null,
+    })),
+  };
+}
+
+export type SelectionRefus = "introuvable" | "non_payee" | "sans_objet" | "deja_choisie" | "aucune_photo" | "trop_de_photos";
+
+/**
+ * Enregistre le choix de photos d'un pack. DÉFINITIF.
+ *
+ * Le quota et l'appartenance des photos à l'album sont revérifiés en base : une liste envoyée
+ * depuis le navigateur ne prouve rien, et quelqu'un qui paierait 5 photos ne doit pas pouvoir en
+ * réclamer 20. Le caractère définitif n'est pas une contrainte technique mais commerciale — pouvoir
+ * rechanger ses 5 photos indéfiniment reviendrait à obtenir la galerie entière au prix d'un pack.
+ */
+export async function submitOrderSelection(
+  supabase: SupabaseClient,
+  token: string,
+  assetIds: string[],
+): Promise<{ ok: true; selectionnees: number } | { ok: false; raison: SelectionRefus }> {
+  const { data, error } = await supabase.rpc("media_gallery_order_select", {
+    p_token: token,
+    p_asset_ids: assetIds,
+  });
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  if (error || !row) return { ok: false, raison: "introuvable" };
+  if (row.ok === true) return { ok: true, selectionnees: Number(row.selectionnees ?? assetIds.length) };
+  return { ok: false, raison: ((row.raison as SelectionRefus) ?? "introuvable") };
 }

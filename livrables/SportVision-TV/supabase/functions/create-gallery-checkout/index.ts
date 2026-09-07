@@ -21,6 +21,14 @@
 // l'écran. Un client qui posterait sa propre requête ne peut ni choisir son prix, ni acheter les
 // photos d'une autre galerie.
 //
+// ── 07/09/2026 : les deux modèles cohabitent ──
+// Depuis la v6, un lien peut porter une FORMULE (galerie complète, ou pack de N photos). Dans ce
+// cas la sélection du client n'entre pas dans le prix : c'est le lien qui fixe le tarif, et deux
+// liens vers le même album peuvent le vendre à deux prix différents. Cette fonction ne décide
+// rien de tout cela — media_gallery_quote lui répond, et elle se contente d'enregistrer ce que la
+// base a calculé. C'est pour ça qu'elle n'exige plus de sélection : un pack se paie AVANT que
+// l'acheteur ait choisi ses photos.
+//
 // media_download_grants n'est PAS écrit ici : c'est le webhook Stripe qui l'écrit, une fois le
 // paiement réellement confirmé (même principe que media_entitlements pour le Pass Photo).
 //
@@ -84,7 +92,9 @@ serve(async (req) => {
     if (!slug || !token) return json({ error: "Lien de galerie manquant." }, 400);
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json({ error: "Adresse e-mail invalide." }, 400);
     if (nom.length < 2) return json({ error: "Merci d'indiquer votre nom." }, 400);
-    if (assetIds.length === 0) return json({ error: "Aucune photo sélectionnée." }, 400);
+    // Une sélection vide n'est plus une erreur en soi : un lien qui vend une formule se paie sans
+    // que rien n'ait été coché. C'est le devis qui tranchera, plus bas — lui seul sait ce que ce
+    // lien vend.
     if (assetIds.length > MAX_PHOTOS) return json({ error: "Sélection trop grande." }, 400);
     // Filtrage de forme avant d'envoyer quoi que ce soit à la base : un identifiant mal formé
     // ferait échouer la requête entière avec une erreur technique illisible pour l'utilisateur.
@@ -101,7 +111,7 @@ serve(async (req) => {
     const { data: quoteRows, error: quoteError } = await admin.rpc("media_gallery_quote", {
       p_slug: slug,
       p_token: token,
-      p_asset_ids: assetIds,
+      p_asset_ids: assetIds.length > 0 ? assetIds : null,
       p_password: password,
     });
     const quote = Array.isArray(quoteRows) ? quoteRows[0] : quoteRows;
@@ -110,24 +120,49 @@ serve(async (req) => {
       return json({ error: "Impossible de calculer le prix de votre sélection." }, 500);
     }
     if (!quote || !quote.total_cents) {
-      // Lien invalide, galerie dépubliée, photos retirées entre-temps, ou galerie qui ne vend
-      // rien. On ne détaille pas : le visiteur n'a rien à apprendre de plus, et détailler
-      // renseignerait quelqu'un qui teste des jetons.
-      return json({ error: "Cette sélection n'est plus disponible à l'achat." }, 409);
+      // Un devis vide a deux causes très différentes, et les confondre donne un message faux :
+      // un lien cassé s'entendrait dire « aucune photo sélectionnée », ce qui envoie le visiteur
+      // cocher des photos alors que son lien ne vaut plus rien. On demande donc à la base ce
+      // qu'il en est, uniquement sur ce chemin d'erreur.
+      const { data: openRows } = await admin.rpc("media_gallery_open", {
+        p_slug: slug,
+        p_token: token,
+        p_password: password,
+      });
+      const open = Array.isArray(openRows) ? openRows[0] : openRows;
+      const lienValide = open?.valide === true;
+      const offre = open?.offre ?? null;
+
+      // Galerie au catalogue : sans sélection, elle ne sait pas quoi facturer. Le dire.
+      if (lienValide && !offre && assetIds.length === 0) {
+        return json({ error: "Aucune photo sélectionnée." }, 400);
+      }
+      // Lien invalide, galerie dépubliée, formule retirée de la vente, photos supprimées entre
+      // temps. On ne détaille pas davantage : le visiteur n'a rien à en apprendre, et détailler
+      // renseignerait quelqu'un qui teste des jetons au hasard.
+      return json({ error: "Cette galerie n'est plus disponible à l'achat." }, 409);
     }
 
     const validIds: string[] = quote.valid_asset_ids ?? [];
     const totalCents: number = quote.total_cents;
     const currency: string = quote.currency || "eur";
-    const lines: { product_id: string; unit_price_cents: number; quantity: number; covers_photos: number }[] =
+    const lines: { name?: string; product_id: string; unit_price_cents: number; quantity: number; covers_photos: number }[] =
       quote.lines ?? [];
+    // Un quota non nul, c'est un pack : le client paie N photos qu'il choisira ensuite.
+    const allowance: number | null = quote.photos_allowance ?? null;
 
     // ── Commande ──────────────────────────────────────────────────────────────────────────
+    // link_id, product_id et photos_allowance sont écrits ici et pas ailleurs : c'est ce qui
+    // permettra de savoir que le lien à 15 € a fait 25 ventes et celui à 30 € seulement 8, et
+    // c'est ce que media_gallery_order_select relit pour vérifier le quota après paiement.
     const { data: order, error: orderError } = await admin
       .from("media_orders")
       .insert({
         club_id: quote.club_id,
         album_id: quote.album_id,
+        link_id: quote.link_id ?? null,
+        product_id: quote.product_id ?? lines[0]?.product_id ?? null,
+        photos_allowance: allowance,
         guest_email: email,
         guest_name: nom,
         amount_cents: totalCents,
@@ -144,8 +179,13 @@ serve(async (req) => {
     // Une ligne par photo achetée : c'est elle qui donnera le droit de télécharger CETTE photo.
     // Le produit et le prix unitaire sont recopiés depuis le devis, jamais relus plus tard — un
     // tarif qui change en cours de saison ne doit pas réécrire une vente passée.
-    const perPhotoProduct = lines[0]?.product_id ?? null;
-    const items = validIds.map((assetId) => ({
+    //
+    // Cas du PACK : on n'écrit AUCUNE ligne maintenant. Les photos n'ont pas encore été choisies,
+    // et media_gallery_order_select refuse de choisir dès qu'une ligne existe (le choix est
+    // définitif). Écrire ici une ligne « en attendant » fermerait la sélection avant qu'elle
+    // n'ait eu lieu.
+    const perPhotoProduct = quote.product_id ?? lines[0]?.product_id ?? null;
+    const items = (allowance === null ? validIds : []).map((assetId) => ({
       order_id: order.id,
       product_id: perPhotoProduct,
       asset_id: assetId,
@@ -179,11 +219,14 @@ serve(async (req) => {
       }
     }
 
-    const { error: itemsError } = await admin.from("media_order_items").insert(items);
-    if (itemsError) {
-      console.error("[create-gallery-checkout] media_order_items :", itemsError);
-      await admin.from("media_orders").delete().eq("id", order.id);
-      return json({ error: "Impossible d'enregistrer votre commande." }, 500);
+    // Un pack part sans aucune ligne : c'est normal, pas une erreur à signaler.
+    if (items.length > 0) {
+      const { error: itemsError } = await admin.from("media_order_items").insert(items);
+      if (itemsError) {
+        console.error("[create-gallery-checkout] media_order_items :", itemsError);
+        await admin.from("media_orders").delete().eq("id", order.id);
+        return json({ error: "Impossible d'enregistrer votre commande." }, 500);
+      }
     }
 
     // ── Paiement ──────────────────────────────────────────────────────────────────────────
@@ -198,7 +241,13 @@ serve(async (req) => {
     const a = album as AlbumRow | null;
     const clubNom = Array.isArray(a?.clubs) ? a?.clubs[0]?.nom : a?.clubs?.nom;
 
+    // Ce que le client verra sur sa page Stripe et sur son reçu. Un pack ne se décrit pas par un
+    // nombre de photos achetées (il n'en a encore choisi aucune) mais par son intitulé commercial,
+    // celui-là même qui était affiché à l'écran.
     const photoCount = quote.whole_album ? items.length : validIds.length;
+    const libelle = allowance !== null
+      ? `${a?.title ?? "Galerie"} — ${lines[0]?.name ?? `${allowance} photo${allowance > 1 ? "s" : ""} au choix`}`
+      : `${a?.title ?? "Galerie"} — ${photoCount} photo${photoCount > 1 ? "s" : ""}`;
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: email,
@@ -207,7 +256,7 @@ serve(async (req) => {
           currency,
           unit_amount: totalCents,
           product_data: {
-            name: `${a?.title ?? "Galerie"} — ${photoCount} photo${photoCount > 1 ? "s" : ""}`,
+            name: libelle,
             description: clubNom ? `Photographies SportVision · ${clubNom}` : "Photographies SportVision",
           },
         },

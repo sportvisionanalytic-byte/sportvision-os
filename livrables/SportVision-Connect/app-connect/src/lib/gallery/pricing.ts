@@ -23,6 +23,46 @@ export type ProductType =
   | "physique"
   | "autre";
 
+/**
+ * La formule vendue par CE lien, telle que media_gallery_open la renvoie.
+ *
+ * Un même album peut être vendu 15 € aux parents du club et 30 € à l'équipe adverse sans être
+ * dupliqué : c'est le lien qui porte le tarif, pas l'album. Le navigateur ne recalcule rien, il
+ * affiche ce que la base a décidé — `media_link_offer` est la seule fonction qui sait quel prix
+ * s'applique, et c'est aussi elle qui sert au moment d'encaisser.
+ *
+ * Trois états, et non deux :
+ *   `offre = null`                        le lien n'a pas de formule : ancien parcours au catalogue
+ *   `configured && available`             une formule est vendable
+ *   `configured && !available`            une formule existe mais son produit a été désactivé.
+ *                                         La galerie se consulte, elle ne vend plus. Elle ne
+ *                                         retombe SURTOUT pas sur le catalogue public du club :
+ *                                         quelqu'un venu par un lien préférentiel à 15 € verrait
+ *                                         soudain les tarifs publics.
+ */
+export interface LinkOffer {
+  configured: boolean;
+  available: boolean;
+  productId: string | null;
+  type: ProductType | string | null;
+  name: string | null;
+  priceCents: number | null;
+  currency: string;
+  /** Nombre de photos que l'acheteur choisira APRÈS avoir payé. null pour une galerie complète. */
+  photosAllowance: number | null;
+  audience: string | null;
+}
+
+/** Ce que l'acheteur d'une formule obtient, en une phrase. Sert de récapitulatif au paiement et
+ * de sous-titre sur la barre d'achat : « toute la galerie » et « 5 photos au choix » ne se
+ * résument pas de la même façon. */
+export function offerSummary(offer: LinkOffer, photoCount: number): string {
+  if (offer.photosAllowance !== null) {
+    return `${offer.photosAllowance} photo${offer.photosAllowance > 1 ? "s" : ""} au choix, en pleine qualité`;
+  }
+  return `Les ${photoCount} photo${photoCount > 1 ? "s" : ""} de la galerie, en pleine qualité`;
+}
+
 export interface GalleryProduct {
   id: string;
   name: string;

@@ -583,7 +583,7 @@ serve(async (req) => {
             })
             .eq("id", galleryOrderId)
             .eq("status", "pending")
-            .select("id, club_id, album_id, guest_email, guest_name, amount_cents, currency, purchased_by_user_id")
+            .select("id, club_id, album_id, guest_email, guest_name, amount_cents, currency, purchased_by_user_id, photos_allowance")
             .maybeSingle();
 
           if (paidOrder) {
@@ -610,9 +610,22 @@ serve(async (req) => {
                 const prenom = ((paidOrder.guest_name as string | null) || "").split(" ")[0] || "";
                 const montant = ((paidOrder.amount_cents ?? 0) / 100)
                   .toLocaleString("fr-FR", { style: "currency", currency: (paidOrder.currency || "eur").toUpperCase() });
-                // Gabarit `galerie.commande_prete` (migration-galeries-v5) : mandatory, donc jamais
-                // filtré par les préférences de notification. C'est le SEUL moyen pour l'acheteur
-                // de retrouver ses photos s'il ferme l'onglet après le paiement.
+                // Gabarit `galerie.commande_prete` (migration-galeries-v5, version 2 depuis la
+                // v9) : mandatory, donc jamais filtré par les préférences de notification. C'est
+                // le SEUL moyen pour l'acheteur de retrouver ses photos s'il ferme l'onglet après
+                // le paiement.
+                //
+                // La consigne est rédigée ici et pas dans le gabarit : au moment où cet e-mail
+                // part, l'acheteur d'un pack n'a encore choisi AUCUNE photo. Lui écrire « vos 0
+                // photos sont disponibles, téléchargez-les » serait faux et le bouton ne mènerait
+                // à rien. Seul l'appelant sait ce qui a été acheté, c'est donc lui qui le dit.
+                const quota = paidOrder.photos_allowance as number | null;
+                const enAttenteDeChoix = quota !== null && (nbPhotos ?? 0) === 0;
+                const consigne = enAttenteDeChoix
+                  ? `Il vous reste à choisir vos ${quota} photo${quota > 1 ? "s" : ""} dans la galerie. Vous pourrez ensuite les télécharger en pleine qualité, sans filigrane.`
+                  : `Vos ${nbPhotos ?? 0} photo${(nbPhotos ?? 0) > 1 ? "s" : ""} sont disponibles. Téléchargez-les en pleine qualité, sans filigrane.`;
+                const cta = enAttenteDeChoix ? "Choisir mes photos" : "Télécharger mes photos";
+
                 await admin.rpc("enqueue_notification", {
                   p_event_type: "galerie.commande_prete",
                   p_template_key: "galerie.commande_prete",
@@ -627,7 +640,8 @@ serve(async (req) => {
                   p_payload: {
                     prenom,
                     album: album?.title ?? "votre galerie",
-                    nb_photos: nbPhotos ?? 0,
+                    consigne,
+                    cta,
                     lien: `${connectUrl}/gallery/commande/${encodeURIComponent(grant.token)}`,
                     expiration: new Date(grant.expires_at as string).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
                     numero: String(paidOrder.id).slice(0, 8).toUpperCase(),

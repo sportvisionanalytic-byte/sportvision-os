@@ -146,3 +146,23 @@ python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()})
 curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
   -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
 ```
+
+## `galerie-parcours-formules.test.sql`
+
+27 scénarios sur le parcours « formule » de bout en bout. Transaction annulée.
+
+Couvre : l'offre annoncée dès l'ouverture de la page (galerie complète, pack, lien historique sans
+offre), les mêmes photos des deux côtés d'un album vendu à deux prix, le devis sans aucune
+sélection, le prix qui ne bouge plus quand on coche des photos, la galerie complète figée à
+l'achat, puis tout le choix post-paiement : l'acheteur voit l'album, la pagination, le refus au
+delà du quota, l'acceptation, l'album qui cesse d'être exposé une fois le choix fait, le second
+choix refusé. Vérifie aussi ce que l'écran de choix refuse de montrer (jeton inventé, commande non
+payée, droit expiré, galerie complète sans objet), le produit désactivé qui ne fait pas retomber le
+lien sur le catalogue public, le lien désactivé, et l'attribution du chiffre d'affaires par lien.
+
+```bash
+python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()}))' \
+  livrables/SportVision-TV/tests/galerie-parcours-formules.test.sql > /tmp/q.json
+curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
+  -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
+```

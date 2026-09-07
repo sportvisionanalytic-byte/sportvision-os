@@ -121,7 +121,11 @@ const checks = [
   ["apercu raisonnable (< 400 Ko)", result.prevAvec.bytes < 400000, Math.round(result.prevAvec.bytes / 1024) + " Ko"],
   ["ratio d'origine conserve (16:10)", Math.abs(result.prevAvec.w / result.prevAvec.h - 2880 / 1800) < 0.01, (result.prevAvec.w / result.prevAvec.h).toFixed(3)],
   ["petite image jamais agrandie", result.petit.w === 300 && result.petit.h === 200, `${result.petit.w}x${result.petit.h}`],
-  ["filigrane couvre assez l'apercu (>= 5 %)", result.pixelsFiligranes >= 5, result.pixelsFiligranes + " % de pixels modifies"],
+  // Seuil releve de 5 % a 15 % le 07/09 avec le passage aux formules d'acces : le visiteur voit
+  // desormais toute la galerie avant de payer, l'apercu doit rendre une capture d'ecran
+  // inutilisable et pas seulement signaler la propriete. Un affaiblissement du filigrane doit
+  // faire echouer ce test, pas passer inapercu.
+  ["filigrane couvre assez l'apercu (>= 15 %)", result.pixelsFiligranes >= 15, result.pixelsFiligranes + " % de pixels modifies"],
   ["filigrane absent sans l'option", result.prevSans.bytes !== result.prevAvec.bytes, `${Math.round(result.prevSans.bytes / 1024)} Ko sans / ${Math.round(result.prevAvec.bytes / 1024)} Ko avec`],
   ["apercu plus leger que l'original", result.prevAvec.bytes < attendu, `${Math.round(result.prevAvec.bytes / 1024)} Ko < ${Math.round(attendu / 1024)} Ko`],
 ];

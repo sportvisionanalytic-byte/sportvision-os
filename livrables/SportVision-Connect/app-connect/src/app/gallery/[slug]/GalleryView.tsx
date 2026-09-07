@@ -20,15 +20,27 @@ import { GalleryCheckout } from "./GalleryCheckout";
 import {
   formatPrice,
   isSellable,
+  offerSummary,
   quoteFromLadder,
   sellableProducts,
   type CartLine,
   type CartQuote,
   type GalleryProduct,
+  type LinkOffer,
   type PriceLadderEntry,
 } from "@/lib/gallery/pricing";
 
 const PAGE_SIZE = 60;
+
+// ── Deux parcours, une seule page ────────────────────────────────────────────────────────────
+//
+// FORMULE (le lien porte une offre) : le visiteur regarde TOUT librement, en aperçus filigranés,
+// et achète un accès. Le prix ne bouge pas pendant qu'il navigue. C'est le modèle demandé le
+// 07/09 : faire monter le prix photo par photo pousse à la capture d'écran plutôt qu'à l'achat,
+// et pénalise justement celui qui aime beaucoup de photos.
+//
+// CATALOGUE (lien historique, sans offre) : l'ancien panier à la photo, inchangé. Des liens déjà
+// envoyés à des familles fonctionnent encore avec ce parcours, on ne le retire pas sous leurs pieds.
 
 export function GalleryView({
   slug,
@@ -64,7 +76,13 @@ export function GalleryView({
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const storageKey = `sv-gallery-sel:${header.albumId}`;
-  const vendable = isSellable(products);
+  // L'offre du lien commande tout le reste de l'écran. Quand elle existe, la mécanique de panier
+  // disparaît entièrement : pas de coche sur les photos, pas de total qui grimpe, pas de sélection
+  // à conserver entre deux pages.
+  const offre: LinkOffer | null = header.offre;
+  const formule = offre !== null;
+  const enVente = formule ? offre.available : isSellable(products);
+  const vendable = !formule && isSellable(products);
   const { wholeAlbum } = sellableProducts(products);
 
   // §18 : la sélection survit à l'ouverture d'une photo, à un retour arrière et à un rechargement
@@ -247,6 +265,13 @@ export function GalleryView({
                 Touchez une photo pour l&apos;agrandir, ✓ pour la sélectionner
               </p>
             )}
+            {formule && (
+              <p className="mt-0.5 text-[12px] text-text-faint">
+                {enVente
+                  ? "Regardez toutes les photos librement. Vous ne payez qu'une fois, pour y accéder en pleine qualité."
+                  : "Cette galerie est consultable, elle n'est plus proposée à la vente."}
+              </p>
+            )}
           </div>
         </div>
       </header>
@@ -284,7 +309,30 @@ export function GalleryView({
         </footer>
       </main>
 
-      {/* ── Barre de sélection ───────────────────────────────────────────── */}
+      {/* ── Barre d'achat, parcours FORMULE ──────────────────────────────── */}
+      {/* Toujours visible, dès la première seconde et sans rien avoir coché : le visiteur doit
+          savoir ce que ça coûte avant de faire défiler 200 photos, pas après. Le montant ne bouge
+          jamais pendant la visite. */}
+      {formule && offre && enVente && !checkoutOpen && lightbox === null && photos.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border-strong bg-bg-elevated/95 backdrop-blur">
+          <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+            <div className="min-w-0">
+              <div className="truncate text-[13.5px] font-bold">{offre.name ?? "Accès aux photos"}</div>
+              <div className="truncate text-[12px] text-text-tertiary">
+                {offerSummary(offre, header.photoCount)}
+              </div>
+            </div>
+            <button
+              onClick={() => setCheckoutOpen(true)}
+              className="flex-none rounded-sv-pill bg-sv-gradient px-5 py-2.5 text-[13.5px] font-bold text-white"
+            >
+              {formatPrice(offre.priceCents ?? 0, offre.currency)}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Barre de sélection, parcours CATALOGUE ───────────────────────── */}
       {vendable && selected.length > 0 && !cartOpen && !checkoutOpen && lightbox === null && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border-strong bg-bg-elevated/95 backdrop-blur">
           <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
@@ -331,13 +379,31 @@ export function GalleryView({
         />
       )}
 
-      {checkoutOpen && quote && (
+      {/* Un seul écran de paiement pour les deux parcours : ce qui change, c'est le récapitulatif
+          et la sélection transmise. La formule n'en transmet aucune — le serveur retrouve le prix
+          depuis le lien, il ne l'apprend pas du navigateur. */}
+      {checkoutOpen && formule && offre && (
+        <GalleryCheckout
+          slug={slug}
+          token={token}
+          password={password}
+          assetIds={[]}
+          libelle={offre.name ?? "Accès aux photos"}
+          totalCents={offre.priceCents ?? 0}
+          currency={offre.currency}
+          onClose={() => setCheckoutOpen(false)}
+        />
+      )}
+
+      {checkoutOpen && !formule && quote && (
         <GalleryCheckout
           slug={slug}
           token={token}
           password={password}
           assetIds={selected}
-          quote={quote}
+          libelle={quote.wholeAlbum ? "Galerie complète" : `${selected.length} photo${selected.length > 1 ? "s" : ""}`}
+          totalCents={quote.totalCents}
+          currency={quote.currency}
           onClose={() => setCheckoutOpen(false)}
         />
       )}
@@ -350,6 +416,19 @@ export function GalleryView({
           selected={selected.includes(photos[lightbox].id)}
           selectable={vendable}
           onToggle={() => toggle(photos[lightbox]!.id)}
+          // Le moment où l'on regarde une photo en grand est celui où l'on a envie de l'avoir :
+          // le bouton d'achat suit jusque dans la visionneuse plutôt que d'obliger à en sortir.
+          achat={
+            formule && offre && enVente
+              ? {
+                  libelle: `Débloquer — ${formatPrice(offre.priceCents ?? 0, offre.currency)}`,
+                  onAchat: () => {
+                    closeLightbox();
+                    setCheckoutOpen(true);
+                  },
+                }
+              : null
+          }
           onPrev={() => step(-1)}
           onNext={() => step(1)}
           onClose={closeLightbox}
@@ -432,6 +511,7 @@ function Lightbox({
   selected,
   selectable,
   onToggle,
+  achat,
   onPrev,
   onNext,
   onClose,
@@ -442,6 +522,8 @@ function Lightbox({
   selected: boolean;
   selectable: boolean;
   onToggle: () => void;
+  /** Parcours formule : un seul bouton d'achat, aucune sélection. null dans l'ancien parcours. */
+  achat: { libelle: string; onAchat: () => void } | null;
   onPrev: () => void;
   onNext: () => void;
   onClose: () => void;
@@ -503,6 +585,17 @@ function Lightbox({
             }`}
           >
             {selected ? "Retirer de ma sélection" : "Sélectionner cette photo"}
+          </button>
+        </div>
+      )}
+
+      {achat && (
+        <div className="flex-none px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button
+            onClick={achat.onAchat}
+            className="w-full rounded-sv-pill bg-sv-gradient py-3 text-[14px] font-bold text-white"
+          >
+            {achat.libelle}
           </button>
         </div>
       )}

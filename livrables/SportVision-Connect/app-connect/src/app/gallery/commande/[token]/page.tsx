@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { fetchOrderSummary } from "@/lib/gallery/data";
 import { OrderView } from "./OrderView";
+import { OrderSelect } from "./OrderSelect";
 
 // Page de commande — /gallery/commande/<jeton>
 //
@@ -29,6 +30,12 @@ export default async function OrderPage({ params }: { params: Promise<{ token: s
         texte={`Votre commande reste enregistrée. Créez votre compte SportVision Connect avec ${order.email} pour retrouver vos photos, ou écrivez-nous à contact@sportvision-an.fr.`}
       />
     );
+  }
+
+  // Pack payé, photos pas encore choisies : on n'affiche pas une page « vos photos sont prêtes »
+  // avec une grille vide. L'acheteur est envoyé directement là où il doit agir.
+  if (order.photosAllowance !== null && !order.selectionFaite) {
+    return <OrderSelect token={token} allowance={order.photosAllowance} albumTitre={order.albumTitre} />;
   }
 
   return <OrderView token={token} order={order} />;
