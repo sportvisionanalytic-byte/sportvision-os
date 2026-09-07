@@ -11388,22 +11388,32 @@ const GAL_MEDIA_CFG={
   // 1600px : assez pour qu'un parent juge vraiment la photo sur un grand écran avant d'acheter,
   // assez peu pour rester sous ~250 Ko et rester agréable en 4G au bord d'un terrain.
   preview:{max:1600,quality:.82,mime:'image/webp'},
-  // Le filigrane n'est posé QUE sur la preview. Sur une vignette de 480px il serait illisible et
-  // ne ferait que salir la grille.
-  // Répétition serrée et non une marque unique : une marque centrale disparaît d'un simple
-  // recadrage, ce qu'on cherche justement à décourager.
+  // ── Le filigrane, sur la vignette ET sur l'aperçu ──
+  // 08/09/2026. Il n'était posé que sur l'aperçu : la GRILLE restait propre, et une vignette de
+  // 480 px suffit largement à être capturée et publiée sur les réseaux. Sur une galerie
+  // commerciale, tout ce qui est public est protégé.
   //
-  // 07/09/2026 — RENFORCÉ avec le passage aux formules d'accès. Le modèle a changé : le visiteur
-  // parcourt désormais TOUTE la galerie librement avant de payer, au lieu de débloquer photo par
-  // photo. L'aperçu filigrané n'est plus un extrait, c'est la seule chose qu'il verra s'il décide
-  // de ne pas acheter — et une capture d'écran est toujours possible, quoi qu'on fasse. Le
-  // filigrane doit donc rendre la capture inutilisable, pas seulement signaler la propriété.
-  // Il est cuit dans le fichier au dépôt, jamais posé en CSS : une surcouche CSS s'enlève en dix
-  // secondes depuis l'inspecteur du navigateur.
-  // Valeurs réglées en MESURANT la couverture réelle sur une photo 1600 px (test des dérivés) :
-  // 18 % des pixels touchés, contre 7 % avant. Assez pour dissuader, assez peu pour que le
-  // parent juge encore le cadrage et reconnaisse son enfant — sans quoi il n'achète pas.
-  watermark:{texte:'SportVision',opacite:.42,anglesDeg:-30,espacement:66,taillePct:.05},
+  // Il est cuit dans le fichier au dépôt, jamais posé en CSS : une surcouche s'enlève en dix
+  // secondes depuis l'inspecteur, et il suffirait d'ouvrir l'image dans un onglet pour récupérer
+  // une version propre.
+  //
+  // Répétition serrée plutôt qu'une marque unique : un recadrage doit rester marqué. Deux
+  // réglages distincts parce que 480 px et 1600 px n'ont pas la même lisibilité — un texte réglé
+  // pour l'aperçu devient illisible et inutile sur la vignette.
+  //
+  // Valeurs réglées en MESURANT la couverture réelle (test des dérivés), pas au jugé. Le premier
+  // réglage couvrait 7 % : à l'œil, la photo paraissait propre. Un chiffre qui passe au vert ne
+  // suffit pas, il faut regarder l'image.
+  watermark:{
+    texte:'SPORTVISION',
+    opacite:.55,
+    anglesDeg:-30,
+    // Aperçu : le texte doit se lire en travers du sujet, pas seulement dans les coins.
+    preview:{espacement:52, taillePct:.058},
+    // Vignette : proportionnellement plus gros, sinon 480 px rendent le texte illisible — et un
+    // filigrane qu'on ne lit pas ne dissuade personne.
+    thumb:{espacement:44, taillePct:.105},
+  },
   // 3 fichiers en parallèle : au-delà, un dépôt de 500 photos sature la mémoire du navigateur et
   // le décodage devient plus lent que le réseau.
   concurrence:3,
@@ -11472,7 +11482,7 @@ function _galUuid(){
 
 /** Redimensionne en respectant le ratio, sans jamais agrandir : une photo de 900px ne doit pas
  * être « upscalée » à 1600, ça ne fait qu'alourdir le fichier sans ajouter un pixel d'information. */
-function _galDessiner(bitmap,maxSize,filigrane){
+function _galDessiner(bitmap,maxSize,filigrane,variante){
   const ratio=Math.min(1,maxSize/Math.max(bitmap.width,bitmap.height));
   const w=Math.max(1,Math.round(bitmap.width*ratio));
   const h=Math.max(1,Math.round(bitmap.height*ratio));
@@ -11481,28 +11491,39 @@ function _galDessiner(bitmap,maxSize,filigrane){
   const ctx=canvas.getContext('2d');
   ctx.imageSmoothingQuality='high';
   ctx.drawImage(bitmap,0,0,w,h);
-  if(filigrane)_galFiligrane(ctx,w,h);
+  if(filigrane)_galFiligrane(ctx,w,h,variante||'preview');
   return canvas;
 }
 
-function _galFiligrane(ctx,w,h){
+function _galFiligrane(ctx,w,h,variante){
   const cfg=GAL_MEDIA_CFG.watermark;
-  const taille=Math.max(14,Math.round(Math.min(w,h)*cfg.taillePct));
+  const v=cfg[variante]||cfg.preview;
+  const taille=Math.max(11,Math.round(Math.min(w,h)*v.taillePct));
   ctx.save();
   ctx.globalAlpha=cfg.opacite;
   ctx.fillStyle='#ffffff';
-  ctx.strokeStyle='rgba(0,0,0,.35)';
-  ctx.lineWidth=Math.max(1,taille/14);
-  ctx.font='700 '+taille+'px system-ui, -apple-system, Segoe UI, sans-serif';
+  // Contour sombre autour du texte blanc : sans lui, le filigrane disparait completement sur un
+  // maillot blanc, un ciel ou une photo surexposee — exactement les cas ou il compte le plus.
+  ctx.strokeStyle='rgba(0,0,0,.5)';
+  ctx.lineWidth=Math.max(1,taille/9);
+  ctx.lineJoin='round';
+  ctx.font='800 '+taille+'px system-ui, -apple-system, Segoe UI, sans-serif';
   ctx.textBaseline='middle';
+  ctx.textAlign='center';
   ctx.translate(w/2,h/2);
   ctx.rotate(cfg.anglesDeg*Math.PI/180);
-  // Répété en diagonale plutôt qu'une marque unique au centre : un recadrage suffit à faire
-  // disparaître une marque unique, et c'est justement ce qu'on veut décourager.
+
+  // Repete en diagonale plutot qu'une marque unique au centre : un recadrage doit rester marque.
+  // Les lignes sont decalees d'une demi-colonne en quinconce, ce qui evite les couloirs propres
+  // verticaux d'une grille reguliere — il suffirait de recadrer entre deux colonnes.
   const diag=Math.sqrt(w*w+h*h);
-  const pas=Math.max(120,cfg.espacement*(taille/26));
-  for(let y=-diag/2;y<diag/2;y+=pas){
-    for(let x=-diag/2;x<diag/2;x+=pas*1.6){
+  const pasY=Math.max(18,v.espacement*(taille/26));
+  const largeur=ctx.measureText(cfg.texte).width;
+  const pasX=largeur+taille*1.1;
+  let ligne=0;
+  for(let y=-diag;y<diag;y+=pasY){
+    const decal=(ligne++%2)?pasX/2:0;
+    for(let x=-diag+decal;x<diag;x+=pasX){
       ctx.strokeText(cfg.texte,x,y);
       ctx.fillText(cfg.texte,x,y);
     }
@@ -11544,8 +11565,11 @@ async function _galTraiterFichier(entry){
 
     setEtat('traitement','Génération des versions…');
     const filigrane=_galAlbum.watermark_previews!==false;
-    const thumbBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.thumb.max,false),GAL_MEDIA_CFG.thumb.mime,GAL_MEDIA_CFG.thumb.quality);
-    const previewBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.preview.max,filigrane),GAL_MEDIA_CFG.preview.mime,GAL_MEDIA_CFG.preview.quality);
+    // La VIGNETTE est filigranee elle aussi (08/09) : une image de 480 px se capture et se publie
+    // aussi bien qu'une grande, et laisser la grille propre revenait a offrir la galerie entiere
+    // en basse definition.
+    const thumbBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.thumb.max,filigrane,'thumb'),GAL_MEDIA_CFG.thumb.mime,GAL_MEDIA_CFG.thumb.quality);
+    const previewBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.preview.max,filigrane,'preview'),GAL_MEDIA_CFG.preview.mime,GAL_MEDIA_CFG.preview.quality);
     if(!thumbBlob||!previewBlob)throw new Error('Génération des versions impossible');
 
     const assetId=entry.assetId||_galUuid();
@@ -11739,6 +11763,7 @@ async function modalMediasAlbum(albumId){
 
     <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:14px">
       <button class="btn bg2 bs" onclick="galTrierParDate()">Trier par date d’ajout</button>
+      <button class="btn bg2 bs" onclick="galRegenererApercus()">Regenerer les aperçus protégés</button>
       <button class="btn bg2" onclick="closeModal();loadPhotoAlbums()">Fermer</button>
     </div>`);
   await _galChargerAssets();
@@ -11766,6 +11791,59 @@ async function _galPeutTarifer(){
     _galPeutTariferCache=(r===true);
   }
   return _galPeutTariferCache;
+}
+
+
+// ── Regenerer les apercus protegés ────────────────────────────────────────
+// Modifier le generateur ne change pas les fichiers deja produits : un album depose avant un
+// renforcement du filigrane garde ses anciens apercus, et rien ne le signale. Cette action reprend
+// l'ORIGINAL prive et refabrique la vignette et l'apercu avec la configuration actuelle.
+//
+// L'original n'est JAMAIS touche : il n'est ni relu en ecriture, ni reencode, ni remplace. On ne
+// remplace que les deux derives, au meme chemin.
+async function galRegenererApercus(){
+  const total=_galAssets.filter(a=>a.status==='ready'&&a.original_path).length;
+  if(!total){toast('Aucune photo a regenerer.','error');return;}
+  if(!confirm('Regenerer les apercus de '+total+' photo(s) ?\n\nLes originaux ne sont pas modifies. Les vignettes et apercus publics seront remplaces par des versions filigranees avec le reglage actuel.'))return;
+
+  const filigrane=_galAlbum.watermark_previews!==false;
+  let faits=0, echecs=0;
+  const zone=document.getElementById('gal-count');
+  const avancement=()=>{ if(zone)zone.textContent='Regeneration '+(faits+echecs)+' / '+total+'…'; };
+  avancement();
+
+  for(const a of _galAssets){
+    if(a.status!=='ready'||!a.original_path){continue;}
+    try{
+      // URL signee courte sur le bucket PRIVE : l'original ne transite jamais par une adresse
+      // publique, meme pour ce traitement interne.
+      const signed=await sbSignedUrl(a.storage_bucket||'sportvision-media-prive',a.original_path,300);
+      if(!signed)throw new Error('original illisible');
+      const blob=await (await fetch(signed)).blob();
+      const bitmap=await createImageBitmap(blob);
+
+      const thumb=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.thumb.max,filigrane,'thumb'),GAL_MEDIA_CFG.thumb.mime,GAL_MEDIA_CFG.thumb.quality);
+      const preview=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.preview.max,filigrane,'preview'),GAL_MEDIA_CFG.preview.mime,GAL_MEDIA_CFG.preview.quality);
+      if(!thumb||!preview)throw new Error('generation impossible');
+
+      // Meme chemin, en ecrasement : les liens deja envoyes continuent de fonctionner, et le
+      // navigateur des familles recupere la version protegee au prochain chargement.
+      // sbUpload envoie deja x-upsert : le meme chemin est ecrase, donc les liens deja envoyes
+      // aux familles continuent de fonctionner et servent la version protegee.
+      const u1=await sbUpload('galerie-previews',a.thumb_path,thumb);
+      const u2=await sbUpload('galerie-previews',a.preview_path,preview);
+      if(!u1||!u2)throw new Error('envoi impossible');
+      bitmap.close&&bitmap.close();
+      faits++;
+    }catch(e){
+      console.error('[galeries] regeneration echouee pour',a.id,e);
+      echecs++;
+    }
+    avancement();
+  }
+
+  toast(echecs?faits+' apercu(s) regenere(s), '+echecs+' en echec.':faits+' apercu(s) regenere(s).',echecs?'error':'ok');
+  _galChargerAssets();
 }
 
 // ── Liens commerciaux d'un album ──────────────────────────────────────────

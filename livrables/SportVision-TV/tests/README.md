@@ -379,3 +379,23 @@ Depuis la v24, `galerie-analytics.test.sql` couvre aussi le drapeau d'exclusion 
 marquée comme essai disparaît du CA, des visites et du classement ; on peut la réintégrer à la
 demande ; et l'exclusion d'un SEUL lien retire ses ventes sans toucher aux autres liens de la
 même galerie.
+
+## `galerie-filigrane-public.test.mjs`
+
+7 scénarios sur ce que le PUBLIC reçoit réellement d'une galerie payante, en production.
+
+Ne se fie ni au réglage en base ni au code du générateur : télécharge les fichiers que le
+navigateur télécharge, et les compare à l'original. C'est exactement ce contrôle qui manquait — le
+réglage disait « filigrane activé » alors que les fichiers servis étaient propres.
+
+Vérifie qu'aucun original n'est chargé ni présent dans le DOM, qu'aucune URL signée n'y traîne,
+que la vignette ET l'aperçu diffèrent substantiellement de l'original (donc portent le filigrane),
+et que le bucket des originaux n'est pas public.
+
+Piège appris ici : compter les pixels clairs ne prouve rien. Sur une photo sombre, du blanc à 55 %
+d'opacité ne produit aucun pixel « quasi blanc », et la mesure concluait à tort que le filigrane
+était absent. Seule la comparaison à l'original rend la surface réellement modifiée.
+
+```bash
+node livrables/SportVision-TV/tests/galerie-filigrane-public.test.mjs
+```
