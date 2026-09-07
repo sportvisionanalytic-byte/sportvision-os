@@ -92,3 +92,17 @@ jeton invalide, droit expiré, commande non payée.
 ```bash
 bash livrables/SportVision-TV/tests/galerie-checkout.test.sh
 ```
+
+## `galerie-paiement-reel.verif.sh`
+
+À lancer **après** un vrai achat, pour constater la chaîne de bout en bout. Ne crée rien, ne
+modifie rien : il ne fait que vérifier, et dit précisément où ça casse si ça casse.
+
+Retrace, dans l'ordre : commande passée à `paid` avec son `payment_intent`, montant débité, droit
+de téléchargement créé par le webhook et sa durée, e-mail parti (ou encore en file), original
+réellement téléchargeable via une URL signée, photo NON achetée refusée, et rattachement à un
+compte Connect quand il existe.
+
+```bash
+bash livrables/SportVision-TV/tests/galerie-paiement-reel.verif.sh <slug-de-la-galerie>
+```
