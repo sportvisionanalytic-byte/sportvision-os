@@ -33,14 +33,26 @@ export async function updateSession(request: NextRequest) {
   // /auth/login avant même que la page ait pu lire le token dans l'URL.
   // /demo (19/08/2026) : démo publique interne, sans login, données 100 % fictives — voir
   // src/lib/demo/*. Aucune page sous /demo ne lit/écrit de données réelles.
+  // /api/calendar/cron (07/09/2026) : la synchronisation nocturne des calendriers est appelee par
+  // une fonction planifiee, pas par un navigateur. Elle n'a donc pas de session et s'authentifie
+  // elle-meme avec un secret partage compare en temps constant (voir la route). Sans cette
+  // exception, le middleware la renverrait vers /auth/login et la tache ne tournerait jamais.
   const isPublicRoute =
     pathname.startsWith("/auth") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/activation") ||
     pathname.startsWith("/org-activation") ||
-    pathname.startsWith("/demo");
+    pathname.startsWith("/demo") ||
+    pathname.startsWith("/api/calendar/cron");
 
   if (!user && !isPublicRoute) {
+    // Une route d'API ne doit jamais etre redirigee vers une page de connexion : l'appelant est du
+    // code, il attend du JSON. Un fetch() recevrait ici une page HTML avec un statut 200 apres
+    // redirection, et croirait avoir reussi. Trouve en testant /api/calendar/fetch en production,
+    // qui repondait 307 au lieu de 401.
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);
