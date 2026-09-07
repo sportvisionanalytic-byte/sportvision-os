@@ -84,7 +84,7 @@ export function GalleryCheckout({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="rounded-full px-2 py-1 text-[18px] leading-none text-text-tertiary hover:bg-surface-hover"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-[18px] leading-none text-text-tertiary hover:bg-surface-hover"
           >
             ✕
           </button>

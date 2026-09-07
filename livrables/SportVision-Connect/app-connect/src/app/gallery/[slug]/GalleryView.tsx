@@ -269,9 +269,13 @@ export function GalleryView({
                 Galerie
               </span>
             </div>
+            {/* min-h-[40px] : mesure au doigt plutot qu'a l'oeil. Le bouton faisait 76x32 px, au
+                dessus du minimum exige mais en dessous de ce qu'on vise pour une cible tactile.
+                La hauteur est portee par min-h et non par du padding, pour que le libelle puisse
+                passer a « Lien copie » sans deplacer l'en-tete. */}
             <button
               onClick={share}
-              className="rounded-sv-pill border border-border-strong px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition hover:bg-surface-hover"
+              className="flex min-h-[40px] items-center rounded-sv-pill border border-border-strong px-3.5 text-[12px] font-semibold text-text-secondary transition hover:bg-surface-hover"
             >
               {shared ? "Lien copié" : "Partager"}
             </button>
@@ -642,7 +646,11 @@ function PhotoTile({
             aria-pressed={selected}
             disabled={disabled}
             aria-label={selected ? "Retirer de la sélection" : "Ajouter à la sélection"}
-            className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full text-[15px] font-bold leading-none transition ${
+            /* h-10 w-10 et non h-8 w-8 : c'est LA façon de choisir une photo dans un parcours
+               payant (« Touchez ✓ pour choisir vos photos »), sur une grille où les vignettes
+               se touchent. À 32 px, un doigt qui rate sélectionne la photo d'à côté — donc
+               achète la mauvaise photo. */
+            className={`absolute right-2 top-2 flex h-10 w-10 items-center justify-center rounded-full text-[15px] font-bold leading-none transition ${
               selected
                 ? "bg-sv-gradient text-white shadow-[0_2px_10px_rgba(0,0,0,.45)]"
                 : "border-[1.5px] border-white/80 text-white/80 hover:bg-white/20 disabled:opacity-30"
@@ -710,7 +718,7 @@ function Lightbox({
         <span className="text-[12.5px] tabular-nums text-white/70">
           {index + 1} / {count}
         </span>
-        <button onClick={onClose} aria-label="Fermer" className="rounded-full px-3 py-1.5 text-[20px] leading-none hover:bg-white/10">
+        <button onClick={onClose} aria-label="Fermer" className="flex h-11 w-11 items-center justify-center rounded-full text-[20px] leading-none hover:bg-white/10">
           ✕
         </button>
       </div>
@@ -795,7 +803,7 @@ function CartSheet({
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-sora text-[17px] font-extrabold tracking-tight">Mon panier</h2>
-          <button onClick={onClose} aria-label="Fermer" className="rounded-full px-2 py-1 text-[18px] leading-none text-text-tertiary hover:bg-surface-hover">
+          <button onClick={onClose} aria-label="Fermer" className="flex h-10 w-10 items-center justify-center rounded-full text-[18px] leading-none text-text-tertiary hover:bg-surface-hover">
             ✕
           </button>
         </div>
