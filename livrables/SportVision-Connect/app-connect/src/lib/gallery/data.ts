@@ -22,6 +22,9 @@ export interface GalleryHeader {
   watermark: boolean;
   /** La formule vendue par ce lien précis. null = lien historique, ancien parcours au catalogue. */
   offre: LinkOffer | null;
+  /** Nombre de photos montrées AVANT achat. `photoCount` reste le total réel de l'album : c'est
+   * l'écart entre les deux qui donne « et 188 autres ». */
+  apercuLimite: number;
 }
 
 export type GalleryDenial =
@@ -85,6 +88,7 @@ export async function openGallery(
       livraisonExterne: row.livraison_externe === true,
       watermark: row.watermark !== false,
       offre: parseOffer(row.offre),
+      apercuLimite: Number(row.apercu_limite ?? 12),
     },
   };
 }

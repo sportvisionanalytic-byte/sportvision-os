@@ -84,6 +84,10 @@ export function GalleryView({
   const enVente = formule ? offre.available : isSellable(products);
   const vendable = !formule && isSellable(products);
   const { wholeAlbum } = sellableProducts(products);
+  // Ce que la galerie contient VRAIMENT, moins ce que la base a accepté de servir. La différence
+  // est calculée sur `photos.length` et non sur la limite annoncée : un album de 8 photos avec une
+  // vitrine réglée à 12 ne doit pas afficher « et 4 autres photos » qui n'existent pas.
+  const restantes = Math.max(0, header.photoCount - photos.length);
 
   // §18 : la sélection survit à l'ouverture d'une photo, à un retour arrière et à un rechargement
   // accidentel. sessionStorage et pas de commande en base : un panier non payé n'a rien à faire
@@ -299,6 +303,40 @@ export function GalleryView({
             </div>
             <div ref={sentinelRef} className="h-10" />
             {loadingMore && <p className="pb-6 text-center text-[12.5px] text-text-faint">Chargement…</p>}
+
+            {/* Ce qui n'est pas montré est ANNONCÉ, pas caché. Le nombre restant est l'argument de
+                vente : « et 188 autres » vaut mieux qu'une galerie qui a l'air d'en contenir 12.
+                Ces photos-là ne sont pas dans la page : la base ne les a pas servies. */}
+            {restantes > 0 && (
+              <div className="mb-8 rounded-sv-card border border-border-strong bg-surface px-5 py-7 text-center sm:px-8">
+                <div className="mx-auto mb-3 flex items-center justify-center gap-1.5" aria-hidden>
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      className="h-9 w-9 rounded-sv border border-border-strong bg-bg-elevated"
+                      style={{ opacity: 1 - i * 0.28 }}
+                    />
+                  ))}
+                </div>
+                <h2 className="font-sora text-[17px] font-extrabold tracking-tight sm:text-[19px]">
+                  {restantes} autre{restantes > 1 ? "s" : ""} photo{restantes > 1 ? "s" : ""} vous attend
+                  {restantes > 1 ? "ent" : ""}
+                </h2>
+                <p className="mx-auto mt-2 max-w-[420px] text-[13px] leading-relaxed text-text-tertiary">
+                  {formule && offre && enVente
+                    ? `Vous voyez ${photos.length} photo${photos.length > 1 ? "s" : ""} sur les ${header.photoCount} de cette galerie. ${offre.name ?? "L'accès"} vous donne les ${header.photoCount}, en pleine qualité et sans filigrane.`
+                    : `Cette galerie contient ${header.photoCount} photos au total.`}
+                </p>
+                {formule && offre && enVente && (
+                  <button
+                    onClick={() => setCheckoutOpen(true)}
+                    className="mt-4 rounded-sv-pill bg-sv-gradient px-7 py-3 text-[14px] font-bold text-white"
+                  >
+                    Tout débloquer — {formatPrice(offre.priceCents ?? 0, offre.currency)}
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
 

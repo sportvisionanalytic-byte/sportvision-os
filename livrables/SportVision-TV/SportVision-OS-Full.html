@@ -11547,9 +11547,9 @@ async function _galFormLien(lien){
   const edition=!!lien;
   // media_album_links_stats ne renvoie pas product_id ni price_override_cents (elle est faite pour
   // afficher des resultats, pas pour editer). On relit la ligne pour la remplir sans deviner.
-  let d={label:'',audience:'',product_id:'',price_override_cents:'',is_enabled:true};
+  let d={label:'',audience:'',product_id:'',price_override_cents:'',is_enabled:true,preview_limit:null};
   if(edition){
-    const rows=await sbFetch('media_album_links?select=label,audience,product_id,price_override_cents,is_enabled&id=eq.'+lien.id).catch(()=>[]);
+    const rows=await sbFetch('media_album_links?select=label,audience,product_id,price_override_cents,is_enabled,preview_limit&id=eq.'+lien.id).catch(()=>[]);
     if(Array.isArray(rows)&&rows[0])d=rows[0];
   }
 
@@ -11577,6 +11577,10 @@ async function _galFormLien(lien){
     <label class="l-lbl">Tarif de ce lien</label>
     <input id="gl-prix" class="l-inp" inputmode="decimal" value="${d.price_override_cents!==null&&d.price_override_cents!==undefined?(d.price_override_cents/100).toString().replace('.',','):''}" placeholder="Laisser vide = prix du produit">
     <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">En euros. C’est ici qu’on vend le meme album 15 EUR aux parents et 30 EUR a l’equipe adverse.</div>
+
+    <label class="l-lbl">Photos visibles avant achat</label>
+    <input id="gl-apercu" class="l-inp" inputmode="numeric" value="${d.preview_limit!==null&&d.preview_limit!==undefined?d.preview_limit:''}" placeholder="Laisser vide = 12">
+    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">La vitrine. Ce sont les PREMIERES photos de l’album : reordonnez l’album pour choisir lesquelles. Les autres ne sont pas envoyees au navigateur du visiteur.</div>
 
     <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:4px">
       <input type="checkbox" id="gl-actif"${d.is_enabled!==false?' checked':''}> Lien actif
@@ -11611,7 +11615,17 @@ async function galEnregistrerLien(id){
   const audience=document.getElementById('gl-audience').value||null;
   const produit=document.getElementById('gl-produit').value||null;
   const prixTxt=(document.getElementById('gl-prix').value||'').trim().replace(',','.');
+  const apercuTxt=(document.getElementById('gl-apercu').value||'').trim();
   const actif=document.getElementById('gl-actif').checked;
+
+  // Une vitrine a zero photo ne se vend pas : la base la refuse, autant le dire ici plutot que de
+  // laisser remonter une erreur de contrainte.
+  let apercu=null;
+  if(apercuTxt!==''){
+    const v=parseInt(apercuTxt,10);
+    if(!isFinite(v)||v<1){toast('Il faut au moins 1 photo visible avant achat.','error');return;}
+    apercu=v;
+  }
 
   let prix=null;
   if(prixTxt!==''){
@@ -11623,7 +11637,7 @@ async function galEnregistrerLien(id){
   // cette valeur serait ignoree en silence. Mieux vaut le refuser que de laisser croire.
   if(prix!==null&&!produit){toast('Choisissez d’abord ce que ce lien vend.','error');return;}
 
-  const body={label:label||null,audience:audience,product_id:produit,price_override_cents:prix,is_enabled:actif};
+  const body={label:label||null,audience:audience,product_id:produit,price_override_cents:prix,preview_limit:apercu,is_enabled:actif};
 
   let r;
   if(id){

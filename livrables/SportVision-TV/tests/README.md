@@ -184,3 +184,23 @@ champs en majuscules à cause du `text-transform` CSS.
 ```bash
 node livrables/SportVision-TV/tests/galerie-formules-ui.test.mjs
 ```
+
+## `galerie-apercu-limite.test.sql`
+
+18 scénarios sur la vitrine avant achat, avec un album de 200 photos. Transaction annulée.
+
+Ce test compte ce qui SORT DE LA BASE, pas ce qui s'affiche : c'est tout l'objet du lot, une
+limite d'affichage se contourne depuis l'inspecteur du navigateur en dix secondes.
+
+Couvre : 12 photos servies par défaut sur une demande de 200, le vrai total toujours annoncé
+(c'est l'argument de vente), l'impossibilité de contourner en paginant (offset 12 ne rend rien,
+les pages ne se répètent pas), la limite réglable par lien avec deux vitrines différentes sur le
+même album, la vitrine choisie en réordonnant l'album, la 50e photo jamais servie sur aucune page,
+et surtout : la galerie complète vend bien les 200 photos, pas seulement les 12 montrées.
+
+```bash
+python3 -c 'import json,sys;print(json.dumps({"query":open(sys.argv[1]).read()}))' \
+  livrables/SportVision-TV/tests/galerie-apercu-limite.test.sql > /tmp/q.json
+curl -s -X POST "https://api.supabase.com/v1/projects/<ref>/database/query" \
+  -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" -d @/tmp/q.json
+```
