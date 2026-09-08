@@ -1028,6 +1028,12 @@ const NAV={
     {id:'dash',lb:'Accueil',ic:'dash'},
     {id:'pre',lb:'Mes missions',ic:'pre'},
     {id:'planning',lb:'Mon planning',ic:'cal'},
+    // 08/09/2026 — Meme trou que pour admin et prod : un photographe peut verser des photos
+    // (media_upload_staff l'autorise) mais n'avait aucun moyen d'arriver sur ses albums. Le
+    // gabarit se reduit tout seul pour lui : un seul onglet, ni tarifs ni statistiques, parce
+    // que le serveur les lui refuse de toute facon et qu'un onglet qui ne repond pas est pire
+    // qu'un onglet absent. Range avec ses missions : verser les photos d'un match en fait partie.
+    {id:'media',lb:'Galeries photo',ic:'med'},
     {type:'sep',lb:'Revenus & Progression'},
     {id:'revenus',lb:'Mes revenus',ic:'fin'},
     {id:'form',lb:'Formation',ic:'form'},
@@ -2190,26 +2196,37 @@ const VIEWS={
     <div id="prod-brief-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── PROD : MÉDIAS ──────────────────────────────────────────────────────────
-  'prod.media':()=>`
+  // Gabarit partagé par admin, prod et photo (cf. VIEWS['admin.media'] / VIEWS['photo.media']).
+  //
+  // Un photographe n'a affaire qu'aux albums : il peut verser des photos (media_upload_staff
+  // l'autorise) mais ni fixer un prix (media_pricing_staff l'exclut) ni lire les ventes
+  // (_media_stats_albums lui rend un périmètre vide). Lui montrer le pilotage des liens de
+  // transfert, le constructeur de tarifs et un onglet Statistiques qui n'afficherait que des
+  // zéros serait lui promettre des écrans qui ne lui répondront pas. On ne masque donc rien
+  // qui le protège — le serveur refuse déjà — on retire seulement ce qui ne le concerne pas.
+  'prod.media':()=>{
+    const photographe = S.role === 'photo';
+    return `
     <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">Centre Médias</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Pilotage des liens — aucun fichier stocké ici</div></div>
-      <button class="btn bp bs" onclick="modalAjouterLien(null)">+ Ajouter un lien</button>
+      <div><div class="sh-t">${photographe?'Galeries photo':'Centre Médias'}</div><div style="font-size:12px;color:var(--t3);margin-top:2px">${photographe?'Vos albums : versez les photos d\'un match, elles deviennent la galerie du club.':'Pilotage des liens — aucun fichier stocké ici'}</div></div>
+      ${photographe?'':`<button class="btn bp bs" onclick="modalAjouterLien(null)">+ Ajouter un lien</button>`}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+    ${photographe?'':`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Liens en attente</div><div class="fs-v" id="ml-att" style="color:var(--er)">—</div></div>
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À vérifier</div><div class="fs-v" id="ml-verif" style="color:var(--wa)">—</div></div>
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Expirants</div><div class="fs-v" id="ml-exp" style="color:var(--er)">—</div></div>
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Validés</div><div class="fs-v" id="ml-ok" style="color:var(--ok)">—</div></div>
-    </div>
+    </div>`}
     <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
-      <button onclick="setMediaTab('liens')" class="btn bp bs" id="mtab-liens" style="flex-shrink:0;font-size:11px">Tous les liens</button>
-      <button onclick="setMediaTab('prestations')" class="btn bg2 bs" id="mtab-prestations" style="flex-shrink:0;font-size:11px">Par prestation</button>
-      <button onclick="setMediaTab('expirants')" class="btn bg2 bs" id="mtab-expirants" style="flex-shrink:0;font-size:11px">⚠ Expirants</button>
-      <button onclick="setMediaTab('bibliotheque')" class="btn bg2 bs" id="mtab-bibliotheque" style="flex-shrink:0;font-size:11px">Bibliothèque</button>
-      <button onclick="setMediaTab('albums')" class="btn bg2 bs" id="mtab-albums" style="flex-shrink:0;font-size:11px">📸 Pass Photo</button>
-      <button onclick="setMediaTab('stats')" class="btn bg2 bs" id="mtab-stats" style="flex-shrink:0;font-size:11px">📊 Statistiques</button>
+      ${photographe?'':`<button onclick="setMediaTab('liens')" class="btn bp bs" id="mtab-liens" style="flex-shrink:0;font-size:11px">Tous les liens</button>`}
+      ${photographe?'':`<button onclick="setMediaTab('prestations')" class="btn bg2 bs" id="mtab-prestations" style="flex-shrink:0;font-size:11px">Par prestation</button>`}
+      ${photographe?'':`<button onclick="setMediaTab('expirants')" class="btn bg2 bs" id="mtab-expirants" style="flex-shrink:0;font-size:11px">⚠ Expirants</button>`}
+      ${photographe?'':`<button onclick="setMediaTab('bibliotheque')" class="btn bg2 bs" id="mtab-bibliotheque" style="flex-shrink:0;font-size:11px">Bibliothèque</button>`}
+      <button onclick="setMediaTab('albums')" class="btn ${photographe?'bp':'bg2'} bs" id="mtab-albums" style="flex-shrink:0;font-size:11px">📸 ${photographe?'Mes albums':'Pass Photo'}</button>
+      ${photographe?'':`<button onclick="setMediaTab('stats')" class="btn bg2 bs" id="mtab-stats" style="flex-shrink:0;font-size:11px">📊 Statistiques</button>`}
     </div>
-    <div id="prod-media-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="prod-media-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+  },
 
   // ── PROD : POSTPRODUCTION ─────────────────────────────────────────────────
   'prod.post':()=>`
@@ -3376,6 +3393,7 @@ const VIEWS={
 // Même fonction réutilisée telle quelle (pattern déjà utilisé pour
 // admin.cmagency/sec.cmagency, admin.connectcomptes/sec.connectcomptes...).
 VIEWS['admin.media']=VIEWS['prod.media'];
+VIEWS['photo.media']=VIEWS['prod.media'];
 VIEWS['admin.docrh']=VIEWS['sec.docrh'];
 // Alias admin → rh.* (migration-poles-v14, 31/08/2026, séparation collaborateurs par pôle) :
 // nouveau rôle 'rh' (Secrétaire générale, accès staff transversal à tous les pôles), mêmes
@@ -5211,6 +5229,9 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='frais') await loadProdFrais();
   if(role==='prod'&&view==='brief') await loadProdBriefings();
   if((role==='admin'||role==='prod')&&view==='media'){_mediaTab='liens';await loadProdMedias();}
+  // Le photographe n'a qu'un onglet : on l'ouvre dessus plutot que sur « Tous les liens », qui
+  // n'existe pas chez lui et laisserait l'ecran vide.
+  if(role==='photo'&&view==='media'){_mediaTab='albums';await loadProdMedias();}
   if(role==='prod'&&view==='post') await loadProdPostprod();
   if(role==='prod'&&view==='livr'){await loadProdLivrMissions();await loadProdLivrables();}
   if(role==='prod'&&view==='kanban') await loadKanban();
