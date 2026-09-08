@@ -224,6 +224,61 @@ begin
     end if;
   end;
 
+  -- ─────────────────────────────────────────────────────────────────────────
+  -- L'ecriture de l'onboarding : le CM doit pouvoir remplir son club, et rien d'autre.
+  -- Ces tables sont celles que l'ecran d'onboarding de Club+ utilise reellement.
+  -- ─────────────────────────────────────────────────────────────────────────
+  perform set_config('role','postgres',true);
+  perform pg_temp.incarner(v_cmA);
+
+  update clubs set ville = 'ZZ Ville' where id = v_clubA;
+  get diagnostics n = row_count;
+  if n <> 1 then e := e || 'Le CM ne peut pas modifier les informations de son propre club'; end if;
+
+  update clubs set ville = 'ZZ Vole' where id = v_clubB;
+  get diagnostics n = row_count;
+  if n <> 0 then e := e || 'Le CM a modifie un club hors de son perimetre'; end if;
+
+  -- Le SIRET identifie juridiquement la structure : il peut finir sur une facture.
+  begin
+    update clubs set siret = '99999999999999' where id = v_clubA;
+    e := e || 'Le CM a pu modifier le SIRET de son club';
+  exception when others then null;
+  end;
+
+  begin
+    insert into club_calendar_events (club_id, title, event_date, type)
+    values (v_clubA, 'ZZ evenement', current_date, 'match');
+  exception when others then e := e || 'Le CM ne peut pas creer un evenement sur son club'; end;
+
+  begin
+    insert into club_calendar_events (club_id, title, event_date, type)
+    values (v_clubB, 'ZZ evenement vole', current_date, 'match');
+    e := e || 'Le CM a cree un evenement sur un club hors de son perimetre';
+  exception when others then null; end;
+
+  begin
+    insert into club_matches (club_id, team, opponent, match_date)
+    values (v_clubA, 'ZZ U18 A', 'ZZ adverse', current_date);
+  exception when others then e := e || 'Le CM ne peut pas creer un match sur son club'; end;
+
+  begin
+    insert into club_matches (club_id, team, opponent, match_date)
+    values (v_clubB, 'ZZ U18 B', 'ZZ vole', current_date);
+    e := e || 'Le CM a cree un match sur un club hors de son perimetre';
+  exception when others then null; end;
+
+  begin
+    insert into club_members (user_id, club_id, role, prenom, nom)
+    values (v_cmA, v_clubA, 'coach', 'ZZ', 'membre');
+  exception when others then e := e || 'Le CM ne peut pas ajouter un membre a son club'; end;
+
+  begin
+    insert into club_members (user_id, club_id, role, prenom, nom)
+    values (v_cmA, v_clubB, 'coach', 'ZZ', 'vole');
+    e := e || 'Le CM a ajoute un membre a un club hors de son perimetre';
+  exception when others then null; end;
+
   perform set_config('role','postgres',true);
   if array_length(e,1) is not null then
     raise exception E'ECHECS :\n  - %', array_to_string(e, E'\n  - ');

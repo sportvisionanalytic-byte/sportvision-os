@@ -79,7 +79,14 @@ export default function OnboardingPage() {
   const { ctx } = useSession();
   const router = useRouter();
   const { organization, membership } = ctx;
-  const canEdit = organization.type === "club" && membership.role === "admin";
+  // Le CM affilie remplit la mise en place du club a la place du president : c'est tout l'objet
+  // de son affectation. Deux droits restent hors de sa portee, et ni l'un ni l'autre ne repose
+  // sur cet ecran — la base refuse le SIRET, l'edge function refuse l'invitation. On ne montre
+  // simplement pas des commandes qui ne pourraient qu'echouer.
+  const estCmAffilie = membership.role === "external_cm";
+  const canEdit = organization.type === "club" && (membership.role === "admin" || estCmAffilie);
+  const canEditLegal = organization.type === "club" && membership.role === "admin";
+  const canInvite = organization.type === "club" && membership.role === "admin";
 
   const [completion, setCompletion] = useState<OnboardingCompletion | null>(null);
   const [statut, setStatut] = useState<string | null>(null);
@@ -186,9 +193,9 @@ export default function OnboardingPage() {
         )}
       </Card>
 
-      <IdentiteCard clubId={organization.id} address={organization.address ?? ""} siret={organization.siret ?? ""} canEdit={canEdit} onSaved={refreshCompletion} />
-      <ResponsablesCard clubId={organization.id} canEdit={canEdit} onSaved={refreshCompletion} />
-      <EquipesCard clubId={organization.id} canEdit={canEdit} onSaved={refreshCompletion} />
+      <IdentiteCard clubId={organization.id} address={organization.address ?? ""} siret={organization.siret ?? ""} canEdit={canEdit} canEditLegal={canEditLegal} onSaved={refreshCompletion} />
+      <ResponsablesCard clubId={organization.id} canEdit={canEdit} canInvite={canInvite} onSaved={refreshCompletion} />
+      <EquipesCard clubId={organization.id} canEdit={canEdit} canInvite={canInvite} onSaved={refreshCompletion} />
       <CalendrierCard clubId={organization.id} canEdit={canEdit} onSaved={refreshCompletion} />
       <BrandingCard
         clubId={organization.id}
@@ -245,12 +252,14 @@ function IdentiteCard({
   address,
   siret,
   canEdit,
+  canEditLegal,
   onSaved,
 }: {
   clubId: string;
   address: string;
   siret: string;
   canEdit: boolean;
+  canEditLegal: boolean;
   onSaved: () => void;
 }) {
   const [adresse, setAdresse] = useState(address);
@@ -262,7 +271,9 @@ function IdentiteCard({
     setSaving(true);
     setSaved(false);
     try {
-      await updateClubOrganization(createClient(), clubId, { adresse, siret: siretVal });
+      // On renvoie le SIRET tel qu'il etait quand on n'a pas le droit d'y toucher : le
+      // declencheur en base ne se declenche que sur un changement reel, et l'adresse passe.
+      await updateClubOrganization(createClient(), clubId, { adresse, siret: canEditLegal ? siretVal : siret });
       setSaved(true);
       onSaved();
     } finally {
@@ -278,7 +289,12 @@ function IdentiteCard({
           <input value={adresse} onChange={(e) => setAdresse(e.target.value)} disabled={!canEdit} placeholder="Non renseignée" className={fieldClass} />
         </Field>
         <Field label="SIRET (si association)">
-          <input value={siretVal} onChange={(e) => setSiretVal(e.target.value)} disabled={!canEdit} placeholder="Non renseigné" className={fieldClass} />
+          <input value={siretVal} onChange={(e) => setSiretVal(e.target.value)} disabled={!canEdit || !canEditLegal} placeholder="Non renseigné" className={fieldClass} />
+          {canEdit && !canEditLegal && (
+            <p className="mt-1 text-[11.5px] text-muted-fg">
+              Identité légale du club : seule l&apos;administration SportVision peut la corriger.
+            </p>
+          )}
         </Field>
       </div>
       {canEdit && (
@@ -307,7 +323,7 @@ const CLUB_INVITE_ROLES: MembershipRole[] = [
   "admin_staff",
 ];
 
-function ResponsablesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: boolean; onSaved: () => void }) {
+function ResponsablesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; canEdit: boolean; canInvite: boolean; onSaved: () => void }) {
   const [members, setMembers] = useState<OrgUser[] | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [email, setEmail] = useState("");
@@ -364,12 +380,18 @@ function ResponsablesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdi
           ))}
         </div>
       )}
-      {canEdit && !showForm && (
+      {canInvite && !showForm && (
         <Button variant="secondary" className="h-9 self-start px-4 text-[12.5px]" onClick={() => setShowForm(true)}>
           + Ajouter un responsable
         </Button>
       )}
-      {canEdit && showForm && (
+      {canEdit && !canInvite && (
+        <p className="text-[12.5px] text-text-soft">
+          Ajouter un responsable ouvre un compte et lui envoie une invitation : c&apos;est au club de
+          le faire. Préparez le reste de la mise en place, le président invitera son équipe.
+        </p>
+      )}
+      {canInvite && showForm && (
         <div className="flex flex-col gap-3 rounded-xl border border-border-strong p-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Prénom">
@@ -408,7 +430,7 @@ function ResponsablesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdi
 
 // ── Équipes + entraînements ──
 
-function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: boolean; onSaved: () => void }) {
+function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; canEdit: boolean; canInvite: boolean; onSaved: () => void }) {
   const [teams, setTeams] = useState<Team[] | null>(null);
   const [venues, setVenues] = useState<ClubVenue[] | null>(null);
   const [slots, setSlots] = useState<TrainingSlot[]>([]);
@@ -753,13 +775,15 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
                     >
                       + Créneau d&apos;entraînement
                     </Button>
-                    <Button
-                      variant="tertiary"
-                      className="h-7 px-2 text-[11.5px]"
-                      onClick={() => { setCoachError(null); setCoachInvite({ teamId: team.id, email: "", firstName: "", lastName: "" }); }}
-                    >
-                      + Inviter un coach
-                    </Button>
+                    {canInvite && (
+                      <Button
+                        variant="tertiary"
+                        className="h-7 px-2 text-[11.5px]"
+                        onClick={() => { setCoachError(null); setCoachInvite({ teamId: team.id, email: "", firstName: "", lastName: "" }); }}
+                      >
+                        + Inviter un coach
+                      </Button>
+                    )}
                     <Button variant="tertiary" className="h-7 px-2 text-[11.5px]" onClick={() => openImport(team.id)}>
                       + Importer un effectif (CSV)
                     </Button>
@@ -944,9 +968,11 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
               <Field label="Nom">
                 <input value={teamCoachLastName} onChange={(e) => setTeamCoachLastName(e.target.value)} className={fieldClass} />
               </Field>
-              <Field label="E-mail">
-                <input type="email" value={teamCoachEmail} onChange={(e) => setTeamCoachEmail(e.target.value)} className={fieldClass} />
-              </Field>
+              {canInvite && (
+                <Field label="E-mail">
+                  <input type="email" value={teamCoachEmail} onChange={(e) => setTeamCoachEmail(e.target.value)} className={fieldClass} />
+                </Field>
+              )}
             </div>
           </div>
           {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
