@@ -287,3 +287,32 @@ export async function fetchClubCalendrier(
     coverage: l.couverture ?? undefined,
   }));
 }
+
+// ── La couverture SportVision (vague C, 08/09/2026) ──────────────────────────
+//
+// Un seul appel : le CM désigne un événement par sa référence de calendrier et choisit un type.
+// Le plan mensuel de production, son identifiant et le mois technique ne remontent jamais ici —
+// le backend les résout. L'idempotence est garantie en base par des index uniques partiels, pas
+// par un bouton désactivé : deux clics rapides ne peuvent pas créer deux couvertures.
+
+export type TypeCouverture = "photo" | "video" | "photo_video";
+
+export const TYPE_COUVERTURE_LABELS: Record<TypeCouverture, string> = {
+  photo: "Photo",
+  video: "Vidéo",
+  photo_video: "Photo + vidéo",
+};
+
+export async function definirCouverture(
+  supabase: SupabaseClient,
+  refEvenement: string,
+  type: TypeCouverture,
+): Promise<void> {
+  const { error } = await supabase.rpc("cm_definir_couverture", { p_ref: refEvenement, p_type: type });
+  if (error) throw new Error(error.message);
+}
+
+export async function annulerCouverture(supabase: SupabaseClient, refEvenement: string): Promise<void> {
+  const { error } = await supabase.rpc("cm_annuler_couverture", { p_ref: refEvenement });
+  if (error) throw new Error(error.message);
+}

@@ -16,7 +16,15 @@ import { KIND_DOT } from "@/components/calendar/calendar-style";
 import { EventDetailPanel } from "@/components/calendar/EventDetailPanel";
 import { AddEventModal } from "@/components/calendar/AddEventModal";
 import { ImportMatchesModal } from "@/components/calendar/ImportMatchesModal";
-import { CREATABLE_EVENT_TYPE_MAP, createClubCalendarEvent, fetchClubCalendrier } from "@/lib/data/club/calendar";
+import {
+  CREATABLE_EVENT_TYPE_MAP,
+  createClubCalendarEvent,
+  fetchClubCalendrier,
+  definirCouverture,
+  annulerCouverture,
+  TYPE_COUVERTURE_LABELS,
+  type TypeCouverture,
+} from "@/lib/data/club/calendar";
 import { fetchOrgCalendarEvents } from "@/lib/data/shared/calendar-events";
 import { createClient } from "@/lib/supabase/client";
 import { parseDateOnly } from "@/lib/date-only";
@@ -371,7 +379,7 @@ export default function CalendarPage() {
         <WeekView reference={reference} eventsOnDay={eventsOnDay} onSelect={setSelectedEvent} today={today} />
       )}
       {view === "day" && <DayView reference={reference} events={eventsOnDay(reference)} onSelect={setSelectedEvent} />}
-      {view === "list" && <ListView events={filteredEvents} onSelect={setSelectedEvent} today={today} />}
+      {view === "list" && <ListView events={filteredEvents} onSelect={setSelectedEvent} today={today} onRecharger={loadEvents} />}
 
       {selectedEvent && <EventDetailPanel event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
       {addOpen && <AddEventModal onClose={() => setAddOpen(false)} onCreate={handleCreateEvent} teamNames={availableTeams} />}
@@ -520,14 +528,114 @@ function DayView({ reference, events, onSelect }: { reference: Date; events: Cal
   );
 }
 
+/** Le geste complet sur la carte : décider, choisir le type, confirmer. Quelques secondes.
+ *
+ *  Réservé au CM SportVision : le président ne commande pas une couverture déjà incluse dans son
+ *  accompagnement, c'est une décision de SportVision. */
+function Couverture({ evenement, onFait }: { evenement: CalendarEvent; onFait: () => void }) {
+  const { ctx } = useSession();
+  const [ouvert, setOuvert] = useState(false);
+  const [envoi, setEnvoi] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const peutDecider = ctx.membership.role === "external_cm";
+
+  async function choisir(type: TypeCouverture) {
+    setEnvoi(true);
+    setErreur(null);
+    try {
+      await definirCouverture(createClient(), evenement.id, type);
+      setOuvert(false);
+      onFait();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "La couverture n'a pas pu être enregistrée.");
+    } finally {
+      setEnvoi(false);
+    }
+  }
+
+  async function retirer() {
+    setEnvoi(true);
+    setErreur(null);
+    try {
+      await annulerCouverture(createClient(), evenement.id);
+      onFait();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "La couverture n'a pas pu être retirée.");
+    } finally {
+      setEnvoi(false);
+    }
+  }
+
+  if (evenement.coverage) {
+    return (
+      <span className="mt-1 flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-success-bg px-2.5 py-1 text-[11.5px] font-bold text-success-fg">
+          SportVision présent
+        </span>
+        {peutDecider && evenement.coverage === "prevu" && (
+          <button
+            type="button"
+            disabled={envoi}
+            onClick={(ev) => { ev.stopPropagation(); void retirer(); }}
+            className="text-[11.5px] font-bold text-text-faint hover:text-danger-fg disabled:opacity-60"
+          >
+            Retirer
+          </button>
+        )}
+        {evenement.coverage === "mission_creee" && (
+          <span className="text-[11.5px] text-text-soft">équipe affectée</span>
+        )}
+        {erreur && <span className="block w-full text-[11.5px] font-bold text-danger-fg">{erreur}</span>}
+      </span>
+    );
+  }
+
+  if (!peutDecider) {
+    return <span className="mt-0.5 block text-[11.5px] font-bold text-text-faint">Couverture SportVision : à décider</span>;
+  }
+
+  if (!ouvert) {
+    return (
+      <span className="mt-1 block">
+        <Button
+          variant="secondary"
+          className="h-9 w-full px-3 text-[12.5px] sm:w-auto"
+          onClick={(ev) => { ev.stopPropagation(); setOuvert(true); }}
+        >
+          SportVision sera présent
+        </Button>
+      </span>
+    );
+  }
+
+  return (
+    <span className="mt-1 block" onClick={(ev) => ev.stopPropagation()}>
+      <span className="block text-[11.5px] font-bold text-text-soft">Comment SportVision couvrira cet événement ?</span>
+      <span className="mt-1.5 flex flex-wrap gap-1.5">
+        {(Object.keys(TYPE_COUVERTURE_LABELS) as TypeCouverture[]).map((t) => (
+          <Button key={t} variant="secondary" className="h-9 px-3 text-[12.5px]" loading={envoi} onClick={() => void choisir(t)}>
+            {TYPE_COUVERTURE_LABELS[t]}
+          </Button>
+        ))}
+        <Button variant="tertiary" className="h-9 px-3 text-[12.5px]" onClick={() => setOuvert(false)}>
+          Annuler
+        </Button>
+      </span>
+      {erreur && <span className="mt-1 block text-[11.5px] font-bold text-danger-fg">{erreur}</span>}
+    </span>
+  );
+}
+
 function ListView({
   events,
   onSelect,
   today,
+  onRecharger,
 }: {
   events: CalendarEvent[];
   onSelect: (e: CalendarEvent) => void;
   today: Date;
+  onRecharger: () => void;
 }) {
   const upcoming = events.filter((e) => parseEventStart(e).getTime() >= today.getTime() - 86_400_000);
   const groups = new Map<string, CalendarEvent[]>();
@@ -578,18 +686,11 @@ function ListView({
                     {e.status === "modifiee" ? " · horaire exceptionnel" : ""}
                     {e.status === "annulee" ? " · annulé" : ""}
                   </span>
-                  {/* La couverture ne concerne que les matchs : l'afficher partout donnerait
-                      l'impression qu'un entraînement attend une décision qu'on ne lui demande
-                      pas. Le clic arrive en vague C ; ici, c'est une lecture. */}
-                  {e.kind === "match" && (
-                    <span
-                      className={cn(
-                        "mt-0.5 inline-block text-[11.5px] font-bold",
-                        e.coverage ? "text-success-fg" : "text-text-faint",
-                      )}
-                    >
-                      {e.coverage ? "Couverture SportVision : confirmée" : "Couverture SportVision : à décider"}
-                    </span>
+                  {/* Matchs ET entraînements peuvent être couverts. Pour un entraînement, la
+                      référence porte la DATE de l'occurrence : couvrir le 17 décembre ne couvre
+                      pas tous les jeudis. */}
+                  {(e.kind === "match" || e.kind === "training") && e.status !== "annulee" && (
+                    <Couverture evenement={e} onFait={onRecharger} />
                   )}
                   {e.score && (
                     <span className="ml-2 text-[11.5px] font-bold tabular-nums">{e.score}</span>
