@@ -11,6 +11,7 @@ import { PersonaDashboard } from "@/components/dashboard/PersonaDashboard";
 import { PlayerDashboard } from "@/components/dashboard/PlayerDashboard";
 import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
 import { StripeReturnBanner } from "@/components/dashboard/StripeReturnBanner";
+import { CmClubOverview } from "@/components/dashboard/CmClubOverview";
 
 // Aiguilleur — le tableau de bord n'a qu'une seule route mais trois familles de contenu très
 // différentes. Chaque variante vit dans son propre fichier sous src/components/dashboard/ pour
@@ -52,7 +53,15 @@ export default function DashboardPage() {
 
   if (!checkedOnboarding) return null;
 
-  const dashboard =
+  // Un Community Manager SportVision ne vient pas voir la vie du club, il vient voir son travail
+  // dessus : ou en est la mise en place, ce qu'il reste a faire, ce qui a bouge. Son ecran passe
+  // donc avant tous les autres — y compris avant le tableau de bord Full Communication, qui est
+  // celui du club et non le sien.
+  const estCmSportVision = ctx.membership.role === "external_cm";
+
+  const dashboard = estCmSportVision ? (
+    <CmClubOverview />
+  ) :
     ctx.subscription.planCode === "full_communication" ? (
       <FullCommunicationDashboard />
     ) : ctx.organization.type === "player" ? (
