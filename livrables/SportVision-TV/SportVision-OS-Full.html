@@ -5447,9 +5447,17 @@ async function creerCollaborateur(){
     const d=await r.json();
     if(!r.ok||d.error){err.textContent=d.error||'Erreur.';return;}
     closeModal();
-    toast('Invitation envoyée par e-mail.','ok');
     if(document.getElementById('col-real')) loadCollaborateurs();
     updateNavBadges(S.role);
+    // Le lien est montre, pas seulement envoye. Le 31/08, la meme personne a ete invitee trois
+    // fois en huit minutes parce que l'e-mail tardait : trois comptes pour un collaborateur.
+    if(d.already_existed){
+      toast('Ce collaborateur avait déjà été invité — aucun nouvel envoi.','wa');
+    }else if(d.invitation_url){
+      afficherLienInvitation(prenom+' '+nom,email,d.invitation_url,d.expires_at);
+    }else{
+      toast('Invitation envoyée par e-mail.','ok');
+    }
   }catch(e){err.textContent='Erreur réseau.';}
 }
 
@@ -7367,6 +7375,31 @@ async function lancerCascadeFullCom(clientId){
       toast('Full Communication activée pour '+c.nom+'.'+clubMsg,clubMsg.includes('échec')?'wa':'ok');
     }
   }catch(e){}
+}
+
+/**
+ * Montre le lien d'invitation d'un collaborateur, copiable immediatement.
+ *
+ * Meme principe que pour l'activation d'un club : l'e-mail part, mais il cesse d'etre le seul
+ * chemin. C'est ce qui evite de reinviter trois fois quelqu'un parce qu'on ne voit rien arriver.
+ */
+function afficherLienInvitation(nom,email,url,expire){
+  const exp=expire?new Date(expire).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'';
+  openModal('Invitation — '+esc(nom||''),`
+    <div style="padding:12px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.25);border-radius:var(--rb)">
+      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ok);margin-bottom:8px">Lien d'invitation</div>
+      <textarea readonly class="l-inp" style="height:64px;resize:vertical;padding:8px;font-size:11.5px;word-break:break-all" onclick="this.select()">${esc(url)}</textarea>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn bp" onclick="copier(${escJs(JSON.stringify(url))})">⎘ Copier le lien</button>
+        ${exp?`<span style="font-size:11px;color:var(--t3)">Valable jusqu'au ${esc(exp)}</span>`:''}
+      </div>
+      <div style="font-size:11.5px;margin-top:8px;color:var(--ok)">✓ E-mail également envoyé à ${esc(email)}</div>
+      <div style="font-size:11.5px;margin-top:10px;color:var(--t3);line-height:1.5">
+        Si l'e-mail tarde, transmettez ce lien directement. Inutile de relancer une invitation :
+        cela créerait un second compte pour la même personne.
+      </div>
+    </div>
+    <div class="m-ft"><button class="btn bp" onclick="closeModal()">Fermer</button></div>`);
 }
 
 /**

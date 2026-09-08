@@ -127,6 +127,8 @@ serve(async (req) => {
     // renvoyer un succès idempotent avec l'id existant plutôt qu'une erreur.
     const { data: existing } = await admin.from("profiles").select("id").ilike("email", email).maybeSingle();
     if (existing) {
+      // Deja invite : on le dit clairement plutot que de laisser croire a un nouvel envoi. C'est
+      // ce silence qui poussait a recommencer, et a creer des doublons.
       return json({ user_id: existing.id, success: true, already_existed: true });
     }
 
@@ -174,7 +176,17 @@ serve(async (req) => {
     });
     if (enqueueErr) return json({ error: enqueueErr.message }, 500);
 
-    return json({ user_id: linkData.user.id, success: true });
+    // Le lien est RENVOYE, pas seulement mis dans la file d'envoi.
+    //
+    // Le 08/09/2026, Fouka a du reinviter trois fois la meme personne en huit minutes parce que
+    // rien n'arrivait : l'e-mail existait, il etait juste lent. Trois comptes ont ete crees pour
+    // un seul collaborateur. Avec le lien sous la main, on le transmet et on n'attend personne.
+    return json({
+      user_id: linkData.user.id,
+      success: true,
+      invitation_url: linkData.properties.action_link,
+      expires_at: expiresAt.toISOString(),
+    });
   } catch (e) {
     return json({ error: e.message }, 500);
   }
