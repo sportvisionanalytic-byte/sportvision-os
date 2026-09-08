@@ -7858,8 +7858,20 @@ async function loadEquipeOverview(){
       // avec ses boutons actifs, invitant à le valider/refuser une seconde fois (risque
       // de statut incohérent — ex. grade déjà attribué puis recommandation "refusée").
       // Fix : chaîner le rechargement sur la résolution réelle de la promesse.
-      alerts.push({ic:'⭐',sev:'important',txt:`${nom} — recommandation de grade ${gA.nom} → ${gP?gP.nom:'—'}`,
-        actions:`<button class="btn bp bs" onclick="centreValiderGrade('${r.id}','valide',this).then(loadEquipeOverview)">Valider</button><button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade('${r.id}','refuse',this).then(loadEquipeOverview)">Refuser</button>`});
+      // Une recommandation dont le grade propose n'est pas SUPERIEUR au grade actuel n'est pas
+      // une promotion : elle vient du bug du 08/09, qui creait une recommandation meme quand
+      // l'XP n'ouvrait aucun palier. La valider ne changerait rien et enverrait a la personne un
+      // e-mail la felicitant pour le grade qu'elle a deja. On l'affiche donc pour ce qu'elle est,
+      // et seul « Refuser » reste propose — la decision restant a l'administrateur.
+      const promotion = Number.isInteger(r.grade_propose) && r.grade_propose > (r.grade_actuel||0);
+      alerts.push({ic:'⭐',sev:promotion?'important':'normal',
+        txt: promotion
+          ? `${nom} — recommandation de grade ${gA.nom} → ${gP?gP.nom:'—'}`
+          : `${nom} — recommandation sans promotion à la clé (déjà ${gA.nom}, XP insuffisant pour le palier suivant)`,
+        actions: (promotion
+            ? `<button class="btn bp bs" onclick="centreValiderGrade('${r.id}','valide',this).then(loadEquipeOverview)">Valider</button>`
+            : '')
+          + `<button class="btn bg2 bs" style="color:var(--er)" onclick="centreValiderGrade('${r.id}','refuse',this).then(loadEquipeOverview)">Refuser</button>`});
     });
     formationRetard.forEach(({p,manquantes})=>{
       alerts.push({ic:'🎓',sev:'urgent',txt:`${esc((p.prenom||'')+' '+(p.nom||''))} — ${manquantes.length} formation${manquantes.length>1?'s':''} obligatoire${manquantes.length>1?'s':''} manquante${manquantes.length>1?'s':''}`,
