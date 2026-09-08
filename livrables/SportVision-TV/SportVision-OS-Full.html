@@ -2208,7 +2208,7 @@ const VIEWS={
     const photographe = S.role === 'photo';
     return `
     <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">${photographe?'Galeries photo':'Centre Médias'}</div><div style="font-size:12px;color:var(--t3);margin-top:2px">${photographe?'Vos albums : versez les photos d\'un match, elles deviennent la galerie du club.':'Pilotage des liens — aucun fichier stocké ici'}</div></div>
+      <div><div class="sh-t">${photographe?'Galeries photo':'Centre Médias'}</div><div style="font-size:12px;color:var(--t3);margin-top:2px">${photographe?'Vos galeries : versez les photos d\'un match, elles deviennent la galerie du club.':'Pilotage des liens — aucun fichier stocké ici'}</div></div>
       ${photographe?'':`<button class="btn bp bs" onclick="modalAjouterLien(null)">+ Ajouter un lien</button>`}
     </div>
     ${photographe?'':`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
@@ -9119,7 +9119,7 @@ async function nommerResponsablePole(poleId,userId){
 // policy). team_ids porté par chaque produit (pas par la politique) : un club peut vendre un pass
 // équipe A et un pack événementiel équipe B la même saison.
 const MED_POLICY_LB={gratuit:'Gratuit',pass_saison:'Pass Saison',vente_unite:'Vente à l’unité',vente_pack:'Vente par pack',evenementiel:'Vente événementielle',hybride:'Hybride'};
-const MED_TYPE_LB={pass_saison:'Pass Saison',photo_unite:'Photo à l’unité',pack:'Pack',album_complet:'Album complet',evenementiel:'Produit événementiel',physique:'Produit physique',autre:'Autre'};
+const MED_TYPE_LB={pass_saison:'Pass Saison',photo_unite:'Photo à l’unité',pack:'Pack',album_complet:'Galerie complète',evenementiel:'Produit événementiel',physique:'Produit physique',autre:'Autre'};
 const MED_STATUT_LB={draft:'Brouillon',active:'Actif',paused:'En pause',ended:'Terminé'};
 const MED_STATUT_CLR={draft:'bn',active:'ba',paused:'bw',ended:'br'};
 const MED_OP_KIND_LB={photo_rentree:'Photo de rentrée',tournoi:'Tournoi',media_day:'Media Day',stage:'Stage',autre:'Autre'};
@@ -11490,7 +11490,7 @@ async function loadPhotoAlbums(el){
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
     const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,watermark_previews,cover_asset_id,clubs(nom),club_teams(name),saisons(label)&order=created_at.desc&limit=200');
-    if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(msgErreur(rows,'Impossible de charger les albums.'))+'</div></div>';return;}
+    if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(msgErreur(rows,'Impossible de charger les galeries.'))+'</div></div>';return;}
     _photoAlbums=Array.isArray(rows)?rows:[];
     renderPhotoAlbumsList(_photoAlbums);
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
@@ -12478,7 +12478,7 @@ async function _galChargerLien(){
   const entete=`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:9px">
     <div style="display:flex;align-items:center;gap:8px">
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Liens de vente</span>
-      ${_galAlbum.status==='published'?'':'<span style="font-size:11px;color:var(--wa)">Album non publie : les liens affichent « pas encore ouverte »</span>'}
+      ${_galAlbum.status==='published'?'':'<span style="font-size:11px;color:var(--wa)">Galerie en brouillon : ces liens ne répondent pas encore.</span>'}
     </div>
     ${peut?`<button class="btn bp bs" style="min-height:40px" onclick="galNouveauLien()">+ Nouveau tarif / lien</button>`:''}
   </div>`;
