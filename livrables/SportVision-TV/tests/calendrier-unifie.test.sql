@@ -163,6 +163,34 @@ begin
     end if;
   end;
 
+  -- ══ 13. Plusieurs saisons actives : les bornes s'UNISSENT, ne s'intersectent pas ══
+  -- Regression reelle du 08/09/2026 : avec deux saisons actives, max(debut)/min(fin) donnait une
+  -- fenetre inversee et le calendrier renvoyait ZERO evenement, en silence.
+  perform set_config('role','postgres',true);
+  perform pg_temp.incarner(v_cm);
+  select count(*)::integer into n from club_calendrier(v_club, date '2026-12-01', date '2026-12-31');
+  if n = 0 then
+    e := e || 'Le calendrier est vide sur un mois qui contient des seances — bornes de saison inversees ?'::text;
+  end if;
+
+  -- ══ 14. Hors saison, aucune seance ════════════════════════════════════════
+  select count(*)::integer into n from club_calendrier(v_club, date '2026-06-01', date '2026-06-30');
+  if n <> 0 then e := e || ('Des seances sont produites AVANT le debut de saison : '||n)::text; end if;
+
+  -- ══ 15. La periode d'activite d'un creneau borne ses seances ══════════════
+  perform set_config('role','postgres',true);
+  update club_team_training_slots set active_from = date '2026-12-15' where id = v_slot;
+  perform pg_temp.incarner(v_cm);
+  select count(*)::integer into n from club_calendrier(v_club, date '2026-12-01', date '2026-12-14')
+  where genre='entrainement' and team_id = v_equipe;
+  if n <> 0 then e := e || ('Un creneau produit des seances avant sa periode d activite : '||n)::text; end if;
+  select count(*)::integer into n from club_calendrier(v_club, date '2026-12-15', date '2026-12-31')
+  where genre='entrainement' and team_id = v_equipe;
+  if n = 0 then e := e || 'Un creneau ne produit plus rien DANS sa periode d activite'::text; end if;
+  perform set_config('role','postgres',true);
+  update club_team_training_slots set active_from = null where id = v_slot;
+  perform pg_temp.incarner(v_cm);
+
   perform set_config('role','postgres',true);
   if array_length(e,1) is not null then
     raise exception E'ECHECS :\n  - %', array_to_string(e, E'\n  - ');
