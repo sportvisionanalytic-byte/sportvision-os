@@ -49,7 +49,12 @@ export function InviteUserModal({ roles, allowDirectMode, onClose, onInvite }: I
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<MembershipRole>(roles[0] ?? "viewer");
   const [team, setTeam] = useState("");
-  const [mode, setMode] = useState<"email" | "direct">("email");
+  // Mode direct par defaut quand il est disponible (09/09/2026). L'envoi par e-mail reste
+  // possible, mais il ne peut plus etre le choix impose : sur 30 jours, 42 % seulement des
+  // e-mails ont ete delivres, et un club a attendu dix minutes devant nous. Le mode direct cree
+  // le compte tout de suite et donne l'identifiant a transmettre soi-meme — il ne depend
+  // d'aucune boite mail.
+  const [mode, setMode] = useState<"email" | "direct">(allowDirectMode ? "direct" : "email");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{ password: string } | null>(null);
