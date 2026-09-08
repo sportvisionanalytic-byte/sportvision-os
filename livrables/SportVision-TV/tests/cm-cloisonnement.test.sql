@@ -33,15 +33,23 @@ begin
   values (gen_random_uuid(),'club','ZZ Club A test','actif_standard') returning id into v_clubA;
   insert into organizations (id, organization_type, nom, statut)
   values (gen_random_uuid(),'club','ZZ Club B test','actif_standard') returning id into v_clubB;
-  insert into clubs (id, nom) values (v_clubA,'ZZ Club A test');
-  insert into clubs (id, nom) values (v_clubB,'ZZ Club B test');
+  -- plan 'performance' : le plafond d'equipes par plan est une vraie regle metier (« 1 equipe
+  -- maximum » en gratuit). Le test porte sur le cloisonnement, pas sur les quotas.
+  insert into clubs (id, nom, plan) values (v_clubA,'ZZ Club A test','performance');
+  insert into clubs (id, nom, plan) values (v_clubB,'ZZ Club B test','performance');
   insert into club_teams (club_id, name) values (v_clubA,'ZZ U18 A') returning id into v_teamA;
   insert into club_teams (club_id, name) values (v_clubB,'ZZ U18 B') returning id into v_teamB;
 
   -- Deux CM REELS plutot que des profils fabriques : profiles reference auth.users, et surtout
   -- le test doit mesurer ce que voient les personnes qui utilisent vraiment l'OS.
-  select id into v_cmA from profiles where role = 'cm' order by created_at limit 1;
-  select id into v_cmB from profiles where role = 'cm' and id <> v_cmA order by created_at limit 1;
+  -- Des CM sans aucune affectation reelle : sinon leurs vrais clubs s'ajoutent aux comptes du
+  -- test et le font echouer pour une raison qui n'a rien a voir avec ce qu'il verifie.
+  select id into v_cmA from profiles p where p.role = 'cm'
+    and not exists (select 1 from club_cm_affectations a where a.cm_id = p.id)
+    order by p.created_at limit 1;
+  select id into v_cmB from profiles p where p.role = 'cm' and p.id <> v_cmA
+    and not exists (select 1 from club_cm_affectations a where a.cm_id = p.id)
+    order by p.created_at limit 1;
   if v_cmA is null or v_cmB is null then
     raise exception 'Il faut au moins deux collaborateurs de role cm pour jouer ce test.';
   end if;
@@ -103,6 +111,67 @@ begin
   exception when others then null;
   end;
 
+  -- ══ 3b. Le CM A ECRIT sur son club, et nulle part ailleurs (phase 3) ══════
+  -- C'est le vrai enjeu du lot : il ne s'agit plus de lecture.
+  begin
+    perform cm_club_infos_maj(v_clubA, 'ZZ Club A renomme', 'Sens', null, null, null, null, null, null);
+    perform 1 from clubs where id = v_clubA and nom = 'ZZ Club A renomme';
+    if not found then e := e || 'CM A ne peut pas renommer son propre club'::text; end if;
+  exception when others then
+    e := e || ('CM A ne peut pas modifier son club : '||sqlerrm);
+  end;
+
+  -- Le SIRET n'est PAS dans la liste blanche : aucun chemin ne doit permettre de l'ecrire.
+  begin
+    update clubs set siret = '00000000000000' where id = v_clubA;
+    get diagnostics n = row_count;
+    if n > 0 then e := e || 'FUITE : CM A a modifie le SIRET de son club'::text; end if;
+  exception when insufficient_privilege then null; when others then null;
+  end;
+
+  -- Le club B reste hors de portee, meme par la fonction.
+  begin
+    perform cm_club_infos_maj(v_clubB, 'PIRATE', null, null, null, null, null, null, null);
+    e := e || 'FUITE : CM A a modifie les informations du club B'::text;
+  exception when others then null;
+  end;
+
+  -- Creer une equipe : autorise chez soi, refuse ailleurs.
+  begin
+    insert into club_teams (club_id, name) values (v_clubA, 'ZZ U16 A');
+  exception when others then e := e || ('CM A ne peut pas creer d equipe chez lui : '||sqlerrm); end;
+  begin
+    insert into club_teams (club_id, name) values (v_clubB, 'PIRATE 2');
+    e := e || 'FUITE : CM A a cree une equipe dans le club B'::text;
+  exception when others then null; end;
+
+  -- Archiver plutot que supprimer : la suppression ne doit pas etre accordee.
+  begin
+    update club_teams set archivee = true, archivee_at = now() where club_id = v_clubA and name = 'ZZ U18 A';
+    get diagnostics n = row_count;
+    if n <> 1 then e := e || 'CM A ne peut pas archiver une equipe de son club'::text; end if;
+  exception when others then e := e || ('archivage impossible : '||sqlerrm); end;
+  begin
+    delete from club_teams where club_id = v_clubA and name = 'ZZ U16 A';
+    get diagnostics n = row_count;
+    if n > 0 then e := e || 'Le CM peut SUPPRIMER une equipe : on voulait de l archivage'::text; end if;
+  exception when insufficient_privilege then null; when others then null; end;
+
+  -- Le journal et les etapes manuelles, chez soi seulement.
+  begin
+    insert into club_onboarding_events (club_id, auteur_id, action) values (v_clubA, v_cmA, 'test');
+  exception when others then e := e || ('CM A ne peut pas journaliser chez lui : '||sqlerrm); end;
+  begin
+    insert into club_onboarding_events (club_id, auteur_id, action) values (v_clubB, v_cmA, 'pirate');
+    e := e || 'FUITE : CM A a ecrit dans le journal du club B'::text;
+  exception when others then null; end;
+
+  -- La preparation ne se calcule que sur son perimetre.
+  select count(*)::integer into n from club_preparation(v_clubB);
+  if n <> 0 then e := e || 'FUITE : CM A lit la preparation du club B'::text; end if;
+  select count(*)::integer into n from club_preparation(v_clubA);
+  if n = 0 then e := e || 'CM A ne voit pas la preparation de son propre club'::text; end if;
+
   -- ══ 4. Une affectation desactivee retire les droits IMMEDIATEMENT ══════════
   perform set_config('role','postgres',true);
   update club_cm_affectations set actif = false where id = v_aff;
@@ -113,6 +182,12 @@ begin
   if n <> 0 then e := e || 'Desactivation sans effet : CM A lit encore les equipes'::text; end if;
   select count(*)::integer into n from cm_mes_clubs();
   if n <> 0 then e := e || 'Desactivation sans effet : le club reste dans « Mes clubs »'::text; end if;
+  -- §51 : la prochaine ECRITURE doit etre refusee, sans attendre une reconnexion.
+  begin
+    perform cm_club_infos_maj(v_clubA, 'APRES RETRAIT', null, null, null, null, null, null, null);
+    e := e || 'Desactivation sans effet : CM A ecrit encore sur son ancien club'::text;
+  exception when others then null;
+  end;
 
   -- ══ 5. Une affectation expiree ne donne plus rien ══════════════════════════
   perform set_config('role','postgres',true);
