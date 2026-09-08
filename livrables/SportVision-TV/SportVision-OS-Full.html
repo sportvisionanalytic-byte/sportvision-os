@@ -11544,6 +11544,9 @@ function galMenuLigne(albumId,ev){
       ${enLigne
         ? `<button class="btn bg2" onclick="closeModal();depublierAlbum('${a.id}')">Repasser en brouillon</button>`
         : `<button class="btn bg2" onclick="closeModal();publierAlbum('${a.id}')">Mettre en ligne</button>`}
+      ${a.status==='archived'
+        ? ''
+        : `<button class="btn bg2" style="color:var(--er)" onclick="closeModal();archiverAlbum('${a.id}')">Archiver — plus de nouvelles ventes</button>`}
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:16px">
       <button class="btn bg2 bs" onclick="closeModal()">Fermer</button>
@@ -11697,18 +11700,39 @@ async function sauvegarderAlbum(albumId){
   }catch(e){err.textContent="Erreur lors de l'enregistrement.";}
 }
 
-async function publierAlbum(id){
-  const r=await sbFetch('media_albums?id=eq.'+id,{method:'PATCH',body:{status:'published',published_at:new Date().toISOString()}});
-  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Publication impossible.')),'error');return;}
-  toast('Album publié — visible dans le Pass Photo Connect','ok');
+// Les trois etats d'une galerie, dits par ce qu'ils font au public. _media_gallery_resolve
+// n'accorde l'acces que si le statut vaut 'published' : un brouillon et une archive repondent
+// tous deux « non_publie » a qui ouvre le lien. Ce n'est donc pas un classement interne, c'est
+// l'interrupteur de la vente.
+async function _galChangerStatut(id,statut,message){
+  const body={status:statut};
+  if(statut==='published')body.published_at=new Date().toISOString();
+  const r=await sbFetch('media_albums?id=eq.'+id,{method:'PATCH',body});
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'changement d\'état impossible.')),'er');return false;}
+  const cache=_photoAlbums.find(a=>a.id===id);
+  if(cache)cache.status=statut;
+  if(_galAlbum&&_galAlbum.id===id)_galAlbum.status=statut;
+  toast(message,'ok');
   loadPhotoAlbums();
+  return true;
+}
+
+async function publierAlbum(id){
+  await _galChangerStatut(id,'published','Galerie en ligne. Ses liens actifs fonctionnent.');
 }
 
 async function depublierAlbum(id){
-  const r=await sbFetch('media_albums?id=eq.'+id,{method:'PATCH',body:{status:'draft'}});
-  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Dépublication impossible.')),'error');return;}
-  toast('Album repassé en brouillon','ok');
-  loadPhotoAlbums();
+  if(!await demanderConfirmation(
+    'Repasser cette galerie en brouillon ?\n\nSes liens cesseront immédiatement de répondre, y compris ceux déjà envoyés à des familles. Les commandes déjà payées restent accessibles.',
+    {titre:'Repasser en brouillon',action:'Repasser en brouillon'}))return;
+  await _galChangerStatut(id,'draft','Galerie repassée en brouillon. Ses liens ne répondent plus.');
+}
+
+async function archiverAlbum(id){
+  if(!await demanderConfirmation(
+    'Archiver cette galerie ?\n\nElle ne vendra plus rien et ses liens cesseront de répondre. Les photos, les commandes et le chiffre d\'affaires sont conservés, et vous pourrez la remettre en ligne.',
+    {titre:'Archiver la galerie',action:'Archiver'}))return;
+  await _galChangerStatut(id,'archived','Galerie archivée. Plus de nouvelles ventes.');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -12569,10 +12593,10 @@ async function _galOuvrirConstructeur(linkId){
     </label>
     <div style="font-size:11px;color:var(--t3);margin-bottom:11px">A cocher pour vos tests : ses ventes et ses vues ne comptent pas dans le chiffre d’affaires. Vous pourrez toujours les reafficher depuis l’ecran Statistiques.</div>
 
-    <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:4px">
-      <input type="checkbox" id="gl-clubplus"${d.visible_in_clubplus?' checked':''}> Confier ce lien au club dans Club+
+    <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:4px;min-height:40px;cursor:${_galAlbum.club_id?'pointer':'default'};opacity:${_galAlbum.club_id?'1':'.5'}">
+      <input type="checkbox" id="gl-clubplus"${d.visible_in_clubplus?' checked':''}${_galAlbum.club_id?'':' disabled'}> Confier ce lien au club dans Club+
     </label>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:16px">Le club pourra le copier et le diffuser lui-meme. Il ne verra aucun tarif et ne pourra rien modifier. Laissez decoche pour un lien qui reste interne a SportVision (equipe adverse, promotion...).</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:16px">${_galAlbum.club_id?'':'<span style="color:var(--wa)">Cette galerie n’est rattachée à aucun club SportVision. Rattachez-en un depuis « Modifier la galerie » pour pouvoir la lui confier. La vente fonctionne parfaitement sans.</span><br>'}Le club pourra le copier et le diffuser lui-meme. Il ne verra aucun tarif et ne pourra rien modifier. Laissez decoche pour un lien qui reste interne a SportVision (equipe adverse, promotion...).</div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px">
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Offres proposees</span>
@@ -12716,7 +12740,9 @@ async function galEnregistrerLien(){
                  display_order:i+1,featured:!!o.featured,is_enabled:o.actif!==false});
   }
 
-  const clubplus=document.getElementById('gl-clubplus').checked;
+  // Sans club rattache, Club+ n'a personne a qui confier la galerie : on ne l'active jamais,
+  // meme si la case etait forcee depuis la console.
+  const clubplus=!!_galAlbum.club_id && document.getElementById('gl-clubplus').checked;
   const essai=document.getElementById('gl-essai').checked;
 
   const r=await sbFetch('rpc/media_link_save',{method:'POST',body:{
