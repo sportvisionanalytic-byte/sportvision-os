@@ -35,8 +35,14 @@ export async function updateClubOrganization(
   if ("couleurSecondaire" in input) patch.couleur_secondaire = input.couleurSecondaire || null;
   if (Object.keys(patch).length === 0) return;
 
-  const { error } = await supabase.from("clubs").update(patch).eq("id", clubId);
+  // `.select()` est indispensable : sur un update que la RLS filtre, Supabase renvoie
+  // `{ error: null }` et l'écran annonce « Enregistré » alors que rien n'a bougé. Seul un
+  // tableau vide révèle le refus. Même piège que setClubMemberStatus (data/club/users.ts).
+  const { data, error } = await supabase.from("clubs").update(patch).eq("id", clubId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Enregistrement refusé : droits insuffisants sur ce club.");
+  }
 }
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;

@@ -397,7 +397,12 @@ export async function buildDelegatedClubActiveContext(
   const [clubRes, myMembershipsRes, entitlementsRes] = await Promise.all([
     supabase
       .from("clubs")
-      .select("id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id, logo_url, ecusson_url, club_plus_source")
+      .select(
+        // adresse/siret/instagram/couleurs manquaient ici : l'onboarding les affichait donc vides
+        // pour un CM, et « Enregistrer les couleurs » réécrivait les valeurs par défaut par-dessus
+        // les vraies (signalé le 08/09/2026). Même colonnes que buildClubActiveContext.
+        "id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id, logo_url, ecusson_url, adresse, instagram_handle, siret, couleur_primaire, couleur_secondaire, club_plus_source",
+      )
       .eq("id", space.id)
       .maybeSingle(),
     supabase
@@ -505,6 +510,13 @@ export async function buildDelegatedClubActiveContext(
       // buildClubActiveContext le peuple depuis clubs.logo_url ; ce chemin-la l'oubliait, et la
       // barre laterale retombait sur les initiales. Un CM qui gere un club doit le reconnaitre.
       logoUrl: club.logo_url ?? club.ecusson_url ?? undefined,
+      address: club.adresse ?? undefined,
+      instagramHandle: club.instagram_handle ?? undefined,
+      siret: club.siret ?? undefined,
+      brandColors:
+        club.couleur_primaire || club.couleur_secondaire
+          ? [club.couleur_primaire ?? "#4F7DFF", club.couleur_secondaire ?? "#A855F7"]
+          : undefined,
     },
     membership: {
       id: `delegated-${delegationMembershipId}`,

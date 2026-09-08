@@ -240,15 +240,17 @@ export async function fetchClubCommunicationPrefs(supabase: SupabaseClient, club
 }
 
 export async function updateClubCommunicationPrefs(supabase: SupabaseClient, clubId: string, input: ClubCommunicationPrefs): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("clubs")
     .update({
       objectifs_communication: input.objectifsCommunication,
       ton_communication: input.tonCommunication,
       sujets_sensibles: input.sujetsSensibles?.trim() || null,
     })
-    .eq("id", clubId);
+    .eq("id", clubId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Enregistrement refusé : droits insuffisants sur ce club.");
 }
 
 export const OBJECTIFS_COMMUNICATION_OPTIONS = [
@@ -296,15 +298,17 @@ export async function fetchClubImageRights(supabase: SupabaseClient, clubId: str
 }
 
 export async function updateClubImageRights(supabase: SupabaseClient, clubId: string, input: ClubImageRights): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("clubs")
     .update({
       droit_image_mode: input.mode,
       droit_image_licencies_exclus: input.licenciesExclus,
       droit_image_notes: input.notes?.trim() || null,
     })
-    .eq("id", clubId);
+    .eq("id", clubId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Enregistrement refusé : droits insuffisants sur ce club.");
 }
 
 export const DROIT_IMAGE_MODE_LABELS: Record<DroitImageMode, string> = {
