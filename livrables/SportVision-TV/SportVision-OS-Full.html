@@ -837,6 +837,14 @@ const NAV={
     // voir migration-media-v1-moteur-generique.sql. Admin-only comme 'poles' (configuration
     // commerciale sensible, cf. point 37 du master prompt : ADMIN/DIRECTION configure tout).
     {id:'medias',lb:'Médias & Ventes',ic:'med'},
+    // 08/09/2026 — L'écran 'media' (albums Pass Photo, liens de vente, statistiques des galeries)
+    // n'était dans le menu d'AUCUN rôle. Son gabarit n'existait que sous la clé 'prod.media', et
+    // les deux seules portes d'entrée étaient des tuiles de tableau de bord, dont une intitulée
+    // « Corrections en cours ». Autrement dit : de quoi créer un album, y verser des photos, en
+    // construire les offres et en lire le chiffre d'affaires — sans aucun moyen d'y arriver depuis
+    // la navigation. Aucun droit n'est accordé ici : la RLS autorisait déjà l'admin sur
+    // media_albums (v28), et le constructeur de tarifs reste masqué selon media_pricing_staff().
+    {id:'media',lb:'Galeries photo',ic:'med'},
     {id:'pipeline',lb:'Prospection',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
@@ -3359,6 +3367,7 @@ const VIEWS={
 // RLS n'est nécessaire — seul l'accès depuis le rôle admin manquait côté OS.
 // Même fonction réutilisée telle quelle (pattern déjà utilisé pour
 // admin.cmagency/sec.cmagency, admin.connectcomptes/sec.connectcomptes...).
+VIEWS['admin.media']=VIEWS['prod.media'];
 VIEWS['admin.docrh']=VIEWS['sec.docrh'];
 // Alias admin → rh.* (migration-poles-v14, 31/08/2026, séparation collaborateurs par pôle) :
 // nouveau rôle 'rh' (Secrétaire générale, accès staff transversal à tous les pôles), mêmes
@@ -5193,7 +5202,7 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='rem') await loadProdRemunerations();
   if(role==='prod'&&view==='frais') await loadProdFrais();
   if(role==='prod'&&view==='brief') await loadProdBriefings();
-  if(role==='prod'&&view==='media'){_mediaTab='liens';await loadProdMedias();}
+  if((role==='admin'||role==='prod')&&view==='media'){_mediaTab='liens';await loadProdMedias();}
   if(role==='prod'&&view==='post') await loadProdPostprod();
   if(role==='prod'&&view==='livr'){await loadProdLivrMissions();await loadProdLivrables();}
   if(role==='prod'&&view==='kanban') await loadKanban();
