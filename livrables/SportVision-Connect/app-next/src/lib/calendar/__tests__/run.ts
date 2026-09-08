@@ -20,7 +20,7 @@ import { parseIcsSource } from "../providers/ics.ts";
 import { xlsxProvider, detectXlsxLayout } from "../providers/xlsx.ts";
 import { pdfProvider } from "../providers/pdf.ts";
 import { elementsVersLignes, type ElementTexte } from "../pdf-lignes.ts";
-import { lireCalendrierDePoule, ressembleAUnCalendrierDePoule, estEquipeDuClub } from "../pdf-poule.ts";
+import { lireCalendrierDePoule, ressembleAUnCalendrierDePoule, estEquipeDuClub, clubsCandidats } from "../pdf-poule.ts";
 import { detectProvider } from "../providers/index.ts";
 import { buildImportPreview, type ClubTeamRef, type ExistingMatch, type TeamSourceMapping } from "../diff.ts";
 import { fallbackIdentityKey, externalIdentityKey } from "../identity.ts";
@@ -982,4 +982,56 @@ test("poule : le provider PDF emprunte ce chemin tout seul", async () => {
   const r = await pdfProvider.parse({ fileName: "calendrier 34SC.pdf", options: { lignes: POULE_REELLE }, teams: TEAMS });
   assert.ok(r.events.length >= 5);
   assert.ok(r.issues.some((i) => /ne concerne pas/i.test(i.reason)));
+});
+
+// ── Le même calendrier existe en deux versions (08/09/2026) ──────────────────
+// Celle adressée au club porte son nom en en-tête ; celle diffusée par le district porte
+// « DISTRICT YONNE » et ne nomme personne. La seconde a redonné « 0 match » : impossible de
+// savoir de quel club il s'agit. C'est la seule chose qu'on demande à l'humain.
+
+const POULE_DISTRICT: string[][] = [
+  ["DISTRICT YONNE", "", "", "", "", "", "", "Calendriers*", ""],
+  ["U18 Departemental 2 / Departemental 2", "", "", "", "", "", "", "", ""],
+  ["Poule A", "", "", "", "", "Apres-Midi P1", "", "", ""],
+  ["Journée", "1", "- Aller", "05/09/2026", "", "Journée 18 - Retour", "05/06/2027", "", ""],
+  ["52183.", "... - ...", "16H", "79121535", "Mt St Sulpice 21", "- As Vlg 21", "79121620", "16H", "... - ..."],
+  ["52184.", "... - ...", "14H", "79121536", "J. Senonaise 21", "- Football Club Charny 21", "79121621", "16H", "... - ..."],
+  ["U15 Access D2 / Automne", "", "", "", "", "", "", "", ""],
+  ["Journée", "1", "- Aller", "12/09/2026", "", "", "", "", ""],
+  ["52501.", "... - ...", "10H", "79130001", "As Vlg 1", "- Migennes 1", "", "", ""],
+];
+
+test("district : sans nom de club dans l'en-tête, rien n'est importé en silence", () => {
+  const r = lireCalendrierDePoule(POULE_DISTRICT);
+  assert.equal(r.club, null);
+  assert.equal(r.evenements.length, 0);
+});
+
+test("district : les clubs proposés sortent des vraies poules, le plus présent en tête", () => {
+  const candidats = clubsCandidats(POULE_DISTRICT);
+  assert.equal(candidats[0], "As Vlg 21", `attendu As Vlg en tête, obtenu ${candidats.join(", ")}`);
+});
+
+test("district : le club choisi par l'humain fait foi, toutes ses équipes confondues", () => {
+  const r = lireCalendrierDePoule(POULE_DISTRICT, { nomClub: "As Vlg 21" });
+  // « As Vlg 21 » en U18 et « As Vlg 1 » en U15 sont le même club : le numéro d'équipe ne compte pas.
+  assert.equal(r.evenements.length, 3);
+  assert.deepEqual(
+    [...new Set(r.evenements.map((e) => e.competitionName))].sort(),
+    ["U15 Access D2 / Automne", "U18 Departemental 2 / Departemental 2"],
+  );
+  assert.equal(r.matchsAutresClubs, 1); // J. Senonaise / Charny
+});
+
+test("district : une ligne de matchs effondrée en une cellule n'est pas prise pour une catégorie", () => {
+  // Sur les pages de coupe régionale, la reconstruction des colonnes échoue. Sans garde-fou, cette
+  // ligne devenait une catégorie et renommait tous les matchs suivants.
+  const effondree = [
+    ...POULE_DISTRICT,
+    ["... - ... 12H 56606354 St Georges 21 - Cosne Ucs Football 21 ... - ... 31971. ... - ... 15H"],
+    ["52502.", "... - ...", "11H", "79130002", "As Vlg 1", "- Paron F.C. 2", "", "", ""],
+  ];
+  const r = lireCalendrierDePoule(effondree, { nomClub: "As Vlg 21" });
+  const dernier = r.evenements[r.evenements.length - 1]!;
+  assert.equal(dernier.competitionName, "U15 Access D2 / Automne");
 });

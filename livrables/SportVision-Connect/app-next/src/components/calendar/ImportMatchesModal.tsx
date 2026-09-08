@@ -102,6 +102,12 @@ export function ImportMatchesModal({
   // Un PDF coûte cher à lire : on l'extrait une fois au dépôt, et toutes les relectures
   // (changement de colonnes, réessai) repartent de ces lignes-là.
   const lignesPdfRef = useRef<string[][] | null>(null);
+  // Certains calendriers de poule sont diffusés par le district et ne nomment aucun club : seul
+  // l'humain sait duquel il s'agit. On lui propose les équipes des vraies poules, la sienne en
+  // tête, plutôt que de deviner.
+  const clubPdfRef = useRef<string | null>(null);
+  const [clubsPdf, setClubsPdf] = useState<string[]>([]);
+  const [clubPdf, setClubPdf] = useState<string | null>(null);
   useModalA11y(containerRef, onClose);
 
   const [step, setStep] = useState<Step>("source");
@@ -222,7 +228,7 @@ export function ImportMatchesModal({
         bytes: source.bytes ?? undefined,
         options:
           target.id === "PDF" && lignesPdfRef.current
-            ? { ...(options ?? {}), lignes: lignesPdfRef.current }
+            ? { ...(options ?? {}), lignes: lignesPdfRef.current, nomClub: clubPdfRef.current }
             : options,
         teams,
       });
@@ -261,6 +267,9 @@ export function ImportMatchesModal({
         setMapping(null);
         setUrlUsed(null);
         lignesPdfRef.current = null;
+        clubPdfRef.current = null;
+        setClubsPdf([]);
+        setClubPdf(null);
 
         // Un PDF n'est pas un tableau : c'est du texte posé à des coordonnées. On le reconstruit
         // en lignes et colonnes ici, une seule fois, avant que le moteur de détection habituel
@@ -268,7 +277,13 @@ export function ImportMatchesModal({
         if (found.id === "PDF") {
           const { extraireElementsTexte } = await import("@/lib/pdf/extraire-texte");
           const { elementsVersLignes } = await import("@/lib/calendar/pdf-lignes");
+          const { clubsCandidats, ressembleAUnCalendrierDePoule, lireCalendrierDePoule } = await import(
+            "@/lib/calendar/pdf-poule"
+          );
           lignesPdfRef.current = elementsVersLignes(await extraireElementsTexte(bytes));
+          if (ressembleAUnCalendrierDePoule(lignesPdfRef.current) && !lireCalendrierDePoule(lignesPdfRef.current).club) {
+            setClubsPdf(clubsCandidats(lignesPdfRef.current).slice(0, 12));
+          }
         }
 
         // .xlsx : on inspecte pour pouvoir MONTRER quelles colonnes ont été reconnues, puis on
@@ -545,6 +560,41 @@ export function ImportMatchesModal({
 
         {step === "review" && preview && (
           <div className="flex flex-col gap-3.5">
+            {/* Le document ne dit pas à quel club il s'adresse : c'est la seule chose qu'on ne
+                peut pas déduire, et la seule qu'on demande. Les équipes des vraies poules sont
+                proposées, la plus présente en tête. */}
+            {clubsPdf.length > 0 && (
+              <div className="flex flex-col gap-2 rounded-xl border border-border-strong p-3.5">
+                <div className="text-[12.5px] font-bold text-text">De quel club est ce calendrier ?</div>
+                <p className="text-[11.5px] text-text-soft">
+                  Ce document liste toute la poule et ne nomme aucun club. Choisissez le vôtre : les matchs
+                  des autres clubs seront ignorés.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {clubsPdf.map((nom) => (
+                    <Button
+                      key={nom}
+                      variant={clubPdf === nom ? "primary" : "secondary"}
+                      className="h-8 px-3 text-[12px]"
+                      disabled={busy}
+                      onClick={async () => {
+                        setClubPdf(nom);
+                        clubPdfRef.current = nom;
+                        setBusy(true);
+                        try {
+                          if (provider) await runParse(provider, { text: fileText, bytes: fileBytes, name: fileName }, mapping ?? undefined);
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      {nom}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Zéro match lu n'est pas un succès : annoncer « Tout est prêt » sur un fichier dont
                 rien n'a été tiré est faux, et c'est ce que l'écran affichait (constaté le
                 08/09/2026 sur un vrai calendrier de district). */}

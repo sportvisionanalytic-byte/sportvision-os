@@ -190,6 +190,69 @@ function lireLigneCorrection(ligne: string[]): { date: string | null; heure: str
   return { date, heure, colonne: remplies[0]!.colonne };
 }
 
+export interface OptionsPoule {
+  /** Le club dont on veut le calendrier, quand le document ne le nomme pas lui-même (version
+   * « district » du même fichier : son en-tête dit « DISTRICT YONNE » et rien d'autre). */
+  nomClub?: string | null;
+}
+
+/**
+ * Les clubs qu'on peut proposer à l'humain quand le document ne dit pas à qui il s'adresse.
+ *
+ * Seules les vraies poules comptent : une coupe régionale aligne cent cinquante équipes et
+ * noierait la liste. On classe par nombre de catégories où le nom apparaît, parce qu'un club n'est
+ * présent dans plusieurs catégories que s'il y engage plusieurs équipes — ce que fait le club
+ * destinataire, et rarement les autres.
+ */
+export function clubsCandidats(lignes: string[][]): string[] {
+  const parCategorie = decouperParCategorie(lignes);
+  const compte = new Map<string, { affichage: string; categories: number }>();
+  for (const [, equipes] of parCategorie) {
+    if (equipes.size === 0 || equipes.size > 20) continue;
+    const vus = new Set<string>();
+    for (const nom of equipes) {
+      const cle = racineNom(nom);
+      if (cle === "" || vus.has(cle)) continue;
+      vus.add(cle);
+      const entree = compte.get(cle) ?? { affichage: nom, categories: 0 };
+      entree.categories++;
+      compte.set(cle, entree);
+    }
+  }
+  return [...compte.values()]
+    .sort((a, b) => b.categories - a.categories || a.affichage.localeCompare(b.affichage))
+    .map((e) => e.affichage);
+}
+
+/** Le nom sans le numéro d'équipe final : « As Vlg 21 » et « As Vlg 1 » sont le même club. */
+function racineNom(nom: string): string {
+  return normaliser(nom).filter((j) => !/^\d+$/.test(j)).join(" ");
+}
+
+function decouperParCategorie(lignes: string[][]): Map<string, Set<string>> {
+  const parCategorie = new Map<string, Set<string>>();
+  let categorie = "?";
+  for (const ligne of lignes) {
+    const remplies = ligne.filter((c) => (c ?? "").trim() !== "");
+    if (
+      remplies.length === 1 &&
+      remplies[0]!.includes("/") &&
+      remplies[0]!.length <= 80 &&
+      !/\d{6,}/.test(remplies[0]!)
+    ) {
+      categorie = remplies[0]!.trim();
+      if (!parCategorie.has(categorie)) parCategorie.set(categorie, new Set());
+      continue;
+    }
+    const lu = lireLigneMatch(ligne);
+    if (!lu) continue;
+    if (!parCategorie.has(categorie)) parCategorie.set(categorie, new Set());
+    parCategorie.get(categorie)!.add(lu.aller.domicile);
+    parCategorie.get(categorie)!.add(lu.aller.exterieur);
+  }
+  return parCategorie;
+}
+
 export interface ResultatPoule {
   /** Le club auquel le calendrier est adressé, tel que l'en-tête le nomme. */
   club: string | null;
@@ -214,11 +277,15 @@ export function ressembleAUnCalendrierDePoule(lignes: string[][]): boolean {
   return entetesJournee >= 2 && lignesMatch >= 4;
 }
 
-export function lireCalendrierDePoule(lignes: string[][]): ResultatPoule {
+export function lireCalendrierDePoule(lignes: string[][], options: OptionsPoule = {}): ResultatPoule {
+  // L'en-tête ne nomme le club que dans la version qui lui est adressée. La version diffusée par
+  // le district porte « DISTRICT YONNE » : là, seul l'humain sait de quel club il s'agit.
   const club =
+    options.nomClub?.trim() ||
     lignes
       .map((l) => (l[0] ?? "").trim())
-      .find((t) => /\d{5,}/.test(t) && normaliser(t).length >= 3) ?? null;
+      .find((t) => /\d{5,}/.test(t) && normaliser(t).length >= 3) ||
+    null;
 
   const evenements: SourceEvent[] = [];
   const equipesDuClub = new Set<string>();
@@ -232,14 +299,27 @@ export function lireCalendrierDePoule(lignes: string[][]): ResultatPoule {
   let dernierRetour: SourceEvent | null = null;
   let colonneSeparation = Number.MAX_SAFE_INTEGER;
 
-  const estDuClub = (nom: string) => (club ? estEquipeDuClub(nom, club) : false);
+  // Nom choisi par l'humain : on compare les racines (« As Vlg 21 » et « As Vlg 1 » sont le même
+  // club). Nom lu dans l'en-tête : il est écrit en toutes lettres, on passe par les abréviations.
+  const racineChoisie = options.nomClub ? racineNom(options.nomClub) : null;
+  const estDuClub = (nom: string) =>
+    racineChoisie ? racineNom(nom) === racineChoisie : club ? estEquipeDuClub(nom, club) : false;
 
   lignes.forEach((ligne, index) => {
     const remplies = ligne.filter((c) => (c ?? "").trim() !== "");
     const texte = ligne.join(" ").trim();
 
     // ── Catégorie : « Seniors D3 / Unique », « U18 Departemental 2 / … »
-    if (remplies.length === 1 && remplies[0]!.includes("/") && !RE_DATE.test(remplies[0]!.trim())) {
+    // Sur les pages de coupe régionale, la reconstruction des colonnes échoue et une ligne de
+    // matchs entière se retrouve dans une seule cellule. Sans ces deux garde-fous, une telle
+    // ligne passait pour une catégorie et emportait tous les matchs suivants sous un faux nom.
+    if (
+      remplies.length === 1 &&
+      remplies[0]!.includes("/") &&
+      !RE_DATE.test(remplies[0]!.trim()) &&
+      remplies[0]!.length <= 80 &&
+      !/\d{6,}/.test(remplies[0]!)
+    ) {
       categorie = remplies[0]!.trim();
       return;
     }

@@ -39,6 +39,8 @@ import {
 export interface OptionsPdf extends Partial<TabularMapping> {
   elements?: ElementTexte[];
   lignes?: string[][];
+  /** Le club dont on veut le calendrier, quand le document ne le nomme pas lui-même. */
+  nomClub?: string | null;
 }
 
 const INSPECT_LIGNES = 40;
@@ -99,7 +101,7 @@ export const pdfProvider: CalendarProvider = {
     // en premier, mais seulement s'il RECONNAÎT la mise en page — sinon on lirait n'importe quel
     // PDF avec lui et on fabriquerait des matchs à partir de rien.
     if (ressembleAUnCalendrierDePoule(lignes)) {
-      const poule = lireCalendrierDePoule(lignes);
+      const poule = lireCalendrierDePoule(lignes, { nomClub: (input.options as OptionsPdf | undefined)?.nomClub });
       if (poule.evenements.length > 0) {
         return {
           events: poule.evenements,
@@ -115,18 +117,18 @@ export const pdfProvider: CalendarProvider = {
               : [],
         };
       }
-      if (poule.club) {
-        return {
-          events: [],
-          issues: [
-            {
-              line: 0,
-              raw: input.fileName,
-              reason: `Calendrier de poule reconnu, mais aucun match de « ${poule.club} » n'y a été trouvé. Vérifiez que c'est bien le calendrier de votre club.`,
-            },
-          ],
-        };
-      }
+      return {
+        events: [],
+        issues: [
+          {
+            line: 0,
+            raw: input.fileName,
+            reason: poule.club
+              ? `Calendrier de poule reconnu, mais aucun match de « ${poule.club} » n'y a été trouvé. Vérifiez que c'est bien le calendrier de votre club.`
+              : "Calendrier de poule reconnu, mais ce document ne dit pas à quel club il s'adresse. Choisissez votre club ci-dessus.",
+          },
+        ],
+      };
     }
 
     const fourni = input.options as TabularMapping | undefined;
