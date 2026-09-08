@@ -122,6 +122,14 @@ import type { ModuleKey } from "@/lib/types";
 // aucune gate par plan à ajouter ici tant que ce champ reste non branché.
 export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "dashboard",
+  // 08/09/2026 — « onboarding » et « users » servent la mise en place d'un club par son
+  // Community Manager. Les deux pages existent et repondent (verifie avec une vraie session de
+  // CM) ; les laisser hors de cette liste faisait afficher un cadenas au-dessus d'ecrans
+  // parfaitement fonctionnels — y compris pour les cinq navigations qui referencent deja
+  // « Membres & acces ». Aucun droit n'est accorde ici : les pages gardent leurs propres gardes
+  // et la RLS reste l'autorite.
+  "onboarding",
+  "users",
   "studio",
   "teams",
   "matchcenter",

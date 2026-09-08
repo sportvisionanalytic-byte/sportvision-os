@@ -175,6 +175,7 @@ export type ModuleKey =
   | "contracts"
   | "billing"
   | "users"
+  | "onboarding"
   | "children"
   | "authorizations"
   | "documents"

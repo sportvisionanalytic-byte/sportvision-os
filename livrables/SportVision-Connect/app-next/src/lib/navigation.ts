@@ -570,6 +570,41 @@ const NAV_CLUB_ADMINISTRATIF: NavEntry[] = [
  * rôle non-club) garde `entries` telle quelle — c'est le comportement historique et voulu :
  * admin/president/board_member voient NAV_CLUB_PLUS (ou la variante Full Communication) au
  * complet (Bible §6 : "vision large"), inchangée par ce chantier. */
+// Navigation du Community Manager SportVision affilie a un club (08/09/2026, decision Fouka :
+// « OS = pilotage interne, Club+ = espace quotidien du CM »).
+//
+// Elle ne ressemble a aucune autre parce que son metier n'est celui d'aucun autre : il ne dirige
+// pas le club et n'y joue pas, il le MET EN PLACE pour le compte de SportVision, puis il
+// l'accompagne. L'ordre suit son travail reel — d'abord ce qu'il doit preparer, ensuite ce qu'il
+// produit, enfin ce dont il a besoin.
+//
+// Ce qu'elle ne contient pas, deliberement : factures, contrats, devis, parametres du club. Un CM
+// n'est pas l'administrateur du club, et hasClubFinancialAccess() le lui refuse deja cote code
+// comme la RLS cote base. La navigation dit la meme chose que les droits, au lieu de proposer des
+// portes fermees.
+const NAV_CLUB_CM_SPORTVISION: NavEntry[] = [
+  item("dashboard", "Vue d'ensemble", "dashboard"),
+  section("Mise en place"),
+  item("onboarding", "Onboarding", "onboarding"),
+  item("teams", "Équipes", "teams"),
+  item("users", "Coachs & dirigeants", "users"),
+  section("Communication"),
+  item("communication", "Centre communication", "communication"),
+  item("content", "Contenus", "content"),
+  item("visual_requests" as ModuleKey, "Demandes de visuels", "requests"),
+  item("newsroom", "Actualités", "newsroom"),
+  item("matchcenter", "Résultats & informations", "matchcenter"),
+  section("Le club au quotidien"),
+  item("presences", "Présences", "presences"),
+  item("sponsors", "Sponsors", "sponsors"),
+  item("calendar", "Calendrier", "calendar"),
+  section("SportVision"),
+  item("services", "Prestations", "services"),
+  item("messages", "Messages", "messages"),
+  section("Compte"),
+  item("settings", "Mon profil", "settings/profile"),
+];
+
 const CLUB_ROLE_NAV: Partial<Record<MembershipRole, NavEntry[]>> = {
   coach: NAV_CLUB_COACH,
   sports_director: NAV_CLUB_DIRECTEUR_SPORTIF,
@@ -582,7 +617,11 @@ const CLUB_ROLE_NAV: Partial<Record<MembershipRole, NavEntry[]>> = {
   // communication_manager. La finance reste fermée séparément par hasClubFinancialAccess()
   // (permissions.ts, CLUB_BUREAU_ROLES n'inclut pas external_cm — déjà correct, vérifié, non
   // modifié ici) même si un lien Factures apparaissait un jour dans ce bloc.
-  external_cm: NAV_CLUB_COMMUNICATION,
+  // 08/09/2026 — external_cm reprenait la navigation du responsable communication, heritee du
+  // chantier « CM externe » d'aout ou le CM ne faisait que produire du contenu. Depuis, le CM
+  // affilie est devenu le referent operationnel du club : il le configure, prepare son
+  // onboarding, ses equipes et son encadrement. Trois entrees ne suffisaient plus.
+  external_cm: NAV_CLUB_CM_SPORTVISION,
   secretary: NAV_CLUB_SECRETAIRE,
   treasurer: NAV_CLUB_TRESORIER,
   admin_staff: NAV_CLUB_ADMINISTRATIF,
