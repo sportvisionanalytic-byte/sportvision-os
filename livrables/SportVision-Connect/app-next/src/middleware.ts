@@ -6,5 +6,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // pdf.worker.min.mjs est exclu : c'est un fichier statique de 1,2 Mo servi à chaque import de
+  // calendrier PDF. Le faire passer par la vérification de session ajoutait un aller-retour inutile
+  // et faisait dépendre le chargement du worker de la transmission du cookie à une requête de worker.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|pdf\\.worker\\.min\\.mjs|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
