@@ -7357,8 +7357,9 @@ async function lancerCascadeFullCom(clientId){
     }
     let clubMsg='';
     if(!dejaActive){
-      const sent=await autoActiverClubPlusFullCom(clientId,c.nom);
-      clubMsg=sent?' Accès Club+ envoyé automatiquement à '+(c.email||'l\'e-mail du contact')+'.':' Accès Club+ à générer manuellement (échec de l\'envoi automatique).';
+      const lien=await autoActiverClubPlusFullCom(clientId,c.nom);
+      clubMsg=lien?' Accès Club+ envoyé automatiquement à '+(c.email||'l\'e-mail du contact')+'.':' Accès Club+ à générer manuellement (échec de l\'envoi automatique).';
+      if(lien)afficherLienActivation(c.nom,lien);
     }
     if(!c.cm_id){
       await proposerAffiliationCm(clientId,c.nom,clubMsg);
@@ -7366,6 +7367,35 @@ async function lancerCascadeFullCom(clientId){
       toast('Full Communication activée pour '+c.nom+'.'+clubMsg,clubMsg.includes('échec')?'wa':'ok');
     }
   }catch(e){}
+}
+
+/**
+ * Montre le lien d'activation tout de suite, avec de quoi le copier.
+ *
+ * L'e-mail part quand meme, mais il cesse d'etre le seul chemin : un dirigeant assis en face de
+ * vous peut ouvrir ce lien immediatement. Il doit etre connecte avec SON adresse au moment du
+ * clic — c'est le compte connecte qui devient administrateur du club, d'ou l'avertissement.
+ */
+function afficherLienActivation(nomClub,lien){
+  const exp=lien.expire?new Date(lien.expire).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'';
+  openModal('Accès Club+ — '+esc(nomClub||''),`
+    <div style="padding:12px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.25);border-radius:var(--rb)">
+      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ok);margin-bottom:8px">Lien d'activation</div>
+      <textarea readonly class="l-inp" style="height:64px;resize:vertical;padding:8px;font-size:11.5px;word-break:break-all" onclick="this.select()">${esc(lien.url)}</textarea>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn bp" onclick="copier(${escJs(JSON.stringify(lien.url))})">⎘ Copier le lien</button>
+        ${exp?`<span style="font-size:11px;color:var(--t3)">Valable jusqu'au ${esc(exp)}</span>`:''}
+      </div>
+      <div style="font-size:11.5px;margin-top:8px;color:${lien.envoye?'var(--ok)':'var(--er)'}">
+        ${lien.envoye?'✓ E-mail également envoyé à '+esc(lien.email):'⚠ L\'envoi automatique a échoué — transmettez ce lien vous-même.'}
+      </div>
+      <div style="font-size:11.5px;margin-top:10px;color:var(--t3);line-height:1.5">
+        Vous pouvez le transmettre maintenant, sans attendre l'e-mail. Le dirigeant doit être
+        connecté avec <strong>son adresse</strong> quand il l'ouvre : c'est le compte connecté qui
+        devient administrateur du club.
+      </div>
+    </div>
+    <div class="m-ft"><button class="btn bp" onclick="closeModal()">Fermer</button></div>`);
 }
 
 // Version autonome de genererLienActivationClubPlus() (5256) — celle-ci lit
@@ -7384,8 +7414,13 @@ async function autoActiverClubPlusFullCom(clientId,nom){
       body:JSON.stringify({client_id:clientId,club_nom_prefill:nom,plan:'free'})
     });
     const d=await r.json();
-    return !!(r.ok&&!d.error&&d.activation_url&&d.email_sent);
-  }catch(e){return false;}
+    if(!r.ok||d.error||!d.activation_url)return null;
+    // On RENVOIE le lien au lieu de ne garder que « l'e-mail est parti ». Le 08/09/2026, Fouka
+    // etait avec son club partenaire pour creer leur espace : l'OS avait le lien sous la main,
+    // ne l'a jamais affiche, et tout le monde a attendu dix minutes un e-mail retenu par Gmail.
+    // Un lien qu'on peut tendre tout de suite ne depend d'aucune boite mail.
+    return {url:d.activation_url,envoye:!!d.email_sent,email:d.email||'',expire:d.expires_at||''};
+  }catch(e){return null;}
 }
 
 // Suggestion de CM à l'affiliation — le moins chargé (nombre de clients
