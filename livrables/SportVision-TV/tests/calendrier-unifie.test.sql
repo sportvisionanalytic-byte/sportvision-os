@@ -191,6 +191,44 @@ begin
   update club_team_training_slots set active_from = null where id = v_slot;
   perform pg_temp.incarner(v_cm);
 
+  -- ══ 16. La saison de l'equipe borne ses seances ═══════════════════════════
+  -- Question de Fouka : pourquoi un creneau 2026-2027 se projette-t-il en juillet 2027 ? Parce que
+  -- rien ne le rattachait a une saison. Rattacher l'equipe doit suffire a le borner, sans que la
+  -- creation d'une saison ulterieure fasse revivre d'anciens creneaux.
+  declare v_saison uuid;
+  begin
+    perform set_config('role','postgres',true);
+    insert into saisons (label, date_debut, date_fin, active)
+    values ('ZZ 2026-2027', date '2026-09-01', date '2026-12-20', true) returning id into v_saison;
+    update club_teams set saison_id = v_saison where id = v_equipe;
+    perform pg_temp.incarner(v_cm);
+
+    select count(*)::integer into n from club_calendrier(v_club, date '2026-12-21', date '2026-12-31')
+    where genre='entrainement' and team_id = v_equipe;
+    if n <> 0 then e := e || ('Des seances sont produites APRES la fin de saison de l equipe : '||n)::text; end if;
+
+    select count(*)::integer into n from club_calendrier(v_club, date '2026-12-01', date '2026-12-20')
+    where genre='entrainement' and team_id = v_equipe;
+    if n = 0 then e := e || 'L equipe ne produit plus rien PENDANT sa propre saison'::text; end if;
+
+    -- L'autre equipe, sans saison, n'est pas affectee : on ne devine pas sa saison.
+    select count(*)::integer into n from club_calendrier(v_club, date '2026-12-21', date '2026-12-31')
+    where genre='entrainement' and team_id = v_autre;
+    if n = 0 then e := e || 'Une equipe SANS saison a ete bornee alors que rien ne la rattache'::text; end if;
+
+    -- La periode du creneau prime sur la saison de l'equipe.
+    perform set_config('role','postgres',true);
+    update club_team_training_slots set active_to = date '2026-12-31' where id = v_slot;
+    perform pg_temp.incarner(v_cm);
+    select count(*)::integer into n from club_calendrier(v_club, date '2026-12-21', date '2026-12-31')
+    where genre='entrainement' and team_id = v_equipe;
+    if n = 0 then e := e || 'La periode du creneau ne prime pas sur la saison de l equipe'::text; end if;
+    perform set_config('role','postgres',true);
+    update club_team_training_slots set active_to = null where id = v_slot;
+    update club_teams set saison_id = null where id = v_equipe;
+    perform pg_temp.incarner(v_cm);
+  end;
+
   perform set_config('role','postgres',true);
   if array_length(e,1) is not null then
     raise exception E'ECHECS :\n  - %', array_to_string(e, E'\n  - ');

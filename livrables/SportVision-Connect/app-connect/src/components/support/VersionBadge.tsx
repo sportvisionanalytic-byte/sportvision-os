@@ -15,8 +15,13 @@ export function VersionBadge() {
   const contexte = process.env.NEXT_PUBLIC_BUILD_CONTEXT ?? "?";
   const brut = process.env.NEXT_PUBLIC_BUILD_DATE;
 
+  // `timeZone` explicite : sans lui, toLocaleString suit le fuseau de la machine — UTC sur le
+  // serveur, Europe/Paris dans le navigateur. Le texte differait, et React jetait tout le document
+  // rendu par le serveur pour le refaire cote client, sur chaque page. Meme correctif que dans
+  // Club+ (08/09/2026), le composant est jumeau.
   const quand = brut
     ? new Date(brut).toLocaleString("fr-FR", {
+        timeZone: "Europe/Paris",
         day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
       })
     : "";

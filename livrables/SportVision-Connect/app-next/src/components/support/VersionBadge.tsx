@@ -15,8 +15,22 @@ export function VersionBadge() {
   const contexte = process.env.NEXT_PUBLIC_BUILD_CONTEXT ?? "?";
   const brut = process.env.NEXT_PUBLIC_BUILD_DATE;
 
+  // `timeZone` explicite, et c'est tout l'enjeu de ce composant (08/09/2026).
+  //
+  // Sans lui, toLocaleString suit le fuseau de la machine : UTC sur le serveur Netlify, Europe/Paris
+  // dans le navigateur. Le serveur ecrivait « 14:18 », le client « 16:18 » — et React, constatant
+  // que le texte differe, JETAIT tout le document rendu par le serveur pour le refaire cote client
+  // (« The server HTML was replaced with client content in #document »). Sur toutes les pages.
+  //
+  // C'est ce qui pouvait faire apparaitre puis disparaitre des elements pendant une fraction de
+  // seconde. Un horodatage de diagnostic ne doit pas couter le rendu serveur de l'application
+  // entiere.
+  //
+  // Europe/Paris plutot que UTC : c'est le fuseau des utilisateurs, et celui que suppose deja tout
+  // le reste du produit.
   const quand = brut
     ? new Date(brut).toLocaleString("fr-FR", {
+        timeZone: "Europe/Paris",
         day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
       })
     : "";
