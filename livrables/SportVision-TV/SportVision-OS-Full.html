@@ -11477,7 +11477,10 @@ async function loadProdMedias(){
 // (Espace joueur) le propose en Pass Photo payant aux familles de cette équipe/saison. Écriture
 // protégée côté base par la policy photo_albums_staff_all (admin/prod uniquement) — ce module ne
 // fait que refléter ce que RLS autorise déjà, jamais une confiance côté client seul.
-const PA_STATUT_LB={draft:'Brouillon',published:'Publié',archived:'Archivé'};
+// Les statuts disent ce qu'ils FONT, pas dans quel etat interne on est. « Publie » ne disait pas
+// a l'utilisateur que ses liens ne repondent pas tant que la galerie est en brouillon — ce que
+// _media_gallery_resolve applique pourtant bien (refus « non_publie »).
+const PA_STATUT_LB={draft:'Brouillon',published:'En ligne',archived:'Archivée'};
 const PA_STATUT_CLR={draft:'var(--t3)',published:'var(--ok)',archived:'var(--t3)'};
 let _photoAlbums=[];
 
@@ -11486,7 +11489,7 @@ async function loadPhotoAlbums(el){
   if(!el)return;
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,watermark_previews,cover_asset_id,clubs(nom),club_teams(name),saisons(label)&order=created_at.desc&limit=200');
+    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,watermark_previews,cover_asset_id,clubs(nom),club_teams(name),saisons(label)&order=created_at.desc&limit=200');
     if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(msgErreur(rows,'Impossible de charger les albums.'))+'</div></div>';return;}
     _photoAlbums=Array.isArray(rows)?rows:[];
     renderPhotoAlbumsList(_photoAlbums);
@@ -11496,70 +11499,113 @@ async function loadPhotoAlbums(el){
 function renderPhotoAlbumsList(albums){
   const el=document.getElementById('prod-media-real');
   if(!el)return;
-  const header=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bp bs" onclick="modalCreerAlbum()">+ Album</button></div>`;
+  const header=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bp bs" onclick="modalCreerAlbum()">+ Nouvelle galerie</button></div>`;
   if(!albums.length){
-    el.innerHTML=header+'<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📸</div><div style="font-size:13px">Aucun album créé. Créez le premier album Pass Photo.</div></div>';
+    el.innerHTML=header+'<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3);text-align:center"><div style="font-size:36px;opacity:.2">📸</div><div style="font-size:13px">Aucune galerie pour le moment.</div><div style="font-size:12px;max-width:300px">Un nom suffit pour en créer une. Le club, l\'équipe et la saison sont facultatifs.</div></div>';
     return;
   }
   el.innerHTML=header+'<div class="cd" style="padding:0;overflow:hidden">'+albums.map((a,i)=>{
     const clr=PA_STATUT_CLR[a.status]||'var(--t3)';
     const lb=PA_STATUT_LB[a.status]||a.status;
-    const clubNom=esc(a.clubs?.nom||'—');
-    const teamNom=esc(a.club_teams?.name||'—');
-    const dt=a.event_date?new Date(a.event_date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
-    return`<div style="display:flex;align-items:center;${i<albums.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer;padding:11px 14px;gap:10px" onclick="modalCreerAlbum('${a.id}')" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+    // Le contexte affiche ce qui EXISTE, sans aligner des tirets pour ce qui manque : une galerie
+    // sans club n'est pas une galerie incomplete, c'est un cas normal.
+    const contexte=[a.clubs?.nom, a.club_teams?.name, a.structure_externe, a.saisons?.label]
+      .filter(Boolean).map(esc).join(' · ');
+    const dt=a.event_date?dateFr(a.event_date):null;
+    const n=a.photo_count||0;
+    const meta=[contexte||null, dt, n?`${n} photo${n>1?'s':''}`:'aucune photo'].filter(Boolean).join(' · ');
+    // Clic sur la ligne = ouvrir la galerie (photos, offres, mise en ligne), pas la modifier :
+    // c'est ce qu'on vient y faire neuf fois sur dix.
+    return`<div style="display:flex;align-items:center;${i<albums.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer;padding:11px 14px;gap:10px" onclick="modalMediasAlbum('${a.id}')" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
       <div style="width:3px;height:40px;background:${clr};border-radius:2px;flex-shrink:0"></div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.title)}</div>
-        <div style="font-size:11px;color:var(--t3);margin-top:2px">${clubNom} · ${teamNom} · ${esc(a.saisons?.label||'—')} · ${dt} · ${a.photo_count||0} photo${(a.photo_count||0)>1?'s':''}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${meta}</div>
       </div>
-      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-        <span style="font-size:10px;font-weight:700;padding:2px 8px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
-      </div>
-      <div style="flex-shrink:0;display:flex;gap:5px">
-        <button onclick="event.stopPropagation();modalMediasAlbum('${a.id}')" aria-label="Gerer les photos de l'album" style="padding:5px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">Photos</button>
-        ${a.status==='published'
-          ?`<button onclick="event.stopPropagation();depublierAlbum('${a.id}')" aria-label="Dépublier l'album" style="padding:5px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">Dépublier</button>`
-          :`<button onclick="event.stopPropagation();publierAlbum('${a.id}')" aria-label="Publier l'album" style="padding:5px 9px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:600;cursor:pointer">Publier</button>`}
-      </div>
+      <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:2px 8px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
+      <button onclick="event.stopPropagation();galMenuLigne('${a.id}',event)" aria-label="Autres actions sur cette galerie" style="flex-shrink:0;width:32px;height:32px;background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;border-radius:var(--rp)">⋯</button>
     </div>`;
   }).join('')+'</div>';
 }
 
+// Les actions secondaires d'une galerie. Elles etaient posees en petits boutons sur chaque ligne,
+// ce qui donnait une liste illisible et melait « ouvrir » a « depublier ». Ouvrir est le geste
+// courant : il vit sur la ligne. Le reste est ici.
+function galMenuLigne(albumId,ev){
+  const a=_photoAlbums.find(x=>x.id===albumId);
+  if(!a)return;
+  const enLigne=a.status==='published';
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:3px">${esc(a.title)}</div>
+    <div style="font-size:11.5px;color:var(--t3);margin-bottom:16px">${PA_STATUT_LB[a.status]||a.status}</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn bp" onclick="closeModal();modalMediasAlbum('${a.id}')">Ouvrir la galerie</button>
+      <button class="btn bg2" onclick="closeModal();modalCreerAlbum('${a.id}')">Modifier le nom, la date, le rattachement</button>
+      ${enLigne
+        ? `<button class="btn bg2" onclick="closeModal();depublierAlbum('${a.id}')">Repasser en brouillon</button>`
+        : `<button class="btn bg2" onclick="closeModal();publierAlbum('${a.id}')">Mettre en ligne</button>`}
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn bg2 bs" onclick="closeModal()">Fermer</button>
+    </div>`);
+}
+
 function modalCreerAlbum(albumId){
+  // « Galerie », pas « Album » : c'est le mot metier. La table s'appelle toujours media_albums,
+  // l'utilisateur n'a pas a le savoir.
+  //
+  // Trois champs seulement pour commencer. Le club, l'equipe et la saison ENRICHISSENT une
+  // galerie, ils ne la conditionnent pas : SportVision photographie aussi des clubs non clients,
+  // des equipes adverses, des tournois, des academies, des joueurs seuls. Les exiger revenait a
+  // interdire de vendre a tous ceux-la. Ils sont donc passes dans un bloc replie.
   const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   const existing=albumId?_photoAlbums.find(a=>a.id===albumId):null;
+  const poles=(S.allPoles||[]);
   openModal(`
-    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">📸 ${existing?"Modifier l'album":'Créer un album'}</div>
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:3px">📸 ${existing?'Modifier la galerie':'Nouvelle galerie'}</div>
+    <div style="font-size:11.5px;color:var(--t3);margin-bottom:14px">${existing?'':'Un nom suffit pour commencer. Tout le reste peut attendre.'}</div>
     <div style="display:flex;flex-direction:column;gap:11px">
-      <div><label style="${L}">Titre de l'album *</label>
-        <input id="pa-title" type="text" class="l-inp" style="height:38px" placeholder="Match vs Brunoy FC — U18" value="${esc(existing?.title||'')}"></div>
+
+      <div><label style="${L}">Nom de la galerie *</label>
+        <input id="pa-title" type="text" class="l-inp" style="height:38px" placeholder="Tournoi U12 — Sens" value="${esc(existing?.title||'')}" autofocus></div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="${L}">Club *</label>
-          <select id="pa-club" class="l-inp" style="height:38px" onchange="_paLoadTeams(this.value)"><option value="">Chargement…</option></select></div>
-        <div><label style="${L}">Équipe *</label>
-          <select id="pa-team" class="l-inp" style="height:38px"><option value="">Choisissez d'abord un club</option></select></div>
+        <div><label style="${L}">Date</label>
+          <input id="pa-date" type="date" class="l-inp" style="height:38px" value="${esc(existing?.event_date||ymdLocal())}"></div>
+        <div><label style="${L}">Pôle</label>
+          <select id="pa-pole" class="l-inp" style="height:38px">
+            <option value="">Aucun</option>
+            ${poles.map(pl=>`<option value="${pl.id}" ${pl.id===(existing?.pole_id||S.activePoleId)?'selected':''}>${esc(pl.nom)}</option>`).join('')}
+          </select></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="${L}">Saison *</label>
-          <input id="pa-season" type="text" class="l-inp" style="height:38px" placeholder="2026-2027" value="${esc(existing?.saisons?.label||'')}"></div>
-        <div><label style="${L}">Date de l'événement</label>
-          <input id="pa-date" type="date" class="l-inp" style="height:38px" value="${esc(existing?.event_date||'')}"></div>
-      </div>
-      <div><label style="${L}">Prestation liée (référence, optionnel)</label>
-        <input id="pa-mission" type="text" class="l-inp" style="height:38px" placeholder="SPV-2026-001…"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="${L}">Preview (URL image, optionnel)</label>
-          <input id="pa-cover" type="url" class="l-inp" style="height:38px" placeholder="https://…" value="${esc(existing?.cover_preview_url||'')}"></div>
-        <div><label style="${L}">Nombre de photos</label>
-          <input id="pa-count" type="number" min="0" class="l-inp" style="height:38px" value="${existing?.photo_count||0}"></div>
-      </div>
-      <div><label style="${L}">Référence collection sécurisée (optionnel, V1)</label>
-        <input id="pa-ref" type="text" class="l-inp" style="height:38px" placeholder="Lien ou référence transmis une fois le Pass acheté" value="${esc(existing?.secure_collection_ref||'')}"></div>
+
+      <div><label style="${L}">Structure ou équipe affichée</label>
+        <input id="pa-structure" type="text" class="l-inp" style="height:38px" placeholder="FC Sens U12 — facultatif" value="${esc(existing?.structure_externe||'')}">
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">Simple affichage. Ne crée ni club, ni compte Club+, ni fiche client.</div></div>
+
+      <details id="pa-plus" style="border-top:1px solid var(--b1);padding-top:11px" ${(existing&&(existing.club_id||existing.team_id||existing.saison_id))?'open':''}>
+        <summary style="cursor:pointer;font-size:12px;color:var(--t2);font-weight:600;list-style:revert">Rattacher à SportVision <span style="font-weight:400;color:var(--t3)">— facultatif</span></summary>
+        <div style="display:flex;flex-direction:column;gap:11px;margin-top:11px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label style="${L}">Club SportVision</label>
+              <select id="pa-club" class="l-inp" style="height:38px" onchange="_paLoadTeams(this.value)"><option value="">Aucun</option></select></div>
+            <div><label style="${L}">Équipe</label>
+              <select id="pa-team" class="l-inp" style="height:38px"><option value="">Aucune</option></select></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label style="${L}">Saison</label>
+              <input id="pa-season" type="text" class="l-inp" style="height:38px" placeholder="2026-2027" value="${esc(existing?.saisons?.label||'')}"></div>
+            <div><label style="${L}">Prestation liée</label>
+              <input id="pa-mission" type="text" class="l-inp" style="height:38px" placeholder="SPV-2026-001…"></div>
+          </div>
+          <div style="font-size:11px;color:var(--t3)">Nécessaire uniquement pour confier la galerie au club dans Club+.</div>
+        </div>
+      </details>
+
       <div id="pa-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="btn bg2" onclick="closeModal()">Annuler</button>
-        <button class="btn bp" onclick="sauvegarderAlbum('${albumId||''}')">${existing?'Enregistrer':'Créer'}</button>
+        <button class="btn bp" onclick="sauvegarderAlbum('${albumId||''}')">${existing?'Enregistrer':'Créer la galerie'}</button>
       </div>
     </div>`);
   _paLoadClubs(existing?.club_id||'',existing?.team_id||'');
@@ -11588,36 +11634,42 @@ async function _paLoadTeams(clubId,selectedTeamId){
 
 async function sauvegarderAlbum(albumId){
   const err=document.getElementById('pa-err');
-  const title=document.getElementById('pa-title')?.value?.trim();
-  const clubId=document.getElementById('pa-club')?.value;
-  const teamId=document.getElementById('pa-team')?.value;
-  const season=document.getElementById('pa-season')?.value?.trim();
-  const missionRef=document.getElementById('pa-mission')?.value?.trim();
-  if(!title){err.textContent='Titre obligatoire.';return;}
-  if(!clubId||!teamId){err.textContent='Club et équipe obligatoires.';return;}
-  if(!season){err.textContent='Saison obligatoire.';return;}
+  const v=id=>document.getElementById(id)?.value?.trim()||'';
+  const title=v('pa-title');
+  // SEUL le nom est obligatoire. Exiger club, equipe et saison revenait a interdire de vendre a
+  // un club non client, une equipe adverse, un tournoi ou un joueur seul. La base ne les exige
+  // plus non plus depuis la migration v31.
+  if(!title){err.textContent='Donnez un nom à cette galerie.';return;}
   err.textContent='Enregistrement…';
   try{
+    const clubId=v('pa-club')||null;
+    const teamId=v('pa-team')||null;
+    const season=v('pa-season');
+    const missionRef=v('pa-mission');
+
     let missionId=null;
     if(missionRef){
       const pres=await sbFetch('prestations?select=id&reference=ilike.%25'+encodeURIComponent(missionRef)+'%25&limit=1');
       missionId=pres?.[0]?.id||null;
     }
-    // media_albums.saison_id est un uuid (FK saisons), pas le texte libre saisi ici — corrigé
-    // le 04/09 (audit transversal, ce module interrogeait encore l'ancienne table photo_albums/
-    // season_id texte, cassé depuis le passage au moteur média générique du 02/09). Même RPC déjà
-    // utilisée ailleurs pour ce rapprochement texte→uuid.
-    const saisonRpc=await sbFetch('rpc/get_or_create_saison',{method:'POST',body:{p_label:season}});
-    if(sbErr(saisonRpc)){err.textContent='Erreur : '+(msgErreur(saisonRpc,'saison invalide.'));return;}
+
+    // La saison n'est resolue que si elle est saisie : media_albums.saison_id est un uuid (FK
+    // saisons), jamais le texte libre tape ici.
+    let saisonId=null;
+    if(season){
+      const saisonRpc=await sbFetch('rpc/get_or_create_saison',{method:'POST',body:{p_label:season}});
+      if(sbErr(saisonRpc)){err.textContent='Erreur : '+(msgErreur(saisonRpc,'saison invalide.'));return;}
+      saisonId=saisonRpc;
+    }
+
     const body={
       title,
       club_id:clubId,
       team_id:teamId,
-      saison_id:saisonRpc,
-      event_date:document.getElementById('pa-date')?.value||null,
-      cover_preview_url:document.getElementById('pa-cover')?.value?.trim()||null,
-      photo_count:parseInt(document.getElementById('pa-count')?.value||'0',10)||0,
-      secure_collection_ref:document.getElementById('pa-ref')?.value?.trim()||null,
+      saison_id:saisonId,
+      pole_id:v('pa-pole')||null,
+      structure_externe:v('pa-structure')||null,
+      event_date:v('pa-date')||null,
       mission_id:missionId,
     };
     let r;
@@ -11628,16 +11680,23 @@ async function sauvegarderAlbum(albumId){
       r=await sbFetch('media_albums',{method:'POST',body});
     }
     if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Enregistrement impossible.'));return;}
+
+    const cree=Array.isArray(r)?r[0]:null;
     closeModal();
-    toast(albumId?'Album mis à jour':'Album créé — encore en brouillon','ok');
-    loadPhotoAlbums();
+    await loadPhotoAlbums();
+    if(albumId){
+      toast('Galerie mise à jour.','ok');
+    }else if(cree&&cree.id){
+      // On n'renvoie pas l'utilisateur chercher sa ligne dans une liste : il vient de creer une
+      // galerie pour y mettre des photos, on l'y emmene.
+      toast('Galerie créée. Ajoutez vos photos.','ok');
+      modalMediasAlbum(cree.id);
+    }else{
+      toast('Galerie créée.','ok');
+    }
   }catch(e){err.textContent="Erreur lors de l'enregistrement.";}
 }
 
-// 07/09/2026 : ces deux fonctions ciblaient `photo_albums`, table renommee en `media_albums` lors
-// du passage au moteur media generique du 02/09 et qui n'existe plus. Verifie en base : aucun
-// album n'etait donc publiable ni depubliable depuis l'OS, le bouton renvoyait une erreur
-// PostgREST. Trouve en branchant l'upload, puisque publier un album est l'etape juste apres.
 async function publierAlbum(id){
   const r=await sbFetch('media_albums?id=eq.'+id,{method:'PATCH',body:{status:'published',published_at:new Date().toISOString()}});
   if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Publication impossible.')),'error');return;}
