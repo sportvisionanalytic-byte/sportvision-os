@@ -49,6 +49,9 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   const eligibleSpaces = spaces.filter((s) => s.clickable && (s.status === undefined || s.status === "actif"));
+  // Tous les espaces sont des clubs geres pour SportVision : c'est le cas d'un CM affilie, qui
+  // n'appartient a aucune organisation. On lui parle alors de SES clubs, pas d'« espaces ».
+  const toutDelegue = eligibleSpaces.length > 0 && eligibleSpaces.every((s) => s.kind === "delegated_club");
   const invitedSpaces = spaces.filter((s) => s.kind === "organization" && s.status === "invitation");
   const suspendedSpaces = spaces.filter((s) => s.kind === "organization" && s.status === "suspendu");
   // Reste du panneau "sélecteur" existant : les espaces qui ne sont ni éligibles, ni une
@@ -211,9 +214,18 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
 
         {hasChoice && (
           <>
-            <h1 className="mt-7 text-[22px] font-extrabold tracking-tight">Choisissez un espace</h1>
+            {/* 08/09/2026 — Un Community Manager SportVision n'appartient à aucun club : ses
+                espaces sont tous des clubs qu'il gère pour le compte de SportVision. « Choisissez
+                un espace » ne lui dit rien de son métier ; « Mes clubs SportVision » lui dit
+                exactement où il arrive. Le reste du composant est partagé : un président qui a
+                plusieurs espaces voit le libellé d'origine. */}
+            <h1 className="mt-7 text-[22px] font-extrabold tracking-tight">
+              {toutDelegue ? "Mes clubs SportVision" : "Choisissez un espace"}
+            </h1>
             <p className="mt-2 text-[14px] leading-relaxed text-text-soft">
-              Plusieurs espaces sont disponibles sur votre compte. Sélectionnez celui que vous voulez ouvrir.
+              {toutDelegue
+                ? `Vous gérez ${eligibleSpaces.length} club${eligibleSpaces.length > 1 ? "s" : ""} pour SportVision. Ouvrez celui sur lequel vous voulez travailler.`
+                : "Plusieurs espaces sont disponibles sur votre compte. Sélectionnez celui que vous voulez ouvrir."}
             </p>
           </>
         )}

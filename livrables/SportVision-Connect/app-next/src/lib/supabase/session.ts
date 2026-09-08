@@ -127,35 +127,40 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
   // RLS de cm_agency_club_access (is_org_member(cm_agency_org_id) or is_org_member(club_id) or
   // is_staff()) fait déjà tout le travail de filtrage ici : cette requête ne peut renvoyer que les
   // délégations des agences dont l'utilisateur est réellement membre actif.
-  const cmAgencyOrgIds = ((orgRes.data ?? []) as unknown as MembershipRow[])
-    .filter((row) => row.organizations?.organization_type === "cm_agency" && row.status === "actif")
-    .map((row) => row.organization_id);
-
   const delegatedClubIds = new Set<string>();
 
-  if (cmAgencyOrgIds.length > 0) {
-    const { data: delegatedRows } = await supabase
-      .from("cm_agency_club_access")
-      .select("id, club_id, expires_at, clubs(nom)")
-      .in("cm_agency_org_id", cmAgencyOrgIds);
+  // 08/09/2026 — UNE SEULE AUTORITÉ. Trois mécanismes répondaient jusqu'ici à « quels clubs ce CM
+  // gère-t-il » : la délégation d'agence (cm_agency_club_access), le CM responsable
+  // (memberships.cm_super_access) et, depuis la phase 1, l'affectation nominative
+  // (club_cm_affectations). Trois listes indépendantes pour la même question finissent toujours
+  // par diverger, et la première oubliée est la fuite.
+  //
+  // cm_espaces_clubs() les réunit côté base, exactement comme cm_clubs_autorises() le fait pour
+  // les policies. Club+ et l'OS posent donc la même question au même endroit, et cet écran n'a
+  // plus à connaître les trois tables.
+  const { data: espacesCm } = await supabase.rpc("cm_espaces_clubs");
 
-    const today = new Date().toISOString().slice(0, 10);
-    for (const row of (delegatedRows ?? []) as unknown as { id: string; club_id: string; expires_at: string | null; clubs: { nom: string } | null }[]) {
-      // Une délégation expirée n'apparaît même pas comme espace cliquable — pas de distinction
-      // "visible mais grisé" ici, contrairement à un statut invitation/suspendu (getSpaces ne
-      // filtre normalement rien, mais une délégation expirée n'a stricto sensu jamais existé du
-      // point de vue de l'utilisateur, ce n'est pas un état intermédiaire à afficher).
-      if (row.expires_at && row.expires_at < today) continue;
-      spaces.push({
-        kind: "delegated_club",
-        id: row.club_id,
-        name: row.clubs?.nom ?? "Club",
-        subtitle: "Accès délégué (agence CM)",
-        clickable: true,
-        organizationType: "club",
-      });
-      delegatedClubIds.add(row.club_id);
-    }
+  const ORIGINE_LB: Record<string, string> = {
+    affectation: "Gestion SportVision",
+    delegation_agence: "Accès délégué (agence CM)",
+    cm_responsable: "Accès total (CM SportVision)",
+  };
+
+  for (const row of (espacesCm ?? []) as {
+    club_id: string; nom: string; origine: string; role_affectation: string | null;
+  }[]) {
+    if (delegatedClubIds.has(row.club_id)) continue;
+    spaces.push({
+      kind: "delegated_club",
+      id: row.club_id,
+      name: row.nom ?? "Club",
+      subtitle: row.role_affectation
+        ? `${ORIGINE_LB[row.origine] ?? "Gestion SportVision"} · CM ${row.role_affectation}`
+        : (ORIGINE_LB[row.origine] ?? "Gestion SportVision"),
+      clickable: true,
+      organizationType: "club",
+    });
+    delegatedClubIds.add(row.club_id);
   }
 
   // "CM responsable" (22/08/2026, demande Fouka) : un membre actif d'une organisation cm_agency
@@ -163,6 +168,10 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
   // cm_agency_club_access — voir migration-cm-agency-super-access-staff.sql et le même bloc dans
   // is_club_member/is_club_admin/is_team_educateur (RLS). Dédoublonné avec les délégations
   // explicites ci-dessus (un club peut avoir les deux, la délégation explicite garde son libellé).
+  // Le « CM responsable » (cm_super_access) est désormais couvert par cm_espaces_clubs() ci-dessus,
+  // qui en tient compte côté base. On garde ce bloc uniquement pour les clubs qu'elle n'aurait pas
+  // renvoyés — elle ne répond qu'aux profils de rôle `cm`, or un super-accès peut exister sans ce
+  // rôle. Aucun chemin d'autorisation existant n'est donc retiré.
   const hasSuperAccess = ((orgRes.data ?? []) as unknown as MembershipRow[]).some(
     (row) => row.organizations?.organization_type === "cm_agency" && row.status === "actif" && row.cm_super_access,
   );
@@ -395,7 +404,22 @@ export async function buildDelegatedClubActiveContext(
     organizations: { organization_type: string } | null;
   }[];
   const myOrgIds = myMemberships.map((m) => m.organization_id);
-  if (myOrgIds.length === 0) return null;
+
+  // 08/09/2026 — Un CM affecté nominativement (club_cm_affectations) n'a AUCUNE membership : il
+  // n'appartient ni au club, ni à une agence. Exiger une organisation lui fermait donc la porte
+  // de son propre club dans Club+. L'affectation est vérifiée EN DIRECT ici, jamais depuis le
+  // Space déjà résolu — désactiver une affectation doit fermer l'accès à la requête suivante.
+  const { data: affectation } = await supabase
+    .from("club_cm_affectations")
+    .select("id, role")
+    .eq("club_id", space.id)
+    .eq("cm_id", authUser.id)
+    .eq("actif", true)
+    .lte("date_debut", new Date().toISOString().slice(0, 10))
+    .or(`date_fin.is.null,date_fin.gte.${new Date().toISOString().slice(0, 10)}`)
+    .maybeSingle();
+
+  if (myOrgIds.length === 0 && !affectation) return null;
 
   // "CM responsable" (22/08/2026) : un accès total (cm_super_access sur une organisation
   // cm_agency) dispense de la ligne cm_agency_club_access par club — même garde-fou que getSpaces()
@@ -405,7 +429,10 @@ export async function buildDelegatedClubActiveContext(
   // Identifiant stable pour membership.id ci-dessous : celui de la ligne cm_agency_club_access
   // réelle quand elle existe, un tag fixe "super" sinon (accès total, aucune ligne par club).
   let delegationMembershipId = "super";
-  if (!hasSuperAccess) {
+  if (affectation) {
+    // L'affectation nominative fait foi : elle porte son propre identifiant stable.
+    delegationMembershipId = affectation.id;
+  } else if (!hasSuperAccess) {
     const { data: delegation } = await supabase
       .from("cm_agency_club_access")
       .select("id, expires_at")

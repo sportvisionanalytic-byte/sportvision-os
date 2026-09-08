@@ -47,6 +47,12 @@ export function OrganizationSwitcher() {
   const clientSpaces = spaces.filter(isExternalMandate);
   const ownSpaces = spaces.filter((s) => !isExternalMandate(s));
 
+  // L'espace ouvert est-il un club gere pour SportVision plutot qu'une organisation dont on est
+  // membre ? On le lit sur le Space actif, pas sur le role : un CM n'a pas de role dans le club.
+  const estGestionSportVision = spaces.some(
+    (sp) => sp.kind === "delegated_club" && sp.id === ctx.organization.id,
+  );
+
   // Aucun clic-extérieur ni touche Échap ne fermait le menu : il restait ouvert par-dessus la
   // nav tant qu'on ne cliquait pas explicitement sur une de ses propres options. Trouvé en
   // testant le sélecteur en changeant plusieurs fois d'espace d'affilée.
@@ -77,9 +83,21 @@ export function OrganizationSwitcher() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] font-bold text-white">{ctx.organization.name}</span>
-          <span className="block truncate text-[11px] font-semibold text-[#7E8FA5]">
-            {ROLE_LABELS[ctx.membership.role] ?? ctx.membership.role}
-          </span>
+          {/* 08/09/2026 — Un CM SportVision doit voir en permanence qu'il travaille POUR le club,
+              pas comme le club. Ce n'est pas une simulation du compte du président : il reste
+              connecté avec son propre compte, ses propres droits et son propre historique. Le
+              badge le rappelle a chaque ecran, discretement mais sans ambiguite. */}
+          {estGestionSportVision ? (
+            <span className="mt-0.5 flex items-center gap-1.5">
+              <span className="inline-block rounded-[4px] bg-brand-violet/20 px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-[.06em] text-brand-violet">
+                Gestion SportVision
+              </span>
+            </span>
+          ) : (
+            <span className="block truncate text-[11px] font-semibold text-[#7E8FA5]">
+              {ROLE_LABELS[ctx.membership.role] ?? ctx.membership.role}
+            </span>
+          )}
         </span>
         <ChevronsUpDown className="h-3.5 w-3.5 flex-none text-[#7E8FA5]" aria-hidden />
       </button>

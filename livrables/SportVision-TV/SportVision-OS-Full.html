@@ -3706,7 +3706,11 @@ async function loadCmMesClubs(){
         <div style="font-size:12px;color:${clr};font-weight:600">${st}</div>
         <div style="font-size:11.5px;color:var(--t3)">${compte}</div>
         ${act?`<div style="font-size:11px;color:var(--t3)">Dernière activité : ${esc(act)}</div>`:''}
-        <button class="btn bg2 bs" style="min-height:40px;margin-top:2px" onclick="cmOuvrirClub('${c.club_id}')">Ouvrir le club</button>
+        <div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap">
+          <button class="btn bg2 bs" style="flex:1;min-width:120px;min-height:40px" onclick="cmOuvrirClub('${c.club_id}')">Voir l’état</button>
+          <a class="btn bp bs" style="flex:1;min-width:130px;min-height:40px;display:inline-flex;align-items:center;justify-content:center"
+             href="${GAL_CLUBPLUS_URL}/clubplus/dashboard" target="_blank" rel="noopener">Gérer dans Club+</a>
+        </div>
       </div>`;
     }).join('')}
     </div>`;
@@ -3752,11 +3756,13 @@ async function cmOuvrirClub(clubId){
     </div>
 
     <div style="font-size:11.5px;color:var(--t3);line-height:1.55;border-top:1px solid var(--b1);padding-top:12px">
-      La configuration du club — équipes, coachs, joueurs et invitations — arrive prochainement dans cet écran.
-      Pour l’instant, vous consultez l’état de la mise en place.
+      La configuration du club — informations, équipes, coachs et invitations — se fait dans Club+,
+      avec ce même compte. L’OS reste votre environnement de travail SportVision.
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
       <button class="btn bg2" style="min-height:40px" onclick="closeModal()">Fermer</button>
+      <a class="btn bp" style="min-height:40px;display:inline-flex;align-items:center"
+         href="${GAL_CLUBPLUS_URL}/clubplus/dashboard" target="_blank" rel="noopener">Gérer dans Club+</a>
     </div>`);
 }
 
@@ -12409,6 +12415,10 @@ async function _galChargerAssets(){
 // securite : un slug se devine, pas 24 caracteres aleatoires. C'est ce lien, et lui seul, qui
 // ouvre la galerie a quelqu'un sans compte — `access_mode` n'est pas touche.
 const GAL_CONNECT_URL='https://connect.sportvision-an.fr';
+// Club+ est desormais le lieu de gestion quotidienne d'un club pour un CM ; l'OS reste son
+// environnement de travail SportVision. Le CM s'y connecte avec LE MEME compte : aucun second
+// utilisateur, aucun mot de passe Club+ distinct, aucune impersonation du president.
+const GAL_CLUBPLUS_URL='https://clubplus.sportvision-an.fr';
 
 // Le lien « principal » d'une galerie : le premier cree. Le cas courant n'a que celui-la, et
 // l'utilisateur n'a jamais a savoir qu'un « lien commercial » existe. Les liens supplementaires
