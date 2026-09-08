@@ -14387,7 +14387,11 @@ function calcGrade(xp){
   const idx=GRADES_DEF.indexOf(grade);
   const next=GRADES_DEF[idx+1]||null;
   const pct=next?Math.min(100,Math.round((xp-grade.xp)/(next.xp-grade.xp)*100)):100;
-  return{grade,next,pct};
+  // `rang` est le numero du grade (0 = Debutant … 5 = Maitre), celui que stocke profiles.grade.
+  // Il est renvoye ici parce que les entrees de GRADES_DEF n'ont pas de champ `id` : ces
+  // identifiants vivent dans SV_GRADES, une autre liste. Le code de promotion lisait pourtant
+  // `grade.id`, donc toujours undefined — voir _checkGradePromotion.
+  return{grade,rang:idx,next,pct};
 }
 
 // Statuts de prestation à partir desquels une mission acceptée est considérée réalisée
@@ -14443,12 +14447,17 @@ async function _checkGradePromotion(uid,xp){
     const prof=pr?.[0];
     if(!prof||prof.role!=='photo')return;
     const gradeActuel=prof.grade||0;
-    const {grade:gradeAtteint}=calcGrade(xp);
-    if(gradeAtteint.id<=gradeActuel)return;
+    // `rang` et non `.id` : les entrees de GRADES_DEF n'ont pas d'id, si bien que la comparaison
+    // portait sur undefined. Elle etait donc toujours fausse (undefined <= 0 vaut false) et une
+    // recommandation etait creee meme sans promotion a la cle, avec un grade propose vide.
+    // Consequence : valider une de ces recommandations ecrivait NULL dans profiles.grade et
+    // effacait le grade de la personne. Constate sur trois recommandations reelles en attente.
+    const {rang:rangAtteint}=calcGrade(xp);
+    if(!Number.isInteger(rangAtteint)||rangAtteint<=gradeActuel)return;
     const existing=await sbFetch('grade_recommendations?select=id&collaborateur_id=eq.'+uid+'&statut=eq.en_attente&limit=1').catch(()=>[]);
     if(Array.isArray(existing)&&existing.length)return;
     await sbFetch('grade_recommendations',{method:'POST',body:{
-      collaborateur_id:uid,grade_actuel:gradeActuel,grade_propose:gradeAtteint.id,
+      collaborateur_id:uid,grade_actuel:gradeActuel,grade_propose:rangAtteint,
       statut:'en_attente',commentaire:'Proposition automatique — XP requis atteint ('+xp+' XP).',
     }}).catch(()=>{});
   }catch(e){}
@@ -35260,9 +35269,31 @@ async function centreValiderGrade(recoId,decision,btn){
     if(sbErr(rReco)){toast('Erreur : '+(msgErreur(rReco,'mise à jour impossible.')),'er');if(btn)btn.disabled=false;return;}
     if(decision==='valide'){
       const {collaborateur_id,grade_propose}=reco[0];
+      // Une recommandation sans grade propose ne doit RIEN ecrire : ce PATCH mettrait NULL dans
+      // profiles.grade et effacerait le grade existant. Trois recommandations dans ce cas ont ete
+      // trouvees en production le 08/09 (cf. _checkGradePromotion).
+      if(grade_propose===null||grade_propose===undefined){
+        toast('Cette recommandation n\'indique aucun grade à attribuer. Elle ne peut pas être validée en l\'état.','wa');
+        if(btn)btn.disabled=false;
+        return;
+      }
       const rProf=await sbFetch('profiles?id=eq.'+collaborateur_id,{method:'PATCH',body:{grade:grade_propose,grade_valide_at:new Date().toISOString(),grade_valide_par:uid}});
       if(sbErr(rProf)){toast('Erreur : '+(msgErreur(rProf,'attribution du grade impossible.')),'er');if(btn)btn.disabled=false;return;}
-      toast('Grade validé et attribué.','ok');
+      // Prevenir la personne promue. Jusqu'ici, seul l'administrateur qui cliquait voyait
+      // quelque chose : le collaborateur decouvrait son grade par hasard en ouvrant son espace.
+      // L'adresse et le libelle du grade sont resolus par la fonction serveur, pas envoyes d'ici :
+      // personne ne peut adresser une promotion a une adresse de son choix en modifiant l'appel.
+      const rMail=await sbFetch('rpc/notifier_grade_valide',{method:'POST',body:{
+        p_collaborateur_id:collaborateur_id,p_grade:grade_propose,
+      }}).catch(()=>null);
+      if(sbErr(rMail)){
+        // Le grade est attribue : c'est l'essentiel, et on ne le defait pas pour un e-mail.
+        toast('Grade validé et attribué, mais l\'e-mail de félicitations n\'a pas pu partir : '+(msgErreur(rMail,'envoi impossible.')),'wa');
+      }else if(rMail===false){
+        toast('Grade validé et attribué. Aucune adresse e-mail connue pour cette personne, elle n\'a donc pas été prévenue.','wa');
+      }else{
+        toast('Grade validé, attribué, et félicitations envoyées.','ok');
+      }
     }else{toast('Recommandation refusée.','ok');}
     if(S.view==='centre')await loadCentreSection('grades');
   }catch(e){toast('Erreur.','er');if(btn)btn.disabled=false;}
