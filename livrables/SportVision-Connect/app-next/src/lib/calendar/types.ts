@@ -16,7 +16,7 @@
 // alias de chemin de tsconfig. Le reste de l'app continue d'importer ce dossier via `@/`.
 
 /** Miroir de club_matches_provider_check / club_calendar_sources_provider_check. */
-export type ProviderId = "MANUAL" | "CSV" | "ICS" | "FOOTCLUBS_XLSX" | "FFF" | "OTHER";
+export type ProviderId = "MANUAL" | "CSV" | "ICS" | "FOOTCLUBS_XLSX" | "PDF" | "FFF" | "OTHER";
 
 /** Miroir de club_matches_sport_status_check. Statut SPORTIF du match, distinct de
  * `club_matches.status` qui décrit l'avancement de la PRODUCTION de contenu (a_venir /

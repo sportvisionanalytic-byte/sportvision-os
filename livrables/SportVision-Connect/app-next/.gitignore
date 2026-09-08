@@ -6,3 +6,4 @@
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+public/pdf.worker.min.mjs

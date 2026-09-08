@@ -99,6 +99,9 @@ export function ImportMatchesModal({
   onImported: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Un PDF coûte cher à lire : on l'extrait une fois au dépôt, et toutes les relectures
+  // (changement de colonnes, réessai) repartent de ces lignes-là.
+  const lignesPdfRef = useRef<string[][] | null>(null);
   useModalA11y(containerRef, onClose);
 
   const [step, setStep] = useState<Step>("source");
@@ -217,7 +220,10 @@ export function ImportMatchesModal({
         fileName: source.name,
         text: source.text ?? undefined,
         bytes: source.bytes ?? undefined,
-        options,
+        options:
+          target.id === "PDF" && lignesPdfRef.current
+            ? { ...(options ?? {}), lignes: lignesPdfRef.current }
+            : options,
         teams,
       });
       setParsed(parseResult);
@@ -232,11 +238,12 @@ export function ImportMatchesModal({
       setBusy(true);
       try {
         const bytes = await file.arrayBuffer();
-        const isProbablyText = !file.name.toLowerCase().endsWith(".xlsx");
+        const nomBas = file.name.toLowerCase();
+        const isProbablyText = !nomBas.endsWith(".xlsx") && !nomBas.endsWith(".pdf");
         const text = isProbablyText ? new TextDecoder("utf-8").decode(bytes) : "";
         const found = detectProvider(file.name, text.slice(0, 1024));
         if (!found) {
-          setFatalError("Format non reconnu. Formats acceptés : .csv, .ics, .xlsx.");
+          setFatalError("Format non reconnu. Formats acceptés : .pdf, .csv, .ics, .xlsx.");
           return;
         }
 
@@ -253,12 +260,27 @@ export function ImportMatchesModal({
         setLayout(null);
         setMapping(null);
         setUrlUsed(null);
+        lignesPdfRef.current = null;
+
+        // Un PDF n'est pas un tableau : c'est du texte posé à des coordonnées. On le reconstruit
+        // en lignes et colonnes ici, une seule fois, avant que le moteur de détection habituel
+        // s'en occupe comme d'un tableur.
+        if (found.id === "PDF") {
+          const { extraireElementsTexte } = await import("@/lib/pdf/extraire-texte");
+          const { elementsVersLignes } = await import("@/lib/calendar/pdf-lignes");
+          lignesPdfRef.current = elementsVersLignes(await extraireElementsTexte(bytes));
+        }
 
         // .xlsx : on inspecte pour pouvoir MONTRER quelles colonnes ont été reconnues, puis on
         // parse avec ce qui a été détecté. L'écran de mapping n'apparaît que si ça échoue.
         let detectedMapping: TabularMapping | undefined;
         if (found.inspect) {
-          const found_inspection = await found.inspect({ fileName: file.name, bytes, teams });
+          const found_inspection = await found.inspect({
+            fileName: file.name,
+            bytes,
+            teams,
+            options: lignesPdfRef.current ? { lignes: lignesPdfRef.current } : undefined,
+          });
           const detection = detectXlsxLayout(found_inspection, teams);
           setInspection(found_inspection);
           setLayout(detection.layout);
@@ -506,7 +528,7 @@ export function ImportMatchesModal({
             <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong px-6 py-8 text-center hover:border-brand-blue-pale">
               <Upload className="h-5 w-5 text-text-faint" aria-hidden />
               <span className="text-[13px] font-bold text-text">
-                {busy ? "Lecture du fichier…" : "Déposer un fichier .ics, .csv ou .xlsx"}
+                {busy ? "Lecture du fichier…" : "Déposer un fichier .pdf, .ics, .csv ou .xlsx"}
               </span>
               <span className="text-[11.5px] text-text-faint">
                 On reconnaît les colonnes tout seuls et on vous montre ce qui va changer avant d&apos;écrire.

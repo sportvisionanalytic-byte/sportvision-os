@@ -5,6 +5,9 @@
 //   ICS             — prêt
 //   FOOTCLUBS_XLSX  — lecture technique prête, mapping métier à faire quand un vrai export Footclubs
 //                     sera fourni (isReady = false, l'UI le signale)
+//   PDF             — le format le plus diffusé par les fédérations. Reconstruit lignes et colonnes
+//                     à partir des positions du texte, puis passe au même moteur de détection que
+//                     le CSV et le tableur (isReady = false : une mise en page n'est pas une table)
 //   FFF             — inexistant. L'audit du 04/09/2026 a conclu qu'aucune API FFF n'est ouverte aux
 //                     tiers (api-dofa non documentée, doc retirée, accès durci après la cyberattaque
 //                     de mars 2024). Aucun stub n'est créé ici : un provider vide donnerait
@@ -12,10 +15,11 @@
 
 import { csvProvider } from "./csv.ts";
 import { icsProvider } from "./ics.ts";
+import { pdfProvider } from "./pdf.ts";
 import { xlsxProvider } from "./xlsx.ts";
 import type { CalendarProvider, ProviderId } from "../types.ts";
 
-export const CALENDAR_PROVIDERS: CalendarProvider[] = [csvProvider, icsProvider, xlsxProvider];
+export const CALENDAR_PROVIDERS: CalendarProvider[] = [csvProvider, icsProvider, xlsxProvider, pdfProvider];
 
 export function getProvider(id: ProviderId): CalendarProvider | null {
   return CALENDAR_PROVIDERS.find((p) => p.id === id) ?? null;
@@ -34,4 +38,4 @@ export function detectProvider(fileName: string, head: string): CalendarProvider
   return CALENDAR_PROVIDERS.find((p) => p.detect(fileName, head)) ?? null;
 }
 
-export { csvProvider, icsProvider, xlsxProvider };
+export { csvProvider, icsProvider, pdfProvider, xlsxProvider };

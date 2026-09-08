@@ -18,6 +18,8 @@ import test from "node:test";
 import { parseCsvSource } from "../providers/csv.ts";
 import { parseIcsSource } from "../providers/ics.ts";
 import { xlsxProvider, detectXlsxLayout } from "../providers/xlsx.ts";
+import { pdfProvider } from "../providers/pdf.ts";
+import { elementsVersLignes, type ElementTexte } from "../pdf-lignes.ts";
 import { detectProvider } from "../providers/index.ts";
 import { buildImportPreview, type ClubTeamRef, type ExistingMatch, type TeamSourceMapping } from "../diff.ts";
 import { fallbackIdentityKey, externalIdentityKey } from "../identity.ts";
@@ -756,4 +758,146 @@ test("cas 18 — les parseurs historiques restent exportés et fonctionnels", as
   assert.equal(rows[0]!.date, "2026-09-12");
   assert.equal(rows[0]!.suggestedOpponent, "AS Rivage");
   assert.equal(legacy.parseMatchesCsv(CSV_BASE).length, 2);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF — reconstruire un tableau à partir de fragments positionnés (08/09/2026)
+//
+// Le PDF est le format le plus diffusé par les fédérations, et c'était le seul qu'on refusait.
+// Le risque propre à ce format n'est pas de rater une ligne — ça se voit — mais de décaler une
+// valeur d'une colonne, ce qui ne se voit pas. Ces tests portent d'abord là-dessus.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Fabrique des fragments comme pdf.js les rend : origine en bas, une ligne par rangée. */
+function fragmentsPdf(
+  rangees: { y: number; cellules: { x: number; texte: string }[] }[],
+  hauteur = 10,
+): ElementTexte[] {
+  return rangees.flatMap((r) =>
+    r.cellules.map((c) => ({
+      texte: c.texte,
+      x: c.x,
+      y: r.y,
+      largeur: c.texte.length * hauteur * 0.5,
+      hauteur,
+      page: 1,
+    })),
+  );
+}
+
+const COLONNES_X = { date: 50, heure: 130, equipe: 190, adversaire: 330 };
+
+function calendrierPdf(): ElementTexte[] {
+  return fragmentsPdf([
+    { y: 700, cellules: [
+      { x: COLONNES_X.date, texte: "Date" }, { x: COLONNES_X.heure, texte: "Heure" },
+      { x: COLONNES_X.equipe, texte: "Equipe" }, { x: COLONNES_X.adversaire, texte: "Adversaire" }] },
+    { y: 680, cellules: [
+      { x: COLONNES_X.date, texte: "14/09/2026" }, { x: COLONNES_X.heure, texte: "15:00" },
+      { x: COLONNES_X.equipe, texte: "U18 D2" }, { x: COLONNES_X.adversaire, texte: "FC Sens" }] },
+    { y: 660, cellules: [
+      { x: COLONNES_X.date, texte: "21/09/2026" }, { x: COLONNES_X.heure, texte: "10:30" },
+      { x: COLONNES_X.equipe, texte: "U16 D3" }, { x: COLONNES_X.adversaire, texte: "AS Montereau" }] },
+    { y: 640, cellules: [
+      { x: COLONNES_X.date, texte: "28/09/2026" }, { x: COLONNES_X.heure, texte: "14:00" },
+      { x: COLONNES_X.equipe, texte: "U18 D2" }, { x: COLONNES_X.adversaire, texte: "US Bray" }] },
+  ]);
+}
+
+test("PDF : les fragments positionnés redeviennent des lignes et des colonnes", () => {
+  const lignes = elementsVersLignes(calendrierPdf());
+  assert.equal(lignes.length, 4);
+  assert.deepEqual(lignes[0], ["Date", "Heure", "Equipe", "Adversaire"]);
+  assert.deepEqual(lignes[1], ["14/09/2026", "15:00", "U18 D2", "FC Sens"]);
+  assert.deepEqual(lignes[3], ["28/09/2026", "14:00", "U18 D2", "US Bray"]);
+});
+
+test("PDF : une cellule vide ne décale pas les suivantes", () => {
+  // Le cas qui casse un découpage naïf : sans heure, « U18 D2 » remonterait dans la colonne heure
+  // et l'adversaire dans la colonne équipe. Tout le calendrier serait faux, sans que ça se voie.
+  const avecTrou = fragmentsPdf([
+    { y: 700, cellules: [
+      { x: COLONNES_X.date, texte: "Date" }, { x: COLONNES_X.heure, texte: "Heure" },
+      { x: COLONNES_X.equipe, texte: "Equipe" }, { x: COLONNES_X.adversaire, texte: "Adversaire" }] },
+    { y: 680, cellules: [
+      { x: COLONNES_X.date, texte: "14/09/2026" }, { x: COLONNES_X.heure, texte: "15:00" },
+      { x: COLONNES_X.equipe, texte: "U18 D2" }, { x: COLONNES_X.adversaire, texte: "FC Sens" }] },
+    { y: 660, cellules: [
+      { x: COLONNES_X.date, texte: "21/09/2026" },
+      { x: COLONNES_X.equipe, texte: "U16 D3" }, { x: COLONNES_X.adversaire, texte: "AS Montereau" }] },
+    { y: 640, cellules: [
+      { x: COLONNES_X.date, texte: "28/09/2026" }, { x: COLONNES_X.heure, texte: "14:00" },
+      { x: COLONNES_X.equipe, texte: "U18 D2" }, { x: COLONNES_X.adversaire, texte: "US Bray" }] },
+  ]);
+  const lignes = elementsVersLignes(avecTrou);
+  assert.deepEqual(lignes[2], ["21/09/2026", "", "U16 D3", "AS Montereau"]);
+});
+
+test("PDF : une date coupée en plusieurs fragments est recollée", () => {
+  // pdf.js rend souvent « 14/ », « 09/ », « 2026 » séparément selon le crénage.
+  const morcele = fragmentsPdf([
+    { y: 700, cellules: [
+      { x: COLONNES_X.date, texte: "Date" }, { x: COLONNES_X.heure, texte: "Heure" },
+      { x: COLONNES_X.equipe, texte: "Equipe" }, { x: COLONNES_X.adversaire, texte: "Adversaire" }] },
+    { y: 680, cellules: [
+      { x: 50, texte: "14/" }, { x: 65, texte: "09/" }, { x: 80, texte: "2026" },
+      { x: COLONNES_X.heure, texte: "15:00" },
+      { x: COLONNES_X.equipe, texte: "U18 D2" }, { x: COLONNES_X.adversaire, texte: "FC Sens" }] },
+    { y: 660, cellules: [
+      { x: COLONNES_X.date, texte: "21/09/2026" }, { x: COLONNES_X.heure, texte: "10:30" },
+      { x: COLONNES_X.equipe, texte: "U16 D3" }, { x: COLONNES_X.adversaire, texte: "AS Montereau" }] },
+  ]);
+  assert.equal(elementsVersLignes(morcele)[1]![0], "14/09/2026");
+});
+
+test("PDF : un calendrier en texte libre, sans colonnes, reste découpé", () => {
+  const libre = fragmentsPdf([
+    { y: 700, cellules: [{ x: 40, texte: "Sam. 14/09/2026" }, { x: 200, texte: "15:00" }, { x: 260, texte: "U18 D2" }, { x: 400, texte: "FC Sens" }] },
+    { y: 680, cellules: [{ x: 40, texte: "Dim. 21/09/2026" }, { x: 210, texte: "10:30" }, { x: 275, texte: "U16 D3" }, { x: 420, texte: "AS Montereau" }] },
+  ]);
+  const lignes = elementsVersLignes(libre);
+  assert.equal(lignes.length, 2);
+  assert.ok(lignes[0]!.includes("FC Sens"));
+  assert.ok(lignes[0]!.some((c) => c.includes("14/09/2026")));
+});
+
+test("PDF : le moteur de détection reconnaît les colonnes du PDF reconstruit", async () => {
+  const resultat = await pdfProvider.parse({
+    fileName: "calendrier.pdf",
+    options: { elements: calendrierPdf() },
+    teams: TEAMS,
+  });
+  assert.equal(resultat.issues.length, 0);
+  assert.equal(resultat.events.length, 3);
+  assert.equal(resultat.events[0]!.matchDate, "2026-09-14");
+  assert.equal(resultat.events[0]!.kickoffTime, "15:00");
+  assert.equal(resultat.events[0]!.opponent, "FC Sens");
+  assert.equal(resultat.events[0]!.sourceTeamName, "U18 D2");
+});
+
+test("PDF : chaque match part vers l'équipe que le PDF nomme, pas vers une seule", () => {
+  // C'est la demande de Fouka : « j'ai le calendrier de toutes les catégories ».
+  const apercu = preview("PDF", [
+    { matchDate: "2026-09-14", kickoffTime: "15:00", sourceTeamName: "U18 D2", opponent: "FC Sens", isHome: null, competitionName: null, location: null, sportStatus: "scheduled", externalEventId: null, externalCompetitionId: null, externalTeamId: null, sourceUpdatedAt: null, sourceLine: 1, rawLabel: "", score: null },
+    { matchDate: "2026-09-21", kickoffTime: "10:30", sourceTeamName: "U16 D3", opponent: "AS Montereau", isHome: null, competitionName: null, location: null, sportStatus: "scheduled", externalEventId: null, externalCompetitionId: null, externalTeamId: null, sourceUpdatedAt: null, sourceLine: 1, rawLabel: "", score: null },
+  ], [], { teams: TEAMS });
+  const parEquipe = apercu.rows.map((r) => r.teamId);
+  assert.ok(parEquipe.includes("team-u18"));
+  assert.ok(parEquipe.includes("team-u16"));
+});
+
+test("PDF : un document sans rien de reconnaissable le dit, il n'invente pas", async () => {
+  const resultat = await pdfProvider.parse({
+    fileName: "reglement.pdf",
+    options: { lignes: [["Règlement intérieur"], ["Article 1"], ["Article 2"]] },
+    teams: TEAMS,
+  });
+  assert.equal(resultat.events.length, 0);
+  assert.equal(resultat.issues.length, 1);
+  assert.ok(/désignez les colonnes|\.csv/i.test(resultat.issues[0]!.reason));
+});
+
+test("PDF : le fichier est reconnu par son nom comme par son entête", () => {
+  assert.equal(detectProvider("calendrier.pdf", "")?.id, "PDF");
+  assert.equal(detectProvider("export", "%PDF-1.7")?.id, "PDF");
 });
