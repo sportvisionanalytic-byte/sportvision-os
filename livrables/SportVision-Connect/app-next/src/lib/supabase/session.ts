@@ -382,7 +382,7 @@ export async function buildDelegatedClubActiveContext(
 ): Promise<ActiveContext | null> {
   if (space.kind !== "delegated_club") return null;
 
-  const [clubRes, myMembershipsRes] = await Promise.all([
+  const [clubRes, myMembershipsRes, entitlementsRes] = await Promise.all([
     supabase
       .from("clubs")
       .select("id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id")
@@ -393,6 +393,14 @@ export async function buildDelegatedClubActiveContext(
       .select("organization_id, cm_super_access, organizations(organization_type)")
       .eq("user_id", authUser.id)
       .eq("status", "actif"),
+    // 08/09/2026 — Ce contexte ne chargeait AUCUN entitlement, alors que canAccess() lit
+    // ctx.entitlements pour tout module d'un club. Resultat : un CM entrait bien dans le club,
+    // puis trouvait la totalite des modules cadenassee — non pas par une decision de securite,
+    // mais par absence de donnee. Il gere le club : il voit les modules que le club possede.
+    supabase
+      .from("organization_entitlements")
+      .select("module_key, actif, quota_credits, priorite")
+      .eq("organization_id", space.id),
   ]);
 
   const club = clubRes.data as ClubRow | null;
@@ -447,6 +455,15 @@ export async function buildDelegatedClubActiveContext(
   const { data: org } = await supabase.from("organizations").select("id, nom, created_at").eq("id", space.id).maybeSingle();
   if (!org) return null;
 
+  const entitlementsDelegue: NonNullable<ActiveContext["entitlements"]> = {};
+  for (const row of (entitlementsRes.data ?? []) as EntitlementRow[]) {
+    entitlementsDelegue[row.module_key] = {
+      actif: row.actif,
+      quotaCredits: row.quota_credits,
+      priorite: row.priorite === "prioritaire" ? "prioritaire" : "standard",
+    };
+  }
+
   // Voir le commentaire équivalent dans buildClubActiveContext ci-dessus (même correctif,
   // migration-clubplus-v96, 20/08) — ce chemin délégué (agence CM externe, cm_agency_club_access)
   // n'a JAMAIS de ligne club_members pour ce club : avec l'ancienne lecture de client_contrats,
@@ -477,6 +494,9 @@ export async function buildDelegatedClubActiveContext(
       capabilities: [],
       status: "active",
     },
+    // Les memes entitlements que ceux du club. L'autorite reste la RLS cote base : ceci ouvre
+    // l'interface sur ce qui existe, cela n'accorde aucun droit d'ecriture.
+    entitlements: entitlementsDelegue,
     subscription: {
       id: `sub-${club.id}`,
       organizationId: org.id,
