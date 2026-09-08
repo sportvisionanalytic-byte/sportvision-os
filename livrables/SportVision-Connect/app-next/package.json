@@ -10,7 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test:calendar": "node --test src/lib/calendar/__tests__/run.ts",
-    "prebuild": "node scripts/copier-worker-pdf.mjs"
+    "prebuild": "node scripts/copier-worker-pdf.mjs && node scripts/figer-build.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

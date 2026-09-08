@@ -1,5 +1,7 @@
 "use client";
 
+import { BUILD_COMMIT, BUILD_CONTEXT, BUILD_DATE } from "@/lib/build-info";
+
 // Marqueur de version, discret, en bas d'écran.
 //
 // Il ne sert qu'au support : quand quelqu'un dit « je ne vois pas le nouveau bouton », on compare
@@ -11,9 +13,12 @@
 // disparaître le reste du temps.
 
 export function VersionBadge() {
-  const commit = process.env.NEXT_PUBLIC_BUILD_COMMIT ?? "?";
-  const contexte = process.env.NEXT_PUBLIC_BUILD_CONTEXT ?? "?";
-  const brut = process.env.NEXT_PUBLIC_BUILD_DATE;
+  // Constantes figees au build (scripts/figer-build.mjs). Passer par process.env ne
+  // suffisait pas : le serveur relit next.config a l execution et reevaluait la date a
+  // chaque rendu, ce qui faisait diverger serveur et client d une minute a l autre.
+  const commit = BUILD_COMMIT;
+  const contexte = BUILD_CONTEXT;
+  const brut = BUILD_DATE;
 
   // `timeZone` explicite, et c'est tout l'enjeu de ce composant (08/09/2026).
   //

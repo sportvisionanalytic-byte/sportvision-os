@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prebuild": "node scripts/figer-build.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
