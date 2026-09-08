@@ -2539,6 +2539,7 @@ const VIEWS={
 
   // ── COMMUNITY MANAGER ───────────────────
   'cm.dash':()=>`
+    <div id="cm-mes-clubs" style="margin-bottom:20px"></div>
     <div class="kpi-g">
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('contenus')"><div class="kpi-ey">Contenus en attente</div><div class="kpi-v" id="cm-kpi-cl">—</div><span class="kpi-d dnt">à valider/publier</span></div>
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('contenus')"><div class="kpi-ey">Contenus en retard</div><div class="kpi-v" id="cm-kpi-pre">—</div><span class="kpi-d dnt">date dépassée</span></div>
@@ -3488,6 +3489,275 @@ function dateFr(ymd){
   const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd||''));
   if(!m)return ymd||'';
   return Number(m[3])+' '+_MOIS_COURTS[Number(m[2])-1]+' '+m[1];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// L'EQUIPE SPORTVISION D'UN CLUB — affectation des CM
+// ═══════════════════════════════════════════════════════════════════════════
+// Jusqu'ici un CM etait rattache a un CLIENT par une colonne, sans date ni historique ni moyen de
+// le retirer proprement. club_cm_affectations remplace cela ; cet ecran la rend utilisable.
+//
+// Le CM principal designe le referent : c'est lui qu'on nomme quand quelqu'un demande « qui gere
+// ce club ». La base garantit qu'il n'y en a qu'un actif a la fois ; l'ecran l'explique au lieu
+// de laisser decouvrir une erreur.
+
+const CFP_ROLE_LB={principal:'CM principal',secondaire:'CM secondaire'};
+
+async function cfpChargerEquipeSportVision(clubId){
+  const el=document.getElementById('cfp-equipe-sv');
+  if(!el)return;
+  const rows=await sbFetch('rpc/club_affectations_cm',{method:'POST',body:{p_club_id:clubId}}).catch(()=>null);
+  const affs=Array.isArray(rows)?rows:[];
+  const actifs=affs.filter(a=>a.en_cours);
+  const passes=affs.filter(a=>!a.en_cours);
+  const peut=['admin','com'].includes(S.role);
+
+  const ligne=(a,fini)=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0${fini?';opacity:.6':''}">
+    <div style="min-width:0">
+      <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc((a.prenom||'')+' '+(a.nom||''))}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px">${CFP_ROLE_LB[a.role]||a.role} · depuis le ${dateFr(a.date_debut)}${a.date_fin?' jusqu’au '+dateFr(a.date_fin):''}${a.actif?'':' · retiré'}</div>
+    </div>
+    ${(peut&&!fini)?`<button class="btn bg2 bs" style="min-height:40px" onclick="cfpRetirerCm('${a.id}','${escJs((a.prenom||'')+' '+(a.nom||''))}','${clubId}')">Retirer</button>`:''}
+  </div>`;
+
+  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:10px;padding:13px 15px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:${actifs.length?'4px':'8px'}">
+      <span style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Référent SportVision</span>
+      ${peut?`<button class="btn bp bs" style="min-height:40px" onclick="cfpModalAffecterCm('${clubId}')">Affecter un CM</button>`:''}
+    </div>
+    ${actifs.length
+      ? actifs.map(a=>ligne(a,false)).join('<div style="height:1px;background:var(--b1)"></div>')
+      : `<div style="font-size:12.5px;color:var(--t3)">Aucun Community Manager n’est affecté à ce club.${peut?' Personne ne le suit au quotidien.':''}</div>`}
+    ${passes.length?`<details style="margin-top:10px;border-top:1px solid var(--b1);padding-top:9px">
+      <summary style="cursor:pointer;font-size:11.5px;color:var(--t3);list-style:revert">Historique (${passes.length})</summary>
+      <div style="margin-top:6px">${passes.map(a=>ligne(a,true)).join('')}</div>
+    </details>`:''}
+  </div>`;
+}
+
+async function cfpModalAffecterCm(clubId){
+  const [cms,rows]=await Promise.all([
+    sbFetch('profiles?select=id,prenom,nom&role=eq.cm&actif=eq.true&order=prenom.asc').catch(()=>[]),
+    sbFetch('rpc/club_affectations_cm',{method:'POST',body:{p_club_id:clubId}}).catch(()=>[]),
+  ]);
+  const liste=Array.isArray(cms)?cms:[];
+  const principalActuel=(Array.isArray(rows)?rows:[]).find(a=>a.en_cours&&a.role==='principal');
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">Affecter un Community Manager</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="${L}" for="aff-cm">Community Manager</label>
+        <select id="aff-cm" class="l-inp" style="height:44px;font-size:16px">
+          <option value="">Choisir…</option>
+          ${liste.map(c=>`<option value="${c.id}">${esc((c.prenom||'')+' '+(c.nom||''))}</option>`).join('')}
+        </select>
+        ${liste.length?'':'<div style="font-size:11.5px;color:var(--wa);margin-top:5px">Aucun collaborateur au rôle Community Manager n’est actif.</div>'}
+      </div>
+      <div><label style="${L}" for="aff-role">Fonction</label>
+        <select id="aff-role" class="l-inp" style="height:44px;font-size:16px" onchange="cfpAvertirPrincipal()">
+          <option value="principal">CM principal — référent du club</option>
+          <option value="secondaire">CM secondaire — en appui</option>
+        </select></div>
+      <div id="aff-avert"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}" for="aff-debut">Début</label>
+          <input id="aff-debut" type="date" class="l-inp" style="height:44px;font-size:16px" value="${ymdLocal()}"></div>
+        <div><label style="${L}" for="aff-fin">Fin (facultatif)</label>
+          <input id="aff-fin" type="date" class="l-inp" style="height:44px;font-size:16px"></div>
+      </div>
+      <div id="aff-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" style="min-height:40px" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" style="min-height:40px" onclick="cfpEnregistrerAffectation('${clubId}')">Affecter</button>
+      </div>
+    </div>`);
+  window.__cfpPrincipalActuel=principalActuel||null;
+  cfpAvertirPrincipal();
+}
+
+// Un seul CM principal actif a la fois : la base le garantit par index unique. Plutot que de
+// laisser l'utilisateur decouvrir l'erreur, on l'annonce et on dit ce qui va se passer.
+function cfpAvertirPrincipal(){
+  const el=document.getElementById('aff-avert');
+  const role=document.getElementById('aff-role')?.value;
+  const p=window.__cfpPrincipalActuel;
+  if(!el)return;
+  el.innerHTML=(role==='principal'&&p)
+    ? `<div style="background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.3);border-radius:var(--rp);padding:10px 12px;font-size:12px;color:var(--t2);line-height:1.5">
+         <strong style="color:var(--t1)">${esc((p.prenom||'')+' '+(p.nom||''))}</strong> est aujourd’hui le CM principal de ce club.
+         L’affecter à sa place le retirera du club : il perdra l’accès immédiatement, mais restera dans l’historique.
+       </div>`
+    : '';
+}
+
+async function cfpEnregistrerAffectation(clubId){
+  const err=document.getElementById('aff-err');
+  const cm=document.getElementById('aff-cm')?.value;
+  const role=document.getElementById('aff-role')?.value||'principal';
+  const debut=document.getElementById('aff-debut')?.value;
+  const fin=document.getElementById('aff-fin')?.value||null;
+  if(!cm){err.textContent='Choisissez un Community Manager.';return;}
+  if(!debut){err.textContent='Indiquez une date de début.';return;}
+  if(fin&&fin<debut){err.textContent='La date de fin ne peut pas précéder le début.';return;}
+  err.textContent='Enregistrement…';
+
+  // Remplacer le principal : on retire l'ancien AVANT d'ajouter le nouveau, sinon l'index unique
+  // refuse l'insertion et l'utilisateur se retrouve devant une erreur technique.
+  const p=window.__cfpPrincipalActuel;
+  if(role==='principal'&&p){
+    const r0=await sbFetch('club_cm_affectations?id=eq.'+p.id,{method:'PATCH',body:{actif:false,date_fin:debut,updated_at:new Date().toISOString()}});
+    if(sbErr(r0)){err.textContent='Erreur : '+(msgErreur(r0,'retrait de l’ancien référent impossible.'));return;}
+  }
+
+  const r=await sbFetch('club_cm_affectations',{method:'POST',body:{
+    club_id:clubId, cm_id:cm, role, date_debut:debut, date_fin:fin, actif:true, created_by:S.uid,
+  }});
+  if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'affectation impossible.'));return;}
+  closeModal();
+  toast('Community Manager affecté.','ok');
+  cfpChargerEquipeSportVision(clubId);
+}
+
+async function cfpRetirerCm(affectationId,nom,clubId){
+  if(!await demanderConfirmation(
+    'Retirer '+nom+' de ce club ?\n\nIl perdra l’accès immédiatement : le club disparaîtra de son espace. L’affectation reste dans l’historique, elle n’est pas supprimée.',
+    {titre:'Retirer du club',action:'Retirer'}))return;
+  const r=await sbFetch('club_cm_affectations?id=eq.'+affectationId,{method:'PATCH',
+    body:{actif:false,date_fin:ymdLocal(),updated_at:new Date().toISOString()}});
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'retrait impossible.')),'er');return;}
+  toast('Retiré du club. L’historique est conservé.','ok');
+  cfpChargerEquipeSportVision(clubId);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LE CM ET SES CLUBS
+// ═══════════════════════════════════════════════════════════════════════════
+// Un CM affilie n'est plus seulement quelqu'un qui publie du contenu : pour un club en Full
+// Communication, c'est le referent operationnel SportVision. Son accueil doit donc repondre
+// d'abord a « quels clubs je gere, et ou en sont-ils ».
+//
+// Le perimetre vient de cm_mes_clubs(), donc des affectations actives cote base. Ce n'est PAS un
+// filtre applique apres avoir charge tous les clubs : un club qui n'est pas affecte ne quitte
+// jamais la base.
+
+const CM_ONB_LB={
+  null:'Onboarding pas encore commencé',
+  draft:'Onboarding en préparation',
+  in_progress:'Onboarding en cours',
+  submitted:'Informations soumises, à valider',
+  validated:'Onboarding terminé',
+  blocked:'Bloqué',
+};
+const CM_ONB_CLR={submitted:'var(--wa)',validated:'var(--ok)',blocked:'var(--er)'};
+
+// « Aujourd'hui, 09:42 », « Hier », « Il y a 4 jours ». Un CM lit une derniere activite pour
+// savoir s'il doit s'en occuper, pas pour connaitre une date a la seconde.
+function cmDepuis(iso){
+  if(!iso)return null;
+  const d=new Date(iso);
+  if(isNaN(d))return null;
+  const jours=Math.floor((new Date(ymdLocal())-new Date(ymdLocal(d)))/86400000);
+  if(jours<=0)return 'Aujourd’hui, '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  if(jours===1)return 'Hier';
+  if(jours<30)return 'Il y a '+jours+' jours';
+  return dateFr(ymdLocal(d));
+}
+
+async function loadCmMesClubs(){
+  const el=document.getElementById('cm-mes-clubs');
+  if(!el)return;
+  const rows=await sbFetch('rpc/cm_mes_clubs',{method:'POST',body:{}}).catch(()=>null);
+  if(sbErr(rows)||!Array.isArray(rows)){
+    el.innerHTML=`<div class="cd" style="padding:16px;font-size:12.5px;color:var(--t3)">Impossible de charger vos clubs pour le moment.</div>`;
+    return;
+  }
+  if(!rows.length){
+    // §8 : un etat vide qui explique, pas un ecran casse.
+    el.innerHTML=`<div class="cd" style="padding:30px 22px;text-align:center">
+      <div style="font-size:30px;opacity:.2;margin-bottom:9px">🏟️</div>
+      <div style="font-size:13.5px;font-weight:600;color:var(--t1);margin-bottom:4px">Aucun club ne vous est encore confié</div>
+      <div style="font-size:12.5px;color:var(--t3);max-width:330px;margin:0 auto">Lorsqu’un club vous sera attribué, il apparaîtra ici avec l’état de sa mise en place.</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML=`
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:10px">Mes clubs</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+    ${rows.map(c=>{
+      const st=CM_ONB_LB[c.onboarding_statut]||('Onboarding : '+esc(c.onboarding_statut));
+      const clr=CM_ONB_CLR[c.onboarding_statut]||'var(--t3)';
+      const act=cmDepuis(c.derniere_activite);
+      // §9 : pas de pourcentage invente. Tant que la progression detaillee n'existe pas, on
+      // affiche le statut reel et des compteurs qui, eux, sont vrais.
+      const compte=[
+        (c.equipes||0)+' équipe'+((c.equipes||0)>1?'s':''),
+        (c.coachs||0)+' coach'+((c.coachs||0)>1?'s':''),
+        (c.membres||0)+' membre'+((c.membres||0)>1?'s':''),
+      ].join(' · ');
+      return `<div class="cd" style="padding:15px 16px;display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:9px">
+          <div style="min-width:0">
+            <div style="font-size:14px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.nom)}</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:2px">${c.full_com?'Full Communication':'Club partenaire'}${c.role_affectation==='secondaire'?' · CM secondaire':''}</div>
+          </div>
+          ${c.full_com?'<span style="flex-shrink:0;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(124,77,255,.14);border:1px solid rgba(124,77,255,.3);color:#A88CFF">FULL COM</span>':''}
+        </div>
+        <div style="font-size:12px;color:${clr};font-weight:600">${st}</div>
+        <div style="font-size:11.5px;color:var(--t3)">${compte}</div>
+        ${act?`<div style="font-size:11px;color:var(--t3)">Dernière activité : ${esc(act)}</div>`:''}
+        <button class="btn bg2 bs" style="min-height:40px;margin-top:2px" onclick="cmOuvrirClub('${c.club_id}')">Ouvrir le club</button>
+      </div>`;
+    }).join('')}
+    </div>`;
+}
+
+// La fiche club vue par le CM. En phase 2 elle est en LECTURE : le CM consulte ce qu'il gere et
+// sait ou il devra travailler. L'edition, les equipes, les coachs et les invitations arrivent
+// avec les phases 3 et 4, quand les ecrans qui les portent existeront.
+async function cmOuvrirClub(clubId){
+  const [clubs,affs]=await Promise.all([
+    sbFetch('rpc/cm_mes_clubs',{method:'POST',body:{}}).catch(()=>[]),
+    sbFetch('rpc/club_affectations_cm',{method:'POST',body:{p_club_id:clubId}}).catch(()=>[]),
+  ]);
+  const c=(Array.isArray(clubs)?clubs:[]).find(x=>x.club_id===clubId);
+  if(!c){toast('Ce club n’est pas dans votre périmètre.','er');return;}
+  const equipe=(Array.isArray(affs)?affs:[]).filter(a=>a.en_cours);
+  const st=CM_ONB_LB[c.onboarding_statut]||('Onboarding : '+esc(c.onboarding_statut));
+  const L='font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px';
+
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:3px">${esc(c.nom)}</div>
+    <div style="font-size:11.5px;color:var(--t3);margin-bottom:18px">${c.full_com?'Full Communication':'Club partenaire'}${c.date_debut?' · vous en êtes référent depuis le '+dateFr(c.date_debut):''}</div>
+
+    <div style="${L}">Mise en place</div>
+    <div style="border:1px solid var(--b1);border-radius:var(--rp);padding:13px 14px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:${CM_ONB_CLR[c.onboarding_statut]||'var(--t1)'}">${st}</div>
+      ${c.onboarding_debut?`<div style="font-size:11.5px;color:var(--t3);margin-top:4px">Commencé le ${dateFr(ymdLocal(new Date(c.onboarding_debut)))}</div>`:''}
+      ${c.derniere_activite?`<div style="font-size:11.5px;color:var(--t3);margin-top:2px">Dernière activité : ${esc(cmDepuis(c.derniere_activite)||'—')}</div>`:''}
+    </div>
+
+    <div style="${L}">Le club aujourd’hui</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px">
+      ${[['Équipes',c.equipes],['Coachs',c.coachs],['Membres',c.membres]].map(([lb,v])=>
+        `<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:11px 12px">
+          <div style="font-size:20px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums">${v||0}</div>
+          <div style="font-size:10.5px;color:var(--t3);margin-top:2px">${lb}</div>
+        </div>`).join('')}
+    </div>
+
+    <div style="${L}">Référent SportVision</div>
+    <div style="border:1px solid var(--b1);border-radius:var(--rp);padding:13px 14px;margin-bottom:16px;font-size:12.5px;color:var(--t2)">
+      ${equipe.length?equipe.map(a=>`<div>${esc((a.prenom||'')+' '+(a.nom||''))} — CM ${a.role}</div>`).join(''):'<span style="color:var(--t3)">Aucun référent actif.</span>'}
+    </div>
+
+    <div style="font-size:11.5px;color:var(--t3);line-height:1.55;border-top:1px solid var(--b1);padding-top:12px">
+      La configuration du club — équipes, coachs, joueurs et invitations — arrive prochainement dans cet écran.
+      Pour l’instant, vous consultez l’état de la mise en place.
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn bg2" style="min-height:40px" onclick="closeModal()">Fermer</button>
+    </div>`);
 }
 
 // ── GOOGLE CALENDAR (lien direct, sans API) ───
@@ -5313,7 +5583,7 @@ async function loadViewData(role,view){
   if(role==='com'&&view==='agenda') await loadComAgenda();
   if(role==='com'&&view==='mesclients') await loadComMesClients();
   if(['com','admin','sec','rh'].includes(role)&&view==='devis') await loadDevis();
-  if(role==='cm'&&view==='dash') await loadCmDash();
+  if(role==='cm'&&view==='dash'){await loadCmDash();await loadCmMesClubs();}
   if(role==='cm'&&view==='demandes'){await loadCmDemandes();await loadCmClubContentSubmissions();}
   if(role==='cm'&&view==='briefs') await loadCmBriefs();
   if(role==='cm'&&view==='clients') await loadCmClients();
@@ -6103,6 +6373,7 @@ async function modalFicheClubPlus(clubId){
   }
   if(!club){openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">Club introuvable.</div>`);return;}
   _cfpClub=club;
+  setTimeout(()=>cfpChargerEquipeSportVision(clubId),0);
   const planLb={free:'Gratuit',club:'Club',performance:'Performance'};
   const srcLb={clubplus_subscription:'Abonnement Club+',full_com_included:'Inclus Full Com',manual:'Activation manuelle'};
   const stLb={actif:'Abonnement actif',impaye:'Paiement en attente',annule:'Abonnement résilié'};
@@ -6134,6 +6405,9 @@ async function modalFicheClubPlus(clubId){
       <button id="cfp-tab-gestion" onclick="cfpShowTab('gestion')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Abonnement & gestion</button>
     </div>
     <div id="cfp-panel-resume">
+      <!-- Qui gere ce club chez SportVision. Place en tete du resume : quand on ouvre une fiche
+           club, savoir a qui s'adresser vient avant les credits et la date de creation. -->
+      <div id="cfp-equipe-sv" style="margin-bottom:14px"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
         <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Créé le</div><div style="font-size:13.5px;color:var(--t1);font-weight:500;margin-top:4px">${_ccFmtD(club.created_at)}</div></div>
         <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Client lié</div><div style="font-size:13.5px;color:var(--t1);font-weight:500;margin-top:4px">${club.clients?.nom?esc(club.clients.nom):'Aucun (workspace autonome)'}</div></div>

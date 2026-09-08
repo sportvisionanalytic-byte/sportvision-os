@@ -78,6 +78,18 @@ begin
   select count(*)::integer into n from club_members where club_id = v_clubB;
   if n <> 0 then e := e || 'FUITE : CM A lit les membres du club B'::text; end if;
 
+  -- ══ 2b. Les fonctions de la phase 2 respectent le meme perimetre ══════════
+  -- Une RPC qui contournerait les policies serait une porte derobee : on la mesure comme le reste.
+  select count(*)::integer into n from cm_mes_clubs();
+  if n <> 1 then e := e || ('cm_mes_clubs rend '||n||' club(s) au CM A au lieu de 1'); end if;
+  select count(*)::integer into n from cm_mes_clubs() where club_id = v_clubB;
+  if n <> 0 then e := e || 'FUITE : cm_mes_clubs rend le club B au CM A'::text; end if;
+
+  select count(*)::integer into n from club_affectations_cm(v_clubB);
+  if n <> 0 then e := e || 'FUITE : CM A lit l equipe SportVision du club B'::text; end if;
+  select count(*)::integer into n from club_affectations_cm(v_clubA);
+  if n <> 1 then e := e || ('CM A ne voit pas sa propre affectation ('||n||')'); end if;
+
   -- ══ 3. Le CM A ne MODIFIE rien du club B ═══════════════════════════════════
   begin
     update club_teams set name = 'PIRATE' where club_id = v_clubB;
@@ -99,6 +111,8 @@ begin
   if n <> 0 then e := e || ('Desactivation sans effet : CM A lit encore son ancien club'); end if;
   select count(*)::integer into n from club_teams where club_id = v_clubA;
   if n <> 0 then e := e || 'Desactivation sans effet : CM A lit encore les equipes'::text; end if;
+  select count(*)::integer into n from cm_mes_clubs();
+  if n <> 0 then e := e || 'Desactivation sans effet : le club reste dans « Mes clubs »'::text; end if;
 
   -- ══ 5. Une affectation expiree ne donne plus rien ══════════════════════════
   perform set_config('role','postgres',true);
@@ -110,6 +124,8 @@ begin
   perform pg_temp.incarner(v_cmA);
   select count(*)::integer into n from clubs where id = v_clubA;
   if n <> 0 then e := e || 'Une affectation expiree donne encore acces'::text; end if;
+  select count(*)::integer into n from cm_mes_clubs();
+  if n <> 0 then e := e || 'Une affectation expiree laisse le club dans « Mes clubs »'::text; end if;
 
   -- ══ 6. Une affectation qui commence demain ne donne rien aujourd'hui ═══════
   perform set_config('role','postgres',true);
@@ -118,6 +134,8 @@ begin
   perform pg_temp.incarner(v_cmA);
   select count(*)::integer into n from clubs where id = v_clubA;
   if n <> 0 then e := e || 'Une affectation future donne deja acces'::text; end if;
+  select count(*)::integer into n from cm_mes_clubs();
+  if n <> 0 then e := e || 'Une affectation future fait deja apparaitre le club'::text; end if;
 
   -- ══ 7. L'admin, lui, continue de tout voir ═════════════════════════════════
   perform set_config('role','postgres',true);
