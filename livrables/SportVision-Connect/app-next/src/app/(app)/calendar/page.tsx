@@ -16,7 +16,7 @@ import { KIND_DOT } from "@/components/calendar/calendar-style";
 import { EventDetailPanel } from "@/components/calendar/EventDetailPanel";
 import { AddEventModal } from "@/components/calendar/AddEventModal";
 import { ImportMatchesModal } from "@/components/calendar/ImportMatchesModal";
-import { CREATABLE_EVENT_TYPE_MAP, createClubCalendarEvent, fetchClubCalendarEvents } from "@/lib/data/club/calendar";
+import { CREATABLE_EVENT_TYPE_MAP, createClubCalendarEvent, fetchClubCalendrier } from "@/lib/data/club/calendar";
 import { fetchOrgCalendarEvents } from "@/lib/data/shared/calendar-events";
 import { createClient } from "@/lib/supabase/client";
 import { parseDateOnly } from "@/lib/date-only";
@@ -93,6 +93,17 @@ export default function CalendarPage() {
   // club_id réel (toujours renseigné pour un joueur, voir session.ts:buildPlayerActiveContext).
   const calendarOrgId = isPlayer ? ctx.organization.parentOrganizationId : ctx.organization.id;
 
+  // Fenêtre chargée : la vue courante, élargie d'un mois de chaque côté pour que naviguer d'un
+  // mois à l'autre ne déclenche pas une requête à chaque clic. Les entraînements étant projetés à
+  // la demande, demander une fenêtre plus large que nécessaire coûterait pour rien.
+  const fenetre = useMemo(() => {
+    const debut = new Date(reference.getFullYear(), reference.getMonth() - 1, 1);
+    const fin = new Date(reference.getFullYear(), reference.getMonth() + 2, 0);
+    const ymd = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { du: ymd(debut), au: ymd(fin) };
+  }, [reference]);
+
   const loadEvents = useCallback(() => {
     if (!calendarOrgId) return;
     let cancelled = false;
@@ -100,7 +111,7 @@ export default function CalendarPage() {
     const supabase = createClient();
     const fetcher = isGenericOrg
       ? fetchOrgCalendarEvents(supabase, calendarOrgId)
-      : fetchClubCalendarEvents(supabase, calendarOrgId);
+      : fetchClubCalendrier(supabase, calendarOrgId, fenetre.du, fenetre.au);
     fetcher
       .then((rows) => {
         if (!cancelled) setEvents(rows);
@@ -111,7 +122,7 @@ export default function CalendarPage() {
     return () => {
       cancelled = true;
     };
-  }, [calendarOrgId, isGenericOrg]);
+  }, [calendarOrgId, isGenericOrg, fenetre.du, fenetre.au]);
 
   useEffect(() => loadEvents(), [loadEvents]);
 
@@ -546,8 +557,43 @@ function ListView({
                 </span>
                 <span className={cn("h-2 w-2 flex-none rounded-full", KIND_DOT[e.kind])} aria-hidden />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-bold">{e.title}</span>
-                  <span className="text-[12px] text-text-soft">{CALENDAR_EVENT_KIND_LABELS[e.kind]}{e.location ? ` · ${e.location}` : ""}</span>
+                  <span
+                    className={cn(
+                      "block truncate text-[13.5px] font-bold",
+                      // Une séance annulée reste visible, barrée : la masquer ferait croire
+                      // qu'elle n'a jamais existé et personne ne comprendrait le trou.
+                      e.status === "annulee" && "text-text-faint line-through",
+                    )}
+                  >
+                    {e.title}
+                  </span>
+                  <span className="block text-[12px] text-text-soft">
+                    {CALENDAR_EVENT_KIND_LABELS[e.kind]}
+                    {e.endsAt && !e.allDay
+                      ? ` · ${new Date(e.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}–${new Date(e.endsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
+                      : ""}
+                    {e.isHome === undefined ? "" : e.isHome ? " · À domicile" : " · À l'extérieur"}
+                    {e.location ? ` · ${e.location}` : ""}
+                    {e.competition ? ` · ${e.competition}` : ""}
+                    {e.status === "modifiee" ? " · horaire exceptionnel" : ""}
+                    {e.status === "annulee" ? " · annulé" : ""}
+                  </span>
+                  {/* La couverture ne concerne que les matchs : l'afficher partout donnerait
+                      l'impression qu'un entraînement attend une décision qu'on ne lui demande
+                      pas. Le clic arrive en vague C ; ici, c'est une lecture. */}
+                  {e.kind === "match" && (
+                    <span
+                      className={cn(
+                        "mt-0.5 inline-block text-[11.5px] font-bold",
+                        e.coverage ? "text-success-fg" : "text-text-faint",
+                      )}
+                    >
+                      {e.coverage ? "Couverture SportVision : confirmée" : "Couverture SportVision : à décider"}
+                    </span>
+                  )}
+                  {e.score && (
+                    <span className="ml-2 text-[11.5px] font-bold tabular-nums">{e.score}</span>
+                  )}
                 </span>
               </button>
             ))}

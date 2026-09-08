@@ -41,4 +41,13 @@ export interface CalendarEvent {
   teamId?: string;
   sourceHref?: string;
   status?: string;
+  // Portés par le calendrier unifié (club_calendrier, vague B) pour que la carte d'un match dise
+  // ce qu'un CM a besoin de lire d'un coup d'œil, sans une requête de plus par carte.
+  opponent?: string;
+  isHome?: boolean;
+  competition?: string;
+  score?: string;
+  /** Statut de la présence SportVision existante ('prevu', 'mission_creee'), sinon absent.
+   *  En lecture seule pour l'instant : le clic « SportVision sera présent » arrive en vague C. */
+  coverage?: string;
 }

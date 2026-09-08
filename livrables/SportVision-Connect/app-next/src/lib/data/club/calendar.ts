@@ -218,3 +218,72 @@ export async function createClubCalendarEvent(
 
   return toCalendarEvent(data as ClubCalendarEventRow, organizationId);
 }
+
+// ── Le calendrier unifié (vague B, 08/09/2026) ───────────────────────────────
+//
+// Remplace la fusion matchs + événements qui se faisait ici même, côté navigateur. Elle ignorait
+// les entraînements, et surtout elle constituait une projection de plus : le tableau de bord avait
+// la sienne, cet écran la sienne. Une seule fonction en base fait désormais foi.
+//
+// Les entraînements arrivent sous forme d'occurrences virtuelles, projetées depuis les créneaux
+// hebdomadaires pour la période demandée. Leur identifiant est stable — « entrainement:<slot>:<date> » —
+// afin qu'on puisse plus tard désigner UNE séance précise.
+
+interface LigneCalendrier {
+  ref: string;
+  genre: "match" | "entrainement" | "evenement";
+  date_evenement: string;
+  heure_debut: string | null;
+  heure_fin: string | null;
+  titre: string | null;
+  equipe: string | null;
+  team_id: string | null;
+  adversaire: string | null;
+  domicile: boolean | null;
+  lieu: string | null;
+  competition: string | null;
+  score: string | null;
+  statut: string | null;
+  couverture: string | null;
+}
+
+const GENRE_VERS_KIND: Record<LigneCalendrier["genre"], CalendarEventKind> = {
+  match: "match",
+  entrainement: "training",
+  evenement: "event",
+};
+
+export async function fetchClubCalendrier(
+  supabase: SupabaseClient,
+  clubId: string,
+  du: string,
+  au: string,
+): Promise<CalendarEvent[]> {
+  const { data, error } = await supabase.rpc("club_calendrier", {
+    p_club_id: clubId,
+    p_du: du,
+    p_au: au,
+  });
+  if (error) throw error;
+
+  return ((data ?? []) as LigneCalendrier[]).map((l) => ({
+    id: l.ref,
+    organizationId: clubId,
+    kind: GENRE_VERS_KIND[l.genre] ?? "event",
+    title: l.titre ?? "Événement",
+    // Sans heure, l'événement est « toute la journée » : mieux vaut le dire que d'inventer minuit.
+    startsAt: l.heure_debut ? `${l.date_evenement}T${l.heure_debut}` : `${l.date_evenement}T00:00:00`,
+    endsAt: l.heure_fin ? `${l.date_evenement}T${l.heure_fin}` : undefined,
+    allDay: !l.heure_debut,
+    location: l.lieu ?? undefined,
+    teamName: l.equipe ?? undefined,
+    teamId: l.team_id ?? undefined,
+    status: l.statut ?? undefined,
+    // Portées jusqu'à l'écran pour les cartes match : adversaire, domicile, couverture.
+    opponent: l.adversaire ?? undefined,
+    isHome: l.domicile ?? undefined,
+    competition: l.competition ?? undefined,
+    score: l.score ?? undefined,
+    coverage: l.couverture ?? undefined,
+  }));
+}
