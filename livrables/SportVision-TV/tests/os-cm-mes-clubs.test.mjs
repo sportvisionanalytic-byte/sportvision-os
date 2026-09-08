@@ -90,7 +90,10 @@ const fiche = await page.textContent("#sv-modal-ct");
 t("elle s'ouvre sur le bon club", fiche.includes("Villemomble Sports"));
 t("elle montre l'état de la mise en place", fiche.includes("Informations soumises"));
 t("elle nomme le référent SportVision", fiche.includes("Référent SportVision"));
-t("elle annonce honnêtement ce qui n'existe pas encore", fiche.includes("arrive prochainement"));
+// Phase 2 affichait « arrive prochainement » : la configuration n'existait nulle part. Depuis la
+// phase 3 elle existe, dans Club+, et la fiche y renvoie. Assertion mise a jour le 08/09 — le
+// produit a change, pas regresse.
+t("elle renvoie le CM vers l'endroit où il travaille", fiche.includes("Gérer dans Club+"));
 t("aucun bouton d'écriture n'est proposé", await page.evaluate(() =>
   ![...document.querySelectorAll("#sv-modal-ct button")]
     .some((b) => /créer|ajouter|inviter|importer|modifier|envoyer/i.test(b.innerText))));
