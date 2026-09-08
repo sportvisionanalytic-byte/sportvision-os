@@ -659,12 +659,17 @@ function ListView({
           <div className="text-[11px] font-extrabold uppercase tracking-[.09em] text-text-faint">{label}</div>
           <Card className="divide-y divide-divider">
             {dayEvents.map((e) => (
-              <button key={e.id} onClick={() => onSelect(e)} className="flex w-full items-center gap-3.5 px-5 py-3.5 text-left hover:bg-row-hover">
-                <span className="w-14 flex-none text-[12.5px] font-extrabold text-text-soft">
+              <div key={e.id} className="flex w-full items-start gap-3.5 px-5 py-3.5 text-left">
+                <span className="w-14 flex-none pt-0.5 text-[12.5px] font-extrabold text-text-soft">
                   {e.allDay ? "Journée" : new Date(e.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                 </span>
-                <span className={cn("h-2 w-2 flex-none rounded-full", KIND_DOT[e.kind])} aria-hidden />
+                <span className={cn("mt-1.5 h-2 w-2 flex-none rounded-full", KIND_DOT[e.kind])} aria-hidden />
                 <span className="min-w-0 flex-1">
+                  {/* Un bouton ne peut pas en contenir un autre : le navigateur remonte les boutons
+                      internes hors de leur parent, le clic n'atteint plus sa cible et l'hydratation
+                      diverge. Seule la partie descriptive est donc cliquable ; la couverture est sa
+                      voisine, pas son enfant. */}
+                  <button type="button" onClick={() => onSelect(e)} className="block w-full text-left hover:opacity-80">
                   <span
                     className={cn(
                       "block truncate text-[13.5px] font-bold",
@@ -686,6 +691,7 @@ function ListView({
                     {e.status === "modifiee" ? " · horaire exceptionnel" : ""}
                     {e.status === "annulee" ? " · annulé" : ""}
                   </span>
+                  </button>
                   {/* Matchs ET entraînements peuvent être couverts. Pour un entraînement, la
                       référence porte la DATE de l'occurrence : couvrir le 17 décembre ne couvre
                       pas tous les jeudis. */}
@@ -696,7 +702,7 @@ function ListView({
                     <span className="ml-2 text-[11.5px] font-bold tabular-nums">{e.score}</span>
                   )}
                 </span>
-              </button>
+              </div>
             ))}
           </Card>
         </div>
