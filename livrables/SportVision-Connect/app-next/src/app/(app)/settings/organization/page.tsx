@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { MesClubsSportVision } from "@/components/settings/MesClubsSportVision";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonRow } from "@/components/ui/Skeleton";
 import { createClient } from "@/lib/supabase/client";
@@ -48,6 +49,13 @@ export default function OrganizationSettingsPage() {
   // "informations structure" listée explicitement dans son périmètre) mais reste en LECTURE SEULE
   // (voir canEdit plus bas) — seul role==="admin" peut écrire, cohérent avec clubs_admin_update
   // (RLS, USING is_club_admin(id)) qui rejetterait de toute façon une tentative d'un autre rôle.
+  // Le CM SportVision n'appartient pas au club : lui montrer « Mon organisation » lui faisait
+  // croire l'inverse, et n'en montrait qu'un seul alors qu'il peut en accompagner plusieurs
+  // (Fouka, 08/09/2026). Il voit donc la liste de ses clubs, pas la fiche d'un club.
+  if (ctx.membership.role === "external_cm") {
+    return <MesClubsSportVision />;
+  }
+
   if (isClubNonBureauRole(ctx) && ctx.membership.role !== "admin_staff") {
     return (
       <Card className="p-8 text-center text-[13.5px] text-text-soft">

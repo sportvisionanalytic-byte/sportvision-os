@@ -141,7 +141,11 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
           compris Trésorier/Secrétaire/Administratif dont le menu exclut délibérément ce module
           ("aucun contenu sportif parasite", Bible §10) — un Trésorier pouvait donc créer une
           demande de visuel via ce bouton alors que rien dans son menu n'y mène. */}
-      {navEntries.some((e) => e.kind === "item" && e.module === "visual_requests") && (
+      {/* 08/09/2026 : et jamais pour un CM SportVision. Chez lui ce module liste les demandes
+          RECUES du club ; lui proposer « Nouvelle demande » reviendrait a lui faire commander un
+          visuel a lui-meme. */}
+      {ctx.membership.role !== "external_cm" &&
+        navEntries.some((e) => e.kind === "item" && e.module === "visual_requests") && (
         <button
           aria-label="Nouvelle demande"
           onClick={() => router.push("/requests/new")}
@@ -150,7 +154,7 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
           <Plus className="h-3.5 w-3.5 flex-none" aria-hidden />
           <span className="hidden sm:inline">Nouvelle demande</span>
         </button>
-      )}
+        )}
 
       <button
         aria-label="Notifications"

@@ -86,6 +86,9 @@ export default function RequestsPage() {
 
   const allowed = canAccess(ctx, "visual_requests");
   const canWrite = canCreate(ctx, "visual_request");
+  // Le CM SportVision lit cet ecran a l'envers : ce ne sont pas SES demandes, ce sont celles que
+  // le club lui adresse. Meme donnee, perspective inverse — pas un second module.
+  const estCmSportVision = ctx.membership.role === "external_cm";
   // club_requests (Espace Club) vs requests générique (Coach/Académie/Sponsor, et désormais
   // Projet/"generic" — migration-connect-v24-projet-credits.sql) — même forme VisualRequest en
   // sortie, source différente selon le type d'organisation. Doit rester en phase avec
@@ -231,13 +234,22 @@ export default function RequestsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="text-[12px] font-bold text-text-soft">Communication</div>
-          <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">Demandes de visuels</h1>
+          <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">
+            {estCmSportVision ? "Demandes du club" : "Demandes de visuels"}
+          </h1>
+          {estCmSportVision && (
+            <p className="mt-1 text-[13px] text-text-soft">
+              Ce que le club vous demande de produire. Vous ne commandez rien ici : c&apos;est vous qui créez.
+            </p>
+          )}
         </div>
-        <Link href="/requests/new">
-          <Button variant="primary" disabled={!canWrite}>
-            Nouvelle demande de visuel
-          </Button>
-        </Link>
+        {!estCmSportVision && (
+          <Link href="/requests/new">
+            <Button variant="primary" disabled={!canWrite}>
+              Nouvelle demande de visuel
+            </Button>
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -359,13 +371,20 @@ export default function RequestsPage() {
         </Card>
       ) : filtered.length === 0 ? (
         <Card>
-          <EmptyState title="Vous n'avez encore créé aucune demande" description="Commencez par demander votre premier visuel.">
-            <Link href="/requests/new">
-              <Button variant="primary" disabled={!canWrite}>
-                Demander un visuel
-              </Button>
-            </Link>
-          </EmptyState>
+          {estCmSportVision ? (
+            <EmptyState
+              title="Aucune demande du club pour le moment"
+              description="Les demandes du président, des coachs et des dirigeants arriveront ici."
+            />
+          ) : (
+            <EmptyState title="Vous n'avez encore créé aucune demande" description="Commencez par demander votre premier visuel.">
+              <Link href="/requests/new">
+                <Button variant="primary" disabled={!canWrite}>
+                  Demander un visuel
+                </Button>
+              </Link>
+            </EmptyState>
+          )}
         </Card>
       ) : (
         <Card className="overflow-hidden p-0">

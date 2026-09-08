@@ -582,26 +582,30 @@ const NAV_CLUB_ADMINISTRATIF: NavEntry[] = [
 // n'est pas l'administrateur du club, et hasClubFinancialAccess() le lui refuse deja cote code
 // comme la RLS cote base. La navigation dit la meme chose que les droits, au lieu de proposer des
 // portes fermees.
+// Le CM SportVision EST SportVision : deux entrees de la navigation club n'ont aucun sens pour
+// lui et ont ete retirees le 08/09/2026.
+//   « Prestations » est l'achat d'une prestation A SportVision. Le CM n'est pas un client.
+//   « Demandes de visuels » est une demande SORTANTE vers SportVision. Le CM ne se commande pas un
+//   visuel a lui-meme : il RECOIT les demandes du club, d'ou le libelle inverse ci-dessous.
+// Le president, lui, garde les deux : voir NAV_CLUB_PLUS.
 const NAV_CLUB_CM_SPORTVISION: NavEntry[] = [
-  item("dashboard", "Vue d'ensemble", "dashboard"),
-  section("Mise en place"),
-  item("onboarding", "Onboarding", "onboarding"),
+  item("dashboard", "Tableau de bord", "dashboard"),
+  section("Le club"),
+  item("calendar", "Calendrier", "calendar"),
   item("teams", "Équipes", "teams"),
   item("users", "Coachs & dirigeants", "users"),
   section("Communication"),
+  item("visual_requests" as ModuleKey, "Demandes du club", "requests"),
+  item("newsroom", "Actualités", "newsroom"),
+  item("matchcenter", "Résultats", "matchcenter"),
+  item("sponsors", "Sponsors", "sponsors"),
   item("communication", "Centre communication", "communication"),
   item("content", "Contenus", "content"),
-  item("visual_requests" as ModuleKey, "Demandes de visuels", "requests"),
-  item("newsroom", "Actualités", "newsroom"),
-  item("matchcenter", "Résultats & informations", "matchcenter"),
-  section("Le club au quotidien"),
-  item("presences", "Présences", "presences"),
-  item("sponsors", "Sponsors", "sponsors"),
-  item("calendar", "Calendrier", "calendar"),
   section("SportVision"),
-  item("services", "Prestations", "services"),
-  item("messages", "Messages", "messages"),
-  section("Compte"),
+  item("presences", "Présences", "presences"),
+  item("messages", "Messagerie", "messages"),
+  section("Administration"),
+  item("onboarding", "Onboarding", "onboarding"),
   item("settings", "Mon profil", "settings/profile"),
 ];
 

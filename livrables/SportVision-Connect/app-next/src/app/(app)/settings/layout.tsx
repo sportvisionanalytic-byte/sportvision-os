@@ -37,8 +37,13 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   // réellement concernés) sans changer son comportement pour Communication/Coach. Même traitement
   // que player/parent ci-dessus, casse séparée pour garder le commentaire d'origine intact.
   const hideOrgTabs = isPersonal || isClubNonBureauRole(ctx);
+  const estCmSportVision = ctx.membership.role === "external_cm";
   const tabs = TABS.filter(
     (tab) => !hideOrgTabs || (tab.href !== "/settings/organization" && tab.href !== "/settings/integrations"),
+  ).map((tab) =>
+    // « Organisation » sous-entend « la mienne ». Un CM accompagne des clubs, il n'en fait pas
+    // partie : le libellé doit dire lequel des deux (Fouka, 08/09/2026).
+    estCmSportVision && tab.href === "/settings/organization" ? { ...tab, label: "Mes clubs" } : tab,
   );
 
   return (
@@ -46,7 +51,11 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       <div>
         <h1 className="text-[29px] font-extrabold tracking-tight">Paramètres</h1>
         <p className="mt-1 text-[13.5px] text-text-soft">
-          {hideOrgTabs ? "Votre profil et votre club." : "Votre profil, votre organisation et vos intégrations."}
+          {estCmSportVision
+            ? "Votre profil et les clubs que vous accompagnez."
+            : hideOrgTabs
+              ? "Votre profil et votre club."
+              : "Votre profil, votre organisation et vos intégrations."}
         </p>
       </div>
 
