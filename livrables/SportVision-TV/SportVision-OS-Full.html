@@ -1000,6 +1000,14 @@ const NAV={
     {id:'dash',lb:'Accueil',ic:'dash'},
     {id:'pre',lb:'Missions',ic:'pre'},
     {id:'livr',lb:'Livraisons',ic:'check'},
+    // 08/09/2026 — Meme correction que pour l'admin, validee par Fouka : cet ecran est l'outil
+    // quotidien de la production (creer un album, y verser les photos, regenerer les apercus
+    // filigranes, construire les offres, lire les ventes) et il n'avait aucune entree de menu.
+    // Il est ici dans « Operations » et non dans « Ressources » : c'est du travail sur une
+    // mission, pas de la documentation. Prod a bien les deux droits cote serveur — envoi
+    // (media_upload_staff) et tarification (media_pricing_staff) — donc l'ecran est complet
+    // pour lui, contrairement au role photo qui peut envoyer mais pas tarifer.
+    {id:'media',lb:'Galeries photo',ic:'med'},
     {type:'sep',lb:'Équipe & matériel'},
     {id:'equipe',lb:'Équipe terrain',ic:'col'},
     {id:'kits',lb:'Matériel',ic:'kits'},
