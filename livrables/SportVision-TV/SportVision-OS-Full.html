@@ -12081,21 +12081,42 @@ async function _galChargerAssets(){
   _galRenderGrille();
 }
 
+// ── Lien public de la galerie ─────────────────────────────────────────────
+// Le slug est lisible (il finit sur une affiche ou dans un message WhatsApp), le JETON fait la
+// securite : un slug se devine, pas 24 caracteres aleatoires. C'est ce lien, et lui seul, qui
+// ouvre la galerie a quelqu'un sans compte — `access_mode` n'est pas touche.
+const GAL_CONNECT_URL='https://connect.sportvision-an.fr';
+
+// Le lien « principal » d'une galerie : le premier cree. Le cas courant n'a que celui-la, et
+// l'utilisateur n'a jamais a savoir qu'un « lien commercial » existe. Les liens supplementaires
+// — un tarif pour l'equipe adverse, une promotion — restent disponibles dans les options
+// avancees, sans encombrer le parcours de tous les jours.
+let _galLienPrincipal=null;
+
 async function modalMediasAlbum(albumId){
   const album=_photoAlbums.find(a=>a.id===albumId);
-  if(!album){toast('Album introuvable','error');return;}
-  // Les caches produits/liens sont remis a zero a chaque album : ils sont propres a UN club, et
+  if(!album){toast('Galerie introuvable','error');return;}
+  // Les caches produits/liens sont remis a zero a chaque galerie : ils sont propres a UN club, et
   // les garder ferait proposer le catalogue du club precedent dans le formulaire de tarif.
   _galAlbum=album;_galAssets=[];_galQueue=[];_galProduitsCache=null;_galLiensCache=[];
+  _galOffres=[];_galLienPrincipal=null;
+
+  const enLigne=album.status==='published';
+  const clr=PA_STATUT_CLR[album.status]||'var(--t3)';
+  const contexte=[album.clubs?.nom,album.club_teams?.name,album.structure_externe,
+                  album.event_date?dateFr(album.event_date):null].filter(Boolean).map(esc).join(' · ');
+  const T='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:flex;align-items:center;gap:7px;margin-bottom:9px';
+  const N='width:19px;height:19px;border-radius:50%;background:var(--s3);color:var(--t2);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0';
+
   openModal(`
-    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:3px">📸 Médias — ${esc(album.title)}</div>
-    <div id="gal-count" style="font-size:11.5px;color:var(--t3);margin-bottom:12px">Chargement…</div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:3px">
+      <div style="font-size:15px;font-weight:700;color:var(--t1);min-width:0">📸 ${esc(album.title)}</div>
+      <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:2px 8px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${PA_STATUT_LB[album.status]||album.status}</span>
+    </div>
+    <div style="font-size:11.5px;color:var(--t3);margin-bottom:16px">${contexte||'Aucun rattachement'}</div>
 
-    <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);margin-bottom:10px;cursor:pointer">
-      <input type="checkbox" id="gal-wm" ${album.watermark_previews!==false?'checked':''} onchange="galBasculerFiligrane(this.checked)">
-      Filigrane SportVision sur les aperçus (jamais sur l’original)
-    </label>
-
+    <!-- ① PHOTOS -->
+    <div style="${T}"><span style="${N}">1</span> Photos <span id="gal-count" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3)">…</span></div>
     <div id="gal-drop"
       ondragover="event.preventDefault();this.style.borderColor='var(--ac)'"
       ondragleave="this.style.borderColor='var(--b1)'"
@@ -12103,30 +12124,195 @@ async function modalMediasAlbum(albumId){
       style="border:2px dashed var(--b1);border-radius:var(--rp);padding:22px;text-align:center;margin-bottom:12px">
       <div style="font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:4px">Glissez vos photos ici</div>
       <div style="font-size:11px;color:var(--t3);margin-bottom:9px">JPEG, PNG ou WebP · 50 Mo maximum par fichier</div>
-      <label class="btn bp bs" style="cursor:pointer;display:inline-flex">Choisir des fichiers
+      <label class="btn bp bs" style="cursor:pointer;display:inline-flex;min-height:40px;align-items:center">Ajouter mes photos
         <input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="_galAjouterFichiers(this.files);this.value=''">
       </label>
     </div>
-
-    <div id="gal-lien" style="margin-bottom:12px"></div>
-
     <div id="gal-queue" style="margin-bottom:12px"></div>
-    <div id="gal-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:44vh;overflow-y:auto"></div>
+    <div id="gal-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:34vh;overflow-y:auto;margin-bottom:20px"></div>
 
-    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:14px">
-      <button class="btn bg2 bs" onclick="galTrierParDate()">Trier par date d’ajout</button>
-      <button class="btn bg2 bs" onclick="galRegenererApercus()">Regenerer les aperçus protégés</button>
-      <button class="btn bg2" onclick="closeModal();loadPhotoAlbums()">Fermer</button>
+    <!-- ② OFFRES -->
+    <div style="${T}"><span style="${N}">2</span> Ce que vous vendez</div>
+    <div id="gl-offres" style="display:flex;flex-direction:column;gap:8px;margin-bottom:9px"></div>
+    <div id="gal-offres-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+      <button class="btn bg2 bs" style="min-height:40px" onclick="galAjouterOffre('pack')">+ Sélection de photos</button>
+      <button class="btn bg2 bs" style="min-height:40px" onclick="galAjouterOffre('album_complet')">+ Galerie complète</button>
+    </div>
+
+    <!-- ③ MISE EN LIGNE -->
+    <div style="${T}"><span style="${N}">3</span> ${enLigne?'En ligne':'Mettre en ligne'}</div>
+    <div id="gal-final" style="margin-bottom:16px"></div>
+
+    <!-- OPTIONS AVANCEES -->
+    <details style="border-top:1px solid var(--b1);padding-top:12px">
+      <summary style="cursor:pointer;font-size:12px;color:var(--t2);font-weight:600;list-style:revert">Options avancées</summary>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:12px">
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);cursor:pointer">
+          <input type="checkbox" id="gal-wm" ${album.watermark_previews!==false?'checked':''} onchange="galBasculerFiligrane(this.checked)">
+          Filigrane SportVision sur les aperçus (jamais sur l’original)
+        </label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn bg2 bs" style="min-height:40px" onclick="galTrierParDate()">Trier par date d’ajout</button>
+          <button class="btn bg2 bs" style="min-height:40px" onclick="galRegenererApercus()">Régénérer les aperçus protégés</button>
+        </div>
+        <div id="gal-lien"></div>
+      </div>
+    </details>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn bg2" style="min-height:40px" onclick="closeModal();loadPhotoAlbums()">Fermer</button>
     </div>`);
+
   await _galChargerAssets();
+  await _galChargerOffresPrincipales();
   await _galChargerLien();
 }
 
-// ── Lien public de la galerie ─────────────────────────────────────────────
-// Le slug est lisible (il finit sur une affiche ou dans un message WhatsApp), le JETON fait la
-// securite : un slug se devine, pas 24 caracteres aleatoires. C'est ce lien, et lui seul, qui
-// ouvre la galerie a quelqu'un sans compte — `access_mode` n'est pas touche.
-const GAL_CONNECT_URL='https://connect.sportvision-an.fr';
+// Charge les offres du lien principal dans l'editeur. C'est ce qui permet de definir ce qu'on
+// vend SANS avoir a penser « lien » : le lien est cree tout seul a la mise en ligne.
+async function _galChargerOffresPrincipales(){
+  const stats=await sbFetch('rpc/media_album_links_stats',{method:'POST',body:{p_album_id:_galAlbum.id}}).catch(()=>[]);
+  const liens=Array.isArray(stats)?stats:[];
+  _galLienPrincipal=liens.length?liens[0]:null;
+  _galOffres=[];
+  if(_galLienPrincipal){
+    const r=await sbFetch('rpc/media_link_offers',{method:'POST',body:{p_link_id:_galLienPrincipal.id}}).catch(()=>[]);
+    _galOffres=(Array.isArray(r)?r:[]).map(o=>({
+      id:o.offer_id, type:o.offer_type, name:o.offer_name||'',
+      prix:o.price_cents===null||o.price_cents===undefined?'':(o.price_cents/100).toString().replace('.',','),
+      quota:o.offer_type==='pack'?(o.photos_allowance??''):null,
+      featured:!!o.is_featured, actif:true,
+    }));
+  }
+  _galRendreOffres();
+  _galRendreFinal();
+}
+
+// Valide les offres saisies et les traduit pour media_link_save, qui reste seul juge : les memes
+// regles y sont reappliquees cote serveur, une requete forgee ne passe pas davantage.
+function _galOffresPourEnregistrement(){
+  const offres=[];
+  for(let i=0;i<_galOffres.length;i++){
+    const o=_galOffres[i];
+    const nom=(o.name||'').trim();
+    if(!nom){toast('Offre '+(i+1)+' : donnez-lui un nom.','er');return null;}
+    const p=Number(String(o.prix).replace(',','.'));
+    if(o.prix===''||o.prix===null||!isFinite(p)||p<0){toast('Offre '+(i+1)+' : prix invalide.','er');return null;}
+    let quota=null;
+    if(o.type==='pack'){
+      quota=parseInt(o.quota,10);
+      if(!isFinite(quota)||quota<1){toast('Offre '+(i+1)+' : indiquez le nombre de photos.','er');return null;}
+    }
+    offres.push({id:o.id||null,type:o.type,name:nom,price_cents:Math.round(p*100),photos_allowance:quota,
+                 display_order:i+1,featured:!!o.featured,is_enabled:o.actif!==false});
+  }
+  return offres;
+}
+
+// Enregistre les offres sur le lien principal, en le creant s'il n'existe pas encore. C'est ici
+// que « lien » disparait du vocabulaire de l'utilisateur : il definit ce qu'il vend, le lien se
+// fabrique tout seul.
+async function _galEnregistrerLienPrincipal(offres){
+  const r=await sbFetch('rpc/media_link_save',{method:'POST',body:{
+    p_album_id:_galAlbum.id, p_offers:offres,
+    p_link_id:_galLienPrincipal?_galLienPrincipal.id:null,
+    p_label:_galLienPrincipal?_galLienPrincipal.label:'Lien principal',
+    p_audience:null, p_expires_at:null, p_is_enabled:true,
+    p_preview_limit:null, p_visible_in_clubplus:false
+  }});
+  const res=Array.isArray(r)?r[0]:r;
+  if(sbErr(r)||!res){toast('Erreur : '+(msgErreur(r,'enregistrement impossible.')),'er');return null;}
+  if(!res.ok){
+    toast(res.raison==='non_autorise'
+      ?'Réservé à la direction, à la production, au secrétariat et aux responsables de pôle.'
+      :'Erreur : '+res.raison,'er');
+    return null;
+  }
+  _galLienPrincipal={id:res.link_id,slug:res.slug,token:res.token,label:_galLienPrincipal?_galLienPrincipal.label:'Lien principal'};
+  return res;
+}
+
+async function galEnregistrerOffresPrincipales(){
+  const offres=_galOffresPourEnregistrement();
+  if(!offres)return;
+  const res=await _galEnregistrerLienPrincipal(offres);
+  if(!res)return;
+  toast('Offres enregistrées.','ok');
+  await _galChargerOffresPrincipales();
+  await _galChargerLien();
+}
+
+// Le seul geste de l'etape 3 : enregistrer ce qu'on vend, creer le lien s'il manque, et passer la
+// galerie en ligne. Trois operations que l'utilisateur devait enchainer a la main, en comprenant
+// au passage la notion de lien commercial.
+async function galMettreEnLigne(){
+  const offres=_galOffresPourEnregistrement();
+  if(!offres)return;
+  if(!offres.length){toast('Ajoutez au moins une offre avant de mettre en ligne.','er');return;}
+
+  const res=await _galEnregistrerLienPrincipal(offres);
+  if(!res)return;
+
+  if(_galAlbum.status!=='published'){
+    const r=await sbFetch('media_albums?id=eq.'+_galAlbum.id,{method:'PATCH',
+      body:{status:'published',published_at:new Date().toISOString()}});
+    if(sbErr(r)){
+      // Les offres sont enregistrees : on ne les perd pas parce que la publication a echoue.
+      toast('Offres enregistrées, mais la mise en ligne a échoué : '+(msgErreur(r,'réessayez.')),'wa');
+      return;
+    }
+    _galAlbum.status='published';
+    const cache=_photoAlbums.find(a=>a.id===_galAlbum.id);
+    if(cache)cache.status='published';
+  }
+
+  toast('Galerie en ligne. Le lien est prêt à partager.','ok');
+  await _galChargerOffresPrincipales();
+  await _galChargerLien();
+}
+
+// Le recapitulatif avant mise en ligne, puis les trois actions de partage une fois en ligne.
+function _galRendreFinal(){
+  const el=document.getElementById('gal-final');
+  if(!el||!_galAlbum)return;
+  const enLigne=_galAlbum.status==='published';
+  const nbPhotos=(_galAssets||[]).filter(a=>a.status==='ready').length;
+  const offresLisibles=_galOffres.filter(o=>(o.name||'').trim());
+
+  if(enLigne&&_galLienPrincipal){
+    const url=GAL_CONNECT_URL+'/gallery/'+_galLienPrincipal.slug+'?k='+encodeURIComponent(_galLienPrincipal.token);
+    el.innerHTML=`<div style="border:1px solid rgba(46,204,138,.3);background:rgba(46,204,138,.06);border-radius:var(--rp);padding:14px">
+      <div style="font-size:13px;font-weight:600;color:var(--ok);margin-bottom:4px">✓ Votre galerie est en ligne</div>
+      <div style="font-size:11.5px;color:var(--t3);margin-bottom:11px">${nbPhotos} photo${nbPhotos>1?'s':''} · ${offresLisibles.length} offre${offresLisibles.length>1?'s':''}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn bp bs" style="min-height:40px" onclick="galCopierLien('${esc(url)}')">Copier le lien</button>
+        <button class="btn bg2 bs" style="min-height:40px" onclick="galQrCode('${esc(url)}')">QR Code</button>
+        <a class="btn bg2 bs" style="min-height:40px;display:inline-flex;align-items:center" href="${esc(url)}" target="_blank" rel="noopener">Ouvrir la galerie</a>
+      </div>
+      <button class="btn bg2 bs" style="margin-top:11px;min-height:40px" onclick="galEnregistrerOffresPrincipales()">Enregistrer les modifications d’offres</button>
+    </div>`;
+    return;
+  }
+
+  // Pas encore en ligne : on montre ce qui va etre publie, et ce qui manque le cas echeant.
+  const manque=[];
+  if(!nbPhotos) manque.push('aucune photo');
+  if(!offresLisibles.length) manque.push('aucune offre');
+  const lignes=offresLisibles.map(o=>{
+    const p=Number(String(o.prix).replace(',','.'));
+    const prix=(!isFinite(p))?'prix à compléter':(p===0?'Offert':p.toLocaleString('fr-FR',{minimumFractionDigits:p%1?2:0})+' €');
+    const quoi=o.type==='pack'?((o.quota||'?')+' photo'+((o.quota||0)>1?'s':'')):'Toutes les photos';
+    return `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--t2)"><span>${esc(o.name)} — ${quoi}</span><span style="font-weight:600;color:var(--t1);white-space:nowrap">${prix}</span></div>`;
+  }).join('');
+
+  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:14px">
+    <div style="font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:3px">${esc(_galAlbum.title)}</div>
+    <div style="font-size:11.5px;color:var(--t3);margin-bottom:${lignes?'11px':'0'}">${nbPhotos} photo${nbPhotos>1?'s':''} prête${nbPhotos>1?'s':''}${_galAlbum.watermark_previews!==false?' · aperçus protégés par filigrane':''}</div>
+    ${lignes?`<div style="display:flex;flex-direction:column;gap:5px;padding-top:9px;border-top:1px solid var(--b1)">${lignes}</div>`:''}
+    <button class="btn bp" style="width:100%;margin-top:13px;min-height:44px" onclick="galMettreEnLigne()" ${manque.length?'disabled':''}>Mettre la galerie en ligne</button>
+    ${manque.length?`<div style="font-size:11.5px;color:var(--t3);margin-top:7px;text-align:center">Il manque ${manque.join(' et ')}.</div>`:''}
+  </div>`;
+}
 
 function _galUrlPublique(lien){
   return GAL_CONNECT_URL+'/gallery/'+lien.slug+'?k='+encodeURIComponent(lien.token);
@@ -12270,7 +12456,7 @@ async function _galChargerLien(){
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Liens de vente</span>
       ${_galAlbum.status==='published'?'':'<span style="font-size:11px;color:var(--wa)">Album non publie : les liens affichent « pas encore ouverte »</span>'}
     </div>
-    ${peut?`<button class="btn bp bs" onclick="galNouveauLien()">+ Nouveau lien</button>`:''}
+    ${peut?`<button class="btn bp bs" style="min-height:40px" onclick="galNouveauLien()">+ Nouveau tarif / lien</button>`:''}
   </div>`;
 
   if(!liens.length){
@@ -12435,7 +12621,9 @@ function _galRendreOffres(){
   if(!el)return;
   if(!_galOffres.length){
     el.innerHTML=`<div style="border:1px dashed var(--b1);border-radius:var(--rp);padding:16px;text-align:center;font-size:12px;color:var(--t3)">
-      Aucune offre. Ce lien ouvrira la galerie en consultation, sans rien vendre.
+      Aucune offre pour le moment. Ajoutez ce que vous voulez vendre : une sélection de photos au
+      choix, la galerie complète, ou les deux. Sans offre, la galerie s'ouvrira en simple
+      consultation.
     </div>`;
     _galApercuClient(); return;
   }
@@ -12444,25 +12632,25 @@ function _galRendreOffres(){
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
         <span style="font-size:11px;font-weight:600;color:var(--t3)">${o.type==='pack'?'Selection de photos':'Galerie complete'}</span>
         <div style="display:flex;gap:4px">
-          <button class="btn bg2 bs" onclick="galDeplacerOffre(${i},-1)" ${i===0?'disabled':''} title="Monter">&uarr;</button>
-          <button class="btn bg2 bs" onclick="galDeplacerOffre(${i},1)" ${i===_galOffres.length-1?'disabled':''} title="Descendre">&darr;</button>
-          <button class="btn bg2 bs" onclick="galDupliquerOffre(${i})" title="Dupliquer">&#10697;</button>
-          <button class="btn bg2 bs" onclick="galRetirerOffre(${i})" title="Retirer">&times;</button>
+          <button class="btn bg2 bs" style="min-width:40px;min-height:40px" onclick="galDeplacerOffre(${i},-1)" ${i===0?'disabled':''} title="Monter" aria-label="Monter cette offre">&uarr;</button>
+          <button class="btn bg2 bs" style="min-width:40px;min-height:40px" onclick="galDeplacerOffre(${i},1)" ${i===_galOffres.length-1?'disabled':''} title="Descendre" aria-label="Descendre cette offre">&darr;</button>
+          <button class="btn bg2 bs" style="min-width:40px;min-height:40px" onclick="galDupliquerOffre(${i})" title="Dupliquer" aria-label="Dupliquer cette offre">&#10697;</button>
+          <button class="btn bg2 bs" style="min-width:40px;min-height:40px" onclick="galRetirerOffre(${i})" title="Retirer" aria-label="Retirer cette offre">&times;</button>
         </div>
       </div>
-      <input class="l-inp" style="height:34px;margin-bottom:6px;font-size:12.5px" placeholder="Nom vu par le client (ex : Pack souvenirs)"
+      <input class="l-inp" style="height:40px;margin-bottom:6px;font-size:16px" placeholder="Nom vu par le client (ex : Pack souvenirs)"
              value="${esc(o.name||'')}" oninput="_galOffres[${i}].name=this.value;_galApercuClient()">
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${o.type==='pack'?`<input class="l-inp" style="height:34px;flex:1;min-width:110px;font-size:12.5px" inputmode="numeric"
+        ${o.type==='pack'?`<input class="l-inp" style="height:40px;flex:1;min-width:110px;font-size:16px" inputmode="numeric"
              placeholder="Nombre de photos" value="${o.quota??''}" oninput="_galOffres[${i}].quota=this.value;_galApercuClient()">`:''}
-        <input class="l-inp" style="height:34px;flex:1;min-width:110px;font-size:12.5px" inputmode="decimal"
+        <input class="l-inp" style="height:40px;flex:1;min-width:110px;font-size:16px" inputmode="decimal"
              placeholder="Prix en euros" value="${o.prix===''||o.prix===null?'':o.prix}" oninput="_galOffres[${i}].prix=this.value;_galApercuClient()">
       </div>
       <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:7px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2)">
+        <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2);min-height:40px;padding:0 2px;cursor:pointer">
           <input type="checkbox" ${o.featured?'checked':''} onchange="galOffreChamp(${i},'featured',this.checked)"> Mettre en avant
         </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2)">
+        <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2);min-height:40px;padding:0 2px;cursor:pointer">
           <input type="checkbox" ${o.actif?'checked':''} onchange="galOffreChamp(${i},'actif',this.checked)"> Active
         </label>
       </div>
@@ -12473,6 +12661,10 @@ function _galRendreOffres(){
 // Ce que le parent verra, montre AVANT d'envoyer le lien a 200 familles. C'est le seul garde-fou
 // contre une erreur de quantite ou de tarif, et il ne coute rien.
 function _galApercuClient(){
+  // Appele apres chaque frappe dans l'editeur d'offres. Le recapitulatif de mise en ligne doit
+  // suivre la meme saisie : on l'actualise ici plutot que d'accrocher un appel de plus a chacun
+  // des champs, ou l'un aurait fini par etre oublie.
+  if(typeof _galRendreFinal==='function'&&document.getElementById('gal-final'))_galRendreFinal();
   const el=document.getElementById('gl-apercu-client');
   if(!el)return;
   const vis=_galOffres.filter(o=>o.actif);
