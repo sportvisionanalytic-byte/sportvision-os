@@ -233,51 +233,140 @@ begin
 
   update clubs set ville = 'ZZ Ville' where id = v_clubA;
   get diagnostics n = row_count;
-  if n <> 1 then e := e || 'Le CM ne peut pas modifier les informations de son propre club'; end if;
+  if n <> 1 then e := e || 'Le CM ne peut pas modifier les informations de son propre club'::text; end if;
 
   update clubs set ville = 'ZZ Vole' where id = v_clubB;
   get diagnostics n = row_count;
-  if n <> 0 then e := e || 'Le CM a modifie un club hors de son perimetre'; end if;
+  if n <> 0 then e := e || 'Le CM a modifie un club hors de son perimetre'::text; end if;
 
   -- Le SIRET identifie juridiquement la structure : il peut finir sur une facture.
   begin
     update clubs set siret = '99999999999999' where id = v_clubA;
-    e := e || 'Le CM a pu modifier le SIRET de son club';
+    e := e || 'Le CM a pu modifier le SIRET de son club'::text;
   exception when others then null;
   end;
 
   begin
     insert into club_calendar_events (club_id, title, event_date, type)
     values (v_clubA, 'ZZ evenement', current_date, 'match');
-  exception when others then e := e || 'Le CM ne peut pas creer un evenement sur son club'; end;
+  exception when others then e := e || 'Le CM ne peut pas creer un evenement sur son club'::text; end;
 
   begin
     insert into club_calendar_events (club_id, title, event_date, type)
     values (v_clubB, 'ZZ evenement vole', current_date, 'match');
-    e := e || 'Le CM a cree un evenement sur un club hors de son perimetre';
+    e := e || 'Le CM a cree un evenement sur un club hors de son perimetre'::text;
   exception when others then null; end;
 
   begin
     insert into club_matches (club_id, team, opponent, match_date)
     values (v_clubA, 'ZZ U18 A', 'ZZ adverse', current_date);
-  exception when others then e := e || 'Le CM ne peut pas creer un match sur son club'; end;
+  exception when others then e := e || 'Le CM ne peut pas creer un match sur son club'::text; end;
 
   begin
     insert into club_matches (club_id, team, opponent, match_date)
     values (v_clubB, 'ZZ U18 B', 'ZZ vole', current_date);
-    e := e || 'Le CM a cree un match sur un club hors de son perimetre';
+    e := e || 'Le CM a cree un match sur un club hors de son perimetre'::text;
   exception when others then null; end;
 
   begin
     insert into club_members (user_id, club_id, role, prenom, nom)
     values (v_cmA, v_clubA, 'coach', 'ZZ', 'membre');
-  exception when others then e := e || 'Le CM ne peut pas ajouter un membre a son club'; end;
+  exception when others then e := e || 'Le CM ne peut pas ajouter un membre a son club'::text; end;
+
+  -- Le retirer IMMEDIATEMENT : cette ligne fait du CM un membre du club, ce qui lui ouvrirait
+  -- toutes les policies `is_club_member` pour la suite du test. Sans ce nettoyage, les
+  -- assertions suivantes mesureraient un CM qui n'existe pas. (Piege tombe dedans le 08/09 :
+  -- le test restait vert meme apres suppression de la policy des creneaux.)
+  perform set_config('role','postgres',true);
+  delete from club_members where club_id = v_clubA and prenom = 'ZZ' and nom = 'membre';
+  perform pg_temp.incarner(v_cmA);
 
   begin
     insert into club_members (user_id, club_id, role, prenom, nom)
     values (v_cmA, v_clubB, 'coach', 'ZZ', 'vole');
-    e := e || 'Le CM a ajoute un membre a un club hors de son perimetre';
+    e := e || 'Le CM a ajoute un membre a un club hors de son perimetre'::text;
   exception when others then null; end;
+
+  -- ─────────────────────────────────────────────────────────────────────────
+  -- Le reste de l'onboarding : lieux, creneaux, reseaux sociaux, progression, effectif.
+  -- Ces surfaces manquaient a la v10 et bloquaient reellement l'ecran (creneaux signales par
+  -- Fouka le 08/09). Les creneaux n'ont pas de club_id : leur perimetre passe par l'equipe.
+  -- ─────────────────────────────────────────────────────────────────────────
+  perform set_config('role','postgres',true);
+  perform pg_temp.incarner(v_cmA);
+
+  declare v_lieu uuid;
+  begin
+    begin
+      insert into club_onboarding_progress (club_id, statut) values (v_clubA, 'in_progress')
+      on conflict (club_id) do update set last_activity_at = now();
+    exception when others then e := e || 'Le CM ne peut pas demarrer la mise en place de son club'::text; end;
+
+    begin
+      insert into club_onboarding_progress (club_id, statut) values (v_clubB, 'in_progress')
+      on conflict (club_id) do update set last_activity_at = now();
+      e := e || 'Le CM a demarre la mise en place d un club hors de son perimetre'::text;
+    exception when others then null; end;
+
+    begin
+      insert into club_venues (club_id, nom) values (v_clubA, 'ZZ stade') returning id into v_lieu;
+    exception when others then e := e || 'Le CM ne peut pas creer un lieu sur son club'::text; end;
+
+    begin
+      insert into club_venues (club_id, nom) values (v_clubB, 'ZZ stade vole');
+      e := e || 'Le CM a cree un lieu sur un club hors de son perimetre'::text;
+    exception when others then null; end;
+
+    begin
+      insert into club_team_training_slots (team_id, jour, heure_debut, heure_fin, venue_id)
+      values (v_teamA, 'mardi', '18:00', '19:30', v_lieu);
+    exception when others then e := e || 'Le CM ne peut pas creer un creneau sur une equipe de son club'::text; end;
+
+    begin
+      insert into club_team_training_slots (team_id, jour, heure_debut, heure_fin)
+      values (v_teamB, 'mardi', '18:00', '19:30');
+      e := e || 'Le CM a cree un creneau sur une equipe hors de son perimetre'::text;
+    exception when others then null; end;
+
+    begin
+      insert into club_social_accounts (club_id, plateforme, handle_ou_url) values (v_clubA, 'instagram', 'zz');
+    exception when others then e := e || 'Le CM ne peut pas enregistrer un reseau social sur son club'::text; end;
+
+    begin
+      insert into club_social_accounts (club_id, plateforme, handle_ou_url) values (v_clubB, 'instagram', 'zz');
+      e := e || 'Le CM a enregistre un reseau social sur un club hors de son perimetre'::text;
+    exception when others then null; end;
+
+    begin
+      insert into club_sponsors (club_id, name) values (v_clubA, 'ZZ sponsor');
+    exception when others then e := e || 'Le CM ne peut pas creer un sponsor sur son club'::text; end;
+
+    begin
+      insert into club_sponsors (club_id, name) values (v_clubB, 'ZZ sponsor vole');
+      e := e || 'Le CM a cree un sponsor sur un club hors de son perimetre'::text;
+    exception when others then null; end;
+
+    -- Import d'effectif : saisie de mise en place, aucun compte cree, aucun e-mail.
+    begin
+      perform preview_club_players_import(v_clubA, '[]'::jsonb);
+    exception when others then e := e || 'Le CM ne peut pas preparer un import d effectif sur son club'::text; end;
+
+    begin
+      perform preview_club_players_import(v_clubB, '[]'::jsonb);
+      e := e || 'Le CM a prepare un import d effectif sur un club hors de son perimetre'::text;
+    exception when others then null; end;
+
+    -- Une autorisation ne doit jamais valoir « inconnu » : un club_id null, c'est non.
+    if peut_preparer_club(null) is distinct from false then
+      e := e || 'peut_preparer_club(null) ne vaut pas false — un appel sans club traverserait le controle'::text;
+    end if;
+
+    -- Les invitations restent fermees : c'est la phase 4, elle n'est pas commencee.
+    begin
+      perform create_invite_code(v_clubA, null, null);
+      e := e || 'Le CM a pu creer un lien collectif alors que les invitations sont fermees'::text;
+    exception when others then null; end;
+  end;
 
   perform set_config('role','postgres',true);
   if array_length(e,1) is not null then

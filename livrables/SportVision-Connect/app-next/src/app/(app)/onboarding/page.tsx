@@ -707,7 +707,7 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
     <Card className="flex flex-col gap-4 p-5">
       <SectionHeader title="3. Équipes & entraînements" description="Une équipe créée ici est réutilisée telle quelle par la Production, la Communication et Connect." />
 
-      {canEdit && (
+      {canInvite && (
         <div className="rounded-xl border border-border-strong p-3.5">
           <div className="text-[12.5px] font-bold">Lien du club (toutes les équipes)</div>
           <p className="mt-0.5 text-[11.5px] text-text-soft">
