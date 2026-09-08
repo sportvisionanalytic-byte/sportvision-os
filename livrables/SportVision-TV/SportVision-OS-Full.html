@@ -2059,7 +2059,7 @@ const VIEWS={
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Proposées sans réponse</div><div class="kpi-v" id="prod-kpi-propose">—</div><span class="kpi-d dnt">à relancer</span></div>
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">7 prochains jours</div><div class="kpi-v" id="prod-kpi-7j">—</div><span class="kpi-d dnt">à couvrir</span></div>
       <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('livr')"><div class="kpi-ey">Livraisons à valider</div><div class="kpi-v" id="prod-kpi-livval">—</div><span class="kpi-d dnt">à contrôler</span></div>
-      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('media')"><div class="kpi-ey">Corrections en cours</div><div class="kpi-v" id="prod-kpi-correc">—</div><span class="kpi-d dnt">en attente opérateur</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="ouvrirMedias('liens')"><div class="kpi-ey">Corrections en cours</div><div class="kpi-v" id="prod-kpi-correc">—</div><span class="kpi-d dnt">en attente opérateur</span></div>
       <div class="kpi" style="--kl:#00B8D4;cursor:pointer" onclick="openNotifPanel()"><div class="kpi-ey">Changements CM</div><div class="kpi-v" id="prod-kpi-cm">—</div><span class="kpi-d dnt">impact à valider</span></div>
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Conflits matériel</div><div class="kpi-v" id="prod-kpi-conflit" style="color:var(--er)">—</div><span class="kpi-d dnt">à résoudre</span></div>
     </div>
@@ -5228,10 +5228,12 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='rem') await loadProdRemunerations();
   if(role==='prod'&&view==='frais') await loadProdFrais();
   if(role==='prod'&&view==='brief') await loadProdBriefings();
-  if((role==='admin'||role==='prod')&&view==='media'){_mediaTab='liens';await loadProdMedias();}
-  // Le photographe n'a qu'un onglet : on l'ouvre dessus plutot que sur « Tous les liens », qui
-  // n'existe pas chez lui et laisserait l'ecran vide.
-  if(role==='photo'&&view==='media'){_mediaTab='albums';await loadProdMedias();}
+  // « Galeries photo » ouvre sur les albums pour les trois roles. Une tuile de tableau de bord
+  // qui parle de liens a pu demander un autre onglet via ouvrirMedias(), auquel cas on l'honore.
+  if((role==='admin'||role==='prod'||role==='photo')&&view==='media'){
+    const onglet=_mediaTabDemande||'albums';_mediaTabDemande=null;
+    setMediaTab(onglet);
+  }
   if(role==='prod'&&view==='post') await loadProdPostprod();
   if(role==='prod'&&view==='livr'){await loadProdLivrMissions();await loadProdLivrables();}
   if(role==='prod'&&view==='kanban') await loadKanban();
@@ -11024,6 +11026,13 @@ let _mediaPostprod=[];
 let _mediaLivrables=[];
 
 // ─── Onglets Centre Médias (prod) ─────────────────────────────────────────────
+// L'ecran sert deux choses tres differentes : le suivi des liens de transfert (onglet « Tous les
+// liens ») et les galeries photo (onglet « Pass Photo »). L'entree de menu s'appelle « Galeries
+// photo » et doit donc ouvrir sur les albums ; les tuiles de tableau de bord qui parlent de liens
+// demandent explicitement l'onglet des liens. Sans cela, cliquer « Galeries photo » tombait sur
+// le suivi des transferts, ou l'on ne trouve evidemment aucun album.
+let _mediaTabDemande=null;
+function ouvrirMedias(tab){_mediaTabDemande=tab||'albums';switchView('media');}
 function setMediaTab(tab){
   _mediaTab=tab;
   ['liens','prestations','expirants','bibliotheque','albums','stats'].forEach(t=>{
@@ -36635,7 +36644,7 @@ async function loadMobileProdDash(ct){
     }
     html+=`<div class="mkpi-strip">
       <div class="mkpi" style="--mkl:var(--er);cursor:pointer" onclick="switchView('pre')"><div class="mkpi-label">À valider</div><div class="mkpi-val" style="${urgentes>0?'color:var(--er)':''}">${urgentes}</div><div class="mkpi-sub">production</div></div>
-      <div class="mkpi" style="--mkl:var(--wa);cursor:pointer" onclick="switchView('media')"><div class="mkpi-label">Médias</div><div class="mkpi-val" style="${aTransferer>0?'color:var(--wa)':''}">${aTransferer}</div><div class="mkpi-sub">à transférer</div></div>
+      <div class="mkpi" style="--mkl:var(--wa);cursor:pointer" onclick="ouvrirMedias('liens')"><div class="mkpi-label">Médias</div><div class="mkpi-val" style="${aTransferer>0?'color:var(--wa)':''}">${aTransferer}</div><div class="mkpi-sub">à transférer</div></div>
       <div class="mkpi" style="--mkl:var(--ok)"><div class="mkpi-label">En cours</div><div class="mkpi-val" style="${enCours>0?'color:var(--ok)':''}">${enCours}</div><div class="mkpi-sub">live</div></div>
       <div class="mkpi" style="--mkl:var(--er);cursor:pointer" onclick="switchView('incidents')"><div class="mkpi-label">Incidents</div><div class="mkpi-val" style="${(inc||[]).length>0?'color:var(--er)':''}">${(inc||[]).length}</div><div class="mkpi-sub">ouverts</div></div>
     </div>`;
