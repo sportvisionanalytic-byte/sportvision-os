@@ -230,6 +230,12 @@ interface ClubRow {
   siret: string | null;
   couleur_primaire: string | null;
   couleur_secondaire: string | null;
+  // Comment le Club+ de ce club a ete provisionne : 'full_com_included' quand il est inclus dans
+  // un accompagnement Full Communication, 'clubplus_subscription' pour un abonnement direct,
+  // 'manual' pour une activation a la main. Sert a reconnaitre un club accompagne meme lorsque
+  // aucune ligne client_contrats n'a ete creee.
+  club_plus_source: string | null;
+  ecusson_url: string | null;
 }
 
 interface EntitlementRow {
@@ -252,7 +258,7 @@ export async function buildClubActiveContext(
     supabase
       .from("clubs")
       .select(
-        "id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id, logo_url, adresse, instagram_handle, siret, couleur_primaire, couleur_secondaire",
+        "id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id, logo_url, ecusson_url, adresse, instagram_handle, siret, couleur_primaire, couleur_secondaire, club_plus_source",
       )
       .eq("id", space.id)
       .maybeSingle(),
@@ -286,8 +292,14 @@ export async function buildClubActiveContext(
   // même panne qu'INC-004 (11/08), reproduite en E2E le 20/08 sur ce chemin précis. Le RPC ne
   // renvoie qu'un booléen (aucune fuite de donnée financière) et reconnaît tout membre actif via
   // is_club_member() (club_members OU délégation cm_agency_club_access).
-  let isFullCommunication = false;
-  if (club.portail_client_id) {
+  // 08/09/2026 — Le contrat n'est pas la seule verite. Villeneuve porte
+  // clubs.club_plus_source = 'full_com_included' — c'est ainsi que l'OS provisionne un Club+
+  // inclus dans un accompagnement Full Communication — mais aucune ligne client_contrats n'a
+  // jamais ete creee. Le club s'affichait donc « Gratuit » a tout le monde, president compris,
+  // alors qu'il est bien accompagne. On regarde les deux signaux : la paperasse ET la maniere
+  // dont le club a ete provisionne.
+  let isFullCommunication = club.club_plus_source === "full_com_included";
+  if (!isFullCommunication && club.portail_client_id) {
     const { data: hasContract } = await supabase.rpc("client_has_active_fullcomm_contract", {
       p_client_id: club.portail_client_id,
     });
@@ -385,7 +397,7 @@ export async function buildDelegatedClubActiveContext(
   const [clubRes, myMembershipsRes, entitlementsRes] = await Promise.all([
     supabase
       .from("clubs")
-      .select("id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id")
+      .select("id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id, logo_url, ecusson_url, club_plus_source")
       .eq("id", space.id)
       .maybeSingle(),
     supabase
@@ -469,8 +481,14 @@ export async function buildDelegatedClubActiveContext(
   // n'a JAMAIS de ligne club_members pour ce club : avec l'ancienne lecture de client_contrats,
   // isFullCommunication était donc TOUJOURS false ici, quel que soit le contrat réel. is_club_member()
   // (utilisée par le RPC) couvre déjà ce chemin de délégation, pas seulement l'appartenance directe.
-  let isFullCommunication = false;
-  if (club.portail_client_id) {
+  // 08/09/2026 — Le contrat n'est pas la seule verite. Villeneuve porte
+  // clubs.club_plus_source = 'full_com_included' — c'est ainsi que l'OS provisionne un Club+
+  // inclus dans un accompagnement Full Communication — mais aucune ligne client_contrats n'a
+  // jamais ete creee. Le club s'affichait donc « Gratuit » a tout le monde, president compris,
+  // alors qu'il est bien accompagne. On regarde les deux signaux : la paperasse ET la maniere
+  // dont le club a ete provisionne.
+  let isFullCommunication = club.club_plus_source === "full_com_included";
+  if (!isFullCommunication && club.portail_client_id) {
     const { data: hasContract } = await supabase.rpc("client_has_active_fullcomm_contract", {
       p_client_id: club.portail_client_id,
     });
@@ -484,6 +502,9 @@ export async function buildDelegatedClubActiveContext(
       type: "club",
       name: org.nom,
       createdAt: org.created_at,
+      // buildClubActiveContext le peuple depuis clubs.logo_url ; ce chemin-la l'oubliait, et la
+      // barre laterale retombait sur les initiales. Un CM qui gere un club doit le reconnaitre.
+      logoUrl: club.logo_url ?? club.ecusson_url ?? undefined,
     },
     membership: {
       id: `delegated-${delegationMembershipId}`,
