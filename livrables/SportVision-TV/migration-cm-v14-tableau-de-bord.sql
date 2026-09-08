@@ -115,13 +115,22 @@ begin
           and c.date_prevue::date between v_debut and v_fin) end
     ),
 
-    -- ── Adoption : uniquement si la donnee existe reellement ──────────────────
+    -- ── Adoption : DEUX mesures distinctes, jamais melangees ─────────────────
+    -- Club+ mesure l'equipe encadrante (club_members), Connect mesure l'effectif joueurs
+    -- (player_profiles.account_status). Ce sont deux populations differentes et deux produits
+    -- differents : les additionner ou faire dependre l'une de l'autre n'aurait aucun sens.
+    -- Chacune est masquee par l'interface quand sa population de reference est vide.
     'adoption', jsonb_build_object(
-      'coachs_total', (select count(*) from club_members cm
-                       where cm.club_id = p_club_id and cm.role in ('coach','educateur')),
-      'coachs_actifs', (select count(*) from club_members cm
-                        where cm.club_id = p_club_id and cm.role in ('coach','educateur')
-                          and cm.status = 'actif')
+      'clubplus_total', (select count(*) from club_members cm
+                         where cm.club_id = p_club_id and cm.role in ('coach','educateur')),
+      'clubplus_actifs', (select count(*) from club_members cm
+                          where cm.club_id = p_club_id and cm.role in ('coach','educateur')
+                            and cm.status = 'actif'),
+      'connect_total', (select count(*) from player_profiles pp
+                        where pp.club_id = p_club_id
+                          and coalesce(pp.account_status,'sans_compte') <> 'retire'),
+      'connect_actifs', (select count(*) from player_profiles pp
+                         where pp.club_id = p_club_id and pp.account_status = 'actif')
     )
   ) into v_resultat;
 

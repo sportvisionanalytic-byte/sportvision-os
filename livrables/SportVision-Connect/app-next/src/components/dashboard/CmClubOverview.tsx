@@ -69,7 +69,12 @@ interface TableauDeBord {
     presences: number;
     contenus_a_publier: number;
   };
-  adoption: { coachs_total: number; coachs_actifs: number };
+  adoption: {
+    clubplus_total: number;
+    clubplus_actifs: number;
+    connect_total: number;
+    connect_actifs: number;
+  };
 }
 
 const ETAT_LB: Record<string, string> = {
@@ -108,6 +113,13 @@ export function CmClubOverview() {
   useEffect(() => {
     const supabase = createClient();
     let vivant = true;
+    // Remise a zero AVANT de charger : sans ca, changer de club laisse les compteurs du club
+    // precedent a l'ecran le temps de la requete. Ce n'est pas une fuite de donnees — la base
+    // refuserait — mais l'utilisateur lit pendant un instant des chiffres qui ne sont pas ceux
+    // du club affiche, ce qui est pire qu'un ecran vide.
+    setTableau(null);
+    setPreparation(null);
+    setJournal([]);
     (async () => {
       const [bord, prep, events] = await Promise.all([
         supabase.rpc("cm_tableau_de_bord", { p_club_id: ctx.organization.id }),
@@ -280,12 +292,26 @@ export function CmClubOverview() {
           </div>
           {/* Le bloc adoption n'apparaît que s'il y a quelque chose à compter : « 0 / 0 » aurait
               l'air d'une mesure alors que ce n'est qu'une absence de donnée. */}
-          {t.adoption.coachs_total > 0 && (
-            <div className="border-t border-border px-5 py-3 text-[12.5px] text-text-soft">
-              Coachs actifs{" "}
-              <span className="font-bold tabular-nums text-text">
-                {t.adoption.coachs_actifs} / {t.adoption.coachs_total}
-              </span>
+          {(t.adoption.clubplus_total > 0 || t.adoption.connect_total > 0) && (
+            <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-border px-5 py-3 text-[12.5px] text-text-soft">
+              {t.adoption.clubplus_total > 0 && (
+                <span>
+                  Club+ ·{" "}
+                  <span className="font-bold tabular-nums text-text">
+                    {t.adoption.clubplus_actifs} / {t.adoption.clubplus_total}
+                  </span>{" "}
+                  coachs actifs
+                </span>
+              )}
+              {t.adoption.connect_total > 0 && (
+                <span>
+                  Connect ·{" "}
+                  <span className="font-bold tabular-nums text-text">
+                    {t.adoption.connect_actifs} / {t.adoption.connect_total}
+                  </span>{" "}
+                  joueurs inscrits
+                </span>
+              )}
             </div>
           )}
         </Card>
