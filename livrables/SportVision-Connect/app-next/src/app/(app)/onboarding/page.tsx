@@ -35,6 +35,7 @@ import { fetchClubCalendarEvents, createClubCalendarEvent } from "@/lib/data/clu
 import type { Team } from "@/lib/types/teams";
 import type { Sponsor } from "@/lib/types/sponsors";
 import type { CalendarEvent } from "@/lib/types/calendar";
+import { ImportMatchesModal } from "@/components/calendar/ImportMatchesModal";
 import type { MembershipRole } from "@/lib/types";
 import {
   fetchOnboardingCompletion,
@@ -967,6 +968,14 @@ function EquipesCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: bo
 // ── Calendrier ──
 
 function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: boolean; onSaved: () => void }) {
+  // 08/09/2026, demande Fouka : « j'ai le calendrier de toutes les categories, c'est possible de
+  // le mettre et que ce soit distribue et affecte automatiquement ? »
+  //
+  // Oui, et l'outil existait deja — sur la page Calendrier, pas ici. Cette etape ne permettait
+  // d'ajouter les matchs QU'UN PAR UN : impensable pour un club qui en a plusieurs centaines
+  // repartis sur six ou huit categories. On y branche le meme ecran, sans le dupliquer.
+  const { ctx } = useSession();
+  const [importOpen, setImportOpen] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -1031,9 +1040,33 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
         </div>
       )}
       {canEdit && !showForm && (
-        <Button variant="secondary" className="h-9 self-start px-4 text-[12.5px]" onClick={() => setShowForm(true)}>
-          + Ajouter un événement
-        </Button>
+        <div className="flex flex-col gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* L'import d'abord : c'est le geste courant quand on part du calendrier de la saison.
+                L'ajout a l'unite reste pour le match amical qui n'y figure pas. */}
+            <Button className="h-10 px-4 text-[12.5px]" onClick={() => setImportOpen(true)}>
+              Importer le calendrier des matchs
+            </Button>
+            <Button variant="secondary" className="h-10 px-4 text-[12.5px]" onClick={() => setShowForm(true)}>
+              + Ajouter un événement
+            </Button>
+          </div>
+          <p className="text-[11.5px] leading-relaxed text-text-soft">
+            Un fichier Excel ou CSV de la saison suffit : SportVision reconnaît les colonnes,
+            répartit les matchs par équipe et vous fait confirmer ceux dont il n&apos;est pas sûr.
+          </p>
+        </div>
+      )}
+      {importOpen && (
+        <ImportMatchesModal
+          clubId={clubId}
+          userId={ctx.user.id}
+          onClose={() => setImportOpen(false)}
+          onImported={() => {
+            reload();
+            onSaved();
+          }}
+        />
       )}
       {canEdit && showForm && (
         <div className="flex flex-col gap-3 rounded-xl border border-border-strong p-4">
