@@ -4,17 +4,24 @@
 // calendrier en PDF devait le recopier à la main, ce qui est exactement le travail qu'on prétend
 // lui enlever.
 //
-// Ce provider n'invente AUCUNE règle de lecture qui lui soit propre. Il fait une seule chose que
-// les autres n'ont pas à faire : retrouver des lignes et des colonnes dans des fragments de texte
-// positionnés (pdf-lignes.ts). Ensuite il passe le relais au moteur de détection PAR CONTENU
-// (autodetect.ts), le même qui lit un CSV ou un tableur. Un calendrier reste un calendrier.
+// Il commence par retrouver des lignes et des colonnes dans des fragments de texte positionnés
+// (pdf-lignes.ts), puis suit DEUX chemins :
 //
-// Conséquence directe : aucun nom de colonne de fédération en dur ici, pas plus que dans le
-// provider .xlsx, et pour la même raison — le format réel varie d'une ligue à l'autre et le
-// deviner produirait un import silencieusement décalé.
+//   1. Calendrier de poule (district, ligue) — pdf-poule.ts. Mise en page où la date vit dans un
+//      en-tête de journée et où chaque ligne porte l'aller et le retour. Ce lecteur n'est employé
+//      que s'il RECONNAÎT la mise en page, jamais par défaut.
+//   2. Tout le reste — le moteur de détection PAR CONTENU (autodetect.ts), le même qui lit un CSV
+//      ou un tableur. Un calendrier reste un calendrier.
+//
+// La règle « aucun format de fédération en dur », héritée du provider .xlsx, tenait à ceci : le
+// format réel n'avait jamais été vu, et le deviner aurait produit un import silencieusement
+// décalé. Le 08/09/2026, Fouka a fourni un vrai calendrier de district. Écrire son lecteur n'est
+// donc plus une supposition, c'est la lecture d'un format observé — et il reste testé sur ce
+// fichier-là.
 
 import { detectTabularLayout, layoutToMapping, type DetectedLayout } from "../autodetect.ts";
 import { elementsVersLignes, type ElementTexte } from "../pdf-lignes.ts";
+import { lireCalendrierDePoule, ressembleAUnCalendrierDePoule } from "../pdf-poule.ts";
 import { rowsToSourceEvents } from "../tabular.ts";
 import {
   TABULAR_FIELD_LABELS,
@@ -85,6 +92,41 @@ export const pdfProvider: CalendarProvider = {
         events: [],
         issues: [{ line: 0, raw: input.fileName, reason: "Aucun texte lisible dans ce PDF." }],
       };
+    }
+
+    // Un calendrier de POULE (district, ligue) ne se lit pas comme un tableau : la date est dans
+    // un en-tête de journée et chaque ligne porte l'aller ET le retour. Son lecteur dédié passe
+    // en premier, mais seulement s'il RECONNAÎT la mise en page — sinon on lirait n'importe quel
+    // PDF avec lui et on fabriquerait des matchs à partir de rien.
+    if (ressembleAUnCalendrierDePoule(lignes)) {
+      const poule = lireCalendrierDePoule(lignes);
+      if (poule.evenements.length > 0) {
+        return {
+          events: poule.evenements,
+          issues:
+            poule.matchsAutresClubs > 0
+              ? [
+                  {
+                    line: 0,
+                    raw: input.fileName,
+                    reason: `${poule.matchsAutresClubs} match${poule.matchsAutresClubs > 1 ? "s" : ""} de la poule ne concerne${poule.matchsAutresClubs > 1 ? "nt" : ""} pas ${poule.club ?? "votre club"} : ignoré${poule.matchsAutresClubs > 1 ? "s" : ""}.`,
+                  },
+                ]
+              : [],
+        };
+      }
+      if (poule.club) {
+        return {
+          events: [],
+          issues: [
+            {
+              line: 0,
+              raw: input.fileName,
+              reason: `Calendrier de poule reconnu, mais aucun match de « ${poule.club} » n'y a été trouvé. Vérifiez que c'est bien le calendrier de votre club.`,
+            },
+          ],
+        };
+      }
     }
 
     const fourni = input.options as TabularMapping | undefined;

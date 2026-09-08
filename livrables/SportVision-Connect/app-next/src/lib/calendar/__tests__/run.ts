@@ -20,6 +20,7 @@ import { parseIcsSource } from "../providers/ics.ts";
 import { xlsxProvider, detectXlsxLayout } from "../providers/xlsx.ts";
 import { pdfProvider } from "../providers/pdf.ts";
 import { elementsVersLignes, type ElementTexte } from "../pdf-lignes.ts";
+import { lireCalendrierDePoule, ressembleAUnCalendrierDePoule, estEquipeDuClub } from "../pdf-poule.ts";
 import { detectProvider } from "../providers/index.ts";
 import { buildImportPreview, type ClubTeamRef, type ExistingMatch, type TeamSourceMapping } from "../diff.ts";
 import { fallbackIdentityKey, externalIdentityKey } from "../identity.ts";
@@ -900,4 +901,85 @@ test("PDF : un document sans rien de reconnaissable le dit, il n'invente pas", a
 test("PDF : le fichier est reconnu par son nom comme par son entête", () => {
   assert.equal(detectProvider("calendrier.pdf", "")?.id, "PDF");
   assert.equal(detectProvider("export", "%PDF-1.7")?.id, "PDF");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Calendrier de POULE — le vrai format de district (08/09/2026)
+//
+// Le premier vrai calendrier fourni par Fouka a fait échouer la détection par contenu :
+// « Impossible de reconnaître date ». Normal, la date n'y est pas dans une colonne mais dans un
+// en-tête de journée, et chaque ligne porte l'aller ET le retour. Ces lignes sont reprises
+// telles quelles du fichier « calendrier 34SC.pdf ».
+// ─────────────────────────────────────────────────────────────────────────────
+
+const POULE_REELLE: string[][] = [
+  ["ASSOCIATION SPORTIVE VILLENEUVE LA GUYARD - 565301", "", "", "", "", "", "", "Calendriers*", ""],
+  ["Seniors D3 / Unique", "", "", "", "", "", "", "", ""],
+  ["Poule A", "", "", "", "", "Matin P1", "", "", ""],
+  ["Journée", "1", "- Aller", "06/09/2026", "", "Journée 26 - Retour", "06/06/2027", "", ""],
+  ["52430.", "0 - 1", "12H30", "79143682", "U.S. Dionysienne St 2", "- Champigny 2", "79143815", "15H", "... - ..."],
+  ["52434.", "... - ...", "15H", "79143686", "As Vlg 1", "- J. Senonaise 1", "79143819", "15H", "... - ..."],
+  ["", "", "11/11/26", "", "", "", "", "", ""],
+  ["Journée", "2", "- Aller", "20/09/2026", "", "Journée 14 - Retour", "14/02/2027", "", ""],
+  ["52437.", "2 - 1", "15H", "79143689", "St Serotin 1", "- As Vlg 1", "79143752", "14H30", "... - ..."],
+  // Ligne décalée d'un cran : elle commence par une cellule vide. Deux matchs U18 étaient perdus.
+  ["", "52224.", "... - ...", "16H", "79121576", "As Vlg 21", "- J. Senonaise 21", "79121616", "16H", "... - ..."],
+];
+
+test("poule : la mise en page est reconnue avant d'être lue", () => {
+  assert.equal(ressembleAUnCalendrierDePoule(POULE_REELLE), true);
+  assert.equal(ressembleAUnCalendrierDePoule([["Date", "Equipe"], ["14/09/2026", "U18 D2"]]), false);
+});
+
+test("poule : le club destinataire est reconnu sous son abréviation", () => {
+  const entete = "ASSOCIATION SPORTIVE VILLENEUVE LA GUYARD - 565301";
+  for (const nom of ["As Vlg 1", "As Vlg 21", "A.S. Villeneuve La Guyard 1"]) {
+    assert.equal(estEquipeDuClub(nom, entete), true, nom);
+  }
+  // Les pièges : un autre club dont le nom recoupe partiellement le nôtre.
+  for (const nom of ["Villeneuve 1", "As Villeneuve 1", "Guyard 1", "As Tso 1", "Champigny 2", "J. Senonaise 1"]) {
+    assert.equal(estEquipeDuClub(nom, entete), false, nom);
+  }
+});
+
+test("poule : une ligne donne deux matchs, l'aller et le retour, équipes inversées", () => {
+  const r = lireCalendrierDePoule(POULE_REELLE);
+  const senonaise = r.evenements.filter((e) => e.opponent === "J. Senonaise 1");
+  assert.equal(senonaise.length, 2);
+  assert.equal(senonaise[0]!.matchDate, "2026-11-11"); // corrigée par la ligne suivante
+  assert.equal(senonaise[0]!.isHome, true);
+  assert.equal(senonaise[1]!.matchDate, "2027-06-06");
+  assert.equal(senonaise[1]!.isHome, false);
+});
+
+test("poule : les matchs entre deux autres clubs ne sont jamais importés", () => {
+  const r = lireCalendrierDePoule(POULE_REELLE);
+  assert.equal(r.matchsAutresClubs, 1); // U.S. Dionysienne / Champigny
+  assert.ok(r.evenements.every((e) => e.sourceTeamName!.startsWith("As Vlg")));
+});
+
+test("poule : une ligne décalée d'une colonne est quand même lue", () => {
+  const r = lireCalendrierDePoule(POULE_REELLE);
+  assert.ok(r.evenements.some((e) => e.externalEventId === "79121576"), "match U18 décalé perdu");
+});
+
+test("poule : chaque catégorie du document est conservée", () => {
+  const r = lireCalendrierDePoule(POULE_REELLE);
+  assert.ok(r.evenements.every((e) => e.competitionName === "Seniors D3 / Unique"));
+  assert.deepEqual(r.equipesDuClub.sort(), ["As Vlg 1", "As Vlg 21"]);
+});
+
+test("poule : un score renseigné dit que le match est joué, « ... - ... » ne dit rien", () => {
+  const r = lireCalendrierDePoule(POULE_REELLE);
+  const joue = r.evenements.find((e) => e.externalEventId === "79143689");
+  assert.equal(joue!.sportStatus, "completed");
+  assert.equal(joue!.score, "2-1");
+  const aVenir = r.evenements.find((e) => e.externalEventId === "79143819");
+  assert.equal(aVenir!.sportStatus, null);
+});
+
+test("poule : le provider PDF emprunte ce chemin tout seul", async () => {
+  const r = await pdfProvider.parse({ fileName: "calendrier 34SC.pdf", options: { lignes: POULE_REELLE }, teams: TEAMS });
+  assert.ok(r.events.length >= 5);
+  assert.ok(r.issues.some((i) => /ne concerne pas/i.test(i.reason)));
 });

@@ -545,14 +545,23 @@ export function ImportMatchesModal({
 
         {step === "review" && preview && (
           <div className="flex flex-col gap-3.5">
+            {/* Zéro match lu n'est pas un succès : annoncer « Tout est prêt » sur un fichier dont
+                rien n'a été tiré est faux, et c'est ce que l'écran affichait (constaté le
+                08/09/2026 sur un vrai calendrier de district). */}
             <p className="text-[14px] font-extrabold leading-relaxed text-text">
-              {preview.rows.length} match{preview.rows.length > 1 ? "s" : ""} lu{preview.rows.length > 1 ? "s" : ""}.{" "}
-              {attentionRows.length === 0 ? (
-                <span className="text-success-fg">Tout est prêt.</span>
+              {preview.rows.length === 0 ? (
+                <span className="text-[#B45309]">Aucun match n&apos;a pu être lu dans ce fichier.</span>
               ) : (
-                <span className="text-[#B45309]">
-                  {attentionRows.length} demande{attentionRows.length > 1 ? "nt" : ""} votre avis.
-                </span>
+                <>
+                  {preview.rows.length} match{preview.rows.length > 1 ? "s" : ""} lu{preview.rows.length > 1 ? "s" : ""}.{" "}
+                  {attentionRows.length === 0 ? (
+                    <span className="text-success-fg">Tout est prêt.</span>
+                  ) : (
+                    <span className="text-[#B45309]">
+                      {attentionRows.length} demande{attentionRows.length > 1 ? "nt" : ""} votre avis.
+                    </span>
+                  )}
+                </>
               )}
             </p>
 
