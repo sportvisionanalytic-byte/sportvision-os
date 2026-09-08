@@ -56,11 +56,15 @@ await page.evaluate(() => {
   S.role = "admin"; S.uid = "u1";
 });
 
+// La galerie se rend desormais dans #prod-media-real, la zone de la page « Galeries photo », et
+// non plus dans une fenetre. Le test fournit donc cette zone.
 const ouvrir = async (album) => {
   await page.evaluate((a) => {
+    document.getElementById("prod-media-real")?.remove();
+    document.body.insertAdjacentHTML("beforeend", '<div id="prod-media-real"></div>');
     window.__assets = a.__assets || [];
     _photoAlbums = [a];
-    modalMediasAlbum(a.id);
+    ouvrirGalerie(a.id);
   }, album);
   await page.waitForSelector("#gal-final", { state: "attached" });
   await page.waitForTimeout(250);
@@ -71,20 +75,20 @@ console.log("\n1. Galerie sans club, sans saison, sans équipe");
 await ouvrir({ id: "a1", title: "Tournoi U12 — Sens", status: "draft", structure_externe: "FC Sens U12",
                event_date: "2026-09-08", photo_count: 0, watermark_previews: true, __assets: [] });
 t("la galerie s'ouvre sans erreur", (await page.locator("#gal-final").count()) === 1);
-t("le contexte affiche la structure externe", (await page.textContent("#sv-modal-ct")).includes("FC Sens U12"));
-t("aucun tiret pour ce qui manque", !(await page.textContent("#sv-modal-ct")).includes("— · —"));
-t("le statut annoncé est « Brouillon »", (await page.textContent("#sv-modal-ct")).includes("Brouillon"));
+t("le contexte affiche la structure externe", (await page.textContent("#prod-media-real")).includes("FC Sens U12"));
+t("aucun tiret pour ce qui manque", !(await page.textContent("#prod-media-real")).includes("— · —"));
+t("le statut annoncé est « Brouillon »", (await page.textContent("#prod-media-real")).includes("Brouillon"));
 
 // ── 2. Les trois étapes, dans l'ordre ────────────────────────────────────────
 console.log("\n2. Trois étapes visibles, le reste rangé");
-const txt = await page.textContent("#sv-modal-ct");
+const txt = await page.textContent("#prod-media-real");
 t("étape 1 — Photos", /1\s*Photos/.test(txt.replace(/\s+/g, " ")));
 t("étape 2 — Ce que vous vendez", txt.includes("Ce que vous vendez"));
 t("étape 3 — Mettre en ligne", txt.includes("Mettre en ligne"));
-t("les options avancées sont repliées", await page.evaluate(() => !document.querySelector("#sv-modal-ct details").open));
+t("les options avancées sont repliées", await page.evaluate(() => !document.querySelector("#prod-media-real details").open));
 for (const avance of ["Filigrane", "Régénérer les aperçus"]) {
   t(`« ${avance} » est dans les options avancées`,
-    await page.evaluate((a) => document.querySelector("#sv-modal-ct details").textContent.includes(a), avance));
+    await page.evaluate((a) => document.querySelector("#prod-media-real details").textContent.includes(a), avance));
 }
 
 // ── 3. Le bouton refuse de publier une galerie vide ──────────────────────────
@@ -136,6 +140,54 @@ for (const action of ["Copier le lien", "QR Code", "Ouvrir la galerie"]) {
 }
 t("pas dix boutons équivalents", await page.evaluate(() =>
   document.querySelectorAll("#gal-final button, #gal-final a").length <= 4));
+
+// ── 6. Une page, pas une fenetre ────────────────────────────────────────────
+console.log("\n6. La galerie vit sur une page");
+t("elle se rend dans la zone de page, pas dans une fenetre",
+  await page.evaluate(() => !!document.querySelector("#prod-media-real #gal-grid")
+    && !document.querySelector("#sv-modal-ct #gal-grid")));
+t("un retour « ← Galeries » en haut", (await page.textContent("#prod-media-real")).includes("← Galeries"));
+t("plus de bouton « Fermer » a aller chercher en bas",
+  await page.evaluate(() => ![...document.querySelectorAll("#prod-media-real button")]
+    .some((b) => b.innerText.trim() === "Fermer")));
+
+// ── 7. Les photos prennent la place, les actions se rangent ─────────────────
+console.log("\n7. Grille de photos");
+await page.evaluate(() => {
+  _galAssets = [
+    { id: "p1", status: "ready", original_filename: "a.jpg", thumb_path: null },
+    { id: "p2", status: "ready", original_filename: "b.jpg", thumb_path: null, is_cover: true },
+  ];
+  _galRenderGrille();
+});
+t("une carte par photo", (await page.locator("#gal-grid figure").count()) === 2);
+t("un seul bouton visible par photo (le menu ⋯)",
+  (await page.locator("#gal-grid figure:first-child button").count()) === 1);
+t("l'etat n'encombre pas une photo prete et ordinaire",
+  await page.evaluate(() => !document.querySelector("#gal-grid figure:first-child span")));
+t("la couverture, elle, est signalee",
+  (await page.textContent("#gal-grid")).includes("Couverture"));
+t("le menu photo s'ouvre avec les actions secondaires", await page.evaluate(async () => {
+  galMenuPhoto("p1", 0);
+  await new Promise((r) => setTimeout(r, 60));
+  const txt = document.getElementById("sv-modal-ct").textContent;
+  const ok = ["couverture", "Reculer", "Masquer", "Supprimer"].every((m) => txt.includes(m));
+  closeModal();
+  return ok;
+}));
+
+// ── 8. Les champs d'offre disent ce qu'ils attendent ────────────────────────
+console.log("\n8. Offres : chaque champ porte son libelle");
+await page.evaluate(() => { _galOffres = []; galAjouterOffre("pack"); galAjouterOffre("album_complet"); _galRendreOffres(); });
+await page.waitForTimeout(100);
+const offresTxt = await page.textContent("#gl-offres");
+for (const lb of ["Nom de l’offre", "Nombre de photos", "Prix"]) {
+  t(`« ${lb} » est un libelle visible`, offresTxt.includes(lb));
+}
+t("une galerie complete n'a pas de champ « nombre de photos »",
+  await page.evaluate(() => document.querySelectorAll("#gl-offres input[id^='off-nb-']").length === 1));
+t("« Mettre en avant » est devenu « ★ Recommandée »", offresTxt.includes("★ Recommandée") && !offresTxt.includes("Mettre en avant"));
+t("« Active » est devenu « Proposée au client »", offresTxt.includes("Proposée au client"));
 
 t("aucune erreur JavaScript sur tout le parcours", erreursJs.length === 0, erreursJs.join(" | "));
 
