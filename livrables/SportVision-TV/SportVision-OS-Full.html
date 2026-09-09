@@ -6702,6 +6702,9 @@ function modalModifierClient(idx){
   const c=_clientsCache[idx];
   if(!c)return;
   const canEdit=S.role!=='cm';
+  // Le logo est du materiel de communication : le CM en charge de ce client peut le changer,
+  // meme si le reste de la fiche — nom, SIRET, pipeline, montants — lui reste en lecture seule.
+  const canEditLogo=canEdit||(S.role==='cm'&&c.cm_id===S.uid);
   const canAssignCm=S.role==='admin'||(S.role==='cm'&&(_myNiveauCm==='cm_lead'||_myCmAutonomie==='responsable'));
   const ro=canEdit?'':'disabled';
   // Périmètre Secrétaire (28/08/2026, spec refonte §19 "Fiche Full Com - vue
@@ -6724,7 +6727,7 @@ function modalModifierClient(idx){
         </div>
         <div>
           <label style="${lbl}">Logo du club</label>
-          ${canEdit?`<label class="btn bg2 bs" style="cursor:pointer;display:inline-flex">Changer<input id="fce-logo-input" type="file" accept="image/*" style="display:none" onchange="uploaderLogoClient('${c.id}')"></label>`:''}
+          ${canEditLogo?`<label class="btn bg2 bs" style="cursor:pointer;display:inline-flex">Changer<input id="fce-logo-input" type="file" accept="image/*" style="display:none" onchange="uploaderLogoClient('${escJs(c.id)}')"></label>`:''}
           <span id="fce-logo-status" style="font-size:11px;color:var(--t3);margin-left:8px"></span>
         </div>
       </div>
@@ -7551,7 +7554,10 @@ async function uploaderLogoClient(clientId){
   try{
     const url=await sbUpload('club-logos','clients/'+sbUploadSafePath(file),file);
     if(!url){if(statusEl)statusEl.textContent='Échec de l\'envoi.';return;}
-    const r=await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{logo_url:url}});
+    // cm_client_logo_maj : liste blanche a un seul champ. L'ecriture directe sur `clients` est
+    // reservee a l'admin et a la secretaire, donc le CM du client — celui dont c'est justement le
+    // metier — ne pouvait pas changer le logo de son propre club (09/09/2026).
+    const r=await sbFetch('rpc/cm_client_logo_maj',{method:'POST',body:{p_client_id:clientId,p_logo_url:url}});
     if(sbErr(r)){if(statusEl)statusEl.textContent='Erreur : '+(msgErreur(r,'enregistrement impossible.'));return;}
     const idx=_clientsCache.findIndex(c=>c.id===clientId);
     if(idx>=0)_clientsCache[idx].logo_url=url;
