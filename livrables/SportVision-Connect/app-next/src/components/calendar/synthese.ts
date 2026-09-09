@@ -167,6 +167,49 @@ export function ecussonAdversaire(e: CalendarEvent): string | null {
   return e.kind === "match" && e.opponentLogoUrl ? e.opponentLogoUrl : null;
 }
 
+/**
+ * Combien de lignes une case de mois peut porter, selon la charge réelle du club.
+ *
+ * Deux lignes conviennent à SF Villemomble (38 équipes, une trentaine d'événements les mercredis).
+ * Elles seraient inutilement avares pour un club de six équipes, dont les journées tiennent
+ * entièrement dans la case : y afficher « 1 match » puis « 2 entraînements » en compteurs quand
+ * les trois lignes tenaient, c'est cacher pour rien.
+ *
+ * On mesure donc, plutôt que de demander à l'utilisateur de régler une densité : le calendrier
+ * sait déjà ce qu'il contient, et un réglage de plus est un réglage que personne ne touche.
+ */
+export function lignesParCase(events: CalendarEvent[]): number {
+  const parJour = new Map<string, number>();
+  for (const e of events) {
+    const jour = (e.startsAt || "").slice(0, 10);
+    parJour.set(jour, (parJour.get(jour) ?? 0) + 1);
+  }
+  if (parJour.size === 0) return 3;
+  // La MÉDIANE, pas la moyenne : un tournoi isolé à 40 événements ne doit pas faire passer tout
+  // le mois en mode compact.
+  const charges = [...parJour.values()].sort((a, b) => a - b);
+  const mediane = charges[Math.floor(charges.length / 2)]!;
+  if (mediane >= 8) return 2;
+  if (mediane <= 3) return 4;
+  return 3;
+}
+
+/**
+ * Ce que l'utilisateur doit voir en ARRIVANT, selon son rôle.
+ *
+ * Un calendrier de club porte tout ce que fait le club. Ouvrir sur la totalité oblige chacun à
+ * filtrer avant de travailler, tous les jours. Un éducateur vient pour ses équipes ; on
+ * présélectionne la sienne quand il n'en a qu'une, jamais quand il en a plusieurs — choisir à sa
+ * place entre deux équipes serait pire que de ne rien choisir.
+ *
+ * Rien n'est masqué : le filtre est visible et se retire d'un clic. C'est un point de départ, pas
+ * une restriction de droits.
+ */
+export function equipeParDefaut(role: string, teamScope: string[]): string {
+  const educateurs = ["coach", "sports_director", "team_manager"];
+  return educateurs.includes(role) && teamScope.length === 1 ? teamScope[0]! : "";
+}
+
 /** Vues rapides : les questions qu'on se pose vraiment en ouvrant un calendrier de club.
  *
  *  Elles ne remplacent pas les filtres équipe/type, elles évitent d'avoir à les combiner à la

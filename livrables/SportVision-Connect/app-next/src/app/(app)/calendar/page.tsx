@@ -18,6 +18,8 @@ import {
   aCouverture,
   descriptionEvenement,
   ecussonAdversaire,
+  equipeParDefaut,
+  lignesParCase,
   etatEvenement,
   libelleCompteur,
   libelleCourt,
@@ -100,7 +102,12 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [teamFilter, setTeamFilter] = useState("");
+  // Point de depart selon le role, pas une restriction : le filtre est visible et se retire d'un
+  // clic. Un educateur qui n'encadre qu'une equipe ouvre sur elle, plutot que de refiltrer chaque
+  // jour parmi 38.
+  const [teamFilter, setTeamFilter] = useState(() =>
+    equipeParDefaut(ctx.membership.role, ctx.membership.teamScope),
+  );
   const [typeFilter, setTypeFilter] = useState<CalendarEventKind | "">("");
   const [vueRapide, setVueRapide] = useState<VueRapide>("tout");
   // Jour ouvert depuis la vue Mois. C'est le second niveau de lecture : la case reste synthétique,
@@ -170,6 +177,8 @@ export default function CalendarPage() {
     [events],
   );
 
+  // Combien de lignes une case de mois peut porter : mesure sur ce que le club contient
+  // reellement, plutot qu'un reglage que personne ne toucherait.
   const filteredEvents = useMemo(
     () =>
       sortedEvents.filter((e) => {
@@ -426,6 +435,7 @@ export default function CalendarPage() {
       {view === "month" && (
         <MonthView
           reference={reference}
+          maxVisibles={lignesParCase(filteredEvents)}
           eventsOnDay={eventsOnDay}
           onSelect={setSelectedEvent}
           onOpenDay={setJourOuvert}
@@ -542,12 +552,14 @@ function MonthView({
   onSelect,
   onOpenDay,
   today,
+  maxVisibles,
 }: {
   reference: Date;
   eventsOnDay: (d: Date) => CalendarEvent[];
   onSelect: (e: CalendarEvent) => void;
   onOpenDay: (d: Date) => void;
   today: Date;
+  maxVisibles: number;
 }) {
   const firstOfMonth = new Date(reference.getFullYear(), reference.getMonth(), 1);
   const gridStart = startOfWeek(firstOfMonth);
@@ -570,7 +582,7 @@ function MonthView({
           const inMonth = day.getMonth() === reference.getMonth();
           const dayEvents = eventsOnDay(day);
           const isToday = isSameDay(day, today);
-          const resume = resumerJournee(dayEvents, 2);
+          const resume = resumerJournee(dayEvents, maxVisibles);
           const couverturesRepliees = resume.couvertures - resume.visibles.filter(aCouverture).length;
           return (
             <div

@@ -12,7 +12,10 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resumerJournee, parPriorite, libelleCourt, passeVueRapide, aCouverture } from "../synthese.ts";
+import {
+  resumerJournee, parPriorite, libelleCourt, passeVueRapide, aCouverture,
+  lignesParCase, equipeParDefaut,
+} from "../synthese.ts";
 import type { CalendarEvent } from "../../../lib/types/calendar.ts";
 
 let seq = 0;
@@ -108,4 +111,44 @@ test("« Résultats » ne retient que ce qui porte un score", () => {
   const aVenir = ev("match", "15:00", "Séniors D1", { opponent: "Bobigny" });
   assert.equal(passeVueRapide(joue, "resultats"), true);
   assert.equal(passeVueRapide(aVenir, "resultats"), false);
+});
+
+test("un gros club passe en cases compactes, un petit club respire", () => {
+  // Villemomble : une trentaine d'événements les mercredis, deux ou trois les autres jours.
+  const gros = [
+    ...Array.from({ length: 30 }, () => ev("training", "18:00", "U10 Élite")),
+    ...Array.from({ length: 28 }, (_, i) => ({ ...ev("training", "18:00", "U11 Élite"), startsAt: `2026-09-${String(9 + (i % 3)).padStart(2, "0")}T18:00:00` })),
+  ];
+  assert.equal(lignesParCase(gros), 2, "journées chargées : on synthétise");
+
+  const petit = Array.from({ length: 6 }, (_, i) => ({
+    ...ev("match", "15:00", "Séniors R2", { opponent: "Meaux" }),
+    startsAt: `2026-09-${String(10 + i).padStart(2, "0")}T15:00:00`,
+  }));
+  assert.equal(lignesParCase(petit), 4, "un ou deux événements par jour : tout tient, rien à replier");
+});
+
+test("un tournoi isolé ne fait pas basculer tout le mois en mode compact", () => {
+  const mois = [
+    ...Array.from({ length: 40 }, () => ev("match", "10:00", "U10 Élite", { opponent: "Tournoi" })),
+    ...Array.from({ length: 10 }, (_, i) => ({
+      ...ev("training", "18:00", "U11 Élite"),
+      startsAt: `2026-09-${String(10 + i).padStart(2, "0")}T18:00:00`,
+    })),
+  ];
+  // La médiane vaut 1 (dix jours à un seul événement contre un jour à 40), pas la moyenne qui
+  // dépasserait 4 et rendrait tout le mois compact pour un seul jour de tournoi.
+  assert.equal(lignesParCase(mois), 4);
+});
+
+test("un éducateur qui n'encadre qu'une équipe ouvre sur elle", () => {
+  assert.equal(equipeParDefaut("coach", ["U14 D1"]), "U14 D1");
+  assert.equal(equipeParDefaut("sports_director", ["U16 D1"]), "U16 D1");
+});
+
+test("on ne choisit jamais à la place de quelqu'un qui en encadre plusieurs", () => {
+  assert.equal(equipeParDefaut("coach", ["U14 D1", "U14 D4"]), "");
+  assert.equal(equipeParDefaut("coach", []), "");
+  assert.equal(equipeParDefaut("communication_manager", ["U14 D1"]), "", "un CM suit tout le club");
+  assert.equal(equipeParDefaut("admin", ["U14 D1"]), "");
 });
