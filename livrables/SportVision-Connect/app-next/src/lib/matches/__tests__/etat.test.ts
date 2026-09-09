@@ -15,6 +15,7 @@ import {
   peutSaisirResultat,
   retardEnJours,
   scoreAffiche,
+  scoreOfficielNonConfirme,
 } from "../etat.ts";
 import type { Match } from "../../types/studio.ts";
 
@@ -68,9 +69,19 @@ test("un match sans date attend une saisie plutôt que de disparaître au fond d
   assert.equal(retardEnJours(match({ id: "1", kickoffAt: "" }), AUJOURDHUI), 0);
 });
 
-test("un score saisi sort le match de la file d'attente, quel que soit son statut", () => {
+test("un score officiel ne clôt pas le match : le club n'a encore rien confirmé", () => {
+  // La synchro fédérale recopie le score publié. Elle ne connaît ni les buteurs, ni l'homme du
+  // match, ni le commentaire — le match reste donc à compléter, score déjà rempli.
   const m = match({ id: "1", kickoffAt: "2026-09-06", status: "upcoming", scoreFor: 3, scoreAgainst: 1 });
+  assert.equal(fileDuMatch(m, AUJOURDHUI), "a_renseigner");
+  assert.equal(scoreOfficielNonConfirme(m), true);
+  assert.equal(peutSaisirResultat(m, AUJOURDHUI), true);
+});
+
+test("une fois le club passé dessus, le match rejoint les résultats", () => {
+  const m = match({ id: "1", kickoffAt: "2026-09-06", status: "result_received", scoreFor: 3, scoreAgainst: 1 });
   assert.equal(fileDuMatch(m, AUJOURDHUI), "joues");
+  assert.equal(scoreOfficielNonConfirme(m), false);
 });
 
 test("annulé et reporté ont leur file, et l'annulé ne se saisit pas", () => {
@@ -101,8 +112,8 @@ test("l'avenir se lit du plus proche, le passé du plus récent", () => {
     [
       match({ id: "loin", kickoffAt: "2027-05-30" }),
       match({ id: "proche", kickoffAt: "2026-10-01" }),
-      match({ id: "joue-vieux", kickoffAt: "2026-08-15", scoreFor: 1, scoreAgainst: 0 }),
-      match({ id: "joue-recent", kickoffAt: "2026-09-05", scoreFor: 2, scoreAgainst: 2 }),
+      match({ id: "joue-vieux", kickoffAt: "2026-08-15", status: "result_received", scoreFor: 1, scoreAgainst: 0 }),
+      match({ id: "joue-recent", kickoffAt: "2026-09-05", status: "result_received", scoreFor: 2, scoreAgainst: 2 }),
     ],
     AUJOURDHUI,
   );
@@ -126,7 +137,7 @@ test("le score s'inverse à l'extérieur, l'issue non", () => {
 
 test("le 0-0 est un résultat, pas une absence de résultat", () => {
   // Piège classique : un test de vérité sur `scoreFor` traiterait 0 comme « non saisi ».
-  const m = match({ id: "1", kickoffAt: "2026-09-06", scoreFor: 0, scoreAgainst: 0 });
+  const m = match({ id: "1", kickoffAt: "2026-09-06", status: "result_received", scoreFor: 0, scoreAgainst: 0 });
   assert.equal(fileDuMatch(m, AUJOURDHUI), "joues");
   assert.deepEqual(scoreAffiche(m), { gauche: 0, droite: 0 });
   assert.equal(issue(m), "nul");

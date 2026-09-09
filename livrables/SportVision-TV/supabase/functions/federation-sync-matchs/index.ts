@@ -14,10 +14,23 @@
 // d'évaluer un bloc de code du site, ce qui n'a pas sa place dans un automatisme nocturne que
 // personne ne surveille. Décision de Fouka, 09/09/2026.
 //
+// ── Le score officiel (10/09/2026) ──
+// L'audit de la source a montré qu'elle publie le score des rencontres jouées
+// (`home_score`/`outside_score`). La fonction le recopie désormais, à trois conditions strictes :
+// le match est passé, la source donne les DEUX scores, et le club n'a RIEN écrit dessus (ni score,
+// ni buteurs, ni homme du match, ni commentaire, et le statut est resté « à venir »). Jamais un
+// écrasement : ce qu'un coach a saisi après le match lui appartient, et cette règle ne bouge pas.
+//
+// Le statut, lui, n'est pas touché : il reste le marqueur du passage d'un humain. Un match avec un
+// score officiel et un statut inchangé s'affiche « Score officiel, à compléter » dans le Match
+// Center, et reste dans la file à traiter — parce que la source ne publie NI les buteurs, NI les
+// passeurs, NI l'homme du match, c'est-à-dire rien de ce qui sert à faire un contenu.
+//
+// Les matchs arrêtés (`stopped`) sont exclus : leur score n'est pas définitif.
+//
 // ── Ce qu'elle ne touche jamais ──
-// Le score, les buteurs, l'homme du match, les contenus, le statut de production. Une synchro de
-// calendrier renseigne QUAND et OÙ on joue ; ce qu'un coach a saisi après le match lui appartient.
-// Le rattachement à une équipe (`team_id`) confirmé par un humain n'est jamais défait non plus.
+// Les buteurs, l'homme du match, le commentaire, les contenus, le statut de production. Le
+// rattachement à une équipe (`team_id`) confirmé par un humain n'est jamais défait non plus.
 //
 // Sécurité : la clé partagée FEDERATION_SYNC_KEY, même mécanisme que dispatch-notifications.
 // Aucun jeton utilisateur n'entre ici : la fonction agit sur tous les clubs configurés.
@@ -71,6 +84,25 @@ interface MatchSource {
   outside_club_slug?: string | null;
   postponed?: boolean;
   exempt?: boolean;
+  /** Nuls tant que la rencontre n'est pas jouée. `status` n'est PAS utilisable pour ça : la source
+   *  renvoyait encore « À venir » sur un match terminé 0-2, vérifié le 10/09/2026. */
+  home_score?: number | null;
+  outside_score?: number | null;
+  /** Match interrompu : le score affiché n'est pas définitif. */
+  stopped?: boolean;
+}
+
+/** Le score du point de vue du club, « pour-contre », dans la forme attendue par
+ *  `club_matches.score` (voir parseScore côté Connect). `null` dès qu'un doute existe. */
+function scoreOfficiel(m: MatchSource, domicile: boolean, dateIso: string | null): string | null {
+  if (m.stopped) return null;
+  if (typeof m.home_score !== "number" || typeof m.outside_score !== "number") return null;
+  // Un match du jour peut porter des zéros avant le coup d'envoi : on n'accepte que le passé.
+  const aujourdhui = new Date().toISOString().slice(0, 10);
+  if (!dateIso || dateIso >= aujourdhui) return null;
+  const pour = domicile ? m.home_score : m.outside_score;
+  const contre = domicile ? m.outside_score : m.home_score;
+  return `${pour}-${contre}`;
 }
 
 serve(async (req) => {
@@ -108,7 +140,9 @@ serve(async (req) => {
 
   for (const s of sources) {
     const debut = new Date().toISOString();
-    let creees = 0, majs = 0, inchanges = 0;
+    // `scores` : combien de scores officiels recopies. C'est la seule ecriture nouvelle de cette
+    // fonction, elle merite sa ligne au journal.
+    let creees = 0, majs = 0, inchanges = 0, scores = 0;
     const erreurs: string[] = [];
     let statut = "success";
 
@@ -152,7 +186,7 @@ serve(async (req) => {
         }
         const { data: existant } = await admin
           .from("club_matches")
-          .select("id, match_date, kickoff_time, lieu")
+          .select("id, match_date, kickoff_time, lieu, score, scorers, man_of_match, comment, status")
           .eq("club_id", s.club_id)
           .eq("provider", PROVIDER)
           .eq("external_event_id", externalId)
@@ -210,23 +244,51 @@ serve(async (req) => {
           if (jumeau) {
             inchanges++;
           } else {
-            const { error } = await admin.from("club_matches").insert(ligne);
+            const officiel = scoreOfficiel(m, domicile, ligne.match_date);
+            // `score` n'appartient pas a `ligne` : il ne doit JAMAIS partir dans une mise a jour
+            // de calendrier, ou un `score: null` effacerait la saisie d'un coach.
+            const aInserer: Record<string, unknown> = officiel ? { ...ligne, score: officiel } : ligne;
+            const { error } = await admin.from("club_matches").insert(aInserer);
             if (error) erreurs.push(`${externalId} : ${error.message}`);
-            else creees++;
+            else {
+              creees++;
+              if (officiel) scores++;
+            }
           }
-        } else if (
-          existant.match_date !== ligne.match_date ||
-          // Postgres rend une heure en HH:MM:SS, la source la donne en HH:MM. Comparer les deux
-          // formes brutes declarait les 17 matchs « modifies » a CHAQUE passage : le journal
-          // annoncait du changement la ou il n'y en avait aucun, et on reecrivait pour rien.
-          heure(existant.kickoff_time) !== heure(ligne.kickoff_time) ||
-          (existant.lieu ?? null) !== (ligne.lieu ?? null)
-        ) {
-          const { error } = await admin.from("club_matches").update(ligne).eq("id", existant.id);
-          if (error) erreurs.push(`${externalId} : ${error.message}`);
-          else majs++;
         } else {
-          inchanges++;
+          const calendrierChange =
+            existant.match_date !== ligne.match_date ||
+            // Postgres rend une heure en HH:MM:SS, la source la donne en HH:MM. Comparer les deux
+            // formes brutes declarait les 17 matchs « modifies » a CHAQUE passage : le journal
+            // annoncait du changement la ou il n'y en avait aucun, et on reecrivait pour rien.
+            heure(existant.kickoff_time) !== heure(ligne.kickoff_time) ||
+            (existant.lieu ?? null) !== (ligne.lieu ?? null);
+
+          // Le score n'est recopie que sur une ligne VIERGE de toute saisie du club. Tester le
+          // seul champ `score` ne suffirait pas : un coach peut avoir renseigne les buteurs et le
+          // commentaire avant le score, et ecrire par-dessus effacerait le sens de sa saisie.
+          const officiel = scoreOfficiel(m, domicile, ligne.match_date);
+          const vierge =
+            existant.score === null &&
+            existant.scorers === null &&
+            existant.man_of_match === null &&
+            existant.comment === null &&
+            (existant.status === "a_venir" || existant.status === "a_transmettre");
+          const scoreAEcrire = officiel && vierge ? officiel : null;
+
+          if (calendrierChange || scoreAEcrire) {
+            // `ligne` ne porte jamais `score` : sans ce choix explicite, une simple mise a jour de
+            // lieu effacerait un score deja present.
+            const patch: Record<string, unknown> = scoreAEcrire ? { ...ligne, score: scoreAEcrire } : ligne;
+            const { error } = await admin.from("club_matches").update(patch).eq("id", existant.id);
+            if (error) erreurs.push(`${externalId} : ${error.message}`);
+            else {
+              majs++;
+              if (scoreAEcrire) scores++;
+            }
+          } else {
+            inchanges++;
+          }
         }
       }
 
@@ -249,7 +311,7 @@ serve(async (req) => {
       events_updated: majs,
       events_cancelled: 0,
       events_unchanged: inchanges,
-      changes: {},
+      changes: scores > 0 ? { scores_officiels: scores } : {},
       errors: erreurs,
       source_label: s.external_club_name ?? s.external_club_id,
     });
@@ -262,7 +324,7 @@ serve(async (req) => {
 
     rapport.push({
       club: s.external_club_name ?? s.external_club_id,
-      statut, creees, majs, inchanges, erreurs: erreurs.length,
+      statut, creees, majs, inchanges, scores, erreurs: erreurs.length,
     });
   }
 

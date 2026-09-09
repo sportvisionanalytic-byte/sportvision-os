@@ -11,7 +11,13 @@ import { CalendarClock, MoreVertical, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { issue, peutSaisirResultat, retardEnJours, scoreAffiche } from "@/lib/matches/etat";
+import {
+  issue,
+  peutSaisirResultat,
+  retardEnJours,
+  scoreAffiche,
+  scoreOfficielNonConfirme,
+} from "@/lib/matches/etat";
 import { requestVisualHref } from "@/lib/data/club/matches";
 import type { MatchOutcome } from "@/lib/data/club/matches";
 import type { Match } from "@/lib/types/studio";
@@ -97,6 +103,7 @@ export function MatchRow({
   const resultat = issue(m);
   const retard = retardEnJours(m, aujourdhui);
   const saisissable = peutSaisirResultat(m, aujourdhui);
+  const officielSeul = scoreOfficielNonConfirme(m);
 
   return (
     <Card
@@ -117,6 +124,9 @@ export function MatchRow({
               {score.gauche} - {score.droite}
             </span>
           )}
+          {/* Le score vient de la fédération, personne du club n'est encore passé dessus : il
+              reste à compléter (buteurs, homme du match, commentaire), que la source ignore. */}
+          {officielSeul && <Badge tone="info">Score officiel, à compléter</Badge>}
           {/* Le retard est l'information qui déclenche l'action : il passe devant le statut, qui
               lui ne dit rien de plus qu'« à venir » sur un match d'il y a trois semaines. */}
           {retard > 0 && !score && (
@@ -182,7 +192,7 @@ export function MatchRow({
           disabled={!canWrite}
           onClick={() => onOpenModal(m.id, "completed", "edit")}
         >
-          Saisir le résultat
+          {officielSeul ? "Compléter" : "Saisir le résultat"}
         </Button>
       )}
 

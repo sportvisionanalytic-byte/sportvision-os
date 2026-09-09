@@ -56,7 +56,7 @@ export const EXPLICATION_FILE: Record<FileMatch, string> = {
   a_renseigner: "Ces matchs sont joués et attendent leur feuille de match.",
   cette_semaine: "Les sept prochains jours.",
   a_venir: "Le reste de la saison.",
-  joues: "Résultat enregistré.",
+  joues: "Résultat confirmé par le club.",
   reportes: "Reprogrammés à une date ultérieure.",
   annules: "Ne seront pas joués.",
 };
@@ -90,12 +90,29 @@ export function aUnResultat(match: Match): boolean {
   return match.scoreFor !== undefined && match.scoreAgainst !== undefined;
 }
 
+/**
+ * Un score officiel est arrivé, mais le club n'a encore rien confirmé.
+ *
+ * 10/09/2026 — L'audit de la source fédérale a montré qu'elle publie le score des rencontres
+ * jouées (`home_score`/`outside_score`), et la synchro quotidienne le recopie désormais sur les
+ * matchs où le club n'a rien saisi. Ce qu'elle ne publie PAS : les buteurs, les passeurs, l'homme
+ * du match, le commentaire — c'est-à-dire tout ce qui sert à faire un contenu.
+ *
+ * Un score officiel ne clôt donc pas le sujet, il le prépare : le match reste dans la file « à
+ * renseigner », son score déjà rempli, et le club n'a plus qu'à ajouter ce que la fédération
+ * ignore. C'est `status` qui marque le passage d'un humain (`saveClubMatchResult` écrit « recu »),
+ * jamais la seule présence d'un score.
+ */
+export function scoreOfficielNonConfirme(match: Match): boolean {
+  return aUnResultat(match) && match.status !== "result_received" && match.status !== "content_created";
+}
+
 export function fileDuMatch(match: Match, aujourdhui: Date = new Date()): FileMatch {
   if (match.status === "cancelled") return "annules";
   if (match.status === "postponed") return "reportes";
-  if (match.status === "result_received" || match.status === "content_created" || aUnResultat(match)) {
-    return "joues";
-  }
+  // « Joué » veut dire : quelqu'un du club a confirmé. Un score tombé de la fédération ne suffit
+  // pas — voir scoreOfficielNonConfirme ci-dessus.
+  if (match.status === "result_received" || match.status === "content_created") return "joues";
 
   const ecart = ecartEnJours(match, aujourdhui);
   // Un match sans date ne peut pas être classé par le temps. Le mettre « à venir » le rendrait
