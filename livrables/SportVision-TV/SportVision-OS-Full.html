@@ -33505,12 +33505,31 @@ async function consumeRecoveryHashOS(){
   if(!accessToken)return false;
   history.replaceState({},'',window.location.pathname);
   try{
-    const r=await fetch(SB_URL+'/rest/v1/profiles?select=id,role,prenom',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+accessToken}});
+    // INCIDENT DU 09/09/2026 — cette requete lisait `profiles` SANS FILTRE et gardait
+    // `profs[0]`. Un collaborateur voit les profils de toute l'equipe (17 lignes mesurees pour
+    // un photographe), et l'ordre d'un SELECT sans ORDER BY est arbitraire : chaque recrue qui
+    // cliquait son lien d'invitation etait donc connectee sous l'identite ET le role d'un
+    // collegue tire au hasard. C'est la cause des « photographes qui arrivent sur un autre
+    // profil ». Le chemin de connexion normal, lui, filtrait deja par id — d'ou le fait que le
+    // probleme ne se voyait que sur les invitations et les reinitialisations.
+    //
+    // On demande donc a Supabase QUI est le porteur du jeton, et on ne lit que ce profil-la.
+    const ru=await fetch(SB_URL+'/auth/v1/user',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+accessToken}});
+    if(!ru.ok)return false;
+    const u=await ru.json();
+    if(!u||!u.id)return false;
+
+    // Ne jamais heriter de la session presente dans ce navigateur : si quelqu'un d'autre etait
+    // connecte ici, ses cles resteraient melangees aux nouvelles.
+    svClear();
+
+    const r=await fetch(SB_URL+'/rest/v1/profiles?id=eq.'+encodeURIComponent(u.id)+'&select=id,role,prenom,actif',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+accessToken}});
     const profs=await r.json();
     const prof=Array.isArray(profs)?profs[0]:null;
-    if(!prof)return false;
+    if(!prof||prof.id!==u.id)return false;
+    if(prof.actif===false){toast('Ce compte a ete desactive. Contactez l\'administrateur.','er');return false;}
     svSave(accessToken,refreshToken||'',prof.id,prof.role);
-    if(prof.prenom)localStorage.setItem('sv_prenom',prof.prenom);
+    localStorage.setItem('sv_prenom',prof.prenom||'');
   }catch(e){return false;}
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:16px">Définir un nouveau mot de passe</div>
