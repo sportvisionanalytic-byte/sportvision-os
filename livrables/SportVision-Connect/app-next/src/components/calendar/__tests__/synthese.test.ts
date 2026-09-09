@@ -228,10 +228,12 @@ test("une feuille de match remplie prime sur un statut non mis à jour", () => {
 test("le score est rendu du point de vue de notre équipe", () => {
   // La base stocke toujours « receveur - visiteur ». À l'extérieur, le score de notre équipe est
   // donc le second nombre : l'intervertir ici évite que chaque écran ait à y penser.
+  // Le score est stocké « notre équipe - adversaire », et les écrans écrivent toujours notre
+  // équipe à gauche : jouer à l'extérieur ne change donc RIEN à l'ordre d'affichage.
   assert.deepEqual(scoreDecompose(ev("match", "15:00", "Séniors R2", { score: "3-1", isHome: true })),
-    { domicile: "3", exterieur: "1" });
+    { nous: "3", eux: "1" });
   assert.deepEqual(scoreDecompose(ev("match", "15:00", "Séniors R2", { score: "3-1", isHome: false })),
-    { domicile: "1", exterieur: "3" }, "à l'extérieur, notre score passe à gauche");
+    { nous: "3", eux: "1" }, "un 3-1 gagné à l'extérieur reste un 3-1 pour nous");
 });
 
 test("un match non joué n'a pas de score à décomposer", () => {

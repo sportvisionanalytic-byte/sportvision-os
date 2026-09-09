@@ -276,15 +276,23 @@ export function statutLisible(e: CalendarEvent): { label: string; ton: "success"
 
 /** Le score, décomposé pour être mis en page. `null` tant que la rencontre n'est pas jouée : la
  *  fiche affiche alors « vs », jamais un espace vide entre deux équipes. */
-export function scoreDecompose(e: CalendarEvent): { domicile: string; exterieur: string } | null {
+export function scoreDecompose(e: CalendarEvent): { nous: string; eux: string } | null {
   const m = /^(\d+)\s*[-–]\s*(\d+)$/.exec((e.score ?? "").trim());
   if (!m) return null;
-  // La base stocke toujours « score du receveur - score du visiteur ». Quand notre équipe se
-  // déplace, c'est donc le second nombre qui est le sien : intervertir ici, une seule fois, évite
-  // que chaque écran ait à y penser.
-  return e.isHome === false
-    ? { domicile: m[2]!, exterieur: m[1]! }
-    : { domicile: m[1]!, exterieur: m[2]! };
+  // `club_matches.score` s'écrit TOUJOURS « notre équipe - adversaire », jamais « receveur -
+  // visiteur ». C'est ce qu'écrit `saveClubMatchResult` (`scoreFor-scoreAgainst`), c'est ce que
+  // relit `parseScore` (le premier nombre devient `scoreFor`, le nôtre), et la synchro fédérale
+  // s'y range en remettant la paire de la source dans cet ordre.
+  //
+  // 10/09/2026 — Cette fonction faisait l'hypothèse inverse et intervertissait les deux nombres
+  // sur un match à l'extérieur. Comme les écrans écrivent toujours NOTRE équipe à gauche, un
+  // 2-0 gagné à Sainte-Geneviève s'affichait « Villemomble 0 – 2 Sainte-Geneviève ». Signalé par
+  // Fouka sur le premier vrai résultat de la saison.
+  //
+  // Les clés se nomment `nous`/`eux` et non plus `domicile`/`exterieur` : c'est ce mauvais nom
+  // qui rendait l'erreur invisible à la relecture, puisqu'il décrivait un ordre que l'affichage
+  // ne respecte nulle part.
+  return { nous: m[1]!, eux: m[2]! };
 }
 
 /** Libellé du type de couverture. */

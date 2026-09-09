@@ -175,14 +175,22 @@ export function grouperMatchs(matchs: Match[], aujourdhui: Date = new Date()): G
   }));
 }
 
-/** Le score dans le sens du club : la base stocke « pour - contre » du point de vue de l'équipe,
- *  mais on l'affiche à côté de l'adversaire, et à l'extérieur l'ordre visuel s'inverse. Une seule
- *  fonction pour cette règle, comme au calendrier (synthese.ts § scoreDecompose). */
-export function scoreAffiche(match: Match): { gauche: number; droite: number } | null {
+/**
+ * Le score, dans l'ordre où l'écran nomme les deux équipes.
+ *
+ * `club_matches.score` s'écrit toujours « notre équipe - adversaire », et la ligne de match écrit
+ * toujours notre équipe en premier (« Seniors 1 @ Ste Geneviève »). Il n'y a donc rien à
+ * intervertir, jamais — pas même à l'extérieur.
+ *
+ * 10/09/2026 — La version précédente inversait sur les matchs à l'extérieur, en croyant afficher
+ * « receveur - visiteur ». Sur le premier vrai résultat de la saison, un 2-0 gagné à
+ * Sainte-Geneviève s'affichait « Seniors 1 @ Ste Geneviève  0 - 2 ». Le même défaut existait au
+ * calendrier (synthese.ts § scoreDecompose), venu de la même hypothèse fausse sur ce que la base
+ * stocke. `charger-saison-federale.mjs`, lui, ÉCRIVAIT dans le mauvais ordre : corrigé aussi.
+ */
+export function scoreAffiche(match: Match): { nous: number; eux: number } | null {
   if (!aUnResultat(match)) return null;
-  const pour = match.scoreFor as number;
-  const contre = match.scoreAgainst as number;
-  return match.isHome === false ? { gauche: contre, droite: pour } : { gauche: pour, droite: contre };
+  return { nous: match.scoreFor as number, eux: match.scoreAgainst as number };
 }
 
 /** Gagné, perdu, nul — pour un liseré de couleur, jamais pour remplacer le score lui-même. */

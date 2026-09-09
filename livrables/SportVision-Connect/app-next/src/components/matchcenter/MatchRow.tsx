@@ -121,7 +121,7 @@ export function MatchRow({
           </span>
           {score && (
             <span className="font-mono text-[13px] font-bold text-brand-blue-pale tabular-nums">
-              {score.gauche} - {score.droite}
+              {score.nous} - {score.eux}
             </span>
           )}
           {/* Le score vient de la fédération, personne du club n'est encore passé dessus : il

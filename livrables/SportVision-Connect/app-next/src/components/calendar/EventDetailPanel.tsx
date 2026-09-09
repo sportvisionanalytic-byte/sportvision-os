@@ -131,7 +131,7 @@ export function EventDetailPanel({ event, onClose }: EventDetailPanelProps) {
               <div className="flex flex-none flex-col items-center gap-1 px-1">
                 {score ? (
                   <span className="text-[28px] font-extrabold leading-none tabular-nums">
-                    {score.domicile}<span className="mx-1 text-text-faint">–</span>{score.exterieur}
+                    {score.nous}<span className="mx-1 text-text-faint">–</span>{score.eux}
                   </span>
                 ) : (
                   <span className="text-[15px] font-extrabold text-text-faint">vs</span>

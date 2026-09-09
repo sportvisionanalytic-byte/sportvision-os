@@ -142,7 +142,18 @@ const matchs = [...parId.values()].map((m) => {
     adversaire_club_slug: domicile ? m.outside_club_slug ?? null : m.home_club_slug ?? null,
     adversaire_logo: domicile ? m.outside_logo ?? null : m.home_logo ?? null,
     domicile,
-    score: m.home_score != null && m.outside_score != null ? `${m.home_score}-${m.outside_score}` : null,
+    // « Notre equipe - adversaire », JAMAIS « receveur - visiteur ».
+    // C'est la convention de `club_matches.score` partout ailleurs : `saveClubMatchResult` ecrit
+    // `scoreFor-scoreAgainst`, et `parseScore` relit le premier nombre comme le NOTRE. Ce script
+    // ecrivait la paire brute de la source, donc a l'envers des qu'on jouait a l'exterieur.
+    // Aucun score n'etait encore passe par ici (aucun match joue au moment de l'ecrire), mais le
+    // prochain chargement de saison aurait inverse tous les scores des matchs a l'exterieur.
+    score:
+      m.home_score != null && m.outside_score != null
+        ? domicile
+          ? `${m.home_score}-${m.outside_score}`
+          : `${m.outside_score}-${m.home_score}`
+        : null,
     exempt: Boolean(m.exempt),
     reporte: Boolean(m.postponed),
   };

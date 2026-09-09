@@ -122,23 +122,30 @@ test("l'avenir se lit du plus proche, le passé du plus récent", () => {
   assert.deepEqual(par["joues"], ["joue-recent", "joue-vieux"]);
 });
 
-test("le score s'inverse à l'extérieur, l'issue non", () => {
-  const dehors = match({ id: "1", isHome: false, scoreFor: 1, scoreAgainst: 3 });
-  assert.deepEqual(scoreAffiche(dehors), { gauche: 3, droite: 1 });
-  assert.equal(issue(dehors), "perdu");
+test("le score ne s'inverse jamais : notre équipe est toujours nommée en premier", () => {
+  // Le vrai cas du 06/09/2026 : Villemomble gagne 2-0 À SAINTE-GENEVIÈVE. La ligne écrit
+  // « Seniors 1 @ Ste Geneviève », donc le 2 doit rester à gauche. La version d'avant affichait
+  // « 0 - 2 » et donnait la victoire à l'adversaire.
+  const gagneDehors = match({ id: "1", isHome: false, scoreFor: 2, scoreAgainst: 0 });
+  assert.deepEqual(scoreAffiche(gagneDehors), { nous: 2, eux: 0 });
+  assert.equal(issue(gagneDehors), "gagne");
 
-  const maison = match({ id: "2", isHome: true, scoreFor: 1, scoreAgainst: 3 });
-  assert.deepEqual(scoreAffiche(maison), { gauche: 1, droite: 3 });
+  const perduDehors = match({ id: "2", isHome: false, scoreFor: 1, scoreAgainst: 3 });
+  assert.deepEqual(scoreAffiche(perduDehors), { nous: 1, eux: 3 });
+  assert.equal(issue(perduDehors), "perdu");
+
+  const maison = match({ id: "3", isHome: true, scoreFor: 1, scoreAgainst: 3 });
+  assert.deepEqual(scoreAffiche(maison), { nous: 1, eux: 3 });
   assert.equal(issue(maison), "perdu");
 
-  assert.equal(issue(match({ id: "3", scoreFor: 2, scoreAgainst: 2 })), "nul");
-  assert.equal(scoreAffiche(match({ id: "4" })), null);
+  assert.equal(issue(match({ id: "4", scoreFor: 2, scoreAgainst: 2 })), "nul");
+  assert.equal(scoreAffiche(match({ id: "5" })), null);
 });
 
 test("le 0-0 est un résultat, pas une absence de résultat", () => {
   // Piège classique : un test de vérité sur `scoreFor` traiterait 0 comme « non saisi ».
   const m = match({ id: "1", kickoffAt: "2026-09-06", status: "result_received", scoreFor: 0, scoreAgainst: 0 });
   assert.equal(fileDuMatch(m, AUJOURDHUI), "joues");
-  assert.deepEqual(scoreAffiche(m), { gauche: 0, droite: 0 });
+  assert.deepEqual(scoreAffiche(m), { nous: 0, eux: 0 });
   assert.equal(issue(m), "nul");
 });
