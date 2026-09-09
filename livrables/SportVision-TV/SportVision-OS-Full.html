@@ -33612,6 +33612,26 @@ async function ficheDocSupprimer(docId,collabId,nomDoc){
 // (invite-collaborateur) tombe dans exactement le même cas — il a besoin du
 // même écran pour définir son mot de passe initial.
 async function consumeRecoveryHashOS(){
+  // Un lien perime revient avec une erreur dans le fragment, pas avec un jeton. Sans ce cas,
+  // l'ecran de connexion s'affichait sans un mot d'explication : la personne croyait que son
+  // lien « ne marchait pas » alors qu'il avait simplement expire ou deja servi. Constate le
+  // 09/09/2026 sur une recrue, apres qu'un nouveau lien eut invalide le precedent.
+  if(window.location.hash.includes('error')){
+    const p=new URLSearchParams(window.location.hash.slice(1));
+    const code=p.get('error_code')||p.get('error')||'';
+    history.replaceState({},'',window.location.pathname);
+    const perime=/expired|invalid/i.test(code+' '+(p.get('error_description')||''));
+    openModal(`
+      <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:10px">${perime?'Ce lien n\'est plus valable':'Lien impossible a utiliser'}</div>
+      <div style="font-size:13.5px;color:var(--t2);line-height:1.6;margin-bottom:16px">
+        ${perime
+          ? 'Un lien de connexion est a usage unique et expire au bout d\'une heure. Il devient aussi inutilisable des qu\'un nouveau lien est demande pour le meme compte.'
+          : 'Ce lien n\'a pas pu etre utilise.'}
+        <br><br>Demandez-en un nouveau ci-dessous, ou contactez votre administrateur SportVision.
+      </div>
+      <button class="btn bp" style="width:100%;justify-content:center;height:44px" onclick="closeModal();motDePasseOublie()">Recevoir un nouveau lien</button>`);
+    return true;
+  }
   if(!window.location.hash.includes('type=recovery')&&!window.location.hash.includes('type=invite'))return false;
   const params=new URLSearchParams(window.location.hash.slice(1));
   const accessToken=params.get('access_token');
