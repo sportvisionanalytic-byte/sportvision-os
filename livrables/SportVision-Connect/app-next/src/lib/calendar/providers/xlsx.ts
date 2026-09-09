@@ -25,6 +25,7 @@
 import { detectTabularLayout, layoutToMapping, type DetectedLayout } from "../autodetect.ts";
 import { rowsToSourceEvents } from "../tabular.ts";
 import { readXlsx } from "../xlsx.ts";
+import { enrichirDepuisSections } from "../tabular-sections.ts";
 import {
   TABULAR_FIELD_LABELS,
   TABULAR_REQUIRED_FIELDS,
@@ -84,8 +85,24 @@ export const xlsxProvider: CalendarProvider = {
     // Mapping fourni (l'utilisateur a corrigé) : il fait foi. Sinon on détecte.
     let mapping = provided;
     let updatedAtColumn: number | null = null;
+    let lignes = sheet.rows;
     if (!mapping || TABULAR_REQUIRED_FIELDS.some((f) => mapping!.columns[f] === undefined)) {
-      const layout = detectTabularLayout(sheet.rows, { teams: input.teams });
+      let layout = detectTabularLayout(lignes, { teams: input.teams });
+
+      // Planning « par blocs » : la date est un titre de section, pas une colonne. On la reporte
+      // sur chaque ligne, puis on relit avec le moteur habituel — aucune regle de lecture
+      // nouvelle, juste une colonne de plus.
+      if (layout.missingRequired.includes("date")) {
+        const enrichies = enrichirDepuisSections(lignes);
+        if (enrichies) {
+          const relecture = detectTabularLayout(enrichies, { teams: input.teams });
+          if (relecture.missingRequired.length < layout.missingRequired.length) {
+            lignes = enrichies;
+            layout = relecture;
+          }
+        }
+      }
+
       if (layout.missingRequired.length > 0) {
         return {
           events: [],
@@ -104,7 +121,7 @@ export const xlsxProvider: CalendarProvider = {
       updatedAtColumn = layout.updatedAtColumn;
     }
 
-    return rowsToSourceEvents(sheet.rows, { mapping, updatedAtColumn });
+    return rowsToSourceEvents(lignes, { mapping, updatedAtColumn });
   },
 };
 

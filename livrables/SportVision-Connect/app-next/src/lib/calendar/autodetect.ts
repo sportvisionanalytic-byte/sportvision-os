@@ -263,9 +263,14 @@ export function detectTabularLayout(
 
   // Dernier recours pour les champs obligatoires encore absents : le nom des colonnes. Le contenu
   // n'a rien donné (fichier trop court, colonnes vides sur l'échantillon), l'en-tête peut sauver.
-  const missingBefore = TABULAR_REQUIRED_FIELDS.filter((f) => columns[f] === undefined);
   const byName = headers.length > 0 ? resolveByHeaderNames(headers) : { columns: {}, updatedAt: null };
-  for (const field of missingBefore) {
+  // Le repli par intitules ne servait qu'aux champs OBLIGATOIRES. `team` n'en fait pas partie, il
+  // n'etait donc jamais rattrape — alors que c'est lui qui repartit les matchs par equipe, et
+  // qu'un planning de club le nomme tres clairement (« CATEGORIES VSF », constate le 09/09/2026 :
+  // la colonne etait la, lisible, et restait ignoree). On complete desormais TOUT champ laisse
+  // vide par le contenu, sans jamais ecraser ce que le contenu a trouve.
+  for (const field of Object.keys(byName.columns) as TabularField[]) {
+    if (columns[field] !== undefined) continue;
     const index = byName.columns[field];
     if (index !== undefined && !taken.has(index)) {
       assign(field, stats[index], 0.4);

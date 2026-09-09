@@ -27,6 +27,7 @@ import { fallbackIdentityKey, externalIdentityKey } from "../identity.ts";
 import { parseFlexibleDate, parseFlexibleTime, coerceSportStatus, detectSportStatus } from "../normalize.ts";
 import { readXlsx } from "../xlsx.ts";
 import { detectTabularLayout } from "../autodetect.ts";
+import { enrichirDepuisSections } from "../tabular-sections.ts";
 import { isBlockedHost, validateCalendarUrl } from "../remote.ts";
 import type { ProviderId, SourceEvent } from "../types.ts";
 
@@ -1141,4 +1142,50 @@ test("categories fusionnees : U8 et U9 trouvent la meme equipe", () => {
   // Et une categorie qu'elle NE couvre PAS ne doit pas lui etre attribuee.
   const autre = preview("CSV", [evenement("U15")], [], { teams: equipes });
   assert.equal(autre.rows[0]!.teamId, "u15");
+});
+
+// ── Planning « par blocs » : la date est un titre de section (09/09/2026) ─────
+// Le planning reel de Villemomble Sports : un onglet par mois, et dans chaque onglet des blocs
+// « titre du club / date seule / en-tete / matchs ». Aucune colonne date : la detection refusait
+// tout le fichier.
+
+const PLANNING_PAR_BLOCS: string[][] = [
+  ["PLANNING DES MATCHS DU CLUB 2026", "", "", "", "", "", ""],
+  ["46246", "", "", "", "", "", ""],
+  ["CATEGORIES VSF", "ADVERSAIRES", "RDV", "EDUCATEURS", "COMPETITION", "HORAIRES COUP D'ENVOI", "LIEU"],
+  ["Séniors R2", "Meaux", "19h", "Diatta", "Amical", "20h15", "Stade Ripert"],
+  ["", "", "", "", "", "", ""],
+  ["PLANNING DES MATCHS DU CLUB 2026", "", "", "", "", "", ""],
+  ["46250", "", "", "", "", "", ""],
+  ["CATEGORIES VSF", "ADVERSAIRES", "RDV", "EDUCATEURS", "COMPETITION", "HORAIRES COUP D'ENVOI", "LIEU"],
+  ["U18 D2", "As Chelles", "18h", "", "Amical", "20h30", "Stade Mimoun"],
+  ["U16 D1", "Bondy", "14h", "", "Championnat", "15h", "Parc Pompidou"],
+];
+
+test("planning par blocs : la date du titre de section est reportee sur ses matchs", () => {
+  const lignes = enrichirDepuisSections(PLANNING_PAR_BLOCS);
+  assert.ok(lignes, "le planning par blocs n'a pas ete reconnu");
+  // Une seule ligne d'en-tete conservee, en tete, malgre ses deux occurrences dans le fichier.
+  assert.equal(lignes![0]![0], "CATEGORIES VSF");
+  assert.equal(lignes!.filter((l) => l[0] === "CATEGORIES VSF").length, 1);
+  assert.equal(lignes!.length, 4); // en-tete + 3 matchs
+});
+
+test("planning par blocs : chaque match part vers l'equipe que sa ligne nomme", () => {
+  const lignes = enrichirDepuisSections(PLANNING_PAR_BLOCS)!;
+  const layout = detectTabularLayout(lignes, { teams: [{ name: "Séniors R2" }, { name: "U18 D2" }] });
+  assert.equal(layout.missingRequired.length, 0, `manquant : ${layout.missingRequired.join(", ")}`);
+  assert.notEqual(layout.columns.team, undefined, "la colonne des categories n'est pas reconnue comme equipe");
+  assert.equal(layout.columns.team, 0);
+  assert.equal(layout.columns.opponent, 1);
+});
+
+test("planning par blocs : un tableau ordinaire n'est PAS transforme", () => {
+  // Une seule cellule-date isolee ne doit pas declencher cette lecture.
+  const ordinaire = [
+    ["Date", "Equipe", "Adversaire"],
+    ["14/09/2026", "U18 D2", "FC Sens"],
+    ["21/09/2026", "U16 D3", "AS Montereau"],
+  ];
+  assert.equal(enrichirDepuisSections(ordinaire), null);
 });

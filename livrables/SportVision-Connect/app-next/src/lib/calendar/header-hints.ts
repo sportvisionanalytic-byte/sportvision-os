@@ -14,7 +14,10 @@ const HEADERS: Record<TabularField, readonly string[]> = {
   externalTeamId: ["id equipe", "code equipe"],
   externalCompetitionId: ["id competition", "code competition", "id championnat", "code epreuve"],
   opponent: ["adversaire", "opponent", "equipe adverse", "club adverse", "contre", "rencontre", "visiteur", "recevant"],
-  team: ["equipe", "mon equipe", "notre equipe", "team", "equipe locale", "categorie equipe"],
+  // « categories » et « categorie » seuls : beaucoup de plannings de club nomment ainsi la colonne
+  // qui porte l'equipe — « CATEGORIES VSF » chez Villemomble (09/09/2026). Sans eux, cette colonne
+  // etait prise pour le lieu et les matchs partaient tous sur la mauvaise equipe.
+  team: ["equipe", "mon equipe", "notre equipe", "team", "equipe locale", "categorie equipe", "categorie", "categories"],
   competition: ["competition", "championnat", "epreuve", "poule", "coupe", "division"],
   status: ["statut", "status", "etat"],
   time: ["heure", "horaire", "time", "coup d envoi", "kickoff"],
