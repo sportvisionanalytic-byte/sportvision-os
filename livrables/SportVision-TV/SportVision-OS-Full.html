@@ -11919,7 +11919,14 @@ async function loadPhotoAlbums(el){
 function renderPhotoAlbumsList(albums){
   const el=document.getElementById('prod-media-real');
   if(!el)return;
-  const header=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bp bs" onclick="modalCreerAlbum()">+ Nouvelle galerie</button></div>`;
+  // 09/09/2026, precision de Fouka : un operateur terrain ne cree pas de galerie. La base le
+  // refuse desormais (policy malbums_photographe_perimetre), donc ce bouton ne pourrait
+  // qu'echouer — on ne propose pas une commande qui n'aboutira jamais. La creation reste a la
+  // Production, l'operateur verse ses photos dans la galerie de sa prestation et en recupere
+  // le lien de partage.
+  const header=S.role==='photo'
+    ? `<div style="margin-bottom:10px;font-size:12px;color:var(--t3)">Les galeries de vos prestations. Elles sont créées par la Production.</div>`
+    : `<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bp bs" onclick="modalCreerAlbum()">+ Nouvelle galerie</button></div>`;
   if(!albums.length){
     el.innerHTML=header+'<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3);text-align:center"><div style="font-size:36px;opacity:.2">📸</div><div style="font-size:13px">Aucune galerie pour le moment.</div><div style="font-size:12px;max-width:300px">Un nom suffit pour en créer une. Le club, l\'équipe et la saison sont facultatifs.</div></div>';
     return;
