@@ -998,6 +998,7 @@ const NAV={
   prod:[
     {type:'sep',lb:'Opérations'},
     {id:'dash',lb:'Accueil',ic:'dash'},
+    {id:'cockpit',lb:'Cockpit',ic:'check'},
     {id:'pre',lb:'Missions',ic:'pre'},
     {id:'livr',lb:'Livraisons',ic:'check'},
     // 08/09/2026 — Meme correction que pour l'admin, validee par Fouka : cet ecran est l'outil
@@ -1524,6 +1525,14 @@ const VIEWS={
         </div>
       </div>
     </div>`,
+
+  // Cockpit Production (09/09/2026) : une seule page pour les files d'attente reelles. Les
+  // ecrans existants (Missions, Livraisons, Postproduction) ne sont pas remplaces — celui-ci
+  // repond a une autre question : « qu'est-ce qui m'attend, maintenant, et dans quel ordre ».
+  'prod.cockpit':()=>`
+    <div class="sh"><div class="sh-t">Production — Missions</div></div>
+    <div id="cockpit-tabs" style="display:flex;gap:8px;margin-bottom:13px;overflow-x:auto;scrollbar-width:none"></div>
+    <div id="cockpit-real">${photoSkelCards(4)}</div>`,
 
   'prod.kanban':()=>`
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
@@ -5505,6 +5514,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='admin'&&view==='calglobal'){_cgDate=new Date();await loadCalGlobal();}
   if(role==='prod'&&view==='dash') await loadProdDash();
+  if(role==='prod'&&view==='cockpit') await loadCockpitProduction();
   if(role==='prod'&&view==='pre') await loadProdPrestations();
   if(role==='prod'&&view==='planning'){_prodPlanTab='semaine';await loadProdPlanning();}
   if(role==='prod'&&view==='jourj') await loadProdJourJ();
@@ -29520,6 +29530,246 @@ async function secMarquerLivre(id){
 let _jourjTimer=null;
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// COCKPIT PRODUCTION (master prompt Fouka, vague 2 du 09/09/2026)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// §B : « Ne recalcule pas les statuts dans le frontend. Une mission doit appartenir au même
+// groupe partout. » Le classement vient donc entièrement de la vue v_production_missions —
+// ce fichier ne teste jamais un statut pour décider d'un groupe. §C : les compteurs sortent de
+// la même requête que les listes, ils ne peuvent pas diverger.
+//
+// Sept groupes et non six : les missions en post-production (l'opérateur travaille, la
+// Production n'a rien à vérifier encore) n'entraient dans aucune des six vues demandées. Les
+// noyer dans « À vérifier » aurait gonflé un compteur d'actions à faire avec des missions où il
+// n'y a rien à faire — le défaut que le §5 demande justement d'éviter.
+const COCKPIT_GROUPES=[
+  {k:'attente_acceptation',lb:'En attente d’acceptation',ic:'📬'},
+  {k:'a_venir',            lb:'À venir',                 ic:'📅'},
+  {k:'terrain',            lb:'Sur le terrain',          ic:'🔴'},
+  {k:'post_production',    lb:'Post-production',         ic:'🎬'},
+  {k:'a_verifier',         lb:'Livraisons à vérifier',   ic:'📦'},
+  {k:'corrections',        lb:'Corrections demandées',   ic:'🔁'},
+  {k:'terminees',          lb:'Terminées',               ic:'🏁'},
+];
+
+let _cockpitData=[];
+let _cockpitGroupe='attente_acceptation';
+
+// §D : l'ordre doit refléter l'urgence réelle, pas un identifiant. Un incident ouvert passe
+// devant un retard, qui passe devant une mission du jour.
+function cockpitPoids(m){
+  const today=ymdLocal();
+  let p=0;
+  if(m.incident_ouvert)p+=1000;
+  if(m.livraison_en_retard)p+=500;
+  if(m.date_prestation===today)p+=100;
+  if(m.echeance_manquante)p+=10;
+  return p;
+}
+
+function cockpitTri(a,b){
+  const d=cockpitPoids(b)-cockpitPoids(a);
+  if(d)return d;
+  return (a.date_prestation||'9999').localeCompare(b.date_prestation||'9999');
+}
+
+async function loadCockpitProduction(){
+  const el=document.getElementById('cockpit-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('v_production_missions?select=*&groupe=neq.annulees&order=date_prestation.desc');
+    if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
+    _cockpitData=data;
+    renderCockpitOnglets();
+    renderCockpitProduction();
+  }catch(e){
+    el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement du cockpit.</div>';
+  }
+}
+
+// Les compteurs viennent du même tableau que les listes (§C).
+function renderCockpitOnglets(){
+  const bar=document.getElementById('cockpit-tabs');
+  if(!bar)return;
+  bar.innerHTML=COCKPIT_GROUPES.map(g=>{
+    const n=_cockpitData.filter(m=>m.groupe===g.k).length;
+    const actif=g.k===_cockpitGroupe;
+    // Une file d'attente vide n'a pas besoin d'un compteur : on n'affiche que ce qui appelle
+    // une action. « Terminées » n'en porte jamais, ce n'est pas une file de travail.
+    const badge=(n&&g.k!=='terminees')?`<span style="margin-left:6px;padding:1px 6px;border-radius:9px;background:${actif?'rgba(255,255,255,.22)':'var(--s3,rgba(255,255,255,.08))'};font-size:10.5px;font-weight:800">${n}</span>`:'';
+    return `<button onclick="setCockpitGroupe('${g.k}')" class="btn ${actif?'bp':'bg2'} bs" style="flex-shrink:0">${g.ic} ${esc(g.lb)}${badge}</button>`;
+  }).join('');
+}
+
+function setCockpitGroupe(k){
+  _cockpitGroupe=k;
+  renderCockpitOnglets();
+  renderCockpitProduction();
+}
+
+function cockpitAlertes(m){
+  const a=[];
+  if(m.incident_ouvert)a.push({lb:'⚠ Incident ouvert',c:'var(--er)'});
+  if(m.livraison_en_retard)a.push({lb:'🔴 Livraison en retard',c:'var(--er)'});
+  if(!m.couverture)a.push({lb:'⚠ Couverture non renseignée',c:'var(--wa)'});
+  // §F : Production doit voir qu'aucune échéance n'a été fixée. Avertissement, pas blocage —
+  // et surtout jamais confondu avec un retard, qui suppose une échéance réelle et dépassée.
+  if(m.echeance_manquante)a.push({lb:'⚠ Aucune échéance de livraison renseignée',c:'var(--wa)'});
+  if(!m.kit_nom)a.push({lb:'⚠ Aucun kit attribué',c:'var(--wa)'});
+  return a;
+}
+
+function depuis(iso){
+  if(!iso)return '';
+  const h=Math.floor((Date.now()-new Date(iso))/3600000);
+  if(h<1)return 'depuis moins d’une heure';
+  if(h<48)return `depuis ${h} h`;
+  return `depuis ${Math.floor(h/24)} j`;
+}
+
+function renderCockpitProduction(){
+  const el=document.getElementById('cockpit-real');
+  if(!el)return;
+  const rows=_cockpitData.filter(m=>m.groupe===_cockpitGroupe).sort(cockpitTri);
+  if(!rows.length){
+    el.innerHTML='<div style="padding:44px;text-align:center;color:var(--t3);font-size:13px">Rien dans cette file.</div>';
+    return;
+  }
+  const COV={photo:'📸 Photo',video:'🎬 Vidéo',photo_video:'📸🎬 Photo + vidéo'};
+  el.innerHTML=rows.map(m=>{
+    const d=m.date_prestation?new Date(m.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}):'—';
+    const h=(m.heure_debut||'').slice(0,5), rdv=(m.heure_rdv||'').slice(0,5);
+    const alertes=cockpitAlertes(m);
+    let ligne2='';
+    if(m.groupe==='attente_acceptation'){
+      ligne2=`En attente de réponse ${esc(depuis(m.invitation_depuis))}`;
+    }else if(m.groupe==='terrain'){
+      const arr=m.arrive_at?new Date(m.arrive_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):null;
+      ligne2=`${esc(m.operateurs||'—')}${arr?' · arrivé à '+arr:''} · ${esc(SL[m.statut]||m.statut)}`;
+    }else if(m.groupe==='a_verifier'||m.groupe==='corrections'||m.groupe==='post_production'){
+      const parts=[];
+      if(m.nb_photos)parts.push(`${m.nb_photos} lien photo`);
+      if(m.nb_montages)parts.push(`${m.nb_montages} montage`);
+      if(m.nb_rushs)parts.push(`${m.nb_rushs} rushs`);
+      parts.push(m.transfert_confirme?'transfert confirmé':'transfert non confirmé');
+      ligne2=`${esc(m.operateurs||'—')} · ${parts.join(' · ')}`;
+    }else if(m.groupe==='terminees'){
+      ligne2=esc(m.operateurs||'—');
+    }else{
+      ligne2=`${esc(m.operateurs||'Aucun opérateur accepté')}${m.kit_nom?' · 🎒 '+esc(m.kit_nom):''}${m.mission_prete?' · ✅ Prête':''}`;
+    }
+    // §K rendu lisible : ce qui empêche encore de clôturer, dit en clair plutôt que deviné.
+    const bloc=(m.cloture_manquant&&m.cloture_manquant.length&&m.groupe!=='terminees'&&m.groupe!=='a_venir'&&m.groupe!=='attente_acceptation')
+      ?`<div style="font-size:11px;color:var(--t3);margin-top:6px">Reste : ${esc(m.cloture_manquant.join(' · '))}</div>`:'';
+    return `<div class="cd" style="margin-bottom:9px;cursor:pointer" onclick="modalDetailById('${m.prestation_id}')">
+      <div style="padding:13px 16px">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px">
+              <span style="font-size:13.5px;font-weight:700;color:var(--t1)">${esc(m.client_nom||'—')}</span>
+              <span style="font-size:11px;color:var(--t3)">${esc(m.reference||'')}</span>
+              ${m.couverture?`<span style="font-size:11px;color:var(--t2)">${COV[m.couverture]}</span>`:''}
+            </div>
+            <div style="font-size:12px;color:var(--t2);margin-bottom:5px">${ligne2}</div>
+            <div style="font-size:11px;color:var(--t3)">${d}${h?' · '+h:''}${rdv?' · arrivée '+rdv:''}${m.lieu?' · 📍 '+esc(m.lieu):''}${m.kit_retour_prevu&&m.groupe!=='terminees'?' · retour kit '+new Date(m.kit_retour_prevu).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}</div>
+            ${alertes.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:7px">${alertes.map(a=>`<span style="font-size:11px;font-weight:700;color:${a.c}">${a.lb}</span>`).join('')}</div>`:''}
+            ${bloc}
+          </div>
+          ${(m.groupe==='a_verifier'||m.groupe==='corrections')
+            ?`<button onclick="event.stopPropagation();modalVerifierLivraison('${m.prestation_id}')" class="btn bp bs" style="flex-shrink:0;min-height:38px">Vérifier</button>`
+            :`<button onclick="event.stopPropagation();modalDetailById('${m.prestation_id}')" class="btn bg2 bs" style="flex-shrink:0;min-height:38px">Voir</button>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── §N : les liens directement sous la main ─────────────────────────────────
+//
+// Le Responsable Production ne doit pas aller les chercher dans Médias. §O : on affiche le
+// fournisseur quand il est reconnaissable, et on n'injecte jamais l'URL ailleurs que dans un
+// href — esc() partout, aucun rendu de texte en HTML.
+function fournisseurLien(url){
+  try{
+    const h=new URL(url).hostname.replace(/^www\./,'');
+    if(/drive\.google|docs\.google/.test(h))return 'Google Drive';
+    if(/wetransfer/.test(h))return 'WeTransfer';
+    if(/swisstransfer/.test(h))return 'SwissTransfer';
+    if(/dropbox/.test(h))return 'Dropbox';
+    return h;
+  }catch(e){return 'Lien';}
+}
+
+async function modalVerifierLivraison(prestationId){
+  openModal(`<div class="mh"><div class="mt">Vérifier la livraison</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="padding:20px" id="verif-corps"><div style="text-align:center;color:var(--t3);font-size:13px;padding:28px">Chargement…</div></div>`);
+  const [mr,lr]=await Promise.all([
+    sbFetch('v_production_missions?select=*&prestation_id=eq.'+prestationId),
+    sbFetch('media_liens?select=id,nom,url,categorie,type_media,statut,nombre_fichiers,transfert_confirme,commentaire&prestation_id=eq.'+prestationId),
+  ]);
+  const m=Array.isArray(mr)&&mr[0];
+  const L=Array.isArray(lr)?lr:[];
+  const corps=document.getElementById('verif-corps');
+  if(!m||!corps){if(corps)corps.innerHTML='<div style="color:var(--er);font-size:13px">Mission introuvable.</div>';return;}
+  const COV={photo:'Photo',video:'Vidéo',photo_video:'Photo + vidéo'};
+  const fmt=d=>d?new Date(d).toLocaleString('fr-FR',{weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}):null;
+  const dl=m.couverture==='video'?fmt(m.deadline_video_at):fmt(m.deadline_photo_at);
+
+  corps.innerHTML=`
+    <div style="font-size:15px;font-weight:700;color:var(--t1)">${esc(m.client_nom||'—')}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:14px">${esc(m.reference||'')} · ${m.couverture?esc(COV[m.couverture]):'<span style="color:var(--wa)">couverture non renseignée</span>'} · ${esc(m.operateurs||'—')}</div>
+
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--t2);margin-bottom:16px">
+      <span>Livré ${m.livre_at?esc(depuis(m.livre_at)):'—'}</span>
+      <span>${dl?'Échéance : '+esc(dl):'<span style="color:var(--wa)">Aucune échéance renseignée</span>'}</span>
+      ${m.livraison_en_retard?'<span style="color:var(--er);font-weight:700">🔴 En retard</span>':''}
+      <span style="color:${m.transfert_confirme?'var(--ok)':'var(--wa)'}">${m.transfert_confirme?'Transfert confirmé':'Transfert non confirmé'}</span>
+    </div>
+
+    ${L.length?L.map(l=>`<div style="border:1px solid var(--b1);border-radius:10px;padding:11px 13px;margin-bottom:9px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px">
+        <span style="font-size:13px;font-weight:700;color:var(--t1)">${esc(l.nom||l.categorie)}</span>
+        <span style="font-size:11px;color:var(--t3)">${esc(fournisseurLien(l.url))}</span>
+        ${l.nombre_fichiers?`<span style="font-size:11px;color:var(--t3)">${l.nombre_fichiers} fichiers</span>`:''}
+        <span style="font-size:11px;font-weight:700;color:${ML_STATUT_CLR[l.statut]||'var(--t3)'}">${esc(ML_STATUT[l.statut]||l.statut)}</span>
+      </div>
+      ${l.commentaire&&l.statut==='correction_demandee'?`<div style="font-size:12px;color:var(--er);margin-bottom:7px">Correction demandée : ${esc(l.commentaire)}</div>`:''}
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" class="btn bg2 bs" style="text-decoration:none">Ouvrir</a>
+        ${l.statut!=='valide'?`<button class="btn bp bs" onclick="validerLienLivraison('${escJs(l.id)}','${escJs(prestationId)}')">✓ Valider</button>`:''}
+        ${l.statut!=='correction_demandee'?`<button class="btn bg2 bs" onclick="modalDemanderCorrection('${escJs(l.id)}')">🔁 Demander une correction</button>`:''}
+      </div>
+    </div>`).join(''):'<div style="font-size:12.5px;color:var(--t3);margin-bottom:12px">Aucun lien transmis pour le moment.</div>'}
+
+    ${(m.cloture_manquant&&m.cloture_manquant.length)
+      ? `<div style="background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.3);border-radius:10px;padding:12px;margin-top:14px">
+           <div style="font-size:12px;font-weight:700;color:var(--wa);margin-bottom:5px">Mission pas encore clôturable</div>
+           <div style="font-size:12.5px;color:var(--t2);line-height:1.5">${esc(m.cloture_manquant.join(' · '))}</div>
+         </div>`
+      : `<button class="btn bp" style="width:100%;min-height:44px;margin-top:14px" onclick="cloturerMission('${escJs(prestationId)}')">✅ Clôturer la mission</button>`}`;
+}
+
+async function validerLienLivraison(lienId,prestationId){
+  const r=await sbFetch('media_liens?id=eq.'+lienId,{method:'PATCH',body:{statut:'valide',updated_at:new Date().toISOString()}});
+  if(sbErr(r)){toast(msgErreur(r,'Validation impossible.'),'er');return;}
+  // §P : la validation entre au journal, comme la demande de correction le fait deja.
+  await logMediaHistory(prestationId,S.uid,'Livraison validée','lien',lienId,'a_verifier','valide').catch(()=>{});
+  toast('Livrable validé.','ok');
+  modalVerifierLivraison(prestationId);
+  if(document.getElementById('cockpit-real'))loadCockpitProduction();
+}
+
+async function cloturerMission(prestationId){
+  // Le verrou est en base (proteger_cloture_mission) : si une condition manque, c'est lui qui
+  // refuse, et son message dit précisément laquelle. On ne redouble pas la règle ici.
+  const r=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:'clôturée'}});
+  if(sbErr(r)){toast(msgErreur(r,'Clôture impossible.'),'er');return;}
+  toast('Mission terminée.','ok');
+  closeModal();
+  if(document.getElementById('cockpit-real'))loadCockpitProduction();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PARCOURS OPÉRATEUR — module « Procédure terrain » (master prompt Fouka, 09/09/2026)
 // ═══════════════════════════════════════════════════════════════════════════════
 //
@@ -29980,6 +30230,88 @@ async function envoyerAProduction(prestationId){
   rafraichirParcours(prestationId);
 }
 
+
+// ── §H a §J : le materiel dans la timeline de l'operateur ───────────────────
+//
+// Les ecrans kit existaient deja mais ne terminaient pas le parcours : l'operateur livrait, et
+// le materiel restait un sujet a part. Ici il devient la derniere etape, avec la distinction
+// que Fouka a demandee — rendre le kit, ou le conserver pour la mission suivante. Dans le
+// second cas on ne lui demande surtout pas de declarer un faux retour.
+//
+// §I : aucune deuxieme checklist materiel. Le vrai controle piece par piece reste
+// kitsControleOpen(), deja en place, avec ses etats Fonctionnel / Reserve / Defectueux / Absent.
+async function sectionMaterielMission(prestationId,etapes){
+  const uid=localStorage.getItem('sv_uid');
+  const resas=await sbFetch('kit_reservations?select=id,statut,date_retour_prevue,lieu_retour,kits(nom)&prestation_id=eq.'+prestationId+'&collaborateur_id=eq.'+uid).catch(()=>[]);
+  const r=Array.isArray(resas)&&resas[0];
+  if(!r)return '';
+
+  const rendu=['retourné','en_contrôle'].includes(r.statut);
+  // « Conserve » n'est pas un statut : c'est une date de retour encore devant nous. On lit donc
+  // la reservation telle qu'elle est plutot que d'inventer un drapeau de plus.
+  const conserve=!rendu&&r.date_retour_prevue&&new Date(r.date_retour_prevue)>new Date();
+  const retour=r.date_retour_prevue?new Date(r.date_retour_prevue).toLocaleString('fr-FR',{weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}):null;
+
+  let corps;
+  if(rendu){
+    corps=`<div style="font-size:13px;color:var(--ok);font-weight:600">✓ Kit restitué</div>`;
+  }else if(conserve){
+    const items=[{k:'kit_batteries',lb:'Batteries remises en charge'},{k:'kit_cartes',lb:'Cartes sécurisées et préparées'},{k:'kit_complet',lb:'Matériel complet'}];
+    const tout=items.every(i=>etapes[i.k]?.fait);
+    corps=`<div style="font-size:13px;color:var(--t1);font-weight:600;margin-bottom:3px">Vous conservez ce kit</div>
+      ${retour?`<div style="font-size:12px;color:var(--t3);margin-bottom:9px">Retour prévu : ${esc(retour)}</div>`:''}
+      ${items.map(i=>`<label style="display:flex;align-items:center;gap:9px;padding:7px 0;cursor:pointer">
+        <input type="checkbox" ${etapes[i.k]?.fait?'checked':''} onchange="cocherEtape('${escJs(prestationId)}','${escJs(i.k)}',this.checked).then(ok=>{if(ok)modalParcoursMission('${escJs(prestationId)}')})" style="width:16px;height:16px;accent-color:var(--ok)">
+        <span style="font-size:13px;color:var(--t1)">${esc(i.lb)}</span>
+      </label>`).join('')}
+      <div style="font-size:12.5px;font-weight:600;color:${tout?'var(--ok)':'var(--t3)'};margin-top:7px">${tout?'✓ Kit prêt pour la prochaine mission':'À compléter avant la prochaine mission'}</div>`;
+  }else{
+    const ctrl=await sbFetch('kit_controles?select=id,statut&kit_reservation_id=eq.'+r.id+'&type=eq.apres&limit=1').catch(()=>[]);
+    const c=Array.isArray(ctrl)&&ctrl[0];
+    corps=`<div style="font-size:13px;color:var(--t1);font-weight:600;margin-bottom:3px">${esc(r.kits?.nom||'Kit')} — à restituer</div>
+      ${retour?`<div style="font-size:12px;color:var(--t3)">Retour prévu : ${esc(retour)}</div>`:''}
+      ${r.lieu_retour?`<div style="font-size:12px;color:var(--t3);margin-bottom:9px">Lieu : ${esc(r.lieu_retour)}</div>`:'<div style="margin-bottom:9px"></div>'}
+      ${c?`<button class="btn bp bs" onclick="closeModal();kitsControleOpen('${escJs(c.id)}')">Préparer le retour du kit</button>`
+         :`<div style="font-size:12px;color:var(--t3)">Le contrôle de retour sera disponible une fois la prestation terminée.</div>`}`;
+  }
+
+  return `<div style="background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:13px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Matériel</div>
+    ${corps}
+    <button class="btn bg2 bs" style="margin-top:9px" onclick="modalIncidentMateriel('${escJs(prestationId)}')">⚠ Signaler un problème matériel</button>
+  </div>`;
+}
+
+// §J : batterie HS, carte illisible, objectif endommage, piece manquante. Meme table incidents
+// que le reste — Production le voit immediatement dans son cockpit.
+function modalIncidentMateriel(prestationId){
+  openModal(`<div class="mh"><div class="mt">Problème matériel</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+  <div class="mb" style="padding:20px">
+    <select id="incm-type" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:12px">
+      <option value="batterie_hs">Batterie hors service</option>
+      <option value="carte_illisible">Carte illisible</option>
+      <option value="objectif_endommage">Objectif endommagé</option>
+      <option value="boitier">Boîtier</option>
+      <option value="piece_manquante">Pièce manquante</option>
+      <option value="autre">Autre</option>
+    </select>
+    <textarea id="incm-desc" rows="4" placeholder="Décrivez le problème" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:12px"></textarea>
+    <div id="incm-err" style="font-size:12px;color:var(--er);margin-bottom:10px"></div>
+    <button class="btn bp" style="width:100%;min-height:44px" onclick="enregistrerIncidentMateriel('${escJs(prestationId)}')">Signaler à Production</button>
+  </div>`);
+}
+
+async function enregistrerIncidentMateriel(prestationId){
+  const type=document.getElementById('incm-type')?.value;
+  const desc=(document.getElementById('incm-desc')?.value||'').trim();
+  const err=document.getElementById('incm-err');
+  if(!desc){if(err)err.textContent='Décrivez le problème.';return;}
+  const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,declare_par:localStorage.getItem('sv_uid'),type_incident:type,niveau:'majeur',description:'Matériel — '+desc,date_incident:new Date().toISOString(),cloture:false}});
+  if(sbErr(r)){if(err)err.textContent=msgErreur(r,'Signalement impossible.');return;}
+  closeModal();
+  toast('Production est prévenue.','ok');
+}
+
 // ── « Ouvrir ma mission » : l'écran guidé ───────────────────────────────────
 //
 // Un seul écran qui répond aux questions du §Objectif : où j'en suis, ce que je dois vérifier,
@@ -30062,6 +30394,7 @@ async function modalParcoursMission(prestationId){
       ${(liste.length&&!tousCoches)?`<div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Cochez la liste ci-dessus pour débloquer cette étape.</div>`:''}`:''}
 
     ${apresPresta?`<button class="btn bg2" style="width:100%;min-height:44px;margin-bottom:12px" onclick="closeModal();modalSauvegarde('${escJs(prestationId)}')">💾 Sauvegarde &amp; livraison</button>`:''}
+    ${apresPresta?await sectionMaterielMission(prestationId,etapes):''}
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
       <button class="btn bg2 bs" onclick="modalSignalerRetard()">⏰ Retard</button>
