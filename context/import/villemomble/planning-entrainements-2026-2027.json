@@ -1,0 +1,50 @@
+{
+  "source": "Photos du planning papier « PLANNING DES ENTRAINEMENTS FOOTBALL — ANNEE 2026-2027 », Service des Sports, Ville de Villemomble (IMG_4733 à IMG_4737, transmises le 09/09/2026)",
+  "club": "SF Villemomble",
+  "terrains": ["Mimoun", "Ripert", "Pompidou"],
+  "creneaux": [
+    {"jour":"lundi","terrain":"Mimoun","debut":"17:30","fin":"19:00","codes":["U10B","U10A","U11A","U12A"],"vestiaire":"2-1"},
+    {"jour":"lundi","terrain":"Mimoun","debut":"19:00","fin":"20:30","codes":["U14D4","U14D4"],"vestiaire":"3-4","incertain":"les deux codes sont lus identiques sur la photo"},
+    {"jour":"lundi","terrain":"Mimoun","debut":"20:30","fin":"22:00","codes":["Vétérans"],"vestiaire":"1"},
+    {"jour":"lundi","terrain":"Ripert","debut":"17:30","fin":"19:00","codes":["U10C","U10D","U11C","U11D"],"vestiaire":"R1-R2"},
+    {"jour":"lundi","terrain":"Ripert","debut":"19:00","fin":"20:30","codes":["U14D2","U16D1"],"vestiaire":"3-4"},
+    {"jour":"lundi","terrain":"Ripert","debut":"20:30","fin":"22:15","codes":["Séniors F","U18R3"],"vestiaire":"R1-R2"},
+
+    {"jour":"mardi","terrain":"Mimoun","debut":"17:30","fin":"19:00","codes":["U8A","U8B","U9A","U9B"],"vestiaire":"1-2"},
+    {"jour":"mardi","terrain":"Mimoun","debut":"19:00","fin":"20:30","codes":["U16D3","U15D1"],"vestiaire":"3-4"},
+    {"jour":"mardi","terrain":"Mimoun","debut":"20:30","fin":"22:15","codes":["Séniors D1","Séniors D2"],"vestiaire":"2-1"},
+    {"jour":"mardi","terrain":"Ripert","debut":"17:30","fin":"19:00","codes":["U8","U9"],"vestiaire":"4"},
+    {"jour":"mardi","terrain":"Ripert","debut":"19:00","fin":"20:30","codes":["U18F","U14D2"],"vestiaire":"R1-R2"},
+    {"jour":"mardi","terrain":"Ripert","debut":"20:30","fin":"22:15","codes":["Séniors R2"],"vestiaire":"4"},
+    {"jour":"mardi","terrain":"Pompidou","debut":"18:00","fin":"19:00","codes":["U6","U7"],"vestiaire":null},
+    {"jour":"mardi","terrain":"Pompidou","debut":"20:00","fin":"22:00","codes":["Séniors R2"],"vestiaire":"4"},
+
+    {"jour":"mercredi","terrain":"Mimoun","debut":"13:45","fin":"15:15","codes":["U10B","U10C","U10D"],"vestiaire":"3-4"},
+    {"jour":"mercredi","terrain":"Mimoun","debut":"15:30","fin":"17:00","codes":["U13","U12B","U12C","U12D"],"vestiaire":"1-2"},
+    {"jour":"mercredi","terrain":"Mimoun","debut":"17:00","fin":"18:30","codes":["Spécifique Gardiens"],"vestiaire":null},
+    {"jour":"mercredi","terrain":"Mimoun","debut":"18:30","fin":"20:00","codes":["U16D1","U15D1"],"vestiaire":"3-4"},
+    {"jour":"mercredi","terrain":"Mimoun","debut":"20:00","fin":"22:15","codes":["U18D1"],"vestiaire":"4-1"},
+    {"jour":"mercredi","terrain":"Ripert","debut":"13:45","fin":"15:30","codes":["U11B","U11C","U11D"],"vestiaire":"V3"},
+    {"jour":"mercredi","terrain":"Ripert","debut":"15:30","fin":"17:15","codes":["U8","U9","U11F"],"vestiaire":"R1-R2"},
+    {"jour":"mercredi","terrain":"Ripert","debut":"17:30","fin":"19:00","codes":["U10A","U11A","U12A"],"vestiaire":"V3-V4"},
+    {"jour":"mercredi","terrain":"Ripert","debut":"19:00","fin":"20:30","codes":["U15F","U13F"],"vestiaire":"R1-R2"},
+    {"jour":"mercredi","terrain":"Ripert","debut":"20:30","fin":"22:15","codes":["Séniors F","U18R3"],"vestiaire":"R1-R2"},
+    {"jour":"mercredi","terrain":"Pompidou","debut":"17:00","fin":"20:00","codes":["Spécifique Gardiens"],"vestiaire":null},
+    {"jour":"mercredi","terrain":"Pompidou","debut":"20:00","fin":"22:00","codes":["Séniors R2"],"vestiaire":"4"},
+
+    {"jour":"jeudi","terrain":"Mimoun","debut":"17:30","fin":"19:00","codes":["U8A","U8B"],"vestiaire":"1-2"},
+    {"jour":"jeudi","terrain":"Mimoun","debut":"19:00","fin":"20:30","codes":["U14D4","D4"],"vestiaire":"3-4","incertain":"cellule lue « U14D4 /D4 »"},
+    {"jour":"jeudi","terrain":"Mimoun","debut":"20:30","fin":"22:15","codes":["Séniors D2"],"vestiaire":"2-1"},
+    {"jour":"jeudi","terrain":"Ripert","debut":"17:30","fin":"19:00","codes":["Babyfoot","U6","U7"],"vestiaire":"3"},
+    {"jour":"jeudi","terrain":"Ripert","debut":"19:00","fin":"20:30","codes":["U18F","U14D2"],"vestiaire":"R1-R2"},
+    {"jour":"jeudi","terrain":"Ripert","debut":"20:30","fin":"22:00","codes":["Vétérans","Séniors F"],"vestiaire":"3-4"},
+
+    {"jour":"vendredi","terrain":"Mimoun","debut":"17:30","fin":"19:00","codes":["U10A","U11A","U12A","U13"],"vestiaire":"1-2"},
+    {"jour":"vendredi","terrain":"Mimoun","debut":"19:00","fin":"20:30","codes":["U16D1","U16D3"],"vestiaire":"3-4"},
+    {"jour":"vendredi","terrain":"Mimoun","debut":"20:30","fin":"22:00","codes":["U18A","U18B"],"vestiaire":"3-4"},
+    {"jour":"vendredi","terrain":"Ripert","debut":"17:45","fin":"19:00","codes":["U12","U11F","U13F"],"vestiaire":"3-4"},
+    {"jour":"vendredi","terrain":"Ripert","debut":"19:00","fin":"20:30","codes":["U15F","U18F"],"vestiaire":"R1-R2"},
+    {"jour":"vendredi","terrain":"Ripert","debut":"20:30","fin":"22:00","codes":["Séniors D1"],"vestiaire":"3"},
+    {"jour":"vendredi","terrain":"Pompidou","debut":"20:00","fin":"22:00","codes":["Séniors R2"],"vestiaire":"4"}
+  ]
+}

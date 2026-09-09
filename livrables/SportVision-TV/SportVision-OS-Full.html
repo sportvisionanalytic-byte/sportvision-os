@@ -6793,6 +6793,11 @@ function modalModifierClient(idx){
           <span id="fce-logo-status" style="font-size:11px;color:var(--t3);margin-left:8px"></span>
         </div>
       </div>
+      <div>
+        <label style="${lbl}">Fiche fédérale</label>
+        <button class="btn bg2 bs" onclick="chercherClubFederation('${escJs(c.id)}')">Rechercher ce club à la fédération</button>
+        <div id="fce-federation" style="margin-top:8px"></div>
+      </div>
       ${canAssignCm?`<div><label style="${lbl}">CM assigné</label><div id="fce-cmassign">${_cmSkel(1,32)}</div></div>`:''}
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px">
         <div><label style="${lbl}">Nom *</label>
@@ -7563,6 +7568,103 @@ async function confirmerAffiliationCm(clientId){
   await assignerCmClient(clientId,cmId);
   closeModal();
 }
+
+// ── Fiche fédérale d'un club (09/09/2026) ────────────────────────────────────
+// Retrouve un club dans l'annuaire fédéral à partir de son seul nom, et remonte ce que la
+// fédération sait de lui : numéro d'affiliation, ville, adresse, écusson, équipes engagées avec
+// leur championnat, calendrier à venir.
+//
+// Pourquoi ici : la saisie d'une fiche club se fait à la main, champ par champ, alors que ces
+// informations sont publiques et exactes. Autant les proposer.
+//
+// Deux appels, deux natures. La RECHERCHE tape dans `federation_clubs` (34 586 clubs importés du
+// sitemap public), c'est du SQL, c'est instantané. La FICHE passe par l'edge function
+// federation-club-fiche, qui seule sort du réseau : la source ne renvoie pas d'en-têtes CORS, un
+// appel direct depuis le navigateur échouerait.
+//
+// Rien n'est écrit en base ici. Les valeurs remplissent les champs du formulaire, et c'est le
+// bouton « Enregistrer » habituel qui décide. On ne remplace jamais une valeur déjà saisie : le
+// club a pu corriger une adresse que la fédération n'a pas à jour.
+
+let _ficheFederale = null;
+
+async function chercherClubFederation(clientId){
+  const zone=document.getElementById('fce-federation');
+  if(!zone)return;
+  const nom=(document.getElementById('fce-nom')?.value||'').trim();
+  if(nom.length<3){zone.innerHTML='<div style="font-size:11px;color:var(--t3)">Renseignez d\'abord le nom du club.</div>';return;}
+  zone.innerHTML='<div style="font-size:11px;color:var(--t3)">Recherche…</div>';
+  try{
+    const r=await sbFetch('rpc/federation_clubs_rechercher',{method:'POST',body:{p_q:nom,p_limite:6}});
+    if(sbErr(r)){zone.innerHTML='<div style="font-size:11px;color:var(--dg)">Recherche impossible.</div>';return;}
+    const list=Array.isArray(r)?r:[];
+    if(!list.length){zone.innerHTML='<div style="font-size:11px;color:var(--t3)">Aucun club de ce nom dans l\'annuaire fédéral.</div>';return;}
+    zone.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:6px">${list.length} résultat${list.length>1?'s':''} — choisissez le bon club :</div>`+
+      list.map(c=>`<button class="btn bg2 bs" style="margin:0 6px 6px 0" onclick="ouvrirFicheFederale('${escJs(clientId)}','${escJs(c.slug)}')">
+        ${esc(c.nom||c.slug.replace(/-/g,' '))}${c.ville?` <span style="color:var(--t3)">· ${esc(c.ville)}</span>`:''}
+      </button>`).join('');
+  }catch(e){zone.innerHTML='<div style="font-size:11px;color:var(--dg)">Recherche impossible.</div>';}
+}
+
+async function ouvrirFicheFederale(clientId,slug){
+  const zone=document.getElementById('fce-federation');
+  if(!zone)return;
+  zone.innerHTML='<div style="font-size:11px;color:var(--t3)">Lecture de la fiche fédérale…</div>';
+  try{
+    const tok=localStorage.getItem('sv_tok');
+    const r=await fetch(SB_URL+'/functions/v1/federation-club-fiche?slug='+encodeURIComponent(slug),{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tok||'')}
+    });
+    const d=await r.json();
+    if(!r.ok||d.error){zone.innerHTML=`<div style="font-size:11px;color:var(--dg)">${esc(d.error||'Fiche indisponible.')}</div>`;return;}
+    _ficheFederale=d;
+    const c=d.club;
+    const equipes=(d.equipes||[]).map(e=>esc(e.nom||'')).filter(Boolean);
+    // Ce que le formulaire n'a pas encore : c'est seulement ça qu'on proposera de remplir.
+    const vides=[];
+    if(c.ville&&!(document.getElementById('fce-ville')?.value||'').trim())vides.push('ville');
+    if(c.code_postal&&!(document.getElementById('fce-cp')?.value||'').trim())vides.push('code postal');
+    if(c.adresse&&!(document.getElementById('fce-adresse')?.value||'').trim())vides.push('adresse');
+    zone.innerHTML=`
+      <div style="display:flex;gap:12px;align-items:flex-start;background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px">
+        ${c.logo_url?`<img src="${esc(c.logo_url)}" style="width:52px;height:52px;object-fit:contain;border-radius:8px;background:#fff;flex-shrink:0">`:''}
+        <div style="min-width:0;flex:1">
+          <div style="font-weight:600;font-size:13px">${esc(c.nom||slug)}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">
+            Affiliation ${esc(c.affiliation_number||'—')} · ${esc(c.ville||'—')} ${esc(c.code_postal||'')} · ${esc(c.sport||'')}
+            ${c.saison?` · saison ${esc(c.saison)}`:''}
+          </div>
+          <div style="font-size:11px;color:var(--t2);margin-top:6px">
+            <b>${equipes.length}</b> équipe${equipes.length>1?'s':''} engagée${equipes.length>1?'s':''}${equipes.length?' : '+equipes.slice(0,8).join(', ')+(equipes.length>8?'…':''):''}
+          </div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px"><b>${(d.matchs||[]).length}</b> matchs sur la fenêtre en cours</div>
+          <div style="margin-top:10px">
+            ${vides.length?`<button class="btn bp bs" onclick="appliquerFicheFederale()">Remplir ${esc(vides.join(', '))}</button>`
+                          :`<span style="font-size:11px;color:var(--t3)">La fiche client est déjà renseignée, rien à compléter.</span>`}
+            <span style="font-size:11px;color:var(--t3);margin-left:8px">Les champs déjà saisis ne sont jamais remplacés.</span>
+          </div>
+        </div>
+      </div>`;
+  }catch(e){zone.innerHTML='<div style="font-size:11px;color:var(--dg)">Fiche indisponible.</div>';}
+}
+
+function appliquerFicheFederale(){
+  if(!_ficheFederale)return;
+  const c=_ficheFederale.club;
+  // `remplirSiVide` et non `remplir` : la fédération n'a pas toujours l'adresse à jour, et le club
+  // a pu la corriger. Ce qui est saisi fait foi.
+  const remplirSiVide=(id,val)=>{
+    const el=document.getElementById(id);
+    if(el&&val&&!el.value.trim())el.value=val;
+  };
+  remplirSiVide('fce-ville',c.ville);
+  remplirSiVide('fce-cp',c.code_postal);
+  remplirSiVide('fce-adresse',c.adresse);
+  toast('Champs complétés. Pensez à enregistrer.','ok');
+  const zone=document.getElementById('fce-federation');
+  if(zone)zone.innerHTML='<div style="font-size:11px;color:var(--t3)">Champs complétés depuis la fiche fédérale. Cliquez sur Enregistrer pour les conserver.</div>';
+}
+
 
 async function modifierClient(id){
   const err=document.getElementById('fce-err');
