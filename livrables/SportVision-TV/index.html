@@ -1,20 +1,37 @@
 <!DOCTYPE html>
 <!--
-  Redirection simple vers SportVision-OS-Full.html, pour que GitHub Pages
-  (solution de secours, 02/09/2026, voir .github/workflows/deploy-os-pages.yml)
-  serve quelque chose de sensé à la racine du site, comme le fait déjà
-  Netlify via son netlify.toml (redirect / -> /SportVision-OS-Full.html).
-  N'affecte pas le déploiement Netlify existant : sa règle de redirection
-  explicite dans netlify.toml reste prioritaire sur ce fichier.
+  Redirection de la racine vers SportVision-OS-Full.html.
+
+  INCIDENT DU 09/09/2026 — cette page PERDAIT le fragment de l'URL.
+
+  Un lien d'invitation renvoie vers la racine avec le jeton dans le fragment :
+      https://bc6m3cgdz.sportvision-an.fr/#access_token=...&type=invite
+  Or `meta refresh` et `location.replace('./SportVision-OS-Full.html')` reconstruisent une URL
+  neuve : ni la chaine de requete ni le fragment ne suivent. L'OS se chargeait donc SANS jeton,
+  retombait sur la session presente dans le navigateur, et la recrue arrivait sur le compte de
+  quelqu'un d'autre. C'est ce que Fouka a constate en creant les comptes des nouvelles recrues.
+
+  Le fragment n'est jamais transmis au serveur : aucune redirection cote Netlify ne peut le
+  reparer. Il doit etre recopie ici, en JavaScript.
+
+  La balise meta est volontairement retiree : elle ne sait pas transporter le fragment et,
+  reglee a 0 seconde, elle partait avant le script. Le lien visible reste le repli pour un
+  navigateur sans JavaScript — cas ou il n'y a de toute facon pas de session a etablir.
 -->
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="refresh" content="0; url=./SportVision-OS-Full.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SportVision OS</title>
 </head>
-<body>
-  <p>Redirection vers <a href="./SportVision-OS-Full.html">SportVision OS</a>…</p>
-  <script>location.replace('./SportVision-OS-Full.html');</script>
+<body style="margin:0;background:#060810;color:#8A93A6;font-family:system-ui,-apple-system,sans-serif">
+  <p style="padding:24px;font-size:14px">
+    Redirection vers <a href="./SportVision-OS-Full.html" style="color:#366BFF">SportVision OS</a>…
+  </p>
+  <script>
+    // location.search ET location.hash : le premier porte d'eventuels parametres, le second
+    // porte le jeton d'authentification. Les deux doivent survivre a la redirection.
+    location.replace('./SportVision-OS-Full.html' + location.search + location.hash);
+  </script>
 </body>
 </html>
