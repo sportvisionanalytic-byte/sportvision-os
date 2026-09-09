@@ -41,7 +41,21 @@ begin
                           ('pFoot', pFoot::text), ('pBasket', pBasket::text);
 end $$;
 
--- Un responsable de pole Football, qui n'est ni admin ni prod : le CM de test fera l'affaire.
+-- Un responsable de pole Football, qui n'est ni admin ni prod.
+--
+-- Ce test s'appuyait sur un compte CM de test code en dur. Il a disparu avec le nettoyage des
+-- donnees de test du 09/09/2026, et la suite est tombee sur une violation de cle etrangere.
+-- Elle fabrique desormais le sien, comme cm-cloisonnement et calendrier-unifie : annule avec la
+-- transaction, il ne peut plus etre supprime sous ses pieds.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                        email_confirmed_at, created_at, updated_at)
+values ('2b0b7fae-33eb-45be-b393-707725ad9e7e', '00000000-0000-0000-0000-000000000000',
+        'authenticated', 'authenticated', 'zz-resp-pole@example.invalid', '', now(), now(), now())
+on conflict (id) do nothing;
+insert into profiles (id, role, prenom, nom, email)
+values ('2b0b7fae-33eb-45be-b393-707725ad9e7e', 'cm', 'ZZ', 'Responsable pole', 'zz-resp-pole@example.invalid')
+on conflict (id) do nothing;
+
 insert into pole_affectations (pole_id, user_id, role_pole, actif)
 values ((select val::uuid from _ctx where nom='pFoot'), '2b0b7fae-33eb-45be-b393-707725ad9e7e', 'responsable', true);
 

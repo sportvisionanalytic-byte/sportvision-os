@@ -18,6 +18,36 @@ end $$;
 
 -- ── 1. Qui peut fixer un prix ─────────────────────────────────────────────
 set local role authenticated;
+-- ── Les comptes de reference du test ──────────────────────────────────────
+--
+-- Ce fichier incarnait sept comptes codes en dur. Quatre d'entre eux ont disparu avec le
+-- nettoyage des donnees de test du 09/09/2026, et la suite est tombee sur une violation de cle
+-- etrangere. Elle fabrique desormais ceux qui manquent, comme cm-cloisonnement et
+-- calendrier-unifie : crees ici, annules avec la transaction, plus rien a supprimer sous ses
+-- pieds. `on conflict do nothing` laisse intacts les comptes reels encore presents.
+--
+-- Les roles sont ceux que le test attend, lisibles dans ses propres libelles :
+--   3259409d Admin | 97a7f67a Responsable Production | 2b0b7fae CM | b4eab475 Secretariat
+set local role postgres;
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                        email_confirmed_at, created_at, updated_at)
+select x.id::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+       'zz-' || x.libelle || '@example.invalid', '', now(), now(), now()
+  from (values ('3259409d-b69f-4780-877c-b75e0e8d663d','admin'),
+               ('97a7f67a-baa0-41e8-a891-7751aec9fd76','prod'),
+               ('2b0b7fae-33eb-45be-b393-707725ad9e7e','cm'),
+               ('b4eab475-3293-4804-8bf6-8b27a15d410c','sec')) as x(id, libelle)
+on conflict (id) do nothing;
+
+insert into profiles (id, role, prenom, nom, email)
+select x.id::uuid, x.libelle, 'ZZ', x.libelle, 'zz-' || x.libelle || '@example.invalid'
+  from (values ('3259409d-b69f-4780-877c-b75e0e8d663d','admin'),
+               ('97a7f67a-baa0-41e8-a891-7751aec9fd76','prod'),
+               ('2b0b7fae-33eb-45be-b393-707725ad9e7e','cm'),
+               ('b4eab475-3293-4804-8bf6-8b27a15d410c','sec')) as x(id, libelle)
+on conflict (id) do nothing;
+set local role authenticated;
+
 
 set local request.jwt.claims = '{"sub":"b4ff9a0e-9ae6-43a5-bddf-412fdf7d2cca","role":"authenticated"}';
 insert into _res select '1', 'Fondateur (Fouka) : peut fixer un prix', 'true', media_pricing_staff()::text, media_pricing_staff();
@@ -30,7 +60,6 @@ insert into _res select '1', 'Responsable Production : peut fixer un prix', 'tru
 
 set local request.jwt.claims = '{"sub":"0831e5ee-2ad9-4efd-95ea-3d88f16dd1b2","role":"authenticated"}';
 insert into _res select '1', 'Photographe : REFUSE', 'false', media_pricing_staff()::text, not media_pricing_staff();
-
 set local request.jwt.claims = '{"sub":"2b0b7fae-33eb-45be-b393-707725ad9e7e","role":"authenticated"}';
 insert into _res select '1', 'Community Manager : REFUSE', 'false', media_pricing_staff()::text, not media_pricing_staff();
 

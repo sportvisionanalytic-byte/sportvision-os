@@ -53,18 +53,21 @@ begin
   -- ── 1. La page sait, des l'ouverture, ce que son lien vend ─────────────
   select * into o from media_gallery_open(sA, tA);
   insert into _res values ('1', 'lien galerie complete : offre annoncee a l ouverture',
-    'album_complet / 1500', (o.offre->>'type')||' / '||(o.offre->>'price_cents'),
-    o.offre->>'type' = 'album_complet' and (o.offre->>'price_cents')::int = 1500);
-  insert into _res values ('1', 'offre vendable', 'true', o.offre->>'available', (o.offre->>'available')::boolean);
+    'album_complet / 1500', (o.offres->0->>'type')||' / '||(o.offres->0->>'price_cents'),
+    o.offres->0->>'type' = 'album_complet' and (o.offres->0->>'price_cents')::int = 1500);
+  -- « Vendable » ne se lit plus sur un drapeau : media_gallery_open ne liste que les offres
+  -- actives, donc une offre presente dans le tableau est par construction vendable.
+  insert into _res values ('1', 'offre vendable', 'true',
+    (jsonb_array_length(o.offres) = 1)::text, jsonb_array_length(o.offres) = 1);
 
   select * into o from media_gallery_open(sB, tB);
   insert into _res values ('1', 'lien pack : quota annonce, prix catalogue', '5 / 900',
-    (o.offre->>'photos_allowance')||' / '||(o.offre->>'price_cents'),
-    (o.offre->>'photos_allowance')::int = 5 and (o.offre->>'price_cents')::int = 900);
+    (o.offres->0->>'photos_allowance')||' / '||(o.offres->0->>'price_cents'),
+    (o.offres->0->>'photos_allowance')::int = 5 and (o.offres->0->>'price_cents')::int = 900);
 
   select * into o from media_gallery_open(sC, tC);
   insert into _res values ('1', 'lien historique : aucune offre, ancien parcours', 'NULL',
-    coalesce(o.offre::text,'NULL'), o.offre is null);
+    coalesce(nullif(o.offres::text,'[]'),'NULL'), o.offres = '[]'::jsonb);
 
   -- ── 2. Le meme album, deux prix, les memes photos ──────────────────────
   insert into _res select '2', 'memes photos des deux cotes', '12 = 12',
@@ -147,9 +150,10 @@ begin
   -- ── 6. Produit desactive : le lien cesse de vendre, sans retomber sur le catalogue
   update media_products set status = 'paused' where id = v_complet;
   select * into o from media_gallery_open(sA, tA);
-  insert into _res values ('6', 'produit desactive : offre configuree mais indisponible', 'true / false',
-    (o.offre->>'configured')||' / '||(o.offre->>'available'),
-    (o.offre->>'configured')::boolean and not (o.offre->>'available')::boolean);
+  -- Un produit desactive ne rend plus une offre « configuree mais indisponible » : elle sort
+  -- simplement de la liste. Le lien cesse donc de vendre, ce que le test verifiait deja.
+  insert into _res values ('6', 'produit desactive : plus aucune offre proposee', '0',
+    jsonb_array_length(o.offres)::text, jsonb_array_length(o.offres) = 0);
   select count(*)::integer into v_n from media_gallery_products(sA, tA);
   insert into _res values ('6', 'produit desactive : aucune offre proposee', '0', v_n::text, v_n = 0);
   select * into q from media_gallery_quote(sA, tA, null);

@@ -24,6 +24,15 @@ select x.nom, x.val from (
 ) x;
 reset role;
 
+-- L'acheteur de reference etait un compte de test code en dur, disparu avec le nettoyage des
+-- donnees du 09/09/2026 : la suite tombait sur `media_orders_purchased_by_user_id_fkey`. On le
+-- fabrique ici, annule avec la transaction. Le club, lui, est un vrai club et reste tel quel.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                        email_confirmed_at, created_at, updated_at)
+values ('3259409d-b69f-4780-877c-b75e0e8d663d', '00000000-0000-0000-0000-000000000000',
+        'authenticated', 'authenticated', 'zz-acheteur-stats@example.invalid', '', now(), now(), now())
+on conflict (id) do nothing;
+
 do $$
 declare
   v_club uuid := '8be55101-0d61-4b27-8d7b-a4761547d88b';
