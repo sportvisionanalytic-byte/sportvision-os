@@ -47,6 +47,10 @@ export interface CalendarEvent {
   isHome?: boolean;
   competition?: string;
   score?: string;
+  /** Écusson du club adverse, servi depuis notre bucket (jamais depuis le site source : un visuel
+   *  publié doit continuer de s'afficher dans six mois). Absent tant que le match n'est pas
+   *  rattaché à un club de l'annuaire — l'affichage doit donc toujours prévoir le cas. */
+  opponentLogoUrl?: string;
   /** Statut de la présence SportVision existante ('prevu', 'mission_creee'), sinon absent.
    *  En lecture seule pour l'instant : le clic « SportVision sera présent » arrive en vague C. */
   coverage?: string;

@@ -160,6 +160,13 @@ export function descriptionEvenement(e: CalendarEvent): string {
   return bouts.join(" · ");
 }
 
+/** L'écusson à afficher, ou `null`. Passer par une fonction plutôt que lire le champ directement
+ *  donne un seul endroit où décider quoi montrer quand il manque — et il manque souvent : un
+ *  amical saisi à la main, un adversaire absent de l'annuaire, un club sans écusson déposé. */
+export function ecussonAdversaire(e: CalendarEvent): string | null {
+  return e.kind === "match" && e.opponentLogoUrl ? e.opponentLogoUrl : null;
+}
+
 /** Vues rapides : les questions qu'on se pose vraiment en ouvrant un calendrier de club.
  *
  *  Elles ne remplacent pas les filtres équipe/type, elles évitent d'avoir à les combiner à la

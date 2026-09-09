@@ -67,6 +67,8 @@ interface MatchSource {
   home_team_club_slug?: string | null;
   home_team_category_and_code_name?: string | null;
   outside_team_category_and_code_name?: string | null;
+  home_club_slug_adv?: string | null;
+  outside_club_slug?: string | null;
   postponed?: boolean;
   exempt?: boolean;
 }
@@ -82,6 +84,16 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  // Les evenements qu'un humain a supprimes et que la synchro ne doit pas recreer. Sans cette
+  // liste, tout nettoyage manuel serait annule au passage suivant : la source expose toujours
+  // l'evenement, et rien ici ne saurait qu'on n'en veut plus. Constate le 09/09/2026, un match
+  // retire a la demande du club est revenu dans la minute.
+  const { data: exclusions } = await admin
+    .from("calendar_sync_exclusions")
+    .select("club_id, external_event_id")
+    .eq("provider", PROVIDER);
+  const exclus = new Set((exclusions ?? []).map((x) => `${x.club_id}:${x.external_event_id}`));
 
   const { data: sources, error: errSources } = await admin
     .from("club_calendar_sources")
@@ -134,6 +146,10 @@ serve(async (req) => {
         if (!adversaire) continue;
 
         const externalId = String(m.id);
+        if (exclus.has(`${s.club_id}:${externalId}`)) {
+          inchanges++;
+          continue;
+        }
         const { data: existant } = await admin
           .from("club_matches")
           .select("id, match_date, kickoff_time, lieu")
@@ -162,6 +178,10 @@ serve(async (req) => {
           provider: PROVIDER,
           external_event_id: externalId,
           saison_id: s.saison_id,
+          // L'identifiant du club adverse, d'ou l'ecusson est resolu a l'affichage. Sans lui, un
+          // match cree par la synchro quotidienne n'aurait jamais d'ecusson, la ou ceux de
+          // l'import de saison en ont un : deux matchs voisins, deux rendus differents.
+          opponent_club_slug: domicile ? m.outside_club_slug ?? null : m.home_club_slug ?? null,
           sport_status: m.postponed ? "postponed" : "scheduled",
           last_synced_at: new Date().toISOString(),
         };

@@ -17,6 +17,7 @@ import { KIND_DOT } from "@/components/calendar/calendar-style";
 import {
   aCouverture,
   descriptionEvenement,
+  ecussonAdversaire,
   etatEvenement,
   libelleCompteur,
   libelleCourt,
@@ -485,6 +486,10 @@ function LigneMois({ event, onSelect }: { event: CalendarEvent; onSelect: (e: Ca
   const heure = event.allDay
     ? null
     : new Date(event.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  // L'écusson remplace la pastille de couleur quand il existe : il dit la même chose (« c'est un
+  // match ») en disant en plus contre qui. Quand il manque, la pastille reprend sa place — la
+  // ligne ne doit jamais se décaler selon qu'un club a déposé son logo ou non.
+  const ecusson = ecussonAdversaire(event);
   return (
     <button
       onClick={(ev) => {
@@ -497,7 +502,12 @@ function LigneMois({ event, onSelect }: { event: CalendarEvent; onSelect: (e: Ca
         event.kind === "match" ? "bg-info-bg" : "bg-surface-alt",
       )}
     >
-      <span className={cn("h-1.5 w-1.5 flex-none rounded-full", KIND_DOT[event.kind])} aria-hidden />
+      {ecusson ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={ecusson} alt="" className="h-3.5 w-3.5 flex-none rounded-[3px] object-contain" loading="lazy" />
+      ) : (
+        <span className={cn("h-1.5 w-1.5 flex-none rounded-full", KIND_DOT[event.kind])} aria-hidden />
+      )}
       <span className="truncate">{libelleCourt(event)}</span>
       {event.score ? (
         <span className="ml-auto flex-none font-extrabold tabular-nums text-text">{event.score}</span>
@@ -691,6 +701,10 @@ function DayPanel({
                     <span className="w-11 flex-none pt-[1px] text-[12px] font-extrabold tabular-nums text-text-soft">
                       {heure}
                     </span>
+                    {ecussonAdversaire(e) && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={ecussonAdversaire(e)!} alt="" className="h-6 w-6 flex-none rounded object-contain" loading="lazy" />
+                    )}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-bold text-text">{e.title}</span>
                       <span className="mt-0.5 block truncate text-[11.5px] text-text-soft">
@@ -766,7 +780,12 @@ function DayView({ reference, events, onSelect }: { reference: Date; events: Cal
             <span className="w-14 flex-none text-[12.5px] font-extrabold tabular-nums text-text-soft">
               {e.allDay ? "Journée" : new Date(e.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
             </span>
-            <span className={cn("h-2 w-2 flex-none rounded-full", KIND_DOT[e.kind])} aria-hidden />
+            {ecussonAdversaire(e) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={ecussonAdversaire(e)!} alt="" className="h-6 w-6 flex-none rounded object-contain" loading="lazy" />
+            ) : (
+              <span className={cn("h-2 w-2 flex-none rounded-full", KIND_DOT[e.kind])} aria-hidden />
+            )}
             <span className="min-w-0 flex-1">
               <span className={cn("block truncate text-[13.5px] font-bold", e.status === "annulee" && "text-text-faint line-through")}>
                 {e.title}
@@ -928,7 +947,12 @@ function ListView({
                 <span className="w-14 flex-none pt-0.5 text-[12.5px] font-extrabold text-text-soft">
                   {e.allDay ? "Journée" : new Date(e.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                 </span>
-                <span className={cn("mt-1.5 h-2 w-2 flex-none rounded-full", KIND_DOT[e.kind])} aria-hidden />
+                {ecussonAdversaire(e) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={ecussonAdversaire(e)!} alt="" className="mt-0.5 h-7 w-7 flex-none rounded object-contain" loading="lazy" />
+                ) : (
+                  <span className={cn("mt-1.5 h-2 w-2 flex-none rounded-full", KIND_DOT[e.kind])} aria-hidden />
+                )}
                 <span className="min-w-0 flex-1">
                   {/* Un bouton ne peut pas en contenir un autre : le navigateur remonte les boutons
                       internes hors de leur parent, le clic n'atteint plus sa cible et l'hydratation

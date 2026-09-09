@@ -245,6 +245,7 @@ interface LigneCalendrier {
   score: string | null;
   statut: string | null;
   couverture: string | null;
+  adversaire_logo: string | null;
 }
 
 const GENRE_VERS_KIND: Record<LigneCalendrier["genre"], CalendarEventKind> = {
@@ -285,6 +286,9 @@ export async function fetchClubCalendrier(
     competition: l.competition ?? undefined,
     score: l.score ?? undefined,
     coverage: l.couverture ?? undefined,
+    // L'écusson de l'adversaire, résolu en base depuis l'annuaire (migration v17) : il n'est pas
+    // stocké sur le match, donc remplacer un écusson met à jour tous ses matchs d'un coup.
+    opponentLogoUrl: l.adversaire_logo ?? undefined,
   }));
 }
 
