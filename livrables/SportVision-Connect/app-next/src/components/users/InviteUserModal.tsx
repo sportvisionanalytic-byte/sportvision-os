@@ -27,6 +27,12 @@ export interface InviteResult {
 interface InviteUserModalProps {
   roles: MembershipRole[];
   allowDirectMode?: boolean;
+  /** Invitation lancée depuis la fiche d'une équipe (09/09/2026) : le périmètre n'est plus une
+   * saisie libre, il EST l'équipe d'où l'on vient. La base compare `club_members.teams` au nom
+   * de l'équipe à la lettre près (`is_team_educateur`) — un champ retapé à la main ne tombait
+   * juste que par chance. Verrouillé, donc, et affiché pour que l'admin sache ce qu'il accorde. */
+  lockedTeam?: string;
+  title?: string;
   onClose: () => void;
   onInvite: (input: {
     email: string;
@@ -43,12 +49,12 @@ interface InviteUserModalProps {
 // l'éducateur). Affiché aussi pour le responsable d'équipe, cohérent avec son rôle.
 const TEAM_AWARE_ROLES = new Set<MembershipRole>(["coach", "team_manager"]);
 
-export function InviteUserModal({ roles, allowDirectMode, onClose, onInvite }: InviteUserModalProps) {
+export function InviteUserModal({ roles, allowDirectMode, lockedTeam, title, onClose, onInvite }: InviteUserModalProps) {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<MembershipRole>(roles[0] ?? "viewer");
-  const [team, setTeam] = useState("");
+  const [team, setTeam] = useState(lockedTeam ?? "");
   // Mode direct par defaut quand il est disponible (09/09/2026). L'envoi par e-mail reste
   // possible, mais il ne peut plus etre le choix impose : sur 30 jours, 42 % seulement des
   // e-mails ont ete delivres, et un club a attendu dix minutes devant nous. Le mode direct cree
@@ -67,7 +73,10 @@ export function InviteUserModal({ roles, allowDirectMode, onClose, onInvite }: I
   function handleSubmit() {
     setSubmitting(true);
     setError(null);
-    onInvite({ email, firstName, lastName, role, team: TEAM_AWARE_ROLES.has(role) ? team : undefined, mode })
+    // Un périmètre verrouillé s'applique quel que soit le rôle : il vient de l'écran d'où
+    // l'invitation part, pas d'un choix dans le formulaire.
+    const perimetre = lockedTeam ?? (TEAM_AWARE_ROLES.has(role) ? team : undefined);
+    onInvite({ email, firstName, lastName, role, team: perimetre, mode })
       .then((result) => {
         const password = (result as InviteResult | undefined)?.password;
         if (mode === "direct" && password) {
@@ -139,7 +148,7 @@ export function InviteUserModal({ roles, allowDirectMode, onClose, onInvite }: I
           <X className="h-4 w-4" aria-hidden />
         </button>
 
-        <h2 className="text-[19px] font-extrabold tracking-tight">Inviter un utilisateur</h2>
+        <h2 className="text-[19px] font-extrabold tracking-tight">{title ?? "Inviter un utilisateur"}</h2>
         <p className="text-[12.5px] text-text-soft">
           {mode === "direct"
             ? "Le compte est créé immédiatement, un mot de passe vous est communiqué à transmettre vous-même."
@@ -210,7 +219,19 @@ export function InviteUserModal({ roles, allowDirectMode, onClose, onInvite }: I
           </select>
         </label>
 
-        {TEAM_AWARE_ROLES.has(role) && (
+        {lockedTeam ? (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Équipe</span>
+            <div className="flex h-11 items-center rounded-xl border border-border bg-surface-sunken px-3.5 text-[14px] font-bold">
+              {lockedTeam}
+            </div>
+            <span className="text-[11.5px] text-text-faint">
+              Cette personne verra le calendrier, les matchs et les prestations de cette équipe.
+            </span>
+          </div>
+        ) : null}
+
+        {!lockedTeam && TEAM_AWARE_ROLES.has(role) && (
           <label className="flex flex-col gap-1.5">
             <span className="text-[12.5px] font-bold text-text-soft">Équipe / catégorie (facultatif)</span>
             <input

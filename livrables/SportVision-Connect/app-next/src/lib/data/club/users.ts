@@ -88,7 +88,7 @@ export async function inviteClubMember(
   supabase: SupabaseClient,
   clubId: string,
   input: { email: string; firstName: string; lastName: string; role: MembershipRole; team?: string; mode?: "email" | "direct" },
-): Promise<{ password: string | null; accountAlreadyExisted: boolean; alreadyMember: boolean }> {
+): Promise<{ password: string | null; accountAlreadyExisted: boolean; alreadyMember: boolean; membershipId: string | null }> {
   const { data, error } = await supabase.functions.invoke("clubplus-invite", {
     body: {
       email: input.email,
@@ -106,6 +106,11 @@ export async function inviteClubMember(
     password: data?.password ?? null,
     accountAlreadyExisted: Boolean(data?.account_already_existed),
     alreadyMember: Boolean(data?.already_invited),
+    // L'edge function renvoie l'id club_members dans les deux cas (créé ou déjà présent). Sans
+    // lui, un appelant qui reçoit `alreadyMember` ne peut rien faire de plus : `fetchClubMembers`
+    // n'expose aucun e-mail (auth.users n'est pas lisible via PostgREST), donc retrouver la ligne
+    // concernée à partir de l'adresse saisie est impossible côté client.
+    membershipId: typeof data?.id === "string" ? data.id : null,
   };
 }
 
@@ -141,4 +146,64 @@ export async function setClubMemberTeams(
   if (!data || data.length === 0) {
     throw new Error("Action impossible : droits insuffisants ou membre introuvable.");
   }
+}
+
+/** Ajoute UNE équipe au périmètre d'un membre, sans toucher au reste.
+ *
+ * Le trou que ça bouche (09/09/2026, fiche équipe) : `clubplus-invite` est idempotente, elle
+ * renvoie `already_invited` dès que la personne est déjà membre du club — et dans ce cas elle
+ * n'écrit PAS `teams`. Inviter depuis la fiche d'une équipe un coach qui en encadre déjà une
+ * autre ne lui donnait donc rien : l'écran annonçait une invitation partie, la base restait
+ * inchangée, et `is_team_educateur` continuait de lui refuser l'équipe.
+ *
+ * On relit `teams` avant d'écrire plutôt que de faire confiance à ce que l'écran affiche : entre
+ * le chargement de la page et le clic, un autre admin a pu élargir ce périmètre, et un `update`
+ * calculé sur une liste périmée l'effacerait. */
+export async function addTeamToClubMember(
+  supabase: SupabaseClient,
+  membershipId: string,
+  team: string,
+): Promise<void> {
+  const nom = team.trim();
+  if (!nom) return;
+
+  const { data, error } = await supabase
+    .from("club_members")
+    .select("teams")
+    .eq("id", membershipId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Membre introuvable.");
+
+  const brut = (data as { teams: string[] | null }).teams;
+  const actuelles = Array.isArray(brut) ? brut : [];
+  // Comparaison exacte, comme `is_team_educateur` en base (cm.teams @> to_jsonb(ct.name)) : une
+  // comparaison plus tolérante ici ferait croire le périmètre accordé alors que la RLS, elle, ne
+  // le reconnaîtrait pas.
+  if (actuelles.includes(nom)) return;
+
+  await setClubMemberTeams(supabase, membershipId, [...actuelles, nom]);
+}
+
+/** Retire UNE équipe du périmètre d'un membre. Symétrique de `addTeamToClubMember` : un membre
+ * dont le périmètre tombe à zéro reste membre du club, il perd seulement la lecture ciblée. */
+export async function removeTeamFromClubMember(
+  supabase: SupabaseClient,
+  membershipId: string,
+  team: string,
+): Promise<void> {
+  const nom = team.trim();
+  const { data, error } = await supabase
+    .from("club_members")
+    .select("teams")
+    .eq("id", membershipId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Membre introuvable.");
+
+  const brut = (data as { teams: string[] | null }).teams;
+  const actuelles = Array.isArray(brut) ? brut : [];
+  if (!actuelles.includes(nom)) return;
+
+  await setClubMemberTeams(supabase, membershipId, actuelles.filter((t) => t !== nom));
 }

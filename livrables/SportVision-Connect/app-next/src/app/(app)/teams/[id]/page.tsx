@@ -36,6 +36,9 @@ import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClubTeams } from "@/lib/data/club/teams";
 import { ACCOUNT_STATUS_LABEL, fetchTeamRoster, type TeamRosterPlayer } from "@/lib/data/club/team-detail";
+import { fetchClubMembers } from "@/lib/data/club/users";
+import type { OrgUser } from "@/lib/types/settings";
+import { TeamStaffCard } from "@/components/teams/TeamStaffCard";
 import { fetchClubCalendarEvents } from "@/lib/data/club/calendar";
 import { fetchClubMediaAssets } from "@/lib/data/club/content";
 import { fetchClubRequests } from "@/lib/data/club/requests";
@@ -83,7 +86,15 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
   // verrouiller cet écran. Les autres types d'organisation (CM externe, sponsor...) gardent le
   // rendu mock ci-dessous, hors périmètre de ce chantier.
   if (ctx.organization.type === "club") {
-    return <RealTeamDetail organizationId={ctx.organization.id} teamId={params.id} />;
+    // Seul un admin de club peut écrire sur club_members (RLS `cm_admin_update`) : on reflète la
+    // règle côté écran plutôt que d'offrir des boutons qui échoueraient.
+    return (
+      <RealTeamDetail
+        organizationId={ctx.organization.id}
+        teamId={params.id}
+        canManageMembers={ctx.membership.role === "admin"}
+      />
+    );
   }
 
   const team = mockTeams.find((t) => t.id === params.id && t.organizationId === ctx.organization.id);
@@ -423,10 +434,22 @@ const REAL_TAB_LABEL: Record<RealTabKey, string> = {
   documents: "Documents",
 };
 
-function RealTeamDetail({ organizationId, teamId }: { organizationId: string; teamId: string }) {
+function RealTeamDetail({
+  organizationId,
+  teamId,
+  canManageMembers,
+}: {
+  organizationId: string;
+  teamId: string;
+  canManageMembers: boolean;
+}) {
   const [tab, setTab] = useState<RealTabKey>("apercu");
   const [teams, setTeams] = useState<Team[] | null>(null);
   const [roster, setRoster] = useState<TeamRosterPlayer[] | null>(null);
+  const [members, setMembers] = useState<OrgUser[]>([]);
+  // Incrémenté après chaque écriture sur l'encadrement : on relit la base plutôt que de recopier
+  // localement ce qu'on croit avoir écrit, les périmètres étant modifiables ailleurs en parallèle.
+  const [rechargement, setRechargement] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -442,6 +465,23 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
       cancelled = true;
     };
   }, [organizationId, teamId]);
+
+  // Les membres du club sont chargés à part : l'écran ne les attend pas pour s'afficher, et
+  // `cm_member_select` les laisse lire à tout membre — un échec ici (droits, réseau) doit dégrader
+  // la seule carte Encadrement, pas la fiche entière.
+  useEffect(() => {
+    let cancelled = false;
+    fetchClubMembers(createClient(), organizationId)
+      .then((rows) => {
+        if (!cancelled) setMembers(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setMembers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId, rechargement]);
 
   if (teams === null || roster === null) {
     return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
@@ -496,7 +536,17 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
         ))}
       </div>
 
-      {tab === "apercu" && <RealOverviewTab team={team} roster={roster} missingRights={missingRights} />}
+      {tab === "apercu" && (
+        <RealOverviewTab
+          team={team}
+          roster={roster}
+          missingRights={missingRights}
+          clubId={organizationId}
+          members={members}
+          canManageMembers={canManageMembers}
+          onStaffChanged={() => setRechargement((n) => n + 1)}
+        />
+      )}
       {tab === "effectif" && <RealRosterTab roster={roster} />}
       {tab === "calendrier" && <RealCalendarTab organizationId={organizationId} teamId={teamId} />}
       {tab === "contenus" && <RealContentTab organizationId={organizationId} teamName={team.name} />}
@@ -510,18 +560,25 @@ function RealOverviewTab({
   team,
   roster,
   missingRights,
+  clubId,
+  members,
+  canManageMembers,
+  onStaffChanged,
 }: {
   team: Team;
   roster: TeamRosterPlayer[];
   missingRights: number;
+  clubId: string;
+  members: OrgUser[];
+  canManageMembers: boolean;
+  onStaffChanged: () => void;
 }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <Card className="p-4.5 lg:col-span-2">
         <div className="text-[14px] font-extrabold tracking-tight">Informations générales</div>
         <dl className="mt-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <RealInfo label="Entraîneur" value={team.headCoachName} />
-          <RealInfo label="Catégorie" value={team.category} />
+          <RealInfo label="Catégorie fédérale" value={team.category} />
           <RealInfo label="Effectif" value={`${roster.length} joueur${roster.length > 1 ? "s" : ""}`} />
           <RealInfo label="Saison" value={team.season} />
         </dl>
@@ -545,6 +602,19 @@ function RealOverviewTab({
           </div>
         )}
       </Card>
+
+      {/* Pleine largeur : c'est la carte qui porte des actions et une liste, les deux autres ne
+          portent qu'un constat. */}
+      <div className="lg:col-span-3">
+        <TeamStaffCard
+          clubId={clubId}
+          teamName={team.name}
+          headCoachName={team.headCoachName}
+          members={members}
+          canManage={canManageMembers}
+          onChanged={onStaffChanged}
+        />
+      </div>
     </div>
   );
 }
