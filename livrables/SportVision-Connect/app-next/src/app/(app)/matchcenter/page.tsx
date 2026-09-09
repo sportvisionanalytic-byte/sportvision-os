@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { CalendarClock, MoreVertical, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -11,21 +10,29 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { MatchResultModal } from "@/components/matchcenter/MatchResultModal";
+import { MatchRow } from "@/components/matchcenter/MatchRow";
+import { TeamSelector } from "@/components/ui/TeamSelector";
 import { cn } from "@/lib/cn";
 import {
   assignClubMatchTeam,
   fetchClubMatches,
   fetchClubRequiresResultVerification,
-  requestVisualHref,
+  fetchOpponentCrests,
   saveClubMatchResult,
   verifyClubMatchResult,
   type MatchOutcome,
 } from "@/lib/data/club/matches";
 import { fetchClubTeams } from "@/lib/data/club/teams";
 import { createClient } from "@/lib/supabase/client";
-import { MATCH_STATUS_LABELS, MATCH_STATUS_TONE, type Match, type MatchStatus } from "@/lib/types/studio";
+import {
+  EXPLICATION_FILE,
+  LIBELLE_FILE,
+  grouperMatchs,
+  peutSaisirResultat,
+  type FileMatch,
+} from "@/lib/matches/etat";
+import { type Match, type MatchStatus } from "@/lib/types/studio";
 import type { Team } from "@/lib/types/teams";
-import { parseDateOnly } from "@/lib/date-only";
 
 // Match Center — saisie de résultats. Voir ACTIONS.md § 8 et DATA_MODEL.md § Match.
 // "content_created" (visuel généré) n'a pas d'équivalent réel en base (voir data/club/matches.ts)
@@ -54,19 +61,28 @@ import { parseDateOnly } from "@/lib/date-only";
 //     Si le club n'utilise pas ce workflow (colonne à false/absente tant que la migration v40
 //     n'est pas exécutée), rien de neuf ne s'affiche — comportement actuel inchangé.
 
-const TABS: { key: MatchStatus; label: string }[] = [
-  { key: "upcoming", label: "À venir" },
-  { key: "result_pending", label: "À transmettre" },
-  { key: "result_received", label: "Reçus" },
-  { key: "content_created", label: "Contenus créés" },
-  { key: "postponed", label: "Reportés" },
-  { key: "cancelled", label: "Annulés" },
-];
+// 10/09/2026 — Les onglets par statut brut ont disparu.
+//
+// Ils reprenaient les six valeurs de `status` telles quelles. Sur SF Villemomble, les 430 matchs
+// portaient tous le même (`a_venir`) : cinq onglets vides, un onglet-mur, et l'action principale
+// grisée parce qu'elle dépendait d'un statut que rien ne pose jamais. Les files (lib/matches/
+// etat.ts) classent par ce qui demande une action ; celles qui n'ont rien ne s'affichent pas.
+//
+// Les deux premières sont ouvertes d'emblée, le reste est replié : l'écran s'ouvre sur les matchs
+// à saisir, pas sur la saison entière.
+const FILES_OUVERTES: FileMatch[] = ["a_renseigner", "cette_semaine"];
+
+/** Au-delà, une file se déplie par tranches : « À venir » compte 380 lignes chez Villemomble, et
+ *  personne ne fait défiler 380 cartes pour retrouver un match de février. */
+const PAR_TRANCHE = 20;
 
 export default function MatchCenterPage() {
   const { ctx } = useSession();
   const { toastMessage, toastTone, showToast } = useToast();
-  const [tab, setTab] = useState<MatchStatus>("upcoming");
+  const [equipe, setEquipe] = useState("");
+  const [ouvertes, setOuvertes] = useState<FileMatch[]>(FILES_OUVERTES);
+  const [visibles, setVisibles] = useState<Partial<Record<FileMatch, number>>>({});
+  const [ecussons, setEcussons] = useState<Record<string, string>>({});
   const [modalMatchId, setModalMatchId] = useState<string | null>(null);
   const [modalDefaultStatus, setModalDefaultStatus] = useState<MatchOutcome>("completed");
   const [modalMode, setModalMode] = useState<"edit" | "verify">("edit");
@@ -107,8 +123,9 @@ export default function MatchCenterPage() {
     };
   }, [ctx.organization.id]);
 
+  // Chargées pour tout le monde désormais, et plus seulement pour qui peut assigner : le filtre
+  // par équipe sert d'abord au coach, qui lui ne peut rien assigner.
   useEffect(() => {
-    if (!canAssignTeam) return;
     let cancelled = false;
     fetchClubTeams(createClient(), ctx.organization.id)
       .then((rows) => {
@@ -121,7 +138,23 @@ export default function MatchCenterPage() {
     return () => {
       cancelled = true;
     };
-  }, [canAssignTeam, ctx.organization.id]);
+  }, [ctx.organization.id]);
+
+  // Les écussons arrivent après la liste : un match reste lisible sans le blason de l'adversaire,
+  // et l'écran ne doit pas attendre l'annuaire fédéral pour s'afficher.
+  useEffect(() => {
+    let cancelled = false;
+    fetchOpponentCrests(createClient(), ctx.organization.id)
+      .then((parMatch) => {
+        if (!cancelled) setEcussons(parMatch);
+      })
+      .catch(() => {
+        /* Écussons absents : initiales à la place, voir MatchRow. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.organization.id]);
 
   useEffect(() => {
     if (!canVerifyResults) return;
@@ -150,13 +183,22 @@ export default function MatchCenterPage() {
   }
 
   const orgMatches = matches;
-  const pending = orgMatches.filter((m) => m.status === "result_pending");
-  const rows = orgMatches.filter((m) => m.status === tab);
 
   // Directeur sportif : ne propose que SES équipes (club_members.teams) dans le sélecteur
   // d'assignation — is_team_educateur() (RLS) ne le laisserait de toute façon écrire que sur
   // celles-là, autant ne pas afficher une option qui échouerait à la sauvegarde. Admin = toutes.
   const assignableTeams = role === "admin" ? (teams ?? []) : (teams ?? []).filter((t) => ctx.membership.teamScope.includes(t.name));
+
+  // Recalculé à chaque rendu, volontairement : une session laissée ouverte pendant la nuit doit
+  // voir le match d'hier basculer en « à renseigner » au matin, pas rester « cette semaine ».
+  const aujourdhui = new Date();
+
+  // Le filtre par nom d'équipe, pas par team_id : c'est le nom que porte `club_matches.team` sur
+  // les matchs jamais assignés, et le sélecteur échange des noms partout ailleurs.
+  const visiblesParEquipe = equipe ? orgMatches.filter((m) => m.teamName === equipe) : orgMatches;
+  const groupes = grouperMatchs(visiblesParEquipe, aujourdhui);
+  // La file qui commande l'écran. `grouperMatchs` la place en tête quand elle existe.
+  const aSaisir = groupes.find((g) => g.file === "a_renseigner")?.matchs ?? [];
 
   const OUTCOME_TO_STATUS: Record<MatchOutcome, MatchStatus> = {
     completed: "result_received",
@@ -250,13 +292,24 @@ export default function MatchCenterPage() {
       .finally(() => setAssigningTeamMatchId(null));
   }
 
-  // Le sélecteur multi-match de la modale ne reste pertinent que pour le flux "Saisir un
-  // résultat" lancé depuis un match à transmettre (toute la liste "pending" reste choisissable) ;
-  // pour un report/annulation déclenché depuis une ligne précise, la modale ne porte que sur ce
-  // match-là.
+  // Le sélecteur multi-match de la modale : quand on saisit un résultat, toute la file « à
+  // renseigner » reste choisissable, pour enchaîner les feuilles de match sans refermer la
+  // fenêtre. Pour un report ou une annulation déclenchés depuis une ligne précise, la modale ne
+  // porte que sur ce match-là.
   const modalMatch = modalMatchId ? orgMatches.find((mm) => mm.id === modalMatchId) : undefined;
   const modalMatches =
-    modalDefaultStatus === "completed" && modalMatch?.status === "result_pending" ? pending : modalMatch ? [modalMatch] : [];
+    modalDefaultStatus === "completed" && modalMatch && peutSaisirResultat(modalMatch, aujourdhui)
+      ? aSaisir
+      : modalMatch
+        ? [modalMatch]
+        : [];
+
+  function ouvrirModale(matchId: string, outcome: MatchOutcome, mode: "edit" | "verify") {
+    setOpenMenuId(null);
+    setModalMode(mode);
+    setModalDefaultStatus(outcome);
+    setModalMatchId(matchId);
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -265,197 +318,119 @@ export default function MatchCenterPage() {
           <div className="text-[12px] font-bold text-text-soft">Club+</div>
           <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">Match Center</h1>
           <p className="mt-1.5 max-w-2xl text-[13.5px] text-text-soft">
-            Transmettez vos résultats et créez le visuel qui va avec, en quelques champs.
+            {aSaisir.length > 0
+              ? `${aSaisir.length} match${aSaisir.length > 1 ? "s" : ""} attend${aSaisir.length > 1 ? "ent" : ""} sa feuille de match.`
+              : "Tous les matchs joués ont leur résultat."}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2.5">
-          <Button
-            variant="primary"
-            disabled={pending.length === 0 || !canWrite}
-            onClick={() => {
-              setModalMode("edit");
-              setModalDefaultStatus("completed");
-              setModalMatchId(pending[0]!.id);
-            }}
-          >
-            Saisir un résultat
-          </Button>
-        </div>
+        <Button
+          variant="primary"
+          disabled={aSaisir.length === 0 || !canWrite}
+          onClick={() => ouvrirModale(aSaisir[0]!.id, "completed", "edit")}
+        >
+          Saisir un résultat
+        </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-divider pb-3">
-        {TABS.map((t) => {
-          const count = orgMatches.filter((m) => m.status === t.key).length;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12.5px] font-bold transition-colors duration-sv",
-                tab === t.key
-                  ? "border-transparent bg-gradient-to-br from-brand-blue to-brand-violet text-white"
-                  : "border-border-strong bg-transparent text-text-soft hover:border-brand-blue-electric",
-              )}
-            >
-              {t.label}
-              {count > 0 && <span className="opacity-80">· {count}</span>}
-            </button>
-          );
-        })}
+      {/* Le filtre par équipe est le même composant qu'au calendrier et à l'écran Équipes :
+          43 équipes ne tiennent pas dans une liste déroulante à plat. */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        <TeamSelector
+          equipes={(teams ?? []).map((t) => ({ name: t.name, categorie: t.category }))}
+          valeur={equipe}
+          onChange={setEquipe}
+          libelleToutes="Toutes les équipes"
+        />
+        {equipe && (
+          <span className="text-[12px] font-semibold text-text-faint">
+            {visiblesParEquipe.length} match{visiblesParEquipe.length > 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
-      {rows.length === 0 ? (
+      {groupes.length === 0 ? (
         <Card className="p-8 text-center">
-          <div className="text-[14px] font-extrabold">Aucun match dans cette vue</div>
-          <p className="mt-1.5 text-[13px] text-text-soft">Rien à traiter pour l&apos;instant.</p>
+          <div className="text-[14px] font-extrabold">Aucun match</div>
+          <p className="mt-1.5 text-[13px] text-text-soft">
+            {equipe ? `Rien pour ${equipe} sur cette saison.` : "Aucun match n'est enregistré pour ce club."}
+          </p>
         </Card>
       ) : (
         <div className="flex flex-col gap-3">
-          {rows.map((m) => (
-            <Card key={m.id} className="flex flex-wrap items-center gap-3.5 p-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[14px] font-extrabold tracking-tight">
-                    {m.teamName} {m.isHome ? "vs" : "@"} {m.opponent}
-                  </span>
-                  <Badge tone={MATCH_STATUS_TONE[m.status]}>{MATCH_STATUS_LABELS[m.status]}</Badge>
-                  {/* Vérifié (Bible §8) : uniquement pour un club qui utilise ce workflow — un
-                      badge "Vérifié" sur tous les clubs (requires_result_verification=false, cas
-                      par défaut) n'aurait aucun sens, personne ne l'a jamais "vérifié". */}
-                  {requiresVerification && m.verifiedAt && <Badge tone="success">Vérifié</Badge>}
-                  {m.scoreFor !== undefined && m.scoreAgainst !== undefined && (
-                    <span className="font-mono text-[13px] font-bold text-brand-blue-pale">
-                      {m.scoreFor} - {m.scoreAgainst}
-                    </span>
+          {groupes.map((g) => {
+            const deplie = ouvertes.includes(g.file);
+            const limite = visibles[g.file] ?? PAR_TRANCHE;
+            const affiches = g.matchs.slice(0, limite);
+            return (
+              <section key={g.file} className="overflow-hidden rounded-xl border border-border">
+                <button
+                  onClick={() =>
+                    setOuvertes((prev) =>
+                      prev.includes(g.file) ? prev.filter((f) => f !== g.file) : [...prev, g.file],
+                    )
+                  }
+                  aria-expanded={deplie}
+                  className="flex w-full items-center gap-2.5 px-4 py-3 text-left hover:bg-row-hover"
+                >
+                  {deplie ? (
+                    <ChevronDown className="h-4 w-4 flex-none text-text-faint" aria-hidden />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 flex-none text-text-faint" aria-hidden />
                   )}
-                </div>
-                <div className="mt-1 flex items-center gap-1.5 text-[12px] font-semibold text-text-faint">
-                  <CalendarClock className="h-3.5 w-3.5" aria-hidden />
-                  {m.kickoffAt ? parseDateOnly(m.kickoffAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "Date à confirmer"}
-                  {m.competition ? ` · ${m.competition}` : ""}
-                  {m.venue ? ` · ${m.venue}` : ""}
-                </div>
-                {/* Assignation d'équipe (team_id) — réservée Admin/Directeur sportif, voir le
-                    commentaire en tête de fichier. Purement un scope RLS, indépendant du nom
-                    d'équipe texte affiché ci-dessus (m.teamName). */}
-                {canAssignTeam && (
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    <span className="text-[10.5px] font-bold uppercase tracking-[.04em] text-text-faint">Équipe (scope)</span>
-                    <select
-                      value={m.teamId}
-                      disabled={teams === null || assigningTeamMatchId === m.id}
-                      onChange={(e) => handleAssignTeam(m.id, e.target.value)}
-                      className="h-7 rounded-md border border-border-strong bg-input-bg px-1.5 text-[11.5px] font-semibold outline-none focus-visible:border-brand-blue disabled:opacity-60"
-                    >
-                      <option value="">Non assignée</option>
-                      {assignableTeams.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
+                  <span className="text-[14px] font-extrabold">{LIBELLE_FILE[g.file]}</span>
+                  <span
+                    className={cn(
+                      "flex-none rounded-full px-2 py-[1px] text-[11.5px] font-extrabold tabular-nums",
+                      g.file === "a_renseigner"
+                        ? "bg-warning-bg text-warning-fg"
+                        : deplie
+                          ? "bg-brand-blue/15 text-brand-blue-electric"
+                          : "bg-surface-alt text-text-faint",
+                    )}
+                  >
+                    {g.matchs.length}
+                  </span>
+                  <span className="hidden flex-1 truncate text-[12px] text-text-faint sm:block">
+                    {EXPLICATION_FILE[g.file]}
+                  </span>
+                </button>
+
+                {deplie && (
+                  <div className="flex flex-col gap-3 border-t border-divider p-4">
+                    {affiches.map((m) => (
+                      <MatchRow
+                        key={m.id}
+                        match={m}
+                        ecussonUrl={ecussons[m.id] ?? null}
+                        aujourdhui={aujourdhui}
+                        canWrite={canWrite}
+                        canRequestVisual={canRequestVisual}
+                        canAssignTeam={canAssignTeam}
+                        canVerifyResults={canVerifyResults}
+                        requiresVerification={requiresVerification}
+                        assignableTeams={assignableTeams}
+                        teamsLoaded={teams !== null}
+                        assigning={assigningTeamMatchId === m.id}
+                        menuOuvert={openMenuId === m.id}
+                        onToggleMenu={() => setOpenMenuId(openMenuId === m.id ? null : m.id)}
+                        onAssignTeam={(teamId) => handleAssignTeam(m.id, teamId)}
+                        onOpenModal={ouvrirModale}
+                      />
+                    ))}
+                    {g.matchs.length > affiches.length && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setVisibles((prev) => ({ ...prev, [g.file]: limite + PAR_TRANCHE }))}
+                      >
+                        Afficher {Math.min(PAR_TRANCHE, g.matchs.length - affiches.length)} matchs de plus
+                        <span className="ml-1.5 text-text-faint">({g.matchs.length - affiches.length} restants)</span>
+                      </Button>
+                    )}
                   </div>
                 )}
-              </div>
-              {/* "postponed" inclus : un match reporté est rejoué à une date ultérieure et doit
-                  pouvoir recevoir un résultat sans repasser par un statut intermédiaire — sinon un
-                  match reporté reste bloqué sans action possible. */}
-              {(m.status === "result_pending" || m.status === "postponed") && (
-                <Button
-                  variant="secondary"
-                  className="h-9 px-3.5 text-[12.5px]"
-                  disabled={!canWrite}
-                  onClick={() => {
-                    setModalMode("edit");
-                    setModalDefaultStatus("completed");
-                    setModalMatchId(m.id);
-                  }}
-                >
-                  Saisir le résultat
-                </Button>
-              )}
-              {/* Vérification (Bible §8) : match déjà reçu, non encore vérifié, club utilisant ce
-                  workflow, réservé Admin/Directeur sportif. */}
-              {m.status === "result_received" && requiresVerification && canVerifyResults && !m.verifiedAt && (
-                <Button
-                  variant="secondary"
-                  className="h-9 px-3.5 text-[12.5px]"
-                  disabled={!canWrite}
-                  onClick={() => {
-                    setModalMode("verify");
-                    setModalDefaultStatus("completed");
-                    setModalMatchId(m.id);
-                  }}
-                >
-                  Vérifier le résultat
-                </Button>
-              )}
-              {/* "Résultat -> Visuel" (Bible §9/§18) : un match reçu peut nourrir directement une
-                  demande de visuel, brief pré-rempli équipe/adversaire/score/buteurs/MVP/
-                  commentaire — voir composeMatchVisualBrief. */}
-              {m.status === "result_received" && canRequestVisual && (
-                <Link href={requestVisualHref(m)}>
-                  <Button variant="secondary" className="h-9 px-3.5 text-[12.5px]">
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                    Demander un visuel
-                  </Button>
-                </Link>
-              )}
-              {/* Reporter/annuler : pas pertinent une fois annulé (pas de workflow de
-                  "dé-annulation" dans ce chantier) — mais un match déjà reporté peut l'être à
-                  nouveau, ou finalement être annulé. */}
-              {(m.status === "upcoming" || m.status === "result_pending" || m.status === "postponed") && (
-                <div className="relative">
-                  <button
-                    type="button"
-                    aria-label={`Autres actions pour ${m.teamName} vs ${m.opponent}`}
-                    disabled={!canWrite}
-                    onClick={() => setOpenMenuId(openMenuId === m.id ? null : m.id)}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-strong text-text-soft transition-colors duration-sv hover:border-brand-blue-electric disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <MoreVertical className="h-4 w-4" aria-hidden />
-                  </button>
-                  {openMenuId === m.id && (
-                    <>
-                      <button
-                        type="button"
-                        aria-hidden
-                        tabIndex={-1}
-                        className="fixed inset-0 z-40 cursor-default"
-                        onClick={() => setOpenMenuId(null)}
-                      />
-                      <div className="absolute right-0 top-11 z-50 w-52 overflow-hidden rounded-sv border border-border-strong bg-elevated shadow-sv-modal">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenMenuId(null);
-                            setModalMode("edit");
-                            setModalDefaultStatus("postponed");
-                            setModalMatchId(m.id);
-                          }}
-                          className="block w-full px-3.5 py-2.5 text-left text-[12.5px] font-bold text-text-soft hover:bg-hover"
-                        >
-                          Reporter le match
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenMenuId(null);
-                            setModalMode("edit");
-                            setModalDefaultStatus("cancelled");
-                            setModalMatchId(m.id);
-                          }}
-                          className="block w-full border-t border-divider px-3.5 py-2.5 text-left text-[12.5px] font-bold text-danger-fg hover:bg-hover"
-                        >
-                          Annuler le match
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </Card>
-          ))}
+              </section>
+            );
+          })}
         </div>
       )}
 

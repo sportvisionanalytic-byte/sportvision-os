@@ -119,14 +119,79 @@ function toMatch(row: ClubMatchRow, organizationId: string): Match {
 const SELECT =
   "id, team, opponent, match_date, lieu, status, score, scorers, man_of_match, competition, is_home, attendance, assists, cards, comment, team_id, verified_by, verified_at";
 
-export async function fetchClubMatches(supabase: SupabaseClient, organizationId: string): Promise<Match[]> {
-  const { data } = await supabase
-    .from("club_matches")
-    .select(SELECT)
-    .eq("club_id", organizationId)
-    .order("match_date", { ascending: false });
+/** PostgREST plafonne toute réponse à 1000 lignes, sans le dire : au-delà, la liste est tronquée
+ *  en silence. SF Villemomble a 430 matchs pour une saison ; deux saisons ouvertes, ou un club
+ *  plus gros, et l'écran perdait des matchs sans qu'aucune erreur ne le signale — exactement le
+ *  défaut trouvé sur le calendrier le 09/09/2026, où 553 événements manquaient à l'appel. */
+const TAILLE_PAGE = 1000;
+const PAGES_MAX = 20;
 
-  return ((data ?? []) as ClubMatchRow[]).map((row) => toMatch(row, organizationId));
+export async function fetchClubMatches(supabase: SupabaseClient, organizationId: string): Promise<Match[]> {
+  const lignes: ClubMatchRow[] = [];
+  for (let page = 0; page < PAGES_MAX; page++) {
+    const debut = page * TAILLE_PAGE;
+    const { data, error } = await supabase
+      .from("club_matches")
+      .select(SELECT)
+      .eq("club_id", organizationId)
+      // Tri croissant : l'ordre décroissant plaçait mai 2027 en tête de liste, soit le match le
+      // plus lointain en premier. Les files (lib/matches/etat.ts) retrient ensuite chacune selon
+      // ce qui leur convient ; cet ordre-ci ne sert qu'à paginer de façon stable.
+      .order("match_date", { ascending: true })
+      .order("id", { ascending: true })
+      .range(debut, debut + TAILLE_PAGE - 1);
+    if (error) throw error;
+    const lot = (data ?? []) as ClubMatchRow[];
+    lignes.push(...lot);
+    if (lot.length < TAILLE_PAGE) break;
+  }
+  return lignes.map((row) => toMatch(row, organizationId));
+}
+
+/**
+ * Les écussons des clubs adverses, par identifiant de match.
+ *
+ * Résolus par le slug (`club_matches.opponent_club_slug` -> `federation_clubs.slug`), jamais
+ * recopiés sur le match : remplacer un écusson dans l'annuaire met à jour tous les matchs d'un
+ * coup, au lieu de laisser des centaines de copies d'une URL qui se périme. C'est la règle déjà
+ * appliquée par la RPC `club_calendrier` ; on ne s'en écarte pas ici.
+ *
+ * Chargé à part et après la liste : un écusson est une décoration, l'écran doit s'afficher et
+ * rester utilisable sans lui. `federation_clubs` est en lecture libre pour tout compte connecté
+ * (policy `federation_clubs_lecture`), aucun droit particulier n'est requis.
+ */
+export async function fetchOpponentCrests(
+  supabase: SupabaseClient,
+  organizationId: string,
+): Promise<Record<string, string>> {
+  const { data: liens, error } = await supabase
+    .from("club_matches")
+    .select("id, opponent_club_slug")
+    .eq("club_id", organizationId)
+    .not("opponent_club_slug", "is", null)
+    .limit(TAILLE_PAGE * PAGES_MAX);
+  if (error) throw error;
+
+  const paires = (liens ?? []) as { id: string; opponent_club_slug: string }[];
+  const slugs = Array.from(new Set(paires.map((p) => p.opponent_club_slug)));
+  if (slugs.length === 0) return {};
+
+  const { data: clubs } = await supabase
+    .from("federation_clubs")
+    .select("slug, logo_url")
+    .in("slug", slugs)
+    .not("logo_url", "is", null);
+
+  const parSlug = new Map(
+    ((clubs ?? []) as { slug: string; logo_url: string }[]).map((c) => [c.slug, c.logo_url]),
+  );
+
+  const parMatch: Record<string, string> = {};
+  for (const p of paires) {
+    const url = parSlug.get(p.opponent_club_slug);
+    if (url) parMatch[p.id] = url;
+  }
+  return parMatch;
 }
 
 export interface ImportedMatchInput {
