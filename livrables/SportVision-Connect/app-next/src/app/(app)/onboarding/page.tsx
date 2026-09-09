@@ -44,6 +44,8 @@ import {
   submitOnboarding,
   fetchClubVenues,
   createClubVenue,
+  deleteClubVenue,
+  setVenuePrincipal,
   fetchTrainingSlotsForClub,
   createTrainingSlot,
   deleteTrainingSlot,
@@ -266,16 +268,23 @@ function IdentiteCard({
   const [siretVal, setSiretVal] = useState(siret);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Sans ce catch, un refus d'ecriture (RLS, declencheur SIRET) remontait en rejet de promesse
+  // non gere : le bouton arretait de tourner et l'ecran ne disait rien. Vu de l'utilisateur,
+  // « j'appuie sur Enregistrer et ca n'enregistre pas ». Un echec doit se voir.
+  const [error, setError] = useState<string | null>(null);
 
   async function save() {
     setSaving(true);
     setSaved(false);
+    setError(null);
     try {
       // On renvoie le SIRET tel qu'il etait quand on n'a pas le droit d'y toucher : le
       // declencheur en base ne se declenche que sur un changement reel, et l'adresse passe.
       await updateClubOrganization(createClient(), clubId, { adresse, siret: canEditLegal ? siretVal : siret });
       setSaved(true);
       onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Impossible d'enregistrer ces informations. Réessayez.");
     } finally {
       setSaving(false);
     }
@@ -303,6 +312,7 @@ function IdentiteCard({
             Enregistrer
           </Button>
           {saved && <span className="text-[12px] font-bold text-success-fg">Enregistré.</span>}
+          {error && <span className="text-[12px] font-bold text-danger-fg">{error}</span>}
         </div>
       )}
     </Card>
@@ -448,6 +458,7 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
   const [venueVille, setVenueVille] = useState("");
   const [venueSaving, setVenueSaving] = useState(false);
   const [venueError, setVenueError] = useState<string | null>(null);
+  const [venueBusyId, setVenueBusyId] = useState<string | null>(null);
   const [slotForm, setSlotForm] = useState<{ teamId: string; jour: string; heureDebut: string; heureFin: string; venueId: string } | null>(null);
   const [slotSaving, setSlotSaving] = useState(false);
   const [slotError, setSlotError] = useState<string | null>(null);
@@ -593,6 +604,32 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
       setVenueError(e instanceof Error ? e.message : "Impossible d'ajouter ce lieu. Réessayez.");
     } finally {
       setVenueSaving(false);
+    }
+  }
+
+  async function handleDeleteVenue(venueId: string) {
+    setVenueBusyId(venueId);
+    setVenueError(null);
+    try {
+      await deleteClubVenue(createClient(), venueId);
+      await reload();
+    } catch (e) {
+      setVenueError(e instanceof Error ? e.message : "Impossible de retirer ce lieu. Réessayez.");
+    } finally {
+      setVenueBusyId(null);
+    }
+  }
+
+  async function handleSetVenuePrincipal(venueId: string) {
+    setVenueBusyId(venueId);
+    setVenueError(null);
+    try {
+      await setVenuePrincipal(createClient(), clubId, venueId);
+      await reload();
+    } catch (e) {
+      setVenueError(e instanceof Error ? e.message : "Impossible de définir ce terrain principal. Réessayez.");
+    } finally {
+      setVenueBusyId(null);
     }
   }
 
@@ -922,25 +959,78 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
         })}
       </div>
 
-      {canEdit && (venues ?? []).length === 0 && !showVenueForm && (
-        <Button variant="secondary" className="h-9 self-start px-4 text-[12.5px]" onClick={() => setShowVenueForm(true)}>
-          + Ajouter un lieu (terrain, gymnase)
-        </Button>
-      )}
-      {canEdit && showVenueForm && (
-        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border-strong p-3.5">
-          <Field label="Nom du lieu">
-            <input value={venueName} onChange={(e) => setVenueName(e.target.value)} placeholder="Stade Georges Pompidou" className={cn(fieldClass, "h-9 w-56")} />
-          </Field>
-          <Field label="Ville">
-            <input value={venueVille} onChange={(e) => setVenueVille(e.target.value)} className={cn(fieldClass, "h-9 w-40")} />
-          </Field>
-          <Button className="h-9 px-3 text-[12px]" loading={venueSaving} onClick={handleCreateVenue}>
-            Ajouter
+      {/*
+        Les lieux avaient deux defauts qui se combinaient en un blocage complet (retour Fouka,
+        09/09/2026, SF Villemomble) : la liste n'etait affichee nulle part — un lieu ajoute
+        disparaissait aussitot, visible seulement dans le menu deroulant d'un creneau — et le
+        bouton d'ajout etait conditionne a `venues.length === 0`, donc il s'effacait des le
+        premier terrain enregistre. Un club a presque toujours plusieurs installations (stade
+        d'honneur, terrain annexe, gymnase, salle) : la liste est desormais visible et l'ajout
+        reste ouvert en permanence.
+      */}
+      <div className="flex flex-col gap-2 border-t border-divider pt-4">
+        <div className="text-[12.5px] font-bold text-text-soft">Lieux (stades, terrains, gymnases)</div>
+        {venues === null ? (
+          <p className="text-[12.5px] text-text-faint">Chargement…</p>
+        ) : venues.length === 0 ? (
+          <p className="text-[12.5px] text-text-faint">Aucun lieu enregistré pour le moment.</p>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            {venues.map((v) => (
+              <div key={v.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border-strong px-3 py-2">
+                <span className="text-[13px] font-semibold">{v.nom}</span>
+                {v.ville && <span className="text-[12px] text-text-soft">{v.ville}</span>}
+                {v.terrainPrincipal && <Badge tone="info">Terrain principal</Badge>}
+                {canEdit && (
+                  <div className="ml-auto flex items-center gap-2">
+                    {!v.terrainPrincipal && (
+                      <button
+                        type="button"
+                        disabled={venueBusyId !== null}
+                        onClick={() => handleSetVenuePrincipal(v.id)}
+                        className="text-[12px] font-semibold text-text-soft underline-offset-2 hover:underline disabled:opacity-50"
+                      >
+                        Définir principal
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={venueBusyId !== null}
+                      onClick={() => handleDeleteVenue(v.id)}
+                      className="text-[12px] font-semibold text-danger-fg underline-offset-2 hover:underline disabled:opacity-50"
+                    >
+                      {venueBusyId === v.id ? "…" : "Retirer"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {canEdit && !showVenueForm && (
+          <Button variant="secondary" className="h-9 self-start px-4 text-[12.5px]" onClick={() => setShowVenueForm(true)}>
+            + Ajouter un lieu (terrain, gymnase)
           </Button>
-          {venueError && <p className="w-full text-[12px] font-bold text-danger-fg">{venueError}</p>}
-        </div>
-      )}
+        )}
+        {canEdit && showVenueForm && (
+          <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border-strong p-3.5">
+            <Field label="Nom du lieu">
+              <input value={venueName} onChange={(e) => setVenueName(e.target.value)} placeholder="Stade Georges Pompidou" className={cn(fieldClass, "h-9 w-56")} />
+            </Field>
+            <Field label="Ville">
+              <input value={venueVille} onChange={(e) => setVenueVille(e.target.value)} className={cn(fieldClass, "h-9 w-40")} />
+            </Field>
+            <Button className="h-9 px-3 text-[12px]" loading={venueSaving} onClick={handleCreateVenue}>
+              Ajouter
+            </Button>
+            <Button variant="secondary" className="h-9 px-3 text-[12px]" onClick={() => { setShowVenueForm(false); setVenueError(null); }}>
+              Annuler
+            </Button>
+          </div>
+        )}
+        {venueError && <p className="text-[12px] font-bold text-danger-fg">{venueError}</p>}
+      </div>
 
       {canEdit && !showTeamForm && (
         <Button variant="secondary" className="h-9 self-start px-4 text-[12.5px]" onClick={() => setShowTeamForm(true)}>
@@ -1012,6 +1102,9 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
   const [location, setLocation] = useState("");
   const [teamId, setTeamId] = useState("");
   const [saving, setSaving] = useState(false);
+  // Meme correctif que les autres cartes : un echec d'ecriture ne doit pas se traduire par un
+  // bouton qui arrete simplement de tourner.
+  const [error, setError] = useState<string | null>(null);
 
   function reload() {
     const supabase = createClient();
@@ -1023,6 +1116,7 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
   async function handleCreate() {
     if (!title.trim() || !date) return;
     setSaving(true);
+    setError(null);
     try {
       const team = teams.find((t) => t.id === teamId);
       await createClubCalendarEvent(createClient(), clubId, {
@@ -1042,6 +1136,8 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
       setShowForm(false);
       reload();
       onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Impossible d'ajouter cet événement. Réessayez.");
     } finally {
       setSaving(false);
     }
@@ -1131,6 +1227,7 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
             <Button className="h-9 px-4 text-[12.5px]" loading={saving} onClick={handleCreate}>
               Ajouter
             </Button>
+            {error && <p className="w-full text-[12px] font-bold text-danger-fg">{error}</p>}
             <Button variant="secondary" className="h-9 px-4 text-[12.5px]" onClick={() => setShowForm(false)}>
               Annuler
             </Button>
@@ -1156,22 +1253,35 @@ function BrandingCard({
   canEdit: boolean;
   onSaved: () => void;
 }) {
+  const router = useRouter();
   const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
   const [colors, setColors] = useState(initialColors);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Cette carte n'affichait NI confirmation NI erreur : le bouton tournait une demi-seconde et
+  // l'ecran restait identique, y compris quand l'ecriture avait reussi. C'est la cause reelle du
+  // « ca n'enregistre pas » remonte le 09/09 sur Villemomble, ou les couleurs etaient bel et bien
+  // en base. Un enregistrement silencieux est indistinguable d'un echec.
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     setUploading(true);
+    setSaved(false);
+    setError(null);
     try {
       const url = await uploadClubLogo(createClient(), clubId, file);
       setLogoUrl(url);
+      setSaved(true);
       onSaved();
-    } catch {
-      // erreur déjà loggée par uploadClubLogo, formulaire déjà lisible sans message dédié ici
+      // Le logo est aussi lu depuis le contexte de session (barre laterale, en-tetes) : sans ce
+      // refresh il restait l'ancien partout ailleurs jusqu'a un rechargement manuel.
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Impossible d'envoyer ce logo. Réessayez.");
     } finally {
       setUploading(false);
     }
@@ -1179,9 +1289,15 @@ function BrandingCard({
 
   async function saveColors() {
     setSaving(true);
+    setSaved(false);
+    setError(null);
     try {
       await updateClubOrganization(createClient(), clubId, { couleurPrimaire: colors[0], couleurSecondaire: colors[1] });
+      setSaved(true);
       onSaved();
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Impossible d'enregistrer ces couleurs. Réessayez.");
     } finally {
       setSaving(false);
     }
@@ -1220,9 +1336,13 @@ function BrandingCard({
         ))}
       </div>
       {canEdit && (
-        <Button className="h-9 self-start px-4 text-[12.5px]" loading={saving} onClick={saveColors}>
-          Enregistrer les couleurs
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button className="h-9 px-4 text-[12.5px]" loading={saving} onClick={saveColors}>
+            Enregistrer les couleurs
+          </Button>
+          {saved && <span className="text-[12px] font-bold text-success-fg">Enregistré.</span>}
+          {error && <span className="text-[12px] font-bold text-danger-fg">{error}</span>}
+        </div>
       )}
     </Card>
   );
@@ -1238,6 +1358,7 @@ function SponsorsCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: b
   const [saving, setSaving] = useState(false);
   const [logoUploadingId, setLogoUploadingId] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   function reload() {
     fetchClubSponsors(createClient(), clubId).then(setSponsors).catch(() => setSponsors([]));
@@ -1247,12 +1368,15 @@ function SponsorsCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: b
   async function handleCreate() {
     if (!name.trim()) return;
     setSaving(true);
+    setCreateError(null);
     try {
       await createClubSponsor(createClient(), clubId, { name: name.trim(), niveau });
       setName("");
       setShowForm(false);
       reload();
       onSaved();
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : "Impossible d'ajouter ce sponsor. Réessayez.");
     } finally {
       setSaving(false);
     }
@@ -1280,6 +1404,7 @@ function SponsorsCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: b
       <SectionHeader title="6. Sponsors" description="Logos et noms des partenaires actuels du club — modifiables plus en détail depuis Sponsors." />
       {(sponsors ?? []).length === 0 && sponsors !== null && <p className="text-[12.5px] text-text-soft">Aucun sponsor renseigné.</p>}
       {logoError && <p className="text-[12.5px] font-bold text-danger-fg">{logoError}</p>}
+      {createError && <p className="text-[12.5px] font-bold text-danger-fg">{createError}</p>}
       {(sponsors ?? []).length > 0 && (
         <div className="flex flex-col divide-y divide-divider">
           {(sponsors ?? []).map((s) => (
@@ -1349,6 +1474,8 @@ function CommunicationCard({ clubId, canEdit, onSaved }: { clubId: string; canEd
   const [ton, setTon] = useState<string | null>(null);
   const [sujetsSensibles, setSujetsSensibles] = useState("");
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefsSaved, setPrefsSaved] = useState(false);
+  const [prefsError, setPrefsError] = useState<string | null>(null);
   const [accountSaving, setAccountSaving] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
 
@@ -1397,9 +1524,14 @@ function CommunicationCard({ clubId, canEdit, onSaved }: { clubId: string; canEd
 
   async function savePrefs() {
     setSavingPrefs(true);
+    setPrefsSaved(false);
+    setPrefsError(null);
     try {
       await updateClubCommunicationPrefs(createClient(), clubId, { objectifsCommunication: objectifs, tonCommunication: ton, sujetsSensibles });
+      setPrefsSaved(true);
       onSaved();
+    } catch (e) {
+      setPrefsError(e instanceof Error ? e.message : "Impossible d'enregistrer ces préférences. Réessayez.");
     } finally {
       setSavingPrefs(false);
     }
@@ -1498,9 +1630,13 @@ function CommunicationCard({ clubId, canEdit, onSaved }: { clubId: string; canEd
       </Field>
 
       {canEdit && (
-        <Button className="h-9 self-start px-4 text-[12.5px]" loading={savingPrefs} onClick={savePrefs}>
-          Enregistrer
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button className="h-9 px-4 text-[12.5px]" loading={savingPrefs} onClick={savePrefs}>
+            Enregistrer
+          </Button>
+          {prefsSaved && <span className="text-[12px] font-bold text-success-fg">Enregistré.</span>}
+          {prefsError && <span className="text-[12px] font-bold text-danger-fg">{prefsError}</span>}
+        </div>
       )}
     </Card>
   );
@@ -1513,6 +1649,8 @@ function DroitImageCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
   const [licenciesExclus, setLicenciesExclus] = useState(false);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClubImageRights(createClient(), clubId).then((r) => {
@@ -1524,9 +1662,14 @@ function DroitImageCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
 
   async function save() {
     setSaving(true);
+    setSaved(false);
+    setError(null);
     try {
       await updateClubImageRights(createClient(), clubId, { mode, licenciesExclus, notes });
+      setSaved(true);
       onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Impossible d'enregistrer ces informations. Réessayez.");
     } finally {
       setSaving(false);
     }
@@ -1562,9 +1705,13 @@ function DroitImageCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
         </Field>
       )}
       {canEdit && (
-        <Button className="h-9 self-start px-4 text-[12.5px]" loading={saving} onClick={save}>
-          Enregistrer
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button className="h-9 px-4 text-[12.5px]" loading={saving} onClick={save}>
+            Enregistrer
+          </Button>
+          {saved && <span className="text-[12px] font-bold text-success-fg">Enregistré.</span>}
+          {error && <span className="text-[12px] font-bold text-danger-fg">{error}</span>}
+        </div>
       )}
     </Card>
   );

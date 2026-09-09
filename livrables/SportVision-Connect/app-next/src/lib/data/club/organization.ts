@@ -74,8 +74,19 @@ export async function uploadClubLogo(supabase: SupabaseClient, clubId: string, f
   // continuerait d'afficher l'ancien logo en cache après un remplacement.
   const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
 
-  const { error: updateError } = await supabase.from("clubs").update({ logo_url: publicUrl }).eq("id", clubId);
+  // Meme piege que updateClubOrganization ci-dessus, et il etait ouvert ici : sans `.select()`,
+  // un update que la RLS filtre revient avec `{ error: null }`. L'ecran affichait alors le
+  // nouveau logo (etat local) alors que `clubs.logo_url` n'avait pas bouge, et le logo
+  // disparaissait au rechargement suivant.
+  const { data: updated, error: updateError } = await supabase
+    .from("clubs")
+    .update({ logo_url: publicUrl })
+    .eq("id", clubId)
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated || updated.length === 0) {
+    throw new Error("Logo envoyé mais non rattaché au club : droits insuffisants.");
+  }
 
   return publicUrl;
 }

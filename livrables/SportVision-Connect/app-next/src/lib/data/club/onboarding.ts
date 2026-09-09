@@ -116,6 +116,44 @@ export async function createClubVenue(
   return data as { id: string };
 }
 
+/**
+ * Un club a rarement un seul terrain : stade principal, terrain annexe, gymnase, salle de
+ * musculation. Supprimer un lieu doit rester possible (faute de frappe, terrain rendu à la
+ * mairie) — les créneaux qui le référencent gardent leur ligne, `venue_id` repasse simplement
+ * à null grâce au ON DELETE SET NULL porté par club_team_training_slots et
+ * club_training_exceptions.
+ */
+export async function deleteClubVenue(supabase: SupabaseClient, venueId: string): Promise<void> {
+  const { data, error } = await supabase.from("club_venues").delete().eq("id", venueId).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Suppression refusée : droits insuffisants sur ce lieu.");
+  }
+}
+
+/**
+ * Un seul terrain principal par club : on retire le drapeau partout avant de le poser, sinon
+ * l'ordre de `fetchClubVenues` (terrain_principal desc) devient arbitraire dès qu'il y en a deux.
+ */
+export async function setVenuePrincipal(supabase: SupabaseClient, clubId: string, venueId: string): Promise<void> {
+  const { error: resetError } = await supabase
+    .from("club_venues")
+    .update({ terrain_principal: false })
+    .eq("club_id", clubId)
+    .neq("id", venueId);
+  if (resetError) throw resetError;
+
+  const { data, error } = await supabase
+    .from("club_venues")
+    .update({ terrain_principal: true })
+    .eq("id", venueId)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Modification refusée : droits insuffisants sur ce lieu.");
+  }
+}
+
 // ── Créneaux d'entraînement récurrents ──
 
 const JOURS_LABELS: Record<string, string> = {
