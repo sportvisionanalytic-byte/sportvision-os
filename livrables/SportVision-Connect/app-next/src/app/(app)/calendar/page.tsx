@@ -7,6 +7,7 @@ import { canAccess, canCreate } from "@/lib/permissions";
 import { CALENDAR_EVENT_KIND_LABELS, type CalendarEvent, type CalendarEventKind } from "@/lib/types/calendar";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { TeamSelector } from "@/components/ui/TeamSelector";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -387,19 +388,15 @@ export default function CalendarPage() {
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint">Filtrer</span>
           {availableTeams.length > 0 && (
-            <select
-              value={teamFilter}
-              onChange={(e) => setTeamFilter(e.target.value)}
-              aria-label="Filtrer par équipe"
-              className="h-9 rounded-lg border border-border-strong bg-input-bg px-2.5 text-[12.5px] font-bold text-text outline-none focus-visible:border-brand-blue"
-            >
-              <option value="">Toutes les équipes</option>
-              {availableTeams.map((team) => (
-                <option key={team} value={team}>
-                  {team}
-                </option>
-              ))}
-            </select>
+            // Une liste plate devient un annuaire dès qu'un club dépasse la vingtaine d'équipes :
+            // chez Villemomble, trouver « U12 Espoir 2 » demandait de parcourir quarante lignes.
+            // Le sélecteur est partagé — il servira aux résultats, aux galeries, aux invitations,
+            // partout où l'on choisit une équipe.
+            <TeamSelector
+              equipes={availableTeams.map((name) => ({ name }))}
+              valeur={teamFilter}
+              onChange={setTeamFilter}
+            />
           )}
           <select
             value={typeFilter}
