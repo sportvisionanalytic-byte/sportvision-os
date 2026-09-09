@@ -7,7 +7,15 @@ import { Card } from "@/components/ui/Card";
 import { QrCode } from "@/components/ui/QrCode";
 import { cn } from "@/lib/cn";
 import { isRealId } from "@/lib/mock/teams";
-import { createInviteLink, fetchClubTeamInviteLink, rotateInviteLink, deactivateInviteLink, buildJoinUrl, type InviteLink } from "@/lib/data/club/invite-links";
+import {
+  createInviteLink,
+  fetchClubTeamInviteLink,
+  rotateInviteLink,
+  deactivateInviteLink,
+  buildJoinUrl,
+  messageErreurLien,
+  type InviteLink,
+} from "@/lib/data/club/invite-links";
 import { createClient } from "@/lib/supabase/client";
 import type { Team } from "@/lib/types/teams";
 
@@ -89,17 +97,22 @@ function InviteAction({ clubId, teamId }: { clubId: string; teamId: string }) {
     setError(null);
     createInviteLink(createClient(), clubId, teamId)
       .then(setLink)
-      .catch(() => setError("Impossible de générer le lien. Réessayez."))
+      .catch((e) => setError(messageErreurLien(e, "Impossible de générer le lien. Réessayez.")))
       .finally(() => setBusy(false));
   }
 
   function handleRotate() {
     if (!link) return;
+    // Régénérer casse le lien déjà distribué : le QR affiché au vestiaire et le message envoyé
+    // dans le groupe de l'équipe cessent de fonctionner à la seconde. Ça se demande.
+    if (!window.confirm(`Le code ${link.code} cessera de fonctionner immédiatement, y compris les QR déjà imprimés et les liens déjà envoyés. Continuer ?`)) {
+      return;
+    }
     setBusy(true);
     setError(null);
     rotateInviteLink(createClient(), link.id)
       .then(setLink)
-      .catch(() => setError("Impossible de régénérer le lien. Réessayez."))
+      .catch((e) => setError(messageErreurLien(e, "Impossible de régénérer le lien. Réessayez.")))
       .finally(() => setBusy(false));
   }
 
@@ -109,7 +122,7 @@ function InviteAction({ clubId, teamId }: { clubId: string; teamId: string }) {
     setError(null);
     deactivateInviteLink(createClient(), link.id)
       .then(() => setLink(null))
-      .catch(() => setError("Impossible de désactiver le lien. Réessayez."))
+      .catch((e) => setError(messageErreurLien(e, "Impossible de désactiver le lien. Réessayez.")))
       .finally(() => setBusy(false));
   }
 
@@ -119,10 +132,6 @@ function InviteAction({ clubId, teamId }: { clubId: string; teamId: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
-  }
-
-  if (error) {
-    return <span className="text-[12px] font-bold text-danger-fg">{error}</span>;
   }
 
   if (link === undefined) {
@@ -158,18 +167,24 @@ function InviteAction({ clubId, teamId }: { clubId: string; teamId: string }) {
             <X className="h-3.5 w-3.5" aria-hidden /> Désactiver
           </button>
         </div>
+        {error && <span className="text-[12px] font-bold text-danger-fg">{error}</span>}
       </div>
     );
   }
 
   return (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={handleInvite}
-      className="text-[12.5px] font-bold text-brand-blue-electric hover:text-brand-violet disabled:opacity-60"
-    >
-      {busy ? "Génération…" : "Générer un lien pour inviter des joueurs →"}
-    </button>
+    <div className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={handleInvite}
+        className="text-left text-[12.5px] font-bold text-brand-blue-electric hover:text-brand-violet disabled:opacity-60"
+      >
+        {busy ? "Génération…" : "Générer un lien pour inviter des joueurs →"}
+      </button>
+      {/* Le message reste SOUS l'action, jamais à sa place : une erreur qui remplace le bouton
+          enlève au passage le moyen de réessayer. */}
+      {error && <span className="text-[12px] font-bold text-danger-fg">{error}</span>}
+    </div>
   );
 }

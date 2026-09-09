@@ -48,6 +48,25 @@ export function buildJoinUrl(code: string): string {
   return `https://connect.sportvision-an.fr/join/${code}`;
 }
 
+/**
+ * Le message que la base a réellement renvoyé, ou un repli honnête.
+ *
+ * 10/09/2026 — Les écrans remplaçaient toute erreur par « Impossible de générer le lien.
+ * Réessayez. ». Or la base disait « Non autorisé » : réessayer ne pouvait pas marcher, et le vrai
+ * problème (le périmètre du CM, voir migration-clubplus-v98) restait invisible pendant des jours.
+ *
+ * Les RPC de ce fichier lèvent désormais des messages écrits pour être lus par un humain — on les
+ * fait remonter tels quels. Un défaut technique (réseau, colonne inconnue) n'a lui rien à dire à
+ * un utilisateur : il retombe sur une phrase générique.
+ */
+export function messageErreurLien(e: unknown, repli: string): string {
+  const message = (e as { message?: unknown } | null)?.message;
+  if (typeof message !== "string" || !message.trim()) return repli;
+  // Les erreurs PostgREST/réseau ne sont pas des phrases : on ne les montre pas.
+  if (/^(TypeError|Failed to fetch|JSON object|column |relation )/i.test(message)) return repli;
+  return message;
+}
+
 export async function createInviteLink(
   supabase: SupabaseClient,
   clubId: string,
