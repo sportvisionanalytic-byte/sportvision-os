@@ -22,7 +22,9 @@ export interface MyJoinRequest {
 }
 
 export async function fetchJoinableTeams(supabase: SupabaseClient, clubId: string): Promise<JoinableTeam[]> {
-  const { data, error } = await supabase.from("club_teams").select("id, name, categorie").eq("club_id", clubId).order("name");
+  const { data, error } = await supabase.from("club_teams").select("id, name, categorie").eq("club_id", clubId)
+    // Meme raison que cote famille : une equipe mise de cote n'accueille personne.
+    .or("archivee.is.null,archivee.is.false").order("name");
   if (error) throw error;
   return (data ?? []) as JoinableTeam[];
 }

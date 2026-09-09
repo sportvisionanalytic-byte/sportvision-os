@@ -21,6 +21,10 @@ export async function fetchClubTeams(supabase: SupabaseClient, organizationId: s
       .from("club_teams")
       .select("id, name, categorie, categories, coach, members")
       .eq("club_id", organizationId)
+      // Une equipe archivee est mise de cote, elle ne doit plus apparaitre. La colonne
+      // existait mais n'etait lue NULLE PART cote Club+ (constate le 09/09/2026 : archiver
+      // U15 D2 ne la retirait d'aucun ecran, elle comptait encore dans « 39 equipes »).
+      .or("archivee.is.null,archivee.is.false")
       .order("name"),
     supabase.from("clubs").select("saison").eq("id", organizationId).maybeSingle(),
   ]);

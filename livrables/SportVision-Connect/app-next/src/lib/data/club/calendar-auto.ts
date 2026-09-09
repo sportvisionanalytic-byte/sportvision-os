@@ -48,7 +48,9 @@ export interface AutoSyncOutcome {
 }
 
 async function fetchTeams(supabase: SupabaseClient, clubId: string): Promise<{ id: string; name: string }[]> {
-  const { data } = await supabase.from("club_teams").select("id, name").eq("club_id", clubId).order("name");
+  const { data } = await supabase.from("club_teams").select("id, name").eq("club_id", clubId)
+    // Pas d'equipe archivee dans un selecteur : on ne planifie rien pour une equipe mise de cote.
+    .or("archivee.is.null,archivee.is.false").order("name");
   return ((data ?? []) as { id: string; name: string }[]).map((t) => ({ id: t.id, name: t.name }));
 }
 
