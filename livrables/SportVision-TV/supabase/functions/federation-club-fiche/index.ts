@@ -167,6 +167,19 @@ serve(async (req) => {
     // identité. Écrit avec le service role — `federation_clubs` n'a aucune policy d'écriture,
     // pour qu'un utilisateur ne puisse pas empoisonner l'annuaire.
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // `logo_url` doit pointer sur NOTRE copie de l'écusson quand elle existe. Écraser sans regarder
+    // annulait le travail d'importer-ecussons-federaux : consulter une fiche suffisait à faire
+    // repointer l'écusson vers le stockage du tiers (constaté sur montfermeil-fc, 09/09/2026), et
+    // les visuels publiés avec auraient cassé le jour où il réorganise ses fichiers.
+    const { data: connu } = await admin
+      .from("federation_clubs")
+      .select("logo_url")
+      .eq("source", SOURCE)
+      .eq("slug", slug)
+      .maybeSingle();
+    const copieLocale = (connu?.logo_url ?? "").includes("/federation-logos/");
+
     await admin.from("federation_clubs").upsert({
       source: SOURCE,
       slug,
@@ -178,7 +191,8 @@ serve(async (req) => {
       region: club.region ?? null,
       sport: club.sport?.name ?? null,
       affiliation_number: club.affiliation_number ?? null,
-      logo_url: club.logo_filename ?? null,
+      logo_url: copieLocale ? connu!.logo_url : (club.logo_filename ?? null),
+      logo_source_url: club.logo_filename ?? null,
       site_url: club.website_url ?? null,
       nb_equipes: club.number_of_teams ?? null,
       enrichi_at: new Date().toISOString(),
