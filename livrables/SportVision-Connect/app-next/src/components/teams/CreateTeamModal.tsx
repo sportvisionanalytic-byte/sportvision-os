@@ -27,11 +27,14 @@ interface CreateTeamModalProps {
    * la garde anti-doublon ci-dessous. */
   existingNames?: string[];
   onClose: () => void;
-  onCreate: (input: { name: string; categorie?: string; coach?: string }) => Promise<unknown>;
+  onCreate: (input: { name: string; categorie?: string; categories?: string[]; coach?: string }) => Promise<unknown>;
 }
 
 export function CreateTeamModal({ clubId, existingNames, onClose, onCreate }: CreateTeamModalProps) {
   const [categorie, setCategorie] = useState("");
+  // Categories supplementaires couvertes par la meme equipe (U8 qui joue avec les U9). La
+  // principale reste celle qui NOMME l'equipe : « U8 1 », pas « U8-U9 1 ».
+  const [aussi, setAussi] = useState<string[]>([]);
   const [teamNumber, setTeamNumber] = useState("");
   const [coachMemberId, setCoachMemberId] = useState("");
   const [members, setMembers] = useState<OrgUser[] | null>(null);
@@ -61,7 +64,7 @@ export function CreateTeamModal({ clubId, existingNames, onClose, onCreate }: Cr
     setSubmitting(true);
     setError(null);
     const coach = coachName ? `${coachName.firstName} ${coachName.lastName}`.trim() : undefined;
-    onCreate({ name, categorie, coach })
+    onCreate({ name, categorie, categories: [categorie, ...aussi].filter(Boolean), coach })
       .then(() => onClose())
       .catch(() => {
         setSubmitting(false);
@@ -98,6 +101,38 @@ export function CreateTeamModal({ clubId, existingNames, onClose, onCreate }: Cr
               ))}
             </select>
           </label>
+          {/* Fusion de categories : certaines equipes font jouer deux ages ensemble. La principale
+              nomme l'equipe, celles-ci s'y ajoutent pour le rapprochement a l'import. */}
+          {categorie && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[12.5px] font-bold text-text-soft">Couvre aussi (optionnel)</span>
+              <div className="flex flex-wrap gap-1.5">
+                {TEAM_CATEGORY_OPTIONS.filter((c) => c !== categorie).map((c) => {
+                  const choisie = aussi.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setAussi((p) => (p.includes(c) ? p.filter((x) => x !== c) : [...p, c]))}
+                      className={
+                        "h-8 rounded-lg border px-2.5 text-[12px] font-bold transition-colors " +
+                        (choisie
+                          ? "border-brand-blue-electric bg-brand-blue-electric text-white"
+                          : "border-border-strong text-text-soft hover:border-brand-blue")
+                      }
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+              {aussi.length > 0 && (
+                <p className="text-[11.5px] text-text-soft">
+                  Les calendriers {[categorie, ...aussi].join(", ")} seront rattachés à cette équipe.
+                </p>
+              )}
+            </div>
+          )}
           <label className="flex flex-col gap-1.5">
             <span className="text-[12.5px] font-bold text-text-soft">Équipe (optionnel)</span>
             <select value={teamNumber} onChange={(e) => setTeamNumber(e.target.value)} className={fieldClass}>
