@@ -133,6 +133,33 @@ export function libelleCompteur(kind: CalendarEventKind, n: number): string {
   return `${n} ${n > 1 ? plusieurs : un}`;
 }
 
+/** État sportif d'un match, tel qu'on veut le montrer. `null` quand il n'y a rien à signaler :
+ *  un match à venir sans particularité n'a pas besoin d'un badge « à venir », c'est le cas normal
+ *  et le badger n'ajoute que du bruit. */
+export function etatEvenement(e: CalendarEvent): { label: string; ton: "success" | "warning" | "danger" } | null {
+  if (e.status === "annulee") return { label: "Annulé", ton: "danger" };
+  if (e.status === "reportee") return { label: "Reporté", ton: "warning" };
+  if (e.status === "modifiee") return { label: "Horaire exceptionnel", ton: "warning" };
+  if (e.score) return { label: "Terminé", ton: "success" };
+  return null;
+}
+
+/**
+ * La ligne descriptive sous le titre : ce qui situe l'événement sans le répéter.
+ *
+ * Partagée par les vues Jour, Liste et le détail du jour, pour qu'elles disent la même chose dans
+ * le même ordre. Chaque élément est omis quand il est absent plutôt que rendu vide : une suite de
+ * séparateurs sans contenu se lit plus mal qu'une ligne courte.
+ */
+export function descriptionEvenement(e: CalendarEvent): string {
+  const bouts: string[] = [];
+  if (e.competition) bouts.push(e.competition);
+  else if (e.teamName) bouts.push(e.teamName);
+  if (e.isHome !== undefined) bouts.push(e.isHome ? "À domicile" : "À l'extérieur");
+  if (e.location) bouts.push(e.location);
+  return bouts.join(" · ");
+}
+
 /** Vues rapides : les questions qu'on se pose vraiment en ouvrant un calendrier de club.
  *
  *  Elles ne remplacent pas les filtres équipe/type, elles évitent d'avoir à les combiner à la

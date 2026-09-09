@@ -6,6 +6,7 @@ import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
 import { CALENDAR_EVENT_KIND_LABELS, type CalendarEvent, type CalendarEventKind } from "@/lib/types/calendar";
 import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -15,6 +16,8 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { KIND_DOT } from "@/components/calendar/calendar-style";
 import {
   aCouverture,
+  descriptionEvenement,
+  etatEvenement,
   libelleCompteur,
   libelleCourt,
   parPriorite,
@@ -732,10 +735,13 @@ function WeekView({
               {day.toLocaleDateString("fr-FR", { weekday: "short" })}
             </div>
             <div className={cn("text-[15px] font-extrabold", isToday && "text-brand-blue-electric")}>{day.getDate()}</div>
+            {/* La semaine est la vue de coordination : elle montre plus que le mois, mais garde le
+                même ordre de priorité. Sans lui, une colonne de 12 entraînements repousserait les
+                matchs hors de l'écran, exactement le défaut corrigé sur la vue Mois. */}
             <div className="flex flex-col gap-1.5">
               {dayEvents.length === 0 && <span className="text-[11px] text-text-faint">—</span>}
-              {dayEvents.map((e) => (
-                <EventChip key={e.id} event={e} onSelect={onSelect} />
+              {[...dayEvents].sort(parPriorite).map((e) => (
+                <LigneMois key={e.id} event={e} onSelect={onSelect} />
               ))}
             </div>
           </Card>
@@ -751,18 +757,38 @@ function DayView({ reference, events, onSelect }: { reference: Date; events: Cal
       {events.length === 0 && (
         <EmptyState title="Aucun événement" description={`Aucun événement le ${reference.toLocaleDateString("fr-FR")}.`} />
       )}
-      {events.map((e) => (
-        <button key={e.id} onClick={() => onSelect(e)} className="flex items-center gap-3.5 px-5 py-3.5 text-left hover:bg-row-hover">
-          <span className="w-14 flex-none text-[12.5px] font-extrabold text-text-soft">
-            {e.allDay ? "Journée" : new Date(e.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-          </span>
-          <span className={cn("h-2 w-2 flex-none rounded-full", KIND_DOT[e.kind])} aria-hidden />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13.5px] font-bold">{e.title}</span>
-            <span className="text-[12px] text-text-soft">{CALENDAR_EVENT_KIND_LABELS[e.kind]}{e.location ? ` · ${e.location}` : ""}</span>
-          </span>
-        </button>
-      ))}
+      {/* La vue Jour est la plus précise : elle garde l'ordre chronologique, qui est ici le bon —
+          on y lit le déroulé d'une journée, pas une hiérarchie d'importance. */}
+      {events.map((e) => {
+        const etat = etatEvenement(e);
+        return (
+          <button key={e.id} onClick={() => onSelect(e)} className="flex items-center gap-3.5 px-5 py-3.5 text-left hover:bg-row-hover">
+            <span className="w-14 flex-none text-[12.5px] font-extrabold tabular-nums text-text-soft">
+              {e.allDay ? "Journée" : new Date(e.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <span className={cn("h-2 w-2 flex-none rounded-full", KIND_DOT[e.kind])} aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className={cn("block truncate text-[13.5px] font-bold", e.status === "annulee" && "text-text-faint line-through")}>
+                {e.title}
+              </span>
+              <span className="block truncate text-[12px] text-text-soft">
+                {[CALENDAR_EVENT_KIND_LABELS[e.kind], descriptionEvenement(e)].filter(Boolean).join(" · ")}
+              </span>
+            </span>
+            {aCouverture(e) && (
+              <span className="flex-none text-[13px]" title="Couverture SportVision" aria-label="Couverture SportVision">
+                📸
+              </span>
+            )}
+            {e.score && <span className="flex-none text-[15px] font-extrabold tabular-nums">{e.score}</span>}
+            {etat && (
+              <Badge tone={etat.ton === "success" ? "success" : etat.ton === "danger" ? "danger" : "warning"}>
+                {etat.label}
+              </Badge>
+            )}
+          </button>
+        );
+      })}
     </Card>
   );
 }
@@ -924,11 +950,7 @@ function ListView({
                     {e.endsAt && !e.allDay
                       ? ` · ${new Date(e.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}–${new Date(e.endsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
                       : ""}
-                    {e.isHome === undefined ? "" : e.isHome ? " · À domicile" : " · À l'extérieur"}
-                    {e.location ? ` · ${e.location}` : ""}
-                    {e.competition ? ` · ${e.competition}` : ""}
-                    {e.status === "modifiee" ? " · horaire exceptionnel" : ""}
-                    {e.status === "annulee" ? " · annulé" : ""}
+                    {descriptionEvenement(e) ? ` · ${descriptionEvenement(e)}` : ""}
                   </span>
                   </button>
                   {/* Matchs ET entraînements peuvent être couverts. Pour un entraînement, la
@@ -937,9 +959,16 @@ function ListView({
                   {(e.kind === "match" || e.kind === "training") && e.status !== "annulee" && (
                     <Couverture evenement={e} onFait={onRecharger} />
                   )}
-                  {e.score && (
-                    <span className="ml-2 text-[11.5px] font-bold tabular-nums">{e.score}</span>
-                  )}
+                </span>
+                {/* Le score et l'état à droite de la ligne, pas noyés sous la description : sur un
+                    match joué, le score EST l'information. Il était rendu en 11,5 px après le
+                    bouton de couverture, là où l'œil ne va pas. */}
+                <span className="flex flex-none items-center gap-2 pt-0.5">
+                  {e.score && <span className="text-[15px] font-extrabold tabular-nums text-text">{e.score}</span>}
+                  {(() => {
+                    const etat = etatEvenement(e);
+                    return etat ? <Badge tone={etat.ton}>{etat.label}</Badge> : null;
+                  })()}
                 </span>
               </div>
             ))}
