@@ -453,6 +453,9 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [coachInviteWarning, setCoachInviteWarning] = useState<string | null>(null);
+  // L'identifiant du coach fraichement cree, a lire une seule fois et a transmettre. Il n'est
+  // stocke nulle part : ni ici apres fermeture, ni recuperable ensuite.
+  const [accesCoach, setAccesCoach] = useState<{ email: string; motDePasse: string } | null>(null);
   const [showVenueForm, setShowVenueForm] = useState(false);
   const [venueName, setVenueName] = useState("");
   const [venueVille, setVenueVille] = useState("");
@@ -562,16 +565,27 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
       await createClubTeam(createClient(), clubId, { name: teamName.trim(), categorie: teamCategorie.trim() || undefined, coach: coachDisplayName || undefined });
       if (teamCoachEmail.trim() && teamCoachFirstName.trim() && teamCoachLastName.trim()) {
         try {
-          await inviteClubMember(createClient(), clubId, {
+          // Mode « direct » : le compte est cree tout de suite et un mot de passe est rendu, a
+          // transmettre soi-meme. Le mode « e-mail » faisait dependre l'acces du coach d'un envoi
+          // dont on a mesure qu'il n'aboutit que dans 42 % des cas.
+          const resultat = await inviteClubMember(createClient(), clubId, {
             email: teamCoachEmail.trim(),
             firstName: teamCoachFirstName.trim(),
             lastName: teamCoachLastName.trim(),
             role: "coach",
             team: teamName.trim(),
+            mode: "direct",
           });
+          if (resultat.password) {
+            setAccesCoach({ email: teamCoachEmail.trim(), motDePasse: resultat.password });
+          } else if (resultat.accountAlreadyExisted) {
+            setCoachInviteWarning(
+              `Équipe créée. ${teamCoachEmail.trim()} avait déjà un compte SportVision : il a été rattaché à l'équipe, il garde son mot de passe habituel.`,
+            );
+          }
         } catch (e) {
           setCoachInviteWarning(
-            `Équipe créée, mais l'invitation du coach a échoué (${e instanceof Error ? e.message : "erreur inconnue"}) — utilisez "+ Inviter un coach" pour réessayer.`,
+            `Équipe créée, mais l'accès du coach n'a pas pu être créé (${e instanceof Error ? e.message : "erreur inconnue"}).`,
           );
         }
       }
@@ -1068,15 +1082,47 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
               <Field label="Nom">
                 <input value={teamCoachLastName} onChange={(e) => setTeamCoachLastName(e.target.value)} className={fieldClass} />
               </Field>
-              {canInvite && (
-                <Field label="E-mail">
-                  <input type="email" value={teamCoachEmail} onChange={(e) => setTeamCoachEmail(e.target.value)} className={fieldClass} />
-                </Field>
-              )}
+              <Field label="E-mail">
+                <input type="email" value={teamCoachEmail} onChange={(e) => setTeamCoachEmail(e.target.value)} className={fieldClass} />
+              </Field>
             </div>
           </div>
           {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
           {coachInviteWarning && <p className="text-[12.5px] font-bold text-warning-fg">{coachInviteWarning}</p>}
+          {/* L'identifiant s'affiche une seule fois : il n'est conserve nulle part et ne pourra
+              pas etre relu. C'est le prix d'un mot de passe qu'on ne stocke pas en clair. */}
+          {accesCoach && (
+            <div className="flex flex-col gap-2 rounded-xl border border-success-fg/30 bg-success-bg/40 p-3.5">
+              <div className="text-[12.5px] font-bold text-success-fg">Accès du coach créé</div>
+              <div className="text-[13px]">
+                <span className="text-text-soft">Identifiant : </span>
+                <span className="font-mono">{accesCoach.email}</span>
+              </div>
+              <div className="text-[13px]">
+                <span className="text-text-soft">Mot de passe : </span>
+                <span className="font-mono tracking-[.04em]">{accesCoach.motDePasse}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  className="h-9 px-3 text-[12.5px]"
+                  onClick={() =>
+                    navigator.clipboard
+                      ?.writeText(`${accesCoach.email} / ${accesCoach.motDePasse}`)
+                      .catch(() => {})
+                  }
+                >
+                  Copier
+                </Button>
+                <Button variant="tertiary" className="h-9 px-3 text-[12.5px]" onClick={() => setAccesCoach(null)}>
+                  J&apos;ai transmis
+                </Button>
+              </div>
+              <p className="text-[11.5px] text-text-soft">
+                Transmettez-le au coach : ce mot de passe ne sera plus affiché.
+              </p>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <Button className="h-9 px-4 text-[12.5px]" loading={saving} onClick={handleCreateTeam}>
               Créer l&apos;équipe

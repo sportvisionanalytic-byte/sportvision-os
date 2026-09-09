@@ -149,7 +149,18 @@ serve(async (req) => {
       .eq("role", "admin")
       .eq("status", "actif")
       .maybeSingle();
-    if (!callerMember) return json({ error: "Seul un administrateur du club peut inviter un utilisateur." }, 403);
+    // 09/09/2026 — le CM SportVision affecte a ce club peut lui aussi creer les acces de son
+    // equipe encadrante. C'est son travail : il met le club en place, coachs compris. La verite
+    // reste cote base — cm_clubs_autorises() est l'autorite unique du perimetre, on ne fait pas
+    // confiance a un club_id envoye par le navigateur.
+    let callerAutorise = Boolean(callerMember);
+    if (!callerAutorise) {
+      const { data: perimetre } = await admin.rpc("cm_clubs_autorises_de", { p_cm: caller.id });
+      callerAutorise = Array.isArray(perimetre) && perimetre.some((r: { club_id: string }) => r.club_id === clubId);
+    }
+    if (!callerAutorise) {
+      return json({ error: "Seul un administrateur du club, ou le CM SportVision qui l'accompagne, peut créer un accès." }, 403);
+    }
 
     // 19/08/2026 — plafond d'utilisateurs par plan (Club+ Gratuit : 1, Start : 5, Performance :
     // illimité). Vérifié ici, service-role, avant d'envoyer une invitation — jamais côté client.
