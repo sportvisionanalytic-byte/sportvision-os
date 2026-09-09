@@ -15490,7 +15490,7 @@ function renderPhotoPre(){
     const p=row.prestations;
     const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'—';
     const hdeb=row.heure_rdv||p.heure_debut;
-    return`<div class="cd" style="margin-bottom:10px;cursor:pointer" onclick="modalDetailById('${p.id}')">
+    return`<div class="cd" style="margin-bottom:10px;cursor:pointer" onclick="modalParcoursMission('${p.id}')">
       <div style="padding:14px 18px">
         <div style="display:flex;align-items:flex-start;gap:12px">
           <div style="width:44px;height:44px;border-radius:10px;background:var(--gr);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px">
@@ -15499,7 +15499,7 @@ function renderPhotoPre(){
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
               <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(p.clients?.nom||'—')}</div>
-              <span class="bd ${sCl[p.statut]||'bw'}" style="display:inline-flex"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span>
+              ${typeof badgesParcours==='function'?badgesParcours(p):`<span class="bd ${sCl[p.statut]||'bw'}" style="display:inline-flex"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span>`}
               ${row.statut==='invitation_envoyée'?`<span class="bd bl" style="display:inline-flex"><span class="bd-d"></span>En attente</span>`:''}
             </div>
             <div style="font-size:12px;color:var(--t2);margin-bottom:6px">${p.type_prestation||'—'} · ${p.reference||'—'}</div>
@@ -15512,7 +15512,7 @@ function renderPhotoPre(){
           ${row.statut==='invitation_envoyée'?`<div style="display:flex;flex-direction:column;gap:5px" onclick="event.stopPropagation()">
             <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px">✓ Accepter</button>
             <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
-          </div>`:(p.date_prestation===today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();switchView('jourj')" style="padding:10px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">🔴 Jour J</button>`:(p.date_prestation<today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();switchView('medias')" style="padding:10px 14px;font-size:12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">📦 Livrer</button>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
+          </div>`:(p.date_prestation===today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();switchView('jourj')" style="padding:10px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">🔴 Jour J</button>`:(p.date_prestation<today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();modalSauvegarde('${p.id}')" style="padding:10px 14px;font-size:12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">📦 Livrer</button>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
         </div>
       </div>
     </div>`;
@@ -29519,6 +29519,562 @@ async function secMarquerLivre(id){
 // ── Jour J photographe ───────────────────────────────────────────────────────
 let _jourjTimer=null;
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARCOURS OPÉRATEUR — module « Procédure terrain » (master prompt Fouka, 09/09/2026)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Rien n'est reconstruit ici : Mes missions, le Mode Terrain, les kits, les incidents et la
+// boucle de validation Production existent depuis la refonte Photo du 28/08. Ce bloc ajoute la
+// couche qui manquait — accompagner l'opérateur étape par étape, et empêcher les oublis.
+//
+// AUCUN NOUVEAU STATUT DB : statut_prestation traduit déjà toute la timeline demandée. Ce qui
+// suit est une couche de LIBELLÉS au-dessus des statuts existants, plus l'avancement personnel
+// de l'opérateur (mission_suivi_operateur), qui lui n'existait pas.
+//
+// La distinction qui motive tout le module (Fouka, 09/09) : la couverture terrain peut être
+// finie sans que le travail de l'opérateur le soit. D'où deux badges bien distincts —
+// « Prestation réalisée » à la fin du match, « Mission terminée » seulement à la clôture.
+
+// Les 14 etapes du parcours de l'operateur, dans l'ordre, chacune adossée à un statut réel de la prestation.
+// `phase` sépare ce qui se passe sur le terrain de ce qui se passe après : c'est elle qui fait
+// basculer l'interface vers Sauvegarde & post-production dès la fin de la couverture.
+const OPERATEUR_ETAPES=[
+  {k:'proposee',    lb:'Proposée',              statuts:['planifiée'],                        phase:'avant'},
+  {k:'acceptee',    lb:'Acceptée',              statuts:['équipe_affectée'],                  phase:'avant'},
+  {k:'preparer',    lb:'À préparer',            statuts:['équipe_affectée'],                  phase:'avant'},
+  {k:'prete',       lb:'Prête',                 statuts:['prête'],                            phase:'avant'},
+  {k:'route',       lb:'En route',              statuts:['équipe_en_route'],                  phase:'terrain'},
+  {k:'surplace',    lb:'Sur place',             statuts:['arrivée_sur_place'],                phase:'terrain'},
+  {k:'production',  lb:'Production en cours',   statuts:['production_démarrée'],              phase:'terrain'},
+  {k:'realisee',    lb:'Prestation réalisée',   statuts:['production_terminée'],              phase:'bascule'},
+  {k:'securiser',   lb:'Fichiers à sécuriser',  statuts:['médias_à_transférer'],              phase:'apres'},
+  {k:'postprod',    lb:'Post-production',       statuts:['médias_complets','à_monter','montage_en_cours'], phase:'apres'},
+  {k:'envoyee',     lb:'Livraison envoyée',     statuts:['prêt_validation'],                  phase:'apres'},
+  {k:'validation',  lb:'Validation Production', statuts:['à_valider_client','prête_à_livrer'],phase:'apres'},
+  {k:'materiel',    lb:'Matériel réglé',        statuts:['livrée'],                           phase:'apres'},
+  {k:'terminee',    lb:'Mission terminée',      statuts:['clôturée','payée','facturée'],      phase:'fin'},
+];
+
+// Les seules transitions que l'opérateur déclenche lui-même. Elles suivent exactement
+// validate_prestation_statut_transition : proposer un bouton que la base refuserait serait pire
+// que ne pas le proposer du tout.
+const OPERATEUR_ACTIONS={
+  'équipe_affectée':   {lb:'✓ Kit prêt, je peux partir', ns:'prête',                suivi:'kit_prepare_at',         clr:'var(--ok)'},
+  'prête':             {lb:'🚗 Je suis en route',        ns:'équipe_en_route',       suivi:'parti_at',               clr:'var(--acc)'},
+  'équipe_en_route':   {lb:'📍 Je suis arrivé',          ns:'arrivée_sur_place',     suivi:'arrive_at',              clr:'var(--wa)'},
+  'arrivée_sur_place': {lb:'▶ Démarrer la production',   ns:'production_démarrée',   suivi:null,                     clr:'var(--er)'},
+  'production_démarrée':{lb:'⏹ Prestation terminée',     ns:'production_terminée',   suivi:'prestation_terminee_at', clr:'var(--ok)', bascule:true},
+  'production_terminée':{lb:'💾 Fichiers sauvegardés',   ns:'médias_à_transférer',   suivi:'fichiers_securises_at',  clr:'#7C4DFF'},
+  'médias_à_transférer':{lb:'✓ Copie vérifiée',          ns:'médias_complets',       suivi:null,                     clr:'var(--ok)'},
+};
+
+function parcoursIndex(statut){
+  for(let i=OPERATEUR_ETAPES.length-1;i>=0;i--){
+    if(OPERATEUR_ETAPES[i].statuts.includes(statut))return i;
+  }
+  return 0;
+}
+
+// Les deux badges que Fouka a validés le 09/09.
+//
+// « Prestation réalisée » dit UNIQUEMENT que la couverture sur place est finie. Il apparaît dès
+// production_terminée et ne disparaît plus. « Mission terminée » n'apparaît qu'à la clôture, une
+// fois tout ce qui est applicable validé. Entre les deux, un badge orange dit où en est le
+// travail restant, pour qu'aucun opérateur ne puisse lire « match fini » comme « mission finie ».
+function badgesParcours(p){
+  const i=parcoursIndex(p.statut);
+  const realisee=i>=parcoursIndex('production_terminée');
+  const terminee=['clôturée','payée','facturée'].includes(p.statut);
+  let h='';
+  if(realisee)h+=`<span class="bd bn" style="display:inline-flex"><span class="bd-d"></span>✅ Prestation réalisée</span>`;
+  if(terminee){
+    h+=`<span class="bd bn" style="display:inline-flex"><span class="bd-d"></span>✅ Mission terminée</span>`;
+  }else if(realisee){
+    const et=OPERATEUR_ETAPES[i];
+    h+=`<span class="bd bw" style="display:inline-flex"><span class="bd-d"></span>🟠 ${esc(et.lb)}</span>`;
+  }else{
+    h+=`<span class="bd ${SC[p.statut]||'bw'}" style="display:inline-flex"><span class="bd-d"></span>${esc(SL[p.statut]||p.statut)}</span>`;
+  }
+  return h;
+}
+
+// La timeline verticale, avec l'étape courante mise en avant.
+function timelineParcours(p){
+  const cur=parcoursIndex(p.statut);
+  return OPERATEUR_ETAPES.map((et,i)=>{
+    const fait=i<cur, ici=i===cur;
+    const clr=fait?'var(--ok)':ici?'var(--acc)':'var(--t3)';
+    const pastille=fait?'✓':ici?'●':'○';
+    const poids=ici?'700':fait?'500':'400';
+    const sep=et.k==='realisee'?'border-top:1px dashed rgba(255,255,255,.12);margin-top:6px;padding-top:8px':'';
+    return `<div style="display:flex;align-items:center;gap:9px;padding:3px 0;${sep}">
+      <span style="width:15px;text-align:center;color:${clr};font-size:12px;flex-shrink:0">${pastille}</span>
+      <span style="font-size:12.5px;color:${fait?'var(--t2)':ici?'var(--t1)':'var(--t3)'};font-weight:${poids}">${esc(et.lb)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Les checklists, commandées par la couverture ────────────────────────────
+//
+// §43 et §45 : une mission photo ne demande jamais « montage vidéo », une mission vidéo ne
+// demande jamais Lightroom, et on ne met pas 45 cases avant un match. Deux groupes courts, un
+// avant le départ, un après la prestation.
+//
+// §50 : une case doit représenter une action vérifiable. Rien du genre « je serai
+// professionnel » — les règles de comportement sont des consignes, pas des cases.
+function checklistAvant(couverture){
+  const c=[
+    {k:'boitier',    lb:'Boîtier et objectifs présents'},
+    {k:'batteries',  lb:'Batteries présentes et chargées'},
+    {k:'cartes',     lb:'Cartes SD présentes et vérifiées'},
+    {k:'test',       lb:'Carte reconnue, quelques prises de test faites'},
+    {k:'tenue',      lb:'Tenue SportVision'},
+  ];
+  if(couverture==='video'||couverture==='photo_video')c.splice(3,0,{k:'materiel_video',lb:'Matériel vidéo (micro, stabilisateur) selon mission'});
+  return c;
+}
+function checklistApres(couverture){
+  const c=[
+    {k:'copie',      lb:'Tous les fichiers copiés sur le disque'},
+    {k:'ouverture',  lb:'J’ai vérifié que les fichiers s’ouvrent'},
+  ];
+  if(couverture==='photo'||couverture==='photo_video'){
+    c.push({k:'lightroom',lb:'Photos importées, triées et traitées au preset du club'});
+    c.push({k:'export_photo',lb:'Export photo aux paramètres SportVision'});
+  }
+  if(couverture==='video'||couverture==='photo_video'){
+    c.push({k:'montage',lb:'Montage final réalisé au format demandé'});
+    c.push({k:'rushs',lb:'Rushs vidéo conservés et prêts à transmettre'});
+  }
+  c.push({k:'batteries_charge',lb:'Batteries remises à charger, matériel vérifié'});
+  return c;
+}
+
+// ── Chargement de l'avancement personnel ────────────────────────────────────
+async function chargerSuivi(prestationId){
+  const uid=localStorage.getItem('sv_uid');
+  if(!uid)return null;
+  try{
+    const r=await sbFetch('mission_suivi_operateur?select=*&prestation_id=eq.'+prestationId+'&collaborateur_id=eq.'+uid);
+    if(Array.isArray(r)&&r.length)return r[0];
+    return null;
+  }catch(e){return null;}
+}
+
+async function majSuivi(prestationId,patch){
+  const uid=localStorage.getItem('sv_uid');
+  if(!uid)return {ok:false,msg:'Session expirée.'};
+  const existant=await chargerSuivi(prestationId);
+  let r;
+  if(existant){
+    r=await sbFetch('mission_suivi_operateur?id=eq.'+existant.id,{method:'PATCH',body:Object.assign({updated_at:new Date().toISOString()},patch)});
+  }else{
+    r=await sbFetch('mission_suivi_operateur',{method:'POST',body:Object.assign({prestation_id:prestationId,collaborateur_id:uid},patch)});
+  }
+  // Le déclencheur de libération des cartes remonte ici : son message dit précisément ce qui
+  // manque, il vaut mieux que n'importe quel texte générique.
+  if(sbErr(r))return {ok:false,msg:msgErreur(r,'Enregistrement impossible.')};
+  return {ok:true};
+}
+
+async function cocherEtape(prestationId,cle,valeur){
+  const suivi=await chargerSuivi(prestationId);
+  const etapes=Object.assign({},suivi?.etapes||{});
+  if(valeur)etapes[cle]={fait:true,at:new Date().toISOString()};
+  else delete etapes[cle];
+  const res=await majSuivi(prestationId,{etapes});
+  if(!res.ok)toast(res.msg,'er');
+  return res.ok;
+}
+
+// ── Avancer d'une étape ─────────────────────────────────────────────────────
+//
+// Une seule fonction pour tout le parcours : elle change le statut de la prestation ET pose
+// l'horodatage personnel. Les deux vont ensemble — un statut avancé sans trace de qui l'a fait
+// ni quand ne sert à rien le jour où il faut comprendre un couac (§57).
+async function avancerParcours(prestationId,statutActuel){
+  const act=OPERATEUR_ACTIONS[statutActuel];
+  if(!act)return;
+  const r=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:act.ns}});
+  if(sbErr(r)){toast(msgErreur(r,'Impossible d’avancer la mission.'),'er');return;}
+  if(act.suivi){
+    const res=await majSuivi(prestationId,{[act.suivi]:new Date().toISOString()});
+    if(!res.ok)toast(res.msg,'warn');
+  }
+  if(act.bascule){
+    // §20 et §48 : c'est ICI que le module gagne sa raison d'être. Le match est fini, la
+    // mission ne l'est pas, et l'écran doit le dire avant de laisser partir l'opérateur.
+    modalBasculeSauvegarde(prestationId);
+    return;
+  }
+  toast('Étape enregistrée.','ok');
+  rafraichirParcours(prestationId);
+}
+
+function rafraichirParcours(prestationId){
+  if(typeof loadJourJ==='function'&&document.getElementById('jourj-real'))loadJourJ();
+  if(typeof loadPhotoMesPrestations==='function'&&document.getElementById('photo-pre-real'))loadPhotoMesPrestations();
+  if(prestationId&&document.getElementById('parcours-corps'))modalParcoursMission(prestationId);
+}
+
+// Le message d'après-match. Validé mot pour mot par Fouka le 09/09.
+function modalBasculeSauvegarde(prestationId){
+  openModal(`<div class="mh"><div class="mt">Prestation réalisée</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+  <div class="mb" style="padding:20px">
+    <div style="display:flex;justify-content:center;margin-bottom:14px"><div style="font-size:40px">✅</div></div>
+    <div style="background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.3);border-radius:12px;padding:16px;margin-bottom:18px">
+      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px">La couverture terrain est terminée.</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.55">
+        Votre mission SportVision reste ouverte jusqu’à la sécurisation des fichiers, la livraison
+        et la validation Production.
+      </div>
+    </div>
+    <button class="btn bp" style="width:100%;min-height:46px" onclick="closeModal();modalSauvegarde('${escJs(prestationId)}')">Continuer vers la sauvegarde</button>
+  </div>`);
+}
+
+// ── Le nom de dossier conseillé (§22, §23) ──────────────────────────────────
+//
+// Objectif : que n'importe qui à la Production retrouve les fichiers. On propose le nom, on ne
+// l'impose pas — l'OS ne touche à aucun fichier.
+function nomDossierMission(p){
+  const net=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'');
+  const d=p.date_prestation||ymdLocal();
+  const bouts=[d,net(p.clients?.nom)].filter(Boolean);
+  if(p.equipes)bouts.push(net(p.equipes));
+  return bouts.join('_');
+}
+
+function copierNomDossier(nom){
+  navigator.clipboard?.writeText(nom).then(()=>toast('Nom de dossier copié.','ok')).catch(()=>toast('Copie impossible.','warn'));
+}
+
+// ── L'écran Sauvegarde & livraison ──────────────────────────────────────────
+//
+// Le cœur du module. Il porte la règle absolue : une carte n'est jamais vidée tant que les
+// fichiers ne sont pas réellement sécurisés (§24, §37, §65). L'écran l'explique, la base
+// l'impose — le déclencheur proteger_liberation_cartes() refuse la libération tant que les
+// fichiers ne sont pas déclarés sécurisés ET qu'aucune livraison n'a son transfert confirmé.
+async function modalSauvegarde(prestationId){
+  openModal(`<div class="mh"><div class="mt">Sauvegarde &amp; livraison</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="padding:20px" id="sauv-corps"><div style="text-align:center;color:var(--t3);font-size:13px;padding:30px">Chargement…</div></div>`);
+  const pr=await sbFetch('prestations?id=eq.'+prestationId+'&select=id,reference,statut,couverture,date_prestation,equipes,deadline_photo_at,deadline_video_at,clients(nom,photo_preset_name,photo_preset_notes)');
+  const p=Array.isArray(pr)&&pr[0];
+  const corps=document.getElementById('sauv-corps');
+  if(!p||!corps){if(corps)corps.innerHTML='<div style="color:var(--er);font-size:13px">Mission introuvable.</div>';return;}
+  const suivi=await chargerSuivi(prestationId);
+  const liens=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,statut,transfert_confirme&prestation_id=eq.'+prestationId).catch(()=>[]);
+  const L=Array.isArray(liens)?liens:[];
+  const cov=p.couverture;
+  const dossier=nomDossierMission(p);
+
+  // §32 : la mission ne peut pas être « livrée » si seule la photo est faite alors que la vidéo
+  // était demandée. Chaque livrable attendu est déduit de la couverture, jamais supposé.
+  const attendus=[];
+  if(cov==='photo'||cov==='photo_video')attendus.push({k:'photo',lb:'Photos traitées',cat:'final',tm:'photo'});
+  if(cov==='video'||cov==='photo_video'){
+    attendus.push({k:'montage',lb:'Montage final',cat:'final',tm:'video'});
+    attendus.push({k:'rushs',lb:'Rushs vidéo',cat:'rushs',tm:'video'});
+  }
+  const trouve=a=>L.find(l=>l.categorie===a.cat&&l.type_media===a.tm);
+  const tousFournis=attendus.length>0&&attendus.every(a=>trouve(a));
+  const transfertOk=L.some(l=>l.transfert_confirme);
+  const secures=!!suivi?.fichiers_securises_at;
+  const cartesOk=!!suivi?.cartes_liberees_at;
+
+  const fmtDl=d=>d?new Date(d).toLocaleString('fr-FR',{weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}):null;
+  let echeances='';
+  const dlP=fmtDl(p.deadline_photo_at), dlV=fmtDl(p.deadline_video_at);
+  if((cov==='photo'||cov==='photo_video')&&dlP)echeances+=`<div style="font-size:12.5px;color:var(--t2)">Photos : <b style="color:var(--t1)">${esc(dlP)}</b></div>`;
+  if((cov==='video'||cov==='photo_video')&&dlV)echeances+=`<div style="font-size:12.5px;color:var(--t2)">Vidéo + rushs : <b style="color:var(--t1)">${esc(dlV)}</b></div>`;
+  if(!echeances)echeances=`<div style="font-size:12.5px;color:var(--t3)">Aucune échéance renseignée</div>`;
+
+  corps.innerHTML=`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:3px">${esc(p.clients?.nom||'—')}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${esc(p.reference||'')} · ${cov?esc({photo:'Photo',video:'Vidéo',photo_video:'Photo + vidéo'}[cov]):'<span style="color:var(--wa)">Type de couverture à renseigner</span>'}</div>
+
+    <div style="background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.28);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:800;color:var(--er);margin-bottom:6px">RÈGLE SPORTVISION</div>
+      <div style="font-size:13px;color:var(--t1);line-height:1.5">
+        Une carte contenant des fichiers n’est jamais formatée sans confirmation que son contenu
+        est sécurisé. Copie vérifiée sur le disque <b>et</b> livraison partie avant tout effacement.
+      </div>
+    </div>
+
+    <div style="background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:13px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Dossier conseillé</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <code style="font-size:12px;color:var(--t1);background:rgba(255,255,255,.05);padding:5px 8px;border-radius:6px;word-break:break-all">${esc(dossier)}</code>
+        <button class="btn bg2 bs" onclick="copierNomDossier('${escJs(dossier)}')">Copier</button>
+      </div>
+      <div style="font-size:11px;color:var(--t3);margin-top:7px">Puis 01_PHOTOS_RAW · 02_PHOTOS_EXPORT · 03_VIDEO_RUSHS · 04_VIDEO_MONTAGE · 05_LIVRAISON</div>
+    </div>
+
+    ${(cov==='photo'||cov==='photo_video')?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:13px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Traitement demandé</div>
+      ${p.clients?.photo_preset_name
+        ? `<div style="font-size:13.5px;font-weight:700;color:var(--t1)">${esc(p.clients.photo_preset_name)}</div>
+           ${p.clients.photo_preset_notes?`<div style="font-size:12px;color:var(--t2);margin-top:5px;line-height:1.5">${esc(p.clients.photo_preset_notes)}</div>`:''}`
+        : `<div style="font-size:13px;color:var(--wa);font-weight:600">Preset non renseigné — vérifier avec Production</div>`}
+    </div>`:''}
+
+    <div style="background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:13px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Échéances</div>
+      ${echeances}
+    </div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Livrables attendus pour cette couverture</div>
+    <div style="margin-bottom:16px">
+      ${attendus.length?attendus.map(a=>{
+        const l=trouve(a);
+        return `<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+          <span style="font-size:14px;color:${l?'var(--ok)':'var(--t3)'}">${l?'✓':'○'}</span>
+          <span style="flex:1;font-size:13px;color:var(--t1)">${esc(a.lb)}</span>
+          ${l?`<span style="font-size:11px;color:var(--t3);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.nom||l.url)}</span>`
+             :`<button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}')">+ Lien</button>`}
+        </div>`;
+      }).join(''):'<div style="font-size:12.5px;color:var(--wa)">Couverture non renseignée : Production doit la préciser avant que les livrables puissent être exigés.</div>'}
+    </div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Sécurisation</div>
+    <label style="display:flex;align-items:flex-start;gap:9px;padding:9px 0;cursor:${secures?'default':'pointer'}">
+      <input type="checkbox" ${secures?'checked disabled':''} onchange="marquerFichiersSecurises('${escJs(prestationId)}')" style="width:16px;height:16px;margin-top:1px;accent-color:var(--ok)">
+      <span style="font-size:13px;color:var(--t1)">Fichiers copiés sur le disque et vérifiés (je les ai ouverts)</span>
+    </label>
+    <div style="display:flex;align-items:flex-start;gap:9px;padding:9px 0">
+      <span style="font-size:14px;color:${transfertOk?'var(--ok)':'var(--t3)'};width:16px;text-align:center">${transfertOk?'✓':'○'}</span>
+      <span style="font-size:13px;color:var(--t2)">Seconde copie sécurisée (au moins une livraison au transfert confirmé)</span>
+    </div>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--b1)">
+      ${cartesOk
+        ? `<div style="background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:10px;padding:12px;font-size:13px;color:var(--ok);font-weight:600">✓ Cartes préparables pour la prochaine mission</div>`
+        : `<button class="btn ${(secures&&transfertOk)?'bp':'bg2'}" style="width:100%;min-height:44px" ${(secures&&transfertOk)?'':'disabled'} onclick="libererCartes('${escJs(prestationId)}')">
+             Déclarer les cartes préparables
+           </button>
+           ${(secures&&transfertOk)?'':`<div style="font-size:11.5px;color:var(--t3);margin-top:7px;line-height:1.45">Débloqué une fois les fichiers vérifiés <b>et</b> une livraison transférée. C’est la base qui l’impose, pas cet écran.</div>`}`}
+    </div>
+
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn bg2 bs" onclick="modalIncidentFichiers('${escJs(prestationId)}')">⚠ Problème avec les fichiers</button>
+      ${tousFournis&&p.statut==='montage_en_cours'?`<button class="btn bp bs" onclick="envoyerAProduction('${escJs(prestationId)}')">📤 Envoyer à Production</button>`:''}
+    </div>`;
+}
+
+async function marquerFichiersSecurises(prestationId){
+  const res=await majSuivi(prestationId,{fichiers_securises_at:new Date().toISOString()});
+  if(!res.ok){toast(res.msg,'er');return;}
+  toast('Fichiers déclarés sécurisés.','ok');
+  modalSauvegarde(prestationId);
+}
+
+async function libererCartes(prestationId){
+  const res=await majSuivi(prestationId,{cartes_liberees_at:new Date().toISOString()});
+  // Le refus vient du déclencheur en base : son message dit exactement ce qui manque.
+  if(!res.ok){toast(res.msg,'er');return;}
+  toast('Cartes préparables pour la prochaine mission.','ok');
+  modalSauvegarde(prestationId);
+}
+
+// §28 et §31 : l'opérateur colle un lien externe, l'OS pilote et trace. Pas d'upload de RAW ni
+// de rushs dans l'OS (décision Fouka, V1) — il ne devient pas un NAS vidéo.
+function modalAjouterLivrable(prestationId,categorie,typeMedia,libelle){
+  openModal(`<div class="mh"><div class="mt">${esc(libelle)}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+  <div class="mb" style="padding:20px">
+    <div style="font-size:12.5px;color:var(--t2);margin-bottom:14px">Collez le lien de livraison (Drive, WeTransfer, SwissTransfer…).</div>
+    <label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Lien</label>
+    <input id="liv-url" type="url" placeholder="https://…" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:13px">
+    <label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Nombre de fichiers (facultatif)</label>
+    <input id="liv-nb" type="number" min="0" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:13px">
+    <label style="display:flex;align-items:flex-start;gap:9px;margin-bottom:16px;cursor:pointer">
+      <input id="liv-transfert" type="checkbox" style="width:16px;height:16px;margin-top:2px;accent-color:var(--ok)">
+      <span style="font-size:12.5px;color:var(--t1)">Transfert terminé et vérifié. <span style="color:var(--t3)">C’est cette confirmation qui autorisera la préparation des cartes.</span></span>
+    </label>
+    <div id="liv-err" style="font-size:12px;color:var(--er);margin-bottom:10px"></div>
+    <button class="btn bp" style="width:100%;min-height:44px" onclick="enregistrerLivrable('${escJs(prestationId)}','${escJs(categorie)}','${escJs(typeMedia)}','${escJs(libelle)}')">Enregistrer le lien</button>
+  </div>`);
+}
+
+async function enregistrerLivrable(prestationId,categorie,typeMedia,libelle){
+  const url=(document.getElementById('liv-url')?.value||'').trim();
+  const nb=document.getElementById('liv-nb')?.value;
+  const transfert=!!document.getElementById('liv-transfert')?.checked;
+  const err=document.getElementById('liv-err');
+  if(!url){if(err)err.textContent='Le lien est obligatoire.';return;}
+  const uid=localStorage.getItem('sv_uid');
+  const body={prestation_id:prestationId,nom:libelle,url,categorie,type_media:typeMedia,statut:'a_verifier',ajouteur_id:uid};
+  if(nb)body.nombre_fichiers=Number(nb);
+  if(transfert){body.transfert_confirme=true;body.transfert_confirme_at=new Date().toISOString();}
+  const r=await sbFetch('media_liens',{method:'POST',body});
+  if(sbErr(r)){if(err)err.textContent=msgErreur(r,'Enregistrement impossible.');return;}
+  closeModal();
+  toast('Lien enregistré.','ok');
+  modalSauvegarde(prestationId);
+}
+
+// §55 : carte corrompue, fichier manquant, disque endommagé. Production doit l'apprendre tout
+// de suite, pas au moment où elle cherche les photos. Réutilise la table incidents existante.
+function modalIncidentFichiers(prestationId){
+  openModal(`<div class="mh"><div class="mt">Problème avec les fichiers</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+  <div class="mb" style="padding:20px">
+    <div style="font-size:12.5px;color:var(--t2);margin-bottom:14px">Production est prévenue immédiatement. N’effacez rien en attendant.</div>
+    <select id="inc-type" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:12px">
+      <option value="carte_corrompue">Carte corrompue</option>
+      <option value="fichier_manquant">Fichier manquant</option>
+      <option value="disque_endommage">Disque endommagé</option>
+      <option value="erreur_import">Erreur d’import</option>
+      <option value="images_illisibles">Images illisibles</option>
+      <option value="autre">Autre</option>
+    </select>
+    <textarea id="inc-desc" rows="4" placeholder="Décrivez ce qui s’est passé" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:12px"></textarea>
+    <div id="inc-err" style="font-size:12px;color:var(--er);margin-bottom:10px"></div>
+    <button class="btn bp" style="width:100%;min-height:44px" onclick="enregistrerIncidentFichiers('${escJs(prestationId)}')">Signaler à Production</button>
+  </div>`);
+}
+
+async function enregistrerIncidentFichiers(prestationId){
+  const type=document.getElementById('inc-type')?.value;
+  const desc=(document.getElementById('inc-desc')?.value||'').trim();
+  const err=document.getElementById('inc-err');
+  if(!desc){if(err)err.textContent='Décrivez le problème.';return;}
+  const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,declare_par:localStorage.getItem('sv_uid'),type_incident:type,niveau:'majeur',description:desc,date_incident:new Date().toISOString(),cloture:false}});
+  if(sbErr(r)){if(err)err.textContent=msgErreur(r,'Signalement impossible.');return;}
+  closeModal();
+  toast('Production est prévenue.','ok');
+}
+
+// §9 : une carte qui contient déjà des fichiers ne se vide pas. On identifie, on demande, on
+// attend confirmation. L'OS ne supprime jamais rien (§54) — il ouvre juste le bon canal.
+function modalCarteNonVide(prestationId){
+  openModal(`<div class="mh"><div class="mt">Carte non vide</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+  <div class="mb" style="padding:20px">
+    <div style="background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.3);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:13.5px;font-weight:700;color:var(--t1);margin-bottom:6px">Ne supprimez rien.</div>
+      <div style="font-size:12.5px;color:var(--t2);line-height:1.55">
+        Ces fichiers appartiennent peut-être à une mission précédente qui n’a pas encore été
+        sauvegardée. Production identifie l’ancienne mission et confirme avant toute préparation.
+      </div>
+    </div>
+    <textarea id="cnv-desc" rows="3" placeholder="Ce que contient la carte (dates, nombre de fichiers, appareil…)" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:12px"></textarea>
+    <div id="cnv-err" style="font-size:12px;color:var(--er);margin-bottom:10px"></div>
+    <button class="btn bp" style="width:100%;min-height:44px" onclick="signalerCarteNonVide('${escJs(prestationId)}')">Signaler à Production</button>
+  </div>`);
+}
+
+async function signalerCarteNonVide(prestationId){
+  const desc=(document.getElementById('cnv-desc')?.value||'').trim();
+  const err=document.getElementById('cnv-err');
+  if(!desc){if(err)err.textContent='Décrivez le contenu constaté.';return;}
+  const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,declare_par:localStorage.getItem('sv_uid'),type_incident:'carte_non_vide',niveau:'majeur',description:'Carte SD non vide avant mission — '+desc,date_incident:new Date().toISOString(),cloture:false}});
+  if(sbErr(r)){if(err)err.textContent=msgErreur(r,'Signalement impossible.');return;}
+  closeModal();
+  toast('Production est prévenue. N’effacez rien en attendant sa réponse.','warn');
+}
+
+async function envoyerAProduction(prestationId){
+  const r=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:'prêt_validation'}});
+  if(sbErr(r)){toast(msgErreur(r,'Envoi impossible.'),'er');return;}
+  await majSuivi(prestationId,{livre_at:new Date().toISOString(),postproduction_terminee_at:new Date().toISOString()});
+  toast('Livraison envoyée à Production.','ok');
+  closeModal();
+  rafraichirParcours(prestationId);
+}
+
+// ── « Ouvrir ma mission » : l'écran guidé ───────────────────────────────────
+//
+// Un seul écran qui répond aux questions du §Objectif : où j'en suis, ce que je dois vérifier,
+// où je vais, à quelle heure, quel brief, qui appeler, et quelle est la prochaine action.
+// Conçu pour 390 px d'abord (§46) : une colonne, des blocs courts, un seul bouton principal.
+async function modalParcoursMission(prestationId){
+  const deja=document.getElementById('parcours-corps');
+  if(!deja){
+    openModal(`<div class="mh"><div class="mt">Ma mission</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+      <div class="mb" style="padding:18px" id="parcours-corps"><div style="text-align:center;color:var(--t3);font-size:13px;padding:30px">Chargement…</div></div>`);
+  }
+  const pr=await sbFetch('prestations?id=eq.'+prestationId+'&select=id,reference,statut,couverture,type_prestation,date_prestation,heure_debut,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,description_besoin,equipes,deadline_photo_at,deadline_video_at,clients(nom,photo_preset_name,photo_preset_notes),profiles!prestations_responsable_prod_id_fkey(prenom,nom,telephone)');
+  const p=Array.isArray(pr)&&pr[0];
+  const corps=document.getElementById('parcours-corps');
+  if(!p||!corps){if(corps)corps.innerHTML='<div style="color:var(--er);font-size:13px">Mission introuvable.</div>';return;}
+  const suivi=await chargerSuivi(prestationId);
+  const etapes=suivi?.etapes||{};
+  const cov=p.couverture;
+  const act=OPERATEUR_ACTIONS[p.statut];
+  const idx=parcoursIndex(p.statut);
+  const avantDepart=idx<parcoursIndex('équipe_en_route');
+  const apresPresta=idx>=parcoursIndex('production_terminée');
+
+  const liste=avantDepart?checklistAvant(cov):apresPresta?checklistApres(cov):[];
+  const tousCoches=liste.every(i=>etapes[i.k]?.fait);
+
+  const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'—';
+  const rdv=(p.heure_rdv||'').slice(0,5), deb=(p.heure_debut||'').slice(0,5);
+  const addr=p.adresse_complete||p.lieu||'';
+  const prod=p.profiles;
+
+  corps.innerHTML=`
+    <div style="margin-bottom:14px">
+      <div style="font-size:17px;font-weight:800;color:var(--t1);line-height:1.25">${esc(p.clients?.nom||'—')}${p.equipes?' — '+esc(p.equipes):''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${badgesParcours(p)}</div>
+    </div>
+
+    <div style="background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:13px;margin-bottom:14px">
+      <div style="font-size:13px;color:var(--t1);font-weight:600;text-transform:capitalize">${esc(d)}</div>
+      <div style="display:flex;gap:18px;margin-top:8px">
+        ${deb?`<div><div style="font-size:10.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">Début</div><div style="font-size:19px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums">${deb}</div></div>`:''}
+        ${rdv?`<div><div style="font-size:10.5px;color:var(--wa);text-transform:uppercase;letter-spacing:.05em;font-weight:700">Arrivée demandée</div><div style="font-size:19px;font-weight:800;color:var(--wa);font-variant-numeric:tabular-nums">${rdv}</div></div>`
+             :`<div><div style="font-size:10.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">Arrivée</div><div style="font-size:12.5px;color:var(--t2);margin-top:4px">30 à 45 min avant</div></div>`}
+      </div>
+      ${addr?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:8px">
+        <span style="font-size:15px">📍</span>
+        <span style="flex:1;font-size:12.5px;color:var(--t1);min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(addr)}</span>
+        <a href="https://maps.google.com/?q=${encodeURIComponent(addr)}" target="_blank" rel="noopener" class="btn bg2 bs" style="text-decoration:none;flex-shrink:0">Itinéraire</a>
+      </div>`:''}
+    </div>
+
+    <div style="background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:13px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Votre brief</div>
+      <div style="font-size:12.5px;color:var(--t2);margin-bottom:7px">Couverture : <b style="color:var(--t1)">${cov?esc({photo:'Photo',video:'Vidéo',photo_video:'Photo + vidéo'}[cov]):'<span style="color:var(--wa)">à renseigner par Production</span>'}</b></div>
+      <div style="font-size:13px;color:var(--t1);line-height:1.55;white-space:pre-wrap">${p.description_besoin?esc(p.description_besoin):'<span style="color:var(--t3)">Aucun brief renseigné — demandez-le à Production avant de partir.</span>'}</div>
+    </div>
+
+    ${(p.contact_sur_place||p.telephone_sur_place||prod)?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:13px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Qui appeler</div>
+      ${p.contact_sur_place?`<div style="display:flex;align-items:center;gap:8px;padding:5px 0">
+        <span style="flex:1;font-size:12.5px;color:var(--t1)">${esc(p.contact_sur_place)} <span style="color:var(--t3)">· sur place</span></span>
+        ${p.telephone_sur_place?`<a href="tel:${esc(p.telephone_sur_place.replace(/[\s\-()]/g,''))}" class="btn bg2 bs" style="text-decoration:none">Appeler</a>`:''}
+      </div>`:''}
+      ${prod?`<div style="display:flex;align-items:center;gap:8px;padding:5px 0">
+        <span style="flex:1;font-size:12.5px;color:var(--t1)">${esc([prod.prenom,prod.nom].filter(Boolean).join(' '))} <span style="color:var(--t3)">· Production</span></span>
+        ${prod.telephone?`<a href="tel:${esc(String(prod.telephone).replace(/[\s\-()]/g,''))}" class="btn bg2 bs" style="text-decoration:none">Appeler</a>`:''}
+      </div>`:''}
+    </div>`:''}
+
+    ${liste.length?`<div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">${avantDepart?'Avant de partir':'Après la prestation'}</div>
+      ${liste.map(i=>`<label style="display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer">
+        <input type="checkbox" ${etapes[i.k]?.fait?'checked':''} onchange="cocherEtape('${escJs(prestationId)}','${escJs(i.k)}',this.checked).then(ok=>{if(ok)modalParcoursMission('${escJs(prestationId)}')})" style="width:16px;height:16px;margin-top:1px;accent-color:var(--ok);flex-shrink:0">
+        <span style="font-size:13px;color:var(--t1);line-height:1.4">${esc(i.lb)}</span>
+      </label>`).join('')}
+      ${avantDepart?`<button class="btn bg2 bs" style="margin-top:9px" onclick="modalCarteNonVide('${escJs(prestationId)}')">⚠ Une carte n’est pas vide</button>`:''}
+    </div>`:''}
+
+    ${act?`<button class="btn ${tousCoches||!liste.length?'bp':'bg2'}" style="width:100%;min-height:46px;margin-bottom:6px" ${(liste.length&&!tousCoches)?'disabled':''} onclick="avancerParcours('${escJs(prestationId)}','${escJs(p.statut)}')">${esc(act.lb)}</button>
+      ${(liste.length&&!tousCoches)?`<div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Cochez la liste ci-dessus pour débloquer cette étape.</div>`:''}`:''}
+
+    ${apresPresta?`<button class="btn bg2" style="width:100%;min-height:44px;margin-bottom:12px" onclick="closeModal();modalSauvegarde('${escJs(prestationId)}')">💾 Sauvegarde &amp; livraison</button>`:''}
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn bg2 bs" onclick="modalSignalerRetard()">⏰ Retard</button>
+      <button class="btn bg2 bs" onclick="modalSignalerIncident()">⚠ Incident</button>
+      <button class="btn bg2 bs" onclick="switchView('form')">📘 Guide terrain</button>
+    </div>
+
+    <details style="border-top:1px solid var(--b1);padding-top:12px">
+      <summary style="font-size:12px;color:var(--t3);cursor:pointer">Où en est ma mission</summary>
+      <div style="margin-top:10px">${timelineParcours(p)}</div>
+    </details>`;
+}
+
 async function loadJourJ(){
   const el=document.getElementById('jourj-real');
   const dateEl=document.getElementById('jourj-date');
@@ -29554,11 +30110,14 @@ async function loadJourJ(){
         if(Array.isArray(rawK))rawK.forEach(k=>{if(!kitsMap[k.prestation_id])kitsMap[k.prestation_id]=[];kitsMap[k.prestation_id].push(k);});
       }catch(e){}
     }
+    // 09/09/2026 — Les libelles restent, l'action passe desormais par avancerParcours() :
+    // elle pose l'horodatage personnel (mission_suivi_operateur) en plus du statut, et
+    // declenche la bascule vers Sauvegarde apres « Prestation terminee ».
     const JOURJ_BTNS={
       'prête':{lb:'🚗 Je suis en route',ns:'équipe_en_route',clr:'var(--acc)',tc:'#fff'},
       'équipe_en_route':{lb:'📍 Je suis arrivé',ns:'arrivée_sur_place',clr:'var(--wa)',tc:'#fff'},
       'arrivée_sur_place':{lb:'▶ Démarrer la production',ns:'production_démarrée',clr:'var(--er)',tc:'#fff'},
-      'production_démarrée':{lb:'⏹ Production terminée',ns:'production_terminée',clr:'var(--ok)',tc:'#fff'},
+      'production_démarrée':{lb:'⏹ Prestation terminée',ns:'production_terminée',clr:'var(--ok)',tc:'#fff'},
       'production_terminée':{lb:'📤 Médias transférés',ns:'médias_à_transférer',clr:'#7C4DFF',tc:'#fff'},
       'médias_à_transférer':{lb:'✓ Médias complets',ns:'médias_complets',clr:'var(--ok)',tc:'#fff'},
     };
@@ -29726,6 +30285,24 @@ async function avanJourJ(id,newStatut){
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:newStatut}});
     if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
+    // 09/09/2026 — Deux ajouts au meme endroit, pour ne pas dupliquer le chemin d'avancement.
+    //
+    // 1. L'horodatage personnel : savoir QUE la mission est passee « arrivee sur place » ne dit
+    //    pas qui est arrive ni quand. C'est precisement ce qu'on regarde apres un couac (§57).
+    // 2. La bascule d'apres-match : sur `production_terminée`, l'ecran doit dire que la
+    //    couverture est finie mais que la mission reste ouverte, sinon l'operateur repart en
+    //    pensant avoir termine. C'est tout l'objet du module.
+    const _mapSuivi={'prête':'kit_prepare_at','équipe_en_route':'parti_at','arrivée_sur_place':'arrive_at','production_terminée':'prestation_terminee_at','médias_à_transférer':'fichiers_securises_at'};
+    if(typeof majSuivi==='function'&&_mapSuivi[newStatut]){
+      const res=await majSuivi(id,{[_mapSuivi[newStatut]]:new Date().toISOString()});
+      if(!res.ok)toast(res.msg,'warn');
+    }
+    if(newStatut==='production_terminée'&&typeof modalBasculeSauvegarde==='function'){
+      loadViewData(S.role,S.view);
+      updateNavBadges(S.role);
+      modalBasculeSauvegarde(id);
+      return;
+    }
     toast(SL[newStatut]||newStatut,'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
