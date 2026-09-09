@@ -4516,6 +4516,26 @@ function urlSure(u){
   }catch(e){return null;}
 }
 
+
+// Une image et un lien n'ont pas la meme regle, et les confondre casse l'un ou ouvre l'autre.
+//
+// Regression du 09/09/2026 : urlSure() a d'abord ete appliquee aux avatars. Or les avatars du
+// staff sont stockes en `data:image/jpeg;base64,...`, que urlSure() refuse a juste titre — pour
+// un href, `data:text/html` navigue et execute. Resultat : les quatre avatars renseignes ne
+// s'affichaient plus.
+//
+// Un `data:` dans `<img src>` ne navigue pas et n'execute rien, a condition que le type MIME
+// soit bien une image. On l'autorise donc ici, et uniquement ici, avec un controle strict du
+// type et du jeu de caracteres base64 — pas un simple `startsWith('data:')`, qui laisserait
+// passer `data:image/svg+xml`, lequel peut contenir du script.
+const IMG_DATA_OK=/^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=\s]+$/i;
+function imageSure(u){
+  const v=(u||'').trim();
+  if(!v)return null;
+  if(IMG_DATA_OK.test(v))return v;
+  return urlSure(v);
+}
+
 function esc(s){
   if(s===null||s===undefined)return '';
   return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -20840,7 +20860,7 @@ function _renderMsgContacts(myUid){
       const isActive=_msgConv===id;
       const clr=ROLE_COLORS[p.role]||'var(--acc)';
       const unread=(_msgUnread||{})[id]||0;
-      const av=p.av?`<img src="${esc(urlSure(p.av)||'')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid ${clr}44">`:`<div style="width:36px;height:36px;border-radius:50%;background:${clr}22;border:1.5px solid ${clr}44;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${clr}">${p.ini}</div>`;
+      const av=p.av?`<img src="${esc(imageSure(p.av)||'')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid ${clr}44">`:`<div style="width:36px;height:36px;border-radius:50%;background:${clr}22;border:1.5px solid ${clr}44;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${clr}">${p.ini}</div>`;
       return`<div onclick="msgOpenConv('${id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;border-radius:8px;margin:0 6px;background:${isActive?'rgba(54,107,255,.12)':'transparent'};border:1px solid ${isActive?'rgba(54,107,255,.25)':'transparent'}">
         <div style="position:relative;flex-shrink:0">
           ${av}
@@ -20884,7 +20904,7 @@ async function _renderMsgConv(myUid){
     else{
       const p=_msgProfiles[_msgConv];
       const hClr=ROLE_COLORS[p?.role]||'var(--acc)';
-      const hAv=p?.av?`<img src="${esc(urlSure(p.av)||'')}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0">`:`<div style="width:26px;height:26px;border-radius:50%;background:${hClr}22;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${hClr};flex-shrink:0">${p?.ini||'?'}</div>`;
+      const hAv=p?.av?`<img src="${esc(imageSure(p.av)||'')}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0">`:`<div style="width:26px;height:26px;border-radius:50%;background:${hClr}22;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${hClr};flex-shrink:0">${p?.ini||'?'}</div>`;
       const canViewFiche=['admin','sec','prod'].includes(S.role);
       hdr.innerHTML=`<div style="display:flex;align-items:center;gap:9px${canViewFiche?';cursor:pointer':''}"${canViewFiche?` onclick="modalFicheCollaborateur('${_msgConv}')" title="Voir la fiche collaborateur"`:''}>${hAv}<span>${p?.n||'Conversation'}</span></div>`;
     }
@@ -20917,7 +20937,7 @@ async function _renderMsgConv(myUid){
       const sep=dayKey!==lastDay?`<div style="text-align:center;margin:12px 0"><span style="font-size:10px;color:var(--t3);background:var(--s2);padding:3px 12px;border-radius:20px;border:1px solid var(--b1)">${dayKey}</span></div>`:'';
       lastDay=dayKey;
       const msgTxt=escJs(m.contenu||'');
-      const rowAv=who?.av&&!isMe?`<img src="${esc(urlSure(who.av)||'')}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-bottom:2px">`:`<div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':clr+'22'};border:${isMe?'none':'1px solid '+clr+'44'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px;color:${isMe?'#fff':clr}">${ini}</div>`;
+      const rowAv=who?.av&&!isMe?`<img src="${esc(imageSure(who.av)||'')}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-bottom:2px">`:`<div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':clr+'22'};border:${isMe?'none':'1px solid '+clr+'44'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px;color:${isMe?'#fff':clr}">${ini}</div>`;
       return sep+`<div class="msg-row" style="display:flex;gap:9px;padding:4px 16px;align-items:flex-end;${isMe?'flex-direction:row-reverse':''}" onmouseenter="this.querySelector('.msg-acts')?.style.setProperty('opacity','1')" onmouseleave="this.querySelector('.msg-acts')?.style.setProperty('opacity','0')">
         ${rowAv}
         <div style="max-width:68%;display:flex;flex-direction:column;gap:2px;align-items:${isMe?'flex-end':'flex-start'}">
@@ -37465,7 +37485,7 @@ function annuaireCard(p){
     <div style="padding:18px 18px 14px">
       <div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:14px">
         <div style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,${color},${color}88);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;position:relative">
-          ${p.avatar_url?`<img src="${esc(urlSure(p.avatar_url)||'')}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;position:absolute;inset:0">`:`<span>${initials||'?'}</span>`}
+          ${p.avatar_url?`<img src="${esc(imageSure(p.avatar_url)||'')}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;position:absolute;inset:0">`:`<span>${initials||'?'}</span>`}
           <div style="position:absolute;bottom:0;right:0;width:14px;height:14px;border-radius:50%;background:${dispoColor};border:2px solid var(--s1)"></div>
         </div>
         <div style="flex:1;min-width:0">
@@ -37595,7 +37615,7 @@ async function loadEquipeEnDirect(){
     const tel=c.telephone||'';
     return`<div class="cd" style="padding:14px 16px;border-left:3px solid ${statusColor}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        ${c.avatar_url?`<img src="${esc(urlSure(c.avatar_url)||'')}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+        ${c.avatar_url?`<img src="${esc(imageSure(c.avatar_url)||'')}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">`
           :`<div style="width:38px;height:38px;border-radius:50%;background:${rclr}22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${rclr};flex-shrink:0">${ini.toUpperCase()}</div>`}
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:13px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nom}</div>

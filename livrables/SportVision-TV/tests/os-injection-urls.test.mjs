@@ -30,7 +30,7 @@ const page = await nav.newPage();
 const erreursJs = [];
 page.on("pageerror", (e) => { const m = String(e).split("\n")[0]; if (!/ServiceWorker/i.test(m)) erreursJs.push(m); });
 await page.goto(`http://localhost:${srv.address().port}/`, { waitUntil: "domcontentloaded" });
-await page.waitForFunction(() => typeof urlSure === "function");
+await page.waitForFunction(() => typeof urlSure === "function" && typeof imageSure === "function");
 
 let ok = 0, ko = 0;
 const t = (nom, cond, detail = "") => {
@@ -95,6 +95,29 @@ for (const charge of CHARGES) {
     [...res.hrefs, ...res.srcs].join(" | "));
 }
 
+// ── 3bis. Les avatars du staff s'affichent encore ───────────────────────────
+//
+// Regression reelle du 09/09 : urlSure() avait ete appliquee aux avatars, or ceux du staff sont
+// stockes en `data:image/jpeg;base64,...`. Les quatre avatars renseignes avaient disparu.
+// Un test qui ne verifie que le blocage laisse passer ce genre de degat.
+console.log("\n3bis. Les avatars data: restent affiches, le SVG reste bloque");
+const AVATARS = [
+  ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAASABIAAD/", true, "un avatar JPEG s'affiche"],
+  ["data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==", true, "un avatar PNG s'affiche"],
+  ["data:image/webp;base64,UklGRhoAAABXRUJQVlA4TA0=", true, "un avatar WebP s'affiche"],
+  ["https://exemple.test/photo.jpg", true, "une URL d'image classique passe"],
+  ["data:image/svg+xml;base64,PHN2Zz48c2NyaXB0Pg==", false, "le SVG reste bloqué (il peut contenir du script)"],
+  ["data:text/html;base64,PHNjcmlwdD4=", false, "data:text/html reste bloqué"],
+  ["javascript:alert(1)", false, "javascript: reste bloqué même pour une image"],
+];
+for (const [entree, attenduOk, libelle] of AVATARS) {
+  const r = await page.evaluate((u) => imageSure(u), entree);
+  t(libelle, attenduOk ? !!r : r === null, `imageSure(${JSON.stringify(entree.slice(0, 40))}) = ${r === null ? "null" : "ok"}`);
+}
+// Et le href garde sa regle stricte : un data: ne doit jamais devenir un lien.
+t("urlSure refuse toujours un data:image pour un lien",
+  (await page.evaluate(() => urlSure("data:image/png;base64,iVBORw0KGgo="))) === null);
+
 // ── 3. Le cas legitime continue de marcher ──────────────────────────────────
 console.log("\n3. Un lien normal reste cliquable");
 const normal = await page.evaluate(() => {
@@ -116,6 +139,7 @@ const source = html.replace(/^\s*\/\/.*$/gm, "");   // on ignore les commentaire
 const motifs = [
   ['href="${a.video_url}"', "avis client"],
   ['src="${p.avatar_url}"', "avatar profil"],
+  ['src="${esc(urlSure(p.avatar_url)||\'\')}"', "avatar profil filtré comme un lien"],
   ['src="${c.avatar_url}"', "avatar collaborateur"],
   ['src="${p.av}"', "avatar messagerie"],
   ['src="${who.av}"', "avatar interlocuteur"],
@@ -126,7 +150,7 @@ for (const [motif, quoi] of motifs) {
 }
 const restants = [...source.matchAll(/(href|src)="\$\{([^{}]{1,120})\}/g)]
   .map((m) => m[2].trim())
-  .filter((e) => !/esc\(|urlSure\(|encodeURI|DATAURI|GAL_CLUBPLUS_URL|_escMsgHtml|createObjectURL|^url$|mapsUrl|telUrl|docsUrl|pennylane_public_url/.test(e));
+  .filter((e) => !/esc\(|urlSure\(|imageSure\(|encodeURI|DATAURI|GAL_CLUBPLUS_URL|_escMsgHtml|createObjectURL|^url$|mapsUrl|telUrl|docsUrl|pennylane_public_url/.test(e));
 t("aucun autre href/src non filtré n'a été ajouté", restants.length === 0, restants.join(" | "));
 
 t("aucune erreur JavaScript pendant tout le test", erreursJs.length === 0, erreursJs.join(" / "));
