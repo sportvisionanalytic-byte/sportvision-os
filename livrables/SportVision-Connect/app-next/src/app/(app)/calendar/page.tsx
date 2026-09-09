@@ -336,7 +336,9 @@ export default function CalendarPage() {
         </div>
 
         {view !== "list" && (
-          <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
+          // Sur téléphone, la navigation prend sa propre ligne : partagée avec le sélecteur de vue,
+          // elle poussait « Aujourd'hui » hors de l'écran et réduisait le nom du mois à néant.
+          <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:flex-none">
             <button
               aria-label="Période précédente"
               onClick={() => navigate(-1)}

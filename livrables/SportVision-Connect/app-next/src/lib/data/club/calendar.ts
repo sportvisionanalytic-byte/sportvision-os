@@ -265,14 +265,28 @@ export async function fetchClubCalendrier(
   du: string,
   au: string,
 ): Promise<CalendarEvent[]> {
-  const { data, error } = await supabase.rpc("club_calendrier", {
-    p_club_id: clubId,
-    p_du: du,
-    p_au: au,
-  });
-  if (error) throw error;
+  // ── Pagination obligatoire ──
+  // PostgREST plafonne une réponse à 1 000 lignes. Sur la fenêtre que le calendrier charge
+  // (quatre mois), SF Villemomble en produit 1 553 : 553 événements disparaissaient SANS ERREUR.
+  // Rien ne le signalait — ni exception, ni tableau vide, juste un calendrier incomplet, et le
+  // compteur de l'écran qui affichait « 1000 / 1000 événements » sans que ce soit un total.
+  // Découvert le 09/09/2026 en regardant enfin l'écran dans un navigateur.
+  const TAILLE_PAGE = 1000;
+  const lignes: LigneCalendrier[] = [];
+  for (let page = 0; ; page++) {
+    const debut = page * TAILLE_PAGE;
+    const { data, error } = await supabase
+      .rpc("club_calendrier", { p_club_id: clubId, p_du: du, p_au: au })
+      .range(debut, debut + TAILLE_PAGE - 1);
+    if (error) throw error;
+    const lot = (data ?? []) as LigneCalendrier[];
+    lignes.push(...lot);
+    // Une page incomplète est la dernière. Le garde à 20 pages évite qu'une anomalie de la source
+    // fasse tourner cette boucle indéfiniment : 20 000 événements sur quatre mois n'existent pas.
+    if (lot.length < TAILLE_PAGE || page >= 19) break;
+  }
 
-  return ((data ?? []) as LigneCalendrier[]).map((l) => ({
+  return lignes.map((l) => ({
     id: l.ref,
     organizationId: clubId,
     kind: GENRE_VERS_KIND[l.genre] ?? "event",
