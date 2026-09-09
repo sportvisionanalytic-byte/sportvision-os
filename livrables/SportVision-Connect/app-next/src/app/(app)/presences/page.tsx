@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, CalendarClock, Send } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
-import { PLANS } from "@/lib/plans";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -14,6 +13,7 @@ import { presenceStatusTone, PRESENCE_STATUS_LABELS } from "@/components/communi
 import { PRESENCE_KIND_LABELS } from "@/lib/types/communication";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClubPresences, type ClubPresence } from "@/lib/data/club/presences";
+import { decompterLeMois, libelleMois } from "@/lib/presences/mois";
 import {
   fetchCoverageWishes,
   cancelCoverageWish,
@@ -45,7 +45,6 @@ const CAN_REQUEST_ROLES = new Set(["admin", "president", "communication_manager"
 
 function PresencesScreen() {
   const { ctx } = useSession();
-  const plan = PLANS[ctx.subscription.planCode];
   const [presences, setPresences] = useState<ClubPresence[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [wishes, setWishes] = useState<CoverageWish[] | null>(null);
@@ -96,33 +95,27 @@ function PresencesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx.organization.id]);
 
-  const completedCount = (presences ?? []).filter((p) => p.status === "completed").length;
-  const pct = plan.seasonPresences > 0 ? Math.min(100, (completedCount / plan.seasonPresences) * 100) : 0;
+  // 10/09/2026 — Plus de « X réalisées sur 12 », ni de barre qui progresse vers ce 12. Ce nombre
+  // venait d'une inclusion commerciale du plan et ne décrivait aucune règle opérationnelle : le
+  // CM choisit librement les événements couverts. Un dénominateur transformait ce choix en dette.
   const now = new Date();
-  const currentMonthLabel = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-  const thisMonthCount = (presences ?? []).filter((p) => {
-    const d = new Date(p.date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && p.status === "completed";
-  }).length;
+  const decompte = decompterLeMois(presences ?? [], now);
+  const currentMonthLabel = libelleMois(now);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <div className="text-[12px] font-bold text-text-soft">Full Communication</div>
-        <h1 className="mt-1 text-[24px] font-extrabold tracking-tight">Présences terrain</h1>
-        <p className="mt-1 text-[13.5px] capitalize text-text-soft">{currentMonthLabel}</p>
+        <h1 className="mt-1 text-[24px] font-extrabold tracking-tight">Présences SportVision</h1>
+        <p className="mt-1 text-[13.5px] text-text-soft">{currentMonthLabel}</p>
       </div>
 
       <CardPremium>
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-brand-blue-pale">Vos présences</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-tight">
-              {completedCount} présence{completedCount > 1 ? "s" : ""} réalisée{completedCount > 1 ? "s" : ""} sur {plan.seasonPresences}
-            </div>
-            <div className="mt-1 text-[12.5px] text-[#B9C7EB]">
-              Dont {thisMonthCount} réalisée{thisMonthCount > 1 ? "s" : ""} ce mois-ci
-            </div>
+          <div className="flex flex-wrap items-baseline gap-x-7 gap-y-2">
+            <Compte valeur={decompte.programmees} mot="programmée" />
+            <Compte valeur={decompte.realisees} mot="réalisée" />
+            <Compte valeur={decompte.aVenir} mot="à venir" invariable />
           </div>
           {canRequest && (
             <Button
@@ -133,9 +126,6 @@ function PresencesScreen() {
               Demander une présence
             </Button>
           )}
-        </div>
-        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[.16]">
-          <div className="h-full rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet" style={{ width: `${pct}%` }} />
         </div>
       </CardPremium>
 
@@ -262,4 +252,18 @@ function PresencesScreen() {
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+}
+
+/** Un nombre et ce qu'il compte. Aucun dénominateur : la règle métier ne fixe ni objectif ni
+ *  plafond, et la mise en forme ne doit pas en inventer un. */
+function Compte({ valeur, mot, invariable }: { valeur: number; mot: string; invariable?: boolean }) {
+  return (
+    <div>
+      <span className="text-[26px] font-extrabold tabular-nums tracking-tight">{valeur}</span>
+      <span className="ml-1.5 text-[13px] font-semibold text-[#B9C7EB]">
+        {mot}
+        {!invariable && valeur > 1 ? "s" : ""}
+      </span>
+    </div>
+  );
 }

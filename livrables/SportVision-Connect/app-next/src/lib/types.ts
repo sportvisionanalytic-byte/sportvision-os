@@ -206,4 +206,4 @@ export type ResourceKey =
 
 export type FeatureKey = string;
 
-export type QuotaKey = "monthly_visuals" | "season_presences" | "storage" | "seats";
+export type QuotaKey = "monthly_visuals" | "storage" | "seats";

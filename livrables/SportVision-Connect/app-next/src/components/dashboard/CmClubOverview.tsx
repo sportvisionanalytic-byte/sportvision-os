@@ -159,13 +159,11 @@ export function CmClubOverview() {
           texte: `${t.a_faire.resultats_manquants} résultat${t.a_faire.resultats_manquants > 1 ? "s" : ""} à renseigner`,
           vers: "/matchcenter",
         },
-        t.a_faire.prochaine_sans_couverture && {
-          cle: "couverture",
-          texte: `${t.a_faire.prochaine_sans_couverture.equipe ?? "Rencontre"} contre ${
-            t.a_faire.prochaine_sans_couverture.adversaire ?? "?"
-          } le ${dateLongue(t.a_faire.prochaine_sans_couverture.date)} : couverture SportVision à décider`,
-          vers: "/calendar",
-        },
+        // 10/09/2026 — « Couverture SportVision à décider » ne figure plus dans « À faire ».
+        // Décider de couvrir un match n'est pas une tâche due : le CM choisit librement les
+        // événements où SportVision se déplace, et un match sans couverture n'est pas un oubli.
+        // Une présence ne devient une tâche que lorsqu'elle a été demandée et attend une suite.
+        // La RPC continue de renvoyer `prochaine_sans_couverture` ; plus personne ne l'affiche.
         t.a_faire.equipes_sans_coach > 0 && {
           cle: "coachs",
           texte: `${t.a_faire.equipes_sans_coach} équipe${t.a_faire.equipes_sans_coach > 1 ? "s" : ""} sans coach renseigné`,
@@ -215,15 +213,13 @@ export function CmClubOverview() {
                     {m.competition ? ` · ${m.competition}` : ""}
                   </span>
                 </span>
-                <span
-                  className={
-                    m.couverture
-                      ? "flex-none rounded-full bg-success-bg px-2.5 py-1 text-[11.5px] font-bold text-success-fg"
-                      : "flex-none rounded-full bg-surface-sunken px-2.5 py-1 text-[11.5px] font-bold text-text-faint"
-                  }
-                >
-                  {m.couverture ? "SportVision présent" : "Couverture à décider"}
-                </span>
+                {/* Un match sans couverture reste neutre, et muet : « à décider » laissait croire
+                    qu'une décision était attendue pour chacun des 425 matchs de la saison. */}
+                {m.couverture && (
+                  <span className="flex-none rounded-full bg-success-bg px-2.5 py-1 text-[11.5px] font-bold text-success-fg">
+                    SportVision présent
+                  </span>
+                )}
               </li>
             ))}
             {t.aujourdhui.entrainements.map((e, i) => (

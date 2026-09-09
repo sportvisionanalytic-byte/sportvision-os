@@ -120,8 +120,10 @@ export function hasQuota(ctx: ActiveContext, quota: QuotaKey): boolean {
   switch (quota) {
     case "monthly_visuals":
       return plan.monthlyCredits === null || ctx.subscription.creditsRemaining > 0;
-    case "season_presences":
-      return ctx.subscription.presencesUsed < plan.seasonPresences;
+    // 10/09/2026 — Le quota « season_presences » est retiré : il n'existe ni obligation ni
+    // plafond de présences, le CM choisit librement les événements couverts. Il n'avait aucun
+    // appelant, mais il aurait bloqué net un club dont le plan porte `seasonPresences: 0`
+    // (0 < 0 est faux) le jour où quelqu'un l'aurait branché.
     case "storage":
       return ctx.subscription.storageUsedBytes < ctx.subscription.storageQuotaBytes;
     case "seats":
