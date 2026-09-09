@@ -45,6 +45,7 @@ export function PersonalInfoSection({
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [emailPending, setEmailPending] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(avatarUrl);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -126,6 +127,8 @@ export function PersonalInfoSection({
     if (!fn.trim() || !ln.trim() || !EMAIL_RE.test(em.trim())) return;
     setBusy(true);
     setError(null);
+    setWarning(null);
+    let syncWarning: string | null = null;
     const supabase = createClient();
 
     const emailChanged = em.trim().toLowerCase() !== email.trim().toLowerCase();
@@ -142,7 +145,9 @@ export function PersonalInfoSection({
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData.user?.id;
     if (userId) {
-      await supabase.from("connect_profile_settings").upsert(
+      // Ces deux écritures ignoraient totalement leur résultat : la fenêtre se refermait comme si
+      // tout était enregistré, y compris quand rien ne l'était.
+      const { error: settingsError } = await supabase.from("connect_profile_settings").upsert(
         {
           user_id: userId,
           telephone: ph.trim() || null,
@@ -150,16 +155,37 @@ export function PersonalInfoSection({
         },
         { onConflict: "user_id" },
       );
+      if (settingsError) {
+        setBusy(false);
+        setError("Impossible d'enregistrer votre téléphone pour le moment.");
+        return;
+      }
       // Garde player_profiles (roster Club+) cohérent avec l'identité éditée ici, quand une
       // ligne existe — voir migration §1, "une seule identité" (MASTER-CONNECT-V1.md §5).
+      // Synchronisation secondaire : son échec n'annule pas l'enregistrement, mais il se dit,
+      // sinon l'identité diverge entre Connect et le roster du club sans que personne le sache.
       if (playerId) {
-        await supabase.from("player_profiles").update({ prenom: fn.trim(), nom: ln.trim() }).eq("id", playerId);
+        const { data: synced, error: syncError } = await supabase
+          .from("player_profiles")
+          .update({ prenom: fn.trim(), nom: ln.trim() })
+          .eq("id", playerId)
+          .select("id");
+        if (syncError || !synced || synced.length === 0) {
+          syncWarning =
+            "Vos informations sont enregistrées, mais votre nom n'a pas pu être mis à jour dans votre club. Signalez-le à votre club si l'ancien nom persiste.";
+          setWarning(syncWarning);
+        }
       }
     }
 
     setBusy(false);
     if (emailChanged) {
       setEmailPending(true);
+      return;
+    }
+    // Un avertissement doit rester lisible : on garde la fenêtre ouverte pour qu'il soit vu.
+    if (syncWarning) {
+      router.refresh();
       return;
     }
     setOpen(false);
@@ -249,6 +275,11 @@ export function PersonalInfoSection({
             </div>
           ) : (
             <div className="flex flex-col gap-4">
+              {warning && (
+                <p className="rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3 text-[13.5px] leading-relaxed text-text-secondary">
+                  {warning}
+                </p>
+              )}
               <Field id="pi-fn" label="Prénom" value={fn} onChange={(e) => setFn(e.target.value)} error={fnError} />
               <Field id="pi-ln" label="Nom" value={ln} onChange={(e) => setLn(e.target.value)} error={lnError} />
               <Field id="pi-em" label="Adresse e-mail" type="email" value={em} onChange={(e) => setEm(e.target.value)} error={emError} />

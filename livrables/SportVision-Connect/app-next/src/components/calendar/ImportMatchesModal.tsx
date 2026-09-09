@@ -581,8 +581,11 @@ export function ImportMatchesModal({
                         setClubPdf(nom);
                         clubPdfRef.current = nom;
                         setBusy(true);
+                        setFatalError(null);
                         try {
                           if (provider) await runParse(provider, { text: fileText, bytes: fileBytes, name: fileName }, mapping ?? undefined);
+                        } catch (error) {
+                          setFatalError(error instanceof Error ? error.message : "Lecture impossible pour ce club.");
                         } finally {
                           setBusy(false);
                         }

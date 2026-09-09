@@ -95,8 +95,15 @@ export async function updateSponsorContentTypeObligations(
   sponsorId: string,
   contentTypeObligations: string[],
 ): Promise<void> {
-  const { error } = await supabase.from("club_sponsors").update({ content_type_obligations: contentTypeObligations }).eq("id", sponsorId);
+  const { data, error } = await supabase
+    .from("club_sponsors")
+    .update({ content_type_obligations: contentTypeObligations })
+    .eq("id", sponsorId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Enregistrement refusé : droits insuffisants sur ce sponsor.");
+  }
 }
 
 /** Création de sponsor (19/08/2026, retour utilisateur : aucune UI ne le permettait). RLS
@@ -154,8 +161,17 @@ export async function uploadSponsorLogo(supabase: SupabaseClient, clubId: string
   const { data } = supabase.storage.from("club-logos").getPublicUrl(path);
   const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
 
-  const { error: updateError } = await supabase.from("club_sponsors").update({ logo_url: publicUrl }).eq("id", sponsorId);
+  // Meme piege que uploadClubLogo : sans `.select()`, un update filtre par la RLS revient avec
+  // `{ error: null }`. Le logo s'affichait dans la liste puis disparaissait au rechargement.
+  const { data: updated, error: updateError } = await supabase
+    .from("club_sponsors")
+    .update({ logo_url: publicUrl })
+    .eq("id", sponsorId)
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated || updated.length === 0) {
+    throw new Error("Logo envoyé mais non rattaché au sponsor : droits insuffisants.");
+  }
 
   return publicUrl;
 }
@@ -168,8 +184,11 @@ export async function updateSponsorCommitments(
   sponsorId: string,
   commitments: SponsorCommitment[],
 ): Promise<void> {
-  const { error } = await supabase.from("club_sponsors").update({ commitments }).eq("id", sponsorId);
+  const { data, error } = await supabase.from("club_sponsors").update({ commitments }).eq("id", sponsorId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Enregistrement refusé : droits insuffisants sur ce sponsor.");
+  }
 }
 
 // ---------------------------------------------------------------------------------------------

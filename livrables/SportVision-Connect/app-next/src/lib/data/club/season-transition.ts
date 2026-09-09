@@ -100,8 +100,11 @@ export async function commitSeasonTransition(
   // vaut une transition incomplète mais visible (résumé avec échecs) qu'un club basculé sur une
   // nouvelle saison sans aucun rattachement dessus.
   if (result.succeeded > 0) {
-    const { error } = await supabase.from("clubs").update({ saison: toSaison }).eq("id", clubId);
+    const { data, error } = await supabase.from("clubs").update({ saison: toSaison }).eq("id", clubId).select("id");
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error("Transition refusée : droits insuffisants sur ce club.");
+    }
   }
 
   return result;

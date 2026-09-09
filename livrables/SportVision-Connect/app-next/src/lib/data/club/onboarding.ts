@@ -74,11 +74,17 @@ export async function ensureOnboardingStarted(supabase: SupabaseClient, clubId: 
  * ce qui manque) : aucun blocage à ce niveau, cohérent avec "le club ou SportVision peut remplir
  * la fiche" (master prompt). */
 export async function submitOnboarding(supabase: SupabaseClient, clubId: string): Promise<void> {
-  const { error } = await supabase
+  // `.select()` obligatoire : sans lui, un update que la RLS filtre revient avec
+  // `{ error: null }` et l'ecran redirige vers le tableau de bord comme si l'envoi etait parti.
+  const { data, error } = await supabase
     .from("club_onboarding_progress")
     .update({ statut: "submitted", submitted_at: new Date().toISOString() })
-    .eq("club_id", clubId);
+    .eq("club_id", clubId)
+    .select("club_id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Envoi refusé : droits insuffisants sur ce club.");
+  }
 }
 
 // ── Lieux / installations ──
@@ -136,6 +142,8 @@ export async function deleteClubVenue(supabase: SupabaseClient, venueId: string)
  * l'ordre de `fetchClubVenues` (terrain_principal desc) devient arbitraire dès qu'il y en a deux.
  */
 export async function setVenuePrincipal(supabase: SupabaseClient, clubId: string, venueId: string): Promise<void> {
+  // Volontairement sans garde `.select()` : avec un seul lieu, ce reset ne touche legitimement
+  // aucune ligne. C'est l'ecriture suivante qui porte la verification.
   const { error: resetError } = await supabase
     .from("club_venues")
     .update({ terrain_principal: false })
@@ -211,8 +219,11 @@ export async function createTrainingSlot(
 }
 
 export async function deleteTrainingSlot(supabase: SupabaseClient, slotId: string): Promise<void> {
-  const { error } = await supabase.from("club_team_training_slots").delete().eq("id", slotId);
+  const { data, error } = await supabase.from("club_team_training_slots").delete().eq("id", slotId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Suppression refusée : droits insuffisants sur ce créneau.");
+  }
 }
 
 // ── Réseaux sociaux (jamais de mot de passe — voir migration-clubplus-v48) ──
@@ -251,8 +262,11 @@ export async function createClubSocialAccount(
 }
 
 export async function deleteClubSocialAccount(supabase: SupabaseClient, id: string): Promise<void> {
-  const { error } = await supabase.from("club_social_accounts").delete().eq("id", id);
+  const { data, error } = await supabase.from("club_social_accounts").delete().eq("id", id).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Suppression refusée : droits insuffisants sur ce compte.");
+  }
 }
 
 // ── Objectifs / ton de communication ──

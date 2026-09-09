@@ -62,6 +62,7 @@ function SeasonTransitionFlow({ clubId }: { clubId: string }) {
   const [actions, setActions] = useState<Record<string, { action: SeasonTransitionAction; newTeamId?: string }>>({});
   const [loadError, setLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [commitError, setCommitError] = useState<string | null>(null);
   const [result, setResult] = useState<SeasonTransitionResult | null>(null);
 
   useEffect(() => {
@@ -99,6 +100,7 @@ function SeasonTransitionFlow({ clubId }: { clubId: string }) {
   async function commit() {
     if (!candidates) return;
     setSubmitting(true);
+    setCommitError(null);
     try {
       const supabase = createClient();
       const decisions = candidates.map((c) => ({
@@ -109,6 +111,10 @@ function SeasonTransitionFlow({ clubId }: { clubId: string }) {
       const res = await commitSeasonTransition(supabase, clubId, toSaison.trim(), decisions);
       setResult(res);
       setStage("done");
+    } catch (error) {
+      // Une transition de saison touche tous les rattachements du club : echouer sans un mot,
+      // en laissant l'ecran sur l'etape de confirmation, laisse croire que le bouton est mort.
+      setCommitError(error instanceof Error ? error.message : "Impossible de terminer la transition. Réessayez.");
     } finally {
       setSubmitting(false);
     }
@@ -181,6 +187,8 @@ function SeasonTransitionFlow({ clubId }: { clubId: string }) {
             {submitting ? "Validation…" : `Valider la transition (${candidates.length})`}
           </Button>
         </div>
+
+        {commitError && <p className="text-[12.5px] font-bold text-danger-fg">{commitError}</p>}
 
         {candidates.length === 0 ? (
           <Card>
