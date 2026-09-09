@@ -44,15 +44,23 @@ begin
   -- le test doit mesurer ce que voient les personnes qui utilisent vraiment l'OS.
   -- Des CM sans aucune affectation reelle : sinon leurs vrais clubs s'ajoutent aux comptes du
   -- test et le font echouer pour une raison qui n'a rien a voir avec ce qu'il verifie.
-  select id into v_cmA from profiles p where p.role = 'cm'
-    and not exists (select 1 from club_cm_affectations a where a.cm_id = p.id)
-    order by p.created_at limit 1;
-  select id into v_cmB from profiles p where p.role = 'cm' and p.id <> v_cmA
-    and not exists (select 1 from club_cm_affectations a where a.cm_id = p.id)
-    order by p.created_at limit 1;
-  if v_cmA is null or v_cmB is null then
-    raise exception 'Il faut au moins deux collaborateurs de role cm pour jouer ce test.';
-  end if;
+  -- Deux CM fabriques POUR ce test, dans la transaction, donc annules avec elle.
+  --
+  -- Le test s'appuyait auparavant sur de vrais comptes CM sans affectation. C'etait fragile — il
+  -- a casse le 09/09/2026 des qu'on a nettoye les comptes de test — et surtout ca imposait de
+  -- garder des comptes de test permanents en production, ce qui est precisement ce qui a abime la
+  -- reputation d'expediteur du domaine. Un test ne doit dependre d'aucune donnee vivante.
+  v_cmA := gen_random_uuid();
+  v_cmB := gen_random_uuid();
+  insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                          email_confirmed_at, created_at, updated_at)
+  values (v_cmA, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          'zz-cm-a-' || v_cmA || '@example.invalid', '', now(), now(), now()),
+         (v_cmB, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          'zz-cm-b-' || v_cmB || '@example.invalid', '', now(), now(), now());
+  insert into profiles (id, role, prenom, nom, email)
+  values (v_cmA, 'cm', 'ZZ', 'CM A', 'zz-cm-a-' || v_cmA || '@example.invalid'),
+         (v_cmB, 'cm', 'ZZ', 'CM B', 'zz-cm-b-' || v_cmB || '@example.invalid');
 
   insert into club_cm_affectations (club_id, cm_id, role, actif)
   values (v_clubA, v_cmA, 'principal', true) returning id into v_aff;
