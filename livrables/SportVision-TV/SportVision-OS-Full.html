@@ -32821,7 +32821,7 @@ async function loadCollaborateurs(){
     const _colHasGlobal=_colRole==='admin'||_colRole==='rh';
     const _colPoleSelect=(S.activePoleId&&_colHasGlobal)?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
     const _colPoleQS=(S.activePoleId&&_colHasGlobal)?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie,cm_pool_clubplus_general'+_colPoleSelect+_colFilter+_colPoleQS+'&order=role.asc,nom.asc');
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,avatar_url,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm,cm_niveau_autonomie,cm_pool_clubplus_general'+_colPoleSelect+_colFilter+_colPoleQS+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E','rh':'#C084FC'};
@@ -32833,7 +32833,9 @@ async function loadCollaborateurs(){
         const col=rColors[t.role]||'#366BFF';
         const isInactif=t.actif===false;
         return`<div onclick="modalFicheCollaborateur('${t.id}')" style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;cursor:pointer;transition:border-color .15s${isInactif?';opacity:.55':''}" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--b1)'">
-          <div class="av" style="width:50px;height:50px;font-size:17px;font-weight:700;background:${col}">${ini}</div>
+          ${(()=>{const ph=imageSure(t.avatar_url);return ph
+            ?`<img src="${esc(ph)}" alt="" class="av" style="width:50px;height:50px;object-fit:cover;border:2px solid ${col}">`
+            :`<div class="av" style="width:50px;height:50px;font-size:17px;font-weight:700;background:${col}">${ini}</div>`;})()}
           <div style="font-size:13px;font-weight:650;color:var(--t1)">${name}</div>
           <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2)">${rLabels[t.role]||t.role}</span>
           ${isInactif?'<span style="font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:var(--rp);background:rgba(240,68,94,.12);color:var(--er)">Désactivé</span>':''}
