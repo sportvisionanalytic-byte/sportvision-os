@@ -276,7 +276,7 @@ export default function CalendarPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-[29px] font-extrabold tracking-tight">Calendrier</h1>
+          <h1 className="text-[23px] font-extrabold tracking-tight sm:text-[29px]">Calendrier</h1>
           <p className="mt-1 text-[13.5px] text-text-soft">
             {isPlayer
               ? "Matchs, shootings SportVision et événements de votre club."
@@ -284,23 +284,24 @@ export default function CalendarPage() {
           </p>
         </div>
         <div className="flex items-center gap-2.5">
-          <Button variant="secondary" onClick={exportIcal}>
+          <Button variant="secondary" onClick={exportIcal} aria-label="Exporter au format iCal">
             <Download className="h-4 w-4" aria-hidden />
-            Exporter (iCal)
+            <span className="hidden sm:inline">Exporter (iCal)</span>
           </Button>
           {/* Un joueur consulte le calendrier de son club, il ne le modifie pas (brief § 11 :
               "le joueur ne devrait pas modifier le planning officiel") — même retrait que pour
               coach/académie/sponsor (calendrier en lecture seule côté membre). */}
           {ctx.organization.type === "club" && ctx.membership.role === "admin" && (
-            <Button variant="secondary" onClick={() => setImportOpen(true)}>
+            <Button variant="secondary" onClick={() => setImportOpen(true)} aria-label="Importer un calendrier">
               <Upload className="h-4 w-4" aria-hidden />
-              Importer un calendrier
+              <span className="hidden sm:inline">Importer un calendrier</span>
             </Button>
           )}
           {!isGenericOrg && !isPlayer && (
             <Button disabled={!canCreate(ctx, "calendar_event")} onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" aria-hidden />
-              Ajouter un événement
+              <span className="hidden sm:inline">Ajouter un événement</span>
+              <span className="sm:hidden">Ajouter</span>
             </Button>
           )}
         </div>
@@ -323,7 +324,7 @@ export default function CalendarPage() {
         </div>
 
         {view !== "list" && (
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
             <button
               aria-label="Période précédente"
               onClick={() => navigate(-1)}
@@ -331,7 +332,9 @@ export default function CalendarPage() {
             >
               <ChevronLeft className="h-4 w-4" aria-hidden />
             </button>
-            <span className="min-w-[160px] text-center text-[13.5px] font-extrabold capitalize">{periodLabel}</span>
+            <span className="min-w-0 flex-1 truncate text-center text-[12.5px] font-extrabold capitalize sm:min-w-[160px] sm:flex-none sm:text-[13.5px]">
+              {periodLabel}
+            </span>
             <button
               aria-label="Période suivante"
               onClick={() => navigate(1)}
@@ -554,8 +557,11 @@ function MonthView({
     <Card className="overflow-hidden">
       <div className="grid grid-cols-7 border-b border-divider bg-surface-alt">
         {WEEKDAY_LABELS.map((label) => (
-          <div key={label} className="px-2 py-2 text-center text-[10.5px] font-extrabold uppercase tracking-[.04em] text-text-faint">
-            {label}
+          <div key={label} className="px-1 py-2 text-center text-[9.5px] font-extrabold uppercase tracking-[.04em] text-text-faint sm:px-2 sm:text-[10.5px]">
+            {/* Une lettre sur telephone : « L M M J V S D » se lit aussi bien et laisse la place
+                au contenu, qui est ce qu'on vient regarder. */}
+            <span className="sm:hidden">{label[0]}</span>
+            <span className="hidden sm:inline">{label}</span>
           </div>
         ))}
       </div>
@@ -580,20 +586,38 @@ function MonthView({
               }}
               aria-label={dayEvents.length ? `${day.getDate()} — ${resume.total} événements, ouvrir le détail` : undefined}
               className={cn(
-                "flex min-h-[104px] flex-col gap-1 border-b border-r border-divider p-1.5 last:border-r-0",
+                // Sur telephone, sept colonnes font 50 px de large : aucun texte n'y tient. La case
+                // se reduit alors au numero et a des pastilles de couleur, et tout le detail passe
+                // par le panneau du jour, qui s'ouvre en plein ecran. C'est le meme principe qu'en
+                // grand format — synthetiser plutot que tronquer — pousse plus loin.
+                "flex min-h-[62px] flex-col gap-1 border-b border-r border-divider p-1 last:border-r-0 sm:min-h-[104px] sm:p-1.5",
                 !inMonth && "bg-surface-alt/40",
                 dayEvents.length && "cursor-pointer hover:bg-row-hover/40",
               )}
             >
               <span
                 className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded-full text-[11.5px] font-bold",
+                  "flex h-5 w-5 items-center justify-center rounded-full text-[10.5px] font-bold sm:h-6 sm:w-6 sm:text-[11.5px]",
                   isToday ? "bg-brand-blue text-white" : inMonth ? "text-text" : "text-text-faint",
                 )}
               >
                 {day.getDate()}
               </span>
-              <div className="flex flex-col gap-1">
+
+              {/* Telephone : une pastille par nature presente, et le total. On voit d'un coup
+                  quels jours sont charges et lesquels ont un match, ce qui est exactement ce
+                  qu'on demande a une vue Mois. */}
+              {dayEvents.length > 0 && (
+                <div className="flex flex-wrap items-center gap-0.5 sm:hidden">
+                  {[...new Set(resume.visibles.concat(dayEvents).map((e) => e.kind))].slice(0, 3).map((k) => (
+                    <span key={k} className={cn("h-1.5 w-1.5 rounded-full", KIND_DOT[k])} aria-hidden />
+                  ))}
+                  <span className="ml-0.5 text-[9px] font-bold tabular-nums text-text-faint">{resume.total}</span>
+                  {resume.couvertures > 0 && <span className="text-[8px]" aria-hidden>📸</span>}
+                </div>
+              )}
+
+              <div className="hidden flex-col gap-1 sm:flex">
                 {resume.visibles.map((e) => (
                   <LigneMois key={e.id} event={e} onSelect={onSelect} />
                 ))}
@@ -658,7 +682,7 @@ function DayPanel({
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose} role="presentation">
       <aside
-        className="flex h-full w-full max-w-md flex-col overflow-y-auto bg-surface p-5 shadow-xl"
+        className="flex h-full w-full flex-col overflow-y-auto bg-surface p-4 shadow-xl sm:max-w-md sm:p-5"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label={`Détail du ${day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`}
@@ -776,8 +800,8 @@ function DayView({ reference, events, onSelect }: { reference: Date; events: Cal
       {events.map((e) => {
         const etat = etatEvenement(e);
         return (
-          <button key={e.id} onClick={() => onSelect(e)} className="flex items-center gap-3.5 px-5 py-3.5 text-left hover:bg-row-hover">
-            <span className="w-14 flex-none text-[12.5px] font-extrabold tabular-nums text-text-soft">
+          <button key={e.id} onClick={() => onSelect(e)} className="flex items-center gap-2.5 px-3.5 py-3 text-left hover:bg-row-hover sm:gap-3.5 sm:px-5 sm:py-3.5">
+            <span className="w-10 flex-none text-[11.5px] font-extrabold tabular-nums text-text-soft sm:w-14 sm:text-[12.5px]">
               {e.allDay ? "Journée" : new Date(e.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
             </span>
             {ecussonAdversaire(e) ? (
@@ -943,8 +967,8 @@ function ListView({
           <div className="text-[11px] font-extrabold uppercase tracking-[.09em] text-text-faint">{label}</div>
           <Card className="divide-y divide-divider">
             {dayEvents.map((e) => (
-              <div key={e.id} className="flex w-full items-start gap-3.5 px-5 py-3.5 text-left">
-                <span className="w-14 flex-none pt-0.5 text-[12.5px] font-extrabold text-text-soft">
+              <div key={e.id} className="flex w-full items-start gap-2.5 px-3.5 py-3 text-left sm:gap-3.5 sm:px-5 sm:py-3.5">
+                <span className="w-10 flex-none pt-0.5 text-[11.5px] font-extrabold tabular-nums text-text-soft sm:w-14 sm:text-[12.5px]">
                   {e.allDay ? "Journée" : new Date(e.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                 </span>
                 {ecussonAdversaire(e) ? (
