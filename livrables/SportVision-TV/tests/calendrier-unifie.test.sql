@@ -41,8 +41,17 @@ begin
   insert into club_matches (club_id, team, opponent, match_date, kickoff_time, is_home)
   values (v_club,'ZZ U18','ZZ Adverse', date '2026-12-19', time '16:00', true);
 
-  select id into v_cm from profiles p where p.role='cm'
-    and not exists (select 1 from club_cm_affectations a where a.cm_id=p.id) order by p.created_at limit 1;
+  -- CM fabrique POUR ce test, annule avec la transaction. Il s'appuyait auparavant sur un vrai
+  -- compte CM sans affectation : il a casse des qu'on a nettoye les comptes de test (09/09/2026),
+  -- et surtout ca imposait d'en garder en production. Un test ne doit dependre d'aucune donnee
+  -- vivante — meme correctif que pour cm-cloisonnement.
+  v_cm := gen_random_uuid();
+  insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                          email_confirmed_at, created_at, updated_at)
+  values (v_cm, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          'zz-cal-' || v_cm || '@example.invalid', '', now(), now(), now());
+  insert into profiles (id, role, prenom, nom, email)
+  values (v_cm, 'cm', 'ZZ', 'CM Calendrier', 'zz-cal-' || v_cm || '@example.invalid');
   insert into club_cm_affectations (club_id, cm_id, role, actif) values (v_club, v_cm, 'principal', true);
 
   perform pg_temp.incarner(v_cm);
