@@ -9,6 +9,7 @@ import type { ModuleKey } from "@/lib/types";
 import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClubMatches, fetchClubRequiresResultVerification } from "@/lib/data/club/matches";
+import { fileDuMatch } from "@/lib/matches/etat";
 import { fetchClubCalendarEvents } from "@/lib/data/club/calendar";
 import { deriveStage, fetchClubJoinRequests } from "@/lib/data/club/team-requests";
 import { fetchClubRequests } from "@/lib/data/club/requests";
@@ -199,10 +200,16 @@ export function ClubPlusDashboard() {
   // vérifié (`verifiedAt` posé) ne compte plus, sinon le compteur ne redescend jamais à 0.
   const isCoach = ctx.membership.role === "coach";
   const isSportsDirector = ctx.membership.role === "sports_director";
+  // 10/09/2026 — L'administrateur et le président étaient exclus de cette carte, alors qu'ils sont
+  // aujourd'hui les SEULS membres de la plupart des clubs : SF Villemomble compte un admin et zéro
+  // coach. Le tableau de bord annonçait donc « rien à traiter » pendant que le Match Center
+  // comptait 51 matchs en attente de feuille.
+  const isClubLead = ctx.membership.role === "admin" || ctx.membership.role === "president";
+  const suitLesResultats = isCoach || isSportsDirector || isClubLead;
   const [pendingResultsCount, setPendingResultsCount] = useState<number | null>(null);
 
   const loadPendingResults = useCallback(async () => {
-    if (!isCoach && !isSportsDirector) return;
+    if (!suitLesResultats) return;
     const supabase = createClient();
     try {
       const [matches, requiresVerification] = await Promise.all([
@@ -213,17 +220,21 @@ export function ClubPlusDashboard() {
         ctx.membership.teamScope.length === 0
           ? matches
           : matches.filter((m) => ctx.membership.teamScope.includes(m.teamName));
-      if (isCoach) {
-        setPendingResultsCount(inScope.filter((m) => m.status === "result_pending").length);
-      } else {
+      if (isSportsDirector) {
         setPendingResultsCount(
           requiresVerification ? inScope.filter((m) => m.status === "result_received" && !m.verifiedAt).length : 0,
         );
+      } else {
+        // Le compte vient de `fileDuMatch`, la même règle que le Match Center — et non plus du
+        // statut `result_pending`, que RIEN en base ne pose jamais : ce compteur valait 0 pour
+        // tout le monde, tout le temps, depuis toujours.
+        const maintenant = new Date();
+        setPendingResultsCount(inScope.filter((m) => fileDuMatch(m, maintenant) === "a_renseigner").length);
       }
     } catch {
       setPendingResultsCount(null);
     }
-  }, [ctx.organization.id, ctx.membership.teamScope, isCoach, isSportsDirector]);
+  }, [ctx.organization.id, ctx.membership.teamScope, isSportsDirector, suitLesResultats]);
 
   useEffect(() => {
     loadPendingResults();
@@ -311,7 +322,7 @@ export function ClubPlusDashboard() {
         </div>
       </div>
 
-      {(isCoach || isSportsDirector) && !!pendingResultsCount && (
+      {suitLesResultats && !!pendingResultsCount && (
         <Card className="flex flex-wrap items-center justify-between gap-3 border-brand-blue-electric/40 bg-info-bg p-4">
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-info-fg/15 text-info-fg">
@@ -319,12 +330,14 @@ export function ClubPlusDashboard() {
             </span>
             <div>
               <div className="text-[13.5px] font-extrabold text-text">
-                {isCoach
-                  ? `${pendingResultsCount} résultat${pendingResultsCount > 1 ? "s" : ""} à renseigner`
-                  : `${pendingResultsCount} résultat${pendingResultsCount > 1 ? "s" : ""} à vérifier`}
+                {isSportsDirector
+                  ? `${pendingResultsCount} résultat${pendingResultsCount > 1 ? "s" : ""} à vérifier`
+                  : `${pendingResultsCount} match${pendingResultsCount > 1 ? "s" : ""} sans feuille de match`}
               </div>
               <div className="text-[12px] text-text-soft">
-                {isCoach ? "Un match est terminé, transmettez le score." : "Confirmez ou corrigez ce que le coach a saisi."}
+                {isSportsDirector
+                  ? "Confirmez ou corrigez ce que le coach a saisi."
+                  : "Ces matchs sont joués et attendent leur résultat."}
               </div>
             </div>
           </div>

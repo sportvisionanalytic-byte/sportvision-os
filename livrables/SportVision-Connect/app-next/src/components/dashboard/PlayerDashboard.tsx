@@ -6,6 +6,7 @@ import { CalendarClock, Heart, MessageSquare, Shield } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClubMatches } from "@/lib/data/club/matches";
+import { fileDuMatch } from "@/lib/matches/etat";
 import { fetchPlayerMediaAssets } from "@/lib/data/player/media";
 import { fetchPlayerClubInfo, type PlayerClubInfo } from "@/lib/data/player/club-info";
 import { fetchFavoriteIds } from "@/lib/data/shared/favorites";
@@ -68,9 +69,21 @@ export function PlayerDashboard() {
       });
   }, [ctx.organization.id]);
 
-  const nextMatch = (matches ?? [])
-    .filter((m) => m.status === "upcoming" && m.kickoffAt)
-    .sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime())[0];
+  // « Prochain » veut dire à venir, pas « le plus ancien de ceux qu'on n'a pas encore clôturés ».
+  // 10/09/2026 — Le filtre ne regardait que `status === "upcoming"`, un statut que rien ne fait
+  // jamais évoluer : chez SF Villemomble, les 430 matchs de la saison le portaient, et le joueur
+  // voyait comme prochain match une rencontre du 12 août. On demande sa file au moteur partagé
+  // (lib/matches/etat.ts), le même qu'au Match Center et au tableau de bord du club.
+  const nextMatch = (() => {
+    const maintenant = new Date();
+    return (matches ?? [])
+      .filter((m) => {
+        if (!m.kickoffAt) return false;
+        const file = fileDuMatch(m, maintenant);
+        return file === "cette_semaine" || file === "a_venir";
+      })
+      .sort((a, b) => a.kickoffAt.localeCompare(b.kickoffAt))[0];
+  })();
 
   const latestContentDay = (() => {
     if (!contents || contents.length === 0) return null;
