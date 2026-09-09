@@ -304,6 +304,36 @@ export async function fetchClubCalendrier(
   }));
 }
 
+/**
+ * Qui couvre cet événement — chargé À LA DEMANDE, quand une fiche s'ouvre.
+ *
+ * Volontairement hors de `fetchClubCalendrier` : remonter l'opérateur dans le calendrier
+ * obligerait à joindre présence → prestation → équipe → profil pour CHACUN des mille événements
+ * d'un mois, afin d'afficher un prénom qu'on lit de temps en temps. Une requête de plus à
+ * l'ouverture d'un match couvert coûte infiniment moins.
+ *
+ * La fonction en base ne répond qu'aux rôles internes SportVision, et à un CM pour ses clubs
+ * seulement. Pour tous les autres elle renvoie une liste vide — pas une erreur : l'écran affiche
+ * alors l'état générique « Équipe SportVision affectée », sans avoir à traiter un refus.
+ */
+export interface OperateurAffecte {
+  prenom: string | null;
+  nom: string | null;
+  fonction: string | null;
+  responsable: boolean;
+  reponse: string | null;
+}
+
+export async function fetchCouvertureOperateurs(
+  supabase: SupabaseClient,
+  ref: string,
+): Promise<OperateurAffecte[]> {
+  const { data, error } = await supabase.rpc("couverture_operateurs", { p_ref: ref });
+  // Une erreur ici ne doit jamais casser la fiche : l'information est un complément, pas son objet.
+  if (error) return [];
+  return (data ?? []) as OperateurAffecte[];
+}
+
 // ── La couverture SportVision (vague C, 08/09/2026) ──────────────────────────
 //
 // Un seul appel : le CM désigne un événement par sa référence de calendrier et choisit un type.

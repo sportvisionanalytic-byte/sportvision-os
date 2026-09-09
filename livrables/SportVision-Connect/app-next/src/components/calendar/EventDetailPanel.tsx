@@ -10,7 +10,10 @@ import { Button } from "@/components/ui/Button";
 import { KIND_TONE } from "./calendar-style";
 import { couvertureLisible, lieuCourt, scoreDecompose, statutLisible } from "./synthese";
 import { parseDateOnly } from "@/lib/date-only";
+import { useEffect, useState } from "react";
 import { useSession } from "@/lib/session-context";
+import { createClient } from "@/lib/supabase/client";
+import { fetchCouvertureOperateurs, type OperateurAffecte } from "@/lib/data/club/calendar";
 import { cn } from "@/lib/cn";
 
 // Fiche latérale d'un événement du calendrier — voir ACTIONS.md § 15.
@@ -72,6 +75,22 @@ export function EventDetailPanel({ event, onClose }: EventDetailPanelProps) {
   const score = scoreDecompose(event);
   const statut = statutLisible(event);
   const couverture = couvertureLisible(event);
+
+  // Chargé seulement quand la fiche s'ouvre ET qu'une couverture existe. La fonction en base ne
+  // répond qu'aux rôles internes ; pour un président ou un coach elle renvoie une liste vide, et
+  // le bloc affiche l'état générique. Aucun test de rôle ici : l'autorité est en base, la dupliquer
+  // à l'écran garantirait qu'un jour les deux divergent.
+  const [operateurs, setOperateurs] = useState<OperateurAffecte[] | null>(null);
+  useEffect(() => {
+    if (!event.coverage) return;
+    let vivant = true;
+    fetchCouvertureOperateurs(createClient(), event.id).then((liste) => {
+      if (vivant) setOperateurs(liste);
+    });
+    return () => {
+      vivant = false;
+    };
+  }, [event.id, event.coverage]);
   const equipe = event.teamName ?? "Notre équipe";
   const heure = event.allDay
     ? null
@@ -172,9 +191,37 @@ export function EventDetailPanel({ event, onClose }: EventDetailPanelProps) {
             sur chacun des 80 entraînements de la semaine serait du bruit, pas de l'information. */}
         {couverture && (
           <Rubrique titre="SportVision">
-            <div className="flex items-center gap-2.5 rounded-xl bg-cyan-bg px-3.5 py-3">
-              <span className="text-[15px]" aria-hidden>{couverture.icone}</span>
-              <span className="text-[12.5px] font-extrabold text-cyan-fg">{couverture.label}</span>
+            <div className="flex flex-col gap-2 rounded-xl bg-cyan-bg px-3.5 py-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-[15px]" aria-hidden>{couverture.icone}</span>
+                <span className="text-[12.5px] font-extrabold text-cyan-fg">{couverture.label}</span>
+              </div>
+
+              {/* Trois états, trois messages. Tant que la requête n'a pas répondu, on n'affirme
+                  rien : annoncer « équipe affectée » puis la corriger serait pire que d'attendre. */}
+              {operateurs === null ? (
+                <span className="text-[11.5px] text-cyan-fg/70">Chargement de l&apos;affectation…</span>
+              ) : operateurs.length > 0 ? (
+                <div className="flex flex-col gap-0.5 border-t border-cyan-fg/15 pt-2">
+                  {operateurs.map((o, i) => (
+                    <span key={`${o.prenom}-${i}`} className="text-[12px] font-bold text-cyan-fg">
+                      {/* La fonction devant le nom : on cherche « qui fait la vidéo », pas
+                          l'inverse. Sans fonction renseignée, « Opérateur » plutôt qu'un tiret. */}
+                      {o.fonction || "Opérateur"} : {[o.prenom, o.nom].filter(Boolean).join(" ") || "—"}
+                      {o.reponse === "en_attente" || o.reponse === "invitation_envoyée" ? (
+                        <span className="font-normal text-cyan-fg/70"> · réponse attendue</span>
+                      ) : null}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                // Deux situations donnent une liste vide, et l'écran ne peut pas les distinguer :
+                // personne n'est encore affecté, ou l'utilisateur n'a pas à connaître les noms.
+                // Le message convient aux deux et ne ment ni dans un cas ni dans l'autre.
+                <span className="border-t border-cyan-fg/15 pt-2 text-[11.5px] text-cyan-fg/80">
+                  Équipe SportVision affectée
+                </span>
+              )}
             </div>
           </Rubrique>
         )}
