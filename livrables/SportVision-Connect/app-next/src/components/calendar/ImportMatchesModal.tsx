@@ -22,7 +22,8 @@ import {
   type CalendarSourceRow,
   type SaisonRef,
 } from "@/lib/data/club/calendar-sync";
-import { CALENDAR_ACCEPT, detectProvider, getProvider } from "@/lib/calendar/providers";
+import { detectProvider, getProvider } from "@/lib/calendar/providers";
+import { cn } from "@/lib/cn";
 import { normalizeCalendarUrl } from "@/lib/calendar/normalize";
 import { detectXlsxLayout } from "@/lib/calendar/providers/xlsx";
 import { layoutToMapping, type DetectedLayout } from "@/lib/calendar/autodetect";
@@ -112,6 +113,8 @@ export function ImportMatchesModal({
 
   const [step, setStep] = useState<Step>("source");
   const [busy, setBusy] = useState(false);
+  // Retour visuel pendant le glisser-deposer.
+  const [survol, setSurvol] = useState(false);
   const [fatalError, setFatalError] = useState<string | null>(null);
 
   // Contexte club
@@ -542,17 +545,40 @@ export function ImportMatchesModal({
               <span className="h-px flex-1 bg-divider" aria-hidden />
             </div>
 
-            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong px-6 py-8 text-center hover:border-brand-blue-pale">
+            {/* Glisser-deposer : la zone en avait l'apparence — bordure en pointilles, icone de
+                televersement — mais n'ecoutait aucun evenement de glissement. Deposer un fichier
+                dessus ne faisait rien, et pire, le navigateur l'ouvrait dans l'onglet. */}
+            <label
+              onDragOver={(e) => {
+                e.preventDefault();
+                setSurvol(true);
+              }}
+              onDragLeave={() => setSurvol(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setSurvol(false);
+                const fichier = e.dataTransfer.files?.[0];
+                if (fichier) void handleFile(fichier);
+              }}
+              className={cn(
+                "flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors",
+                survol ? "border-brand-blue-electric bg-brand-blue-electric/5" : "border-border-strong hover:border-brand-blue-pale",
+              )}
+            >
               <Upload className="h-5 w-5 text-text-faint" aria-hidden />
               <span className="text-[13px] font-bold text-text">
-                {busy ? "Lecture du fichier…" : "Déposer un fichier .pdf, .ics, .csv ou .xlsx"}
+                {busy ? "Lecture du fichier…" : survol ? "Lâchez le fichier ici" : "Glissez un fichier ici, ou cliquez pour le choisir"}
               </span>
               <span className="text-[11.5px] text-text-faint">
-                On reconnaît les colonnes tout seuls et on vous montre ce qui va changer avant d&apos;écrire.
+                .pdf, .xlsx, .csv ou .ics — on reconnaît les colonnes tout seuls et on vous montre ce
+                qui va changer avant d&apos;écrire.
               </span>
               <input
                 type="file"
-                accept={CALENDAR_ACCEPT}
+                // Extensions SEULES, sans type MIME : selon le systeme, un type MIME mal reconnu
+                // grise des fichiers parfaitement valides dans le selecteur (signale le 09/09/2026,
+                // ou seuls les PDF apparaissaient selectionnables).
+                accept=".pdf,.xlsx,.csv,.ics"
                 className="hidden"
                 onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
               />
