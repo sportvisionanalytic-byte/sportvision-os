@@ -10,6 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test:calendar": "node --test src/lib/calendar/__tests__/run.ts",
+    "test:calendar-vue": "node --test src/components/calendar/__tests__/synthese.test.ts",
     "prebuild": "node scripts/copier-worker-pdf.mjs && node scripts/figer-build.mjs"
   },
   "dependencies": {

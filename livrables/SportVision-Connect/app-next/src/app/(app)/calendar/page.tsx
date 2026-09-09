@@ -13,6 +13,16 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { KIND_DOT } from "@/components/calendar/calendar-style";
+import {
+  aCouverture,
+  libelleCompteur,
+  libelleCourt,
+  parPriorite,
+  passeVueRapide,
+  resumerJournee,
+  VUES_RAPIDES,
+  type VueRapide,
+} from "@/components/calendar/synthese";
 import { EventDetailPanel } from "@/components/calendar/EventDetailPanel";
 import { AddEventModal } from "@/components/calendar/AddEventModal";
 import { ImportMatchesModal } from "@/components/calendar/ImportMatchesModal";
@@ -88,6 +98,10 @@ export default function CalendarPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [teamFilter, setTeamFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<CalendarEventKind | "">("");
+  const [vueRapide, setVueRapide] = useState<VueRapide>("tout");
+  // Jour ouvert depuis la vue Mois. C'est le second niveau de lecture : la case reste synthétique,
+  // le détail complet vit ici — sinon on retombe sur la case-liste illisible qu'on veut éviter.
+  const [jourOuvert, setJourOuvert] = useState<Date | null>(null);
 
   // calendar_events générique (Coach/Académie/Sponsor, Phase 4) est en lecture seule côté membre
   // (écriture réservée au staff SportVision) — contrairement à club_calendar_events.
@@ -157,9 +171,10 @@ export default function CalendarPage() {
       sortedEvents.filter((e) => {
         if (teamFilter && e.teamName !== teamFilter) return false;
         if (typeFilter && e.kind !== typeFilter) return false;
+        if (!passeVueRapide(e, vueRapide)) return false;
         return true;
       }),
-    [sortedEvents, teamFilter, typeFilter],
+    [sortedEvents, teamFilter, typeFilter, vueRapide],
   );
 
   if (!canAccess(ctx, "calendar")) return <LockedModule title="Calendrier" />;
@@ -327,6 +342,29 @@ export default function CalendarPage() {
         )}
       </div>
 
+      {/* Vues rapides — les questions qu'on se pose vraiment en ouvrant un calendrier de club.
+          Elles ne remplacent pas les filtres ci-dessous, elles évitent d'avoir à les combiner à la
+          main pour retrouver une intention courante (« qu'est-ce qu'on doit couvrir ? »). */}
+      {!isGenericOrg && (
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Vues rapides">
+          {VUES_RAPIDES.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => setVueRapide(v.id)}
+              aria-pressed={vueRapide === v.id}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-[12px] font-bold transition-colors duration-sv",
+                vueRapide === v.id
+                  ? "border-brand-blue bg-brand-blue/10 text-brand-blue-electric"
+                  : "border-border-strong text-text-soft hover:bg-surface-sunken",
+              )}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {!isGenericOrg && (
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint">Filtrer</span>
@@ -358,28 +396,54 @@ export default function CalendarPage() {
               </option>
             ))}
           </select>
-          {(teamFilter || typeFilter) && (
+          {(teamFilter || typeFilter || vueRapide !== "tout") && (
             <button
               onClick={() => {
                 setTeamFilter("");
                 setTypeFilter("");
+                setVueRapide("tout");
               }}
               className="text-[12px] font-bold text-brand-blue-electric"
             >
               Réinitialiser
             </button>
           )}
+          {/* Dire ce qu'on regarde. Un filtre actif qui ne se voit pas fait conclure à un
+              calendrier vide plutôt qu'à une vue restreinte. */}
+          <span className="text-[11.5px] font-bold text-text-faint">
+            {filteredEvents.length} / {sortedEvents.length} événements
+          </span>
         </div>
       )}
 
       {view === "month" && (
-        <MonthView reference={reference} eventsOnDay={eventsOnDay} onSelect={setSelectedEvent} today={today} />
+        <MonthView
+          reference={reference}
+          eventsOnDay={eventsOnDay}
+          onSelect={setSelectedEvent}
+          onOpenDay={setJourOuvert}
+          today={today}
+        />
       )}
       {view === "week" && (
         <WeekView reference={reference} eventsOnDay={eventsOnDay} onSelect={setSelectedEvent} today={today} />
       )}
       {view === "day" && <DayView reference={reference} events={eventsOnDay(reference)} onSelect={setSelectedEvent} />}
       {view === "list" && <ListView events={filteredEvents} onSelect={setSelectedEvent} today={today} onRecharger={loadEvents} />}
+
+      {/* Le détail du jour s'efface dès qu'on ouvre un événement : deux panneaux superposés, c'est
+          deux fois « Fermer » avant de revenir au calendrier. */}
+      {jourOuvert && !selectedEvent && (
+        <DayPanel
+          day={jourOuvert}
+          events={eventsOnDay(jourOuvert)}
+          onSelect={(e) => {
+            setJourOuvert(null);
+            setSelectedEvent(e);
+          }}
+          onClose={() => setJourOuvert(null)}
+        />
+      )}
 
       {selectedEvent && <EventDetailPanel event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
       {addOpen && <AddEventModal onClose={() => setAddOpen(false)} onCreate={handleCreateEvent} teamNames={availableTeams} />}
@@ -407,15 +471,66 @@ function EventChip({ event, onSelect }: { event: CalendarEvent; onSelect: (e: Ca
   );
 }
 
+/**
+ * Une ligne de la vue Mois : compacte, mais qui dit l'essentiel.
+ *
+ * Pour un match, l'adversaire prime sur le nom de l'équipe : dans une case de mois on cherche
+ * « contre qui », le « qui » se lit à la couleur et se retrouve au clic. Le score remplace
+ * l'heure dès que le match est joué — l'heure d'un match terminé n'intéresse plus personne.
+ */
+function LigneMois({ event, onSelect }: { event: CalendarEvent; onSelect: (e: CalendarEvent) => void }) {
+  const heure = event.allDay
+    ? null
+    : new Date(event.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return (
+    <button
+      onClick={(ev) => {
+        ev.stopPropagation();
+        onSelect(event);
+      }}
+      title={event.title}
+      className={cn(
+        "flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-left text-[10.5px] font-bold text-text hover:bg-row-hover",
+        event.kind === "match" ? "bg-info-bg" : "bg-surface-alt",
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 flex-none rounded-full", KIND_DOT[event.kind])} aria-hidden />
+      <span className="truncate">{libelleCourt(event)}</span>
+      {event.score ? (
+        <span className="ml-auto flex-none font-extrabold tabular-nums text-text">{event.score}</span>
+      ) : heure ? (
+        <span className="ml-auto flex-none text-[9.5px] font-bold tabular-nums text-text-faint">{heure}</span>
+      ) : null}
+      {aCouverture(event) && (
+        <span className="ml-0.5 flex-none text-[9px]" aria-label="Couverture SportVision" title="Couverture SportVision">
+          📸
+        </span>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Vue Mois — une vue de SYNTHÈSE, pas une vue détaillée.
+ *
+ * Elle répond à trois questions et à trois seulement : quels jours sont chargés, où sont les
+ * matchs, où SportVision intervient. Le reste s'obtient en cliquant sur le jour.
+ *
+ * Deux événements en toutes lettres au maximum, choisis par importance et non par heure (voir
+ * synthese.ts) ; le reste en compteurs groupés par nature. « 8 entraînements » se lit plus vite
+ * que huit lignes tronquées, et surtout laisse le match visible.
+ */
 function MonthView({
   reference,
   eventsOnDay,
   onSelect,
+  onOpenDay,
   today,
 }: {
   reference: Date;
   eventsOnDay: (d: Date) => CalendarEvent[];
   onSelect: (e: CalendarEvent) => void;
+  onOpenDay: (d: Date) => void;
   today: Date;
 }) {
   const firstOfMonth = new Date(reference.getFullYear(), reference.getMonth(), 1);
@@ -436,12 +551,25 @@ function MonthView({
           const inMonth = day.getMonth() === reference.getMonth();
           const dayEvents = eventsOnDay(day);
           const isToday = isSameDay(day, today);
+          const resume = resumerJournee(dayEvents, 2);
+          const couverturesRepliees = resume.couvertures - resume.visibles.filter(aCouverture).length;
           return (
             <div
               key={day.toISOString()}
+              role={dayEvents.length ? "button" : undefined}
+              tabIndex={dayEvents.length ? 0 : undefined}
+              onClick={() => dayEvents.length && onOpenDay(day)}
+              onKeyDown={(e) => {
+                if (dayEvents.length && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  onOpenDay(day);
+                }
+              }}
+              aria-label={dayEvents.length ? `${day.getDate()} — ${resume.total} événements, ouvrir le détail` : undefined}
               className={cn(
                 "flex min-h-[104px] flex-col gap-1 border-b border-r border-divider p-1.5 last:border-r-0",
                 !inMonth && "bg-surface-alt/40",
+                dayEvents.length && "cursor-pointer hover:bg-row-hover/40",
               )}
             >
               <span
@@ -453,11 +581,30 @@ function MonthView({
                 {day.getDate()}
               </span>
               <div className="flex flex-col gap-1">
-                {dayEvents.slice(0, 3).map((e) => (
-                  <EventChip key={e.id} event={e} onSelect={onSelect} />
+                {resume.visibles.map((e) => (
+                  <LigneMois key={e.id} event={e} onSelect={onSelect} />
                 ))}
-                {dayEvents.length > 3 && (
-                  <span className="px-1.5 text-[10px] font-bold text-text-faint">+{dayEvents.length - 3} de plus</span>
+                {/* Les compteurs. Ils disent le volume sans détailler — c'est la différence entre
+                    « ce jour est chargé » et une liste qu'on ne lit pas. */}
+                {resume.compteurs.length > 0 && (
+                  <div className="flex flex-wrap gap-1 px-0.5">
+                    {resume.compteurs.map(({ kind, n }) => (
+                      <span
+                        key={kind}
+                        className="inline-flex items-center gap-1 rounded-full bg-surface-alt px-1.5 py-[1px] text-[9.5px] font-bold text-text-soft"
+                      >
+                        <span className={cn("h-1.5 w-1.5 rounded-full", KIND_DOT[kind])} aria-hidden />
+                        {libelleCompteur(kind, n)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {/* La couverture SportVision ne se perd jamais dans un compteur : c'est elle qui
+                    engage un déplacement d'équipe. */}
+                {couverturesRepliees > 0 && (
+                  <span className="px-0.5 text-[9.5px] font-bold text-cyan-fg">
+                    📸 {couverturesRepliees} couverture{couverturesRepliees > 1 ? "s" : ""}
+                  </span>
                 )}
               </div>
             </div>
@@ -465,6 +612,98 @@ function MonthView({
         })}
       </div>
     </Card>
+  );
+}
+
+/**
+ * Le second niveau de lecture : tout ce que la case du mois a résumé.
+ *
+ * Groupé par nature et non par heure, dans l'ordre de priorité : on vient y chercher « quels
+ * matchs » et « qui s'entraîne », pas une frise chronologique — la vue Jour existe pour ça.
+ */
+function DayPanel({
+  day,
+  events,
+  onSelect,
+  onClose,
+}: {
+  day: Date;
+  events: CalendarEvent[];
+  onSelect: (e: CalendarEvent) => void;
+  onClose: () => void;
+}) {
+  const groupes = useMemo(() => {
+    const parNature = new Map<CalendarEventKind, CalendarEvent[]>();
+    for (const e of [...events].sort(parPriorite)) {
+      const liste = parNature.get(e.kind) ?? [];
+      liste.push(e);
+      parNature.set(e.kind, liste);
+    }
+    return [...parNature.entries()];
+  }, [events]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose} role="presentation">
+      <aside
+        className="flex h-full w-full max-w-md flex-col overflow-y-auto bg-surface p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label={`Détail du ${day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-[19px] font-extrabold capitalize tracking-tight">
+              {day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+            </h2>
+            <p className="mt-0.5 text-[12.5px] text-text-soft">
+              {events.length} événement{events.length > 1 ? "s" : ""}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-border-strong px-2.5 py-1 text-[12px] font-bold text-text-soft hover:bg-surface-sunken"
+          >
+            Fermer
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-4">
+          {groupes.map(([kind, liste]) => (
+            <div key={kind} className="flex flex-col gap-1.5">
+              <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint">
+                <span className={cn("h-2 w-2 rounded-full", KIND_DOT[kind])} aria-hidden />
+                {CALENDAR_EVENT_KIND_LABELS[kind]}
+                <span className="text-text-faint/70">· {liste.length}</span>
+              </h3>
+              {liste.map((e) => {
+                const heure = e.allDay
+                  ? "Journée"
+                  : new Date(e.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => onSelect(e)}
+                    className="flex items-start gap-2.5 rounded-lg border border-border px-3 py-2 text-left hover:bg-row-hover"
+                  >
+                    <span className="w-11 flex-none pt-[1px] text-[12px] font-extrabold tabular-nums text-text-soft">
+                      {heure}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-bold text-text">{e.title}</span>
+                      <span className="mt-0.5 block truncate text-[11.5px] text-text-soft">
+                        {[e.competition, e.location].filter(Boolean).join(" · ") || (e.teamName ?? "")}
+                      </span>
+                    </span>
+                    {e.score && <span className="flex-none text-[13px] font-extrabold tabular-nums">{e.score}</span>}
+                    {aCouverture(e) && <span className="flex-none text-[12px]" title="Couverture SportVision">📸</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </aside>
+    </div>
   );
 }
 
