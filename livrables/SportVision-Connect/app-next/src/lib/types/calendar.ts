@@ -51,6 +51,14 @@ export interface CalendarEvent {
    *  publié doit continuer de s'afficher dans six mois). Absent tant que le match n'est pas
    *  rattaché à un club de l'annuaire — l'affichage doit donc toujours prévoir le cas. */
   opponentLogoUrl?: string;
+  /** Type de couverture décidé ('photo', 'video', 'photo_video') quand une couverture existe. */
+  coverageType?: string;
+  /** Éléments de feuille de match, tels que le club les a saisis. Texte libre : ce sont des noms
+   *  de joueurs, pas des identifiants — les afficher tels quels, ne rien en déduire. */
+  scorers?: string;
+  assists?: string;
+  manOfMatch?: string;
+  cards?: string;
   /** Statut de la présence SportVision existante ('prevu', 'mission_creee'), sinon absent.
    *  En lecture seule pour l'instant : le clic « SportVision sera présent » arrive en vague C. */
   coverage?: string;

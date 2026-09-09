@@ -246,6 +246,11 @@ interface LigneCalendrier {
   statut: string | null;
   couverture: string | null;
   adversaire_logo: string | null;
+  type_couverture: string | null;
+  buteurs: string | null;
+  passeurs: string | null;
+  homme_du_match: string | null;
+  cartons: string | null;
 }
 
 const GENRE_VERS_KIND: Record<LigneCalendrier["genre"], CalendarEventKind> = {
@@ -289,6 +294,13 @@ export async function fetchClubCalendrier(
     // L'écusson de l'adversaire, résolu en base depuis l'annuaire (migration v17) : il n'est pas
     // stocké sur le match, donc remplacer un écusson met à jour tous ses matchs d'un coup.
     opponentLogoUrl: l.adversaire_logo ?? undefined,
+    coverageType: l.type_couverture ?? undefined,
+    // Éléments de feuille de match. Vides tant que personne n'a saisi le résultat — la fiche les
+    // masque alors, plutôt que d'afficher des sections creuses.
+    scorers: l.buteurs ?? undefined,
+    assists: l.passeurs ?? undefined,
+    manOfMatch: l.homme_du_match ?? undefined,
+    cards: l.cartons ?? undefined,
   }));
 }
 

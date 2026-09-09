@@ -15,6 +15,7 @@ import assert from "node:assert/strict";
 import {
   resumerJournee, parPriorite, libelleCourt, passeVueRapide, aCouverture,
   lignesParCase, equipeParDefaut, aBesoinDuLieu, lieuCourt,
+  statutLisible, scoreDecompose, couvertureLisible,
 } from "../synthese.ts";
 import type { CalendarEvent } from "../../../lib/types/calendar.ts";
 
@@ -206,4 +207,45 @@ test("le lieu est ramené à ce qui le distingue", () => {
   assert.equal(lieuCourt("Stade Alain Mimoun"), "Alain Mimoun");
   assert.equal(lieuCourt(undefined), null);
   assert.equal(lieuCourt(""), null);
+});
+
+// ── La fiche match : plus aucun terme technique à l'écran ──
+
+test("les statuts de la base sont traduits, jamais affichés bruts", () => {
+  assert.equal(statutLisible(ev("match", "15:00", "Séniors R2", { status: "scheduled" })).label, "À venir");
+  assert.equal(statutLisible(ev("match", "15:00", "Séniors R2", { status: "postponed" })).label, "Reporté");
+  assert.equal(statutLisible(ev("match", "15:00", "Séniors R2", { status: "cancelled" })).label, "Annulé");
+  assert.equal(statutLisible(ev("training", "18:00", "U10 Élite", { status: "modifiee" })).label, "Horaire exceptionnel");
+});
+
+test("une feuille de match remplie prime sur un statut non mis à jour", () => {
+  // La source oublie parfois de passer un match à « terminé ». Un score prouve que la rencontre a
+  // eu lieu : afficher « À venir » sur un 2-0 serait absurde.
+  const joue = ev("match", "15:00", "Séniors R2", { status: "scheduled", score: "2-0" });
+  assert.equal(statutLisible(joue).label, "Terminé");
+});
+
+test("le score est rendu du point de vue de notre équipe", () => {
+  // La base stocke toujours « receveur - visiteur ». À l'extérieur, le score de notre équipe est
+  // donc le second nombre : l'intervertir ici évite que chaque écran ait à y penser.
+  assert.deepEqual(scoreDecompose(ev("match", "15:00", "Séniors R2", { score: "3-1", isHome: true })),
+    { domicile: "3", exterieur: "1" });
+  assert.deepEqual(scoreDecompose(ev("match", "15:00", "Séniors R2", { score: "3-1", isHome: false })),
+    { domicile: "1", exterieur: "3" }, "à l'extérieur, notre score passe à gauche");
+});
+
+test("un match non joué n'a pas de score à décomposer", () => {
+  assert.equal(scoreDecompose(ev("match", "15:00", "Séniors R2", {})), null);
+  assert.equal(scoreDecompose(ev("match", "15:00", "Séniors R2", { score: "à jouer" })), null,
+    "un score illisible vaut mieux masqué qu'affiché de travers");
+});
+
+test("la couverture dit l'état ET le type, ou rien du tout", () => {
+  assert.equal(couvertureLisible(ev("match", "15:00", "Séniors R2", {})), null,
+    "sans couverture, aucun bloc — un « aucune couverture » sur 80 entraînements serait du bruit");
+  const prevue = couvertureLisible(ev("match", "15:00", "Séniors R2", { coverage: "prevu", coverageType: "photo" }))!;
+  assert.equal(prevue.label, "Couverture prévue · Photo");
+  const confirmee = couvertureLisible(ev("match", "15:00", "Séniors R2", { coverage: "mission_creee", coverageType: "photo_video" }))!;
+  assert.equal(confirmee.label, "Couverture confirmée · Photo et vidéo");
+  assert.equal(confirmee.icone, "📸🎥");
 });

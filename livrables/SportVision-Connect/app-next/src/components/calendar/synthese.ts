@@ -248,6 +248,57 @@ export function aBesoinDuLieu(event: CalendarEvent, memeJour: CalendarEvent[]): 
   );
 }
 
+/**
+ * Le statut sportif, en français.
+ *
+ * `scheduled`, `postponed`, `cancelled` sont les valeurs de la base. Elles n'ont rien à faire à
+ * l'écran : « Statut : scheduled » demande à l'utilisateur de traduire lui-même une convention
+ * technique qu'il n'a pas choisie.
+ */
+export function statutLisible(e: CalendarEvent): { label: string; ton: "success" | "warning" | "danger" | "neutral" } {
+  switch (e.status) {
+    case "annulee":
+    case "cancelled":
+      return { label: "Annulé", ton: "danger" };
+    case "reportee":
+    case "postponed":
+      return { label: "Reporté", ton: "warning" };
+    case "modifiee":
+      return { label: "Horaire exceptionnel", ton: "warning" };
+    case "completed":
+      return { label: "Terminé", ton: "success" };
+    default:
+      // Un score vaut mieux qu'un statut : une feuille de match remplie dit que la rencontre a eu
+      // lieu, même si la source n'a pas mis son statut à jour.
+      return e.score ? { label: "Terminé", ton: "success" } : { label: "À venir", ton: "neutral" };
+  }
+}
+
+/** Le score, décomposé pour être mis en page. `null` tant que la rencontre n'est pas jouée : la
+ *  fiche affiche alors « vs », jamais un espace vide entre deux équipes. */
+export function scoreDecompose(e: CalendarEvent): { domicile: string; exterieur: string } | null {
+  const m = /^(\d+)\s*[-–]\s*(\d+)$/.exec((e.score ?? "").trim());
+  if (!m) return null;
+  // La base stocke toujours « score du receveur - score du visiteur ». Quand notre équipe se
+  // déplace, c'est donc le second nombre qui est le sien : intervertir ici, une seule fois, évite
+  // que chaque écran ait à y penser.
+  return e.isHome === false
+    ? { domicile: m[2]!, exterieur: m[1]! }
+    : { domicile: m[1]!, exterieur: m[2]! };
+}
+
+/** Libellé du type de couverture. */
+export function couvertureLisible(e: CalendarEvent): { label: string; icone: string } | null {
+  if (!e.coverage) return null;
+  const type = e.coverageType ?? "";
+  const icone = type === "video" ? "🎥" : type === "photo_video" ? "📸🎥" : "📸";
+  const quoi = type === "video" ? "Vidéo" : type === "photo_video" ? "Photo et vidéo" : "Photo";
+  // `mission_creee` signifie qu'une équipe est affectée : c'est l'information qui compte pour le
+  // club, plus que le nom interne de l'étape.
+  const etat = e.coverage === "mission_creee" ? "Couverture confirmée" : "Couverture prévue";
+  return { label: `${etat} · ${quoi}`, icone };
+}
+
 /** Vues rapides : les questions qu'on se pose vraiment en ouvrant un calendrier de club.
  *
  *  Elles ne remplacent pas les filtres équipe/type, elles évitent d'avoir à les combiner à la
