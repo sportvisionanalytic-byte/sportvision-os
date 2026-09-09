@@ -106,6 +106,42 @@ const legales = new Set([
 const illegales = actions.filter((a) => !legales.has(a));
 t("toutes les transitions proposees sont autorisees en base", illegales.length === 0, illegales.join(", "));
 
+// ── 5. Le Guide terrain decrit l'OS reel, pas une procedure parallele ──────
+console.log("\n5. Guide terrain");
+await page.evaluate(() => {
+  document.querySelectorAll("body > *:not(script)").forEach((n) => { n.style.display = "none"; });
+  const h = document.createElement("div");
+  h.id = "guide-hote";
+  h.innerHTML = guideTerrainHtml();
+  document.body.appendChild(h);
+});
+const guide = await page.$eval("#guide-hote", (e) => e.textContent);
+t("les 5 règles sont visibles sans ouvrir un chapitre", (await page.evaluate(() => GUIDE_REGLES.length)) === 5);
+t("les 8 chapitres sont là", (await page.$$eval("#guide-hote details", (d) => d.length)) === 8);
+t("chaque chapitre tient en 3 à 6 règles",
+  await page.evaluate(() => GUIDE_CHAPITRES.every((c) => c.r.length >= 3 && c.r.length <= 6)));
+t("chaque chapitre a son encart « À retenir »",
+  (await page.$$eval("#guide-hote details", (d) => d.filter((x) => /À retenir/.test(x.textContent)).length)) === 8);
+
+// Le point qui compte : le guide doit dire la MEME chose que la base, sinon il devient une
+// procedure parallele — exactement ce que Fouka veut eviter.
+t("la règle carte SD est énoncée comme en base", /jamais formatée sans confirmation que son contenu est sécurisé/.test(guide));
+t("les deux copies sont exigées, pas une", /deux copies avant tout effacement/.test(guide));
+t("les rushs sont dits obligatoires, pas optionnels", /rushs sont exigés, pas optionnels/.test(guide));
+t("la distinction des deux badges est expliquée",
+  /« Prestation réalisée » veut dire que le match est fini/.test(guide) && /« Mission terminée » n’arrive qu’après/.test(guide));
+t("l’arrivée 30 à 45 min est rappelée", /30 à 45 minutes/.test(guide));
+t("le guide renvoie aux vrais écrans", (await page.$$eval("#guide-hote button[onclick*='switchView']", (b) => b.length)) >= 2);
+
+// §46 : ce guide se lit sur un téléphone.
+await page.setViewportSize({ width: 390, height: 844 });
+await page.evaluate(() => document.querySelectorAll("#guide-hote details").forEach((d) => { d.open = true; }));
+const debordGuide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+t("aucun débordement horizontal à 390 px", debordGuide <= 0, `${debordGuide} px`);
+const petitsGuide = await page.$$eval("#guide-hote button, #guide-hote summary",
+  (els) => els.map((e) => ({ t: e.textContent.trim().slice(0, 20), h: e.offsetHeight })).filter((x) => x.h < 40));
+t("aucune cible sous 40 px dans le guide", petitsGuide.length === 0, JSON.stringify(petitsGuide));
+
 t("aucune erreur JavaScript pendant tout le test", erreursJs.length === 0, erreursJs.join(" / "));
 
 console.log(`\n${ok}/${ok + ko} verifications passees.`);

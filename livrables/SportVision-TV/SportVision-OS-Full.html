@@ -2063,6 +2063,11 @@ const VIEWS={
       <div style="font-size:20px;font-weight:800;color:var(--t1)">Accueil</div>
       <div style="font-size:12px;color:var(--t3);margin-top:2px">Quelles productions demandent mon attention maintenant ?</div>
     </div>
+    <!-- Resume du cockpit (09/09/2026). Volontairement court : trois blocs, pas un tableau de
+         bord de plus. Tous les chiffres viennent de v_production_missions, la source unique du
+         classement — les recalculer ici les ferait diverger du cockpit au premier changement
+         de regle. Chaque ligne ouvre directement la bonne file. -->
+    <div id="prod-resume" class="g3" style="margin-bottom:18px"></div>
     <div class="kpi-g" style="margin-bottom:18px">
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Missions à attribuer</div><div class="kpi-v" id="prod-kpi-attrib" style="color:var(--er)">—</div><span class="kpi-d dnt">aucun opérateur confirmé</span></div>
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Proposées sans réponse</div><div class="kpi-v" id="prod-kpi-propose">—</div><span class="kpi-d dnt">à relancer</span></div>
@@ -2534,6 +2539,7 @@ const VIEWS={
 
   'photo.form':()=>`
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('centre')">ℹ️ Centre SportVision</button></div>
+    ${guideTerrainHtml()}
     <div class="cd" style="margin-bottom:14px">
       <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
     </div>
@@ -5513,7 +5519,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='atraiter') await loadATraiter();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='admin'&&view==='calglobal'){_cgDate=new Date();await loadCalGlobal();}
-  if(role==='prod'&&view==='dash') await loadProdDash();
+  if(role==='prod'&&view==='dash'){ await loadProdDash(); loadProdResume(); }
   if(role==='prod'&&view==='cockpit') await loadCockpitProduction();
   if(role==='prod'&&view==='pre') await loadProdPrestations();
   if(role==='prod'&&view==='planning'){_prodPlanTab='semaine';await loadProdPlanning();}
@@ -29529,6 +29535,186 @@ async function secMarquerLivre(id){
 // ── Jour J photographe ───────────────────────────────────────────────────────
 let _jourjTimer=null;
 
+
+
+// ── GUIDE TERRAIN SPORTVISION ───────────────────────────────────────────────
+//
+// Ecrit APRES le parcours, volontairement (ordre fixe par Fouka le 09/09) : il decrit le
+// chemin reellement disponible dans l'OS et renvoie a ses vrais boutons, plutot qu'une
+// procedure parallele qui divergerait de l'outil des la premiere evolution.
+//
+// Les cinq regles sont toujours visibles, chapitres fermes ou non : meme un operateur qui
+// n'ouvre jamais un chapitre les aura lues en quinze secondes.
+const GUIDE_REGLES=[
+  'J’accepte ma mission et je lis mon brief.',
+  'J’arrive 30 à 45 minutes en avance, en tenue SportVision.',
+  'Je ne vide jamais une carte SD sans avoir sécurisé son contenu.',
+  'Je livre exactement ce qui est demandé : photos, montage et/ou rushs.',
+  'Ma mission n’est terminée qu’après validation Production et gestion du matériel.',
+];
+
+const GUIDE_CHAPITRES=[
+  {ic:'📩',t:'Avant ma mission',r:[
+    'Répondez à l’invitation : accepter ou signaler un problème, jamais laisser sans réponse.',
+    'Lisez le brief en entier — il dit ce qui est attendu, pas seulement le lieu et l’heure.',
+    'Vérifiez l’horaire d’arrivée demandé, l’adresse et le contact sur place.',
+    'Si le brief ou la couverture manque, demandez-les à Production avant de partir.',
+  ],retenir:'Une mission acceptée sans brief lu est une mission mal faite.',cta:{lb:'Voir mes missions',v:'pre'}},
+
+  {ic:'🎒',t:'Préparer mon matériel',r:[
+    'Boîtier, objectifs, batteries chargées, cartes, chargeur, accessoires prévus.',
+    'Matériel vidéo (micro, stabilisateur) uniquement si la mission le demande.',
+    'Faites quelques prises de test : carte reconnue, réglages de base vérifiés.',
+    'Tenue SportVision : vous représentez l’entreprise dès le parking.',
+  ],retenir:'La checklist de l’OS s’adapte à votre couverture. Elle ne s’affiche pas par hasard.'},
+
+  {ic:'💾',t:'Carte SD — la règle absolue',r:[
+    'Une carte qui contient déjà des fichiers ne se vide jamais.',
+    'Signalez-la avec « Une carte n’est pas vide » : Production identifie la mission précédente.',
+    'Attendez la confirmation que les fichiers sont sauvegardés avant toute préparation.',
+    '« J’ai vérifié les cartes » ne veut pas dire « j’ai formaté ».',
+  ],retenir:'Une carte contenant des fichiers n’est jamais formatée sans confirmation que son contenu est sécurisé. C’est la règle la plus importante du métier.'},
+
+  {ic:'📍',t:'Arriver sur place',r:[
+    'Arrivez 30 à 45 minutes avant, ou à l’heure d’arrivée précisée par la mission.',
+    'Présentez-vous au responsable du club en indiquant que vous représentez SportVision.',
+    'Vérifiez votre accès terrain et repérez les zones autorisées.',
+    'Un retard, un accès refusé, un problème : signalez-le tout de suite depuis la mission.',
+  ],retenir:'Production préfère un retard annoncé à un silence.',cta:{lb:'Mode Terrain',v:'jourj'}},
+
+  {ic:'📸',t:'Réaliser la prestation',r:[
+    'Suivez le brief : c’est lui qui dit ce que le club attend.',
+    'Respectez les consignes du club, des arbitres et de l’organisation.',
+    'Ne perturbez jamais la rencontre et restez dans les zones autorisées.',
+    'Tenue propre, attitude professionnelle, discrétion.',
+  ],retenir:'Le brief reste accessible depuis la mission pendant toute la prestation.'},
+
+  {ic:'🗂️',t:'Sauvegarder immédiatement',r:[
+    'Créez le dossier de la mission : l’OS vous donne le nom conseillé, copiez-le.',
+    'Copiez tous les fichiers, puis ouvrez-en quelques-uns pour vérifier la copie.',
+    'Gardez la carte intacte tant que les fichiers ne sont pas sécurisés.',
+    'Un fichier illisible, une carte corrompue : signalez-le, n’effacez rien.',
+  ],retenir:'Copie vérifiée sur le disque ET livraison partie : deux copies avant tout effacement, parce qu’un disque tombe en panne.'},
+
+  {ic:'🎞️',t:'Post-production et livraison',r:[
+    'Photo : tri, traitement au preset du club, export aux paramètres SportVision.',
+    'Vidéo : montage au format demandé, et les rushs sont exigés, pas optionnels.',
+    'Photo + vidéo : les deux workflows doivent être terminés.',
+    'Collez vos liens de livraison et cochez « transfert terminé et vérifié ».',
+    'Si le preset n’est pas renseigné, demandez-le : n’inventez jamais un rendu.',
+  ],retenir:'C’est la confirmation de transfert qui débloque la préparation de vos cartes.'},
+
+  {ic:'🔌',t:'Matériel et clôture',r:[
+    'Batteries à charger, matériel vérifié et nettoyé si nécessaire.',
+    'Kit à rendre : passez par le contrôle de retour, pièce par pièce.',
+    'Kit conservé pour la prochaine mission : préparez-le, ne déclarez pas un faux retour.',
+    'Batterie HS, objectif abîmé, pièce manquante : signalez-le, Production le voit aussitôt.',
+  ],retenir:'« Prestation réalisée » veut dire que le match est fini. « Mission terminée » n’arrive qu’après la validation Production et le matériel réglé. Ce ne sont pas la même chose.'},
+];
+
+function guideTerrainHtml(){
+  return `<div class="cd" style="margin-bottom:14px;border-left:3px solid var(--acc)">
+    <div style="padding:18px 20px">
+      <div style="font-size:16px;font-weight:800;color:var(--t1)">📘 Guide terrain SportVision</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:2px;margin-bottom:14px">Le parcours réel de l’OS, du brief à la clôture.</div>
+
+      <div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.22);border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:800;color:var(--acc);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Les 5 règles SportVision</div>
+        ${GUIDE_REGLES.map((r,i)=>`<div style="display:flex;gap:9px;padding:5px 0">
+          <span style="font-size:12.5px;font-weight:800;color:var(--acc);min-width:14px">${i+1}.</span>
+          <span style="font-size:13px;color:var(--t1);line-height:1.45">${esc(r)}</span>
+        </div>`).join('')}
+      </div>
+
+      ${GUIDE_CHAPITRES.map((c,i)=>`<details style="border-top:1px solid rgba(255,255,255,.06)">
+        <summary style="display:flex;align-items:center;gap:9px;padding:11px 0;cursor:pointer;min-height:40px;list-style:none">
+          <span style="font-size:17px">${c.ic}</span>
+          <span style="flex:1;font-size:13.5px;font-weight:700;color:var(--t1)">${i+1}. ${esc(c.t)}</span>
+          <span style="font-size:11px;color:var(--t3)">${c.r.length} règles</span>
+        </summary>
+        <div style="padding:0 0 14px 26px">
+          ${c.r.map(r=>`<div style="display:flex;gap:8px;padding:4px 0">
+            <span style="color:var(--t3);font-size:12px">•</span>
+            <span style="font-size:13px;color:var(--t2);line-height:1.5">${esc(r)}</span>
+          </div>`).join('')}
+          <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:11px 13px;margin-top:10px">
+            <div style="font-size:10.5px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">À retenir</div>
+            <div style="font-size:12.5px;color:var(--t1);line-height:1.5">${esc(c.retenir)}</div>
+          </div>
+          ${c.cta?`<button class="btn bg2 bs" style="margin-top:10px;min-height:40px" onclick="switchView('${c.cta.v}')">${esc(c.cta.lb)}</button>`:''}
+        </div>
+      </details>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── Resume du cockpit sur l'accueil Production (§R) ─────────────────────────
+//
+// Une seule requete, la meme vue que le cockpit. Aucun chiffre n'est recalcule ici : on vient
+// justement de construire une source unique, ce serait la trahir des le premier ecran.
+function _resLigne(lb,n,groupe,couleur){
+  if(!n)return '';
+  return `<button onclick="ouvrirCockpit('${groupe}')" style="display:flex;align-items:center;gap:9px;width:100%;padding:9px 0;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;text-align:left;min-height:40px">
+    <span style="font-size:17px;font-weight:800;color:${couleur||'var(--t1)'};min-width:22px;font-variant-numeric:tabular-nums">${n}</span>
+    <span style="flex:1;font-size:12.5px;color:var(--t2)">${esc(lb)}</span>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+  </button>`;
+}
+
+function ouvrirCockpit(groupe){
+  _cockpitGroupe=groupe;
+  switchView('cockpit');
+}
+
+async function loadProdResume(){
+  const el=document.getElementById('prod-resume');
+  if(!el)return;
+  let data;
+  try{
+    data=await sbFetch('v_production_missions?select=groupe,date_prestation,livraison_en_retard,echeance_manquante,kit_retour_prevu&groupe=neq.annulees');
+    if(!Array.isArray(data))throw new Error('api');
+  }catch(e){
+    el.innerHTML='<div style="grid-column:1/-1;padding:14px;color:var(--er);font-size:12.5px">Résumé indisponible.</div>';
+    return;
+  }
+  const today=ymdLocal();
+  const n=f=>data.filter(f).length;
+  const actives=m=>m.groupe!=='terminees';
+
+  const auj      = n(m=>m.date_prestation===today&&actives(m));
+  const terrain  = n(m=>m.groupe==='terrain');
+  const aVenir   = n(m=>m.groupe==='a_venir');
+  const aVerif   = n(m=>m.groupe==='a_verifier');
+  const correc   = n(m=>m.groupe==='corrections');
+  const attente  = n(m=>m.groupe==='attente_acceptation');
+  // « Kit a recuperer » cote Production : un retour deja echu sur une mission encore ouverte.
+  const kits     = n(m=>actives(m)&&m.kit_retour_prevu&&new Date(m.kit_retour_prevu)<=new Date());
+  const retard   = n(m=>actives(m)&&m.livraison_en_retard);
+  const sansEch  = n(m=>actives(m)&&m.echeance_manquante);
+
+  const carte=(titre,contenu,vide)=>`<div class="cd" style="padding:14px 16px">
+    <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${titre}</div>
+    ${contenu||`<div style="font-size:12.5px;color:var(--t3);padding:9px 0">${vide}</div>`}
+  </div>`;
+
+  el.innerHTML=
+    carte('Aujourd’hui',
+      _resLigne(auj>1?'missions aujourd’hui':'mission aujourd’hui',auj,'a_venir')
+      +_resLigne(terrain>1?'sur le terrain':'sur le terrain',terrain,'terrain','var(--er)')
+      +_resLigne(aVenir>1?'à venir':'à venir',aVenir,'a_venir'),
+      'Rien de prévu aujourd’hui.')
+    +carte('À traiter',
+      _resLigne(aVerif>1?'livraisons à vérifier':'livraison à vérifier',aVerif,'a_verifier','var(--ok)')
+      +_resLigne(correc>1?'corrections en attente':'correction en attente',correc,'corrections','#7C4DFF')
+      +_resLigne(attente>1?'opérateurs n’ont pas accepté':'opérateur n’a pas accepté',attente,'attente_acceptation','var(--wa)')
+      +_resLigne(kits>1?'kits à récupérer':'kit à récupérer',kits,'a_verifier','var(--wa)'),
+      'Rien à traiter.')
+    +carte('Alertes',
+      _resLigne(retard>1?'🔴 livraisons en retard':'🔴 livraison en retard',retard,'a_verifier','var(--er)')
+      +_resLigne(sansEch>1?'⚠ missions sans échéance':'⚠ mission sans échéance',sansEch,'a_venir','var(--wa)'),
+      'Aucune alerte.');
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // COCKPIT PRODUCTION (master prompt Fouka, vague 2 du 09/09/2026)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -29597,7 +29783,7 @@ function renderCockpitOnglets(){
     // Une file d'attente vide n'a pas besoin d'un compteur : on n'affiche que ce qui appelle
     // une action. « Terminées » n'en porte jamais, ce n'est pas une file de travail.
     const badge=(n&&g.k!=='terminees')?`<span style="margin-left:6px;padding:1px 6px;border-radius:9px;background:${actif?'rgba(255,255,255,.22)':'var(--s3,rgba(255,255,255,.08))'};font-size:10.5px;font-weight:800">${n}</span>`:'';
-    return `<button onclick="setCockpitGroupe('${g.k}')" class="btn ${actif?'bp':'bg2'} bs" style="flex-shrink:0">${g.ic} ${esc(g.lb)}${badge}</button>`;
+    return `<button onclick="setCockpitGroupe('${g.k}')" class="btn ${actif?'bp':'bg2'} bs" style="flex-shrink:0;min-height:40px">${g.ic} ${esc(g.lb)}${badge}</button>`;
   }).join('');
 }
 
@@ -29676,8 +29862,8 @@ function renderCockpitProduction(){
             ${bloc}
           </div>
           ${(m.groupe==='a_verifier'||m.groupe==='corrections')
-            ?`<button onclick="event.stopPropagation();modalVerifierLivraison('${m.prestation_id}')" class="btn bp bs" style="flex-shrink:0;min-height:38px">Vérifier</button>`
-            :`<button onclick="event.stopPropagation();modalDetailById('${m.prestation_id}')" class="btn bg2 bs" style="flex-shrink:0;min-height:38px">Voir</button>`}
+            ?`<button onclick="event.stopPropagation();modalVerifierLivraison('${m.prestation_id}')" class="btn bp bs" style="flex-shrink:0;min-height:40px">Vérifier</button>`
+            :`<button onclick="event.stopPropagation();modalDetailById('${m.prestation_id}')" class="btn bg2 bs" style="flex-shrink:0;min-height:40px">Voir</button>`}
         </div>
       </div>
     </div>`;
@@ -29735,9 +29921,9 @@ async function modalVerifierLivraison(prestationId){
       </div>
       ${l.commentaire&&l.statut==='correction_demandee'?`<div style="font-size:12px;color:var(--er);margin-bottom:7px">Correction demandée : ${esc(l.commentaire)}</div>`:''}
       <div style="display:flex;gap:7px;flex-wrap:wrap">
-        <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" class="btn bg2 bs" style="text-decoration:none">Ouvrir</a>
-        ${l.statut!=='valide'?`<button class="btn bp bs" onclick="validerLienLivraison('${escJs(l.id)}','${escJs(prestationId)}')">✓ Valider</button>`:''}
-        ${l.statut!=='correction_demandee'?`<button class="btn bg2 bs" onclick="modalDemanderCorrection('${escJs(l.id)}')">🔁 Demander une correction</button>`:''}
+        <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" class="btn bg2 bs" style="text-decoration:none;min-height:40px;display:inline-flex;align-items:center">Ouvrir</a>
+        ${l.statut!=='valide'?`<button class="btn bp bs" style="min-height:40px" onclick="validerLienLivraison('${escJs(l.id)}','${escJs(prestationId)}')">✓ Valider</button>`:''}
+        ${l.statut!=='correction_demandee'?`<button class="btn bg2 bs" style="min-height:40px" onclick="modalDemanderCorrection('${escJs(l.id)}')">🔁 Demander une correction</button>`:''}
       </div>
     </div>`).join(''):'<div style="font-size:12.5px;color:var(--t3);margin-bottom:12px">Aucun lien transmis pour le moment.</div>'}
 
