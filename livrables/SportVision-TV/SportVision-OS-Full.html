@@ -13487,9 +13487,9 @@ async function executerDemandeCorrection(id,ajouteurId,prestationId){
   const r=await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{statut:'correction_demandee',commentaire:motif,updated_at:new Date().toISOString()}});
   if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'opération impossible.'));return;}
   await logMediaHistory(prestationId||null,S.uid,'Correction demandée','lien',id,'a_verifier','correction_demandee');
-  if(ajouteurId){
-    await creerNotifSiActive(ajouteurId,'taches',{type:'correction_media',titre:'Correction demandée sur un lien',message:motif,lue:false,prestation_id:prestationId||null}).catch(()=>{});
-  }
+  // 09/09/2026 — La notification a l'operateur n'est plus posee ici : le declencheur
+  // trg_notifier_decision_livraison s'en charge cote base, donc elle part meme quand la
+  // correction est demandee hors de cet ecran. La garder ici la doublerait.
   closeModal();
   toast('Correction demandée','warn');
   if(S.view==='media') loadProdMedias();
@@ -29537,6 +29537,27 @@ let _jourjTimer=null;
 
 
 
+
+// Chaque notification du module operateur ouvre l'ecran ou l'action se fait, pas une fiche
+// generique : « voir la mission » quand il faut preparer, « Sauvegarde & livraison » quand il
+// faut livrer ou corriger, la file du cockpit quand c'est a la Production d'agir.
+function actionNotification(n){
+  const id=n.lien_prestation_id;
+  if(!id)return null;
+  const t=n.type||'';
+  if(S.role==='photo'){
+    if(['livraison_a_faire','echeance_proche','livraison_en_retard','correction_demandee','fichiers_a_securiser','livraison_validee'].includes(t))
+      return `closeModal();modalSauvegarde('${id}')`;
+    if(typeof modalParcoursMission==='function')return `closeModal();modalParcoursMission('${id}')`;
+    return `closeModal();modalDetailById('${id}')`;
+  }
+  if(['livraison_recue','livraison_en_retard_prod'].includes(t)&&typeof modalVerifierLivraison==='function')
+    return `closeModal();modalVerifierLivraison('${id}')`;
+  if(t==='mission_non_acceptee_prod'&&typeof ouvrirCockpit==='function')
+    return `closeModal();ouvrirCockpit('attente_acceptation')`;
+  return `closeModal();modalDetailById('${id}')`;
+}
+
 // ── GUIDE TERRAIN SPORTVISION ───────────────────────────────────────────────
 //
 // Ecrit APRES le parcours, volontairement (ordre fixe par Fouka le 09/09) : il decrit le
@@ -30373,7 +30394,7 @@ async function enregistrerIncidentFichiers(prestationId){
   const desc=(document.getElementById('inc-desc')?.value||'').trim();
   const err=document.getElementById('inc-err');
   if(!desc){if(err)err.textContent='Décrivez le problème.';return;}
-  const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,declare_par:localStorage.getItem('sv_uid'),type_incident:type,niveau:'majeur',description:desc,date_incident:new Date().toISOString(),cloture:false}});
+  const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,declare_par:localStorage.getItem('sv_uid'),type_incident:type,niveau:'critique',description:desc,date_incident:new Date().toISOString(),cloture:false}});
   if(sbErr(r)){if(err)err.textContent=msgErreur(r,'Signalement impossible.');return;}
   closeModal();
   toast('Production est prévenue.','ok');
@@ -30401,7 +30422,7 @@ async function signalerCarteNonVide(prestationId){
   const desc=(document.getElementById('cnv-desc')?.value||'').trim();
   const err=document.getElementById('cnv-err');
   if(!desc){if(err)err.textContent='Décrivez le contenu constaté.';return;}
-  const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,declare_par:localStorage.getItem('sv_uid'),type_incident:'carte_non_vide',niveau:'majeur',description:'Carte SD non vide avant mission — '+desc,date_incident:new Date().toISOString(),cloture:false}});
+  const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,declare_par:localStorage.getItem('sv_uid'),type_incident:'carte_non_vide',niveau:'critique',description:'Carte SD non vide avant mission — '+desc,date_incident:new Date().toISOString(),cloture:false}});
   if(sbErr(r)){if(err)err.textContent=msgErreur(r,'Signalement impossible.');return;}
   closeModal();
   toast('Production est prévenue. N’effacez rien en attendant sa réponse.','warn');
@@ -30492,7 +30513,7 @@ async function enregistrerIncidentMateriel(prestationId){
   const desc=(document.getElementById('incm-desc')?.value||'').trim();
   const err=document.getElementById('incm-err');
   if(!desc){if(err)err.textContent='Décrivez le problème.';return;}
-  const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,declare_par:localStorage.getItem('sv_uid'),type_incident:type,niveau:'majeur',description:'Matériel — '+desc,date_incident:new Date().toISOString(),cloture:false}});
+  const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,declare_par:localStorage.getItem('sv_uid'),type_incident:type,niveau:'important',description:'Matériel — '+desc,date_incident:new Date().toISOString(),cloture:false}});
   if(sbErr(r)){if(err)err.textContent=msgErreur(r,'Signalement impossible.');return;}
   closeModal();
   toast('Production est prévenue.','ok');
@@ -34303,7 +34324,7 @@ async function openNotifPanel(){
       +data.map(n=>{
         const p=NOTIF_PRIORITY_CFG[n.priorite]||NOTIF_PRIORITY_CFG.normale;
         const action=n.lien_prestation_id
-          ?`closeModal();modalDetailById('${n.lien_prestation_id}')`
+          ?actionNotification(n)
           :n.lien_client_id
             ?`closeModal();modalModifierClientById('${n.lien_client_id}')`
             :n.lien_clubplus_signup_request_id
