@@ -32,7 +32,7 @@ import {
 } from "@/lib/data/club/roster-import";
 import { fetchClubSponsors, createClubSponsor, uploadSponsorLogo } from "@/lib/data/club/sponsors";
 import { fetchClubCalendarEvents, createClubCalendarEvent } from "@/lib/data/club/calendar";
-import type { Team } from "@/lib/types/teams";
+import { TEAM_CATEGORY_OPTIONS, type Team } from "@/lib/types/teams";
 import type { Sponsor } from "@/lib/types/sponsors";
 import type { CalendarEvent } from "@/lib/types/calendar";
 import { ImportMatchesModal } from "@/components/calendar/ImportMatchesModal";
@@ -1044,7 +1044,17 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
               <input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="U15 R1" className={fieldClass} />
             </Field>
             <Field label="Catégorie">
-              <input value={teamCategorie} onChange={(e) => setTeamCategorie(e.target.value)} placeholder="U15" className={fieldClass} />
+              {/* Liste deroulante et non texte libre : la meme liste que CreateTeamModal, pour
+                  qu'un club ne se retrouve pas avec « U15 », « u15 » et « U 15 » qui ne se
+                  rapprochent d'aucun calendrier importe. */}
+              <select value={teamCategorie} onChange={(e) => setTeamCategorie(e.target.value)} className={fieldClass}>
+                <option value="">— Choisir —</option>
+                {TEAM_CATEGORY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
           <div className="border-t border-divider pt-3">
