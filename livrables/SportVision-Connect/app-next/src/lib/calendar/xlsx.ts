@@ -132,28 +132,28 @@ function columnIndex(cellRef: string): number {
 
 function parseSharedStrings(xml: string): string[] {
   const items: string[] = [];
-  const siRe = /<si(?:\s[^>]*)?(?:\/>|>([\s\S]*?)<\/si>)/g;
+  const siRe = /<(?:\w+:)?si(?:\s[^>]*)?(?:\/>|>([\s\S]*?)<\/(?:\w+:)?si>)/g;
   let match: RegExpExecArray | null;
   while ((match = siRe.exec(xml)) !== null) {
     const body = match[1] ?? "";
     // Un <si> peut contenir plusieurs <t> (texte enrichi découpé en « runs ») : il faut les
     // concaténer, sinon "FC Melun" saisi avec un mot en gras ressort tronqué à "FC ".
-    const parts = body.match(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g) ?? [];
-    items.push(parts.map((p) => decodeXml(p.replace(/^<t(?:\s[^>]*)?>/, "").replace(/<\/t>$/, ""))).join(""));
+    const parts = body.match(/<(?:\w+:)?t(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?t>/g) ?? [];
+    items.push(parts.map((p) => decodeXml(p.replace(/^<(?:\w+:)?t(?:\s[^>]*)?>/, "").replace(/<\/(?:\w+:)?t>$/, ""))).join(""));
   }
   return items;
 }
 
 function parseSheet(xml: string, sharedStrings: string[]): string[][] {
   const rows: string[][] = [];
-  const rowRe = /<row(\s[^>]*?)?\s*(?:\/>|>([\s\S]*?)<\/row>)/g;
+  const rowRe = /<(?:\w+:)?row(\s[^>]*?)?\s*(?:\/>|>([\s\S]*?)<\/(?:\w+:)?row>)/g;
   let rowMatch: RegExpExecArray | null;
 
   while ((rowMatch = rowRe.exec(xml)) !== null) {
     const rowAttrs = rowMatch[1] ?? "";
     const body = rowMatch[2] ?? "";
     const cells: string[] = [];
-    const cellRe = /<c(\s[^>]*)?(?:\/>|>([\s\S]*?)<\/c>)/g;
+    const cellRe = /<(?:\w+:)?c(\s[^>]*)?(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g;
     let cellMatch: RegExpExecArray | null;
 
     while ((cellMatch = cellRe.exec(body)) !== null) {
@@ -164,10 +164,10 @@ function parseSheet(xml: string, sharedStrings: string[]): string[][] {
       let value = "";
 
       if (type === "inlineStr") {
-        const texts = inner.match(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g) ?? [];
-        value = texts.map((t) => decodeXml(t.replace(/^<t(?:\s[^>]*)?>/, "").replace(/<\/t>$/, ""))).join("");
+        const texts = inner.match(/<(?:\w+:)?t(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?t>/g) ?? [];
+        value = texts.map((t) => decodeXml(t.replace(/^<(?:\w+:)?t(?:\s[^>]*)?>/, "").replace(/<\/(?:\w+:)?t>$/, ""))).join("");
       } else {
-        const v = /<v(?:\s[^>]*)?>([\s\S]*?)<\/v>/.exec(inner);
+        const v = /<(?:\w+:)?v(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?v>/.exec(inner);
         const raw = v ? decodeXml(v[1]!) : "";
         if (type === "s") {
           const index = Number(raw);
@@ -208,7 +208,7 @@ export async function readXlsx(buffer: ArrayBuffer): Promise<XlsxWorkbook> {
   const relTargets = new Map<string, string>();
   if (relsEntry) {
     const relsXml = await readZipFile(buffer, relsEntry);
-    for (const tag of relsXml.match(/<Relationship\b[^>]*>/g) ?? []) {
+    for (const tag of relsXml.match(/<(?:\w+:)?Relationship\b[^>]*>/g) ?? []) {
       const id = attr(tag, "Id");
       const target = attr(tag, "Target");
       if (id && target) relTargets.set(id, target.replace(/^\/?xl\//, "").replace(/^\.\//, ""));
@@ -219,7 +219,11 @@ export async function readXlsx(buffer: ArrayBuffer): Promise<XlsxWorkbook> {
   const sharedStrings = sharedEntry ? parseSharedStrings(await readZipFile(buffer, sharedEntry)) : [];
 
   const sheets: XlsxSheet[] = [];
-  const sheetTags = workbookXml.match(/<sheet\b[^>]*\/?>/g) ?? [];
+  // Le prefixe de namespace est OPTIONNEL dans tout ce fichier : un classeur produit par la
+  // bibliotheque OpenXML ecrit <x:sheet>, <x:row>, <x:c>… et non <sheet>. Sans cette tolerance,
+  // le lecteur ne trouvait aucune feuille et rendait « Fichier .xlsx illisible » sur des fichiers
+  // parfaitement valides (constate le 09/09/2026 sur un vrai planning de club).
+  const sheetTags = workbookXml.match(/<(?:\w+:)?sheet\b[^>]*\/?>/g) ?? [];
   for (let i = 0; i < sheetTags.length; i++) {
     const tag = sheetTags[i]!;
     const name = attr(tag, "name") ?? `Feuille ${i + 1}`;

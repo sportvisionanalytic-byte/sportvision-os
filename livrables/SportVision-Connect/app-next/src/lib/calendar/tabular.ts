@@ -94,7 +94,16 @@ export function rowsToSourceEvents(rows: string[][], options: TabularParseOption
       externalCompetitionId: at(row, "externalCompetitionId")?.trim() || null,
       competitionName: at(row, "competition")?.trim() || null,
       externalTeamId: at(row, "externalTeamId")?.trim() || null,
-      sourceTeamName: at(row, "team")?.trim() || null,
+      // À défaut de colonne « équipe », la compétition sert d'identité d'équipe côté source.
+      //
+      // C'est le cas des exports de district (constaté le 09/09/2026 sur un vrai planning) : la
+      // colonne équipe y porte le nom FÉDÉRAL du club — « AS VLG 21 » — identique pour toutes les
+      // catégories, donc inutilisable pour répartir. C'est la compétition qui distingue :
+      // « U18 Departemental 2 », « U15 Access D2 »…
+      //
+      // Le rapprochement reste ensuite le même : l'humain associe une fois « U18 Departemental 2 »
+      // à son équipe U18, et club_team_source_mappings s'en souvient.
+      sourceTeamName: at(row, "team")?.trim() || at(row, "competition")?.trim() || null,
       opponent: normalizeOpponentValue(opponentRaw),
       matchDate,
       kickoffTime,

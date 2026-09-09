@@ -1035,3 +1035,86 @@ test("district : une ligne de matchs effondrée en une cellule n'est pas prise p
   const dernier = r.evenements[r.evenements.length - 1]!;
   assert.equal(dernier.competitionName, "U15 Access D2 / Automne");
 });
+
+// ── Classeurs Excel a balises prefixees (09/09/2026) ─────────────────────────
+// Un vrai planning de club deposé par Fouka renvoyait « Fichier .xlsx illisible : aucune feuille
+// de calcul trouvée ». Le fichier était parfaitement valide : il est produit par la bibliothèque
+// OpenXML, qui préfixe ses balises — <x:sheet>, <x:row>, <x:c> — là où le lecteur n'acceptait que
+// la forme sans préfixe. Tout export venant d'un outil .NET tombait dans ce trou.
+
+function classeurPrefixe(): ArrayBuffer {
+  // Un .xlsx minimal, entièrement en balises préfixées `x:`, sans compression (méthode 0).
+  const fichiers: Record<string, string> = {
+    "xl/workbook.xml":
+      `<?xml version="1.0"?><x:workbook xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main"` +
+      ` xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+      `<x:sheets><x:sheet name="Feuil1" sheetId="1" r:id="rId1"/></x:sheets></x:workbook>`,
+    "xl/_rels/workbook.xml.rels":
+      `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      `<Relationship Id="rId1" Target="worksheets/sheet.xml"/></Relationships>`,
+    "xl/worksheets/sheet.xml":
+      `<?xml version="1.0"?><x:worksheet xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><x:sheetData>` +
+      `<x:row r="1"><x:c t="inlineStr"><x:is><x:t>Date</x:t></x:is></x:c><x:c t="inlineStr"><x:is><x:t>Equipe</x:t></x:is></x:c><x:c t="inlineStr"><x:is><x:t>Adversaire</x:t></x:is></x:c></x:row>` +
+      `<x:row r="2"><x:c t="inlineStr"><x:is><x:t>14/09/2026</x:t></x:is></x:c><x:c t="inlineStr"><x:is><x:t>U18 D2</x:t></x:is></x:c><x:c t="inlineStr"><x:is><x:t>FC Sens</x:t></x:is></x:c></x:row>` +
+      `<x:row r="3"><x:c t="inlineStr"><x:is><x:t>21/09/2026</x:t></x:is></x:c><x:c t="inlineStr"><x:is><x:t>U16 D3</x:t></x:is></x:c><x:c t="inlineStr"><x:is><x:t>AS Montereau</x:t></x:is></x:c></x:row>` +
+      `</x:sheetData></x:worksheet>`,
+  };
+  const enc = new TextEncoder();
+  const locales: Uint8Array[] = [];
+  const centrales: Uint8Array[] = [];
+  let offset = 0;
+  const u32 = (n: number) => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255];
+  const u16 = (n: number) => [n & 255, (n >> 8) & 255];
+  for (const [nom, contenu] of Object.entries(fichiers)) {
+    const nomOctets = enc.encode(nom);
+    const donnees = enc.encode(contenu);
+    // CRC32 — necessaire, un lecteur strict le verifierait.
+    let crc = ~0;
+    for (const octet of donnees) {
+      crc ^= octet;
+      for (let k = 0; k < 8; k++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+    crc = ~crc >>> 0;
+    const entete = Uint8Array.from([
+      0x50, 0x4b, 3, 4, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      ...u32(crc), ...u32(donnees.length), ...u32(donnees.length),
+      ...u16(nomOctets.length), 0, 0,
+    ]);
+    const local = new Uint8Array(entete.length + nomOctets.length + donnees.length);
+    local.set(entete, 0);
+    local.set(nomOctets, entete.length);
+    local.set(donnees, entete.length + nomOctets.length);
+    locales.push(local);
+    const centrale = Uint8Array.from([
+      0x50, 0x4b, 1, 2, 20, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      ...u32(crc), ...u32(donnees.length), ...u32(donnees.length),
+      ...u16(nomOctets.length), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u32(offset),
+    ]);
+    const cd = new Uint8Array(centrale.length + nomOctets.length);
+    cd.set(centrale, 0);
+    cd.set(nomOctets, centrale.length);
+    centrales.push(cd);
+    offset += local.length;
+  }
+  const tailleCd = centrales.reduce((n, c) => n + c.length, 0);
+  const fin = Uint8Array.from([
+    0x50, 0x4b, 5, 6, 0, 0, 0, 0,
+    ...u16(centrales.length), ...u16(centrales.length),
+    ...u32(tailleCd), ...u32(offset), 0, 0,
+  ]);
+  const total = offset + tailleCd + fin.length;
+  const sortie = new Uint8Array(total);
+  let p = 0;
+  for (const l of locales) { sortie.set(l, p); p += l.length; }
+  for (const c of centrales) { sortie.set(c, p); p += c.length; }
+  sortie.set(fin, p);
+  return sortie.buffer;
+}
+
+test("xlsx : un classeur a balises prefixees est lu comme les autres", async () => {
+  const resultat = await xlsxProvider.parse({ fileName: "planning.xlsx", bytes: classeurPrefixe(), teams: TEAMS });
+  assert.equal(resultat.issues.length, 0, resultat.issues.map((i) => i.reason).join(" / "));
+  assert.equal(resultat.events.length, 2);
+  assert.equal(resultat.events[0]!.matchDate, "2026-09-14");
+  assert.equal(resultat.events[0]!.opponent, "FC Sens");
+});
