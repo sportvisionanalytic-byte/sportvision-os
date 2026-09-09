@@ -446,7 +446,9 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
   const [slots, setSlots] = useState<TrainingSlot[]>([]);
   const [showTeamForm, setShowTeamForm] = useState(false);
   const [teamName, setTeamName] = useState("");
-  const [teamCategorie, setTeamCategorie] = useState("");
+  // Plusieurs categories possibles : beaucoup de clubs font jouer les U8 avec les U9. La
+  // premiere cochee reste la principale, celle qu'affichent les ecrans existants.
+  const [teamCategories, setTeamCategories] = useState<string[]>([]);
   const [teamCoachFirstName, setTeamCoachFirstName] = useState("");
   const [teamCoachLastName, setTeamCoachLastName] = useState("");
   const [teamCoachEmail, setTeamCoachEmail] = useState("");
@@ -562,7 +564,11 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
     setCoachInviteWarning(null);
     const coachDisplayName = [teamCoachFirstName.trim(), teamCoachLastName.trim()].filter(Boolean).join(" ");
     try {
-      await createClubTeam(createClient(), clubId, { name: teamName.trim(), categorie: teamCategorie.trim() || undefined, coach: coachDisplayName || undefined });
+      await createClubTeam(createClient(), clubId, {
+        name: teamName.trim(),
+        categories: teamCategories,
+        coach: coachDisplayName || undefined,
+      });
       if (teamCoachEmail.trim() && teamCoachFirstName.trim() && teamCoachLastName.trim()) {
         try {
           // Mode « direct » : le compte est cree tout de suite et un mot de passe est rendu, a
@@ -590,7 +596,7 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
         }
       }
       setTeamName("");
-      setTeamCategorie("");
+      setTeamCategories([]);
       setTeamCoachFirstName("");
       setTeamCoachLastName("");
       setTeamCoachEmail("");
@@ -1058,17 +1064,40 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
               <input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="U15 R1" className={fieldClass} />
             </Field>
             <Field label="Catégorie">
-              {/* Liste deroulante et non texte libre : la meme liste que CreateTeamModal, pour
-                  qu'un club ne se retrouve pas avec « U15 », « u15 » et « U 15 » qui ne se
-                  rapprochent d'aucun calendrier importe. */}
-              <select value={teamCategorie} onChange={(e) => setTeamCategorie(e.target.value)} className={fieldClass}>
-                <option value="">— Choisir —</option>
-                {TEAM_CATEGORY_OPTIONS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+              {/* Choix multiple, et non texte libre : d'une part pour qu'un club n'ait pas
+                  « U15 », « u15 » et « U 15 » qui ne se rapprochent d'aucun calendrier importe ;
+                  d'autre part parce qu'une equipe couvre parfois deux ages (U8 avec U9). Chaque
+                  categorie cochee sert de libelle au rapprochement a l'import. */}
+              <div className="flex flex-wrap gap-1.5">
+                {TEAM_CATEGORY_OPTIONS.map((c) => {
+                  const choisie = teamCategories.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() =>
+                        setTeamCategories((prev) =>
+                          prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c],
+                        )
+                      }
+                      className={cn(
+                        "h-8 rounded-lg border px-2.5 text-[12px] font-bold transition-colors",
+                        choisie
+                          ? "border-brand-blue-electric bg-brand-blue-electric text-white"
+                          : "border-border-strong text-text-soft hover:border-brand-blue",
+                      )}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+              {teamCategories.length > 1 && (
+                <p className="mt-1.5 text-[11.5px] text-text-soft">
+                  Cette équipe couvre {teamCategories.join(" et ")}. Les calendriers de ces catégories
+                  lui seront rattachés.
+                </p>
+              )}
             </Field>
           </div>
           <div className="border-t border-divider pt-3">

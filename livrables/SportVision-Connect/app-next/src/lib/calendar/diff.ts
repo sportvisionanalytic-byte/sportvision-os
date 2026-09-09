@@ -16,6 +16,10 @@ import type { ProviderId, SourceEvent, SourceIssue, SportStatus } from "./types.
 export interface ClubTeamRef {
   id: string;
   name: string;
+  /** Toutes les categories couvertes (ex. ["U8","U9"] quand les deux jouent ensemble). Elles
+   *  servent de libelles supplementaires au rapprochement : un calendrier qui dit « U8 » et un
+   *  autre qui dit « U9 » doivent tomber sur la meme equipe. */
+  categories?: string[];
 }
 
 /** Miroir de club_team_source_mappings. */
@@ -153,16 +157,25 @@ export function scoreTeamName(sourceName: string, teamName: string): number {
   return ((2 * shared) / (ta.size + tb.size)) * 0.8;
 }
 
+/** Le meilleur score entre le nom de l'equipe et chacune des categories qu'elle couvre. */
+function scoreEquipe(sourceName: string, team: ClubTeamRef): number {
+  let best = scoreTeamName(sourceName, team.name);
+  for (const categorie of team.categories ?? []) {
+    if (categorie) best = Math.max(best, scoreTeamName(sourceName, categorie));
+  }
+  return best;
+}
+
 function rankTeams(sourceName: string, teams: ClubTeamRef[]): TeamCandidate[] {
   return teams
-    .map((t) => ({ id: t.id, name: t.name, confidence: Math.round(scoreTeamName(sourceName, t.name) * 100) / 100 }))
+    .map((t) => ({ id: t.id, name: t.name, confidence: Math.round(scoreEquipe(sourceName, t) * 100) / 100 }))
     .filter((c) => c.confidence >= MIN_CANDIDATE)
     .sort((a, b) => b.confidence - a.confidence);
 }
 
 function bestScore(sourceName: string | null, teams: ClubTeamRef[]): number {
   if (!sourceName) return 0;
-  return teams.reduce((best, t) => Math.max(best, scoreTeamName(sourceName, t.name)), 0);
+  return teams.reduce((best, t) => Math.max(best, scoreEquipe(sourceName, t)), 0);
 }
 
 /**

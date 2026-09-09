@@ -10,6 +10,7 @@ interface ClubTeamRow {
   id: string;
   name: string;
   categorie: string | null;
+  categories: string[] | null;
   coach: string | null;
   members: number | null;
 }
@@ -18,7 +19,7 @@ export async function fetchClubTeams(supabase: SupabaseClient, organizationId: s
   const [teamsRes, clubRes] = await Promise.all([
     supabase
       .from("club_teams")
-      .select("id, name, categorie, coach, members")
+      .select("id, name, categorie, categories, coach, members")
       .eq("club_id", organizationId)
       .order("name"),
     supabase.from("clubs").select("saison").eq("id", organizationId).maybeSingle(),
@@ -31,6 +32,9 @@ export async function fetchClubTeams(supabase: SupabaseClient, organizationId: s
     organizationId,
     name: row.name,
     category: row.categorie ?? "—",
+    // Toutes les categories couvertes : sert au rapprochement a l'import, pour qu'une equipe
+    // « U8-U9 » soit trouvee que le calendrier dise U8 ou U9.
+    categories: row.categories ?? (row.categorie ? [row.categorie] : []),
     season,
     headCoachName: row.coach ?? "—",
     playerCount: row.members ?? 0,
@@ -44,11 +48,21 @@ export async function fetchClubTeams(supabase: SupabaseClient, organizationId: s
 export async function createClubTeam(
   supabase: SupabaseClient,
   clubId: string,
-  input: { name: string; categorie?: string; coach?: string },
+  input: { name: string; categorie?: string; categories?: string[]; coach?: string },
 ): Promise<{ id: string }> {
+  // `categorie` reste la categorie principale — celle qu'affichent les ecrans existants — et
+  // `categories` dit ce que l'equipe couvre reellement quand deux ages jouent ensemble.
+  const couvertes = (input.categories ?? []).filter(Boolean);
+  const principale = input.categorie || couvertes[0] || null;
   const { data, error } = await supabase
     .from("club_teams")
-    .insert({ club_id: clubId, name: input.name, categorie: input.categorie || null, coach: input.coach || null })
+    .insert({
+      club_id: clubId,
+      name: input.name,
+      categorie: principale,
+      categories: couvertes.length > 0 ? couvertes : principale ? [principale] : null,
+      coach: input.coach || null,
+    })
     .select("id")
     .single();
   if (error) throw error;

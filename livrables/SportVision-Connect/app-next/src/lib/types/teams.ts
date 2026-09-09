@@ -18,6 +18,8 @@ export interface Team {
   organizationId: string;
   name: string;
   category: string;
+  /** Toutes les categories couvertes (ex. U8 et U9 quand elles jouent ensemble). */
+  categories?: string[];
   season: string;
   headCoachName: string;
   assistantCoachNames?: string[];

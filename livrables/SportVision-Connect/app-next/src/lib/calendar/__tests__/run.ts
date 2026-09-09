@@ -1118,3 +1118,27 @@ test("xlsx : un classeur a balises prefixees est lu comme les autres", async () 
   assert.equal(resultat.events[0]!.matchDate, "2026-09-14");
   assert.equal(resultat.events[0]!.opponent, "FC Sens");
 });
+
+// ── Une equipe qui couvre deux categories (09/09/2026) ───────────────────────
+// Beaucoup de clubs font jouer les U8 avec les U9 : une seule equipe, deux categories. Le
+// calendrier peut dire l'une ou l'autre, il doit tomber sur la meme equipe.
+
+test("categories fusionnees : U8 et U9 trouvent la meme equipe", () => {
+  const equipes: ClubTeamRef[] = [
+    { id: "petits", name: "Les Petits", categories: ["U8", "U9"] },
+    { id: "u15", name: "U15 D2", categories: ["U15"] },
+  ];
+  const evenement = (nom: string): SourceEvent => ({
+    sourceLine: 1, rawLabel: "", externalEventId: null, externalCompetitionId: null,
+    competitionName: null, externalTeamId: null, sourceTeamName: nom, opponent: "FC X",
+    matchDate: "2026-09-14", kickoffTime: null, location: null, isHome: null,
+    sportStatus: null, score: null, sourceUpdatedAt: null,
+  });
+  for (const libelle of ["U8", "U9"]) {
+    const apercu = preview("CSV", [evenement(libelle)], [], { teams: equipes });
+    assert.equal(apercu.rows[0]!.teamId, "petits", `« ${libelle} » n'a pas trouve l'equipe fusionnee`);
+  }
+  // Et une categorie qu'elle NE couvre PAS ne doit pas lui etre attribuee.
+  const autre = preview("CSV", [evenement("U15")], [], { teams: equipes });
+  assert.equal(autre.rows[0]!.teamId, "u15");
+});

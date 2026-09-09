@@ -160,7 +160,9 @@ export function ImportMatchesModal({
     ])
       .then(([teamRows, saisonRows, clubSaison, matches]) => {
         if (cancelled) return;
-        setTeams(teamRows.map((t) => ({ id: t.id, name: t.name })));
+        // Les categories couvertes accompagnent l'equipe : c'est ce qui permet a une equipe
+        // « U8-U9 » d'etre trouvee que le calendrier dise U8 ou U9.
+        setTeams(teamRows.map((t) => ({ id: t.id, name: t.name, categories: t.categories })));
         setSaisons(saisonRows);
         setSaisonId(resolveDefaultSaisonId(saisonRows, clubSaison));
         setExisting(matches);
