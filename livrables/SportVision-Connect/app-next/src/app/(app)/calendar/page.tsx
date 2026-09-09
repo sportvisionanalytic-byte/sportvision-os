@@ -18,6 +18,8 @@ import {
   aCouverture,
   descriptionEvenement,
   ecussonAdversaire,
+  aBesoinDuLieu,
+  lieuCourt,
   equipeParDefaut,
   lignesParCase,
   etatEvenement,
@@ -495,7 +497,17 @@ function EventChip({ event, onSelect }: { event: CalendarEvent; onSelect: (e: Ca
  * « contre qui », le « qui » se lit à la couleur et se retrouve au clic. Le score remplace
  * l'heure dès que le match est joué — l'heure d'un match terminé n'intéresse plus personne.
  */
-function LigneMois({ event, onSelect }: { event: CalendarEvent; onSelect: (e: CalendarEvent) => void }) {
+function LigneMois({
+  event,
+  onSelect,
+  memeJour = [],
+}: {
+  event: CalendarEvent;
+  onSelect: (e: CalendarEvent) => void;
+  /** Les autres événements du même jour : servent uniquement à savoir s'il faut préciser le lieu
+   *  pour distinguer deux séances de la même équipe. */
+  memeJour?: CalendarEvent[];
+}) {
   const heure = event.allDay
     ? null
     : new Date(event.startsAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -521,7 +533,15 @@ function LigneMois({ event, onSelect }: { event: CalendarEvent; onSelect: (e: Ca
       ) : (
         <span className={cn("h-1.5 w-1.5 flex-none rounded-full", KIND_DOT[event.kind])} aria-hidden />
       )}
-      <span className="truncate">{libelleCourt(event)}</span>
+      <span className="truncate">
+        {libelleCourt(event)}
+        {/* Deux séances de la même équipe le même jour ne sont un doublon que pour qui ne voit ni
+            l'heure ni le lieu. Le lieu n'apparaît QUE dans ce cas : l'afficher partout mangerait
+            la place sans rien apprendre. */}
+        {aBesoinDuLieu(event, memeJour) && (
+          <span className="font-bold text-text-faint"> · {lieuCourt(event.location)}</span>
+        )}
+      </span>
       {event.score ? (
         <span className="ml-auto flex-none font-extrabold tabular-nums text-text">{event.score}</span>
       ) : heure ? (
@@ -631,7 +651,7 @@ function MonthView({
 
               <div className="hidden flex-col gap-1 sm:flex">
                 {resume.visibles.map((e) => (
-                  <LigneMois key={e.id} event={e} onSelect={onSelect} />
+                  <LigneMois key={e.id} event={e} onSelect={onSelect} memeJour={dayEvents} />
                 ))}
                 {/* Les compteurs. Ils disent le volume sans détailler — c'est la différence entre
                     « ce jour est chargé » et une liste qu'on ne lit pas. */}
@@ -791,7 +811,7 @@ function WeekView({
             <div className="flex flex-col gap-1.5">
               {dayEvents.length === 0 && <span className="text-[11px] text-text-faint">—</span>}
               {[...dayEvents].sort(parPriorite).map((e) => (
-                <LigneMois key={e.id} event={e} onSelect={onSelect} />
+                <LigneMois key={e.id} event={e} onSelect={onSelect} memeJour={dayEvents} />
               ))}
             </div>
           </Card>

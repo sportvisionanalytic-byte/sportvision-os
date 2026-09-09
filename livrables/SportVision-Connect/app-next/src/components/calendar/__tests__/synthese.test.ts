@@ -14,7 +14,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   resumerJournee, parPriorite, libelleCourt, passeVueRapide, aCouverture,
-  lignesParCase, equipeParDefaut,
+  lignesParCase, equipeParDefaut, aBesoinDuLieu, lieuCourt,
 } from "../synthese.ts";
 import type { CalendarEvent } from "../../../lib/types/calendar.ts";
 
@@ -151,4 +151,59 @@ test("on ne choisit jamais à la place de quelqu'un qui en encadre plusieurs", (
   assert.equal(equipeParDefaut("coach", []), "");
   assert.equal(equipeParDefaut("communication_manager", ["U14 D1"]), "", "un CM suit tout le club");
   assert.equal(equipeParDefaut("admin", ["U14 D1"]), "");
+});
+
+// ── Doublons d'entraînements : ce qui en est un, et ce qui n'en est pas ──
+//
+// Fouka, 09/09/2026 : « doublon sur les entrainement deux fois le meme ». L'audit à la source a
+// montré qu'il n'y avait AUCUN doublon en base : cinq équipes de Villemomble ont deux séances le
+// même jour sur deux TERRAINS différents, le planning municipal réservant deux terrains à une même
+// catégorie. Ce que l'écran ne montrait pas, faute d'afficher le lieu.
+//
+// Ces tests fixent la règle : deux séances réellement distinctes restent deux lignes, et c'est
+// l'affichage qui doit permettre de les distinguer — jamais un dédoublonnage qui en masquerait une.
+
+const mardiSeniorsR2 = [
+  ev("training", "20:00", "Séniors R2", { location: "PARC DES SPORTS GEORGES POMPIDOU - VILLEMOMBLE" }),
+  ev("training", "20:30", "Séniors R2", { location: "STADE CLAUDE RIPERT - VILLEMOMBLE" }),
+];
+
+test("deux séances de la même équipe le même jour restent DEUX occurrences", () => {
+  const resume = resumerJournee(mardiSeniorsR2, 4);
+  assert.equal(resume.visibles.length, 2, "on ne masque jamais une séance réelle");
+  assert.equal(resume.total, 2);
+});
+
+test("le lieu s'affiche quand il est ce qui distingue deux séances", () => {
+  assert.equal(aBesoinDuLieu(mardiSeniorsR2[0]!, mardiSeniorsR2), true);
+  assert.equal(aBesoinDuLieu(mardiSeniorsR2[1]!, mardiSeniorsR2), true);
+});
+
+test("le lieu ne s'affiche pas quand il n'apprend rien", () => {
+  const seule = [ev("training", "18:00", "U10 Élite", { location: "STADE ALAIN MIMOUN" })];
+  assert.equal(aBesoinDuLieu(seule[0]!, seule), false, "une seule séance : le lieu mangerait la place pour rien");
+
+  const deuxEquipes = [
+    ev("training", "18:00", "U10 Élite", { location: "STADE ALAIN MIMOUN" }),
+    ev("training", "18:00", "U11 Élite", { location: "STADE CLAUDE RIPERT" }),
+  ];
+  assert.equal(aBesoinDuLieu(deuxEquipes[0]!, deuxEquipes), false, "équipes différentes : aucune confusion possible");
+});
+
+test("un match n'a jamais besoin du lieu pour être distingué", () => {
+  const jour = [
+    ev("match", "15:00", "Séniors R2", { opponent: "Meaux", location: "STADE ALAIN MIMOUN" }),
+    ev("training", "20:00", "Séniors R2", { location: "STADE CLAUDE RIPERT" }),
+  ];
+  assert.equal(aBesoinDuLieu(jour[0]!, jour), false, "l'adversaire suffit à l'identifier");
+});
+
+test("le lieu est ramené à ce qui le distingue", () => {
+  assert.equal(lieuCourt("STADE GEORGES POMPIDOU 1 - VILLEMOMBLE"), "Georges Pompidou 1");
+  assert.equal(lieuCourt("PARC DES SPORTS GEORGES POMPIDOU"), "Georges Pompidou");
+  assert.equal(lieuCourt("STADE CLAUDE RIPERT - VILLEMOMBLE"), "Claude Ripert");
+  // Une chaîne déjà en casse mixte a été saisie par quelqu'un : on n'y touche pas.
+  assert.equal(lieuCourt("Stade Alain Mimoun"), "Alain Mimoun");
+  assert.equal(lieuCourt(undefined), null);
+  assert.equal(lieuCourt(""), null);
 });

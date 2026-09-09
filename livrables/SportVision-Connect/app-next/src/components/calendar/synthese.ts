@@ -210,6 +210,44 @@ export function equipeParDefaut(role: string, teamScope: string[]): string {
   return educateurs.includes(role) && teamScope.length === 1 ? teamScope[0]! : "";
 }
 
+/**
+ * Le lieu, ramené à ce qui le distingue.
+ *
+ * « STADE GEORGES POMPIDOU 1 - VILLEMOMBLE » en capitales n'est pas lisible dans une case de
+ * calendrier, et la ville est la même pour tous les terrains du club : ce qui distingue, c'est le
+ * nom propre. On garde donc « Georges Pompidou », pas la mention administrative complète.
+ */
+export function lieuCourt(lieu: string | undefined | null): string | null {
+  if (!lieu) return null;
+  const nettoye = lieu
+    .replace(/\s*[-–]\s*VILLEMOMBLE\s*$/i, "")
+    .replace(/^(STADE|PARC DES SPORTS|COMPLEXE SPORTIF|PARC MUNICIPAL DES SPORTS)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!nettoye) return null;
+  // Tout en capitales : on rétablit une casse lisible. Une chaîne déjà mixte est laissée telle
+  // quelle — elle a été saisie par quelqu'un, pas générée.
+  const enCapitales = nettoye === nettoye.toUpperCase();
+  return enCapitales
+    ? nettoye.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (_m, sep, c) => sep + c.toUpperCase())
+    : nettoye;
+}
+
+/**
+ * Deux séances de la même équipe le même jour ne sont un doublon que pour qui ne voit ni l'heure
+ * ni le lieu. Cette fonction dit lesquelles ont besoin d'être désambiguïsées à l'affichage.
+ *
+ * Constaté le 09/09/2026 : cinq équipes de Villemomble ont deux séances le même jour sur deux
+ * terrains (le planning municipal réserve deux terrains à une même catégorie). Sans le lieu à
+ * l'écran, elles passaient pour des doublons.
+ */
+export function aBesoinDuLieu(event: CalendarEvent, memeJour: CalendarEvent[]): boolean {
+  if (event.kind !== "training" || !event.location) return false;
+  return memeJour.some(
+    (autre) => autre.id !== event.id && autre.kind === "training" && autre.teamName === event.teamName,
+  );
+}
+
 /** Vues rapides : les questions qu'on se pose vraiment en ouvrant un calendrier de club.
  *
  *  Elles ne remplacent pas les filtres équipe/type, elles évitent d'avoir à les combiner à la
