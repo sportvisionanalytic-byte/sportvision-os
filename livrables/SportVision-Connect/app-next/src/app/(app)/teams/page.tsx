@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { TeamCard } from "@/components/teams/TeamCard";
+import { TeamGroups } from "@/components/teams/TeamGroups";
 import { CreateTeamModal } from "@/components/teams/CreateTeamModal";
 import { InviteFamilyModal } from "@/components/teams/InviteFamilyModal";
 import { SkeletonCard } from "@/components/ui/Skeleton";
@@ -209,11 +210,9 @@ export default function TeamsPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {teams.map((team) => (
-            <TeamCard key={team.id} team={team} />
-          ))}
-        </div>
+        // Repliées par catégorie dès qu'il y en a assez pour que la page devienne un annuaire.
+        // Le composant décide seul du seuil : en dessous, il rend la grille telle quelle.
+        <TeamGroups teams={teams} />
       )}
     </div>
   );
