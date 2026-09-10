@@ -677,6 +677,18 @@ function IdentiteCard({
 }) {
   const [adresse, setAdresse] = useState(address);
   const [siretVal, setSiretVal] = useState(siret);
+  // La ville compte pour « Identité » (club_onboarding_completion) : sans champ pour la saisir,
+  // le CM ne pouvait jamais compléter cette section — donc jamais lancer le club (trouvé le
+  // 10/09/2026 sur SF Villemomble, ville vide).
+  const [ville, setVille] = useState("");
+  useEffect(() => {
+    createClient()
+      .from("clubs")
+      .select("ville")
+      .eq("id", clubId)
+      .maybeSingle()
+      .then(({ data }) => setVille((data as { ville: string | null } | null)?.ville ?? ""));
+  }, [clubId]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   // Sans ce catch, un refus d'ecriture (RLS, declencheur SIRET) remontait en rejet de promesse
@@ -691,7 +703,7 @@ function IdentiteCard({
     try {
       // On renvoie le SIRET tel qu'il etait quand on n'a pas le droit d'y toucher : le
       // declencheur en base ne se declenche que sur un changement reel, et l'adresse passe.
-      await updateClubOrganization(createClient(), clubId, { adresse, siret: canEditLegal ? siretVal : siret });
+      await updateClubOrganization(createClient(), clubId, { adresse, ville, siret: canEditLegal ? siretVal : siret });
       setSaved(true);
       onSaved();
     } catch (e) {
@@ -703,10 +715,13 @@ function IdentiteCard({
 
   return (
     <Card className="flex flex-col gap-4 p-5">
-      <SectionHeader title="Identité du club" description="Nom, ville et discipline : contactez votre conseiller SportVision pour les corriger." />
+      <SectionHeader title="Identité du club" description="Adresse et ville du club. Le nom et la discipline se corrigent par l'administration SportVision." />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Adresse" full>
           <input value={adresse} onChange={(e) => setAdresse(e.target.value)} disabled={!canEdit} placeholder="Non renseignée" className={fieldClass} />
+        </Field>
+        <Field label="Ville">
+          <input value={ville} onChange={(e) => setVille(e.target.value)} disabled={!canEdit} placeholder="Non renseignée" className={fieldClass} />
         </Field>
         <Field label="SIRET (si association)">
           <input value={siretVal} onChange={(e) => setSiretVal(e.target.value)} disabled={!canEdit || !canEditLegal} placeholder="Non renseigné" className={fieldClass} />

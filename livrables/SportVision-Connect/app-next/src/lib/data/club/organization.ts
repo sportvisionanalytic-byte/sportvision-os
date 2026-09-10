@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // uniquement l'absence de colonnes/bucket qui bloquait, pas un manque de policy.
 
 export interface UpdateClubOrganizationInput {
+  ville?: string;
   adresse?: string;
   instagramHandle?: string;
   siret?: string;
@@ -29,6 +30,7 @@ export async function updateClubOrganization(
 ): Promise<void> {
   const patch: Record<string, string | null> = {};
   if ("adresse" in input) patch.adresse = input.adresse?.trim() || null;
+  if ("ville" in input) patch.ville = input.ville?.trim() || null;
   if ("instagramHandle" in input) patch.instagram_handle = input.instagramHandle?.trim() || null;
   if ("siret" in input) patch.siret = input.siret?.trim() || null;
   if ("couleurPrimaire" in input) patch.couleur_primaire = input.couleurPrimaire || null;
