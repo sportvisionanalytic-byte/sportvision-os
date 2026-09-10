@@ -13,6 +13,7 @@
     <div class="brand"><span class="dot"></span> SportVision Review Hub</div>
     <nav class="hubnav">
       <a href="index.html" class="active">Accueil</a>
+      <a href="index.html#launchpad">Launchpad</a>
       <a href="routes.html">Routes</a>
       <a href="permissions.html">Permissions</a>
       <a href="data-flow.html">Data Flow</a>
@@ -33,9 +34,9 @@
     <h2>Applications</h2>
     <div class="grid">
       <div class="card">
-        <div class="card-title">SportVision OS</div>
-        <div class="card-desc">Outil interne (admin, secrétariat, production, CM, comptabilité, commercial)</div>
-        <div style="margin-top:10px"><span class="badge badge-pending" id="app-os-badge">Phase 5 — à venir</span></div>
+        <div class="card-title">SportVision OS — <a href="https://sportvision-os-review.netlify.app/" style="font-weight:400">sportvision-os-review.netlify.app</a></div>
+        <div class="card-desc">Copie isolée (jamais le fichier de production), branchée sur Supabase Review — cross-app avec Club+ confirmé en réel</div>
+        <div style="margin-top:10px"><span class="badge badge-ok" id="app-os-badge">Phase 5 — navigable, dernière application branchée</span></div>
       </div>
       <div class="card">
         <div class="card-title">Club+ — <a href="https://sportvision-clubplus-review.netlify.app/clubplus/auth/login" style="font-weight:400">sportvision-clubplus-review.netlify.app</a></div>
@@ -62,6 +63,24 @@
       <div class="card"><a href="personas.html"><div class="card-title">→ Personas</div></a><div class="card-desc">8 vrais comptes Supabase Review (auth.users réels), avec rôle et rattachement club/équipe réels</div></div>
       <div class="card"><a href="outbox.html"><div class="card-title">→ Outbox</div></a><div class="card-desc">Emails/SMS/notifications simulés — jamais envoyés réellement</div></div>
       <div class="card"><a href="status.html"><div class="card-title">→ Status</div></a><div class="card-desc">État réel de chaque brique de l'environnement review</div></div>
+    </div>
+
+    <h2 id="launchpad">Review Launchpad — lancer une persona dans la bonne application</h2>
+    <p class="lead" style="margin-top:-6px">Identifiants complets sur <a href="personas.html">Personas</a> (emails/mots de passe jamais affichés ici). Chaque lien ouvre l'écran de connexion réel de l'app concernée.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Persona</th><th>Rôle</th><th>Où se connecter</th></tr></thead>
+        <tbody>
+          <tr><td>Alex Admin Demo</td><td>SportVision Admin</td><td><a href="https://sportvision-os-review.netlify.app/">OS</a></td></tr>
+          <tr><td>Camille CM Demo</td><td>CM SportVision</td><td><a href="https://sportvision-os-review.netlify.app/">OS</a> · <a href="https://sportvision-clubplus-review.netlify.app/clubplus/auth/login">Club+</a></td></tr>
+          <tr><td>Pierre Président Demo</td><td>Président SV Demo FC</td><td><a href="https://sportvision-clubplus-review.netlify.app/clubplus/auth/login">Club+</a></td></tr>
+          <tr><td>Diane Dirigeante Demo</td><td>Membre bureau SV Demo FC</td><td><a href="https://sportvision-clubplus-review.netlify.app/clubplus/auth/login">Club+</a></td></tr>
+          <tr><td>Nicolas Coach Demo</td><td>Coach U14 D1</td><td><a href="https://sportvision-clubplus-review.netlify.app/clubplus/auth/login">Club+</a> · <a href="https://sportvision-connect-review.netlify.app/auth/login">Connect (pas de vue coach, voir Data Flow)</a></td></tr>
+          <tr><td>Sarah Coach Demo</td><td>Coach U18 Féminines</td><td><a href="https://sportvision-clubplus-review.netlify.app/clubplus/auth/login">Club+</a></td></tr>
+          <tr><td>Lucas Joueur Demo</td><td>Joueur Seniors R2</td><td><a href="https://sportvision-connect-review.netlify.app/auth/login">Connect</a></td></tr>
+          <tr><td>Marie Parent Demo</td><td>Parent de Noah Demo</td><td><a href="https://sportvision-connect-review.netlify.app/auth/login">Connect</a></td></tr>
+        </tbody>
+      </table>
     </div>
 
     <h2 id="garanties">Architecture d'isolation prévue</h2>

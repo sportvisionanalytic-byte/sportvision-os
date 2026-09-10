@@ -13,6 +13,7 @@
     <div class="brand"><span class="dot"></span> SportVision Review Hub</div>
     <nav class="hubnav">
       <a href="index.html">Accueil</a>
+      <a href="index.html#launchpad">Launchpad</a>
       <a href="routes.html">Routes</a>
       <a href="permissions.html">Permissions</a>
       <a href="data-flow.html">Data Flow</a>
@@ -42,7 +43,7 @@
         <tr><td>Outbox Email/SMS</td><td><span class="badge badge-ok">OK</span></td><td>Table <code>review_outbox</code> + page <a href="outbox.html">/outbox</a>, aucun envoi réel possible</td></tr>
         <tr><td>Production isolation check</td><td><span class="badge badge-ok">OK</span></td><td>Voir section dédiée ci-dessous</td></tr>
         <tr><td>Protection d'accès du Hub</td><td><span class="badge badge-warn">mécanisme OK, mot de passe non défini</span></td><td>Basic Auth via edge function, fail-closed vérifié — <code>netlify env:set REVIEW_HUB_PASSWORD</code> reste à exécuter</td></tr>
-        <tr><td>SportVision OS (Review)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 5</td></tr>
+        <tr><td>SportVision OS (Review)</td><td><span class="badge badge-ok">navigable</span></td><td><a href="https://sportvision-os-review.netlify.app/">sportvision-os-review.netlify.app</a> — voir détail Phase 5 ci-dessous</td></tr>
         <tr><td>Club+ (Review)</td><td><span class="badge badge-ok">navigable</span></td><td><a href="https://sportvision-clubplus-review.netlify.app/clubplus/auth/login">sportvision-clubplus-review.netlify.app</a> — voir détail Phase 3 ci-dessous</td></tr>
         <tr><td>Connect (Review)</td><td><span class="badge badge-ok">navigable</span></td><td><a href="https://sportvision-connect-review.netlify.app/auth/login">sportvision-connect-review.netlify.app</a> — voir détail Phase 4 ci-dessous</td></tr>
         <tr><td>Stripe (mode test)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 3 (au premier besoin de paiement dans une app Review)</td></tr>
@@ -160,6 +161,40 @@
       </tbody>
     </table>
     <p class="foot-note">Passe ciblée sur le parcours joueur/parent central (auth, invitation cross-app, isolation RLS) plutôt qu'exhaustive sur les 31 sections demandées module par module (galeries payantes/Stripe, pass saison, multi-enfants, mobile, PWA en détail — existent mais non explorés en profondeur cette passe). Aucun P0/P1 trouvé sur les parcours testés.</p>
+
+    <h2>Phase 5 — SportVision OS Review</h2>
+    <p class="lead" style="margin-top:-6px">Copie isolée du fichier OS (jamais l'original de production), branchée sur Supabase Review. <a href="https://sportvision-os-review.netlify.app/">sportvision-os-review.netlify.app</a></p>
+
+    <div class="finding" style="border-color:rgba(46,204,138,.4);background:rgba(46,204,138,.06)">
+      <div class="finding-title" style="color:var(--ok)">Cross-app OS ↔ Club+ confirmé en réel</div>
+      Le dashboard "Mes clubs" de Camille (CM), lu via la RPC <code>cm_mes_clubs()</code>, affiche SV Demo FC avec ses <strong>vraies</strong> données Club+ : 34 équipes, 2 coachs, 5 membres — comptées en direct depuis <code>club_teams</code>/<code>club_members</code>, la même base que Club+ Review utilise pour les modifier. Aucune synchronisation à construire : c'est littéralement la même donnée lue par les deux applications.
+    </div>
+    <div class="finding">
+      <div class="finding-title">Deux modèles de club qui coexistent, confirmé en pratique — OS ↔ Club+ overlap</div>
+      L'OS a son propre modèle commercial (table <code>clients</code>, un CM "confié" via <code>cm_id</code> ou une affectation nominative séparée <code>club_cm_affectations</code>), distinct du modèle opérationnel de Club+ (<code>clubs</code>/<code>club_teams</code>/<code>club_members</code>), relié par <code>clubs.portail_client_id</code>. Concrètement trouvé en testant : le dashboard "Mes clubs" de l'OS ignore totalement <code>clients.cm_id</code> et ne lit que <code>club_cm_affectations</code> — et l'accès RLS direct à <code>clients</code> reste réservé aux rôles staff (admin/sec/com/compta/prod/rh), <strong>pas</strong> à <code>cm</code>. Un CM n'a donc aucun accès direct à sa propre fiche client, seulement via des RPC <code>SECURITY DEFINER</code> dédiées. Deux vrais systèmes parallèles, pas une redondance accidentelle — à garder en tête pour la future architecture.
+    </div>
+    <div class="finding">
+      <div class="finding-title">Deux manques de seed trouvés et corrigés en testant réellement</div>
+      (1) L'affectation nominative <code>club_cm_affectations</code> de Camille avait été créée à la main en Phase 2, jamais intégrée aux scripts de seed persistants — un reset la supprimait sans la recréer, rendant "Mes clubs" vide pour la CM. (2) La table <code>clients</code> (CRM de l'OS) n'avait jamais été peuplée — SV Demo FC et OTHER DEMO FC n'existaient donc pas côté commercial. Les deux sont désormais dans <code>provision-personas.py</code>, donc restaurés par tout reset.
+    </div>
+    <div class="finding">
+      <div class="finding-title">Trigger sans échappatoire service_role — reset partiellement en échec, sans conséquence</div>
+      <code>protect_client_cm_assignment()</code> (sur <code>clients</code>, déclenché en cascade par la suppression d'une ligne <code>club_cm_affectations</code>) exige un acteur admin/Lead CM et ne reconnaît pas <code>service_role</code> comme le font les autres triggers de protection déjà rencontrés (ex. <code>protect_sensitive_club_member_fields</code>). Conséquence : la purge de <code>club_cm_affectations</code> par <code>reset-review.py</code> échoue partiellement. Sans impact réel : l'upsert de <code>provision-personas.py</code> restaure ensuite l'état correct (vérifié). Documenté, non corrigé.
+    </div>
+
+    <table>
+      <thead><tr><th>Élément</th><th>Détail</th></tr></thead>
+      <tbody>
+        <tr><td>Isolation — spécificité de l'OS</td><td>Fichier HTML/JS unique sans build ni variables d'environnement (contrairement à Club+/Connect) : URL/clé Supabase codées en dur. Copie dédiée créée, jamais l'original touché. 2 liens codés en dur vers le <strong>SQL Editor de production</strong> trouvés et corrigés (risque sérieux passé inaperçu sans ce test) ; liens galerie vers les vraies Connect/Club+ de production corrigés vers leurs équivalents Review.</td></tr>
+        <tr><td>Personas testées en conditions réelles</td><td>Alex Admin Demo, Camille CM Demo — vraie connexion, vrai JWT, dashboard réel avec données réelles</td></tr>
+        <tr><td>Isolation production</td><td><span class="badge badge-ok">OK</span> — 0 référence à la ref Supabase de production après correctifs</td></tr>
+        <tr><td>RLS OS (vrais JWT)</td><td><span class="badge badge-ok">6/6</span> — accès staff (clients/profiles) réservé, refusé à joueur/parent</td></tr>
+        <tr><td>RLS cumulés (Club+ + Connect + OS)</td><td><span class="badge badge-ok">46/46</span></td></tr>
+        <tr><td>Edge Functions</td><td>13 utilisées par l'OS, toutes présentes dans le dépôt — <strong>déploiement effectif sur le projet Review non vérifié dans cette passe</strong> (aucun parcours testé n'en dépendait). À vérifier avant de tester invitations collaborateur, emails contrat/devis/facture, fiche fédérale.</td></tr>
+        <tr><td>PWA / cache</td><td>Service worker ne met rien en cache (vérifié dans le code source) — aucun risque de cache polluant un appareil de production</td></tr>
+      </tbody>
+    </table>
+    <p class="foot-note">Passe ciblée sur l'auth, le dashboard et la preuve cross-app (l'objectif principal de cette phase) plutôt qu'exhaustive sur les 40 sections demandées module par module — CRM commercial, finances, production média, planning à forte charge (3672 événements), opérateurs/photographes existent réellement dans le code (cartographie Phase 5) mais non explorés en profondeur cette passe. Aucun P0/P1 trouvé sur les parcours testés.</p>
 
     <h2>Les 551 migrations — détail des 6 non reconstruites</h2>
     <table>
