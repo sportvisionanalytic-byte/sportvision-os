@@ -15042,6 +15042,7 @@ async function majStatutPaiement(id,statut){
     if(statut==='payé')body.date_paiement=ymdLocal();
     const r=await sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body});
     if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
+    if(Array.isArray(r)&&!r.length){toast('Rien n\'a été enregistré : cette rémunération n\'est pas modifiable depuis votre compte.','er');return;}
     if(statut==='payé')logFinancialAudit('paiement','prestations_equipe',id,null,r?.[0]?.remuneration,{statut_paiement:statut});
     const labels={validé:'Rémunération validée.',transmis_compta:'Transmis à la comptabilité.',payé:'Paiement enregistré.'};
     toast(labels[statut]||'Statut mis à jour.','ok');
@@ -27675,7 +27676,7 @@ async function toutPayerCollab(ids,btn){
   if(btn){btn.disabled=true;btn.textContent='...';}
   try{
     const results=await Promise.all(ids.map(id=>sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body:{statut_paiement:'payé',date_paiement:new Date().toISOString()}})));
-    if(results.some(sbErr)){toast('Erreur : certains paiements n\'ont pas pu être marqués.','er');if(btn){btn.disabled=false;btn.textContent='Tout payer';}return;}
+    if(results.some(r=>sbErr(r)||(Array.isArray(r)&&!r.length))){toast('Erreur : certains paiements n\'ont pas pu être marqués.','er');if(btn){btn.disabled=false;btn.textContent='Tout payer';}return;}
     const totalPaye=results.reduce((s,r)=>s+(r?.[0]?.remuneration||0),0);
     logFinancialAudit('paiement','prestations_equipe',null,null,totalPaye,{lot:ids});
     ids.forEach(id=>{const item=_comptaRemData.find(r=>r.id===id);if(item)item.statut_paiement='payé';});
@@ -27693,6 +27694,7 @@ async function marquerPayeRem(id,btn){
   try{
     const r=await sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body:{statut_paiement:'payé',date_paiement:new Date().toISOString()}});
     if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'paiement impossible.')),'er');return;}
+    if(Array.isArray(r)&&!r.length){toast('Rien n\'a été enregistré : ce paiement n\'est pas modifiable depuis votre compte.','er');return;}
     logFinancialAudit('paiement','prestations_equipe',id,null,r?.[0]?.remuneration,{statut_paiement:'payé'});
     if(btn){btn.textContent='✓ Payé';btn.disabled=true;btn.style.background='rgba(46,204,138,.15)';btn.style.color='var(--ok)';btn.style.border='1px solid rgba(46,204,138,.3)';}
     const item=_comptaRemData.find(r=>r.id===id);if(item)item.statut_paiement='payé';
