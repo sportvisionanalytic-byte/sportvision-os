@@ -33699,8 +33699,13 @@ async function consumeRecoveryHashOS(){
       <button class="btn bp" style="width:100%;justify-content:center;height:44px" onclick="closeModal();motDePasseOublie()">Recevoir un nouveau lien</button>`);
     return true;
   }
-  if(!window.location.hash.includes('type=recovery')&&!window.location.hash.includes('type=invite'))return false;
   const params=new URLSearchParams(window.location.hash.slice(1));
+  // `magiclink` accepte depuis le 10/09/2026. Avant, un lien de connexion magique (envoye par
+  // exemple depuis le tableau de bord Supabase pour depanner un collaborateur) atterrissait sur
+  // l'ecran de connexion sans un mot, session vide : la personne croyait le lien casse. Il ouvre
+  // la meme session qu'un lien de recuperation, avec la meme verification d'identite ci-dessous.
+  const typeLien=params.get('type');
+  if(!['recovery','invite','magiclink'].includes(typeLien))return false;
   const accessToken=params.get('access_token');
   const refreshToken=params.get('refresh_token');
   if(!accessToken)return false;
@@ -33731,6 +33736,10 @@ async function consumeRecoveryHashOS(){
     if(prof.actif===false){toast('Ce compte a ete desactive. Contactez l\'administrateur.','er');return false;}
     svSave(accessToken,refreshToken||'',prof.id,prof.role);
     localStorage.setItem('sv_prenom',prof.prenom||'');
+    // Un lien magique sert a SE CONNECTER, pas a changer de mot de passe : on entre directement.
+    // Lui imposer la fenetre « nouveau mot de passe » ferait croire a la personne que son mot de
+    // passe actuel a ete perdu.
+    if(typeLien==='magiclink'){goApp(prof.role);return true;}
   }catch(e){return false;}
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:16px">Définir un nouveau mot de passe</div>
