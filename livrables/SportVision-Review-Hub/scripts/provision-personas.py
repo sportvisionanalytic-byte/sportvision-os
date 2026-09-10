@@ -179,5 +179,13 @@ insert into parent_player_relationships (parent_id, player_id, relation_type, st
 values ('{marie['id']}', '{noah['id']}', 'parent', 'confirme', now())
 on conflict (parent_id, player_id) do nothing;
 """)
+# Sans cette ligne, connect_profile_settings.account_type retombe sur son défaut
+# 'joueur' et l'espace /particulier de Connect redirige Marie vers /dashboard —
+# trouvé en testant Connect Review en réel (Phase 4).
+sql(f"""
+insert into connect_profile_settings (user_id, account_type, profil_particulier)
+values ('{marie['id']}', 'particulier', 'parent')
+on conflict (user_id) do update set account_type = 'particulier', profil_particulier = 'parent';
+""")
 
 print("DONE")
