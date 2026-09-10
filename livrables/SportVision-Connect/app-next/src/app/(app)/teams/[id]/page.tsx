@@ -617,9 +617,10 @@ function RealOverviewTab({
           reçoit une invitation nominative : deux publics, deux mécanismes (§38, §41-42). */}
       <TeamInvitationsCard clubId={clubId} team={team} />
 
-      {/* Pleine largeur : c'est la carte qui porte des actions et une liste, les deux autres ne
-          portent qu'un constat. */}
-      <div className="lg:col-span-3">
+      {/* Deux colonnes : la carte porte une liste et des actions, mais rarement plus de deux ou
+          trois encadrants. Sur trois colonnes elle laissait un vide large comme la moitié de
+          l'écran, à côté d'une carte d'invitations qui, elle, était à l'étroit. */}
+      <div className="lg:col-span-2">
         <TeamStaffCard
           clubId={clubId}
           teamName={team.name}

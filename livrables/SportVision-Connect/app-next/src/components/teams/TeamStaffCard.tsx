@@ -171,15 +171,18 @@ export function TeamStaffCard({ clubId, teamName, headCoachName, members, canMan
         </div>
       )}
 
+      {/* `items-start` sur le bloc d'actions : sans lui, une colonne flex étire ses enfants sur
+          toute la largeur, et le bouton d'invitation s'affichait démesuré en travers de la carte.
+          Vu en ouvrant l'écran, pas autrement. */}
       {canManage && (
-        <div className="mt-3.5 flex flex-col gap-2.5 border-t border-divider pt-3.5">
+        <div className="mt-3.5 flex flex-col items-start gap-2.5 border-t border-divider pt-3.5">
           <Button variant="primary" disabled={enCours} onClick={() => setInviteOuvert(true)}>
             <UserPlus className="h-3.5 w-3.5" aria-hidden />
             {encadrement.membres.length > 0 ? "Inviter un autre encadrant" : "Inviter le coach"}
           </Button>
 
           {rattachables.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2">
               <label className="sr-only" htmlFor="rattacher-membre">
                 Rattacher un membre existant à {teamName}
               </label>
