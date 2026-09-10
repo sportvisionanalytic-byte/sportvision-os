@@ -30,9 +30,10 @@
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 import { rapporteur, SB, KEY, ANON, env, enTeteAdmin } from "./_session-os.mjs";
+import { lancerFonctionLocale } from "./_fonction-locale.mjs";
 
 const { t, bilan } = rapporteur();
 const T0 = Date.now();
@@ -162,20 +163,10 @@ const gabarits = await sqlLecture(`select t.template_key, v.subject_template, v.
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// Lance une fonction du dossier testé sous Deno (port 8000, celui de std/http/serve).
-async function lancerFonction(nom, envFn, reseau) {
-  const args = ["run", "--allow-env", "--allow-read", reseau ? `--allow-net=${reseau}` : "--allow-net", "index.ts"];
-  const p = spawn("deno", args, { cwd: join(dossier, nom), env: { ...process.env, ...envFn }, stdio: ["ignore", "ignore", "pipe"] });
-  let erreurs = "";
-  p.stderr.on("data", (d) => { erreurs += d; });
-  for (let i = 0; i < 120; i++) {
-    try { await fetch("http://localhost:8000/", { method: "OPTIONS" }); return { p, erreurs: () => erreurs }; } catch {}
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  p.kill();
-  throw new Error(`${nom} ne démarre pas : ${erreurs.slice(0, 300)}`);
-}
-const arreter = async (f) => { f.p.kill(); await new Promise((r) => setTimeout(r, 400)); };
+// Lance une fonction du dossier testé sous Deno, sur un port libre (voir _fonction-locale.mjs).
+const lancerFonction = (nom, envFn, reseau = null) =>
+  lancerFonctionLocale({ source: readFileSync(join(dossier, nom, "index.ts"), "utf8"), env: envFn, reseau });
+const arreter = (f) => f.arreter();
 
 console.log("\nC. Le worker exécuté pour de vrai, contre une fausse base, sans accès à Internet");
 {
@@ -210,11 +201,11 @@ console.log("\nC. Le worker exécuté pour de vrai, contre une fausse base, sans
   const fn = await lancerFonction("dispatch-notifications", {
     SUPABASE_URL: `http://127.0.0.1:${port}`, SUPABASE_SERVICE_ROLE_KEY: "cle-factice", BREVO_API_KEY: "cle-factice",
     DISPATCH_NOTIFICATIONS_SECRET: SECRET,
-  }, `0.0.0.0:8000,localhost:8000,127.0.0.1:${port}`);
+  }, `127.0.0.1:${port}`);
   try {
-    const refus = await fetch("http://localhost:8000/", { method: "POST" });
+    const refus = await fetch(fn.url, { method: "POST" });
     t("sans le secret partagé, la fonction refuse (401)", refus.status === 401, `HTTP ${refus.status}`);
-    const r = await fetch("http://localhost:8000/", { method: "POST", headers: { Authorization: `Bearer ${SECRET}` } });
+    const r = await fetch(fn.url, { method: "POST", headers: { Authorization: `Bearer ${SECRET}` } });
     const rep = await r.text();
     for (const l of lignes.slice(0, 4)) {
       const w = ecritures.find((e) => e.table === "notification_outbox" && e.filtre.includes(l.id));
@@ -272,7 +263,7 @@ try {
     for (const [c, attendu, libelle] of [[connect, "Zoé", "compte Connect (first_name)"], [os, "Marc", "compte OS (prenom)"], [anonyme, "", "compte sans prénom"]]) {
       // Une « adresse IP » propre à ce passage : sans elle, la fonction locale compte tous les
       // appels sous « inconnu », et la limite de 5 par heure fait taire le 6e sans rien dire.
-      await fetch("http://localhost:8000/", { method: "POST", headers: { "Content-Type": "application/json", "x-forwarded-for": `zz-cx-dec-${T0}` }, body: JSON.stringify({ email: c.email, redirect_url: "https://connect.sportvision-an.fr/auth/reset" }) });
+      await fetch(fr.url, { method: "POST", headers: { "Content-Type": "application/json", "x-forwarded-for": `zz-cx-dec-${T0}` }, body: JSON.stringify({ email: c.email, redirect_url: "https://connect.sportvision-an.fr/auth/reset" }) });
       const l = await ligneFile(c.email, "auth.password_reset");
       t(`réinitialisation, ${libelle} : prénom transmis « ${attendu} »`, l && (l.payload_json?.first_name ?? "") === attendu, JSON.stringify(l?.payload_json?.first_name));
       const rendu = renderTemplate(reset?.body_html_template, l?.payload_json || {}, { escape: true });
@@ -283,7 +274,7 @@ try {
   const fn = await lancerFonction("notify-account-change", { SUPABASE_URL: SB, SUPABASE_ANON_KEY: ANON, SUPABASE_SERVICE_ROLE_KEY: KEY });
   try {
     const jeton = (await (await fetch(`${SB}/auth/v1/token?grant_type=password`, { method: "POST", headers: { apikey: ANON, "Content-Type": "application/json" }, body: JSON.stringify({ email: connect.email, password: "ZzDecisions!2026" }) })).json()).access_token;
-    await fetch("http://localhost:8000/", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${jeton}` }, body: JSON.stringify({ type: "password_changed" }) });
+    await fetch(fn.url, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${jeton}` }, body: JSON.stringify({ type: "password_changed" }) });
     const l = await ligneFile(connect.email, "auth.password_changed");
     t("mot de passe modifié, compte Connect : prénom transmis « Zoé »", l?.payload_json?.first_name === "Zoé", JSON.stringify(l?.payload_json?.first_name));
   } finally { await arreter(fn); }
