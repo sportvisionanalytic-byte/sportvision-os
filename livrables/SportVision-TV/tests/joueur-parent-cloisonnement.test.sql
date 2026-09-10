@@ -128,6 +128,44 @@ begin
     end if;
   exception when others then null; end;
 
+  -- (c bis) se CONFIRMER soi-meme sur un lien en attente.
+  --
+  -- Ce cas manquait a la premiere version de ce fichier, et c'etait la vraie porte : elle a ete
+  -- trouvee et fermee le 10/09/2026 (migration-clubplus-v102). La policy laissait alors un parent
+  -- modifier SA ligne sans aucune contrainte sur le statut — creer le lien « en attente » puis le
+  -- passer a « confirme » d'un seul UPDATE suffisait. Ce qui s'ouvrait derriere n'etait pas
+  -- theorique : fiche du mineur, ses medias, et la signature de son droit a l'image.
+  --
+  -- On sonde ici les deux sens : le parent doit pouvoir REFUSER ou RETIRER un lien, jamais le
+  -- confirmer lui-meme.
+  declare
+    relAttente uuid;
+  begin
+    perform set_config('role','postgres',true);
+    insert into parent_player_relationships (parent_id, player_id, relation_type, statut)
+      values (ppA, enfantB, 'parent', 'en_attente_confirmation') returning id into relAttente;
+    perform pg_temp.incarner(parentA);
+
+    begin
+      update parent_player_relationships set statut = 'confirme' where id = relAttente;
+      get diagnostics n = row_count;
+      if n > 0 then
+        e := e || 'Un parent s est CONFIRME lui-meme sur un enfant d une autre famille'::text;
+      end if;
+    exception when others then null; end;
+
+    -- Et la soupape doit rester ouverte : refuser un lien qu'on n'a pas demande.
+    begin
+      update parent_player_relationships set statut = 'refuse' where id = relAttente;
+      get diagnostics n = row_count;
+      if n = 0 then
+        e := e || 'Un parent ne peut plus REFUSER un rattachement qu il n a pas demande'::text;
+      end if;
+    exception when others then
+      e := e || ('Un parent ne peut plus refuser un rattachement — '||left(sqlerrm,50))::text;
+    end;
+  end;
+
   -- (d) consequence : rien ne doit avoir bouge
   if pg_temp.compte('select 1 from player_profiles where id='''||enfantB||'''') > 0 then
     e := e || 'APRES tentative : le parent atteint l enfant d une autre famille'::text;
