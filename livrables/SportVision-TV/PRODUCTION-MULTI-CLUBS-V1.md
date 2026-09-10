@@ -108,6 +108,7 @@ node tests/galerie-filigrane-public.test.mjs            # filigrane mesuré sur 
 node tests/galerie-checkout-email.test.mjs              # formulaire de paiement sur iPhone : 16 px, voile, confirmation
 node tests/accessibilite-pages-publiques.test.mjs       # axe WCAG AA sur 9 écrans + paiement au clavier
 node tests/os-lien-invitation.test.mjs                  # invitation et lien magique de l'OS
+node tests/clubplus-presences-bout-en-bout.test.mjs     # le club demande, le CM decide, mission et Production (club fictif)
 ```
 
 ## Déployer une fonction serveur
