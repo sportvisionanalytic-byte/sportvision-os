@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { ReviewModeBanner } from "@/components/review/ReviewModeBanner";
 import "./globals.css";
 
 // next/font télécharge et sert les polices depuis notre propre domaine au build : aucune
@@ -47,7 +48,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <ReviewModeBanner />
+        {children}
+      </body>
     </html>
   );
 }
