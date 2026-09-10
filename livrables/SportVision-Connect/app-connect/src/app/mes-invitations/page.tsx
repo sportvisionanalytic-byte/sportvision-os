@@ -39,7 +39,11 @@ export default function MesInvitationsPage() {
   const [invitations, setInvitations] = useState<Invitation[] | null>(null);
   const [enCours, setEnCours] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [acceptee, setAcceptee] = useState<string | null>(null);
+  // L'invitation acceptee entiere, pas seulement le nom du club : le message qui suit n'est pas le
+  // meme pour un joueur, dont l'adhesion attend la validation du club, et pour un parent, rattache
+  // tout de suite puisque c'est le club qui a designe l'enfant (accept_parent_invitation pose
+  // directement le statut « confirme »).
+  const [acceptee, setAcceptee] = useState<Invitation | null>(null);
 
   const charger = useCallback(() => {
     void (async () => {
@@ -67,7 +71,7 @@ export default function MesInvitationsPage() {
         const message = error.message;
         setErreur(message && !/JSON|fetch/i.test(message) ? message : "Impossible d'accepter cette invitation.");
       } else {
-        setAcceptee(inv.club_nom);
+        setAcceptee(inv);
         charger();
       }
       setEnCours(null);
@@ -88,12 +92,21 @@ export default function MesInvitationsPage() {
       {invitations?.length === 0 && (
         <div className="rounded-2xl border border-border bg-surface p-6 text-center">
           <p className="text-[14px] font-bold">
-            {acceptee ? `Vous avez rejoint ${acceptee}.` : "Aucune invitation en attente"}
+            {!acceptee
+              ? "Aucune invitation en attente"
+              : acceptee.genre === "parent"
+                ? `Vous êtes rattaché à ${acceptee.enfant_prenom ?? "votre enfant"}.`
+                : `Vous avez rejoint ${acceptee.club_nom}.`}
           </p>
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-soft">
-            {acceptee
-              ? "Le club doit encore valider votre adhésion. Vous serez prévenu."
-              : "Si votre club vous a invité, vérifiez que vous êtes connecté avec l'adresse à laquelle il a écrit."}
+            {/* Jusqu'au 10/09/2026, le parent lisait lui aussi « Le club doit encore valider votre
+                adhesion », alors que son rattachement etait deja confirme : il attendait une
+                validation qui ne viendrait jamais, puisqu'elle avait deja eu lieu. */}
+            {!acceptee
+              ? "Si votre club vous a invité, vérifiez que vous êtes connecté avec l'adresse à laquelle il a écrit."
+              : acceptee.genre === "parent"
+                ? `${acceptee.club_nom} a confirmé ce lien. Vous pouvez suivre ses contenus depuis votre espace.`
+                : "Le club doit encore valider votre adhésion. Vous serez prévenu."}
           </p>
           <div className="mt-4">
             <Button variant="secondary" onClick={() => router.push("/")}>
