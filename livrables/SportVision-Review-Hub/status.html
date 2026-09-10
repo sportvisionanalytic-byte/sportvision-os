@@ -43,7 +43,7 @@
         <tr><td>Production isolation check</td><td><span class="badge badge-ok">OK</span></td><td>Voir section dédiée ci-dessous</td></tr>
         <tr><td>Protection d'accès du Hub</td><td><span class="badge badge-warn">mécanisme OK, mot de passe non défini</span></td><td>Basic Auth via edge function, fail-closed vérifié — <code>netlify env:set REVIEW_HUB_PASSWORD</code> reste à exécuter</td></tr>
         <tr><td>SportVision OS (Review)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 5</td></tr>
-        <tr><td>Club+ (Review)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 3</td></tr>
+        <tr><td>Club+ (Review)</td><td><span class="badge badge-ok">navigable</span></td><td><a href="https://sportvision-clubplus-review.netlify.app/clubplus/auth/login">sportvision-clubplus-review.netlify.app</a> — voir détail Phase 3 ci-dessous</td></tr>
         <tr><td>Connect (Review)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 4</td></tr>
         <tr><td>Stripe (mode test)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 3 (au premier besoin de paiement dans une app Review)</td></tr>
         <tr><td>Synchronisation inter-applications</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 6</td></tr>
@@ -97,6 +97,38 @@
       </tbody>
     </table>
     <p class="foot-note">Détail complet de la cause, du correctif et de la migration candidate (non appliquée en production) : <a href="permissions.html#ecarts">Permissions</a> et <code>production-candidate-patches/</code>.</p>
+
+    <h2>Phase 3 — Club+ Review</h2>
+    <p class="lead" style="margin-top:-6px">Application Club+ réelle (même code, corrections d'isolation ci-dessous), branchée sur Supabase Review — pas une maquette. <a href="https://sportvision-clubplus-review.netlify.app/clubplus/auth/login">sportvision-clubplus-review.netlify.app</a></p>
+
+    <div class="finding">
+      <div class="finding-title">Correctifs d'isolation apportés à l'app (bénéfiques aussi pour la production)</div>
+      Deux vrais bugs trouvés en préparant ce déploiement, corrigés dans le code (identiques pour tous les environnements, aucun comportement changé en production puisqu'elle a déjà les bonnes variables) : (1) la CSP avait la référence Supabase de production codée en dur, ce qui aurait bloqué silencieusement tout appel vers un autre projet même avec les bonnes variables d'environnement ; (2) les clients Supabase utilisaient `!` (assertion TypeScript) sans aucun contrôle à l'exécution sur les variables requises — remplacé par un échec explicite. Un bandeau <strong>MODE REVIEW</strong> permanent a aussi été ajouté (actif uniquement si <code>NEXT_PUBLIC_REVIEW_MODE=true</code>, jamais en production) après avoir constaté que le badge de build existant affiche "Production" sur ce site aussi — c'est le nom du contexte de déploiement Netlify, pas un indicateur d'environnement.
+    </div>
+
+    <table>
+      <thead><tr><th>Élément</th><th>Détail</th></tr></thead>
+      <tbody>
+        <tr><td>Dataset SV Demo FC</td><td>34 équipes (U6 à Seniors + féminines dédiées), 461 joueurs (effectifs complets/partiels/absents selon équipe — 5 équipes sans coach, 4 sans effectif), 3672 événements calendrier sur la saison, 100 matchs (résultats volontairement manquants sur une partie), droits à l'image sur 4 états (153 autorisés / 154 en attente / 46 refusés / 108 non renseignés), 6 invitations à statuts variés, 8 demandes de communication, 10 contenus (newsroom)</td></tr>
+        <tr><td>Club témoin</td><td>OTHER DEMO FC — isolation déjà vérifiée en Phase 2.1 (31/31 tests RLS)</td></tr>
+        <tr><td>Personas testées en conditions réelles</td><td>Camille CM Demo, Pierre Président Demo, Diane Dirigeante Demo, Nicolas Coach Demo — vraie connexion (email + mot de passe Review), vraie session Supabase, vraies pages chargées</td></tr>
+        <tr><td>Routes réellement navigées et vérifiées</td><td>/dashboard, /teams, /calendar, /onboarding, /invitations, /requests, /newsroom (Camille) ; /teams, /settings/organization, /users (Pierre) ; /teams (Diane, Nicolas) — 0 erreur console, 0 requête HTTP en échec sur ces parcours</td></tr>
+        <tr><td>Isolation production</td><td><span class="badge badge-ok">OK</span> — build vérifié pour ne contenir aucune référence à la ref Supabase de production après correctif CSP</td></tr>
+        <tr><td>Outbox</td><td><span class="badge badge-ok">OK</span> — 3 invitations simulées, aucun envoi réel</td></tr>
+        <tr><td>Reset</td><td><span class="badge badge-pending">amorcé</span> — scripts de seed idempotents (rejouables), pas encore de bouton reset one-clic avec garde-fou anti-prod dédié</td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="font-size:13px;margin:20px 0 10px">Constats — classés par sévérité</h3>
+    <table>
+      <thead><tr><th>Sévérité</th><th>Constat</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-warn">P2</span></td><td>Sidebar coach : l'équipe affiche son UUID brut ("Équipe 76520a7c-b4cd-...") au lieu de son nom ("U14 D1 Demo"). Résolution du nom d'équipe manquante ou en échec silencieux à cet endroit précis.</td></tr>
+        <tr><td><span class="badge badge-warn">P2</span></td><td>Président redirigé de /dashboard vers /onboarding automatiquement — comportement probablement volontaire (onboarding non finalisé pour ce club) mais à confirmer : pourrait aussi surprendre un audit qui s'attend à atterrir sur le tableau de bord.</td></tr>
+        <tr><td><span class="badge badge-warn">P2</span></td><td>Camille (CM) voit SV Demo FC listé deux fois dans le sélecteur d'espace ("Club" et "Gestion SportVision · CM principal") — reflet exact de ses deux rattachements réels (club_members + affectation nominative), donc pas un bug de données, mais potentiellement déroutant en interface.</td></tr>
+      </tbody>
+    </table>
+    <p class="foot-note">Passe volontairement ciblée (4 personas, ~15 routes) plutôt qu'exhaustive sur les 25 sections demandées — équipes/calendrier/effectifs/droits à l'image vérifiés par la présence réelle des données dans l'interface (captures d'écran), pas encore module par module (messagerie, sponsors, studio…). À approfondir avant un audit final si besoin.</p>
 
     <h2>Les 551 migrations — détail des 6 non reconstruites</h2>
     <table>
