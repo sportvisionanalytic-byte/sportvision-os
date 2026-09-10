@@ -58,7 +58,7 @@ export function DemoShell({ profile, children }: { profile: DemoProfile; childre
         </div>
 
         <div className="px-3.5 pb-3">
-          <label htmlFor="demo-profile-select" className="block px-1 pb-1.5 text-[10px] font-extrabold uppercase tracking-[.11em] text-[#5B6B96]">Profil de démonstration</label>
+          <label htmlFor="demo-profile-select" className="block px-1 pb-1.5 text-[10px] font-extrabold uppercase tracking-[.11em] text-[#7686B2]">Profil de démonstration</label>
           <select
             id="demo-profile-select"
             value={profile.key}
@@ -82,7 +82,7 @@ export function DemoShell({ profile, children }: { profile: DemoProfile; childre
           {profile.nav.map((entry, i) => {
             if (entry.kind === "section") {
               return (
-                <div key={`s-${i}`} className="px-2.5 pb-1.5 pt-3.5 text-[10px] font-extrabold uppercase tracking-[.11em] text-[#5B6B96]">
+                <div key={`s-${i}`} className="px-2.5 pb-1.5 pt-3.5 text-[10px] font-extrabold uppercase tracking-[.11em] text-[#7686B2]">
                   {entry.label}
                 </div>
               );

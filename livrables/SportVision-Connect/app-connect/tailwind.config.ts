@@ -19,7 +19,9 @@ const config: Config = {
         "text-secondary": "#C7C7DE",
         "text-tertiary": "#9A9AB8",
         "text-faint": "#7A7A9C",
-        "text-label": "#6C6C90",
+        // Relevé de #6C6C90 le 10/09/2026 : 3,8:1 sur les fonds sombres, sous le seuil WCAG AA (4,5:1)
+        // pour ce corps de texte (« Pas encore de compte ? », étiquettes du paiement). 5,2:1 désormais.
+        "text-label": "#8282A6",
 
         // Une couleur par pilier fonctionnel (README § Direction artistique).
         affiliations: { DEFAULT: "#22D3EE", bg: "rgba(34,211,238,.14)" },

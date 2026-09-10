@@ -89,7 +89,7 @@ export function OrganizationSwitcher() {
               badge le rappelle a chaque ecran, discretement mais sans ambiguite. */}
           {estGestionSportVision ? (
             <span className="mt-0.5 flex items-center gap-1.5">
-              <span className="inline-block rounded-[4px] bg-brand-violet/20 px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-[.06em] text-brand-violet">
+              <span className="inline-block rounded-[4px] bg-brand-violet/20 px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-[.06em] text-brand-violet-light">
                 Gestion SportVision
               </span>
             </span>

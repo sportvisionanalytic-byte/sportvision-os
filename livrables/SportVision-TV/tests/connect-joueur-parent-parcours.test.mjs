@@ -146,7 +146,8 @@ try {
       await page.waitForTimeout(9000);
       const apres = await texte(page);
       t("l'acceptation aboutit sans erreur affichee", !/erreur|impossible|introuvable/i.test(apres), apres.slice(0, 200));
-      console.log(`       arrivee : ${page.url().replace(CX, "")}`);
+      console.log(`       arrivee : ${page.url().replace(CX, "")}`);      // Le joueur, lui, attend bien une validation du club : le message doit le dire.
+      t("le joueur lit que le club doit encore valider son adhesion", /doit encore valider/i.test(apres), apres.slice(0, 200));
     }
 
     // En base : l'invitation est consommee.
@@ -218,7 +219,10 @@ try {
       await page.waitForTimeout(9000);
       const apres = await texte(page);
       t("l'acceptation aboutit sans erreur affichee", !/erreur|impossible|introuvable/i.test(apres), apres.slice(0, 200));
-      console.log(`       arrivee : ${page.url().replace(CX, "")}`);
+      console.log(`       arrivee : ${page.url().replace(CX, "")}`);      // Jusqu'au 10/09/2026, le parent lisait « Le club doit encore valider votre adhesion » alors que
+      // son rattachement est confirme des l'acceptation (statut « confirme » verifie ci-dessous).
+      t("le parent lit qu'il est rattache a son enfant", /Vous [êe]tes rattach[ée] [àa]/i.test(apres), apres.slice(0, 200));
+      t("sans message d'attente de validation", !/doit encore valider/i.test(apres), apres.slice(0, 200));
     }
 
     // En base : rattache a CET enfant, confirme, et a lui seul.

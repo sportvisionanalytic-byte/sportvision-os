@@ -184,7 +184,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                     type="button"
                     onClick={() => basculerSection(g.label as string)}
                     aria-expanded={!replie}
-                    className="flex w-full items-center justify-between px-2.5 pb-1.5 pt-3.5 text-[10px] font-extrabold uppercase tracking-[.11em] text-[#5B6B96] hover:text-[#95A4CC]"
+                    className="flex w-full items-center justify-between px-2.5 pb-1.5 pt-3.5 text-[10px] font-extrabold uppercase tracking-[.11em] text-[#7686B2] hover:text-[#95A4CC]"
                   >
                     {g.label}
                     <ChevronDown

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { startGalleryCheckout } from "@/lib/gallery/data";
 import { formatMontant } from "@/lib/gallery/pricing";
@@ -102,6 +102,41 @@ export function GalleryCheckout({
   const suggestion = emailValide ? suggestionAdresse(email) : null;
   const pret = nom.trim().length >= 2 && emailValide && identiques;
 
+  // Clavier et lecteur d'ecran (mesure axe + tabulation du 10/09/2026). La fenetre n'etait annoncee
+  // comme telle a personne, le focus restait sur la page derriere le voile, Tab en ressortait vers
+  // les photos, et Echap ne faisait rien. Desormais : le focus entre dans la fenetre a l'ouverture
+  // (sur la fenetre elle-meme, pas sur un champ — sur iPhone, cela ouvrirait le clavier d'office),
+  // Tab y reste, Echap ferme sauf pendant le depart vers Stripe, et le focus revient ou il etait.
+  const fenetre = useRef<HTMLFormElement>(null);
+  // Busy et onClose passent par des refs : l'effet ne tourne qu'a l'ouverture. S'il dependait de
+  // onClose, chaque nouveau rendu du parent le relancerait et arracherait le focus du champ en
+  // cours de saisie.
+  const occupe = useRef(busy);
+  occupe.current = busy;
+  const fermer = useRef(onClose);
+  fermer.current = onClose;
+  useEffect(() => {
+    const avant = document.activeElement as HTMLElement | null;
+    fenetre.current?.focus({ preventScroll: true });
+    function clavier(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (!occupe.current) { e.preventDefault(); fermer.current(); }
+        return;
+      }
+      if (e.key !== "Tab" || !fenetre.current) return;
+      const cibles = [...fenetre.current.querySelectorAll<HTMLElement>(
+        "button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])",
+      )];
+      const premier = cibles[0], dernier = cibles[cibles.length - 1];
+      if (!premier || !dernier) return;
+      const ici = document.activeElement;
+      if (e.shiftKey && (ici === premier || ici === fenetre.current)) { e.preventDefault(); dernier.focus(); }
+      else if (!e.shiftKey && (ici === dernier || !fenetre.current.contains(ici))) { e.preventDefault(); premier.focus(); }
+    }
+    document.addEventListener("keydown", clavier);
+    return () => { document.removeEventListener("keydown", clavier); avant?.focus?.(); };
+  }, []);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!pret || busy) return;
@@ -137,11 +172,16 @@ export function GalleryCheckout({
     // pire que pas de raccourci du tout.
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60">
       <form
+        ref={fenetre}
         onSubmit={submit}
-        className="w-full max-w-[520px] rounded-t-sv-card border-t border-border-strong bg-bg-elevated px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="co-titre"
+        tabIndex={-1}
+        className="w-full outline-none max-w-[520px] rounded-t-sv-card border-t border-border-strong bg-bg-elevated px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-sora text-[17px] font-extrabold tracking-tight">Vos coordonnées</h2>
+          <h2 id="co-titre" className="font-sora text-[17px] font-extrabold tracking-tight">Vos coordonnées</h2>
           <button
             type="button"
             onClick={onClose}
