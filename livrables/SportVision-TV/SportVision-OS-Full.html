@@ -6146,10 +6146,20 @@ async function modifierPrestation(id){
       description_besoin:document.getElementById('pd-desc')?.value||null,
       livrables_demandes:document.getElementById('pd-livr')?.value||null,
     };
+    // La Production voit le prix client et le statut financier, elle ne les fixe pas (décision du
+    // 10/09) : ne pas les renvoyer, sinon la base refuse tout l'enregistrement.
+    if(S.role==='prod'){delete body.montant_ht;delete body.montant_ttc;delete body.statut_financier;}
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body});
     if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Modification impossible.'));return;}
+    // Valider la mission envoie leur proposition aux opérateurs prévus (v136).
+    let envoyees=0;
+    if(['admin','prod','sec'].includes(S.role)){
+      const e=await sbFetch('rpc/envoyer_propositions_mission',{method:'POST',body:{p_prestation_id:id}}).catch(()=>null);
+      if(sbErr(e)){err.textContent='Mission enregistrée, mais la proposition n\'est pas partie : '+msgErreur(e,'envoi impossible.');return;}
+      envoyees=Number(e)||0;
+    }
     closeModal();
-    toast('Prestation mise à jour.','ok');
+    toast(envoyees?'Mission validée : proposition envoyée à '+envoyees+' opérateur'+(envoyees>1?'s':'')+'.':'Prestation mise à jour.','ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
     if(body.statut&&body.statut!==statutAvant)appliquerEffetsStatutPrestation(id,body.statut).catch(()=>{});
@@ -9086,8 +9096,8 @@ async function chargerEquipeModal(prestationId){
       el.innerHTML=`<span style="color:var(--t3)">Aucun membre assigné.</span><button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${pid}',''),150)" style="margin-left:8px;font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Assigner →</button>`;
       return;
     }
-    const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
-    const iLb={'invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
+    const iSt={'a_envoyer':'bn','invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
+    const iLb={'a_envoyer':'À envoyer','invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
     el.innerHTML='<div style="display:flex;flex-direction:column;gap:5px">'+data.map(m=>{
       const name=esc([m.profiles?.prenom,m.profiles?.nom].filter(Boolean).join(' ')||'?');
       const ini=name.slice(0,2).toUpperCase();
@@ -15405,8 +15415,8 @@ async function loadEquipes(){
           const t=m.collaborateur||{};
           const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||'?';
           const name=esc([t.prenom,t.nom].filter(Boolean).join(' ')||'—');
-          const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
-          const iLb={'invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
+          const iSt={'a_envoyer':'bn','invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
+          const iLb={'a_envoyer':'À envoyer','invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
           return`<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--s2);border-radius:var(--rb);position:relative">
             <div class="av" style="background:${rc[t.role]||'#366BFF'};width:32px;height:32px;font-size:12px">${ini}</div>
             <div><div style="font-size:12.5px;font-weight:600;color:var(--t1)">${name}</div><div style="font-size:11px;color:var(--t3)">${esc(m.fonction||t.role||'—')}</div></div>
@@ -16939,7 +16949,7 @@ async function chargerEquipe(prestationId,ref){
     // Coût prévu : les affectations en cours (invitées, en attente, acceptées) et les frais validés.
     // La vue de rentabilité ne compte que les acceptées ; la Production a besoin de voir la marge au
     // moment où elle fixe les montants, pas après les réponses des opérateurs.
-    const enCours=(Array.isArray(data)?data:[]).filter(x=>['invitation_envoyée','en_attente','acceptée'].includes(x.statut));
+    const enCours=(Array.isArray(data)?data:[]).filter(x=>['a_envoyer','invitation_envoyée','en_attente','acceptée'].includes(x.statut));
     const coutPrevu=enCours.reduce((s,x)=>s+Number(x.remuneration||0),0)+Number(rt?.cout_frais||0);
     const prixVendu=Number(rt?.revenu_ht||0);
     const am=alerteMarge(prixVendu,coutPrevu);
@@ -16948,8 +16958,8 @@ async function chargerEquipe(prestationId,ref){
       ${rt?`<span>Prix vendu <b style="color:var(--t1)">${prixVendu>0?eurM(prixVendu)+' HT':'non facturée à l\'unité'}</b></span><span>Coût terrain prévu <b style="color:var(--t1)">${eurM(coutPrevu)}</b></span>${am?`<span>Marge prévue <b style="color:${am.niv==='negative'?'var(--er)':am.niv==='faible'?'var(--wa)':'var(--t1)'}">${eurM(am.marge)} (${am.pct} %)</b></span>${badgeMarge(am)}`:''}`:''}
       <button onclick="historiqueRemuneration('${prestationId}')" style="margin-left:auto;font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Historique des montants</button></div>`:'';
     if(!data||!data.length){el.innerHTML=bandeau+'<div style="color:var(--t3);font-size:13px;padding:8px 0">Aucun collaborateur affecté.</div>';return;}
-    const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
-    const iLb={'invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
+    const iSt={'a_envoyer':'bn','invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
+    const iLb={'a_envoyer':'À envoyer','invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
     el.innerHTML=bandeau+data.map(m=>{
       const t=m.collaborateur||{};
       const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||'?';
@@ -17228,7 +17238,9 @@ async function ajouterMembreEquipe(prestationId,ref){
     const ecartAjout=ecartRemu(rem,autoPay);
     if(ecartAjout&&ecartAjout.motifRequis&&!motifRem){err.textContent='Écart de '+ecartAjout.pct+' % avec le tarif recommandé : indique le motif de l\'ajustement.';if(btn)btn.disabled=false;return;}
     const equipeBody={p_prestation_id:prestationId,p_collaborateur_id:colId,p_fonction:fonc||null,p_notes:notes||null,p_remuneration:rem?Number(rem):null,p_heure_rdv:rdv||null,
-      p_montant_recommande:autoPay,p_motif_ajustement:ecartAjout&&ecartAjout.d?motifRem:null,p_motif_detail:document.getElementById('eq-motif-detail')?.value||null};
+      p_montant_recommande:autoPay,p_motif_ajustement:ecartAjout&&ecartAjout.d?motifRem:null,p_motif_detail:document.getElementById('eq-motif-detail')?.value||null,
+      // v136 (10/09/2026) : l'opérateur est PRÉVU ; la proposition part quand la Production valide la mission.
+      p_envoyer:false};
     // Snapshot du calcul (niveau/base/coefficient) uniquement quand le montant final
     // correspond bien à la suggestion automatique — un montant ajusté à la main par
     // admin/sec (ou format "exceptionnelle") n'a pas de règle figée à historiser.
@@ -17256,7 +17268,8 @@ async function ajouterMembreEquipe(prestationId,ref){
       if(rAddId?.code==='23505'){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
       err.textContent='Erreur : '+(msgErreur(rAddId,'Ajout impossible.'));if(btn)btn.disabled=false;return;
     }
-    creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
+    // Plus de notification ici : elle part à la validation de la mission (envoyer_propositions_mission, v136).
+    toast('Opérateur prévu. La proposition partira quand vous validerez la mission.','ok');
     document.getElementById('eq-col').value='';
     document.querySelectorAll('#eq-col-cards .eq-op-card').forEach(c=>{c.style.borderColor='var(--b1)';c.style.background='var(--s2)';});
     document.getElementById('eq-fonc').value='';
@@ -31730,7 +31743,7 @@ function modalProdFiche(p){
       </div>`:`<div style="background:rgba(14,165,255,.06);border:1px solid rgba(14,165,255,.2);border-radius:var(--rb);padding:12px 14px;font-size:12px;color:var(--t3)">Offre du catalogue Connect liée à cette demande — détails de l'offre pas encore disponibles.</div>`):''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Statut prestation</label><select id="pd-statut" class="l-inp" style="height:38px">${stO}</select></div>
-        <div><label style="${L}">Statut financier</label><select id="pd-sfin" class="l-inp" style="height:38px">${sfO}</select></div>
+        <div><label style="${L}">Statut financier</label><select id="pd-sfin" class="l-inp" style="height:38px" ${S.role==='prod'?'disabled title="Suivi par le secrétariat et la comptabilité"':''}>${sfO}</select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Date</label><input id="pd-date" type="date" class="l-inp" value="${p.date_prestation||''}" style="height:38px"></div>
@@ -31765,8 +31778,9 @@ function modalProdFiche(p){
     </div>
     <div id="pf-panel-budget" style="display:none;flex-direction:column;gap:11px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="${L}">Montant HT (€)</label><input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0" oninput="const t=document.getElementById('pd-ttc');if(t&&this.value)t.value=Math.round(Number(this.value)*${1+(p.tva_pct??20)/100}*100)/100"></div>
-        <div><label style="${L}">Montant TTC (€) <span style="font-size:9px;opacity:.5">TVA ${p.tva_pct??20}%</span></label><input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0"></div>
+        <div><label style="${L}">Prix vendu HT (€)</label><input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="—" ${S.role==='prod'?'readonly title="Fixé par le secrétariat ou l\'administration"':''} oninput="const t=document.getElementById('pd-ttc');if(t&&this.value)t.value=Math.round(Number(this.value)*${1+(p.tva_pct??20)/100}*100)/100"></div>
+        <div><label style="${L}">Prix vendu TTC (€) <span style="font-size:9px;opacity:.5">TVA ${p.tva_pct??20}%</span></label><input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="—" ${S.role==='prod'?'readonly':''}></div>
+        ${S.role==='prod'?`<div style="grid-column:1/-1;font-size:11px;color:var(--t3)">Le prix client se fixe par le secrétariat ou l'administration ; la Production le voit pour piloter la marge.</div>`:''}
       </div>
       <div style="background:var(--s2);border-radius:var(--rb);padding:12px 14px">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:8px">Rémunérations équipe</div>
@@ -31781,9 +31795,15 @@ function modalProdFiche(p){
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
       <!-- Les étapes s'enchaînent : Infos → Équipe → Brief → Budget (première mission réelle, 10/09). -->
       <button id="pf-suivant" class="btn bg2" onclick="pfEtapeSuivante()">Suivant : Équipe →</button>
-      <button class="btn bp" onclick="modifierPrestation('${pref}')">Enregistrer</button>
+      <button id="pf-enregistrer" class="btn bp" onclick="modifierPrestation('${pref}')">Enregistrer</button>
     </div>`);
   _pfOnglet='infos';
+  // Des opérateurs prévus attendent leur proposition : le bouton final la leur envoie (v136).
+  sbFetch('prestations_equipe_display?select=id&prestation_id=eq.'+p.id+'&statut=eq.a_envoyer').then(d=>{
+    const n=Array.isArray(d)?d.length:0;
+    const b=document.getElementById('pf-enregistrer');
+    if(b&&n)b.textContent='Valider et envoyer la proposition'+(n>1?' ('+n+' opérateurs)':'');
+  }).catch(()=>{});
   chargerEquipeModal(p.id);
   _chargerRemProdFiche(p.id);
   _chargerHistoriqueProdFiche(p.id);
