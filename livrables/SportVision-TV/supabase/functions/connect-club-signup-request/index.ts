@@ -176,7 +176,13 @@ serve(async (req) => {
     }
     if (!contact_prenom || !String(contact_prenom).trim()) return json400("Le prénom est obligatoire.");
     if (!contact_nom || !String(contact_nom).trim()) return json400("Le nom est obligatoire.");
-    if (!contact_email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact_email)) return json400("Adresse e-mail invalide.");
+    // Décisions Club+ du 10/09/2026, n° 4 : l'adresse de contact est enregistrée sous sa forme
+    // CANONIQUE (espaces retirés, minuscules). Elle gardait la casse saisie : « Jean.Dupont@… »
+    // devenait une autre adresse que celle du compte que la validation crée ensuite, et que toutes
+    // les recherches (doublons, fiche client, invitations) comparent en minuscules. Validée sous
+    // cette forme aussi : une adresse collée avec un espace devant était refusée comme invalide.
+    const emailCanonique = String(contact_email ?? "").trim().toLowerCase();
+    if (!emailCanonique || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCanonique)) return json400("Adresse e-mail invalide.");
     if (!contact_telephone || !String(contact_telephone).trim()) return json400("Le téléphone est obligatoire.");
     if (!fonction || !FONCTIONS.has(fonction)) return json400("Fonction non reconnue.");
     if (fonction === "Autre" && (!fonction_autre || !String(fonction_autre).trim())) {
@@ -223,7 +229,7 @@ serve(async (req) => {
     // qu'un lien d'activation existe déjà) — une demande refusée (refuse) n'empêche pas un nouvel
     // essai, une structure peut légitimement retenter après correction.
     const normalizedNom = String(club_nom).trim();
-    const normalizedEmail = String(contact_email).trim();
+    const normalizedEmail = emailCanonique;
     const LIVE_STATUTS = ["a_traiter", "infos_demandees", "valide"];
     const [byNom, byEmail] = await Promise.all([
       admin
@@ -272,7 +278,7 @@ serve(async (req) => {
         nom_evenement_principal: orgType === "tournoi" && nom_evenement_principal ? String(nom_evenement_principal).trim() : null,
         contact_prenom: String(contact_prenom).trim(),
         contact_nom: String(contact_nom).trim(),
-        contact_email: String(contact_email).trim(),
+        contact_email: emailCanonique,
         contact_telephone: String(contact_telephone).trim(),
         fonction,
         fonction_autre: fonction === "Autre" ? String(fonction_autre).trim() : null,
@@ -292,7 +298,7 @@ serve(async (req) => {
       await admin.rpc("notify_staff_by_role", {
         p_roles: ["admin", "sec", "com"],
         p_titre: `Nouvelle demande d'ouverture Club+ — ${String(club_nom).trim()}`,
-        p_message: `${String(contact_prenom).trim()} ${String(contact_nom).trim()} (${fonction === "Autre" ? fonction_autre : fonction}) demande l'ouverture d'un espace Club+ (${orgType}) pour « ${String(club_nom).trim()} » (${String(ville).trim()}). Contact : ${contact_email} · ${contact_telephone}.`,
+        p_message: `${String(contact_prenom).trim()} ${String(contact_nom).trim()} (${fonction === "Autre" ? fonction_autre : fonction}) demande l'ouverture d'un espace Club+ (${orgType}) pour « ${String(club_nom).trim()} » (${String(ville).trim()}). Contact : ${emailCanonique} · ${contact_telephone}.`,
         p_priorite: "normale",
         p_prestation_id: null,
         p_client_id: null,
