@@ -171,6 +171,26 @@ sql "delete from media_download_grants where order_id in (select id from media_o
      delete from media_albums where id='$ALBUM';
      delete from media_products where club_id='$CLUB' and name in ('Photo a l unite','Pack 5 photos');" > /dev/null
 
+# Les sessions Stripe ouvertes par ce script sont REELLES (mode live) : on les expire.
+#
+# Constat du 10/09/2026 : ce script avait laisse onze sessions de paiement ouvertes dans le compte
+# Stripe de production, a 15 EUR chacune. Personne n'en avait l'adresse, et aucune n'a ete payee —
+# verifie. Mais c'etaient de vrais liens payables, vers des commandes que ce meme script venait de
+# supprimer : un paiement dessus aurait ete ENCAISSE SANS COMMANDE, et le webhook n'aurait rien
+# trouve a quoi le rattacher. « Aucun paiement n'est encaisse », disait l'en-tete : c'etait vrai,
+# mais seulement parce que personne n'avait clique.
+SK=$(grep '^STRIPE_SECRET_KEY=rk_live' .env 2>/dev/null | cut -d= -f2-)
+if [ -n "$SK" ]; then
+  EXP=0
+  for ID in $(curl -sS "https://api.stripe.com/v1/checkout/sessions?limit=100&status=open" -u "$SK:" \
+      | python3 -c "import json,sys;[print(s['id']) for s in json.load(sys.stdin).get('data',[]) if (s.get('customer_email') or (s.get('customer_details') or {}).get('email') or '') in ('parent@exemple.fr','a@b.fr')]"); do
+    curl -sS -o /dev/null -X POST "https://api.stripe.com/v1/checkout/sessions/$ID/expire" -u "$SK:" && EXP=$((EXP+1))
+  done
+  RESTE=$(curl -sS "https://api.stripe.com/v1/checkout/sessions?limit=100&status=open" -u "$SK:" \
+      | python3 -c "import json,sys;print(sum(1 for s in json.load(sys.stdin).get('data',[]) if (s.get('customer_email') or (s.get('customer_details') or {}).get('email') or '') in ('parent@exemple.fr','a@b.fr')))")
+  [ "$RESTE" = "0" ] && ok "sessions Stripe de test expirees" "$EXP" || ko "sessions Stripe encore ouvertes" "$RESTE"
+fi
+
 # Le residu se mesure sur CE QUE CE SCRIPT A CREE, pas sur la base entiere.
 # Le controle precedent comptait toutes les lignes de toutes les tables et exigeait zero partout :
 # ecrit quand la base etait vide, il ne pouvait plus jamais passer des qu'une vraie commande
@@ -183,8 +203,11 @@ R=$(sql "select (select count(*) from media_albums where id='$ALBUM') a,
 echo "$R" | grep -q '"a":0,"b":0,"c":0,"d":0,"e":0' && ok "aucun residu de ce test" || ko "residu" "$R"
 
 # Et l'argent reel n'a pas bouge : c'est la verification qui compte le plus dans ce fichier.
-PAYEES=$(sql "select count(*)::text as v from media_orders where status='paid'" | jqv v)
-[ "$PAYEES" = "4" ] && ok "les 4 commandes payees historiques sont intactes" || ko "commandes payees" "$PAYEES au lieu de 4"
+# On compte l'HISTORIQUE, pas les seules commandes « paid » : depuis le 10/09/2026, la commande a
+# 4 EUR du test du 07/09 est remboursee et passe en « refunded ». Elle reste en base — c'est tout
+# l'objet de la decision de Fouka — et doit donc toujours etre comptee.
+HISTO=$(sql "select count(*)::text as v from media_orders where status in ('paid','refunded') and album_id not in (select id from media_albums where title like 'ZZ TEST%')" | jqv v)
+[ "$HISTO" = "4" ] && ok "les 4 commandes historiques sont intactes (payees ou remboursees)" || ko "historique des commandes" "$HISTO au lieu de 4"
 
 echo
 [ "$FAIL" = "0" ] && echo "Tout est vert." || echo "$FAIL echec(s)."
