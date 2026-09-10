@@ -33692,13 +33692,25 @@ async function modalFicheCollaborateur(id){
     // ordinaire (confirmerDesactiverUser, inchangée).
     const onbFormationsFaites=new Set(inscriptions.filter(i=>i.statut==='terminee').map(i=>i.formation_id));
     const onbFormationsRequises=eqovFormationsRequises(prof.role);
+    // Décision du 10/09/2026 (Fouka) : les formations NE BLOQUENT PLUS l'activation. Elles se
+    // suivent dans l'OS, et une recrue en intégration n'y a pas accès (actif=false) : l'exiger
+    // avant d'ouvrir l'accès était une impasse, dont on ne sortait que par « Réactiver » à la
+    // main depuis la liste. L'activation dépend donc des seuls éléments administratifs ; les
+    // formations restent affichées, comme un suivi à faire dans les premiers jours (l'alerte
+    // « formation obligatoire manquante » de la vue d'ensemble Équipe prend le relais une fois
+    // la personne active).
+    // `valide` et non plus `present` : depuis migration-documents-rh-v2, la base n'accepte plus que
+    // manquant / a_valider / valide (les anciens `present` y ont été reclassés en `valide`). Ces
+    // deux cases ne pouvaient donc JAMAIS se cocher — mesuré le 10/09/2026 — et l'activation
+    // restait bloquée même avec un dossier complet.
     const onbItems=[
       {k:'fiche_creee',lb:'Fiche créée',done:true},
       {k:'statut_confirme',lb:'Statut contractuel confirmé',done:!!prof.type_contrat},
-      {k:'rib_recu',lb:'RIB reçu',done:docs.some(d=>d.type==='rib'&&d.statut==='present')},
-      {k:'contrat_signe',lb:'Contrat signé',done:docs.some(d=>d.type==='contrat'&&d.statut==='present')},
-      {k:'formations',lb:'Formations obligatoires terminées',done:onbFormationsRequises.every(f=>onbFormationsFaites.has(f))},
+      {k:'rib_recu',lb:'RIB reçu',done:docs.some(d=>d.type==='rib'&&d.statut==='valide')},
+      {k:'contrat_signe',lb:'Contrat signé',done:docs.some(d=>d.type==='contrat'&&d.statut==='valide')},
     ];
+    const onbFormationsNb=onbFormationsRequises.filter(f=>onbFormationsFaites.has(f)).length;
+    const onbFormationsOk=onbFormationsNb===onbFormationsRequises.length;
     const onbDone=onbItems.filter(i=>i.done).length;
     const onbPct=Math.round(onbDone/onbItems.length*100);
     const onbComplete=onbDone===onbItems.length;
@@ -33711,6 +33723,7 @@ async function modalFicheCollaborateur(id){
       <div style="display:flex;flex-direction:column;gap:6px">
         ${onbItems.map(i=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:${i.done?'var(--t1)':'var(--t3)'}"><span>${i.done?'✅':'⬜'}</span>${i.lb}</div>`).join('')}
       </div>
+      ${onbFormationsRequises.length?`<div data-onb-suivi style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(245,165,36,.3);display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2)"><span>${onbFormationsOk?'✅':'🎓'}</span>Formations obligatoires (${onbFormationsNb}/${onbFormationsRequises.length}) — à faire dans les premiers jours, ne bloquent pas l'activation</div>`:''}
     </div>`:'';
     const T_OVERVIEW=T_ONBOARDING+'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
       +ic('Rôle principal',RLBL[prof.role]||prof.role)
@@ -33856,9 +33869,10 @@ async function modalFicheCollaborateur(id){
     const T_DOCS=canSeeDocs?(
       (docs.length?'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+docs.map(d=>
         '<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:8px">'
-        +'<span style="font-size:16px;flex-shrink:0">'+(d.statut==='present'?'📄':'⬜')+'</span>'
+        +'<span style="font-size:16px;flex-shrink:0">'+(d.statut==='valide'?'📄':'⬜')+'</span>'
         +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">'+esc(d.nom)+'</div><div style="font-size:11px;color:var(--t3)">'+(DOC_TYPE_LBL[d.type]||d.type)+(d.notes?' · '+esc(d.notes):'')+'</div></div>'
-        +'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:'+(d.statut==='present'?'rgba(46,204,138,.12)':'rgba(240,68,94,.12)')+';color:'+(d.statut==='present'?'var(--ok)':'var(--er)')+'">'+(d.statut==='present'?'Présent':'Manquant')+'</span>'
+        // Statuts de la base (migration-documents-rh-v2) : valide / a_valider / manquant.
+        +'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:'+(d.statut==='valide'?'rgba(46,204,138,.12)':d.statut==='a_valider'?'rgba(245,165,36,.12)':'rgba(240,68,94,.12)')+';color:'+(d.statut==='valide'?'var(--ok)':d.statut==='a_valider'?'var(--wa)':'var(--er)')+'">'+(d.statut==='valide'?'Présent':d.statut==='a_valider'?'À valider':'Manquant')+'</span>'
         +(canManage?'<button class="btn bg2 bs" onclick="ficheDocSupprimer(\''+d.id+'\',\''+id+'\',\''+escJs(d.nom||'')+'\')">Retirer</button>':'')
         +'</div>').join('')+'</div>':'<div style="text-align:center;padding:32px 24px;color:var(--t3);font-size:13px;margin-bottom:14px">Aucun document enregistré.</div>')
       +(canManage?'<button class="btn bp bs" onclick="modalFicheDocAjouter(\''+id+'\')">+ Ajouter un document</button>':'')
@@ -34012,7 +34026,7 @@ function modalFicheDocAjouter(collabId){
       </div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut</label>
         <select id="fda-statut" class="l-inp" style="height:38px">
-          <option value="present">Présent</option>
+          <option value="valide">Présent</option>
           <option value="manquant">Manquant (à relancer)</option>
         </select>
       </div>
@@ -39078,13 +39092,21 @@ async function submitIncidentJJ(prestationId){
 async function loadMobileDash(role){
   const ct=document.getElementById('app-ct');
   if(!ct)return;
-  if(role==='photo') await loadMobilePhotoDash(ct);
-  else if(role==='prod') await loadMobileProdDash(ct);
-  else if(role==='sec') await loadMobileSecDash(ct);
-  else if(role==='compta') await loadMobileComptaDash(ct);
-  else if(role==='cm') await loadMobileCmDash(ct);
-  else if(role==='com') await loadMobileComDash(ct);
-  else await loadMobileAdminDash(ct);
+  // Décision du 10/09/2026 : chacun reçoit l'accueil mobile de SON rôle. Un rôle qui n'en a pas
+  // (rh, expert_comptable, auditeur) garde son accueil desktop, déjà rendu par renderContent().
+  // Jusqu'ici tout rôle non listé tombait dans le tableau de bord mobile de l'Admin (CA encaissé
+  // du mois, montant à encaisser, clients actifs, incidents ouverts) — mesuré le 10/09 pour ces
+  // trois rôles à 390 px.
+  const ACCUEIL_MOBILE={photo:loadMobilePhotoDash,prod:loadMobileProdDash,sec:loadMobileSecDash,compta:loadMobileComptaDash,cm:loadMobileCmDash,com:loadMobileComDash,admin:loadMobileAdminDash};
+  const charger=ACCUEIL_MOBILE[role];
+  if(!charger)return;
+  // Un Responsable d'un seul pôle est emmené dans « Mon pôle » dès que ses pôles sont chargés
+  // (voir goApp). L'accueil mobile de son rôle finissait de charger APRÈS et recouvrait « Mon
+  // pôle » : mesuré le 10/09, S.view valait 'poledash' mais l'écran montrait l'accueil
+  // photographe. Les accueils mobiles n'écrivent que ct.innerHTML : on ne les laisse écrire que
+  // tant que la personne est encore sur l'accueil.
+  const cible={set innerHTML(h){if(S.view==='dash')ct.innerHTML=h;}};
+  await charger(cible);
 }
 
 // ── Dashboard Photographe ─────────────────────────────────────────────────
@@ -39557,6 +39579,33 @@ let _svVersion=null;
     el.textContent='Version inconnue';
   }
 })();
+
+// ── Nouvelle version disponible (décision du 10/09/2026) ─────────────────────────────────
+// La version n'était lue qu'une fois, au chargement. Un onglet ouvert depuis le matin gardait
+// donc l'ancien code ET l'ancienne politique de sécurité : le 10/09, les vidéos de formation
+// restaient « bloquées » chez Fouka après le correctif, seulement parce que son onglet datait
+// d'avant. On revérifie /version.json toutes les 5 minutes et au retour sur l'onglet ; si le
+// commit a changé, un bandeau discret le dit. JAMAIS de rechargement automatique : il ferait
+// perdre une saisie en cours. Fichier absent ou en erreur : on ne dit rien, on ne sait pas.
+let _svBandeauVersion=false;
+async function svVerifierNouvelleVersion(){
+  if(_svBandeauVersion||!_svVersion||!_svVersion.commit)return;
+  try{
+    const r=await fetch('/version.json?_='+Date.now(),{cache:'no-store'});
+    if(!r.ok)return;
+    const v=await r.json();
+    if(!v||!v.commit||v.commit===_svVersion.commit)return;
+    _svBandeauVersion=true;
+    const b=document.createElement('div');
+    b.id='sv-nouvelle-version';
+    b.setAttribute('role','status');
+    b.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;transform:translateX(-50%);z-index:10002;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px);padding:7px 8px 7px 14px;border-radius:20px;background:var(--s1);border:1px solid var(--b1);box-shadow:0 6px 24px rgba(0,0,0,.35);font-family:var(--ff);font-size:12.5px;color:var(--t1)';
+    b.innerHTML='<span>Une nouvelle version de l\'OS est disponible.</span><button type="button" onclick="location.reload()" style="flex-shrink:0;height:28px;padding:0 12px;border-radius:14px;border:none;background:var(--acc);color:#fff;font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer">Recharger</button>';
+    document.body.appendChild(b);
+  }catch(e){}
+}
+setInterval(svVerifierNouvelleVersion,5*60*1000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')svVerifierNouvelleVersion();});
 
 function svCopierVersion(){
   const t=document.getElementById('sv-version');
