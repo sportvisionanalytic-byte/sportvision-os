@@ -34,11 +34,13 @@ export function messageErreurAuth(e: unknown, repli: string): string {
   if (code === "email_not_confirmed" || /email not confirmed/i.test(message)) {
     return "Votre adresse e-mail n'est pas encore confirmée. Ouvrez l'e-mail de confirmation SportVision (pensez aux courriers indésirables), cliquez sur le lien, puis reconnectez-vous.";
   }
-  if (code === "weak_password" || /password should (be|contain)/i.test(message)) {
-    return MESSAGE_MOT_DE_PASSE_COURT;
-  }
+  // Avant le mot de passe trop court : « New password should be different from the old password »
+  // commence comme « Password should be at least… » (constaté par le test de réinitialisation).
   if (code === "same_password" || /should be different from the old password/i.test(message)) {
     return "Le nouveau mot de passe doit être différent de l'ancien.";
+  }
+  if (code === "weak_password" || /password should (be at least|contain)/i.test(message)) {
+    return MESSAGE_MOT_DE_PASSE_COURT;
   }
   if (code === "user_already_exists" || code === "email_exists" || /already (been )?registered/i.test(message)) {
     return "Un compte existe déjà avec cette adresse e-mail. Connectez-vous avec son mot de passe.";
