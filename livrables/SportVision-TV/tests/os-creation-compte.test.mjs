@@ -266,7 +266,11 @@ try {
   t("la secretaire ne nomme pas de Responsable de pole : 403", (await inviter(sec.acces, cible("photo", { responsable_pole_ids: [FOOT] }))).status === 403);
   const secOff = await collaborateur("appelant-desact", { role: "sec", pole_ids: [FOOT] }, { mdp: true });
   await majProfil(secOff.id, { actif: false });
-  t("une secretaire desactivee ne cree plus de compte : 403", (await inviter(secOff.acces, cible("photo"))).status === 403);
+  // 401 ou 403 : depuis migration-comptes-os-v2, la desactivation supprime les sessions, donc
+  // Supabase rejette le jeton (401) avant meme que la fonction lise `actif` (403). Les deux
+  // veulent dire « refuse » ; seul un 2xx serait un echec.
+  const rOff = await inviter(secOff.acces, cible("photo"));
+  t("une secretaire desactivee ne cree plus de compte : 401/403", rOff.status === 401 || rOff.status === 403, `HTTP ${rOff.status} ${JSON.stringify(rOff.corps).slice(0, 100)}`);
   const faute = `zz-os-faute-${RUN}@example`;
   await suppression(faute);
   t("adresse sans extension refusee, en francais", /invalide/i.test((await inviter(admin.acces, cible("photo", { email: faute }))).corps.error || ""));
