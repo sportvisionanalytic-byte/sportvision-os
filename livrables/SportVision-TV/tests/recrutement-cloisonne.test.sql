@@ -1,8 +1,8 @@
 -- Les candidatures cloisonnées par rôle et par pôle (migration v130, 10/09/2026).
 --
 -- Ce que ce test tient pour vrai :
---   • l'administration voit tout ; la Production et le responsable de pôle, les candidatures
---     d'opérateurs terrain de leur pôle ; le secrétariat, les candidats retenus ; CM,
+--   • l'administration voit tout ; le responsable de pôle, les candidatures d'opérateurs terrain
+--     de son pôle ; la Production, plus rien depuis la v139 ; le secrétariat, les candidats retenus ; CM,
 --     photographes, commerciaux et comptabilité, rien ;
 --   • la même règle pour les CV stockés, le journal d'activité, la vue des documents du
 --     secrétariat et la proposition à la Direction ;
@@ -24,7 +24,8 @@ insert into auth.users (id, email, encrypted_password, email_confirmed_at, aud, 
   ('c3c3c3c3-0000-0000-0000-000000000006','zz-rec-sec@example.invalid','',now(),'authenticated','authenticated'),
   ('c3c3c3c3-0000-0000-0000-000000000007','zz-rec-compta@example.invalid','',now(),'authenticated','authenticated'),
   ('c3c3c3c3-0000-0000-0000-000000000008','zz-rec-com@example.invalid','',now(),'authenticated','authenticated'),
-  ('c3c3c3c3-0000-0000-0000-000000000009','zz-rec-resp-basket@example.invalid','',now(),'authenticated','authenticated')
+  ('c3c3c3c3-0000-0000-0000-000000000009','zz-rec-resp-basket@example.invalid','',now(),'authenticated','authenticated'),
+  ('c3c3c3c3-0000-0000-0000-00000000000a','zz-rec-resp-foot@example.invalid','',now(),'authenticated','authenticated')
 on conflict (id) do nothing;
 insert into profiles (id, prenom, nom, role) values
   ('c3c3c3c3-0000-0000-0000-000000000001','QA','Admin','admin'),
@@ -35,7 +36,8 @@ insert into profiles (id, prenom, nom, role) values
   ('c3c3c3c3-0000-0000-0000-000000000006','QA','Sec','sec'),
   ('c3c3c3c3-0000-0000-0000-000000000007','QA','Compta','compta'),
   ('c3c3c3c3-0000-0000-0000-000000000008','QA','Commercial','com'),
-  ('c3c3c3c3-0000-0000-0000-000000000009','QA','Responsable Basket','photo')
+  ('c3c3c3c3-0000-0000-0000-000000000009','QA','Responsable Basket','photo'),
+  ('c3c3c3c3-0000-0000-0000-00000000000a','QA','Responsable Football','photo')
 on conflict (id) do update set role = excluded.role;
 
 create temp table ctx on commit drop as
@@ -49,7 +51,8 @@ insert into pole_affectations (pole_id, user_id, role_pole, actif)
 select foot, 'c3c3c3c3-0000-0000-0000-000000000002'::uuid, 'membre', true from ctx union all
 select foot, 'c3c3c3c3-0000-0000-0000-000000000006'::uuid, 'membre', true from ctx union all
 select basket, 'c3c3c3c3-0000-0000-0000-000000000003'::uuid, 'membre', true from ctx union all
-select basket, 'c3c3c3c3-0000-0000-0000-000000000009'::uuid, 'responsable', true from ctx;
+select basket, 'c3c3c3c3-0000-0000-0000-000000000009'::uuid, 'responsable', true from ctx union all
+select foot, 'c3c3c3c3-0000-0000-0000-00000000000a'::uuid, 'responsable', true from ctx;
 
 -- Cinq candidatures : A terrain Football, B CM Football, C terrain Basket, D terrain sans pôle,
 -- E photographe Football déjà retenu.
@@ -103,8 +106,9 @@ declare r record;
 begin
   for r in select * from (values
       ('admin',                       'c3c3c3c3-0000-0000-0000-000000000001'::uuid, 'A,B,C,D,E'),
-      ('production Football',         'c3c3c3c3-0000-0000-0000-000000000002'::uuid, 'A,E'),
-      ('production Basket',           'c3c3c3c3-0000-0000-0000-000000000003'::uuid, 'C'),
+      ('Production Football (v139 : plus de recrutement)', 'c3c3c3c3-0000-0000-0000-000000000002'::uuid, '—'),
+      ('Production Basket (v139)',    'c3c3c3c3-0000-0000-0000-000000000003'::uuid, '—'),
+      ('responsable du pôle Football', 'c3c3c3c3-0000-0000-0000-00000000000a'::uuid, 'A,E'),
       ('responsable du pôle Basket',  'c3c3c3c3-0000-0000-0000-000000000009'::uuid, 'C'),
       ('secrétariat',                 'c3c3c3c3-0000-0000-0000-000000000006'::uuid, 'E'),
       ('photographe',                 'c3c3c3c3-0000-0000-0000-000000000004'::uuid, '—'),
@@ -121,8 +125,8 @@ select pg_temp.note('CV lisibles — photographe', '0',
   pg_temp.lu('c3c3c3c3-0000-0000-0000-000000000004', 'select count(*)::text from storage.objects where name like ''recrutement-cv/zz-cand-%'''));
 select pg_temp.note('CV lisibles — CM', '0',
   pg_temp.lu('c3c3c3c3-0000-0000-0000-000000000005', 'select count(*)::text from storage.objects where name like ''recrutement-cv/zz-cand-%'''));
-select pg_temp.note('CV lisibles — production Football (le terrain, pas le CM)', '1',
-  pg_temp.lu('c3c3c3c3-0000-0000-0000-000000000002', 'select count(*)::text from storage.objects where name like ''recrutement-cv/zz-cand-%'''));
+select pg_temp.note('CV lisibles — responsable Football (le terrain, pas le CM)', '1',
+  pg_temp.lu('c3c3c3c3-0000-0000-0000-00000000000a', 'select count(*)::text from storage.objects where name like ''recrutement-cv/zz-cand-%'''));
 select pg_temp.note('CV lisibles — admin', '2',
   pg_temp.lu('c3c3c3c3-0000-0000-0000-000000000001', 'select count(*)::text from storage.objects where name like ''recrutement-cv/zz-cand-%'''));
 
@@ -131,7 +135,7 @@ select pg_temp.note('journal : nom des candidats — commercial', '0',
   pg_temp.lu('c3c3c3c3-0000-0000-0000-000000000008', 'select count(*)::text from activity_log where entity_type = ''recruitment_application'' and entity_id::text like ''d4d4d4d4%'''));
 select pg_temp.note('journal : nom des candidats — comptabilité', '0',
   pg_temp.lu('c3c3c3c3-0000-0000-0000-000000000007', 'select count(*)::text from activity_log where entity_type = ''recruitment_application'' and entity_id::text like ''d4d4d4d4%'''));
-select pg_temp.note('journal : nom des candidats — production Football', '2',
+select pg_temp.note('journal : nom des candidats — Production (v139)', '0',
   pg_temp.lu('c3c3c3c3-0000-0000-0000-000000000002', 'select count(*)::text from activity_log where entity_type = ''recruitment_application'' and entity_id::text like ''d4d4d4d4%'''));
 select pg_temp.note('journal : nom des candidats — admin', '5',
   pg_temp.lu('c3c3c3c3-0000-0000-0000-000000000001', 'select count(*)::text from activity_log where entity_type = ''recruitment_application'' and entity_id::text like ''d4d4d4d4%'''));
@@ -143,27 +147,27 @@ select pg_temp.note('documents « recrutement » — secrétariat : le retenu', 
   pg_temp.lu('c3c3c3c3-0000-0000-0000-000000000006', 'select count(*)::text from secretariat_documents where categorie = ''recrutement_onboarding'' and id::text like ''d4d4d4d4%'''));
 
 -- ── Traiter une candidature ──
-select pg_temp.essai('passer A en entretien — production Football', 'c3c3c3c3-0000-0000-0000-000000000002',
+select pg_temp.essai('passer A en entretien — responsable Football', 'c3c3c3c3-0000-0000-0000-00000000000a',
   'update recruitment_applications set statut = ''entretien'' where email = ''zz-cand-a@example.invalid''', 'autorisé');
 select pg_temp.note('A est en entretien', 'entretien', (select statut from recruitment_applications where email = 'zz-cand-a@example.invalid'));
 do $$ begin
-  perform pg_temp.en('c3c3c3c3-0000-0000-0000-000000000002');
+  perform pg_temp.en('c3c3c3c3-0000-0000-0000-00000000000a');
   update recruitment_applications set statut = 'refuse' where email = 'zz-cand-b@example.invalid';
   perform pg_temp.en('c3c3c3c3-0000-0000-0000-000000000004');
   update recruitment_applications set statut = 'refuse' where email = 'zz-cand-a@example.invalid';
   perform pg_temp.hors();
 end $$;
-select pg_temp.note('refuser la candidature CM — production : sans effet', 'nouveau', (select statut from recruitment_applications where email = 'zz-cand-b@example.invalid'));
+select pg_temp.note('refuser la candidature CM — responsable Football : sans effet', 'nouveau', (select statut from recruitment_applications where email = 'zz-cand-b@example.invalid'));
 select pg_temp.note('refuser A — photographe : sans effet', 'entretien', (select statut from recruitment_applications where email = 'zz-cand-a@example.invalid'));
-select pg_temp.essai('changer l''e-mail de A — production Football', 'c3c3c3c3-0000-0000-0000-000000000002',
+select pg_temp.essai('changer l''e-mail de A — responsable Football', 'c3c3c3c3-0000-0000-0000-00000000000a',
   'update recruitment_applications set email = ''autre@example.invalid'' where email = ''zz-cand-a@example.invalid''', 'refusé');
-select pg_temp.essai('relier E à un compte — production Football', 'c3c3c3c3-0000-0000-0000-000000000002',
+select pg_temp.essai('relier E à un compte — responsable Football', 'c3c3c3c3-0000-0000-0000-00000000000a',
   'update recruitment_applications set collaborateur_id = ''c3c3c3c3-0000-0000-0000-000000000004'' where email = ''zz-cand-e@example.invalid''', 'refusé');
 select pg_temp.essai('relier E à un compte — secrétariat', 'c3c3c3c3-0000-0000-0000-000000000006',
   'update recruitment_applications set collaborateur_id = ''c3c3c3c3-0000-0000-0000-000000000004'' where email = ''zz-cand-e@example.invalid''', 'autorisé');
 select pg_temp.note('E est relié au compte', 'oui',
   (select case when collaborateur_id = 'c3c3c3c3-0000-0000-0000-000000000004' then 'oui' else 'non' end from recruitment_applications where email = 'zz-cand-e@example.invalid'));
-select pg_temp.essai('retenir A — production Football', 'c3c3c3c3-0000-0000-0000-000000000002',
+select pg_temp.essai('retenir A — responsable Football', 'c3c3c3c3-0000-0000-0000-00000000000a',
   'update recruitment_applications set statut = ''retenu'' where email = ''zz-cand-a@example.invalid''', 'autorisé');
 select pg_temp.note('une fois A retenu, le secrétariat le voit', 'A,E',
   pg_temp.lu('c3c3c3c3-0000-0000-0000-000000000006', 'select coalesce(string_agg(upper(replace(split_part(email, ''@'', 1), ''zz-cand-'', '''')), '','' order by email), ''—'') from recruitment_applications where email like ''zz-cand-%'''));
@@ -171,7 +175,7 @@ select pg_temp.note('une fois A retenu, le secrétariat le voit', 'A,E',
 -- ── Proposer à la Direction ──
 select pg_temp.essai('proposer la candidature sans pôle — photographe', 'c3c3c3c3-0000-0000-0000-000000000004',
   'select propose_candidature_direction(''d4d4d4d4-0000-0000-0000-00000000000d'')', 'refusé');
-select pg_temp.essai('proposer A — production Football', 'c3c3c3c3-0000-0000-0000-000000000002',
+select pg_temp.essai('proposer A — responsable Football', 'c3c3c3c3-0000-0000-0000-00000000000a',
   'select propose_candidature_direction(''d4d4d4d4-0000-0000-0000-00000000000a'')', 'autorisé');
 
 select case when attendu = obtenu then '✅' else '❌' end as ok, controle, attendu, obtenu from verdicts;

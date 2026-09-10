@@ -1015,9 +1015,8 @@ const NAV={
     {id:'media',lb:'Galeries photo',ic:'med'},
     {type:'sep',lb:'Équipe & matériel'},
     {id:'equipe',lb:'Équipe terrain',ic:'col'},
-    // 10/09/2026, décision de Fouka (v130) : le recrutement opérationnel des opérateurs terrain
-    // de son pôle revient à la Production — la base ne lui montre que ceux-là.
-    {id:'recrutement',lb:'Recrutement',ic:'col'},
+    // Recrutement : retiré à la Production le 10/09/2026 au soir (décision de Fouka, v139) ; il
+    // reste à l'administration, au secrétariat (retenus) et aux responsables de pôle (Mon pôle).
     {id:'kits',lb:'Matériel',ic:'kits'},
     {type:'sep',lb:'Ressources'},
     {id:'form',lb:'Centre de formation',ic:'form'},
@@ -3431,10 +3430,7 @@ VIEWS['admin.docrh']=VIEWS['sec.docrh'];
 VIEWS['rh.equipehub']=VIEWS['admin.equipehub'];
 VIEWS['rh.equipeoverview']=VIEWS['admin.equipeoverview'];
 VIEWS['rh.recrutement']=VIEWS['sec.recrutement'];
-// v130 (10/09/2026) : chaque rôle ne reçoit de la base que les candidatures qu'il traite.
-VIEWS['prod.recrutement']=()=>`
-    <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Photographes et vidéastes candidats dans votre pôle — à appeler, entretien, retenir ou refuser</div></div></div>
-    <div id="recrut-real">${_recrutSkel()}</div>`;
+
 VIEWS['rh.set']=VIEWS['sec.set'];
 VIEWS['rh.centre']=VIEWS['sec.centre'];
 
@@ -5607,7 +5603,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='commhub') await loadCommHub();
   if(['admin','rh'].includes(role)&&view==='equipeoverview') await loadEquipeOverview();
   if(['admin','rh'].includes(role)&&view==='equipehub') await loadCollaborateurs();
-  if(['admin','sec','rh','prod'].includes(role)&&view==='recrutement') await loadRecrutement();
+  if(['admin','sec','rh'].includes(role)&&view==='recrutement') await loadRecrutement();
   if(role==='admin'&&view==='form'){await loadAdminForm();}
   // _kitsPoleF initialisé depuis S.activePoleId (audit v21, 31/08/2026) : avant, ce filtre était
   // 100% manuel et indépendant du sélecteur de pôle sidebar — changer de pôle actif n'avait
@@ -6091,7 +6087,7 @@ function modalDetailPrestation(idx){
       </div>`:''}
       <div id="pd-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:2px">
-        ${['admin','sec'].includes(S.role)?`<button onclick="supprimerPrestation('${p.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>`:'<div></div>'}
+        ${['admin','sec','prod'].includes(S.role)?`<button onclick="supprimerPrestation('${p.id}','${escJs(p.reference||'')}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>`:'<div></div>'}
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
           ${['admin','sec','prod'].includes(S.role)?`<button class="btn bg2" onclick="closeModal();modalEquipePrestation('${p.id}','${p.reference||''}')">Équipe →</button>`:''}
@@ -6175,16 +6171,33 @@ async function modifierPrestation(id){
   }catch(e){err.textContent='Erreur lors de la modification.';}
 }
 
-function supprimerPrestation(id){
-  confirmerAction('Supprimer cette prestation ? Cette action est irréversible.',async()=>{
-    try{
-      const r=await sbFetch('prestations?id=eq.'+id,{method:'DELETE'});
-      if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Suppression impossible.')),'er');return;}
-      toast('Prestation supprimée.','ok');
-      loadViewData(S.role,S.view);
-      updateNavBadges(S.role);
-    }catch(e){toast('Erreur lors de la suppression.');}
-  });
+// Supprimer une mission (10/09/2026, v138) : une seule porte, supprimer_mission, qui refuse une
+// mission commencée ou porteuse d'historique, prévient l'opérateur et le CM, rend les kits et garde
+// une copie. L'ancien DELETE brut échouait dès qu'une notification citait la mission, et sinon
+// laissait opérateur, kit et présence du CM en plan.
+function supprimerPrestation(id,ref){
+  openModal(`<div class="mh"><div class="mt">Supprimer ${esc(ref||'la mission')} ?</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:13px;color:var(--t2);line-height:1.5">La mission disparaît. Les opérateurs déjà invités sont prévenus, les kits réservés redeviennent disponibles et, si la présence venait du CM, il est prévenu. Une mission déjà commencée ou facturée ne se supprime pas.</div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Motif (facultatif, transmis à l'opérateur et au CM)</label>
+        <input id="sup-motif" class="l-inp" style="height:38px" placeholder="Ex. : match reporté, doublon…"></div>
+      <div id="sup-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn" id="sup-go" style="background:rgba(240,68,94,.15);border:1px solid rgba(240,68,94,.35);color:var(--er)" onclick="confirmerSuppressionMission('${id}')">Supprimer la mission</button>
+      </div>
+    </div>`);
+}
+async function confirmerSuppressionMission(id){
+  const err=document.getElementById('sup-err'),btn=document.getElementById('sup-go');
+  if(btn){btn.disabled=true;btn.textContent='Suppression…';}
+  const r=await sbFetch('rpc/supprimer_mission',{method:'POST',body:{p_prestation_id:id,p_motif:document.getElementById('sup-motif')?.value||null}});
+  if(sbErr(r)){if(err)err.textContent=msgErreur(r,'Suppression impossible.');if(btn){btn.disabled=false;btn.textContent='Supprimer la mission';}return;}
+  closeModal();
+  const det=[r?.operateurs_prevenus?r.operateurs_prevenus+' opérateur'+(r.operateurs_prevenus>1?'s':'')+' prévenu'+(r.operateurs_prevenus>1?'s':''):null,r?.kits_rendus?r.kits_rendus+' kit'+(r.kits_rendus>1?'s':'')+' rendu'+(r.kits_rendus>1?'s':''):null].filter(Boolean).join(', ');
+  toast((r?.reference||'Mission')+' supprimée.'+(det?' '+det+'.':''),'ok');
+  loadViewData(S.role,S.view);
+  updateNavBadges(S.role);
 }
 
 let _clientsCache=[];
@@ -31824,7 +31837,8 @@ function modalProdFiche(p){
       <div id="pf-hist-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
     </div>
     <div id="pd-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:10px"></div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
+    <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:6px">
+      <button onclick="supprimerPrestation('${pref}','${escJs(p.reference||'')}')" style="margin-right:auto;padding:7px 12px;font-size:12px;background:none;border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer la mission</button>
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
       <!-- Les étapes s'enchaînent : Infos → Équipe → Brief → Budget (première mission réelle, 10/09). -->
       <button id="pf-suivant" class="btn bg2" onclick="pfEtapeSuivante()">Suivant : Équipe →</button>
