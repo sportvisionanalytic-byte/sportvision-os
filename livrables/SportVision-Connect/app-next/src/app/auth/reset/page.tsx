@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
+import { messageErreurAuth } from "@/lib/supabase/erreurs-auth";
 
 // /auth/reset — cible de redirect_url envoyée par request-password-reset (voir /auth/forgot).
 // Le client Supabase navigateur (createBrowserClient) est censé détecter automatiquement la
@@ -94,7 +95,10 @@ export default function ResetPasswordPage() {
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setSubmitting(false);
     if (updateError) {
-      setError("Le lien a peut-être expiré. Redemandez un nouveau lien.");
+      // 10/09/2026 : TOUT refus était présenté comme un lien expiré, y compris « même mot de passe
+      // que l'ancien » — la personne redemandait un lien qui tombait sur la même erreur. Les refus
+      // reconnus sont dits tels quels, en français ; le lien expiré reste le repli.
+      setError(messageErreurAuth(updateError, "Le lien a peut-être expiré. Redemandez un nouveau lien."));
       return;
     }
     setDone(true);

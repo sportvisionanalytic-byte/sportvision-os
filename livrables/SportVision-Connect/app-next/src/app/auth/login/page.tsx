@@ -1,33 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle, Eye, EyeOff, Info } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 import { consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { messageErreurAuth } from "@/lib/supabase/erreurs-auth";
+import { cheminInterneSur } from "@/lib/supabase/chemin-retour";
 
 // /auth/login — voir ACTIONS.md § 1. Ne jamais préciser si c'est l'e-mail ou le mot de passe
 // qui est faux dans le message d'erreur.
+//
+// 10/09/2026 (audit des créations de compte) — l'écran répondait « Identifiants incorrects » à
+// TOUT refus. Un compte tout juste créé dont l'adresse n'est pas encore confirmée recevait donc ce
+// message alors que son mot de passe était juste : la personne réinitialisait un mot de passe qui
+// n'avait rien de faux. Supabase ne renvoie « adresse non confirmée » que si le mot de passe est
+// bon (mesuré), le dire ne révèle rien — voir lib/supabase/erreurs-auth.ts. Même chose pour une
+// limite de fréquence ou une coupure réseau, qui n'ont rien à voir avec les identifiants.
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Retour après connexion (ex. l'invitation d'un encadrant, /rejoindre?token=…), filtré.
+  const next = cheminInterneSur(searchParams.get("next"));
+  // Posé par /auth/callback quand le lien de confirmation n'a pas pu ouvrir de session : lien
+  // expiré ou déjà utilisé, ou — cas le plus courant — ouvert sur un autre appareil que celui de
+  // l'inscription. Dans ce dernier cas l'adresse EST confirmée : il suffit de se connecter. La page
+  // s'affichait jusqu'ici sans un mot, comme si rien ne s'était passé.
+  const confirmationEchouee = searchParams.get("confirmation") === "failed";
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setError(false);
+    setError(null);
     setSubmitting(true);
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (signInError) {
       setSubmitting(false);
-      setError(true);
+      setError(
+        messageErreurAuth(signInError, "Identifiants incorrects. Vérifiez votre adresse e-mail et votre mot de passe."),
+      );
       return;
     }
 
@@ -46,7 +73,7 @@ export default function LoginPage() {
     }
 
     setSubmitting(false);
-    router.push("/dashboard");
+    router.push(next ?? "/dashboard");
     router.refresh();
   }
 
@@ -106,12 +133,21 @@ export default function LoginPage() {
             Accédez à votre espace professionnel SportVision.
           </p>
 
-          {error && (
-            <div className="mt-5 flex gap-2.5 rounded-xl border border-[#FDA29B] bg-danger-bg px-3.5 py-3">
-              <AlertCircle className="mt-0.5 h-4 w-4 flex-none text-danger-fg" aria-hidden />
-              <p className="text-[13px] font-semibold leading-relaxed text-danger-fg">
-                Identifiants incorrects. Vérifiez votre adresse e-mail et votre mot de passe.
+          {confirmationEchouee && !error && (
+            <div className="mt-5 flex gap-2.5 rounded-xl border border-border-strong bg-surface-alt px-3.5 py-3">
+              <Info className="mt-0.5 h-4 w-4 flex-none text-brand-blue-electric" aria-hidden />
+              <p className="text-[13px] font-semibold leading-relaxed text-text-soft">
+                Le lien de confirmation n&apos;a pas pu vous connecter automatiquement. Si vous l&apos;avez ouvert sur un
+                autre appareil, votre adresse est bien confirmée : connectez-vous ci-dessous. S&apos;il avait expiré, un
+                message vous le dira à la connexion.
               </p>
+            </div>
+          )}
+
+          {error && (
+            <div role="alert" className="mt-5 flex gap-2.5 rounded-xl border border-[#FDA29B] bg-danger-bg px-3.5 py-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-none text-danger-fg" aria-hidden />
+              <p className="text-[13px] font-semibold leading-relaxed text-danger-fg">{error}</p>
             </div>
           )}
 

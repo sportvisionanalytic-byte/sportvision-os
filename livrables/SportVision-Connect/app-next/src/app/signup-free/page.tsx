@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
-import { consumePendingOnboarding, savePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { consumePendingOnboarding, pendingMetadata, savePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { inscriptionSurCompteExistant, messageErreurAuth } from "@/lib/supabase/erreurs-auth";
 
 // /signup-free — inscription Club+ Gratuit instantanée, sans validation staff (décision Fouka,
 // 19/08/2026 — voir lib/signup/pending-onboarding.ts § "clubplus-free-signup"). Volontairement
@@ -12,7 +14,16 @@ import { consumePendingOnboarding, savePendingOnboarding } from "@/lib/signup/pe
 // dernier reste le seul chemin pour Start/Performance et les autres types de structure. Même
 // gabarit que /activation (page autonome, pas de layout partagé), sans étape de vérification de
 // token puisqu'il n'y a ici aucun lien privé à valider.
+//
+// 10/09/2026 (audit des créations de compte) :
+//  - une adresse déjà inscrite (compte Connect, compte de l'OS) recevait « Vérifiez vos e-mails »
+//    alors qu'aucun e-mail ne part dans ce cas (voir erreurs-auth.ts) : elle attendait pour rien.
+//    La page propose désormais de se connecter avec ce compte, et crée le club dans la foulée ;
+//  - la branche « l'inscription a ouvert une session » envoyait vers /dashboard SANS le préfixe
+//    /clubplus (window.location brut, jamais réécrit par Next) : une page 404 ;
+//  - les refus de Supabase s'affichaient en anglais.
 export default function SignupFreePage() {
+  const router = useRouter();
   const [clubNom, setClubNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
@@ -22,9 +33,38 @@ export default function SignupFreePage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  // Le compte existe déjà : même formulaire, mais on se connecte au lieu de s'inscrire.
+  const [compteExistant, setCompteExistant] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
 
+  async function creerLeClubConnecte() {
+    const supabase = createClient();
+    try {
+      await consumePendingOnboarding(supabase);
+      router.push("/dashboard");
+      router.refresh();
+    } catch (e) {
+      setSubmitting(false);
+      setSubmitError(e instanceof Error ? e.message : "La création de votre espace a échoué. Réessayez.");
+    }
+  }
+
+  // Un double clic envoyait deux inscriptions : la seconde renvoie un e-mail de confirmation (sur un
+  // quota de 15 par heure pour tout SportVision) ou se fait refuser. L'état `submitting` n'est relu
+  // qu'au rendu suivant, trop tard pour arrêter le second clic.
+  const enCours = useRef(false);
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (enCours.current) return;
+    enCours.current = true;
+    try {
+      await soumettre();
+    } finally {
+      enCours.current = false;
+    }
+  }
+
+  async function soumettre() {
     setSubmitError(null);
     if (!clubNom.trim()) {
       setSubmitError("Le nom du club est obligatoire.");
@@ -32,9 +72,23 @@ export default function SignupFreePage() {
     }
     setSubmitting(true);
     const supabase = createClient();
+    const adresse = email.trim();
+    const pending = { kind: "clubplus-free-signup" as const, clubNom: clubNom.trim(), prenom, nom, telephone };
+
+    if (compteExistant) {
+      const { error } = await supabase.auth.signInWithPassword({ email: adresse, password });
+      if (error) {
+        setSubmitting(false);
+        setSubmitError(messageErreurAuth(error, "Connexion impossible. Vérifiez votre mot de passe."));
+        return;
+      }
+      savePendingOnboarding(pending);
+      await creerLeClubConnecte();
+      return;
+    }
 
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
+      email: adresse,
       password,
       options: {
         // Sans ça, le lien du mail de confirmation redirige vers l'origine nue
@@ -45,19 +99,26 @@ export default function SignupFreePage() {
         // route.ts), jamais reproduit ici jusqu'à cet audit du 30/08/2026 : personne n'avait encore
         // testé en réel le clic sur le lien reçu par e-mail pour ce parcours self-service.
         emailRedirectTo: `${window.location.origin}/clubplus/auth/callback`,
+        // Voyage avec le compte : le club sera créé même si le lien est ouvert sur un autre
+        // appareil que celui-ci (voir pending-onboarding.ts).
+        data: pendingMetadata(pending),
       },
     });
     if (signUpError) {
       setSubmitting(false);
-      setSubmitError(
-        signUpError.message.toLowerCase().includes("already registered")
-          ? "Un compte existe déjà avec cette adresse e-mail. Connectez-vous, votre club sera créé automatiquement."
-          : signUpError.message,
-      );
+      setSubmitError(messageErreurAuth(signUpError, "La création de votre compte a échoué. Réessayez."));
       return;
     }
 
-    const pending = { kind: "clubplus-free-signup" as const, clubNom: clubNom.trim(), prenom, nom, telephone };
+    if (inscriptionSurCompteExistant(signUpData.user)) {
+      setSubmitting(false);
+      setCompteExistant(true);
+      setPassword("");
+      setInfo(
+        "Un compte SportVision existe déjà avec cette adresse. Saisissez son mot de passe : votre club sera créé dès la connexion.",
+      );
+      return;
+    }
 
     if (!signUpData.session) {
       // Confirmation d'e-mail active sur ce projet : pas de session tant que le lien reçu par
@@ -69,13 +130,8 @@ export default function SignupFreePage() {
       return;
     }
 
-    try {
-      await consumePendingOnboarding(supabase);
-      window.location.href = "/dashboard";
-    } catch (e) {
-      setSubmitting(false);
-      setSubmitError(e instanceof Error ? e.message : "La création de votre espace a échoué. Réessayez.");
-    }
+    savePendingOnboarding(pending);
+    await creerLeClubConnecte();
   }
 
   if (awaitingConfirmation) {
@@ -83,8 +139,9 @@ export default function SignupFreePage() {
       <CenteredShell>
         <h2 className="text-[22px] font-extrabold tracking-tight">Vérifiez vos e-mails</h2>
         <p className="mt-3 max-w-sm text-[13.5px] leading-relaxed text-text-soft">
-          Un e-mail de confirmation a été envoyé à <strong className="text-text">{email}</strong>. Cliquez sur le lien
-          qu&apos;il contient pour créer votre espace Club+ Gratuit.
+          Un e-mail de confirmation a été envoyé à <strong className="text-text">{email.trim()}</strong>. Cliquez sur le
+          lien qu&apos;il contient pour créer votre espace Club+ Gratuit. Pensez à regarder dans les courriers
+          indésirables.
         </p>
       </CenteredShell>
     );
@@ -108,8 +165,15 @@ export default function SignupFreePage() {
           carte bancaire.
         </p>
 
+        {info && !submitError && (
+          <div className="mt-5 flex gap-2.5 rounded-xl border border-border-strong bg-surface-alt px-3.5 py-3">
+            <Info className="mt-0.5 h-4 w-4 flex-none text-brand-blue-electric" aria-hidden />
+            <p className="text-[13px] font-semibold leading-relaxed text-text-soft">{info}</p>
+          </div>
+        )}
+
         {submitError && (
-          <div className="mt-5 flex gap-2.5 rounded-xl border border-[#FDA29B] bg-danger-bg px-3.5 py-3">
+          <div role="alert" className="mt-5 flex gap-2.5 rounded-xl border border-[#FDA29B] bg-danger-bg px-3.5 py-3">
             <AlertCircle className="mt-0.5 h-4 w-4 flex-none text-danger-fg" aria-hidden />
             <p className="text-[13px] font-semibold leading-relaxed text-danger-fg">{submitError}</p>
           </div>
@@ -123,11 +187,34 @@ export default function SignupFreePage() {
           </div>
           <Field label="Téléphone" value={telephone} onChange={setTelephone} type="tel" />
           <Field label="Adresse e-mail" value={email} onChange={setEmail} type="email" required />
-          <Field label="Mot de passe" value={password} onChange={setPassword} type="password" required minLength={8} />
+          <Field
+            label={compteExistant ? "Mot de passe de votre compte" : "Mot de passe"}
+            value={password}
+            onChange={setPassword}
+            type="password"
+            required
+            minLength={compteExistant ? undefined : 8}
+            aide={compteExistant ? undefined : "8 caractères minimum."}
+          />
 
           <Button type="submit" disabled={submitting} className="mt-2 h-12 w-full text-[15px]">
-            {submitting ? "Création…" : "Créer mon espace Club+ Gratuit"}
+            {submitting
+              ? "Création…"
+              : compteExistant
+                ? "Me connecter et créer mon club"
+                : "Créer mon espace Club+ Gratuit"}
           </Button>
+          <button
+            type="button"
+            onClick={() => {
+              setCompteExistant((v) => !v);
+              setSubmitError(null);
+              setInfo(null);
+            }}
+            className="text-[13px] font-bold text-brand-blue-electric hover:underline"
+          >
+            {compteExistant ? "Je n'ai pas encore de compte" : "J'ai déjà un compte SportVision"}
+          </button>
         </form>
       </div>
     </div>
@@ -147,6 +234,7 @@ function Field({
   type = "text",
   required,
   minLength,
+  aide,
 }: {
   label: string;
   value: string;
@@ -154,6 +242,7 @@ function Field({
   type?: string;
   required?: boolean;
   minLength?: number;
+  aide?: string;
 }) {
   return (
     <label className="flex flex-col gap-1.5">
@@ -166,6 +255,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         className="h-[46px] rounded-xl border border-border-strong bg-surface px-3.5 text-[14px] outline-none focus-visible:border-brand-blue-electric focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.18)]"
       />
+      {aide && <span className="text-[11.5px] text-text-faint">{aide}</span>}
     </label>
   );
 }

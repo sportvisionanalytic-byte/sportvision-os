@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { cheminInterneSur } from "@/lib/supabase/chemin-retour";
 
 // Échange le code PKCE reçu dans le lien de confirmation d'e-mail (voir signup/checkout/page.tsx,
 // emailRedirectTo) contre une vraie session, puis renvoie vers /auth/confirming qui rejoue le
@@ -13,17 +14,28 @@ import { createClient } from "@/lib/supabase/server";
 // "/clubplus" : basePath (next.config.mjs, 17/08/2026) — NextResponse.redirect() avec une chaîne
 // construite à la main n'est PAS auto-préfixé par Next (contrairement à next/link), il faut
 // l'ajouter explicitement, comme pour auth/forgot/page.tsx et signup/checkout/page.tsx.
+//
+// `?next=` (10/09/2026, audit des créations de compte) : un encadrant invité qui crée son accès
+// depuis /rejoindre doit revenir sur son invitation après avoir confirmé son adresse. Transmis tel
+// quel à /auth/confirming, et à /auth/login en cas d'échec — qui arrive par exemple quand le lien
+// est ouvert sur un AUTRE appareil : le code PKCE ne peut être échangé que par le navigateur qui a
+// fait l'inscription, mais l'adresse, elle, est bel et bien confirmée. L'écran de connexion le dit
+// désormais (voir auth/login/page.tsx, `confirmation=failed`).
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const next = cheminInterneSur(searchParams.get("next"));
+  const suite = next ? `?next=${encodeURIComponent(next)}` : "";
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}/clubplus/auth/confirming`);
+      return NextResponse.redirect(`${origin}/clubplus/auth/confirming${suite}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/clubplus/auth/login?confirmation=failed`);
+  return NextResponse.redirect(
+    `${origin}/clubplus/auth/login?confirmation=failed${next ? `&next=${encodeURIComponent(next)}` : ""}`,
+  );
 }

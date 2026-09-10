@@ -1,12 +1,14 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
+import { switchActiveSpace } from "@/lib/supabase/actions";
 import { ROLE_LABELS } from "@/lib/types/settings";
 import { mapClubRole } from "@/lib/supabase/mappers";
+import { inscriptionSurCompteExistant, messageErreurAuth } from "@/lib/supabase/erreurs-auth";
 import {
   accepterInvitation,
   lireInvitation,
@@ -32,6 +34,20 @@ import {
 // La base refuse une invitation acceptée depuis une autre adresse que celle qui l'a reçue (voir
 // migration v101) : une invitation de coach accorde l'administration d'une équipe, un lien
 // transféré ne doit pas suffire à la prendre. Le message de refus le dit en toutes lettres.
+//
+// ── Audit des créations de compte (10/09/2026) ──
+// Ce que la page faisait mal, mesuré sur la production :
+//  - le lien de confirmation d'une création d'accès renvoyait sur Connect (aucune adresse de
+//    retour n'était donnée à Supabase, qui retombe alors sur l'URL du site = Connect) : le coach
+//    confirmait son adresse et se retrouvait dans une autre application, invitation perdue ;
+//  - un compte déjà existant (un parent inscrit sur Connect, typiquement) qui cliquait « Créer mon
+//    accès » lisait « Compte créé, confirmez votre adresse » et attendait un e-mail qui ne part
+//    jamais (Supabase ne dit pas qu'une adresse est prise, voir erreurs-auth.ts) ;
+//  - les refus de Supabase s'affichaient en anglais ;
+//  - le bouton s'activait dès 6 caractères quand Supabase en exige 8 ;
+//  - connecté avec le mauvais compte, rien ne permettait d'en changer ;
+//  - quelqu'un qui appartenait déjà à un autre espace était ramené dans CET espace-là, pas dans
+//    le club qu'il venait de rejoindre.
 
 export default function RejoindrePage() {
   return (
@@ -81,48 +97,105 @@ function RejoindreContent() {
     };
   }, [token]);
 
+  // Un double clic partait deux fois : deux connexions, deux acceptations, et la seconde échouait
+  // (« déjà utilisée ») pendant que la première réussissait. L'état React ne suffit pas à l'empêcher
+  // — il n'est relu qu'au rendu suivant, après le second clic.
+  const enCours = useRef(false);
+
   function accepter() {
     setOccupe(true);
     setErreur(null);
+    enCours.current = true;
     accepterInvitation(createClient(), token)
-      .then(() => {
+      .then(async () => {
         setEtat("acceptee");
+        // L'espace mémorisé (cookie) l'emporte sur tout le reste à l'ouverture de Club+ : sans
+        // cette ligne, quelqu'un qui appartenait déjà à un autre espace y était ramené, et ne
+        // voyait pas le club qu'il venait de rejoindre. Un échec ici n'empêche pas d'entrer.
+        await switchActiveSpace({ kind: "organization", id: invitation?.clubId ?? "" }).catch(() => undefined);
         // Un court instant sur l'écran de confirmation, pour que la personne comprenne ce qui
         // vient de se passer avant d'être posée dans son espace.
-        setTimeout(() => router.push("/"), 1500);
+        setTimeout(() => {
+          router.push("/dashboard");
+          router.refresh();
+        }, 1500);
       })
-      .catch((e) => setErreur(messageErreurInvitation(e, "Impossible d'accepter cette invitation.")))
+      .catch((e) => {
+        enCours.current = false;
+        setErreur(messageErreurInvitation(e, "Impossible d'accepter cette invitation."));
+      })
       .finally(() => setOccupe(false));
   }
 
+  function changerDeCompte() {
+    setOccupe(true);
+    createClient()
+      .auth.signOut()
+      .finally(() => {
+        setConnecte(null);
+        setErreur(null);
+        setInfo(null);
+        setMode("connexion");
+        setOccupe(false);
+      });
+  }
+
   function soumettre() {
+    if (enCours.current) return;
+    enCours.current = true;
     setOccupe(true);
     setErreur(null);
     setInfo(null);
     const supabase = createClient();
+    const adresse = email.trim();
     const promesse =
       mode === "connexion"
-        ? supabase.auth.signInWithPassword({ email: email.trim(), password: motDePasse })
-        : supabase.auth.signUp({ email: email.trim(), password: motDePasse });
+        ? supabase.auth.signInWithPassword({ email: adresse, password: motDePasse })
+        : supabase.auth.signUp({
+            email: adresse,
+            password: motDePasse,
+            options: {
+              // Sans adresse de retour, Supabase utilise l'URL du site du projet, qui est Connect :
+              // le coach confirmait son adresse et atterrissait dans une autre application, son
+              // invitation perdue. On le ramène sur CETTE invitation, via l'échange de session.
+              emailRedirectTo: `${window.location.origin}/clubplus/auth/callback?next=${encodeURIComponent(
+                `/rejoindre?token=${token}`,
+              )}`,
+            },
+          });
 
     promesse
       .then(({ data, error }) => {
         if (error) throw error;
-        if (!data.session) {
-          // Création de compte avec confirmation d'e-mail activée : aucune session n'existe
-          // encore. On le dit, plutôt que de laisser un bouton tourner dans le vide.
+        if (mode === "creation" && inscriptionSurCompteExistant(data.user)) {
+          // Adresse déjà inscrite (Connect, Club+ ou l'OS) : aucun e-mail ne part. On bascule sur
+          // la connexion, en gardant l'adresse saisie.
+          enCours.current = false;
+          setMode("connexion");
+          setMotDePasse("");
           setInfo(
-            "Compte créé. Confirmez votre adresse depuis l'e-mail que vous venez de recevoir, puis rouvrez ce lien d'invitation.",
+            "Un compte SportVision existe déjà avec cette adresse. Saisissez son mot de passe pour rejoindre le club (ou utilisez « Mot de passe oublié » depuis la page de connexion).",
           );
           setOccupe(false);
           return;
         }
-        setConnecte(data.session.user.email ?? email.trim());
+        if (!data.session) {
+          // Création de compte avec confirmation d'e-mail activée : aucune session n'existe
+          // encore. On le dit, plutôt que de laisser un bouton tourner dans le vide.
+          enCours.current = false;
+          setInfo(
+            `Dernière étape : ouvrez l'e-mail de confirmation que nous venons d'envoyer à ${adresse} (pensez aux courriers indésirables) et cliquez sur le lien. Vous reviendrez ici pour activer votre espace.`,
+          );
+          setOccupe(false);
+          return;
+        }
+        setConnecte(data.session.user.email ?? adresse);
         accepter();
       })
       .catch((e) => {
+        enCours.current = false;
         setErreur(
-          messageErreurInvitation(
+          messageErreurAuth(
             e,
             mode === "connexion" ? "Connexion impossible. Vérifiez vos identifiants." : "Création du compte impossible.",
           ),
@@ -211,9 +284,26 @@ function RejoindreContent() {
           <p className="text-[12.5px] text-text-soft">
             Connecté en tant que <span className="font-bold text-text">{connecte}</span>
           </p>
-          <Button onClick={accepter} disabled={occupe} loading={occupe} className="w-full">
+          <Button
+            onClick={() => {
+              if (!enCours.current) accepter();
+            }}
+            disabled={occupe}
+            loading={occupe}
+            className="w-full"
+          >
             Activer mon espace
           </Button>
+          {/* Un ordinateur partagé, un compte Connect ouvert d'avance : la base refuse une
+              invitation acceptée depuis une autre adresse, encore faut-il pouvoir en changer. */}
+          <button
+            type="button"
+            onClick={changerDeCompte}
+            disabled={occupe}
+            className="text-[12.5px] font-bold text-brand-blue-electric hover:underline disabled:opacity-50"
+          >
+            Ce n&apos;est pas vous ? Changer de compte
+          </button>
         </>
       ) : (
         <>
@@ -257,11 +347,17 @@ function RejoindreContent() {
               autoComplete={mode === "connexion" ? "current-password" : "new-password"}
               className="h-11 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[16px] outline-none focus-visible:border-brand-blue"
             />
+            {/* 8, la règle réelle du serveur (password_min_length). Annoncée avant la saisie,
+                pas découverte par un refus. Pas de minimum imposé à la connexion : un compte
+                ancien peut avoir un mot de passe créé sous une règle plus souple. */}
+            {mode === "creation" && (
+              <span className="text-[11.5px] text-text-faint">8 caractères minimum.</span>
+            )}
           </label>
 
           <Button
             onClick={soumettre}
-            disabled={occupe || !email.trim() || motDePasse.length < 6}
+            disabled={occupe || !email.trim() || (mode === "creation" ? motDePasse.length < 8 : motDePasse.length === 0)}
             loading={occupe}
             className="w-full"
           >
