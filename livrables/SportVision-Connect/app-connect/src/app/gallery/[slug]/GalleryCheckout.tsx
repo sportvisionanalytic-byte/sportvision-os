@@ -5,6 +5,53 @@ import { createClient } from "@/lib/supabase/client";
 import { startGalleryCheckout } from "@/lib/gallery/data";
 import { formatMontant } from "@/lib/gallery/pricing";
 
+// ── Protéger l'adresse e-mail ──
+// Paiement réel de validation du 10/09/2026 : l'adresse a été saisie « sportvisionalytic@gmail.com »
+// au lieu de « sportvisionanalytic@gmail.com ». Le paiement est passé, l'e-mail de livraison est
+// parti — vers une boîte qui n'était pas la bonne. Pour un parent, c'est des photos payées qu'il ne
+// reçoit jamais, et un lien de téléchargement dans la boîte d'un inconnu.
+//
+// Deux protections, parce qu'elles n'attrapent pas les mêmes fautes :
+//   • un second champ de confirmation, qui doit correspondre au premier. C'est le seul moyen
+//     d'attraper une faute AVANT le @, comme celle du 10/09 — aucun correcteur ne peut deviner
+//     qu'il manquait « an » dans un identifiant ;
+//   • une suggestion quand le DOMAINE ressemble à un fournisseur connu sans l'être (« gmial.com »).
+//     Elle propose, elle ne corrige jamais d'office : « gmail.fr » ou un domaine d'entreprise
+//     peuvent être parfaitement réels.
+const DOMAINES_COURANTS = [
+  "gmail.com", "hotmail.fr", "hotmail.com", "outlook.fr", "outlook.com", "live.fr", "yahoo.fr",
+  "yahoo.com", "icloud.com", "orange.fr", "wanadoo.fr", "free.fr", "sfr.fr", "laposte.net",
+  "bbox.fr", "neuf.fr", "me.com", "msn.com",
+];
+
+/** Nombre minimal de lettres a ajouter, retirer ou remplacer pour passer de a a b. */
+function distance(a: string, b: string): number {
+  let precedente = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const courante = [i];
+    for (let j = 1; j <= b.length; j++) {
+      const cout = a[i - 1] === b[j - 1] ? 0 : 1;
+      courante[j] = Math.min((precedente[j] ?? 0) + 1, (courante[j - 1] ?? 0) + 1, (precedente[j - 1] ?? 0) + cout);
+    }
+    precedente = courante;
+  }
+  return precedente[b.length] ?? 0;
+}
+
+/** « camille@gmial.com » → « camille@gmail.com » ; rien si le domaine est connu ou trop différent. */
+function suggestionAdresse(adresse: string): string | null {
+  const [local, domaine] = adresse.trim().toLowerCase().split("@");
+  if (!local || !domaine || !domaine.includes(".")) return null;
+  if (DOMAINES_COURANTS.includes(domaine)) return null;
+  let meilleur: string | null = null;
+  let ecart = 3;
+  for (const connu of DOMAINES_COURANTS) {
+    const e = distance(domaine, connu);
+    if (e < ecart) { ecart = e; meilleur = connu; }
+  }
+  return meilleur ? `${local}@${meilleur}` : null;
+}
+
 // Checkout invité — le §14 du prompt : « demander uniquement les informations nécessaires ».
 // Prénom/nom et e-mail, rien d'autre. Pas de mot de passe, pas de compte, pas d'adresse : une
 // photo se télécharge, elle ne se livre pas.
@@ -41,11 +88,19 @@ export function GalleryCheckout({
 }) {
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
-  const pret = nom.trim().length >= 2 && emailValide;
+  const identiques = email.trim().toLowerCase() === confirmation.trim().toLowerCase();
+  // On ne signale la difference qu'une fois la confirmation assez avancee : afficher « les adresses
+  // ne correspondent pas » des la premiere lettre tapee serait un reproche, pas une aide.
+  const differenceVisible = confirmation.trim().length > 0 &&
+    (confirmation.trim().length >= email.trim().length || confirmation.includes("@") && confirmation.includes("."))
+    && !identiques;
+  const suggestion = emailValide ? suggestionAdresse(email) : null;
+  const pret = nom.trim().length >= 2 && emailValide && identiques;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -126,6 +181,42 @@ export function GalleryCheckout({
           className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[16px] outline-none focus:border-white/35"
           placeholder="camille@exemple.fr"
         />
+
+        {suggestion && (
+          <button
+            type="button"
+            onClick={() => setEmail(suggestion)}
+            className="mt-1.5 text-left text-[12.5px] text-text-secondary underline underline-offset-2"
+          >
+            Vouliez-vous dire <strong className="font-semibold text-text">{suggestion}</strong> ?
+          </button>
+        )}
+
+        <label htmlFor="co-email-confirmation" className="mb-1 mt-3 block text-[11px] font-bold uppercase tracking-[.04em] text-text-label">
+          Confirmez l&apos;adresse e-mail
+        </label>
+        <input
+          id="co-email-confirmation"
+          type="email"
+          inputMode="email"
+          value={confirmation}
+          onChange={(e) => setConfirmation(e.target.value)}
+          // Pas de saisie automatique ici : le navigateur reproduirait la meme adresse, faute
+          // comprise, et la confirmation ne confirmerait plus rien.
+          autoComplete="off"
+          aria-invalid={differenceVisible}
+          aria-describedby={differenceVisible ? "co-email-difference" : undefined}
+          className={`w-full rounded-sv border bg-surface px-4 py-3 text-[16px] outline-none focus:border-white/35 ${
+            differenceVisible ? "border-danger" : "border-border-strong"
+          }`}
+          placeholder="Retapez votre adresse"
+        />
+        {differenceVisible && (
+          <p id="co-email-difference" className="mt-1.5 text-[12.5px] font-semibold text-danger">
+            Les deux adresses ne correspondent pas. Vos photos seront envoyées à cette adresse :
+            vérifiez-la lettre par lettre.
+          </p>
+        )}
 
         {error && <p className="mt-3 text-[12.5px] font-semibold text-danger">{error}</p>}
 
