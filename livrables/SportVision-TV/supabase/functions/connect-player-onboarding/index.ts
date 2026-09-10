@@ -58,8 +58,10 @@
 //  - "join_code" { code, prenom, nom, dateNaissance } → résout un code d'invitation d'équipe
 //               (team_invite_codes, généré côté Club+ via create_team_invite_code) et rejoint
 //               directement le club+l'équipe qu'il désigne, source="code_equipe" (19/08, soir).
-//  - "declare" { name, city, team?, prenom, nom } → notifie le staff (aucune écriture DB),
-//               même mécanisme que connect-signup-lead
+//  - "declare" { name, city, team?, prenom, nom, dateNaissance? } → notifie le staff, même
+//               mécanisme que connect-signup-lead ; aucune écriture organizations/clubs. Depuis le
+//               10/09/2026, crée aussi la fiche joueur sans club (comme "skip") quand la date de
+//               naissance est fournie — cas du tunnel d'inscription.
 //  - "skip"    { prenom?, nom?, dateNaissance? } → migration-connect-v72 (15/08) :
 //               player_profiles.club_id est désormais nullable. Si les 3 champs sont fournis
 //               (compte Espace joueur qui choisit "Non/plus tard"), crée une ligne
@@ -177,6 +179,54 @@ async function upsertJoiningPlayerProfile(
   return { playerId: created.id };
 }
 
+// La fiche joueur « sans club » (club_id null, migration-connect-v72) — partagée entre "skip" et
+// "declare" (10/09/2026). Idempotente : ne crée rien si le compte a déjà une fiche.
+// deno-lint-ignore no-explicit-any
+async function assurerFicheSansClub(
+  admin: any,
+  userId: string,
+  prenom: string,
+  nom: string,
+  dateNaissance: string,
+): Promise<{ ok: true } | { error: string }> {
+  // limit(1) et non maybeSingle() : depuis le multi-club (04/09/2026) un compte peut avoir
+  // plusieurs fiches, et maybeSingle() échouait alors en silence — `existingProfile` valait null et
+  // une fiche sans club de plus était créée à chaque rejeu.
+  const { data: existants } = await admin
+    .from("player_profiles")
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1);
+  const existingProfile = existants?.[0] ?? null;
+
+  if (existingProfile) {
+    // Idempotent (rejeu, ou 2e appel depuis "Continuer sans club" — voir AddClubForm.tsx) :
+    // ne PAS mettre à jour club_id/account_status/date_naissance ici — ce sont les colonnes
+    // protégées par le trigger guard_player_profile_update() (migration-clubplus-v13/v36),
+    // qui bloquerait un UPDATE service role dessus (is_club_admin() est faux en contexte
+    // service role, faute de JWT utilisateur forwardé — même constat que documenté pour
+    // l'action "leave" ci-dessous). prenom/nom ne sont pas gardés par ce trigger, rafraîchis
+    // sans risque.
+    await admin.from("player_profiles").update({ prenom, nom }).eq("id", existingProfile.id);
+    return { ok: true };
+  }
+
+  // club_id = null (migration-connect-v72, colonne rendue nullable) : un joueur qui choisit
+  // "Non/plus tard" peut désormais utiliser Connect (dont réserver une prestation) sans être
+  // rattaché à un club. account_status="actif" comme pour "join" : ce joueur peut utiliser
+  // Connect immédiatement, rien n'est en attente de validation ici (aucun club à valider).
+  const { error: insErr } = await admin.from("player_profiles").insert({
+    user_id: userId,
+    club_id: null,
+    prenom,
+    nom,
+    date_naissance: dateNaissance,
+    account_status: "actif",
+  });
+  if (insErr) return { error: insErr.message };
+  return { ok: true };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -242,37 +292,8 @@ serve(async (req) => {
         return json({ ok: true, hasClub: false });
       }
 
-      const { data: existingProfile } = await admin
-        .from("player_profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (existingProfile) {
-        // Idempotent (rejeu, ou 2e appel depuis "Continuer sans club" — voir AddClubForm.tsx) :
-        // ne PAS mettre à jour club_id/account_status/date_naissance ici — ce sont les colonnes
-        // protégées par le trigger guard_player_profile_update() (migration-clubplus-v13/v36),
-        // qui bloquerait un UPDATE service role dessus (is_club_admin() est faux en contexte
-        // service role, faute de JWT utilisateur forwardé — même constat que documenté pour
-        // l'action "leave" ci-dessous). prenom/nom ne sont pas gardés par ce trigger, rafraîchis
-        // sans risque.
-        await admin.from("player_profiles").update({ prenom, nom }).eq("id", existingProfile.id);
-        return json({ ok: true, hasClub: false });
-      }
-
-      // club_id = null (migration-connect-v72, colonne rendue nullable) : un joueur qui choisit
-      // "Non/plus tard" peut désormais utiliser Connect (dont réserver une prestation) sans être
-      // rattaché à un club. account_status="actif" comme pour "join" : ce joueur peut utiliser
-      // Connect immédiatement, rien n'est en attente de validation ici (aucun club à valider).
-      const { error: insErr } = await admin.from("player_profiles").insert({
-        user_id: user.id,
-        club_id: null,
-        prenom,
-        nom,
-        date_naissance: dateNaissance,
-        account_status: "actif",
-      });
-      if (insErr) return json({ error: insErr.message }, 500);
+      const profil = await assurerFicheSansClub(admin, user.id, prenom, nom, dateNaissance);
+      if ("error" in profil) return json({ error: profil.error }, 500);
       return json({ ok: true, hasClub: false });
     }
 
@@ -285,6 +306,19 @@ serve(async (req) => {
       const prenom = String(body?.prenom || "").trim();
       const nom = String(body?.nom || "").trim();
       const contact = `${prenom} ${nom}`.trim() || user.email || "contact inconnu";
+
+      // La fiche joueur, que cette action ne créait jamais (10/09/2026). Le tunnel d'inscription
+      // envoie prénom, nom ET date de naissance avec un club déclaré (signup/club, correctif du
+      // 31/08, dont le commentaire croyait l'insertion faite ici) : sans fiche, buildPlayerContext()
+      // renvoyait null pour toujours — exactement le défaut corrigé pour « plus tard » par la v72 —
+      // et le joueur tout juste inscrit se voyait refuser toute réservation (« Complétez votre
+      // profil »). Même fiche sans club que "skip" : un club déclaré n'est pas un club SportVision.
+      // Sans date de naissance (AddClubForm, compte déjà existant), rien n'est créé, comme avant.
+      const dateNaissanceDeclare = String(body?.dateNaissance || "").trim();
+      if (prenom && nom && dateNaissanceDeclare) {
+        const profil = await assurerFicheSansClub(admin, user.id, prenom, nom, dateNaissanceDeclare);
+        if ("error" in profil) return json({ error: profil.error }, 500);
+      }
 
       // Rapprochement par nom+ville normalisés (migration-connect-v54-declared-clubs-dedup.sql) :
       // sans ça, 3 joueurs qui déclarent indépendamment le même club non partenaire génèrent 3

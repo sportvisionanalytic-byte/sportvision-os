@@ -120,8 +120,17 @@ serve(async (req) => {
     // Résolution du compte acheteur — jamais un doublon (voir clubplus-family-invite, même motif
     // copié tel quel) : une Fonction Postgres ne peut pas appeler l'API Admin Auth, d'où sa
     // présence ici plutôt que dans une RPC SQL.
+    //
+    // 10/09/2026 — le lien de l'e-mail d'invitation menait à `${connectUrl}/`. C'est un lien à
+    // jetons dans le fragment (#access_token=…) que Connect n'ouvre pas à cet endroit : mesuré avec
+    // le même lien (generate_link type=invite), l'acheteur arrivait sur l'écran de connexion, adresse
+    // confirmée mais sans session ni mot de passe, et sans un mot d'explication. /auth/reset lit ce
+    // fragment et fait choisir le mot de passe (vérifié : puis Espace particulier). L'intention
+    // « compte particulier » voyage dans les métadonnées, rejouée par cet écran — un acheteur de
+    // photos n'est pas un joueur (voir lib/signup/pending-onboarding.ts côté Connect).
     const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${connectUrl}/`,
+      redirectTo: `${connectUrl}/auth/reset`,
+      data: { sv_inscription: { action: "skip", accountType: "particulier", email } },
     });
     let buyerUserId: string | null = invited?.user?.id ?? null;
     if (inviteErr) {
