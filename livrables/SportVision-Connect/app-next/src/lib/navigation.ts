@@ -595,28 +595,33 @@ const NAV_CLUB_ADMINISTRATIF: NavEntry[] = [
 // Le president, lui, garde les deux : voir NAV_CLUB_PLUS.
 const NAV_CLUB_CM_SPORTVISION: NavEntry[] = [
   item("dashboard", "Tableau de bord", "dashboard"),
+  // 10/09/2026 — Réorganisé à la demande de Fouka : ce qui décrit le club, puis ce qu'on y
+  // publie, puis ce que SportVision y fait, puis sa mise en place. « Résultats » rejoint le club
+  // (ce sont ses matchs), « Mon profil » passe sur la carte utilisateur en bas de la barre — le
+  // menu ne garde que le travail sur le club. Aucune entrée n'apparaît deux fois.
+  //
+  // (08/09) L'entrée Invitations manquait ICI, la seule navigation que le CM voie réellement :
+  // `filterClubRoleNav` remplace entièrement NAV_CLUB_PLUS et NAV_CLUB_FULLCOM pour `external_cm`.
   section("Le club"),
   item("calendar", "Calendrier", "calendar"),
   item("teams", "Équipes", "teams"),
-  item("users", "Coachs & dirigeants", "users"),
-  // 10/09/2026 — L'entree manquait ICI, la seule navigation que le CM voie reellement. Elle avait
-  // ete ajoutee a NAV_CLUB_PLUS et NAV_CLUB_FULLCOM, que `filterClubRoleNav` remplace entierement
-  // pour le role `external_cm`. La page existait, s'affichait correctement, et n'etait atteignable
-  // que par le bouton de l'ecran Equipes. Trouve en ouvrant l'ecran, pas autrement.
+  item("matchcenter", "Résultats", "matchcenter"),
+  item("users", "Membres", "users"),
   item("users", "Invitations", "invitations"),
   section("Communication"),
-  item("visual_requests" as ModuleKey, "Demandes du club", "requests"),
-  item("newsroom", "Actualités", "newsroom"),
-  item("matchcenter", "Résultats", "matchcenter"),
-  item("sponsors", "Sponsors", "sponsors"),
   item("communication", "Centre communication", "communication"),
+  item("visual_requests" as ModuleKey, "Demandes", "requests"),
   item("content", "Contenus", "content"),
+  item("newsroom", "Actualités", "newsroom"),
+  item("sponsors", "Sponsors", "sponsors"),
   section("SportVision"),
   item("presences", "Présences", "presences"),
   item("messages", "Messagerie", "messages"),
   section("Administration"),
+  // « Paramètres du club » n'a pas d'entrée propre pour le CM : ce qu'il peut régler du club
+  // (identité, branding, communication, droit à l'image) EST l'onboarding. Deux entrées vers les
+  // mêmes champs seraient un doublon.
   item("onboarding", "Onboarding", "onboarding"),
-  item("settings", "Mon profil", "settings/profile"),
 ];
 
 const CLUB_ROLE_NAV: Partial<Record<MembershipRole, NavEntry[]>> = {

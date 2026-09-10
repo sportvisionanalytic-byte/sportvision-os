@@ -135,6 +135,29 @@ begin
   perform pg_temp.note('équipe : sans encadrant, puis invitation préparée', 'aucun → prepare', coalesce(v_avant, '?') || ' → ' || coalesce(v_apres, '?'));
 end $$;
 
+-- ── Le CM note les coordonnées du président (v118) ───────────────────────────
+do $$
+declare v_par text; v_texte text; v_connu boolean;
+begin
+  perform pg_temp.en('eeeeeeee-0000-0000-0000-000000000001');
+  insert into client_organigramme (client_id, role, prenom, nom, email)
+  select portail_client_id, 'Président', 'Zed', 'Président', 'zz-president-contact@example.invalid'
+    from clubs where id = (select club_id from ctx);
+  select derniere_par into v_par from club_onboarding_sections((select club_id from ctx)) where cle = 'responsables';
+  select texte into v_texte from club_journal((select club_id from ctx), 30) where texte like '%coordonnées du président%' limit 1;
+  perform pg_temp.hors();
+  v_connu := club_president_connu((select club_id from ctx));
+  perform pg_temp.note('président : ses coordonnées suffisent à le rendre connu', 'oui', case when v_connu then 'oui' else 'non' end);
+  -- Mesuré sur l'action elle-même : la section a déjà été touchée plus haut par l'invitation
+  -- d'un coach, son auteur seul ne prouverait rien (vu vert à tort le 10/09/2026).
+  perform pg_temp.note('journal : les coordonnées du président, notées par le CM', 'oui',
+    case when exists (select 1 from club_onboarding_events where club_id = (select club_id from ctx)
+                       and action = 'contact_president' and auteur_id = 'eeeeeeee-0000-0000-0000-000000000001')
+         then 'oui' else 'non' end);
+  perform pg_temp.note('responsables : dernière modification par le CM', 'Zoé Cockpit', coalesce(v_par, 'nul'));
+  perform pg_temp.note('fil d''activité : « a noté les coordonnées du président »', 'oui', case when v_texte is not null then 'oui' else 'non' end);
+end $$;
+
 -- ── Le lancement ──────────────────────────────────────────────────────────────
 do $$
 declare v_ok text; v_statut jsonb; v_res jsonb;

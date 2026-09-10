@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Lock, HelpCircle, LogOut, Shield, X } from "lucide-react";
+import { ChevronDown, Lock, HelpCircle, LogOut, Shield, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { filterAffiliatedPlayerNav, filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
@@ -11,6 +11,8 @@ import { formatPlanCredits, PLANS } from "@/lib/plans";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { fetchPlayerClubInfo, type PlayerClubInfo } from "@/lib/data/player/club-info";
+import { fetchTableauDeBordCm, type TableauDeBordCm } from "@/lib/data/club/cockpit";
+import type { NavEntry } from "@/lib/navigation";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { VersionBadge } from "@/components/support/VersionBadge";
 
@@ -64,6 +66,51 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       .then(setClubInfo)
       .catch(() => setClubInfo(null));
   }, [isAffiliatedPlayer, ctx.organization.parentOrganizationId, ctx.organization.id]);
+
+  // Sections repliables (10/09/2026, demande de Fouka : la barre devenait trop longue et
+  // défilait seule). Mémorisées dans le navigateur ; la section de la page ouverte reste toujours
+  // dépliée, pour qu'on ne perde jamais de vue où l'on est.
+  const [repliees, setRepliees] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    try {
+      const brut = window.localStorage.getItem(CLE_SECTIONS_REPLIEES);
+      if (brut) setRepliees(new Set(JSON.parse(brut) as string[]));
+    } catch {
+      /* stockage indisponible : tout reste déplié */
+    }
+  }, []);
+  function basculerSection(label: string) {
+    setRepliees((prev) => {
+      const suivant = new Set(prev);
+      if (suivant.has(label)) suivant.delete(label);
+      else suivant.add(label);
+      try {
+        window.localStorage.setItem(CLE_SECTIONS_REPLIEES, JSON.stringify([...suivant]));
+      } catch {
+        /* rien à faire */
+      }
+      return suivant;
+    });
+  }
+  const groupes = grouperParSection(entries);
+  const estActif = (href: string) => pathname === href || pathname?.startsWith(`${href}/`);
+
+  // La carte du bas, pour le CM SportVision : ce que SportVision fait ce mois-ci dans le club,
+  // pas l'offre commerciale — celle-ci n'est d'ailleurs pas lisible pour lui (facturation fermée
+  // au CM).
+  const estCmSportVision = ctx.organization.type === "club" && ctx.membership.role === "external_cm";
+  const [mois, setMois] = useState<TableauDeBordCm["mois"] | null>(null);
+  useEffect(() => {
+    if (!estCmSportVision) return;
+    let vivant = true;
+    setMois(null);
+    fetchTableauDeBordCm(createClient(), ctx.organization.id)
+      .then((t) => vivant && setMois(t?.mois ?? null))
+      .catch(() => vivant && setMois(null));
+    return () => {
+      vivant = false;
+    };
+  }, [estCmSportVision, ctx.organization.id]);
 
   return (
     <>
@@ -126,35 +173,48 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
         <OrganizationSwitcher />
 
-        <nav className="flex-1 overflow-y-auto px-3.5 pb-2 pt-4">
-          {entries.map((entry, i) => {
-            if (entry.kind === "section") {
-              return (
-                <div
-                  key={`s-${i}`}
-                  className="px-2.5 pb-1.5 pt-3.5 text-[10px] font-extrabold uppercase tracking-[.11em] text-[#5B6B96]"
-                >
-                  {entry.label}
-                </div>
-              );
-            }
-            const active = pathname === entry.href || pathname?.startsWith(`${entry.href}/`);
-            const unlocked = canAccess(ctx, entry.module);
+        <nav className="flex-1 overflow-y-auto px-3.5 pb-2 pt-3">
+          {groupes.map((g, gi) => {
+            const contientActif = g.items.some((it) => estActif(it.href));
+            const replie = g.label !== null && repliees.has(g.label) && !contientActif;
             return (
-              <Link
-                key={entry.href}
-                href={entry.href}
-                onClick={onClose}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13px] transition-colors duration-sv",
-                  active
-                    ? "bg-gradient-to-r from-[rgba(36,75,255,.34)] to-[rgba(138,46,255,.28)] font-bold text-white"
-                    : "font-semibold text-[#95A4CC] hover:bg-white/[.07] hover:text-white",
+              <div key={g.label ?? `g-${gi}`}>
+                {g.label !== null && (
+                  <button
+                    type="button"
+                    onClick={() => basculerSection(g.label as string)}
+                    aria-expanded={!replie}
+                    className="flex w-full items-center justify-between px-2.5 pb-1.5 pt-3.5 text-[10px] font-extrabold uppercase tracking-[.11em] text-[#5B6B96] hover:text-[#95A4CC]"
+                  >
+                    {g.label}
+                    <ChevronDown
+                      className={cn("h-3 w-3 transition-transform duration-sv", replie && "-rotate-90")}
+                      aria-hidden
+                    />
+                  </button>
                 )}
-              >
-                <span className="flex-1">{entry.label}</span>
-                {!unlocked && <Lock className="h-3.5 w-3.5 flex-none text-[#5B6B96]" aria-hidden />}
-              </Link>
+                {!replie &&
+                  g.items.map((entry) => {
+                    const active = estActif(entry.href);
+                    const unlocked = canAccess(ctx, entry.module);
+                    return (
+                      <Link
+                        key={entry.href}
+                        href={entry.href}
+                        onClick={onClose}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13px] transition-colors duration-sv",
+                          active
+                            ? "bg-gradient-to-r from-[rgba(36,75,255,.34)] to-[rgba(138,46,255,.28)] font-bold text-white"
+                            : "font-semibold text-[#95A4CC] hover:bg-white/[.07] hover:text-white",
+                        )}
+                      >
+                        <span className="flex-1">{entry.label}</span>
+                        {!unlocked && <Lock className="h-3.5 w-3.5 flex-none text-[#5B6B96]" aria-hidden />}
+                      </Link>
+                    );
+                  })}
+              </div>
             );
           })}
         </nav>
@@ -205,6 +265,36 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 )}
               </div>
             </div>
+          ) : estCmSportVision ? (
+            <div className="rounded-[14px] border border-white/10 bg-gradient-to-br from-[rgba(36,75,255,.28)] to-[rgba(138,46,255,.24)] p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11.5px] font-extrabold uppercase tracking-[.05em] text-white">{plan.name}</span>
+                <span className="rounded-full bg-[rgba(18,183,106,.2)] px-1.5 py-0.5 text-[10px] font-extrabold text-[#7BE8C3]">
+                  ACTIF
+                </span>
+              </div>
+              {mois && (
+                <div className="mt-2 grid grid-cols-3 gap-1 text-center">
+                  {[
+                    { n: mois.presences_prevues, lb: "prévues" },
+                    { n: mois.presences_realisees, lb: "réalisées" },
+                    { n: mois.contenus_produits, lb: "contenus" },
+                  ].map((c) => (
+                    <div key={c.lb} className="rounded-lg bg-white/[.06] py-1.5">
+                      <div className="text-[14px] font-extrabold leading-none text-white tabular-nums">{c.n}</div>
+                      <div className="mt-0.5 text-[10px] font-semibold text-[#C6D3F0]">{c.lb}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Link
+                href="/presences"
+                onClick={onClose}
+                className="mt-2 block text-center text-[11.5px] font-bold text-[#C6D3F0] hover:text-white"
+              >
+                Ce mois · Voir l&apos;accompagnement →
+              </Link>
+            </div>
           ) : (
             <div className="rounded-[14px] border border-white/10 bg-gradient-to-br from-[rgba(36,75,255,.28)] to-[rgba(138,46,255,.24)] p-3.5">
               <div className="flex items-center justify-between">
@@ -240,14 +330,14 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-violet to-brand-blue-electric text-[11px] font-extrabold text-white">
               {initials}
             </span>
-            <span className="min-w-0 flex-1">
+            {/* Le nom mène au profil (10/09/2026) : « Mon profil » a quitté le menu du CM, il vit
+                ici, là où l'on cherche ses propres réglages. */}
+            <Link href="/settings/profile" onClick={onClose} className="min-w-0 flex-1 rounded-md hover:opacity-90" title="Mon profil">
               <span className="block truncate text-[12.5px] font-bold text-white">
                 {ctx.user.firstName} {ctx.user.lastName}
               </span>
-              {ctx.user.jobTitle && (
-                <span className="block truncate text-[11px] text-[#7E8FA5]">{ctx.user.jobTitle}</span>
-              )}
-            </span>
+              <span className="block truncate text-[11px] text-[#7E8FA5]">{ctx.user.jobTitle || "Mon profil"}</span>
+            </Link>
             {/* h-9/w-9 (36px, convention Header.tsx) au lieu de 26px — cible tactile trop petite
                 pour un bouton isolé, trouvé à l'audit mobile 375-430px. */}
             <button
@@ -264,4 +354,19 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     </aside>
     </>
   );
+}
+
+const CLE_SECTIONS_REPLIEES = "sv-nav-sections-repliees";
+
+type NavItem = Extract<NavEntry, { kind: "item" }>;
+
+/** Regroupe le menu par section. Les entrées avant la première section (le tableau de bord)
+ *  forment un groupe sans titre, jamais repliable. */
+function grouperParSection(entries: NavEntry[]): { label: string | null; items: NavItem[] }[] {
+  const groupes: { label: string | null; items: NavItem[] }[] = [{ label: null, items: [] }];
+  for (const e of entries) {
+    if (e.kind === "section") groupes.push({ label: e.label, items: [] });
+    else groupes[groupes.length - 1]?.items.push(e);
+  }
+  return groupes.filter((g) => g.items.length > 0);
 }

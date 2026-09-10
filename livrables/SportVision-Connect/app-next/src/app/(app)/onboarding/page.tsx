@@ -10,7 +10,33 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { updateClubOrganization, uploadClubLogo } from "@/lib/data/club/organization";
-import { fetchClubMembers, inviteClubMember } from "@/lib/data/club/users";
+import { fetchClubMembers } from "@/lib/data/club/users";
+import {
+  fetchClubInvitations,
+  messageErreurInvitation,
+  preparerInvitation,
+  STATUT_INVITATION_LABEL,
+  STATUT_INVITATION_TONE,
+  type InvitationClub,
+} from "@/lib/data/club/invitations";
+import { resolveClubPortailClientId } from "@/lib/data/club/portail-link";
+import {
+  ENCADRANT_LIBELLE,
+  enregistrerContactPresident,
+  fetchContactPresident,
+  fetchEquipesEtat,
+  fetchInvitationsPreparees,
+  fetchSectionsOnboarding,
+  fetchStatutLancement,
+  lancerLeClub,
+  type ContactPresident,
+  type EtatEquipe,
+  type EtatSection,
+  type ResultatLancement,
+  type SectionOnboarding,
+  type StatutLancementClub,
+} from "@/lib/data/club/cockpit";
+import { InviterEncadrantModal } from "@/components/teams/InviterEncadrantModal";
 import { ROLE_LABELS, type OrgUser } from "@/lib/types/settings";
 import { fetchClubTeams, createClubTeam } from "@/lib/data/club/teams";
 import {
@@ -83,8 +109,7 @@ export default function OnboardingPage() {
   const { organization, membership } = ctx;
   // Le CM affilie remplit la mise en place du club a la place du president : c'est tout l'objet
   // de son affectation. Deux droits restent hors de sa portee, et ni l'un ni l'autre ne repose
-  // sur cet ecran — la base refuse le SIRET, l'edge function refuse l'invitation. On ne montre
-  // simplement pas des commandes qui ne pourraient qu'echouer.
+  // sur cet ecran — la base refuse le SIRET, et le president ne se prepare que par l'Owner (v116).
   const estCmAffilie = membership.role === "external_cm";
   // `president` ajouté le 10/09/2026 (migration v114) : il administre son club, informations
   // administratives et légales comprises — décision explicite de Fouka pour le SIRET. Le CM, lui,
@@ -92,32 +117,52 @@ export default function OnboardingPage() {
   const estAdministrateur = membership.role === "admin" || membership.role === "president";
   const canEdit = organization.type === "club" && (estAdministrateur || estCmAffilie);
   const canEditLegal = organization.type === "club" && estAdministrateur;
-  // 10/09/2026 — Le CM affilié prépare le club : `canEdit` le reconnaissait déjà (`estCmAffilie`),
-  // mais l'invitation lui restait fermée. Or préparer un club sans pouvoir inviter son encadrement
-  // n'a pas de sens, et la base l'y autorise (peut_operer_club).
   const canInvite = organization.type === "club" && (estAdministrateur || estCmAffilie);
 
   const [completion, setCompletion] = useState<OnboardingCompletion | null>(null);
   const [statut, setStatut] = useState<string | null>(null);
+  const [sections, setSections] = useState<SectionOnboarding[] | null>(null);
+  const [lancement, setLancement] = useState<StatutLancementClub | null>(null);
+  const [active, setActive] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   async function refreshCompletion() {
     const supabase = createClient();
-    const [c, p] = await Promise.all([
+    const [c, p, sec, lan] = await Promise.allSettled([
       fetchOnboardingCompletion(supabase, organization.id),
       fetchOnboardingProgress(supabase, organization.id),
+      fetchSectionsOnboarding(supabase, organization.id),
+      fetchStatutLancement(supabase, organization.id),
     ]);
-    setCompletion(c);
-    setStatut(p?.statut ?? "not_started");
+    if (c.status === "fulfilled") setCompletion(c.value);
+    setStatut(p.status === "fulfilled" ? p.value?.statut ?? "not_started" : "not_started");
+    if (sec.status === "fulfilled") setSections(sec.value);
+    if (lan.status === "fulfilled") setLancement(lan.value);
+    return sec.status === "fulfilled" ? sec.value : null;
   }
 
   useEffect(() => {
     if (organization.type !== "club") return;
     const supabase = createClient();
+    setSections(null);
+    setLancement(null);
     ensureOnboardingStarted(supabase, organization.id)
       .catch(() => {})
-      .finally(() => refreshCompletion().catch(() => {}));
+      .finally(() =>
+        refreshCompletion()
+          .then((sec) => {
+            // La section ouverte : celle demandée dans l'adresse (un lien « Résoudre » du
+            // tableau de bord), sinon la première obligatoire encore incomplète.
+            const demandee = new URLSearchParams(window.location.search).get("section");
+            const premiere =
+              sec?.find((x) => x.obligatoire && x.etat === "incomplet")?.cle ??
+              sec?.find((x) => x.etat === "incomplet")?.cle ??
+              "identite";
+            setActive(demandee ?? premiere);
+          })
+          .catch(() => setActive("identite")),
+      );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization.id]);
 
@@ -129,10 +174,17 @@ export default function OnboardingPage() {
     );
   }
 
-  // Redirige vers le tableau de bord après envoi (05/09/2026, retour Fouka) : rester sur
-  // /onboarding après "Envoyer à SportVision" donnait l'impression que le clic n'avait rien fait,
-  // alors que submitOnboarding() avait bien réussi — même symptôme que les boutons "Enregistrer"
-  // des sections, mais ici la cause est un vrai manque de redirection, pas un bug d'écriture.
+  function ouvrir(cle: string) {
+    setActive(cle);
+    try {
+      window.history.replaceState(null, "", `?section=${cle}`);
+    } catch {
+      /* l'adresse ne suit pas : sans conséquence */
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // Redirige vers le tableau de bord après envoi (05/09/2026, retour Fouka).
   async function handleSubmit() {
     setSubmitting(true);
     setSubmitError(null);
@@ -145,93 +197,445 @@ export default function OnboardingPage() {
     }
   }
 
-  const sections: { key: keyof OnboardingCompletion; label: string }[] = [
-    { key: "identite", label: "Identité" },
-    { key: "responsables", label: "Responsables" },
-    { key: "equipes", label: "Équipes" },
-    { key: "entrainements", label: "Entraînements" },
-    { key: "calendrier", label: "Calendrier" },
-    { key: "branding", label: "Branding" },
-    { key: "sponsors", label: "Sponsors" },
-    { key: "communication", label: "Communication" },
-    { key: "droit_image", label: "Droit à l'image" },
-  ];
+  const enPreparation = lancement ? lancement.statut !== "actif" : true;
+  const ordre = sections?.map((x) => x.cle) ?? [];
+  const index = active ? ordre.indexOf(active) : -1;
+  const suivante = index >= 0 && index < ordre.length - 1 ? sections?.[index + 1] : undefined;
+  const precedente = index > 0 ? sections?.[index - 1] : undefined;
+  const refresh = () => {
+    refreshCompletion().catch(() => {});
+  };
+
+  const carte = (() => {
+    switch (active) {
+      case "identite":
+        return <IdentiteCard clubId={organization.id} address={organization.address ?? ""} siret={organization.siret ?? ""} canEdit={canEdit} canEditLegal={canEditLegal} onSaved={refresh} />;
+      case "responsables":
+        return <ResponsablesCard clubId={organization.id} canEdit={canEdit} canInvite={canInvite} estCm={estCmAffilie} enPreparation={enPreparation} onSaved={refresh} />;
+      case "equipes":
+      case "entrainements":
+        return <EquipesCard clubId={organization.id} canEdit={canEdit} canInvite={canInvite} enPreparation={enPreparation} onSaved={refresh} />;
+      case "calendrier":
+        return <CalendrierCard clubId={organization.id} canEdit={canEdit} onSaved={refresh} />;
+      case "branding":
+        return (
+          <BrandingCard
+            clubId={organization.id}
+            logoUrl={organization.logoUrl ?? null}
+            colors={[organization.brandColors?.[0] ?? "#4F7DFF", organization.brandColors?.[1] ?? "#A855F7"]}
+            canEdit={canEdit}
+            onSaved={refresh}
+          />
+        );
+      case "sponsors":
+        return <SponsorsCard clubId={organization.id} canEdit={canEdit} onSaved={refresh} />;
+      case "communication":
+        return <CommunicationCard clubId={organization.id} canEdit={canEdit} onSaved={refresh} />;
+      case "droit_image":
+        return <DroitImageCard clubId={organization.id} canEdit={canEdit} onSaved={refresh} />;
+      case "lancement":
+        return <LancementCard clubId={organization.id} lancement={lancement} peutLancer={estCmAffilie || estAdministrateur} onOuvrir={ouvrir} onLance={refresh} />;
+      default:
+        return null;
+    }
+  })();
 
   return (
-    <div className="flex max-w-2xl flex-col gap-5">
-      <Card className="flex flex-col gap-3.5 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="text-[15px] font-extrabold">Onboarding SportVision</div>
-            <p className="mt-0.5 text-[12.5px] text-text-soft">
-              Les informations ci-dessous alimentent directement SportVision OS — rien à renvoyer par e-mail ou WhatsApp.
-            </p>
-          </div>
-          {statut === "validated" && <Badge tone="success">Validé</Badge>}
-          {statut === "submitted" && <Badge tone="info">Envoyé, en vérification</Badge>}
-          {statut === "needs_information" && <Badge tone="warning">Informations manquantes</Badge>}
-        </div>
-        {completion && (
-          <>
-            <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet transition-[width] duration-300"
-                style={{ width: `${completion.pourcentage}%` }}
-              />
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {sections.map((s) => {
-                const done = Boolean(completion[s.key]);
-                return (
-                  <span
-                    key={s.key}
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold",
-                      done ? "bg-success-bg text-success-fg" : "bg-surface-sunken text-text-faint",
-                    )}
-                  >
-                    {done ? "✓" : "○"} {s.label}
-                  </span>
-                );
-              })}
-            </div>
-            <div className="text-[12px] text-text-soft">
-              {completion.sections_completees} sur {completion.sections_total} sections complétées ({completion.pourcentage}%)
-            </div>
-          </>
-        )}
-      </Card>
-
-      <IdentiteCard clubId={organization.id} address={organization.address ?? ""} siret={organization.siret ?? ""} canEdit={canEdit} canEditLegal={canEditLegal} onSaved={refreshCompletion} />
-      <ResponsablesCard clubId={organization.id} canEdit={canEdit} canInvite={canInvite} onSaved={refreshCompletion} />
-      <EquipesCard clubId={organization.id} canEdit={canEdit} canInvite={canInvite} onSaved={refreshCompletion} />
-      <CalendrierCard clubId={organization.id} canEdit={canEdit} onSaved={refreshCompletion} />
-      <BrandingCard
-        clubId={organization.id}
-        logoUrl={organization.logoUrl ?? null}
-        colors={[organization.brandColors?.[0] ?? "#4F7DFF", organization.brandColors?.[1] ?? "#A855F7"]}
-        canEdit={canEdit}
-        onSaved={refreshCompletion}
+    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <OnboardingChecklist
+        sections={sections}
+        completion={completion}
+        lancement={lancement}
+        statutEnvoi={statut}
+        active={active}
+        afficherLancement={estCmAffilie}
+        onOuvrir={ouvrir}
       />
-      <SponsorsCard clubId={organization.id} canEdit={canEdit} onSaved={refreshCompletion} />
-      <CommunicationCard clubId={organization.id} canEdit={canEdit} onSaved={refreshCompletion} />
-      <DroitImageCard clubId={organization.id} canEdit={canEdit} onSaved={refreshCompletion} />
 
-      {canEdit && (
-        <Card className="flex flex-col gap-3 p-5">
-          <div className="text-[13px] text-text-soft">
-            Vous pouvez envoyer dès maintenant même si tout n&apos;est pas complété — SportVision verra ce qu&apos;il reste à
-            préciser et pourra vous relancer, ou compléter certaines sections avec vous.
+      <div className="flex min-w-0 flex-col gap-4">
+        {active === null ? <Card className="p-8 text-center text-[13px] text-text-soft">Chargement…</Card> : carte}
+
+        {active !== null && active !== "lancement" && sections && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {precedente ? (
+              <Button variant="secondary" className="h-9 px-4 text-[12.5px]" onClick={() => ouvrir(precedente.cle)}>
+                ← {precedente.libelle}
+              </Button>
+            ) : (
+              <span />
+            )}
+            {suivante ? (
+              <Button className="h-9 px-4 text-[12.5px]" onClick={() => ouvrir(suivante.cle)}>
+                Section suivante : {suivante.libelle} →
+              </Button>
+            ) : estCmAffilie ? (
+              <Button className="h-9 px-4 text-[12.5px]" onClick={() => ouvrir("lancement")}>
+                Lancement du club →
+              </Button>
+            ) : null}
           </div>
-          {submitError && <p className="text-[12.5px] font-bold text-danger-fg">{submitError}</p>}
-          <Button variant="primary" className="self-start" loading={submitting} onClick={handleSubmit} disabled={statut === "validated"}>
-            {statut === "submitted" || statut === "needs_information" ? "Renvoyer à SportVision" : "Envoyer à SportVision"}
-          </Button>
-        </Card>
-      )}
+        )}
+
+        {/* L'envoi à SportVision reste le geste du club qui s'onboarde seul. Pour le CM, il n'a pas
+            de sens : le CM EST SportVision. Son geste final, c'est le lancement. */}
+        {canEdit && !estCmAffilie && (
+          <Card className="flex flex-col gap-3 p-5">
+            <div className="text-[13px] text-text-soft">
+              Vous pouvez envoyer dès maintenant même si tout n&apos;est pas complété — SportVision verra ce qu&apos;il reste à
+              préciser et pourra vous relancer, ou compléter certaines sections avec vous.
+            </div>
+            {submitError && <p className="text-[12.5px] font-bold text-danger-fg">{submitError}</p>}
+            <Button variant="primary" className="self-start" loading={submitting} onClick={handleSubmit} disabled={statut === "validated"}>
+              {statut === "submitted" || statut === "needs_information" ? "Renvoyer à SportVision" : "Envoyer à SportVision"}
+            </Button>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
+
+// ── La checklist ──
+
+const ETAT_SECTION: Record<EtatSection, { icone: string; classe: string; libelle: string }> = {
+  termine: { icone: "✓", classe: "bg-success-bg text-success-fg", libelle: "Terminé" },
+  attention: { icone: "!", classe: "bg-warning-bg text-warning-fg", libelle: "Attention" },
+  incomplet: { icone: "○", classe: "bg-surface-sunken text-text-faint", libelle: "Incomplet" },
+};
+
+const STATUT_LANCEMENT_LB: Record<StatutLancementClub["statut"], { libelle: string; tone: "warning" | "info" | "success" }> = {
+  en_preparation: { libelle: "En préparation", tone: "warning" },
+  pret: { libelle: "Prêt à être lancé", tone: "info" },
+  actif: { libelle: "Actif", tone: "success" },
+};
+
+function modifieLe(iso: string | null, par: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const quand =
+    d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) +
+    " à " +
+    d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return `Modifié le ${quand}${par ? ` par ${par}` : ""}`;
+}
+
+function OnboardingChecklist({
+  sections,
+  completion,
+  lancement,
+  statutEnvoi,
+  active,
+  afficherLancement,
+  onOuvrir,
+}: {
+  sections: SectionOnboarding[] | null;
+  completion: OnboardingCompletion | null;
+  lancement: StatutLancementClub | null;
+  statutEnvoi: string | null;
+  active: string | null;
+  afficherLancement: boolean;
+  onOuvrir: (cle: string) => void;
+}) {
+  // Sans la lecture détaillée (un rôle qui n'opère pas le club), on garde le résumé d'avant.
+  if (sections === null || sections.length === 0) {
+    return (
+      <Card className="flex flex-col gap-3 p-5 lg:sticky lg:top-4">
+        <div className="text-[15px] font-extrabold">Configuration du club</div>
+        {completion ? (
+          <>
+            <div className="text-[12.5px] text-text-soft">
+              {completion.sections_completees} / {completion.sections_total} sections terminées · {completion.pourcentage} %
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
+              <div className="h-full rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet" style={{ width: `${completion.pourcentage}%` }} />
+            </div>
+          </>
+        ) : (
+          <div className="text-[12.5px] text-text-soft">Chargement…</div>
+        )}
+      </Card>
+    );
+  }
+
+  const faites = sections.filter((x) => x.etat !== "incomplet").length;
+  const pourcentage = Math.round((faites / sections.length) * 100);
+  const groupes: { titre: string; liste: SectionOnboarding[] }[] = [
+    { titre: "Obligatoire avant lancement", liste: sections.filter((x) => x.obligatoire) },
+    { titre: "Optionnel", liste: sections.filter((x) => !x.obligatoire) },
+  ];
+  const statut = lancement ? STATUT_LANCEMENT_LB[lancement.statut] : null;
+
+  return (
+    <Card className="flex flex-col p-0 lg:sticky lg:top-4">
+      <div className="flex flex-col gap-2.5 border-b border-border px-4 py-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[15px] font-extrabold">Configuration du club</span>
+          {statut && <Badge tone={statut.tone}>{statut.libelle}</Badge>}
+        </div>
+        <div className="flex items-baseline justify-between text-[12.5px] text-text-soft">
+          <span>
+            <b className="tabular-nums text-text">
+              {faites} / {sections.length}
+            </b>{" "}
+            sections terminées
+          </span>
+          <b className="tabular-nums text-text">{pourcentage} %</b>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-surface-sunken" aria-hidden>
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet transition-[width] duration-300"
+            style={{ width: `${pourcentage}%` }}
+          />
+        </div>
+        {statutEnvoi === "submitted" && (
+          <Badge tone="info" className="self-start">
+            Envoyé à SportVision
+          </Badge>
+        )}
+        {statutEnvoi === "needs_information" && (
+          <Badge tone="warning" className="self-start">
+            Informations demandées
+          </Badge>
+        )}
+      </div>
+
+      {groupes.map((g) => (
+        <div key={g.titre} className="border-b border-border py-1.5 last:border-0">
+          <div className="px-4 pb-1 pt-2 text-[10.5px] font-extrabold uppercase tracking-[.09em] text-text-faint">{g.titre}</div>
+          {g.liste.map((x) => {
+            const etat = ETAT_SECTION[x.etat];
+            const modif = modifieLe(x.derniere_at, x.derniere_par);
+            return (
+              <button
+                key={x.cle}
+                type="button"
+                onClick={() => onOuvrir(x.cle)}
+                aria-current={active === x.cle ? "step" : undefined}
+                className={cn(
+                  "flex w-full items-start gap-2.5 px-4 py-2 text-left transition-colors",
+                  active === x.cle ? "bg-accent-bg" : "hover:bg-row-hover",
+                )}
+              >
+                <span
+                  aria-label={etat.libelle}
+                  className={cn("mt-px flex h-5 w-5 flex-none items-center justify-center rounded-full text-[11px] font-extrabold", etat.classe)}
+                >
+                  {etat.icone}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-bold">{x.libelle}</span>
+                  {x.detail && <span className="block text-[11.5px] text-text-soft">{x.detail}</span>}
+                  {modif && <span className="block text-[11px] text-text-faint">{modif}</span>}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ))}
+
+      {afficherLancement && lancement && (
+        <button
+          type="button"
+          onClick={() => onOuvrir("lancement")}
+          aria-current={active === "lancement" ? "step" : undefined}
+          className={cn(
+            "m-3 rounded-sv px-4 py-3 text-left transition-colors",
+            lancement.statut === "pret"
+              ? "bg-gradient-to-r from-brand-blue to-brand-violet text-white"
+              : active === "lancement"
+                ? "bg-accent-bg"
+                : "bg-surface-sunken hover:bg-row-hover",
+          )}
+        >
+          <span className="block text-[13px] font-extrabold">
+            {lancement.statut === "actif" ? "Club lancé" : lancement.statut === "pret" ? "Lancer le club" : "Lancement du club"}
+          </span>
+          <span className={cn("block text-[11.5px]", lancement.statut === "pret" ? "text-white/85" : "text-text-soft")}>
+            {lancement.statut === "actif"
+              ? "Les invitations sont parties."
+              : lancement.statut === "pret"
+                ? `${lancement.invitations_preparees} invitation${lancement.invitations_preparees > 1 ? "s" : ""} prête${lancement.invitations_preparees > 1 ? "s" : ""} à partir`
+                : `Il manque : ${lancement.sections_manquantes.join(", ")}`}
+          </span>
+        </button>
+      )}
+    </Card>
+  );
+}
+
+// ── Le lancement ──
+
+type InvitationPreparee = Awaited<ReturnType<typeof fetchInvitationsPreparees>>[number];
+
+function LancementCard({
+  clubId,
+  lancement,
+  peutLancer,
+  onOuvrir,
+  onLance,
+}: {
+  clubId: string;
+  lancement: StatutLancementClub | null;
+  peutLancer: boolean;
+  onOuvrir: (cle: string) => void;
+  onLance: () => void;
+}) {
+  const [invitations, setInvitations] = useState<InvitationPreparee[] | null>(null);
+  const [confirmation, setConfirmation] = useState(false);
+  const [enCours, setEnCours] = useState(false);
+  const [resultat, setResultat] = useState<ResultatLancement | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchInvitationsPreparees(createClient(), clubId)
+      .then(setInvitations)
+      .catch(() => setInvitations([]));
+  }, [clubId, lancement?.statut]);
+
+  async function lancer() {
+    setEnCours(true);
+    setErreur(null);
+    try {
+      setResultat(await lancerLeClub(createClient(), clubId));
+      setConfirmation(false);
+      onLance();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Le lancement a échoué.");
+    } finally {
+      setEnCours(false);
+    }
+  }
+
+  if (!lancement) return <Card className="p-8 text-center text-[13px] text-text-soft">Chargement…</Card>;
+
+  const nb = invitations?.length ?? lancement.invitations_preparees;
+
+  return (
+    <Card className="flex flex-col gap-4 p-5">
+      <SectionHeader
+        title="Lancement du club"
+        description="Tant que le club n'est pas lancé, rien ne part : vous préparez les équipes, les responsables et les invitations en toute tranquillité."
+      />
+
+      {resultat && (
+        <div className="rounded-xl border border-success-fg/30 bg-success-bg px-4 py-3 text-[13px]">
+          <div className="font-bold text-success-fg">Club lancé.</div>
+          <div className="mt-0.5 text-text-soft">
+            {resultat.envoyees.length} invitation{resultat.envoyees.length > 1 ? "s" : ""} envoyée
+            {resultat.envoyees.length > 1 ? "s" : ""}.
+          </div>
+          {resultat.echecs.length > 0 && (
+            <div className="mt-2 text-danger-fg">
+              <div className="font-bold">
+                {resultat.echecs.length} envoi{resultat.echecs.length > 1 ? "s" : ""} en échec, à relancer depuis « Invitations » :
+              </div>
+              <ul className="mt-1 list-disc pl-5 text-[12.5px]">
+                {resultat.echecs.map((x) => (
+                  <li key={x.email}>
+                    {x.email} : {x.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {lancement.statut === "actif" && !resultat && (
+        <p className="text-[13px] text-text-soft">
+          Club lancé le{" "}
+          {new Date(lancement.lance_at ?? "").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+          {lancement.lance_par ? ` par ${lancement.lance_par}` : ""}. Les nouvelles invitations s&apos;envoient désormais une par une,
+          depuis « Invitations ».
+        </p>
+      )}
+
+      {lancement.statut === "en_preparation" && (
+        <div className="flex flex-col gap-2">
+          <p className="text-[13px] font-semibold">Avant de lancer, il reste à compléter :</p>
+          <div className="flex flex-wrap gap-2">
+            {lancement.sections_manquantes.map((libelle) => (
+              <Button key={libelle} variant="secondary" className="h-8 px-3 text-[12px]" onClick={() => onOuvrir(CLE_PAR_LIBELLE[libelle] ?? "identite")}>
+                {libelle} →
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {lancement.statut !== "actif" && (
+        <div className="flex flex-col gap-2">
+          <p className="text-[13px] font-semibold">
+            {nb === 0 ? "Aucune invitation préparée pour l'instant." : `${nb} invitation${nb > 1 ? "s partiront" : " partira"} au lancement :`}
+          </p>
+          {invitations && invitations.length > 0 && (
+            <ul className="divide-y divide-divider rounded-xl border border-border-strong px-3.5">
+              {invitations.map((i) => (
+                <li key={i.id} className="flex flex-wrap items-center gap-2 py-2 text-[12.5px]">
+                  <span className="min-w-0 flex-1 font-semibold">{[i.prenom, i.nom].filter(Boolean).join(" ") || i.email}</span>
+                  <span className="text-text-soft">{i.email}</span>
+                  <Badge tone="neutral">
+                    {ROLE_INVITATION_LB[i.role] ?? i.role}
+                    {i.teams.length > 0 ? ` · ${i.teams.join(", ")}` : ""}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {lancement.statut === "pret" && peutLancer && !confirmation && !resultat && (
+        <Button className="self-start" onClick={() => setConfirmation(true)}>
+          Lancer le club
+        </Button>
+      )}
+
+      {confirmation && (
+        <div className="flex flex-col gap-3 rounded-xl border border-brand-violet/40 bg-accent-bg p-4">
+          <p className="text-[13px] font-semibold">
+            Cette action permettra d&apos;envoyer les invitations préparées aux coachs et membres concernés
+            {nb > 0 ? ` (${nb} e-mail${nb > 1 ? "s" : ""})` : ""}. Le club passera en statut « Actif ».
+          </p>
+          {erreur && <p className="text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
+          <div className="flex gap-2">
+            <Button loading={enCours} onClick={lancer}>
+              Confirmer le lancement
+            </Button>
+            <Button variant="secondary" disabled={enCours} onClick={() => setConfirmation(false)}>
+              Annuler
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+const CLE_PAR_LIBELLE: Record<string, string> = {
+  "Identité": "identite",
+  "Responsables": "responsables",
+  "Équipes": "equipes",
+  "Entraînements": "entrainements",
+  "Calendrier": "calendrier",
+  "Branding": "branding",
+  "Sponsors": "sponsors",
+  "Communication": "communication",
+  "Droit à l'image": "droit_image",
+};
+
+const ROLE_INVITATION_LB: Record<string, string> = {
+  president: "Président",
+  secretaire: "Secrétaire",
+  tresorier: "Trésorier",
+  directeur_sportif: "Directeur sportif",
+  comm: "Communication",
+  membre_bureau: "Bureau",
+  administratif: "Administratif",
+  coach: "Coach",
+  resp_equipe: "Responsable d'équipe",
+};
 
 const fieldClass =
   "h-11 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]";
@@ -299,7 +703,7 @@ function IdentiteCard({
 
   return (
     <Card className="flex flex-col gap-4 p-5">
-      <SectionHeader title="1. Identité du club" description="Nom, ville et discipline : contactez votre conseiller SportVision pour les corriger." />
+      <SectionHeader title="Identité du club" description="Nom, ville et discipline : contactez votre conseiller SportVision pour les corriger." />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Adresse" full>
           <input value={adresse} onChange={(e) => setAdresse(e.target.value)} disabled={!canEdit} placeholder="Non renseignée" className={fieldClass} />
@@ -328,118 +732,223 @@ function IdentiteCard({
 
 // ── Responsables ──
 
-const CLUB_INVITE_ROLES: MembershipRole[] = [
-  "president",
-  "secretary",
-  "treasurer",
-  "sports_director",
-  "communication_manager",
-  "team_manager",
-  "coach",
-  "board_member",
-  "admin_staff",
-];
+// Les dirigeants qu'on peut préparer depuis l'onboarding. Les valeurs sont celles de
+// `club_invitations.role`. Le président n'y figure que pour qui peut le nommer (l'Owner) : pour le
+// CM, la base le refuse (v116), et l'écran lui propose à la place de noter ses coordonnées.
+const ROLES_DIRIGEANTS = [
+  { value: "secretaire", label: "Secrétaire" },
+  { value: "tresorier", label: "Trésorier" },
+  { value: "directeur_sportif", label: "Directeur sportif" },
+  { value: "comm", label: "Responsable communication" },
+  { value: "membre_bureau", label: "Membre du bureau" },
+  { value: "administratif", label: "Administratif" },
+] as const;
+const ROLE_PRESIDENT = { value: "president", label: "Président" } as const;
+const ROLES_EQUIPE = new Set(["coach", "resp_equipe"]);
 
-function ResponsablesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; canEdit: boolean; canInvite: boolean; onSaved: () => void }) {
+function ResponsablesCard({
+  clubId,
+  canEdit,
+  canInvite,
+  estCm,
+  enPreparation,
+  onSaved,
+}: {
+  clubId: string;
+  canEdit: boolean;
+  canInvite: boolean;
+  estCm: boolean;
+  enPreparation: boolean;
+  onSaved: () => void;
+}) {
   const [members, setMembers] = useState<OrgUser[] | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState<MembershipRole>("president");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [invitations, setInvitations] = useState<InvitationClub[]>([]);
+  const [modaleOuverte, setModaleOuverte] = useState(false);
+  const [portailId, setPortailId] = useState<string | null | undefined>(undefined);
+  const [contact, setContact] = useState<ContactPresident | null>(null);
+  const [formContact, setFormContact] = useState<Omit<ContactPresident, "id"> | null>(null);
+  const [savingContact, setSavingContact] = useState(false);
+  const [errorContact, setErrorContact] = useState<string | null>(null);
 
   function reload() {
-    fetchClubMembers(createClient(), clubId).then(setMembers).catch(() => setMembers([]));
+    const supabase = createClient();
+    fetchClubMembers(supabase, clubId).then(setMembers).catch(() => setMembers([]));
+    fetchClubInvitations(supabase, clubId).then(setInvitations).catch(() => setInvitations([]));
   }
-  useEffect(reload, [clubId]);
+  useEffect(() => {
+    reload();
+    const supabase = createClient();
+    resolveClubPortailClientId(supabase, clubId)
+      .then((id) => {
+        setPortailId(id);
+        if (id) fetchContactPresident(supabase, id).then(setContact).catch(() => setContact(null));
+      })
+      .catch(() => setPortailId(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clubId]);
 
-  async function handleInvite() {
-    if (!email.trim() || !firstName.trim() || !lastName.trim()) {
-      setError("Prénom, nom et e-mail sont obligatoires.");
+  async function enregistrerContact() {
+    if (!formContact || !portailId) return;
+    if (!formContact.prenom?.trim() || !formContact.nom?.trim()) {
+      setErrorContact("Prénom et nom du président sont obligatoires.");
       return;
     }
-    setSending(true);
-    setError(null);
+    setSavingContact(true);
+    setErrorContact(null);
     try {
-      await inviteClubMember(createClient(), clubId, { email: email.trim(), firstName: firstName.trim(), lastName: lastName.trim(), role });
-      setEmail("");
-      setFirstName("");
-      setLastName("");
-      setShowForm(false);
-      reload();
+      await enregistrerContactPresident(createClient(), portailId, contact?.id ?? null, formContact);
+      setContact(await fetchContactPresident(createClient(), portailId));
+      setFormContact(null);
       onSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible d'envoyer l'invitation.");
+      setErrorContact(e instanceof Error ? e.message : "Enregistrement impossible.");
     } finally {
-      setSending(false);
+      setSavingContact(false);
     }
   }
 
-  const active = (members ?? []).filter((m) => m.status !== "disabled");
+  const actifs = (members ?? []).filter((m) => m.status !== "disabled");
+  const presidentMembre = actifs.find((m) => m.role === "president");
+  const invitationPresident = invitations.find((i) => i.role === "president" && (i.statut === "preparee" || i.statut === "envoyee"));
+  const invitationsDirigeants = invitations.filter(
+    (i) => !ROLES_EQUIPE.has(i.role) && i.role !== "president" && (i.statut === "preparee" || i.statut === "envoyee"),
+  );
+  const dirigeants = actifs.filter((m) => m.role !== "president");
 
   return (
     <Card className="flex flex-col gap-4 p-5">
-      <SectionHeader title="2. Responsables" description="Président, secrétaire, trésorier, directeur sportif, communication... Chacun reçoit un accès Club+ à son niveau." />
-      {active.length === 0 && members !== null && <p className="text-[12.5px] text-text-soft">Aucun responsable renseigné pour le moment.</p>}
-      {active.length > 0 && (
-        <div className="flex flex-col divide-y divide-divider">
-          {active.map((m) => (
-            <div key={m.membershipId} className="flex flex-wrap items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-              <span className="w-40 flex-none text-[12.5px] font-bold text-text">{ROLE_LABELS[m.role] ?? m.role}</span>
-              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text">
-                {m.firstName || m.lastName ? `${m.firstName} ${m.lastName}`.trim() : "—"}
-              </span>
-              <span className="flex-none text-[12.5px] text-text-soft">{m.phone || "—"}</span>
-              {m.status === "invited" && <Badge tone="warning">Invitation envoyée</Badge>}
+      <SectionHeader
+        title="Responsables"
+        description="Le président et le bureau. Chacun recevra un accès Club+ à son niveau, sans qu'aucun compte soit créé à sa place."
+      />
+
+      {/* ── Le président ── */}
+      <div className="rounded-xl border border-border-strong p-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[12.5px] font-extrabold uppercase tracking-[.05em] text-text-soft">Président</span>
+          {presidentMembre ? (
+            <Badge tone="success">Connecté à Club+</Badge>
+          ) : invitationPresident ? (
+            <Badge tone={STATUT_INVITATION_TONE[invitationPresident.statut]}>{STATUT_INVITATION_LABEL[invitationPresident.statut]}</Badge>
+          ) : contact ? (
+            <Badge tone="info">Coordonnées renseignées</Badge>
+          ) : (
+            <Badge tone="warning">À renseigner</Badge>
+          )}
+        </div>
+        <div className="mt-2 text-[13.5px] font-semibold">
+          {presidentMembre
+            ? `${presidentMembre.firstName} ${presidentMembre.lastName}`.trim() || "Président"
+            : invitationPresident
+              ? [invitationPresident.prenom, invitationPresident.nom].filter(Boolean).join(" ") || invitationPresident.email
+              : contact
+                ? [contact.prenom, contact.nom].filter(Boolean).join(" ")
+                : <span className="font-normal text-text-soft">Aucun président connu pour l&apos;instant.</span>}
+        </div>
+        {contact && !presidentMembre && (
+          <div className="mt-0.5 text-[12px] text-text-soft">
+            {[contact.email, contact.telephone].filter(Boolean).join(" · ") || "Ni e-mail ni téléphone"}
+          </div>
+        )}
+        {estCm && !presidentMembre && !invitationPresident && (
+          <p className="mt-2 text-[11.5px] leading-relaxed text-text-faint">
+            L&apos;accès du président se prépare par SportVision ou l&apos;administrateur du compte Club+. Notez ici ses
+            coordonnées : c&apos;est ce qui permet de lui préparer son invitation.
+          </p>
+        )}
+        {estCm && canEdit && portailId && !presidentMembre && !formContact && (
+          <Button
+            variant="secondary"
+            className="mt-2.5 h-8 px-3 text-[12px]"
+            onClick={() => setFormContact({ prenom: contact?.prenom ?? "", nom: contact?.nom ?? "", email: contact?.email ?? "", telephone: contact?.telephone ?? "" })}
+          >
+            {contact ? "Modifier les coordonnées" : "Renseigner les coordonnées du président"}
+          </Button>
+        )}
+        {estCm && portailId === null && !presidentMembre && (
+          <p className="mt-2 text-[11.5px] text-text-faint">Ce club n&apos;est pas encore relié à sa fiche SportVision : les coordonnées ne peuvent pas être enregistrées ici.</p>
+        )}
+        {formContact && (
+          <div className="mt-3 flex flex-col gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Prénom">
+                <input value={formContact.prenom ?? ""} onChange={(e) => setFormContact({ ...formContact, prenom: e.target.value })} className={fieldClass} />
+              </Field>
+              <Field label="Nom">
+                <input value={formContact.nom ?? ""} onChange={(e) => setFormContact({ ...formContact, nom: e.target.value })} className={fieldClass} />
+              </Field>
+              <Field label="E-mail">
+                <input type="email" value={formContact.email ?? ""} onChange={(e) => setFormContact({ ...formContact, email: e.target.value })} className={fieldClass} />
+              </Field>
+              <Field label="Téléphone">
+                <input type="tel" value={formContact.telephone ?? ""} onChange={(e) => setFormContact({ ...formContact, telephone: e.target.value })} className={fieldClass} />
+              </Field>
             </div>
-          ))}
-        </div>
-      )}
-      {canInvite && !showForm && (
-        <Button variant="secondary" className="h-9 self-start px-4 text-[12.5px]" onClick={() => setShowForm(true)}>
-          + Ajouter un responsable
-        </Button>
-      )}
-      {canEdit && !canInvite && (
-        <p className="text-[12.5px] text-text-soft">
-          Ajouter un responsable ouvre un compte et lui envoie une invitation : c&apos;est au club de
-          le faire. Préparez le reste de la mise en place, le président invitera son équipe.
-        </p>
-      )}
-      {canInvite && showForm && (
-        <div className="flex flex-col gap-3 rounded-xl border border-border-strong p-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Prénom">
-              <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={fieldClass} />
-            </Field>
-            <Field label="Nom">
-              <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={fieldClass} />
-            </Field>
-            <Field label="E-mail" full>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={fieldClass} />
-            </Field>
-            <Field label="Fonction" full>
-              <select value={role} onChange={(e) => setRole(e.target.value as MembershipRole)} className={fieldClass}>
-                {CLUB_INVITE_ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABELS[r] ?? r}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            {errorContact && <p className="text-[12.5px] font-bold text-danger-fg">{errorContact}</p>}
+            <div className="flex gap-2">
+              <Button className="h-9 px-4 text-[12.5px]" loading={savingContact} onClick={enregistrerContact}>
+                Enregistrer
+              </Button>
+              <Button variant="secondary" className="h-9 px-4 text-[12.5px]" onClick={() => setFormContact(null)}>
+                Annuler
+              </Button>
+            </div>
           </div>
-          {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
-          <div className="flex items-center gap-3">
-            <Button className="h-9 px-4 text-[12.5px]" loading={sending} onClick={handleInvite}>
-              Envoyer l&apos;invitation
-            </Button>
-            <Button variant="secondary" className="h-9 px-4 text-[12.5px]" onClick={() => setShowForm(false)}>
-              Annuler
-            </Button>
+        )}
+      </div>
+
+      {/* ── Le bureau ── */}
+      <div className="flex flex-col gap-2">
+        <span className="text-[12.5px] font-extrabold uppercase tracking-[.05em] text-text-soft">Bureau et dirigeants</span>
+        {dirigeants.length === 0 && invitationsDirigeants.length === 0 && members !== null && (
+          <p className="text-[12.5px] text-text-soft">Aucun dirigeant renseigné pour le moment.</p>
+        )}
+        {(dirigeants.length > 0 || invitationsDirigeants.length > 0) && (
+          <div className="flex flex-col divide-y divide-divider rounded-xl border border-border-strong px-3.5">
+            {dirigeants.map((m) => (
+              <div key={m.membershipId} className="flex flex-wrap items-center gap-3 py-2.5">
+                <span className="w-40 flex-none text-[12.5px] font-bold text-text">{ROLE_LABELS[m.role] ?? m.role}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
+                  {m.firstName || m.lastName ? `${m.firstName} ${m.lastName}`.trim() : "—"}
+                </span>
+                <Badge tone={m.status === "invited" ? "warning" : "success"}>{m.status === "invited" ? "Invitation envoyée" : "Actif"}</Badge>
+              </div>
+            ))}
+            {invitationsDirigeants.map((i) => (
+              <div key={i.id} className="flex flex-wrap items-center gap-3 py-2.5">
+                <span className="w-40 flex-none text-[12.5px] font-bold text-text">
+                  {ROLES_DIRIGEANTS.find((r) => r.value === i.role)?.label ?? i.role}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
+                  {[i.prenom, i.nom].filter(Boolean).join(" ") || i.email}
+                </span>
+                <Badge tone={STATUT_INVITATION_TONE[i.statut]}>
+                  {i.statut === "preparee" && enPreparation ? "Partira au lancement" : STATUT_INVITATION_LABEL[i.statut]}
+                </Badge>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
+        {canInvite && (
+          <Button variant="secondary" className="h-9 self-start px-4 text-[12.5px]" onClick={() => setModaleOuverte(true)}>
+            + Préparer l&apos;invitation d&apos;un responsable
+          </Button>
+        )}
+      </div>
+
+      {modaleOuverte && (
+        <InviterEncadrantModal
+          clubId={clubId}
+          titre="Préparer l'invitation d'un responsable"
+          roles={estCm ? ROLES_DIRIGEANTS : [ROLE_PRESIDENT, ...ROLES_DIRIGEANTS]}
+          sansEquipe
+          enPreparation={enPreparation}
+          onClose={() => setModaleOuverte(false)}
+          onInvited={() => {
+            reload();
+            onSaved();
+          }}
+        />
       )}
     </Card>
   );
@@ -447,8 +956,25 @@ function ResponsablesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: str
 
 // ── Équipes + entraînements ──
 
-function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; canEdit: boolean; canInvite: boolean; onSaved: () => void }) {
+function EquipesCard({
+  clubId,
+  canEdit,
+  canInvite,
+  enPreparation,
+  onSaved,
+}: {
+  clubId: string;
+  canEdit: boolean;
+  canInvite: boolean;
+  enPreparation: boolean;
+  onSaved: () => void;
+}) {
   const [teams, setTeams] = useState<Team[] | null>(null);
+  // L'état de chaque équipe (encadrant, effectif) : une seule source, club_equipes_etat.
+  const [etats, setEtats] = useState<Map<string, EtatEquipe>>(new Map());
+  const [ouverte, setOuverte] = useState<string | null>(null);
+  const [filtre, setFiltre] = useState<"toutes" | "sans_coach" | "sans_creneau" | "sans_effectif">("toutes");
+  const [coachModalTeam, setCoachModalTeam] = useState<string | null>(null);
   const [venues, setVenues] = useState<ClubVenue[] | null>(null);
   const [slots, setSlots] = useState<TrainingSlot[]>([]);
   const [showTeamForm, setShowTeamForm] = useState(false);
@@ -462,9 +988,7 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [coachInviteWarning, setCoachInviteWarning] = useState<string | null>(null);
-  // L'identifiant du coach fraichement cree, a lire une seule fois et a transmettre. Il n'est
-  // stocke nulle part : ni ici apres fermeture, ni recuperable ensuite.
-  const [accesCoach, setAccesCoach] = useState<{ email: string; motDePasse: string } | null>(null);
+  const [coachPrepare, setCoachPrepare] = useState<string | null>(null);
   const [showVenueForm, setShowVenueForm] = useState(false);
   const [venueName, setVenueName] = useState("");
   const [venueVille, setVenueVille] = useState("");
@@ -474,9 +998,6 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
   const [slotForm, setSlotForm] = useState<{ teamId: string; jour: string; heureDebut: string; heureFin: string; venueId: string } | null>(null);
   const [slotSaving, setSlotSaving] = useState(false);
   const [slotError, setSlotError] = useState<string | null>(null);
-  const [coachInvite, setCoachInvite] = useState<{ teamId: string; email: string; firstName: string; lastName: string } | null>(null);
-  const [coachSending, setCoachSending] = useState(false);
-  const [coachError, setCoachError] = useState<string | null>(null);
   const [importTeamId, setImportTeamId] = useState<string | null>(null);
   const [importRows, setImportRows] = useState<RosterImportRow[]>([]);
   const [importPreview, setImportPreview] = useState<RosterPreviewResult[] | null>(null);
@@ -548,6 +1069,9 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
     setTeams(t);
     setVenues(v);
     setSlots(await fetchTrainingSlotsForClub(supabase, t.map((x) => x.id)));
+    fetchEquipesEtat(supabase, clubId)
+      .then((liste) => setEtats(new Map(liste.map((e) => [e.team_id, e]))))
+      .catch(() => setEtats(new Map()));
   }
   useEffect(() => {
     reload().catch(() => {});
@@ -576,29 +1100,29 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
         categories: teamCategories,
         coach: coachDisplayName || undefined,
       });
+      // 10/09/2026 — Le coach est PRÉPARÉ, plus créé. L'ancien chemin (clubplus-invite, mode
+      // « direct ») créait le compte à sa place et affichait son mot de passe : c'est exactement
+      // ce que Fouka a écarté (« la personne prend possession de son compte elle-même »), et un
+      // e-mail partait avant le lancement du club. L'invitation attend désormais le lancement, ou
+      // un envoi explicite depuis « Invitations ».
       if (teamCoachEmail.trim() && teamCoachFirstName.trim() && teamCoachLastName.trim()) {
         try {
-          // Mode « direct » : le compte est cree tout de suite et un mot de passe est rendu, a
-          // transmettre soi-meme. Le mode « e-mail » faisait dependre l'acces du coach d'un envoi
-          // dont on a mesure qu'il n'aboutit que dans 42 % des cas.
-          const resultat = await inviteClubMember(createClient(), clubId, {
+          await preparerInvitation(createClient(), {
+            clubId,
             email: teamCoachEmail.trim(),
-            firstName: teamCoachFirstName.trim(),
-            lastName: teamCoachLastName.trim(),
             role: "coach",
-            team: teamName.trim(),
-            mode: "direct",
+            prenom: teamCoachFirstName.trim(),
+            nom: teamCoachLastName.trim(),
+            teams: [teamName.trim()],
           });
-          if (resultat.password) {
-            setAccesCoach({ email: teamCoachEmail.trim(), motDePasse: resultat.password });
-          } else if (resultat.accountAlreadyExisted) {
-            setCoachInviteWarning(
-              `Équipe créée. ${teamCoachEmail.trim()} avait déjà un compte SportVision : il a été rattaché à l'équipe, il garde son mot de passe habituel.`,
-            );
-          }
+          setCoachPrepare(
+            `Équipe créée. L'invitation de ${teamCoachFirstName.trim()} ${teamCoachLastName.trim()} est préparée${
+              enPreparation ? " : elle partira au lancement du club." : " : envoyez-la depuis « Invitations »."
+            }`,
+          );
         } catch (e) {
           setCoachInviteWarning(
-            `Équipe créée, mais l'accès du coach n'a pas pu être créé (${e instanceof Error ? e.message : "erreur inconnue"}).`,
+            `Équipe créée, mais l'invitation du coach n'a pas pu être préparée (${messageErreurInvitation(e, "erreur inconnue")}).`,
           );
         }
       }
@@ -694,30 +1218,6 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
     }
   }
 
-  async function handleInviteCoach(teamName: string) {
-    if (!coachInvite || !coachInvite.email.trim() || !coachInvite.firstName.trim() || !coachInvite.lastName.trim()) {
-      setCoachError("Prénom, nom et e-mail sont obligatoires.");
-      return;
-    }
-    setCoachSending(true);
-    setCoachError(null);
-    try {
-      await inviteClubMember(createClient(), clubId, {
-        email: coachInvite.email.trim(),
-        firstName: coachInvite.firstName.trim(),
-        lastName: coachInvite.lastName.trim(),
-        role: "coach",
-        team: teamName,
-      });
-      setCoachInvite(null);
-      onSaved();
-    } catch (e) {
-      setCoachError(e instanceof Error ? e.message : "Impossible d'envoyer l'invitation.");
-    } finally {
-      setCoachSending(false);
-    }
-  }
-
   function openImport(teamId: string) {
     setImportTeamId(teamId);
     setImportRows([]);
@@ -769,7 +1269,7 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
 
   return (
     <Card className="flex flex-col gap-4 p-5">
-      <SectionHeader title="3. Équipes & entraînements" description="Une équipe créée ici est réutilisée telle quelle par la Production, la Communication et Connect." />
+      <SectionHeader title="Équipes & entraînements" description="Une équipe créée ici est réutilisée telle quelle par la Production, la Communication et Connect." />
 
       {canInvite && (
         <div className="rounded-xl border border-border-strong p-3.5">
@@ -820,18 +1320,77 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
 
       {slotError && !slotForm && <p className="text-[12.5px] font-bold text-danger-fg">{slotError}</p>}
 
-      <div className="flex flex-col gap-3">
-        {(teams ?? []).map((team) => {
+      {/* 10/09/2026 — 42 équipes dépliées faisaient une page de 10 000 px. Chaque équipe tient
+          désormais sur une ligne qui dit ce qui lui manque ; on la déplie pour agir. */}
+      {(teams ?? []).length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {([
+            ["toutes", "Toutes", (teams ?? []).length],
+            ["sans_coach", "Sans coach", (teams ?? []).filter((t) => (etats.get(t.id)?.encadrant_statut ?? "aucun") === "aucun").length],
+            ["sans_creneau", "Sans créneau", (teams ?? []).filter((t) => !slots.some((x) => x.teamId === t.id)).length],
+            ["sans_effectif", "Sans effectif", (teams ?? []).filter((t) => (etats.get(t.id)?.joueurs ?? 0) === 0).length],
+          ] as const).map(([cle, libelle, n]) => (
+            <button
+              key={cle}
+              type="button"
+              onClick={() => setFiltre(cle)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-[12px] font-bold transition-colors",
+                filtre === cle
+                  ? "border-brand-blue-electric bg-brand-blue-electric/10 text-brand-blue-electric"
+                  : "border-border-strong text-text-soft hover:border-brand-blue",
+              )}
+            >
+              {libelle} <span className="tabular-nums opacity-70">{n}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col overflow-hidden rounded-xl border border-border-strong">
+        {(teams ?? [])
+          .filter((team) => {
+            if (filtre === "sans_coach") return (etats.get(team.id)?.encadrant_statut ?? "aucun") === "aucun";
+            if (filtre === "sans_creneau") return !slots.some((x) => x.teamId === team.id);
+            if (filtre === "sans_effectif") return (etats.get(team.id)?.joueurs ?? 0) === 0;
+            return true;
+          })
+          .map((team) => {
           const teamSlots = slots.filter((s) => s.teamId === team.id).sort((a, b) => JOURS_ORDER.indexOf(a.jour as never) - JOURS_ORDER.indexOf(b.jour as never));
+          const etat = etats.get(team.id);
+          const statutCoach = etat?.encadrant_statut ?? "aucun";
+          const deplie = ouverte === team.id || importTeamId === team.id || slotForm?.teamId === team.id;
           return (
-            <div key={team.id} className="rounded-xl border border-border-strong p-3.5">
+            <div key={team.id} className="border-b border-divider last:border-0">
+              <button
+                type="button"
+                onClick={() => setOuverte(deplie ? null : team.id)}
+                aria-expanded={deplie}
+                className="flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 px-3.5 py-2.5 text-left transition-colors hover:bg-row-hover"
+              >
+                <span aria-hidden className={cn("flex-none text-text-faint transition-transform", deplie && "rotate-90")}>›</span>
+                <span className="text-[13.5px] font-extrabold">{team.name}</span>
+                {team.category !== "—" && <span className="text-[11.5px] text-text-soft">{team.category}</span>}
+                <span className="ml-auto flex flex-wrap items-center gap-1.5">
+                  <Badge tone={statutCoach === "actif" ? "success" : statutCoach === "aucun" ? "warning" : "info"}>
+                    {statutCoach === "aucun" ? "Sans coach" : etat?.encadrant ?? ENCADRANT_LIBELLE[statutCoach]}
+                    {statutCoach === "prepare" ? " · préparée" : statutCoach === "invite" ? " · invité" : ""}
+                  </Badge>
+                  <Badge tone={teamSlots.length > 0 ? "neutral" : "warning"}>
+                    {teamSlots.length > 0 ? `${teamSlots.length} créneau${teamSlots.length > 1 ? "x" : ""}` : "Sans créneau"}
+                  </Badge>
+                  {etat && (
+                    <Badge tone={etat.joueurs > 0 ? "neutral" : "warning"}>
+                      {etat.joueurs > 0 ? `${etat.joueurs} joueur${etat.joueurs > 1 ? "s" : ""}` : "Effectif non renseigné"}
+                    </Badge>
+                  )}
+                </span>
+              </button>
+              {deplie && (
+              <div className="px-3.5 pb-3.5 pl-8">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="text-[13.5px] font-extrabold">{team.name}</span>
-                  {team.category !== "—" && <span className="ml-2 text-[11.5px] text-text-soft">{team.category}</span>}
-                </div>
                 {canEdit && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant="tertiary"
                       className="h-7 px-2 text-[11.5px]"
@@ -843,7 +1402,7 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
                       <Button
                         variant="tertiary"
                         className="h-7 px-2 text-[11.5px]"
-                        onClick={() => { setCoachError(null); setCoachInvite({ teamId: team.id, email: "", firstName: "", lastName: "" }); }}
+                        onClick={() => setCoachModalTeam(team.name)}
                       >
                         + Inviter un coach
                       </Button>
@@ -900,33 +1459,6 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
                   )}
                 </div>
               )}
-              {coachInvite?.teamId === team.id && (
-                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border-strong p-3">
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <Field label="Prénom">
-                      <input value={coachInvite.firstName} onChange={(e) => setCoachInvite({ ...coachInvite, firstName: e.target.value })} className={cn(fieldClass, "h-9")} />
-                    </Field>
-                    <Field label="Nom">
-                      <input value={coachInvite.lastName} onChange={(e) => setCoachInvite({ ...coachInvite, lastName: e.target.value })} className={cn(fieldClass, "h-9")} />
-                    </Field>
-                    <Field label="E-mail">
-                      <input type="email" value={coachInvite.email} onChange={(e) => setCoachInvite({ ...coachInvite, email: e.target.value })} className={cn(fieldClass, "h-9")} />
-                    </Field>
-                  </div>
-                  {coachError && <p className="text-[12px] font-bold text-danger-fg">{coachError}</p>}
-                  <div className="flex items-center gap-2">
-                    <Button className="h-9 px-3 text-[12px]" loading={coachSending} onClick={() => handleInviteCoach(team.name)}>
-                      Envoyer l&apos;invitation
-                    </Button>
-                    <Button variant="secondary" className="h-9 px-3 text-[12px]" onClick={() => { setCoachInvite(null); setCoachError(null); }}>
-                      Annuler
-                    </Button>
-                  </div>
-                  <p className="text-[11px] text-text-faint">
-                    Le coach sera automatiquement lié à l&apos;équipe {team.name} — aucune sélection à faire de son côté après acceptation.
-                  </p>
-                </div>
-              )}
               <div className="mt-2 flex flex-col gap-1">
                 {teamSlots.length === 0 && <span className="text-[11.5px] text-text-faint">Aucun créneau d&apos;entraînement renseigné.</span>}
                 {teamSlots.map((s) => (
@@ -981,10 +1513,25 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
                   {slotError && <p className="w-full text-[12px] font-bold text-danger-fg">{slotError}</p>}
                 </div>
               )}
+              </div>
+              )}
             </div>
           );
         })}
       </div>
+
+      {coachModalTeam && (
+        <InviterEncadrantModal
+          clubId={clubId}
+          teamName={coachModalTeam}
+          enPreparation={enPreparation}
+          onClose={() => setCoachModalTeam(null)}
+          onInvited={() => {
+            reload().catch(() => {});
+            onSaved();
+          }}
+        />
+      )}
 
       {/*
         Les lieux avaient deux defauts qui se combinaient en un blocage complet (retour Fouka,
@@ -1109,7 +1656,7 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
           </div>
           <div className="border-t border-divider pt-3">
             <div className="mb-2 text-[12px] font-bold text-text-soft">
-              Coach (facultatif — renseignez un e-mail pour créer directement son accès Club+)
+              Coach (facultatif) — avec un e-mail, son invitation est préparée ; aucun compte n&apos;est créé à sa place
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Field label="Prénom">
@@ -1125,40 +1672,7 @@ function EquipesCard({ clubId, canEdit, canInvite, onSaved }: { clubId: string; 
           </div>
           {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
           {coachInviteWarning && <p className="text-[12.5px] font-bold text-warning-fg">{coachInviteWarning}</p>}
-          {/* L'identifiant s'affiche une seule fois : il n'est conserve nulle part et ne pourra
-              pas etre relu. C'est le prix d'un mot de passe qu'on ne stocke pas en clair. */}
-          {accesCoach && (
-            <div className="flex flex-col gap-2 rounded-xl border border-success-fg/30 bg-success-bg/40 p-3.5">
-              <div className="text-[12.5px] font-bold text-success-fg">Accès du coach créé</div>
-              <div className="text-[13px]">
-                <span className="text-text-soft">Identifiant : </span>
-                <span className="font-mono">{accesCoach.email}</span>
-              </div>
-              <div className="text-[13px]">
-                <span className="text-text-soft">Mot de passe : </span>
-                <span className="font-mono tracking-[.04em]">{accesCoach.motDePasse}</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="secondary"
-                  className="h-9 px-3 text-[12.5px]"
-                  onClick={() =>
-                    navigator.clipboard
-                      ?.writeText(`${accesCoach.email} / ${accesCoach.motDePasse}`)
-                      .catch(() => {})
-                  }
-                >
-                  Copier
-                </Button>
-                <Button variant="tertiary" className="h-9 px-3 text-[12.5px]" onClick={() => setAccesCoach(null)}>
-                  J&apos;ai transmis
-                </Button>
-              </div>
-              <p className="text-[11.5px] text-text-soft">
-                Transmettez-le au coach : ce mot de passe ne sera plus affiché.
-              </p>
-            </div>
-          )}
+          {coachPrepare && <p className="text-[12.5px] font-bold text-success-fg">{coachPrepare}</p>}
           <div className="flex items-center gap-3">
             <Button className="h-9 px-4 text-[12.5px]" loading={saving} onClick={handleCreateTeam}>
               Créer l&apos;équipe
@@ -1239,7 +1753,7 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
 
   return (
     <Card className="flex flex-col gap-4 p-5">
-      <SectionHeader title="4. Calendrier & événements" description="Matchs, tournois, stages, portes ouvertes — ce qui aide le CM à préparer le planning éditorial et la Production à organiser les présences terrain." />
+      <SectionHeader title="Calendrier & événements" description="Matchs, tournois, stages, portes ouvertes — ce qui aide le CM à préparer le planning éditorial et la Production à organiser les présences terrain." />
       {upcoming.length === 0 && events !== null && <p className="text-[12.5px] text-text-soft">Aucun événement à venir renseigné.</p>}
       {upcoming.length > 0 && (
         <div className="flex flex-col divide-y divide-divider">
@@ -1397,7 +1911,7 @@ function BrandingCard({
 
   return (
     <Card className="flex flex-col gap-4 p-5">
-      <SectionHeader title="5. Branding" description="Logo et couleurs officielles — utilisés automatiquement dans le Studio et vos créations." />
+      <SectionHeader title="Branding" description="Logo et couleurs officielles — utilisés automatiquement dans le Studio et vos créations." />
       <div className="flex items-center gap-4">
         <label className={cn("relative flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border-strong bg-surface-alt", canEdit && "cursor-pointer")}>
           {logoUrl ? (
@@ -1493,7 +2007,7 @@ function SponsorsCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit: b
 
   return (
     <Card className="flex flex-col gap-4 p-5">
-      <SectionHeader title="6. Sponsors" description="Logos et noms des partenaires actuels du club — modifiables plus en détail depuis Sponsors." />
+      <SectionHeader title="Sponsors" description="Logos et noms des partenaires actuels du club — modifiables plus en détail depuis Sponsors." />
       {(sponsors ?? []).length === 0 && sponsors !== null && <p className="text-[12.5px] text-text-soft">Aucun sponsor renseigné.</p>}
       {logoError && <p className="text-[12.5px] font-bold text-danger-fg">{logoError}</p>}
       {createError && <p className="text-[12.5px] font-bold text-danger-fg">{createError}</p>}
@@ -1631,7 +2145,7 @@ function CommunicationCard({ clubId, canEdit, onSaved }: { clubId: string; canEd
 
   return (
     <Card className="flex flex-col gap-4 p-5">
-      <SectionHeader title="7. Communication" description="Réseaux sociaux, objectifs et ton — jamais de mot de passe demandé ici." />
+      <SectionHeader title="Communication" description="Réseaux sociaux, objectifs et ton — jamais de mot de passe demandé ici." />
       <p className="-mt-2 text-[11.5px] text-text-faint">
         Cette section est comptée comme complétée dès qu&apos;un compte réseau social et au moins un objectif sont renseignés.
       </p>
@@ -1769,7 +2283,7 @@ function DroitImageCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
 
   return (
     <Card className="flex flex-col gap-4 p-5">
-      <SectionHeader title="8. Droit à l'image" description="Notes internes, jamais publiées — visibles uniquement par SportVision et l'administrateur du club." />
+      <SectionHeader title="Droit à l'image" description="Notes internes, jamais publiées — visibles uniquement par SportVision et l'administrateur du club." />
       <Field label="Fonctionnement actuel du club">
         <select value={mode ?? ""} onChange={(e) => setMode((e.target.value || null) as DroitImageMode | null)} disabled={!canEdit} className={fieldClass}>
           <option value="">Non précisé</option>

@@ -60,6 +60,9 @@ const FILTERABLE_KINDS = Object.keys(CREATABLE_EVENT_TYPE_MAP) as CalendarEventK
 
 type ViewMode = "month" | "week" | "day" | "list";
 
+/** Les vues telles qu'elles s'écrivent dans une adresse (`/calendar?vue=semaine`). */
+const VUE_PAR_PARAM: Record<string, ViewMode> = { mois: "month", semaine: "week", jour: "day", liste: "list" };
+
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 function startOfToday(): Date {
@@ -116,6 +119,50 @@ export default function CalendarPage() {
   // Jour ouvert depuis la vue Mois. C'est le second niveau de lecture : la case reste synthétique,
   // le détail complet vit ici — sinon on retombe sur la case-liste illisible qu'on veut éviter.
   const [jourOuvert, setJourOuvert] = useState<Date | null>(null);
+
+  // 10/09/2026 — Arriver au bon endroit, et y rester (demande de Fouka).
+  //   • Un lien du tableau de bord ouvre la bonne vue : `?vue=semaine&filtre=matchs`, `?date=`.
+  //   • Les choix du CM (vue, filtre, équipe, type) sont gardés pour la session, par club : on
+  //     revient au calendrier comme on l'a laissé. L'adresse l'emporte sur la mémoire.
+  //   • Sans l'un ni l'autre, le CM ouvre sur la Semaine : sur 1 200 événements, c'est sa vue de
+  //     travail ; le mois reste le point de départ des autres rôles.
+  const cleSession = `sv-calendrier-${ctx.organization.id}`;
+  const [restaure, setRestaure] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    let memo: { vue?: ViewMode; filtre?: VueRapide; equipe?: string; type?: CalendarEventKind | "" } = {};
+    try {
+      memo = JSON.parse(window.sessionStorage.getItem(cleSession) ?? "{}");
+    } catch {
+      memo = {};
+    }
+    const vueParam = VUE_PAR_PARAM[params.get("vue") ?? ""];
+    const filtreParam = params.get("filtre");
+    const vue = vueParam ?? memo.vue ?? (ctx.membership.role === "external_cm" ? "week" : undefined);
+    if (vue) setView(vue);
+    if (filtreParam && VUES_RAPIDES.some((v) => v.id === filtreParam)) setVueRapide(filtreParam as VueRapide);
+    else if (!filtreParam && memo.filtre) setVueRapide(memo.filtre);
+    if (!params.has("vue") && !filtreParam) {
+      if (memo.equipe !== undefined) setTeamFilter(memo.equipe);
+      if (memo.type !== undefined) setTypeFilter(memo.type);
+    }
+    const date = params.get("date");
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) setReference(parseDateOnly(date));
+    setRestaure(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleSession]);
+
+  useEffect(() => {
+    if (!restaure) return;
+    try {
+      window.sessionStorage.setItem(
+        cleSession,
+        JSON.stringify({ vue: view, filtre: vueRapide, equipe: teamFilter, type: typeFilter }),
+      );
+    } catch {
+      /* stockage indisponible : le calendrier fonctionne, il ne se souvient simplement pas */
+    }
+  }, [restaure, cleSession, view, vueRapide, teamFilter, typeFilter]);
 
   // calendar_events générique (Coach/Académie/Sponsor, Phase 4) est en lecture seule côté membre
   // (écriture réservée au staff SportVision) — contrairement à club_calendar_events.

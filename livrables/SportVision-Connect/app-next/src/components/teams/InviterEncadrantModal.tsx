@@ -43,8 +43,23 @@ const ROLES = [
   { value: "directeur_sportif", label: "Directeur sportif" },
 ] as const;
 
+export interface RoleInvitable {
+  value: string;
+  label: string;
+}
+
 interface Props {
   clubId: string;
+  /** Les rôles proposés. Par défaut, ceux d'un encadrant d'équipe ; l'onboarding passe ceux d'un
+   *  dirigeant (secrétaire, trésorier…). La base reste juge : un président ne se prépare que par
+   *  l'Owner ou SportVision (v116), quoi que propose la liste. */
+  roles?: readonly RoleInvitable[];
+  titre?: string;
+  /** Club encore en préparation (10/09/2026) : l'invitation préparée est gardée pour le
+   *  lancement du club. L'envoyer tout de suite reste possible, mais devient le geste secondaire. */
+  enPreparation?: boolean;
+  /** Invitation sans équipe (un dirigeant) : le choix d'équipe n'est pas proposé. */
+  sansEquipe?: boolean;
   /** Fixée quand l'invitation part d'une fiche équipe. Absente depuis « Coachs & dirigeants »,
    *  où l'on choisit l'équipe — un dirigeant peut d'ailleurs n'en avoir aucune. */
   teamName?: string;
@@ -54,14 +69,14 @@ interface Props {
   onInvited: () => void;
 }
 
-export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onInvited }: Props) {
+export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onInvited, roles = ROLES, titre, enPreparation = false, sansEquipe = false }: Props) {
   // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
   useFermetureEchap(true, onClose);
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [telephone, setTelephone] = useState("");
-  const [role, setRole] = useState<string>("coach");
+  const [role, setRole] = useState<string>(roles[0]?.value ?? "coach");
   const [equipe, setEquipe] = useState(teamName ?? "");
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -123,6 +138,26 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
       .finally(() => setOccupe(false));
   }
 
+  if (invitation && enPreparation && !envoye && !copie) {
+    return (
+      <Enveloppe refDiv={ref} titre="Invitation préparée" onClose={onClose}>
+        <p className="text-[12.5px] leading-relaxed text-text-soft">
+          L&apos;invitation de <span className="font-bold text-text">{invitation.prenom || invitation.email}</span> est
+          prête. Le club est encore en préparation : elle partira avec les autres quand vous lancerez le club.
+          Aucun compte n&apos;a été créé.
+        </p>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="secondary" onClick={envoyer} disabled={occupe} loading={occupe} className="gap-2">
+            <Mail className="h-4 w-4" aria-hidden />
+            Envoyer maintenant
+          </Button>
+          <Button onClick={onClose}>Garder pour le lancement</Button>
+        </div>
+        {erreur && <p className="text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
+      </Enveloppe>
+    );
+  }
+
   if (invitation) {
     const url = buildInvitationUrl(invitation.token);
     return (
@@ -147,7 +182,7 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
         </Button>
         {erreur && <p className="text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
         <p className="text-[11.5px] text-text-faint">
-          Valable 30 jours. Vous pourrez le révoquer depuis « Coachs &amp; dirigeants ».
+          Valable 30 jours. Vous pourrez le révoquer depuis « Invitations ».
         </p>
         <div className="flex justify-end">
           <Button onClick={onClose}>Fermer</Button>
@@ -159,7 +194,7 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
   return (
     <Enveloppe
       refDiv={ref}
-      titre={teamName ? `Inviter un encadrant — ${teamName}` : "Inviter un encadrant"}
+      titre={titre ?? (teamName ? `Inviter un encadrant — ${teamName}` : "Inviter un encadrant")}
       onClose={onClose}
     >
       <p className="text-[12.5px] text-text-soft">
@@ -180,7 +215,7 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
           onChange={(e) => setRole(e.target.value)}
           className="h-11 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[14px] outline-none focus-visible:border-brand-blue"
         >
-          {ROLES.map((r) => (
+          {roles.map((r) => (
             <option key={r.value} value={r.value}>
               {r.label}
             </option>
@@ -188,7 +223,7 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
         </select>
       </label>
 
-      {teamName ? (
+      {sansEquipe ? null : teamName ? (
         <div className="rounded-xl bg-surface-sunken px-3.5 py-2.5 text-[12.5px]">
           <span className="font-bold text-text-soft">Équipe : </span>
           <span className="font-extrabold">{teamName}</span>
