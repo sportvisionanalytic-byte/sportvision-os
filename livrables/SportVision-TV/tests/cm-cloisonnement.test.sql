@@ -369,10 +369,20 @@ begin
       e := e || 'peut_preparer_club(null) ne vaut pas false — un appel sans club traverserait le controle'::text;
     end if;
 
-    -- Les invitations restent fermees : c'est la phase 4, elle n'est pas commencee.
+    -- Les invitations sont OUVERTES au CM depuis le 10/09/2026 (phase 4 commencee : voir les
+    -- ecrans « Coachs & dirigeants » de Club+). Ce controle affirmait l'inverse et virait au rouge
+    -- des l'ouverture : il mesurait un etat du produit, pas une regle de securite. Or ce qui doit
+    -- tenir quoi qu'il arrive n'est pas « le CM ne peut pas inviter », c'est « le CM ne peut pas
+    -- inviter CHEZ LE VOISIN ». C'est desormais ce qui est verifie, dans les deux sens.
     begin
       perform create_invite_code(v_clubA, null, null);
-      e := e || 'Le CM a pu creer un lien collectif alors que les invitations sont fermees'::text;
+    exception when others then
+      e := e || ('Le CM ne peut plus creer de lien collectif sur SON club — '||left(sqlerrm,70))::text;
+    end;
+
+    begin
+      perform create_invite_code(v_clubB, null, null);
+      e := e || 'Le CM a cree un lien collectif pour un club hors de son perimetre'::text;
     exception when others then null; end;
   end;
 
