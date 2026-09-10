@@ -7069,11 +7069,40 @@ async function loadClientClubIdentite(clientId){
         </div>
       </div>
       ${_renderFicheInfosClub(completion,progress)}
+      ${['admin','prod','compta','sec'].includes(S.role)?`<div id="fce-rentab" data-club="${club.id}" style="margin-bottom:16px"></div>`:''}
       <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Équipes (${teams.length})</div>
       ${teams.length?`<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">${teams.map(t=>`<div style="padding:8px 12px;background:var(--s2);border-radius:8px;font-size:12.5px;color:var(--t1);font-weight:500">🏐 ${esc(t.name)}</div>`).join('')}</div>`:'<div style="font-size:12px;color:var(--t3);margin-bottom:16px">Aucune équipe enregistrée.</div>'}
       <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Sponsors (${sponsors.length})</div>
       ${sponsors.length?`<div style="display:flex;flex-direction:column;gap:6px">${sponsors.map(s=>`<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--s2);border-radius:8px;font-size:12.5px"><span style="color:var(--t1);font-weight:500">${esc(s.name)}${s.niveau?' · '+esc(s.niveau):''}</span><span style="color:var(--t3)">${s.montant?s.montant.toLocaleString('fr-FR')+' €':''}</span></div>`).join('')}</div>`:'<div style="font-size:12px;color:var(--t3)">Aucun sponsor enregistré.</div>'}`;
+    if(document.getElementById('fce-rentab'))chargerRentabiliteClub(club.id);
   }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Rentabilité mensuelle d'un club (v127, décision de Fouka du 10/09/2026) ──
+// Revenus (abonnement + ponctuel), présences, rémunérations, déplacements, coût production, marge
+// opérationnelle estimée. Admin, Production, comptabilité, secrétariat : la base refuse les autres.
+async function chargerRentabiliteClub(clubId,mois){
+  const el=document.getElementById('fce-rentab');
+  if(!el)return;
+  const m=mois||new Date().toISOString().slice(0,7);
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement de la rentabilité…</div>';
+  const r=await sbFetch('rpc/rentabilite_club_mois',{method:'POST',body:{p_club_id:clubId,p_mois:m+'-01'}});
+  if(sbErr(r)||!r){el.innerHTML='';return;}
+  const eur=x=>Number(x||0).toLocaleString('fr-FR',{maximumFractionDigits:0})+' €';
+  const ligne=(lb,v,fort)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12.5px;${fort?'font-weight:700;color:var(--t1)':'color:var(--t2)'}"><span>${lb}</span><span>${v}</span></div>`;
+  el.innerHTML=`<div style="background:var(--s2);border-radius:10px;padding:12px 14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Rentabilité du mois</span>
+      <input type="month" value="${m}" class="l-inp" style="height:30px;width:150px;font-size:12px" onchange="chargerRentabiliteClub('${clubId}',this.value)">
+    </div>
+    ${ligne('Revenus abonnement',eur(r.revenus_abonnement))}
+    ${Number(r.revenus_ponctuels)?ligne('Prestations ponctuelles',eur(r.revenus_ponctuels)):''}
+    ${ligne('Présences SportVision',r.presences)}
+    ${ligne('Rémunérations opérateurs',eur(r.remunerations))}
+    ${ligne('Déplacements',eur(r.deplacements))}
+    ${ligne('Coût production total',eur(r.cout_production))}
+    ${ligne('Marge opérationnelle estimée',eur(r.marge_estimee),true)}
+  </div>`;
 }
 
 // ── Fiche "Informations club" (progression de collecte côté Club+ — master prompt Fouka
@@ -16517,7 +16546,7 @@ async function modalEquipePrestation(prestationId,ref){
   // la met). 'prod' garde l'accès complet à cette modale (affecter + consignes), simplement sans
   // le champ rémunération à la création ; canSetRem contrôle aussi l'action "Modifier" sur une
   // ligne déjà affectée (chargerEquipe ci-dessous).
-  const canSetRem=(S.role==='admin'||S.role==='sec');
+  const canSetRem=(S.role==='admin'||S.role==='prod'); // 10/09/2026 : la Production fixe la rémunération mission, le secrétariat n'y touche plus (v127)
   _eqNiveauMap={};
   openModal(`<div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Équipe — ${ref}</div>
     <div style="margin-bottom:14px">
@@ -16550,11 +16579,15 @@ async function modalEquipePrestation(prestationId,ref){
         <textarea id="eq-notes" class="l-inp" style="height:52px;padding-top:8px;resize:none" placeholder="Instructions pour ce collaborateur…"></textarea></div>
       <div style="display:grid;grid-template-columns:${canSetRem?'1fr 1fr':'1fr'};gap:10px">
         ${canSetRem?`<div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Rémunération (€)</label>
-          <input id="eq-rem" type="number" class="l-inp" placeholder="0" style="height:36px"></div>`:''}
+          <input id="eq-rem" type="number" class="l-inp" placeholder="0" style="height:36px" oninput="majEcartRem()"></div>`:''}
         <div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Heure RDV</label>
           <input id="eq-rdv" type="time" class="l-inp" style="height:36px"></div>
       </div>
-      ${canSetRem?'':'<div style="font-size:11px;color:var(--t3)">Rémunération calculée automatiquement depuis le niveau du collaborateur et le format de mission.</div>'}
+      ${canSetRem?`<div id="eq-ecart" style="font-size:11px;color:var(--t3)"></div>
+      <div id="eq-motif-bloc" style="display:none;grid-template-columns:1fr 1fr;gap:10px">
+        <select id="eq-motif" class="l-inp" style="height:36px"><option value="">— Motif de l'ajustement —</option>${Object.entries(MOTIFS_REMU).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+        <input id="eq-motif-detail" type="text" class="l-inp" placeholder="Précision (facultatif)" style="height:36px">
+      </div>`:'<div style="font-size:11px;color:var(--t3)">La rémunération mission est fixée par la Production, à partir du tarif recommandé (niveau × format).</div>'}
       <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="ajouterMembreEquipe('${prestationId}','${ref}')">+ Ajouter</button></div>
     </div>
     <div id="eq-err" style="font-size:12px;color:var(--er);margin-top:8px;min-height:14px"></div>
@@ -16702,24 +16735,61 @@ function majSuggestionRem(){
   if(sug)sug.textContent=montant!=null?'Suggestion : '+niveauStars(niveau)+' · '+montant.toLocaleString('fr-FR')+' €':'Format exceptionnel — montant à définir manuellement.';
   const remEl=document.getElementById('eq-rem');
   if(remEl&&montant!=null)remEl.value=montant;
+  majEcartRem();
+}
+
+// ── Rémunération mission (décision de Fouka, 10/09/2026 ; règles garanties en base par v127) ──
+// La grille (niveau × format) donne le montant RECOMMANDÉ ; la Production retient le sien. Au-delà
+// de 15 % d'écart, un motif est demandé (la base le refuse sinon). Le mot « salaire » n'est pas
+// employé : c'est une rémunération de mission.
+const MOTIFS_REMU={match_eloigne:'Match éloigné',grande_amplitude:'Grande amplitude',urgence:'Urgence',double_couverture:'Double couverture',operateur_senior:'Opérateur senior',autre:'Autre'};
+const SEUIL_ECART_REMU=0.15;
+function ecartRemu(retenu,recommande){
+  if(recommande==null||!(recommande>0)||retenu==null||retenu==='')return null;
+  const d=Number(retenu)-recommande;
+  return{d,pct:Math.round(100*Math.abs(d)/recommande),motifRequis:Math.abs(d)>SEUIL_ECART_REMU*recommande};
+}
+function majEcartRem(){
+  const colId=document.getElementById('eq-col')?.value;
+  const format=document.getElementById('eq-format')?.value||'standard';
+  const reco=colId?computeMissionPay(_eqNiveauMap[colId]||null,format):null;
+  const rem=document.getElementById('eq-rem')?.value;
+  const el=document.getElementById('eq-ecart');const bloc=document.getElementById('eq-motif-bloc');
+  if(!el||!bloc)return;
+  const e=ecartRemu(rem,reco);
+  if(!e){el.textContent='';bloc.style.display='none';return;}
+  el.innerHTML='Recommandé <b>'+reco.toLocaleString('fr-FR')+' €</b> · Retenu <b>'+Number(rem).toLocaleString('fr-FR')+' €</b>'+(e.d?' · Écart <b style="color:'+(e.motifRequis?'var(--wa)':'var(--t2)')+'">'+(e.d>0?'+':'')+e.d.toLocaleString('fr-FR')+' € ('+e.pct+' %)</b>':'');
+  bloc.style.display=e.motifRequis?'grid':'none';
 }
 async function chargerEquipe(prestationId,ref){
   const el=document.getElementById('eq-liste');
   if(!el)return;
   const rc={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
-  const canSetRem=(S.role==='admin'||S.role==='sec');
+  const canSetRem=(S.role==='admin'||S.role==='prod'); // 10/09/2026 : la Production fixe la rémunération mission, le secrétariat n'y touche plus (v127)
   try{
-    const data=await sbFetch('prestations_equipe_display?select=id,statut,fonction,notes,remuneration,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId);
-    if(!data||!data.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px 0">Aucun collaborateur affecté.</div>';return;}
+    const voitCouts=['admin','prod','compta','sec'].includes(S.role);
+    const [data,rentabRaw]=await Promise.all([
+      sbFetch('prestations_equipe_display?select=id,statut,fonction,notes,remuneration,montant_recommande,motif_ajustement,motif_detail,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId),
+      voitCouts?sbFetch('v_rentabilite_missions?select=revenu_ht,cout_remunerations,cout_frais&prestation_id=eq.'+prestationId).catch(()=>[]):Promise.resolve([]),
+    ]);
+    // Prix vendu et coût terrain, côte à côte : la Production comprend ce qu'elle engage, sans
+    // pouvoir changer le prix client (réservé au secrétariat / à l'administration, v127).
+    const rt=Array.isArray(rentabRaw)&&rentabRaw[0]?rentabRaw[0]:null;
+    const bandeau=voitCouts?`<div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:8px 10px;margin-bottom:6px;background:var(--s2);border-radius:8px;font-size:11.5px;color:var(--t2)">
+      ${rt?`<span>Prix vendu <b style="color:var(--t1)">${Number(rt.revenu_ht||0).toLocaleString('fr-FR')} € HT</b></span><span>Coût terrain <b style="color:var(--t1)">${(Number(rt.cout_remunerations||0)+Number(rt.cout_frais||0)).toLocaleString('fr-FR')} €</b></span>`:''}
+      <button onclick="historiqueRemuneration('${prestationId}')" style="margin-left:auto;font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Historique des montants</button></div>`:'';
+    if(!data||!data.length){el.innerHTML=bandeau+'<div style="color:var(--t3);font-size:13px;padding:8px 0">Aucun collaborateur affecté.</div>';return;}
     const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
     const iLb={'invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
-    el.innerHTML=data.map(m=>{
+    el.innerHTML=bandeau+data.map(m=>{
       const t=m.collaborateur||{};
       const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||'?';
       const name=esc([t.prenom,t.nom].filter(Boolean).join(' ')||'—');
       const remLbl=m.remuneration?m.remuneration.toLocaleString('fr-FR')+' €':'—';
-      const remLine=canSetRem?`<button onclick="modifierRemunerationMembre('${m.id}','${prestationId}','${ref}',${m.remuneration||0})" style="font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Rémunération : ${remLbl}</button>`
-        :`<span style="font-size:11px;color:var(--t3)">Rémunération : ${remLbl}</span>`;
+      const ec=ecartRemu(m.remuneration,m.montant_recommande!=null?Number(m.montant_recommande):null);
+      const ecartLbl=ec&&ec.d?` <span style="font-size:11px;color:var(--t3)">(recommandé ${Number(m.montant_recommande).toLocaleString('fr-FR')} € · ${ec.d>0?'+':''}${ec.d.toLocaleString('fr-FR')} €${m.motif_ajustement?' · '+esc(MOTIFS_REMU[m.motif_ajustement]||m.motif_ajustement):''})</span>`:'';
+      const remLine=(canSetRem?`<button onclick="modifierRemunerationMembre('${m.id}','${prestationId}','${ref}',${m.remuneration||0},${m.montant_recommande!=null?Number(m.montant_recommande):'null'},'${m.statut}')" style="font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Rémunération : ${remLbl}</button>`
+        :`<span style="font-size:11px;color:var(--t3)">Rémunération : ${remLbl}</span>`)+(voitCouts?ecartLbl:'');
       return`<div style="display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
         <div style="display:flex;align-items:center;gap:10px">
           <div class="av" style="background:${rc[t.role]||'#366BFF'};width:30px;height:30px;font-size:11px;flex-shrink:0">${ini}</div>
@@ -16817,16 +16887,78 @@ async function libererKitPrestation(reservationId,prestationId,ref){
   }catch(e){toast('Erreur lors de la libération.','er');}
 }
 
-function modifierRemunerationMembre(equipeId,prestationId,ref,current){
-  const v=prompt('Rémunération (€) pour ce collaborateur :',current||'');
-  if(v===null)return;
-  const n=v.trim()===''?null:Number(v);
-  if(v.trim()!==''&&(isNaN(n)||n<0)){toast('Montant invalide.','er');return;}
-  sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body:{remuneration:n}}).then(r=>{
-    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Modification impossible.')),'er');return;}
-    toast('Rémunération mise à jour.','ok');
+// La modification d'une rémunération (v127). Une petite fenêtre posée PAR-DESSUS la fiche mission
+// (openModal la remplacerait) : montant recommandé, montant retenu, écart, motif. Baisser un montant
+// déjà accepté ne se fait pas en douce : c'est une nouvelle proposition, que l'opérateur accepte ou
+// refuse — la base le garantit, l'écran l'annonce avant.
+function _svSurcouche(html){
+  const o=document.createElement('div');
+  o.className='sv-surcouche';
+  o.style.cssText='position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  o.innerHTML='<div role="dialog" aria-modal="true" style="width:100%;max-width:440px;max-height:90vh;overflow:auto;background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:20px">'+html+'</div>';
+  o.addEventListener('click',e=>{if(e.target===o)o.remove();});
+  document.body.appendChild(o);
+  return o;
+}
+function modifierRemunerationMembre(equipeId,prestationId,ref,current,recommande,statut){
+  const accepte=statut==='acceptée';
+  const o=_svSurcouche(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">Rémunération mission</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:14px">${recommande!=null?'Tarif recommandé : <b style="color:var(--t1)">'+Number(recommande).toLocaleString('fr-FR')+' €</b> · ':''}Actuel : <b style="color:var(--t1)">${Number(current||0).toLocaleString('fr-FR')} €</b>${accepte?' · <span style="color:var(--ok)">accepté par l\'opérateur</span>':''}</div>
+    <label style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Montant retenu (€)</label>
+    <input id="rm-montant" type="number" min="0" class="l-inp" style="height:38px;margin:4px 0 6px" value="${current||''}">
+    <div id="rm-ecart" style="font-size:11.5px;color:var(--t3);min-height:16px"></div>
+    <div id="rm-motif-bloc" style="display:none;flex-direction:column;gap:8px;margin-top:8px">
+      <select id="rm-motif" class="l-inp" style="height:36px"><option value="">— Motif de l'ajustement —</option>${Object.entries(MOTIFS_REMU).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+      <input id="rm-detail" type="text" class="l-inp" placeholder="Précision (facultatif)" style="height:36px">
+    </div>
+    <div id="rm-baisse" style="display:none;margin-top:10px;padding:10px;border-radius:8px;background:rgba(245,165,36,.12);color:var(--wa);font-size:12px">L'opérateur a accepté ${Number(current||0).toLocaleString('fr-FR')} €. Baisser ce montant envoie une <b>nouvelle proposition</b> : il devra l'accepter à nouveau, ou la refuser.</div>
+    <div id="rm-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:8px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
+      <button class="btn bg2 bs" data-rm="annuler">Annuler</button>
+      <button class="btn bp bs" data-rm="valider">Enregistrer</button>
+    </div>`);
+  const maj=()=>{
+    const v=o.querySelector('#rm-montant').value;
+    const e=ecartRemu(v,recommande!=null?Number(recommande):null);
+    o.querySelector('#rm-ecart').innerHTML=e&&e.d?'Écart avec le recommandé : <b>'+(e.d>0?'+':'')+e.d.toLocaleString('fr-FR')+' € ('+e.pct+' %)</b>':'';
+    o.querySelector('#rm-motif-bloc').style.display=e&&e.motifRequis?'flex':'none';
+    o.querySelector('#rm-baisse').style.display=accepte&&v!==''&&Number(v)<Number(current||0)?'block':'none';
+  };
+  o.querySelector('#rm-montant').addEventListener('input',maj);maj();
+  o.querySelector('[data-rm="annuler"]').onclick=()=>o.remove();
+  o.querySelector('[data-rm="valider"]').onclick=async()=>{
+    const v=o.querySelector('#rm-montant').value;
+    const n=v.trim()===''?null:Number(v);
+    const errEl=o.querySelector('#rm-err');
+    if(v.trim()!==''&&(isNaN(n)||n<0)){errEl.textContent='Montant invalide.';return;}
+    const e=ecartRemu(v,recommande!=null?Number(recommande):null);
+    const motif=o.querySelector('#rm-motif').value||null;
+    if(e&&e.motifRequis&&!motif){errEl.textContent='Écart de '+e.pct+' % : indique le motif de l\'ajustement.';return;}
+    const r=await sbFetch('rpc/modifier_remuneration_mission',{method:'POST',body:{p_equipe_id:equipeId,p_montant:n,p_montant_recommande:recommande,p_motif:e&&e.d?motif:null,p_motif_detail:o.querySelector('#rm-detail').value||null}});
+    if(sbErr(r)){errEl.textContent=msgErreur(r,'Modification impossible.');return;}
+    o.remove();
+    toast(r&&r.nouvelle_proposition?'Nouvelle proposition envoyée à l\'opérateur.':'Rémunération mise à jour.','ok');
     chargerEquipe(prestationId,ref);
-  }).catch(()=>toast('Erreur lors de la modification.','er'));
+  };
+}
+async function historiqueRemuneration(prestationId){
+  const o=_svSurcouche('<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:10px">Historique des montants</div><div id="hr-liste" style="font-size:12.5px;color:var(--t3)">Chargement…</div><div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn bg2 bs" data-hr="fermer">Fermer</button></div>');
+  o.querySelector('[data-hr="fermer"]').onclick=()=>o.remove();
+  const r=await sbFetch('rpc/historique_remuneration',{method:'POST',body:{p_prestation_id:prestationId}});
+  const el=o.querySelector('#hr-liste');
+  if(sbErr(r)){el.textContent=msgErreur(r,'Historique indisponible.');return;}
+  const lignes=Array.isArray(r)?r:[];
+  if(!lignes.length){el.textContent='Aucun montant fixé pour cette mission.';return;}
+  const ROLE_LB={prod:'Responsable Production',admin:'Administration',sec:'Secrétariat',compta:'Comptabilité'};
+  el.innerHTML=lignes.map(l=>{
+    const d=new Date(l.le).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+    const montant=l.avant==null?(l.apres!=null?Number(l.apres).toLocaleString('fr-FR')+' €':'—'):Number(l.avant).toLocaleString('fr-FR')+' € → '+(l.apres!=null?Number(l.apres).toLocaleString('fr-FR')+' €':'—');
+    return`<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+      <div style="color:var(--t1)"><b>${d}</b> — ${esc(l.collaborateur||'Opérateur')} : ${montant}${l.montant_recommande!=null?' <span style="color:var(--t3)">(recommandé '+Number(l.montant_recommande).toLocaleString('fr-FR')+' €)</span>':''}</div>
+      <div>Modifié par ${esc(l.par||'—')}${l.role_par?' · '+esc(ROLE_LB[l.role_par]||l.role_par):''}${l.motif?' · Motif : '+esc(MOTIFS_REMU[l.motif]||l.motif):''}${l.motif_detail?' ('+esc(l.motif_detail)+')':''}${l.statut==='invitation_envoyée'&&l.avant!=null?' · nouvelle proposition':''}</div>
+    </div>`;
+  }).join('');
 }
 async function ajouterMembreEquipe(prestationId,ref){
   const err=document.getElementById('eq-err');
@@ -16921,7 +17053,11 @@ async function ajouterMembreEquipe(prestationId,ref){
         }
       }
     }catch(e){}
-    const equipeBody={p_prestation_id:prestationId,p_collaborateur_id:colId,p_fonction:fonc||null,p_notes:notes||null,p_remuneration:rem?Number(rem):null,p_heure_rdv:rdv||null};
+    const motifRem=document.getElementById('eq-motif')?.value||null;
+    const ecartAjout=ecartRemu(rem,autoPay);
+    if(ecartAjout&&ecartAjout.motifRequis&&!motifRem){err.textContent='Écart de '+ecartAjout.pct+' % avec le tarif recommandé : indique le motif de l\'ajustement.';if(btn)btn.disabled=false;return;}
+    const equipeBody={p_prestation_id:prestationId,p_collaborateur_id:colId,p_fonction:fonc||null,p_notes:notes||null,p_remuneration:rem?Number(rem):null,p_heure_rdv:rdv||null,
+      p_montant_recommande:autoPay,p_motif_ajustement:ecartAjout&&ecartAjout.d?motifRem:null,p_motif_detail:document.getElementById('eq-motif-detail')?.value||null};
     // Snapshot du calcul (niveau/base/coefficient) uniquement quand le montant final
     // correspond bien à la suggestion automatique — un montant ajusté à la main par
     // admin/sec (ou format "exceptionnelle") n'a pas de règle figée à historiser.
