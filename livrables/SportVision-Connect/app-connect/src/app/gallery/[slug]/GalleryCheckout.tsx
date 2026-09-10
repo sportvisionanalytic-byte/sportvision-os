@@ -136,11 +136,12 @@ export function GalleryCheckout({
     document.addEventListener("keydown", clavier);
     return () => {
       document.removeEventListener("keydown", clavier);
-      // Le bouton qui a ouvert la fenetre n'existe souvent plus : la barre de selection est retiree
-      // pendant le paiement et reconstruite a la fermeture — APRES ce nettoyage. On attend donc
-      // qu'elle revienne, puis on rend le focus a son bouton (marque data-ouvre-paiement).
+      // Le bouton qui a ouvert la fenetre n'existe plus : la barre de selection est retiree des
+      // l'ouverture, avant meme cet effet — `avant` vaut alors <body> — et reconstruite a la
+      // fermeture. On rend donc le focus au bouton de la barre reconstruite (data-ouvre-paiement).
       setTimeout(() => {
-        const retour = avant?.isConnected ? avant : document.querySelector<HTMLElement>("[data-ouvre-paiement]");
+        const utile = avant && avant !== document.body && avant.isConnected;
+        const retour = utile ? avant : document.querySelector<HTMLElement>("[data-ouvre-paiement]");
         retour?.focus();
       }, 0);
     };
