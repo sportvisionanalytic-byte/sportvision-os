@@ -122,6 +122,11 @@ begin
 end $$;
 
 -- ── Avant acceptation : la Production modifie librement ──
+-- Le seuil de 15 % (validé par Fouka le 10/09) : dans les deux sens, strict, sans validation Admin.
+select pg_temp.essai('passer à 65 € sans motif (reco 55 €, +18 %) — production', 'a1a1a1a1-0000-0000-0000-000000000001',
+  'select modifier_remuneration_mission((select v from memo where cle = ''pe'')::uuid, 65, 55, null, null)', 'refusé');
+select pg_temp.essai('passer à 45 € sans motif (reco 55 €, −18 %) — production', 'a1a1a1a1-0000-0000-0000-000000000001',
+  'select modifier_remuneration_mission((select v from memo where cle = ''pe'')::uuid, 45, 55, null, null)', 'refusé');
 select pg_temp.essai('baisser à 60 € avant acceptation — production', 'a1a1a1a1-0000-0000-0000-000000000001',
   'select modifier_remuneration_mission((select v from memo where cle = ''pe'')::uuid, 60, 55, null, null)', 'autorisé');
 select pg_temp.essai('modifier la rémunération — secrétariat', 'a1a1a1a1-0000-0000-0000-000000000002',

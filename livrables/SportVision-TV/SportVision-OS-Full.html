@@ -7100,7 +7100,7 @@ async function chargerRentabiliteClubs(mois){
         <td style="padding:6px">${eur(d.revenus_total)}</td><td style="padding:6px">${d.presences||0}</td>
         <td style="padding:6px">${eur(d.remunerations)}</td><td style="padding:6px">${eur(d.deplacements)}</td>
         <td style="padding:6px">${eur(d.cout_production)}</td>
-        <td style="padding:6px;font-weight:700;color:${Number(d.marge_estimee)<0?'var(--er)':'var(--t1)'}">${eur(d.marge_estimee)}</td></tr>`;}).join('')}</tbody>
+        <td style="padding:6px;font-weight:700;color:${Number(d.marge_estimee)<0?'var(--er)':alerteMarge(Number(d.revenus_total),Number(d.cout_production))?.niv==='faible'?'var(--wa)':'var(--t1)'}">${eur(d.marge_estimee)}</td></tr>`;}).join('')}</tbody>
     </table></div></div>`;
 }
 
@@ -7128,6 +7128,7 @@ async function chargerRentabiliteClub(clubId,mois){
     ${ligne('Déplacements',eur(r.deplacements))}
     ${ligne('Coût production total',eur(r.cout_production))}
     ${ligne('Marge opérationnelle estimée',eur(r.marge_estimee),true)}
+    ${(a=>a&&a.niv!=='ok'?`<div style="margin-top:6px;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--t3)">${badgeMarge(a)}<span>Pour information : rien n'est bloqué.</span></div>`:'')(alerteMarge(Number(r.revenus_total),Number(r.cout_production)))}
   </div>`;
 }
 
@@ -16771,6 +16772,21 @@ function majSuggestionRem(){
 // employé : c'est une rémunération de mission.
 const MOTIFS_REMU={match_eloigne:'Match éloigné',grande_amplitude:'Grande amplitude',urgence:'Urgence',double_couverture:'Double couverture',operateur_senior:'Opérateur senior',autre:'Autre'};
 const SEUIL_ECART_REMU=0.15;
+// Marge d'une mission : une alerte, jamais un blocage (décision de Fouka, 10/09/2026). Une mission
+// peu rentable, voire à perte, reste affectable et payable : partenariat, événement important,
+// urgence, relation club. En dessous de 20 % du prix vendu, la marge est signalée « faible ».
+const SEUIL_MARGE_FAIBLE=0.20;
+function alerteMarge(prix,cout){
+  if(!(prix>0))return null;
+  const marge=prix-cout,pct=Math.round(100*marge/prix);
+  const niv=marge<0?'negative':marge<SEUIL_MARGE_FAIBLE*prix?'faible':'ok';
+  return{marge,pct,niv};
+}
+function badgeMarge(a){
+  if(!a||a.niv==='ok')return'';
+  const neg=a.niv==='negative';
+  return`<span title="Information pour le pilotage : n'empêche ni l'affectation ni le paiement." style="padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:${neg?'rgba(255,80,80,.12)':'rgba(255,176,32,.12)'};color:${neg?'var(--er)':'var(--wa)'}">${neg?'⚠ Marge négative':'Marge faible'}</span>`;
+}
 function ecartRemu(retenu,recommande){
   if(recommande==null||!(recommande>0)||retenu==null||retenu==='')return null;
   const d=Number(retenu)-recommande;
@@ -16802,8 +16818,16 @@ async function chargerEquipe(prestationId,ref){
     // Prix vendu et coût terrain, côte à côte : la Production comprend ce qu'elle engage, sans
     // pouvoir changer le prix client (réservé au secrétariat / à l'administration, v127).
     const rt=Array.isArray(rentabRaw)&&rentabRaw[0]?rentabRaw[0]:null;
+    // Coût prévu : les affectations en cours (invitées, en attente, acceptées) et les frais validés.
+    // La vue de rentabilité ne compte que les acceptées ; la Production a besoin de voir la marge au
+    // moment où elle fixe les montants, pas après les réponses des opérateurs.
+    const enCours=(Array.isArray(data)?data:[]).filter(x=>['invitation_envoyée','en_attente','acceptée'].includes(x.statut));
+    const coutPrevu=enCours.reduce((s,x)=>s+Number(x.remuneration||0),0)+Number(rt?.cout_frais||0);
+    const prixVendu=Number(rt?.revenu_ht||0);
+    const am=alerteMarge(prixVendu,coutPrevu);
+    const eurM=x=>Number(x||0).toLocaleString('fr-FR',{maximumFractionDigits:2})+' €';
     const bandeau=voitCouts?`<div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:8px 10px;margin-bottom:6px;background:var(--s2);border-radius:8px;font-size:11.5px;color:var(--t2)">
-      ${rt?`<span>Prix vendu <b style="color:var(--t1)">${Number(rt.revenu_ht||0).toLocaleString('fr-FR')} € HT</b></span><span>Coût terrain <b style="color:var(--t1)">${(Number(rt.cout_remunerations||0)+Number(rt.cout_frais||0)).toLocaleString('fr-FR')} €</b></span>`:''}
+      ${rt?`<span>Prix vendu <b style="color:var(--t1)">${prixVendu>0?eurM(prixVendu)+' HT':'non facturée à l\'unité'}</b></span><span>Coût terrain prévu <b style="color:var(--t1)">${eurM(coutPrevu)}</b></span>${am?`<span>Marge prévue <b style="color:${am.niv==='negative'?'var(--er)':am.niv==='faible'?'var(--wa)':'var(--t1)'}">${eurM(am.marge)} (${am.pct} %)</b></span>${badgeMarge(am)}`:''}`:''}
       <button onclick="historiqueRemuneration('${prestationId}')" style="margin-left:auto;font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Historique des montants</button></div>`:'';
     if(!data||!data.length){el.innerHTML=bandeau+'<div style="color:var(--t3);font-size:13px;padding:8px 0">Aucun collaborateur affecté.</div>';return;}
     const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
