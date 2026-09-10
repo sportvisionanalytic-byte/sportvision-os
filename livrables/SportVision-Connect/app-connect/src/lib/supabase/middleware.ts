@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { getSupabasePublicEnv } from "./env";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Rafraîchit le cookie de session Supabase sur chaque requête et protège les routes
@@ -38,10 +39,11 @@ const PUBLIC_PATHS = [
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const { url, anonKey } = getSupabasePublicEnv();
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),

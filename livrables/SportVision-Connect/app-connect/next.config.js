@@ -21,6 +21,15 @@
 // déploiement Netlify), "development" uniquement pour `next dev`.
 const SCRIPT_SRC = process.env.NODE_ENV === "production" ? "'self' 'unsafe-inline'" : "'self' 'unsafe-inline' 'unsafe-eval'";
 
+// Dérivé de NEXT_PUBLIC_SUPABASE_URL plutôt que codé en dur : un environnement qui pointe
+// vers un autre projet Supabase (Review, notamment) doit voir sa CSP suivre automatiquement,
+// sinon le navigateur bloque silencieusement Storage/Realtime même avec les bonnes variables
+// d'environnement (le piège documenté juste au-dessus, avec media-src et connect-src wss://,
+// se reproduirait à l'identique sur un projet différent si cette valeur restait figée).
+const SUPABASE_HOST = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host
+  : "";
+
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -40,7 +49,7 @@ const SECURITY_HEADERS = [
       // <video> de « Mes contenus » (joueur, ContentGallery.tsx) ne pouvait lire aucune vidéo
       // Storage. Latent tant que club_media était vide ; la même omission venait de casser les
       // vidéos du Centre de formation de l'OS.
-      `default-src 'self'; script-src ${SCRIPT_SRC}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; media-src 'self' blob: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'`,
+      `default-src 'self'; script-src ${SCRIPT_SRC}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:${SUPABASE_HOST ? ` https://${SUPABASE_HOST}` : ""}; media-src 'self' blob:${SUPABASE_HOST ? ` https://${SUPABASE_HOST}` : ""}; connect-src 'self'${SUPABASE_HOST ? ` https://${SUPABASE_HOST} wss://${SUPABASE_HOST}` : ""}; frame-src 'none'; object-src 'none'; base-uri 'self'`,
   },
 ];
 

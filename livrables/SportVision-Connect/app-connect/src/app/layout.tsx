@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Sora, DM_Sans, IBM_Plex_Mono } from "next/font/google";
+import { ReviewModeBanner } from "@/components/review/ReviewModeBanner";
 import "./globals.css";
 
 const sora = Sora({
@@ -80,7 +81,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <ReviewModeBanner />
+        {children}
+      </body>
     </html>
   );
 }
