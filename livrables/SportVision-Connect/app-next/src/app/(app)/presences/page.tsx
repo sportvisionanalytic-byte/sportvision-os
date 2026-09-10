@@ -24,6 +24,7 @@ import {
   type CoverageWish,
 } from "@/lib/data/club/coverageWishes";
 import { RequestPresenceModal } from "@/components/presences/RequestPresenceModal";
+import { ROLES_DEMANDE_PRESENCE } from "@/lib/data/club/coverageWishes";
 
 // /presences — présences terrain réelles (table club_presences, migration-connect-v17-club-
 // presences.sql, EN ATTENTE D'EXÉCUTION — jusque-là, liste honnêtement vide). Lecture seule :
@@ -45,13 +46,7 @@ export default function PresencesPage() {
 // — « le CM choisit librement les matchs/entraînements où SportVision sera présent » — et il était
 // le seul à ne pas pouvoir en demander une. Huitième fois aujourd'hui qu'un droit déduit du rôle
 // affiché oublie celui qui exploite le club. Trouvé en ouvrant l'écran.
-const CAN_REQUEST_ROLES = new Set([
-  "admin",
-  "president",
-  "communication_manager",
-  "sports_director",
-  "external_cm",
-]);
+const CAN_REQUEST_ROLES = ROLES_DEMANDE_PRESENCE;
 
 function PresencesScreen() {
   const { ctx } = useSession();

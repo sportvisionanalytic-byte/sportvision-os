@@ -11,7 +11,8 @@
 // Avant ce fichier, le geste n'existait que dans la vue Liste, sous le libellé « SportVision sera
 // présent », et sans Communication ni Autre.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { useSession } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/client";
@@ -21,7 +22,9 @@ import {
   TYPE_COUVERTURE_LABELS,
   type TypeCouverture,
 } from "@/lib/data/club/calendar";
-import { cancelCoverageWish, createCoverageWishes } from "@/lib/data/club/coverageWishes";
+import { cancelCoverageWish, createCoverageWishes, ROLES_DEMANDE_PRESENCE } from "@/lib/data/club/coverageWishes";
+import { canAccess } from "@/lib/permissions";
+import { RequestPresenceModal } from "@/components/presences/RequestPresenceModal";
 import type { CalendarEvent } from "@/lib/types/calendar";
 
 type ChoixCouverture = TypeCouverture | "communication" | "autre";
@@ -58,7 +61,12 @@ export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; on
   const [ouvert, setOuvert] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [demande, setDemande] = useState(false);
+  const envoyee = useRef(false);
   const peutDecider = ctx.membership.role === "external_cm";
+  // Le club (président, admin, communication, direction sportive) ne décide pas : il DEMANDE.
+  // Même modale que la page Présences, préremplie avec cet événement (refonte du 10/09/2026).
+  const peutDemander = !peutDecider && ROLES_DEMANDE_PRESENCE.has(ctx.membership.role) && canAccess(ctx, "presences");
   const cible = cibleDemande(evenement.id);
 
   async function agir(action: () => Promise<unknown>, message: string) {
@@ -138,7 +146,43 @@ export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; on
     );
   }
 
-  if (!peutDecider) return null;
+  if (!peutDecider) {
+    if (!peutDemander || !cible) return null;
+    return (
+      <span className="mt-1 block" onClick={stop}>
+        <Button variant="secondary" className="h-9 w-full px-3 text-[12.5px] sm:w-auto" onClick={() => setDemande(true)}>
+          Demander une présence SportVision
+        </Button>
+        {/* Portail : ouverte depuis une carte du calendrier, la modale ne doit pas hériter du cadre
+            d'un parent animé (un `transform` ferait de lui le repère de `position: fixed`). */}
+        {demande && createPortal(
+          <RequestPresenceModal
+            supabase={createClient()}
+            clubId={ctx.organization.id}
+            evenement={{
+              ...cible,
+              titre: evenement.title,
+              startsAt: evenement.startsAt,
+              allDay: evenement.allDay,
+              kind: evenement.kind,
+              teamName: evenement.teamName,
+              location: evenement.location,
+            }}
+            onClose={() => {
+              setDemande(false);
+              // Recharger à la fermeture, pas à l'envoi : le calendrier rechargé remplacerait ce
+              // composant avant que le club lise « Demande envoyée ».
+              if (envoyee.current) onFait();
+            }}
+            onSubmitted={() => {
+              envoyee.current = true;
+            }}
+          />,
+          document.body,
+        )}
+      </span>
+    );
+  }
 
   if (!ouvert) {
     return (

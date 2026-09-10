@@ -20,6 +20,17 @@ export type CoverageWishStatus =
   | "completed"
   | "cancelled";
 
+/** Qui, côté club, peut demander une présence SportVision : la page Présences et le calendrier
+ *  lisent la même liste (la base, elle, décide dans create_coverage_wishes). `external_cm` :
+ *  voir le commentaire de la page Présences. */
+export const ROLES_DEMANDE_PRESENCE: ReadonlySet<string> = new Set([
+  "admin",
+  "president",
+  "communication_manager",
+  "sports_director",
+  "external_cm",
+]);
+
 export const COVERAGE_TYPE_LABELS: Record<CoverageType, string> = {
   photo: "Photo",
   video: "Vidéo",
