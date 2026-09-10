@@ -1,0 +1,28 @@
+-- ============================================================================
+-- migration-audit-reconciliation-cm-pool-clubplus-general.sql
+-- Audit préparation environnement Review (10/09/2026) — reconstruction schéma
+-- ============================================================================
+-- CONTEXTE : en préparant le test de rejeu des migrations sur un nouveau
+-- projet Supabase Review (reconstruction d'une base neuve), un audit a trouvé
+-- que migration-audit-final-schema-reconciliation.sql (29/08/2026) utilise la
+-- colonne profiles.cm_pool_clubplus_general dans la fonction
+-- claim_club_request() sans jamais la créer — ni dans ce fichier, ni dans
+-- aucun autre fichier migration-*.sql versionné du dépôt.
+--
+-- Vérification faite en base réelle (Supabase Management API, requête sur
+-- information_schema.columns) : LA COLONNE EXISTE EN PRODUCTION
+-- (boolean, default false, not null), correctement en place. Même dérive
+-- base/code que celle déjà documentée le 29/08 : objet créé directement
+-- (SQL Editor ou script non committé) sans laisser de fichier migration.
+--
+-- RISQUE que ce fichier corrige : sur une base reconstruite depuis les
+-- migrations versionnées de ce dépôt (environnement Review, restauration),
+-- claim_club_request() échouerait à l'exécution (colonne inexistante) dès
+-- qu'un CM tenterait de prendre en charge une demande du pool Club+ général.
+--
+-- Ce fichier est un NO-OP sur la base de production actuelle (la colonne y
+-- est déjà, vérifié avant écriture) : il sert uniquement à rendre l'état
+-- actuel de la base reproductible depuis les migrations versionnées.
+-- ============================================================================
+
+alter table profiles add column if not exists cm_pool_clubplus_general boolean not null default false;
