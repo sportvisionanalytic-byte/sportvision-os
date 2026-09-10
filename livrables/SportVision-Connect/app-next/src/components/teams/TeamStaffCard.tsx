@@ -21,7 +21,7 @@ import { ROLE_LABELS } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { InviteUserModal } from "@/components/users/InviteUserModal";
+import { InviterEncadrantModal } from "@/components/teams/InviterEncadrantModal";
 import {
   etatEncadrement,
   libelleEtat,
@@ -29,7 +29,7 @@ import {
   perimetresApproximatifs,
   tonEtat,
 } from "@/lib/teams/encadrement";
-import { addTeamToClubMember, inviteClubMember, removeTeamFromClubMember } from "@/lib/data/club/users";
+import { addTeamToClubMember, removeTeamFromClubMember } from "@/lib/data/club/users";
 import { createClient } from "@/lib/supabase/client";
 
 const ROLES_INVITABLES = ["coach", "team_manager", "sports_director"] as const;
@@ -87,30 +87,6 @@ export function TeamStaffCard({ clubId, teamName, headCoachName, members, canMan
       })
       .catch((e) => setErreur(e instanceof Error ? e.message : "Action impossible."))
       .finally(() => setEnCours(false));
-  }
-
-  function inviter(input: {
-    email: string;
-    firstName: string;
-    lastName: string;
-    role: (typeof ROLES_INVITABLES)[number] | string;
-    team?: string;
-    mode?: "email" | "direct";
-  }) {
-    const supabase = createClient();
-    return inviteClubMember(supabase, clubId, {
-      ...input,
-      role: input.role as OrgUser["role"],
-      team: teamName,
-    }).then(async (resultat) => {
-      // Déjà membre du club : `clubplus-invite` s'arrête là sans toucher à `teams`. Sans ce
-      // rattrapage, l'écran annoncerait une invitation partie et l'équipe resterait sans coach.
-      if (resultat.alreadyMember && resultat.membershipId) {
-        await addTeamToClubMember(supabase, resultat.membershipId, teamName);
-      }
-      onChanged();
-      return resultat;
-    });
   }
 
   return (
@@ -233,8 +209,9 @@ export function TeamStaffCard({ clubId, teamName, headCoachName, members, canMan
 
           <p className="flex items-start gap-1.5 text-[11.5px] leading-relaxed text-text-faint">
             <Mail className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden />
-            Le coach invité arrive directement dans {teamName} : son club, son équipe et son rôle
-            sont déjà connus, rien ne lui est redemandé.
+            Aucun compte n&apos;est créé pour lui : il activera le sien depuis le lien, et arrivera
+            directement dans {teamName} — son club, son équipe et son rôle sont portés par
+            l&apos;invitation.
           </p>
         </div>
       )}
@@ -242,13 +219,11 @@ export function TeamStaffCard({ clubId, teamName, headCoachName, members, canMan
       {erreur && <p className="mt-3 text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
 
       {inviteOuvert && (
-        <InviteUserModal
-          roles={[...ROLES_INVITABLES]}
-          allowDirectMode
-          lockedTeam={teamName}
-          title={`Inviter un encadrant — ${teamName}`}
+        <InviterEncadrantModal
+          clubId={clubId}
+          teamName={teamName}
           onClose={() => setInviteOuvert(false)}
-          onInvite={inviter}
+          onInvited={onChanged}
         />
       )}
     </Card>
