@@ -12,6 +12,7 @@ import {
   fetchClubInvitations,
   peutOpererClub,
   revoquerInvitation,
+  envoyerInvitationParEmail,
   buildInvitationUrl,
   messageErreurInvitation,
   STATUT_INVITATION_LABEL,
@@ -246,6 +247,25 @@ export default function UsersPage() {
               <Badge tone={STATUT_INVITATION_TONE[inv.statut]}>{STATUT_INVITATION_LABEL[inv.statut]}</Badge>
               {isAdmin && (
                 <div className="flex flex-none items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    className="h-8 px-3 text-[12px]"
+                    onClick={() => {
+                      setErreurAction(null);
+                      envoyerInvitationParEmail(createClient(), inv.id)
+                        .then((adresse) => {
+                          showToast(`Invitation envoyée à ${adresse}.`);
+                          rechargerInvitations();
+                        })
+                        .catch((e) =>
+                          setErreurAction(
+                            messageErreurInvitation(e, "Envoi impossible. Copiez le lien à la place."),
+                          ),
+                        );
+                    }}
+                  >
+                    {inv.statut === "envoyee" ? "Renvoyer" : "Envoyer"}
+                  </Button>
                   <Button
                     variant="secondary"
                     className="h-8 px-3 text-[12px]"

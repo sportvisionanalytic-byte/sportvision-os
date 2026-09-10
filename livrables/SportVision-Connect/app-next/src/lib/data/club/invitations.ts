@@ -160,6 +160,39 @@ export async function marquerInvitationEnvoyee(supabase: SupabaseClient, id: str
   return toInvitation(data as InvitationRow);
 }
 
+/**
+ * Envoie l'invitation par e-mail (edge function `clubplus-envoyer-invitation`).
+ *
+ * Le canal ne change pas l'invitation : c'est le MÊME jeton que celui du bouton « Copier le
+ * lien », la même expiration, la même révocation. Cliquer sur les deux boutons n'émet pas deux
+ * invitations.
+ *
+ * La fonction marque elle-même l'invitation comme envoyée, et seulement si l'e-mail est
+ * réellement parti : une invitation affichée comme envoyée alors que rien n'est parti est pire
+ * que pas d'invitation du tout, puisque personne ne pense à relancer.
+ */
+export async function envoyerInvitationParEmail(supabase: SupabaseClient, id: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("clubplus-envoyer-invitation", {
+    body: { invitation_id: id },
+  });
+  if (error) {
+    // `functions.invoke` réduit toute réponse non-2xx au message générique « non-2xx status
+    // code » : le vrai message reste dans la Response brute. Même garde que dans users.ts.
+    const contexte = (error as { context?: unknown }).context;
+    if (contexte instanceof Response) {
+      try {
+        const corps = await contexte.clone().json();
+        if (corps?.error) throw new Error(corps.error);
+      } catch (e) {
+        if (e instanceof Error && e.message && !/JSON/i.test(e.message)) throw e;
+      }
+    }
+    throw new Error("Envoi impossible pour le moment.");
+  }
+  if (data?.error) throw new Error(data.error);
+  return (data?.email as string) ?? "";
+}
+
 export async function revoquerInvitation(supabase: SupabaseClient, id: string): Promise<InvitationClub> {
   const { data, error } = await supabase.rpc("revoquer_invitation_club", { p_id: id });
   if (error) throw error;

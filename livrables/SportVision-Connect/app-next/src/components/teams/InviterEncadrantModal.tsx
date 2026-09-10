@@ -11,14 +11,14 @@
 // créé par le club serait une identité de plus pour quelqu'un qui est peut-être déjà parent d'un
 // joueur et acheteur Connect. Une personne, un compte, plusieurs rôles.
 //
-// ── Le lien, pas l'e-mail, pour l'instant ──
-// Le canal d'envoi par e-mail n'est pas encore branché sur ce nouveau modèle. Plutôt que d'afficher
-// un bouton « Envoyer » qui n'enverrait rien, on donne le lien à copier — le CM le transmet par le
-// canal qu'il utilise déjà avec ses coachs. Le jeton sera le même quand l'e-mail arrivera : c'est
-// la même invitation, distribuée autrement.
+// ── Deux canaux, une seule invitation ──
+// « Envoyer par e-mail » et « Copier le lien » distribuent le MÊME jeton (§30). Cliquer sur les
+// deux n'émet pas deux invitations, et révoquer révoque les deux. L'e-mail part par
+// `clubplus-envoyer-invitation`, qui ne marque l'invitation comme envoyée que si elle est
+// réellement partie.
 
 import { useRef, useState } from "react";
-import { Check, Copy, X } from "lucide-react";
+import { Check, Copy, Mail, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useModalA11y } from "@/lib/useModalA11y";
@@ -26,6 +26,7 @@ import { TeamSelector } from "@/components/ui/TeamSelector";
 import { createClient } from "@/lib/supabase/client";
 import {
   buildInvitationUrl,
+  envoyerInvitationParEmail,
   marquerInvitationEnvoyee,
   messageErreurInvitation,
   preparerInvitation,
@@ -63,6 +64,7 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
   const [erreur, setErreur] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<InvitationClub | null>(null);
   const [copie, setCopie] = useState(false);
+  const [envoye, setEnvoye] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useModalA11y(ref, onClose);
 
@@ -105,6 +107,19 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
     });
   }
 
+  function envoyer() {
+    if (!invitation) return;
+    setOccupe(true);
+    setErreur(null);
+    envoyerInvitationParEmail(createClient(), invitation.id)
+      .then(() => {
+        setEnvoye(true);
+        onInvited();
+      })
+      .catch((e) => setErreur(messageErreurInvitation(e, "Envoi impossible. Copiez le lien à la place.")))
+      .finally(() => setOccupe(false));
+  }
+
   if (invitation) {
     const url = buildInvitationUrl(invitation.token);
     return (
@@ -117,10 +132,17 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
         <div className="break-all rounded-xl bg-surface-sunken px-3.5 py-3 text-[12px] font-mono text-text-soft">
           {url}
         </div>
+        {/* Deux canaux, une seule invitation : le bouton e-mail et le bouton « copier » portent
+            le même jeton. Cliquer sur les deux n'en crée pas deux. */}
+        <Button onClick={envoyer} disabled={occupe || envoye} loading={occupe} className="gap-2">
+          <Mail className="h-4 w-4" aria-hidden />
+          {envoye ? `Envoyé à ${invitation.email}` : "Envoyer par e-mail"}
+        </Button>
         <Button variant="secondary" onClick={copier} className="gap-2">
           {copie ? <Check className="h-4 w-4" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
           {copie ? "Lien copié" : "Copier le lien"}
         </Button>
+        {erreur && <p className="text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
         <p className="text-[11.5px] text-text-faint">
           Valable 30 jours. Vous pourrez le révoquer depuis « Coachs &amp; dirigeants ».
         </p>
