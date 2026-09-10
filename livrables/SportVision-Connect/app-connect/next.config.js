@@ -35,7 +35,12 @@ const SECURITY_HEADERS = [
       // pas automatiquement son équivalent wss://). Trouvé en testant en réel un compte Connect
       // tout neuf (audit du 30/08/2026) : erreur console "violates ... connect-src" + pageerror
       // "cannot add postgres_changes callbacks ... after subscribe()" dès l'arrivée sur le dashboard.
-      `default-src 'self'; script-src ${SCRIPT_SRC}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'`,
+      //
+      // media-src ajouté le 10/09/2026 : sans lui, media-src retombe sur default-src 'self' et le
+      // <video> de « Mes contenus » (joueur, ContentGallery.tsx) ne pouvait lire aucune vidéo
+      // Storage. Latent tant que club_media était vide ; la même omission venait de casser les
+      // vidéos du Centre de formation de l'OS.
+      `default-src 'self'; script-src ${SCRIPT_SRC}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; media-src 'self' blob: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'`,
   },
 ];
 
