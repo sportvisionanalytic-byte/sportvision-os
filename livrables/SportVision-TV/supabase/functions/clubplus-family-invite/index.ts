@@ -8,26 +8,22 @@
 // checkout, dispatch-notifications, create-guest-rdv, create-guest-request).
 
 // Supabase Edge Function — clubplus-family-invite
-// Équivalent de clubplus-invite (module Utilisateurs, dirigeants) mais pour
-// le module Espace Joueur & Famille : invite un joueur ou un parent par
-// e-mail. Une fonction Postgres ne peut pas appeler l'API Admin de Supabase
-// Auth (inviteUserByEmail) — c'est pourquoi la création du compte auth.users
-// vit ici, en Edge Function, et pas dans une RPC SQL.
+// Invite un joueur ou un parent sur l'espace Connect.
 //
-// Ce que cette fonction NE fait PAS : elle ne crée ni player_profiles, ni
-// parent_profiles, ni membership_requests. Elle crée seulement le compte
-// auth.users (ou réutilise l'existant) et une ligne player_invitations /
-// parent_invitations. C'est l'invité lui-même qui, une fois son mot de passe
-// défini et connecté, appelle accept_player_invitation / accept_parent_invitation
-// (migration-clubplus-v14.sql) pour créer sa fiche et sa demande d'adhésion.
+// ── Ce qu'elle fait, depuis le 10/09/2026 ──
+// Elle enregistre une invitation (`player_invitations` / `parent_invitations`) et écrit à la
+// personne. Elle ne crée AUCUN compte : c'est l'invité qui prend possession du sien, et il
+// retrouve son invitation parce qu'elle porte son adresse (`lister_mes_invitations`, v103).
+// L'adresse EST le jeton — une invitation ne se transfère pas.
 //
-// Sécurité : l'appelant doit être admin ACTIF du club (toute équipe), ou
-// coach/resp_equipe ACTIF restreint aux équipes listées dans son propre
-// club_members.teams (jamais de confiance dans un rôle/équipe envoyé par le
-// client — vérifié ici via une requête service-role sur club_members).
-// Un CM délégué (cm_agency_club_access, migration-connect-v80) a aussi accès
-// complet (toute équipe, comme un admin) — décision Fouka du 22/08/2026,
-// même niveau que is_club_admin()/is_team_educateur() étendus côté SQL
+// Elle ne crée pas davantage de `player_profiles`, `parent_profiles` ni `membership_requests` :
+// c'est l'acceptation qui s'en charge (`accepter_invitation_joueur` / `accept_parent_invitation`),
+// en respectant le mode de validation du club.
+//
+// ── Sécurité ──
+// Une seule autorité, celle de la base : `peut_operer_club` (administrateurs du club, CM
+// SportVision qui l'exploite) ou `is_team_educateur` pour un coach sur SON équipe. Rien n'est
+// réécrit ici — voir le bloc d'autorisation plus bas pour pourquoi.
 // (migration-cm-delegation-droits-etendus.sql). Un CM délégué n'a en général
 // aucune ligne club_members, donc vérifié indépendamment.
 // Idempotent : une invitation 'envoyee' déjà existante pour le même
@@ -73,6 +69,79 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+/** L'e-mail reçu par le joueur ou le parent. Il mène vers Connect — pas vers Club+ : un joueur
+ *  rejoint son espace personnel, il n'a rien à faire dans l'outil de gestion du club (§38). */
+async function envoyerEmailFamille(
+  admin: any,
+  info: { to: string; prenom: string; targetType: string; clubId: string; teamId: string | null; connectUrl: string },
+): Promise<boolean> {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) {
+    console.error("[clubplus-family-invite] RESEND_API_KEY absent — invitation enregistrée, e-mail non envoyé");
+    return false;
+  }
+  const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <contact@sportvision-an.fr>";
+
+  const { data: club } = await admin.from("organizations").select("nom").eq("id", info.clubId).maybeSingle();
+  const clubNom = club?.nom ?? "Votre club";
+  let equipe: string | null = null;
+  if (info.teamId) {
+    const { data: t } = await admin.from("club_teams").select("name").eq("id", info.teamId).maybeSingle();
+    equipe = t?.name ?? null;
+  }
+
+  const estJoueur = info.targetType === "joueur";
+  const url = `${info.connectUrl.replace(/\/+$/, "")}/mes-invitations`;
+  const bonjour = info.prenom ? `Bonjour ${info.prenom},` : "Bonjour,";
+  const intro = estJoueur
+    ? `<strong>${clubNom}</strong> vous invite à rejoindre ${equipe ? `l'équipe <strong>${equipe}</strong>` : "son espace"} sur SportVision Connect.`
+    : `<strong>${clubNom}</strong> vous invite sur SportVision Connect en tant que parent.`;
+  const promesse = estJoueur
+    ? "Retrouvez vos contenus et les services SportVision de votre équipe."
+    : "Retrouvez les contenus et services liés à votre enfant.";
+  const cta = estJoueur ? "Rejoindre mon équipe" : "Créer mon espace parent";
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#06111F;font-family:Arial,sans-serif;color:#F7F9FC">
+  <div style="max-width:520px;margin:32px auto;background:#10243E;border-radius:14px;overflow:hidden">
+    <div style="background:#0B1B33;padding:26px 32px">
+      <div style="font-size:20px;font-weight:800;color:#fff">SPORTVISION</div>
+    </div>
+    <div style="padding:28px 32px">
+      <p style="font-size:15px;line-height:1.6">${bonjour}</p>
+      <p style="font-size:14px;line-height:1.7;color:#9DAEC3">${intro}</p>
+      <p style="font-size:14px;line-height:1.7;color:#9DAEC3">${promesse}</p>
+      <div style="text-align:center;margin:26px 0">
+        <a href="${url}" style="display:inline-block;background:#32D8E6;color:#06111F;font-weight:800;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px">${cta}</a>
+      </div>
+      <p style="font-size:12.5px;line-height:1.6;color:#6C7E93">
+        Créez votre compte ou connectez-vous avec cette adresse e-mail : votre invitation vous y
+        attend.<br>
+        Si le bouton ne fonctionne pas, copiez ce lien :<br>
+        <span style="word-break:break-all">${url}</span>
+      </p>
+    </div>
+  </div>
+</body></html>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: fromEmail,
+      to: [info.to],
+      subject: estJoueur ? `${clubNom} vous invite sur SportVision Connect` : `${clubNom} vous invite sur SportVision Connect`,
+      html,
+    }),
+  });
+  if (!res.ok) {
+    console.error("[clubplus-family-invite] échec Resend", res.status, await res.text());
+    return false;
+  }
+  return true;
 }
 
 serve(async (req) => {
@@ -177,26 +246,24 @@ serve(async (req) => {
       if (existingInv) return json({ id: existingInv.id, already_invited: true });
     }
 
-    const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${connectUrl}/`,
-      data: { prenom, nom },
-    });
-
-    let invitedUserId: string | null = invited?.user?.id ?? null;
-
-    if (inviteErr) {
-      // "already been registered" : compte auth.users déjà existant (autre
-      // club, autre invitation, ou déjà utilisateur Club+/Portail). On le
-      // retrouve pour l'attacher à cette invitation plutôt que d'échouer.
-      const msg = inviteErr.message || "";
-      if (!/already/i.test(msg)) return json({ error: msg }, 500);
-      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      const match = list?.users?.find((u) => (u.email || "").toLowerCase() === email);
-      if (!match) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
-      invitedUserId = match.id;
-    }
-
-    if (!invitedUserId) return json({ error: "Échec de la création du compte invité." }, 500);
+    // ── Aucun compte n'est créé ici, et c'est le point ──
+    // 10/09/2026 — Cette fonction appelait `inviteUserByEmail`, qui crée le compte auth.users et
+    // envoie l'e-mail d'invitation Supabase. Deux raisons de s'en défaire :
+    //
+    //   le principe posé par Fouka — « le club crée l'accès potentiel, la personne prend
+    //   possession de son compte ». Un compte fabriqué par le club serait une identité de plus
+    //   pour quelqu'un qui est peut-être déjà parent d'un joueur et acheteur Connect ;
+    //
+    //   et le fait, constaté avant d'écrire, que ça ne menait NULLE PART. Aucun écran de Connect
+    //   ne lisait `player_invitations` ni `parent_invitations` — `accept_parent_invitation`
+    //   existait depuis des mois sans être appelée d'aucune application servie. La personne
+    //   recevait un e-mail, posait un mot de passe, arrivait dans Connect, et rien ne lui disait
+    //   pourquoi elle était là.
+    //
+    // Désormais : on enregistre l'invitation, on écrit nous-mêmes à la personne, et elle la
+    // retrouve dans Connect parce que l'invitation porte son adresse (`lister_mes_invitations`,
+    // migration v103). L'adresse EST le jeton : une invitation ne se transfère pas, et une chaîne
+    // de moins est à sécuriser.
 
     if (targetType === "joueur") {
       const { data: created, error: insErr } = await admin
@@ -213,7 +280,10 @@ serve(async (req) => {
         .select("id")
         .single();
       if (insErr) return json({ error: insErr.message }, 500);
-      return json({ id: created.id, already_invited: false });
+      const envoye = await envoyerEmailFamille(admin, {
+        to: email, prenom, targetType: "joueur", clubId, teamId, connectUrl,
+      });
+      return json({ id: created.id, already_invited: false, email_envoye: envoye });
     } else {
       const { data: created, error: insErr } = await admin
         .from("parent_invitations")
@@ -228,7 +298,10 @@ serve(async (req) => {
         .select("id")
         .single();
       if (insErr) return json({ error: insErr.message }, 500);
-      return json({ id: created.id, already_invited: false });
+      const envoye = await envoyerEmailFamille(admin, {
+        to: email, prenom, targetType: "parent", clubId, teamId: null, connectUrl,
+      });
+      return json({ id: created.id, already_invited: false, email_envoye: envoye });
     }
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
