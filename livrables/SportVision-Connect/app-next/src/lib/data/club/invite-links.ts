@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { CONNECT_URL } from "@/lib/urls";
 
 // Smart Links (migration-clubplus-v57, 03/09/2026) — généralise team_invite_codes existant
 // (migration-clubplus-v14.sql) plutôt que d'en créer un nouveau : team_id nullable = lien club
@@ -45,7 +46,7 @@ function toInviteLink(row: InviteLinkRow): InviteLink {
  * partagés du produit (ex. /book/:id dans PersonaDashboard.tsx). Aucune donnée personnelle dans
  * l'URL, uniquement le code (déjà non devinable, généré serveur). */
 export function buildJoinUrl(code: string): string {
-  return `https://connect.sportvision-an.fr/join/${code}`;
+  return `${CONNECT_URL}/join/${code}`;
 }
 
 /**

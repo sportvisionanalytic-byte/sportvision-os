@@ -8,6 +8,7 @@ import {
   requireJoueurAccount,
 } from "@/lib/supabase/session";
 import { PersonalInfoSection } from "./PersonalInfoSection";
+import { CLUBPLUS_URL } from "@/lib/urls";
 import { SportProfileSection } from "./SportProfileSection";
 import { NotificationsSection } from "./NotificationsSection";
 import { SecuritySection } from "./SecuritySection";
@@ -172,7 +173,7 @@ export default async function ProfilPage() {
                   </div>
                 </div>
                 <a
-                  href="https://clubplus.sportvision-an.fr/"
+                  href={CLUBPLUS_URL}
                   className="flex items-center gap-2.5 rounded-sv border border-border bg-white/[.03] px-3.5 py-3 hover:bg-white/[.06]"
                 >
                   <span className="h-[28px] w-[28px] flex-none rounded-sv bg-white/5" />

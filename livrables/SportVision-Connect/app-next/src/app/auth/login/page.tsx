@@ -7,6 +7,7 @@ import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 import { consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { CONNECT_URL } from "@/lib/urls";
 
 // /auth/login — voir ACTIONS.md § 1. Ne jamais préciser si c'est l'e-mail ou le mot de passe
 // qui est faux dans le message d'erreur.
@@ -182,7 +183,7 @@ export default function LoginPage() {
 
           <div className="mt-4 text-center text-[12.5px] text-text-faint">
             Vous cherchez votre espace personnel ?{" "}
-            <a href="https://connect.sportvision-an.fr" className="font-bold text-text-soft hover:text-brand-blue-electric">
+            <a href={CONNECT_URL} className="font-bold text-text-soft hover:text-brand-blue-electric">
               Accéder à Connect
             </a>
           </div>

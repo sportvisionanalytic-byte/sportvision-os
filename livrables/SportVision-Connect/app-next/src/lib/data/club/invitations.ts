@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { CLUBPLUS_URL } from "@/lib/urls";
 
 // Invitations nominatives Club+ (migrations v100/v101) — préparer une personne, lui envoyer un
 // lien, la laisser prendre possession de son compte.
@@ -97,7 +98,7 @@ export const STATUT_INVITATION_TONE: Record<StatutInvitation, "neutral" | "info"
 /** L'URL à copier ou à envoyer. Club+ pour un encadrant, jamais Connect : un coach administre son
  *  équipe, il n'a rien à faire dans l'espace personnel d'un joueur (§38). */
 export function buildInvitationUrl(token: string): string {
-  return `https://clubplus.sportvision-an.fr/clubplus/rejoindre?token=${encodeURIComponent(token)}`;
+  return `${CLUBPLUS_URL}/clubplus/rejoindre?token=${encodeURIComponent(token)}`;
 }
 
 /**

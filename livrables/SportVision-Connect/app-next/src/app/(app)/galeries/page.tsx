@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/client";
+import { CONNECT_URL } from "@/lib/urls";
 
 // Galeries — côté club.
 //
@@ -15,8 +16,6 @@ import { createClient } from "@/lib/supabase/client";
 // Le club ne voit AUCUN tarif et ne peut rien modifier : les règles commerciales restent chez
 // SportVision. Il ne voit d'ailleurs que les liens qu'on lui a explicitement confiés
 // (visible_in_clubplus) — le lien « équipe adverse » et les liens internes ne remontent pas ici.
-
-const CONNECT_URL = "https://connect.sportvision-an.fr";
 
 interface LienClub {
   label: string | null;

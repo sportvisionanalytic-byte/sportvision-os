@@ -8,6 +8,7 @@ import type { ActiveContext } from "@/lib/types";
 import { fetchDelegatedClubAccess, type DelegatedClubAccess } from "@/lib/data/shared/cm-agency-access";
 import { fetchConfirmedChildren, type ConfirmedChild } from "@/lib/data/family/children";
 import { fetchChildAuthorizations, type ChildAuthorization } from "@/lib/data/family/authorizations";
+import { CONNECT_URL } from "@/lib/urls";
 import { fetchOrgRequests } from "@/lib/data/shared/requests";
 import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
 import { fetchCoachPlayers } from "@/lib/data/coach/players";
@@ -490,7 +491,7 @@ export function PersonaDashboard() {
   function handleShareBook() {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard
-        .writeText(`https://connect.sportvision-an.fr/book/${ctx.organization.id}`)
+        .writeText(`${CONNECT_URL}/book/${ctx.organization.id}`)
         .catch(() => undefined);
     }
     setShareCopied(true);
