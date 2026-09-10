@@ -24,14 +24,26 @@
     <h1>Matrice des permissions</h1>
     <p class="lead">Ce que chaque rôle peut réellement faire, vérifié contre les fonctions RLS et le code de permission — pas une intention, l'état actuel du système.</p>
 
+    <h2 id="ecarts">Points d'attention / écarts détectés</h2>
+    <p class="foot-note" style="margin-bottom:12px">Vérifiés directement contre la base live (définitions de fonctions, contraintes, policies RLS — pas contre les fichiers de migration isolés, qui peuvent être supersédés par une migration ultérieure sans qu'on le voie en les lisant seuls). Rien n'est corrigé ici, uniquement documenté.</p>
+
     <div class="finding">
-      <div class="finding-title">Constat — documentation interne périmée</div>
-      <code>RBAC_MATRIX.md</code> (dernière modification 06/08) ne reflète plus l'état réel du schéma vérifié en base aujourd'hui : <code>profiles.role</code> accepte en réalité <strong>10 valeurs</strong> (pas 7 — <code>expert_comptable</code>, <code>auditeur</code>, <code>rh</code> ajoutés depuis), <code>club_members.role</code> en accepte <strong>13</strong> (pas 11 — <code>directeur_sportif</code>, <code>administratif</code> ajoutés). Plus important : le document affirme que seul <code>role='admin'</code> compte comme administrateur du club — c'est devenu faux <strong>le jour même de cet audit</strong> (migration du 10/09/2026) : <code>president</code> a désormais les mêmes droits d'administration courante que <code>admin</code>, via la fonction <code>is_club_admin()</code>. Une fonction distincte, <code>is_real_club_admin()</code>, réserve à <code>admin</code> strict seulement 2 pouvoirs : attribuer un rôle privilégié et supprimer définitivement un membre. La matrice ci-dessous reflète l'état réel, pas ce document.
+      <div class="finding-title">rh et is_staff() — inclus, décision produit assumée</div>
+      <code>is_staff()</code> inclut bien <code>rh</code> aujourd'hui (<code>role in ('admin','sec','prod','photo','cm','compta','com','rh')</code>, vérifié par lecture directe de la fonction en base). 87 policies RLS sur ~65 tables en dépendent. Plus significatif : une migration ultérieure (<code>migration-poles-v18-rh-role-whitelists.sql</code>) a explicitement élargi l'accès de <code>rh</code> à <code>clients</code>, <code>contrats</code>, <code>devis</code>, <code>factures</code>, <code>prestations</code>, <code>prestations_equipe</code> en lecture <strong>et</strong> écriture, transversal à tous les pôles — principe cité dans le commentaire de la migration : <em>« RH = sec transversal »</em>, validé par Fouka, testé avec un compte RH jetable avant déploiement. Aucun écart entre menu (frontend) et RLS (backend) constaté. <strong>Pas une vulnérabilité — une documentation périmée.</strong>
     </div>
 
     <div class="finding">
-      <div class="finding-title">Constat — incohérence potentielle sur le rôle RH (OS)</div>
-      Le rôle <code>rh</code> existe dans le menu de navigation et dans la contrainte de colonne <code>profiles.role</code>, mais la fonction <code>is_staff()</code> (qui gouverne l'accès staff côté Connect, anti-fuite cross-tenant) ne liste toujours que les 7 rôles historiques et ne semble pas inclure <code>rh</code>. À vérifier avant de considérer ce rôle pleinement fonctionnel côté Connect — non corrigé dans ce chantier (documentation uniquement, voir consigne "pas de refactor métier").
+      <div class="finding-title">RBAC_MATRIX.md — divergences confirmées (dernière modification 06/08)</div>
+      <table style="margin-top:10px">
+        <thead><tr><th>Affirmation du document</th><th>Réalité vérifiée en base</th><th>Statut</th></tr></thead>
+        <tbody>
+          <tr><td><code>profiles.role</code> : 7 valeurs</td><td><strong>10 valeurs</strong> (+ <code>expert_comptable</code>, <code>auditeur</code>, <code>rh</code>)</td><td><span class="badge badge-warn">périmé</span></td></tr>
+          <tr><td><code>club_members.role</code> : 11 valeurs</td><td><strong>13 valeurs</strong> (+ <code>directeur_sportif</code>, <code>administratif</code>)</td><td><span class="badge badge-warn">périmé</span></td></tr>
+          <tr><td>Seul <code>admin</code> compte comme administrateur club, pas <code>president</code></td><td><strong>Faux depuis le 10/09</strong> — <code>is_club_admin()</code> inclut <code>president</code> ; <code>is_real_club_admin()</code> (admin strict) ne garde que 2 pouvoirs</td><td><span class="badge badge-err">périmé, daté du jour même</span></td></tr>
+          <tr><td>Colonnes sensibles protégées contre l'auto-modification (trigger)</td><td>Confirmé actif (<code>trg_protect_sensitive_profile_fields</code>)</td><td><span class="badge badge-ok">exact</span></td></tr>
+          <tr><td>Aucune action à double validation (remboursement, suppression club...) — manque réel</td><td>Confirmé, aucune table <code>admin_approvals</code> ou équivalent trouvée en base</td><td><span class="badge badge-ok">exact, gap toujours ouvert</span></td></tr>
+        </tbody>
+      </table>
     </div>
 
     <h2>Club+ <span style="color:var(--text3);font-weight:400">— 12 rôles réels (<code>club_members.role</code>)</span></h2>
@@ -71,15 +83,15 @@
       <table>
         <thead><tr><th>Fonction</th><th>Admin</th><th>Secrétaire</th><th>Commercial</th><th>Prod</th><th>Photo</th><th>CM</th><th>Compta</th><th>Expert-comptable</th><th>Auditeur</th><th>RH</th></tr></thead>
         <tbody>
-          <tr><td>Accès large clients / prestations / staff</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td>⁶</td></tr>
+          <tr><td>Accès large clients / prestations / staff</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="chk">✓⁶</td></tr>
           <tr><td>Modifier un club Club+ depuis l'OS</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
           <tr><td>Créer/éditer un contenu CM</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
           <tr><td>Voir toute la finance (résultat, rentabilité...)</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="chk">✓</td><td class="chk">✓ (lecture)</td><td class="chk">✓ (lecture, subset)</td><td class="crx">✕</td></tr>
-          <tr><td>Voir/gérer les missions terrain</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="chk">✓</td><td>✓ (siennes)</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td>⁶</td></tr>
+          <tr><td>Voir/gérer les missions terrain (prestations)</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="chk">✓</td><td>✓ (siennes)</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="chk">✓⁶</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="foot-note">⁶ <code>rh</code> hérite du menu Secrétaire (cloné) mais aucune policy RLS dédiée n'a été identifiée — voir le constat sur <code>is_staff()</code> ci-dessus.</p>
+    <p class="foot-note">⁶ Vérifié en base live (policies <code>clients_write_acces</code>/<code>prestations_acces</code>) : <code>rh</code> a le même accès que Secrétaire sur clients/contrats/devis/factures/prestations, mais <strong>transversal à tous les pôles</strong> (Secrétaire reste scopée à son pôle) — ajouté par <code>migration-poles-v18-rh-role-whitelists.sql</code>, décision produit assumée (« RH = sec transversal »), voir Points d'attention ci-dessus. « Voir toute la finance » (résultat/rentabilité) reste hors de portée de RH : cette ligne concerne les documents commerciaux (clients/prestations/factures), pas les vues de rentabilité globale.</p>
 
     <h2>Connect <span style="color:var(--text3);font-weight:400">— pas de colonne rôle, accès par relation</span></h2>
     <p style="color:var(--text2);font-size:13px;margin-bottom:10px">Il n'existe pas de rôle Connect à proprement parler. L'accès dépend de ce à quoi le compte est rattaché :</p>
