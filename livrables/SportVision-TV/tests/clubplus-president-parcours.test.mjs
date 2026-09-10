@@ -12,11 +12,20 @@
 // PROPRETE. Tout est cree sur le club de test de Fouka (Villeneuve 340 SC) avec une adresse en
 // .invalid, et supprime a la fin — compte, rattachement, invitation. La suppression est verifiee ;
 // si elle echoue, le test le dit au lieu de laisser un compte fantome dans un club reel.
+//
+// AUCUN E-MAIL REEL PAR DEFAUT (decision de Fouka, 10/09/2026). « Creer mon espace » appelait le
+// vrai signUp() de Supabase : un e-mail de confirmation par passage, vers une adresse .invalid qui
+// rebondit, sur le quota de 15 e-mails par heure partage avec les vrais clubs. L'appel de l'ecran est
+// desormais intercepte : on verifie ce qu'il envoie (adresse, retour sur CETTE invitation), puis le
+// compte est cree par l'API d'administration, qui n'envoie rien. La suite est inchangee : la
+// confirmation est simulee, puis le president se connecte par l'ecran. `ENVOIS_REELS=1` retablit le
+// vrai signUp().
 
 import { chromium } from "../../SportVision-Connect/app-next/node_modules/playwright/index.mjs";
 import { CP, vraiesErreursCP } from "./_session-clubplus.mjs";
 import { rapporteur, SB, ANON, enTeteAdmin, jeton } from "./_session-os.mjs";
 
+const ENVOIS_REELS = process.env.ENVOIS_REELS === "1";
 const CLUB = "Villeneuve 340 SC";
 const EMAIL = `zz-president-${Date.now()}@example.invalid`;
 const MOTDEPASSE = "ZzPresident!2026-Test";
@@ -74,6 +83,30 @@ try {
     accueil.slice(0, 160));
 
   // ── La creation du compte ─────────────────────────────────────────────────
+  // signUp() intercepte (voir en-tete) : la reponse imite celle de Supabase quand l'adresse reste a
+  // confirmer — un utilisateur, aucune session.
+  const inscriptions = [];
+  if (!ENVOIS_REELS) {
+    await page.route(`${SB}/auth/v1/signup**`, async (route) => {
+      let corps = {};
+      try { corps = JSON.parse(route.request().postData() || "{}"); } catch { corps = {}; }
+      inscriptions.push({ email: corps.email, redirect: new URL(route.request().url()).searchParams.get("redirect_to") });
+      const u = await (await authApi("admin/users", {
+        method: "POST",
+        body: JSON.stringify({ email: corps.email, password: corps.password, email_confirm: false, user_metadata: corps.data || {} }),
+      })).json();
+      const maintenant = new Date().toISOString();
+      await route.fulfill({
+        status: 200, contentType: "application/json",
+        body: JSON.stringify({
+          id: u.id, aud: "authenticated", role: "authenticated", email: String(corps.email || "").toLowerCase(), phone: "",
+          confirmation_sent_at: maintenant, app_metadata: { provider: "email", providers: ["email"] }, user_metadata: corps.data || {},
+          identities: [{ identity_id: u.id, id: u.id, user_id: u.id, provider: "email", identity_data: { email: corps.email, sub: u.id }, created_at: maintenant, updated_at: maintenant }],
+          created_at: maintenant, updated_at: maintenant, is_anonymous: false,
+        }),
+      });
+    });
+  }
   await page.locator("button", { hasText: "Créer mon accès" }).first().click();
   await page.waitForTimeout(2500);
   await page.locator("input[type=email]").first().fill(EMAIL);
@@ -82,8 +115,14 @@ try {
   await page.waitForTimeout(11000);
 
   const apresCreation = (await page.evaluate(() => document.body.innerText)) || "";
-  t("le compte est cree et la suite est expliquee", /confirmez votre adresse|compte cr[ée]{2}/i.test(apresCreation),
+  t("le compte est cree et la suite est expliquee", /confirmez votre adresse|compte cr[ée]{2}|e-mail de confirmation/i.test(apresCreation),
     apresCreation.slice(-220));
+  if (!ENVOIS_REELS) {
+    t("l'ecran demande la creation du compte, retour sur CETTE invitation (interceptee, aucun e-mail)",
+      inscriptions.length === 1 && inscriptions[0].email === EMAIL && (inscriptions[0].redirect || "").includes(`token%3D${invit.token}`),
+      JSON.stringify(inscriptions).slice(0, 240));
+    await page.unroute(`${SB}/auth/v1/signup**`);
+  }
 
   const compte = (await (await authApi(`admin/users?filter=${encodeURIComponent(EMAIL)}`)).json())?.users?.[0];
   t("le compte existe cote authentification", !!compte?.id);

@@ -18,8 +18,12 @@
 //   D. mot de passe oublié → nouveau mot de passe, y compris comme première session d'un compte ;
 //   E. création de compte depuis une commande galerie, adresse déjà inscrite.
 //
-// QUOTA. Le projet est plafonné à 15 e-mails Supabase par heure, dont de vrais parents ont besoin :
-// ce test n'en consomme que DEUX (section C). `SANS_INSCRIPTION_REELLE=1` saute la section C.
+// QUOTA. Le projet est plafonné à 15 e-mails Supabase par heure, dont de vrais parents ont besoin,
+// et chaque e-mail vers une adresse .invalid rebondit sur la réputation d'envoi de sportvision-an.fr.
+// Depuis le 10/09/2026 (décision de Fouka), la section C — les deux seules inscriptions RÉELLES,
+// donc deux e-mails de confirmation — est SAUTÉE PAR DÉFAUT. `ENVOIS_REELS=1` la réactive, pour
+// traverser le vrai échange PKCE du lien de confirmation. `SANS_INSCRIPTION_REELLE=1` reste accepté
+// et l'emporte (saute la section C quoi qu'il arrive).
 //
 // OÙ. Par défaut la production. `CX=http://localhost:3311` teste un build local (voir README) contre
 // la vraie base : Supabase n'accepte de rediriger que vers le domaine de production, le test
@@ -37,7 +41,7 @@ import { rapporteur, SB, ANON, env, enTeteAdmin, jeton } from "./_session-os.mjs
 const PROD = "https://connect.sportvision-an.fr";
 const CX = (process.env.CX || PROD).replace(/\/+$/, "");
 const LOCAL = CX !== PROD;
-const REELLES = !process.env.SANS_INSCRIPTION_REELLE;
+const REELLES = process.env.ENVOIS_REELS === "1" && !process.env.SANS_INSCRIPTION_REELLE;
 const CLUB = "Villeneuve 340 SC";
 const MDP = "ZzConnect!2026-Test";
 const T0 = Date.now();
@@ -432,7 +436,7 @@ try {
   // ════════════════════════════════════════════════════════════════════════
   //  C. Deux inscriptions réelles, lien de l'e-mail cliqué
   // ════════════════════════════════════════════════════════════════════════
-  if (!REELLES) console.log("\nC. (sautée : SANS_INSCRIPTION_REELLE)");
+  if (!REELLES) console.log("\nC. (sautée : aucune inscription réelle sans ENVOIS_REELS=1)");
   else {
     console.log("\nC1. Parent invité — inscription dans WhatsApp, e-mail ouvert dans un autre navigateur");
     const jInv = await jeton((await (await authApi(`admin/users/${invitant.user_id}`)).json()).email);

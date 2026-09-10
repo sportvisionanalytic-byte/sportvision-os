@@ -134,11 +134,16 @@ async function rpc(jeton, fn, body) {
 
 // Les e-mails que l'application met en file pour ces adresses de test ne doivent jamais partir :
 // dispatch-notifications consulte la liste de suppression avant chaque envoi.
+// 10/09/2026 : `reason` n'accepte que hard_bounce, complaint, unsubscribe ou manual (contrainte
+// communication_suppressions_reason_check). L'ancien libellé libre était refusé en silence : aucune
+// adresse n'était réellement bloquée, et les e-mails mis en file partaient chez Brevo. L'échec
+// arrête désormais le test au lieu de passer inaperçu.
 async function bloquerEnvois(email) {
-  await api("communication_suppressions", {
+  const r = await api("communication_suppressions", {
     method: "POST",
-    body: JSON.stringify({ channel: "EMAIL", address: email.toLowerCase(), reason: "zz-test-clubplus-creation-compte" }),
+    body: JSON.stringify({ channel: "EMAIL", address: email.toLowerCase(), reason: "manual" }),
   });
+  if (!r.ok && r.status !== 409) throw new Error(`liste de suppression refusée pour ${email} : HTTP ${r.status} ${(await r.text()).slice(0, 160)}`);
 }
 
 // ── Navigateur ──────────────────────────────────────────────────────────────

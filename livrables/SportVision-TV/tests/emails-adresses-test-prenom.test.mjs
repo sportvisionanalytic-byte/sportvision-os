@@ -116,6 +116,15 @@ console.log("\nA. Le filtre d'adresses de dispatch-notifications");
   t("il est appliqué avant la clé Brevo, le gabarit et l'envoi", iFiltre > 0 && iFiltre < iCle && iFiltre < iEnvoi);
   t("la fonction garde son authentification par secret partagé (inchangée)",
     srcDispatch.includes('Deno.env.get("DISPATCH_NOTIFICATIONS_SECRET")') && srcDispatch.includes("providedSecret !== expectedSecret"));
+
+  // clubplus-family-invite envoie par Resend, hors de la file : il porte une copie de la même règle.
+  if (!REF_GIT) {
+    const srcFamille = readFileSync(join(FONCTIONS, "clubplus-family-invite", "index.ts"), "utf8");
+    const copie = extraire(srcFamille, "adresseNonDistribuable");
+    t("clubplus-family-invite applique la même règle, copie identique", copie !== null && copie === extraire(srcDispatch, "adresseNonDistribuable"));
+    const iGarde = srcFamille.indexOf("adresseNonDistribuable(info.to)");
+    t("… avant tout appel à Resend", iGarde > 0 && iGarde < srcFamille.indexOf('fetch("https://api.resend.com/emails"'));
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════

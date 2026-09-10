@@ -105,7 +105,7 @@ function renderTemplate(
 function adresseNonDistribuable(adresse: string | null | undefined): string | null {
   const a = String(adresse ?? "").trim().toLowerCase();
   const arobase = a.lastIndexOf("@");
-  if (arobase < 1) return null; // adresse mal formée : laissée au traitement habituel (Brevo la refusera)
+  if (arobase < 1) return null; // adresse mal formée : laissée au traitement habituel (le fournisseur la refusera)
   const local = a.slice(0, arobase);
   const domaine = a.slice(arobase + 1).replace(/\.+$/, "");
   const tld = domaine.split(".").pop() || "";

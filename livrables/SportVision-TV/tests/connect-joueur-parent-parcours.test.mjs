@@ -20,11 +20,21 @@
 //
 // PROPRETE. Club de test de Fouka (Villeneuve 340 SC), adresses en .invalid, tout supprime a la fin
 // — et la suppression est verifiee.
+//
+// AUCUN E-MAIL REEL PAR DEFAUT (decision de Fouka, 10/09/2026). L'etape 2 appelait le vrai signUp()
+// de Supabase : un e-mail de confirmation par parcours, vers une adresse .invalid qui rebondit, sur
+// le quota de 15 e-mails par heure partage avec les vrais parents. Desormais l'appel signUp() de
+// l'ecran est intercepte : on verifie ce qu'il envoie (adresse, prenom, adresse de retour), puis le
+// compte est cree par l'API d'administration, qui n'envoie rien, avec exactement les donnees de
+// l'ecran — l'etape 3 le confirme ensuite comme avant. `ENVOIS_REELS=1` retablit le vrai signUp().
+// L'invitation du club (clubplus-family-invite) n'ecrit plus aux adresses .invalid une fois la
+// fonction redeployee (meme regle que dispatch-notifications).
 
 import { chromium } from "../../SportVision-Connect/app-next/node_modules/playwright/index.mjs";
 import { rapporteur, SB, ANON, enTeteAdmin, jeton } from "./_session-os.mjs";
 
 const CX = "https://connect.sportvision-an.fr";
+const ENVOIS_REELS = process.env.ENVOIS_REELS === "1";
 const CLUB = "Villeneuve 340 SC";
 const MDP = "ZzConnect!2026-Test";
 const { t, bilan } = rapporteur();
@@ -42,8 +52,11 @@ const emailInvitant = (await (await authApi(`admin/users/${invitant.user_id}`)).
 const jetonInvitant = await jeton(emailInvitant);
 
 // Ce que le club envoie, par sa vraie fonction serveur — pas une insertion en base.
+// FAMILLE_LOCALE=http://localhost:8000/ : l'invitation passe par la copie du depot de
+// clubplus-family-invite, lancee en local contre la vraie base (utile tant que la version deployee
+// ecrit encore aux adresses .invalid).
 async function inviter(corps) {
-  const r = await fetch(`${SB}/functions/v1/clubplus-family-invite`, {
+  const r = await fetch(process.env.FAMILLE_LOCALE || `${SB}/functions/v1/clubplus-family-invite`, {
     method: "POST",
     headers: { apikey: ANON, Authorization: `Bearer ${jetonInvitant.acces}`, "Content-Type": "application/json" },
     body: JSON.stringify({ club_id: club.id, prenom: "ZZ", ...corps }),
@@ -51,8 +64,35 @@ async function inviter(corps) {
   return { status: r.status, corps: await r.text() };
 }
 
+// Intercepte le signUp() de l'ecran (voir en-tete). La reponse imite celle de Supabase pour une
+// inscription qui attend la confirmation de l'adresse : un utilisateur, aucune session.
+async function intercepterInscription(page, journal) {
+  if (ENVOIS_REELS) return;
+  await page.route(`${SB}/auth/v1/signup**`, async (route) => {
+    let corps = {};
+    try { corps = JSON.parse(route.request().postData() || "{}"); } catch { corps = {}; }
+    journal.push({ email: corps.email, data: corps.data || {}, redirect: new URL(route.request().url()).searchParams.get("redirect_to") });
+    const u = await (await authApi("admin/users", {
+      method: "POST",
+      body: JSON.stringify({ email: corps.email, password: corps.password, email_confirm: false, user_metadata: corps.data || {} }),
+    })).json();
+    const maintenant = new Date().toISOString();
+    await route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({
+        id: u.id, aud: "authenticated", role: "authenticated", email: String(corps.email || "").toLowerCase(), phone: "",
+        confirmation_sent_at: maintenant, app_metadata: { provider: "email", providers: ["email"] }, user_metadata: corps.data || {},
+        identities: [{ identity_id: u.id, id: u.id, user_id: u.id, provider: "email", identity_data: { email: corps.email, sub: u.id }, created_at: maintenant, updated_at: maintenant }],
+        created_at: maintenant, updated_at: maintenant, is_anonymous: false,
+      }),
+    });
+  });
+}
+
 // Les quatre etapes de /signup, cliquees.
 async function inscrire(page, email, profil, etape3) {
+  const journal = [];
+  await intercepterInscription(page, journal);
   await page.goto(`${CX}/mes-invitations`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(5000);
   t(`${profil} : /mes-invitations renvoie vers la connexion en gardant la destination`,
@@ -86,6 +126,14 @@ async function inscrire(page, email, profil, etape3) {
   for (const libelle of [/Cr[ée]er mon compte/i, /Cr[ée]er mon espace/i, /Terminer/i, /Continuer/i]) {
     const b = page.locator("button", { hasText: libelle }).first();
     if (await b.count() && await b.isEnabled().catch(() => false)) { await b.click(); await page.waitForTimeout(6000); break; }
+  }
+  if (!ENVOIS_REELS) {
+    // Ce que l'ecran a demande a Supabase : exactement ce que le vrai signUp() aurait recu.
+    const envoi = journal[0];
+    t(`${profil} : l'ecran demande la creation du compte (interceptee, aucun e-mail)`,
+      journal.length === 1 && envoi.email === email.toLowerCase() && envoi.data?.first_name === "ZZ" && /\/auth\/callback/.test(envoi.redirect || ""),
+      JSON.stringify(journal).slice(0, 220));
+    await page.unroute(`${SB}/auth/v1/signup**`);
   }
   return await texte(page);
 }

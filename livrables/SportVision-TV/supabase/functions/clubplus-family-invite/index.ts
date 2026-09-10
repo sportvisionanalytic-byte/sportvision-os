@@ -71,12 +71,38 @@ function json(body: unknown, status = 200) {
   });
 }
 
+/** Copie conforme de la fonction du même nom dans dispatch-notifications (les fonctions n'ont pas
+ *  de code partagé) ; tests/emails-adresses-test-prenom.test.mjs vérifie que les deux copies sont
+ *  identiques. Renvoie la raison si l'adresse ne doit jamais recevoir d'e-mail, sinon null. */
+function adresseNonDistribuable(adresse: string | null | undefined): string | null {
+  const a = String(adresse ?? "").trim().toLowerCase();
+  const arobase = a.lastIndexOf("@");
+  if (arobase < 1) return null; // adresse mal formée : laissée au traitement habituel (le fournisseur la refusera)
+  const local = a.slice(0, arobase);
+  const domaine = a.slice(arobase + 1).replace(/\.+$/, "");
+  const tld = domaine.split(".").pop() || "";
+  if (["invalid", "test", "example", "localhost"].includes(tld)) return `domaine réservé (.${tld})`;
+  if (/(^|\.)example\.(com|net|org)$/.test(domaine)) return `domaine réservé (${domaine})`;
+  if (domaine === "sportvision-test.fr" || domaine.endsWith(".sportvision-test.fr")) return "domaine de test sportvision-test.fr";
+  if (domaine === "sportvision-an.fr" && local.startsWith("zz-")) return "adresse de test zz-…@sportvision-an.fr";
+  return null;
+}
+
 /** L'e-mail reçu par le joueur ou le parent. Il mène vers Connect — pas vers Club+ : un joueur
  *  rejoint son espace personnel, il n'a rien à faire dans l'outil de gestion du club (§38). */
 async function envoyerEmailFamille(
   admin: any,
   info: { to: string; prenom: string; targetType: string; clubId: string; teamId: string | null; connectUrl: string },
 ): Promise<boolean> {
+  // Adresse de test ou de domaine réservé (décision du 10/09/2026) : l'invitation est enregistrée,
+  // l'e-mail ne part pas. Les tests de parcours joueur/parent appellent cette vraie fonction avec
+  // des adresses …@example.invalid : chacun de leurs passages envoyait deux e-mails chez Resend,
+  // qui rebondissaient sur la réputation de sportvision-an.fr. Même règle que dispatch-notifications.
+  const raisonNonDistribuable = adresseNonDistribuable(info.to);
+  if (raisonNonDistribuable) {
+    console.log(`[clubplus-family-invite] e-mail non envoyé : ${raisonNonDistribuable}`);
+    return false;
+  }
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) {
     console.error("[clubplus-family-invite] RESEND_API_KEY absent — invitation enregistrée, e-mail non envoyé");
