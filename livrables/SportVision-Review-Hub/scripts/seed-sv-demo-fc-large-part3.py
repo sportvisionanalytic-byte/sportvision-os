@@ -70,8 +70,18 @@ for i, (email, prenom, nom, role, statut) in enumerate(invite_cases):
     values ('{iid}', '{CLUB_SV}', {esc(email)}, {esc(prenom)}, {esc(nom)}, '{role}', '[]'::jsonb, '{uid('token', email)}', '{statut}', now() + interval '30 days', '{CAMILLE_ID}', {'now()' if statut != 'preparee' else 'null'})
     on conflict (id) do nothing;
     """, f"invitation {email}")
+    # Toute invitation réellement envoyée (pas "préparée") doit laisser une trace
+    # dans l'outbox simulée — sinon le reset restaure des invitations sans jamais
+    # la communication qui les accompagne en réalité (incohérence trouvée en Phase 4).
+    if statut != "preparee":
+        oid = uid("outbox", "invite", email)
+        sql(f"""
+        insert into review_outbox (id, channel, recipient, subject, body, status, created_by, metadata)
+        values ('{oid}', 'EMAIL', {esc(email)}, {esc(f'Invitation à rejoindre SV Demo FC ({role})')}, {esc(f'Bonjour {prenom}, vous êtes invité(e) à rejoindre SV Demo FC.')}, 'SIMULATED', '{CAMILLE_ID}', {esc(json.dumps({"type": "invitation", "role": role, "invitation_id": iid}))}::jsonb)
+        on conflict (id) do nothing;
+        """, f"outbox invitation {email}")
 
-print(f"{len(invite_cases)} invitations créées (statuts variés).")
+print(f"{len(invite_cases)} invitations créées (statuts variés), avec entrée outbox pour celles réellement envoyées.")
 
 # ---------------------------------------------------------------------------
 # 2. Demandes de communication (club_requests)

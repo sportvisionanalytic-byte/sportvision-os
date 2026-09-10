@@ -5,9 +5,16 @@ PROJECT_URL = f"https://{PROJECT_REF}.supabase.co"
 MGMT_URL = f"https://api.supabase.com/v1/projects/{PROJECT_REF}/database/query"
 MGMT_TOKEN = os.environ["SUPABASE_MANAGEMENT_TOKEN"]
 
-with open("/tmp/.review-keys.json") as f:
-    keys = json.load(f)
-SERVICE_ROLE = next(k["api_key"] for k in keys if k["name"] == "service_role")
+# Récupère la clé service_role en direct via l'API Management (pas de fichier
+# intermédiaire à préparer à la main) — nécessaire pour que le reset (Phase 4,
+# reset-review.py) soit exécutable de bout en bout sans étape manuelle.
+_keys_proc = subprocess.run(
+    ["curl", "-s", f"https://api.supabase.com/v1/projects/{PROJECT_REF}/api-keys?reveal=true",
+     "-H", f"Authorization: Bearer {MGMT_TOKEN}"],
+    capture_output=True, text=True, timeout=30,
+)
+_keys = json.loads(_keys_proc.stdout)
+SERVICE_ROLE = next(k["api_key"] for k in _keys if k["name"] == "service_role")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(HERE, "personas.json")) as f:
