@@ -16736,10 +16736,10 @@ async function modalEquipePrestation(prestationId,ref){
     <div id="eq-kits-liste" style="min-height:30px;margin-bottom:12px"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
     <div style="background:var(--s2);border-radius:var(--rb);padding:14px;display:flex;flex-direction:column;gap:10px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">Attribuer un kit</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <select id="eq-kit-col" class="l-inp" style="height:36px"><option value="">— Opérateur —</option></select>
-        <select id="eq-kit-id" class="l-inp" style="height:36px"><option value="">— Kit disponible —</option></select>
-      </div>
+      <!-- 10/09/2026, première mission réelle : plus de choix d'opérateur ici. Il ne proposait que
+           les opérateurs ayant déjà ACCEPTÉ — vide au moment où la Production prépare la mission.
+           Le kit se rattache à l'opérateur de la mission (v135). -->
+      <select id="eq-kit-id" class="l-inp" style="height:36px"><option value="">— Kit disponible —</option></select>
       <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="attribuerKitPrestation('${prestationId}','${ref}')">+ Attribuer</button></div>
       <div id="eq-kit-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
     </div>
@@ -16980,7 +16980,6 @@ async function chargerEquipe(prestationId,ref){
 // pas dans la liste).
 async function chargerKitsPrestation(prestationId,ref){
   const el=document.getElementById('eq-kits-liste');
-  const selCol=document.getElementById('eq-kit-col');
   const selKit=document.getElementById('eq-kit-id');
   if(!el)return;
   try{
@@ -16993,7 +16992,7 @@ async function chargerKitsPrestation(prestationId,ref){
       // (collaborateur_id/created_by/responsable_id), PostgREST refuse l'embed ambigu sinon
       // (PGRST201, trouvé en testant en RLS réelle avant de considérer ce code fini).
       sbFetch('kit_reservations?select=id,statut,kits(nom,type_kit),collaborateur:profiles!kit_reservations_collaborateur_id_fkey(prenom,nom)&prestation_id=eq.'+prestationId+'&statut=not.in.(retourné)'),
-      sbFetch('prestations_equipe_display?select=collaborateur_id,collaborateur:profiles(prenom,nom)&prestation_id=eq.'+prestationId+'&statut=eq.acceptée'),
+      Promise.resolve([]),
       sbFetch('kits?select=id,nom,type_kit,pole_id,pole_exclusif&statut=eq.disponible&order=nom.asc'),
     ]);
     const presPoleId=Array.isArray(presRaw)&&presRaw[0]?presRaw[0].pole_id:null;
@@ -17001,16 +17000,13 @@ async function chargerKitsPrestation(prestationId,ref){
     if(!resa.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:4px 0">Aucun kit attribué.</div>';}
     else{
       el.innerHTML=resa.map(r=>{
-        const nom=[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||'—';
+        // Sans opérateur désigné : le kit suit la mission, et revient à son opérateur dès qu'il n'y en a qu'un (v135).
+        const nom=[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||'opérateur de la mission, dès son affectation';
         return`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">
           <span style="flex:1;font-size:12.5px;color:var(--t1)">${esc(r.kits?.nom||'Kit')} <span style="color:var(--t3)">→ ${esc(nom)}</span></span>
           <button onclick="libererKitPrestation('${r.id}','${prestationId}','${ref}')" style="padding:4px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Libérer</button>
         </div>`;
       }).join('');
-    }
-    if(selCol){
-      selCol.innerHTML='<option value="">— Opérateur —</option>'+(Array.isArray(equipeRaw)?equipeRaw:[]).map(e=>
-        `<option value="${e.collaborateur_id}">${esc([e.collaborateur?.prenom,e.collaborateur?.nom].filter(Boolean).join(' ')||'—')}</option>`).join('');
     }
     if(selKit){
       // Commun (pole_id null) ou Priorité (pole_exclusif=false) : toujours proposé. Dédié
@@ -17023,12 +17019,18 @@ async function chargerKitsPrestation(prestationId,ref){
 }
 async function attribuerKitPrestation(prestationId,ref){
   const err=document.getElementById('eq-kit-err');
-  const colId=document.getElementById('eq-kit-col')?.value;
   const kitId=document.getElementById('eq-kit-id')?.value;
-  if(!colId||!kitId){err.textContent='Sélectionne un opérateur et un kit.';return;}
+  if(!kitId){err.textContent='Choisissez un kit.';return;}
   err.textContent='Attribution…';
   try{
-    const date=await sbFetch('prestations?id=eq.'+prestationId+'&select=date_prestation');
+    // L'opérateur de la mission, s'il n'y en a qu'un (invité ou confirmé). Sinon le kit reste à la
+    // mission : la base le rattachera à l'opérateur dès qu'il sera seul affecté (v135).
+    const [date,equipe]=await Promise.all([
+      sbFetch('prestations?id=eq.'+prestationId+'&select=date_prestation'),
+      sbFetch('prestations_equipe_display?select=collaborateur_id&prestation_id=eq.'+prestationId+'&statut=in.(invitation_envoyée,en_attente,acceptée)').catch(()=>[]),
+    ]);
+    const ops=[...new Set((Array.isArray(equipe)?equipe:[]).map(e=>e.collaborateur_id))];
+    const colId=ops.length===1?ops[0]:null;
     const r=await sbFetch('kit_reservations',{method:'POST',body:{
       kit_id:kitId,prestation_id:prestationId,collaborateur_id:colId,statut:'réservé',
       date_sortie:date?.[0]?.date_prestation||null,responsable_id:S.uid,created_by:S.uid,
@@ -17258,6 +17260,8 @@ async function ajouterMembreEquipe(prestationId,ref){
     document.getElementById('eq-rdv').value='';
     err.textContent='';
     await chargerEquipe(prestationId,ref);
+    // Un kit déjà attribué à la mission revient à cet opérateur s'il est le seul (v135).
+    if(typeof chargerKitsPrestation==='function')chargerKitsPrestation(prestationId,ref);
   }catch(e){err.textContent='Erreur lors de l\'ajout.';}
   finally{if(btn)btn.disabled=false;}
 }
