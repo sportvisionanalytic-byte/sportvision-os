@@ -16272,6 +16272,21 @@ async function enregistrerCoordonnees(uid,adresse,codePostal){
     headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}}).catch(e=>e);
 }
 
+// Ville, vehicule et permis ont quitte profiles le 10/09/2026 sur decision de Fouka : ils
+// servent a organiser les deplacements, donc Admin et Production uniquement, plus l'interesse.
+// L'annuaire interne est ouvert a compta, com, photo et cm — il ne doit plus les voir.
+async function chargerLogistique(uid){
+  if(!uid)return{};
+  const r=await sbFetch('collaborateur_logistique?select=ville,vehicule,permis&collaborateur_id=eq.'+uid).catch(()=>[]);
+  return (Array.isArray(r)?r[0]:null)||{};
+}
+async function enregistrerLogistique(uid,ville,vehicule,permis){
+  if(!uid)return null;
+  return sbFetch('collaborateur_logistique?on_conflict=collaborateur_id',{method:'POST',
+    body:{collaborateur_id:uid,ville:ville||null,vehicule:!!vehicule,permis:!!permis,updated_at:new Date().toISOString()},
+    headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}}).catch(e=>e);
+}
+
 async function loadSettings(){
   const el=document.getElementById('set-profile');
   if(!el)return;
@@ -16279,15 +16294,17 @@ async function loadSettings(){
   const tok=localStorage.getItem('sv_tok');
   if(!uid){el.innerHTML='';return;}
   try{
-    const [data,authR,coord]=await Promise.all([
-      sbFetch('profiles?select=prenom,nom,telephone,role,avatar_url,bio,ville,vehicule,permis,notification_prefs&id=eq.'+uid),
+    const [data,authR,coord,logi]=await Promise.all([
+      sbFetch('profiles?select=prenom,nom,telephone,role,avatar_url,bio,notification_prefs&id=eq.'+uid),
       fetch(SB_URL+'/auth/v1/user',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok}}).then(r=>r.json()).catch(()=>({})),
-      chargerCoordonnees(uid)
+      chargerCoordonnees(uid),
+      chargerLogistique(uid)
     ]);
     const p=data?.[0]||{};
     // Recolle l'adresse, desormais rangee ailleurs : le rendu ci-dessous n'a pas a savoir
     // de quelle table vient chaque champ.
     p.adresse=coord?.adresse||'';p.code_postal=coord?.code_postal||'';
+    p.ville=logi?.ville||'';p.vehicule=!!logi?.vehicule;p.permis=!!logi?.permis;
     const email=authR?.email||'';
     const ini=(((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
     const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
@@ -16372,9 +16389,6 @@ async function sauvegarderProfil(uid){
       nom:document.getElementById('set-nom')?.value.trim()||null,
       telephone:document.getElementById('set-tel')?.value.trim()||null,
       bio:document.getElementById('set-bio')?.value.trim()||null,
-      ville:document.getElementById('set-ville')?.value.trim()||null,
-      vehicule:document.getElementById('set-vehicule')?.checked||false,
-      permis:document.getElementById('set-permis')?.checked||false,
     };
     if(window._pendingAvatar){body.avatar_url=window._pendingAvatar;window._pendingAvatar=null;}
     const r=await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body});
@@ -16385,6 +16399,11 @@ async function sauvegarderProfil(uid){
       document.getElementById('set-adresse')?.value.trim()||null,
       document.getElementById('set-cp')?.value.trim()||null);
     if(sbErr(rc)){if(err){err.style.color='var(--er)';err.textContent='Profil enregistré, mais l\'adresse n\'a pas pu être sauvegardée.';}return;}
+    const rl=await enregistrerLogistique(uid,
+      document.getElementById('set-ville')?.value.trim()||null,
+      document.getElementById('set-vehicule')?.checked,
+      document.getElementById('set-permis')?.checked);
+    if(sbErr(rl)){if(err){err.style.color='var(--er)';err.textContent='Profil enregistré, mais la ville et les infos pratiques n\'ont pas pu être sauvegardées.';}return;}
     toast('Profil mis à jour.','ok');
     if(err)err.style.color='var(--ok)',err.textContent='Profil mis à jour.';
     const prenom=body.prenom||'';const nom=body.nom||'';
@@ -32963,7 +32982,7 @@ async function loadCollaborateurs(){
     const _colHasGlobal=_colRole==='admin'||_colRole==='rh';
     const _colPoleSelect=(S.activePoleId&&_colHasGlobal)?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
     const _colPoleQS=(S.activePoleId&&_colHasGlobal)?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,avatar_url,telephone,ville,type_contrat,actif,niveau_cm,cm_niveau_autonomie,cm_pool_clubplus_general'+_colPoleSelect+_colFilter+_colPoleQS+'&order=role.asc,nom.asc');
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,avatar_url,telephone,type_contrat,actif,niveau_cm,cm_niveau_autonomie,cm_pool_clubplus_general'+_colPoleSelect+_colFilter+_colPoleQS+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E','rh':'#C084FC'};
@@ -32996,6 +33015,7 @@ async function modalModifierCollaborateur(idx){
   // L'adresse ne figure plus dans _colsCache : elle vient de collaborateur_coordonnees, dont la
   // RLS ne repond qu'a l'interesse et a l'administration (audit du 10/09/2026).
   const tCoord=await chargerCoordonnees(t.id);
+  const tLogi=await chargerLogistique(t.id);
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   const rLabels={'admin':'Administrateur','sec':'Secrétaire','prod':'Resp. Production','photo':'Photographe','cm':'Community Manager','compta':'Comptable','com':'Commercial'};
   // La paie (salaire, charges) vit dans employee_costs (RLS admin/compta
@@ -33014,7 +33034,7 @@ async function modalModifierCollaborateur(idx){
       <div><label style="${lbl}">Téléphone</label><input id="fco-tel" type="tel" class="l-inp" value="${esc(t.telephone||'')}" style="height:38px"></div>
       <div><label style="${lbl}">Adresse</label><input id="fco-adresse" class="l-inp" value="${esc(tCoord.adresse||'')}" placeholder="Numéro, rue…" style="height:38px"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="${lbl}">Ville</label><input id="fco-ville" class="l-inp" value="${esc(t.ville||'')}" placeholder="Ville" style="height:38px"></div>
+        <div><label style="${lbl}">Ville</label><input id="fco-ville" class="l-inp" value="${esc(tLogi.ville||'')}" placeholder="Ville" style="height:38px"></div>
         <div><label style="${lbl}">Code postal</label><input id="fco-cp" class="l-inp" value="${esc(tCoord.code_postal||'')}" placeholder="75000" style="height:38px"></div>
       </div>
       ${t.id!==S.uid?(()=>{
@@ -33084,7 +33104,6 @@ async function modifierCollaborateur(id){
     prenom:document.getElementById('fco-prenom').value.trim()||null,
     nom:document.getElementById('fco-nom').value.trim()||null,
     telephone:document.getElementById('fco-tel').value.trim()||null,
-    ville:document.getElementById('fco-ville').value.trim()||null,
   };
   const typeContratEl=document.getElementById('fco-typecontrat');
   if(typeContratEl)body.type_contrat=typeContratEl.value;
@@ -33094,6 +33113,13 @@ async function modifierCollaborateur(id){
     document.getElementById('fco-adresse')?.value.trim()||null,
     document.getElementById('fco-cp')?.value.trim()||null);
   if(sbErr(rCoord)){err.textContent='Fiche enregistrée, mais l\'adresse n\'a pas pu être sauvegardée.';return;}
+  // vehicule et permis ne sont pas dans ce formulaire : on les relit pour ne pas les ecraser a
+  // false en enregistrant seulement la ville.
+  const logiActuelle=await chargerLogistique(id);
+  const rLogi=await enregistrerLogistique(id,
+    document.getElementById('fco-ville')?.value.trim()||null,
+    logiActuelle.vehicule, logiActuelle.permis);
+  if(sbErr(rLogi)){err.textContent='Fiche enregistrée, mais la ville n\'a pas pu être sauvegardée.';return;}
   if(typeContratEl){
     const salaireEl=document.getElementById('fco-salaire'),chargesEl=document.getElementById('fco-charges');
     if(typeContratEl.value==='salarie'&&salaireEl){
@@ -33158,7 +33184,7 @@ async function modalFicheCollaborateur(id){
   openModal('<div style="padding:32px;text-align:center;color:var(--t3)">Chargement de la fiche…</div>');
   try{
     const today=ymdLocal();
-    const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw,dispoRangeRaw,kitResaRaw,docsRaw,gradeRecoRaw,clientsCmRaw,poleAffRaw,coordRaw]=await Promise.all([
+    const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw,dispoRangeRaw,kitResaRaw,docsRaw,gradeRecoRaw,clientsCmRaw,poleAffRaw,coordRaw,logiRaw]=await Promise.all([
       sbFetch('profiles?select=*&id=eq.'+id).catch(()=>[]),
       sbFetch('prestations_equipe_display?select=id,statut,remuneration,prestations(id,reference,date_prestation,statut,lieu,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=200').catch(()=>[]),
       sbFetch('collaborateur_certifications?select=*&collaborateur_id=eq.'+id).catch(()=>[]),
@@ -33185,11 +33211,15 @@ async function modalFicheCollaborateur(id){
       // "je regarde ma propre fiche"), écriture réservée admin/rh (voir canManagePoles ci-dessous).
       sbFetch('pole_affectations?select=pole_id,role_pole,poles(nom,slug)&user_id=eq.'+id).catch(()=>[]),
       chargerCoordonnees(id),
+      chargerLogistique(id),
     ]);
     const prof=(Array.isArray(profRaw)?profRaw:[])[0];
     // Adresse hors de profiles depuis l'audit du 10/09/2026 : vide pour qui n'a pas le droit
     // de la lire, donc la ligne « Adresse » disparait d'elle-meme au lieu d'echouer.
-    if(prof){prof.adresse=coordRaw?.adresse||'';prof.code_postal=coordRaw?.code_postal||'';}
+    if(prof){
+      prof.adresse=coordRaw?.adresse||'';prof.code_postal=coordRaw?.code_postal||'';
+      prof.ville=logiRaw?.ville||'';prof.vehicule=!!logiRaw?.vehicule;prof.permis=!!logiRaw?.permis;
+    }
     if(!prof){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">Profil introuvable.</div>');return;}
     const pres=Array.isArray(presRaw)?presRaw:[];
     const certs=Array.isArray(certRaw)?certRaw:[];
@@ -34436,7 +34466,7 @@ async function runSearch(q){
     if(hasDevis)fetches.push(sbFetch('devis?select=id,numero,statut,clients(nom)&or=(numero.ilike.*'+qEnc+'*,notes.ilike.*'+qEnc+'*)&limit=4'));
     else fetches.push(Promise.resolve([]));
     // Collaborateurs (annuaire)
-    fetches.push(sbFetch('profiles?select=id,prenom,nom,role,ville&or=(prenom.ilike.*'+qEnc+'*,nom.ilike.*'+qEnc+'*,role.ilike.*'+qEnc+'*)&limit=4').catch(()=>[]));
+    fetches.push(sbFetch('profiles?select=id,prenom,nom,role&or=(prenom.ilike.*'+qEnc+'*,nom.ilike.*'+qEnc+'*,role.ilike.*'+qEnc+'*)&limit=4').catch(()=>[]));
     // Kits
     if(hasKits)fetches.push(sbFetch('kits?select=id,nom,type_kit,statut&or=(nom.ilike.*'+qEnc+'*,type_kit.ilike.*'+qEnc+'*)&limit=4').catch(()=>[]));
     else fetches.push(Promise.resolve([]));
@@ -37634,7 +37664,7 @@ async function loadAnnuaire(role){
   try{
     const today=ymdLocal();
     const [profiles,busyEquipe]=await Promise.all([
-      sbFetch('profiles?select=id,prenom,nom,role,email,telephone,avatar_url,ville,vehicule,permis,bio&order=nom.asc&limit=200'),
+      sbFetch('profiles?select=id,prenom,nom,role,email,telephone,avatar_url,bio&order=nom.asc&limit=200'),
       sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation)&prestations.date_prestation=eq.'+today+'&statut=in.(acceptée,invitation_envoyée)&limit=200').catch(()=>[]),
     ]);
     _annuaireTodayBusy=new Set((busyEquipe||[]).map(e=>e.collaborateur_id));
@@ -37749,7 +37779,7 @@ async function loadEquipeEnDirect(){
   const _eqPoleSelect=(S.activePoleId&&_eqRole==='admin')?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
   const _eqPoleQS=(S.activePoleId&&_eqRole==='admin')?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone,ville,vehicule,permis,zone,materiel_personnel'+_eqPoleSelect+_eqRoleFilter+_eqPoleQS+'&order=prenom.asc').catch(()=>[]),
+    sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone,zone,materiel_personnel'+_eqPoleSelect+_eqRoleFilter+_eqPoleQS+'&order=prenom.asc').catch(()=>[]),
     sbFetch('prestations_equipe_display?select=collaborateur_id,statut,prestations!inner(id,reference,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
     sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
