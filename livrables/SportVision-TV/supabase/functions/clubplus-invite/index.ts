@@ -162,6 +162,16 @@ serve(async (req) => {
       return json({ error: "Seul un administrateur du club, ou le CM SportVision qui l'accompagne, peut créer un accès." }, 403);
     }
 
+    // 10/09/2026 (audit des créations de compte) — les rôles qui relèvent de la PROPRIÉTÉ du club
+    // (administrateur, président, CM externe) ne s'attribuent que par l'Owner Club+ (v114/v116 :
+    // `protect_sensitive_club_member_fields`, `proteger_invitation_role_privilegie`). Cette
+    // fonction écrit avec la clé de service, qui passe ces triggers : un CM SportVision affecté au
+    // club pouvait donc, par un simple appel, créer un compte administrateur ou président du club.
+    // Plus aucun écran de Club+ ne l'appelle, mais elle reste déployée et appelable.
+    if (["admin", "president", "cm_externe"].includes(role) && !callerMember) {
+      return json({ error: "Seul l'Owner Club+ du club, ou SportVision, peut attribuer ce rôle." }, 403);
+    }
+
     // 19/08/2026 — plafond d'utilisateurs par plan (Club+ Gratuit : 1, Start : 5, Performance :
     // illimité). Vérifié ici, service-role, avant d'envoyer une invitation — jamais côté client.
     // 23/08/2026 — bug réel trouvé en testant contre V340 SC (Full Communication actif) : ce
