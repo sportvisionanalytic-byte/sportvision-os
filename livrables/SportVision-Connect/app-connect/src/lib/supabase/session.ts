@@ -297,6 +297,26 @@ export async function getAccountType(supabase: SupabaseClient, userId: string): 
 // `loginRedirectTo`, optionnel, préserve le comportement existant de
 // /equipes/rejoindre/[id] (`redirect("/auth/login?next=/equipes/rejoindre/" + id)`), seule route
 // à avoir un besoin de "next" réel — toutes les autres redirigent vers "/auth/login" nu.
+// ── Un collaborateur SportVision n'a rien à faire dans Connect (10/09/2026) ──────────────────────
+// Mikael, photographe : « il n'arrive plus à se connecter à l'OS, ça le redirige vers Connect ».
+// Un e-mail SportVision l'avait mené ici ; Connect traitait son compte, sans profil Connect, comme
+// un joueur par défaut et lui ouvrait un Espace joueur vide. Pire : s'il y créait un profil, la
+// base cessait de le reconnaître comme collaborateur (is_staff exclut les comptes Connect) et il
+// perdait ses droits dans l'OS. Un compte collaborateur SANS profil Connect est donc envoyé vers
+// /collaborateur, qui l'amène à l'OS. Un collaborateur qui a aussi un vrai profil Connect (parent,
+// joueur) garde son espace : c'est un choix déjà fait, pas un égarement.
+const ROLES_COLLABORATEUR = new Set(["admin", "sec", "prod", "photo", "cm", "compta", "com", "rh"]);
+export const URL_OS = "https://bc6m3cgdz.sportvision-an.fr/sportvision-os-full";
+
+async function redirigerSiCollaborateur(supabase: SupabaseClient, userId: string): Promise<void> {
+  const [{ data: profil }, { data: reglages }, { count: joueur }] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", userId).maybeSingle(),
+    supabase.from("connect_profile_settings").select("user_id").eq("user_id", userId).maybeSingle(),
+    supabase.from("player_profiles").select("id", { count: "exact", head: true }).eq("user_id", userId),
+  ]);
+  if (profil?.role && ROLES_COLLABORATEUR.has(profil.role) && !reglages && !joueur) redirect("/collaborateur");
+}
+
 export async function requireJoueurAccount(
   supabase: SupabaseClient,
   loginRedirectTo?: string,
@@ -308,6 +328,7 @@ export async function requireJoueurAccount(
     redirect(loginRedirectTo ? `/auth/login?next=${encodeURIComponent(loginRedirectTo)}` : "/auth/login");
   }
 
+  await redirigerSiCollaborateur(supabase, user.id);
   const accountType = await getAccountType(supabase, user.id);
   if (accountType === "particulier") redirect("/particulier");
 
@@ -334,6 +355,7 @@ export async function requireParticulierAccount(
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
+  await redirigerSiCollaborateur(supabase, user.id);
   const { data } = await supabase
     .from("connect_profile_settings")
     .select("account_type, profil_particulier")
