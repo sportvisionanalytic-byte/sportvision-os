@@ -6158,8 +6158,17 @@ async function modifierPrestation(id){
       if(sbErr(e)){err.textContent='Mission enregistrée, mais la proposition n\'est pas partie : '+msgErreur(e,'envoi impossible.');return;}
       envoyees=Number(e)||0;
     }
+    // Rien à envoyer : le dire, plutôt que de fermer en silence (première mission réelle, 10/09 :
+    // « j'ai appuyé sur Enregistrer, ça n'a rien fait » — aucun opérateur n'était prévu).
+    let sansEquipe=false;
+    if(!envoyees&&['admin','prod','sec'].includes(S.role)){
+      const eq=await sbFetch('prestations_equipe_display?select=id&prestation_id=eq.'+id+'&statut=in.(a_envoyer,invitation_envoyée,en_attente,acceptée)').catch(()=>null);
+      sansEquipe=Array.isArray(eq)&&eq.length===0;
+    }
     closeModal();
-    toast(envoyees?'Mission validée : proposition envoyée à '+envoyees+' opérateur'+(envoyees>1?'s':'')+'.':'Prestation mise à jour.','ok');
+    if(envoyees)toast('Mission validée : proposition envoyée à '+envoyees+' opérateur'+(envoyees>1?'s':'')+'.','ok');
+    else if(sansEquipe)toast('Mission enregistrée. Aucun opérateur n\'est encore prévu : ajoutez l\'équipe (bouton Équipe) pour envoyer la proposition.','warn');
+    else toast('Mission enregistrée.','ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
     if(body.statut&&body.statut!==statutAvant)appliquerEffetsStatutPrestation(id,body.statut).catch(()=>{});
