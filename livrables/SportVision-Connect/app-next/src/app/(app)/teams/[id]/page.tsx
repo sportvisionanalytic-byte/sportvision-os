@@ -39,6 +39,7 @@ import { ACCOUNT_STATUS_LABEL, fetchTeamRoster, type TeamRosterPlayer } from "@/
 import { fetchClubMembers } from "@/lib/data/club/users";
 import type { OrgUser } from "@/lib/types/settings";
 import { TeamStaffCard } from "@/components/teams/TeamStaffCard";
+import { TeamInvitationsCard } from "@/components/teams/TeamInvitationsCard";
 import { fetchClubCalendarEvents } from "@/lib/data/club/calendar";
 import { fetchClubMediaAssets } from "@/lib/data/club/content";
 import { fetchClubRequests } from "@/lib/data/club/requests";
@@ -602,6 +603,11 @@ function RealOverviewTab({
           </div>
         )}
       </Card>
+
+      {/* Les invitations de l'équipe, groupées par destinataire — c'est ici qu'elles ont un sens,
+          et plus sur les 43 cartes de l'écran Équipes. Le lien joueur mène vers Connect, le coach
+          reçoit une invitation nominative : deux publics, deux mécanismes (§38, §41-42). */}
+      <TeamInvitationsCard clubId={clubId} team={team} />
 
       {/* Pleine largeur : c'est la carte qui porte des actions et une liste, les deux autres ne
           portent qu'un constat. */}

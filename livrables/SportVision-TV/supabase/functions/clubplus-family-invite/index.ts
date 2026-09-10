@@ -122,69 +122,42 @@ serve(async (req) => {
       return json({ error: "Trop de tentatives. Réessayez dans une heure." }, 429);
     }
 
-    // Vérifie l'habilitation de l'appelant : admin (toute équipe) ou
-    // coach/resp_equipe (restreint à ses propres équipes, comparaison par nom
-    // d'équipe car club_members.teams est un jsonb de noms, pas d'ids).
-    const { data: callerMember } = await admin
-      .from("club_members")
-      .select("role, teams")
-      .eq("user_id", caller.id)
-      .eq("club_id", clubId)
-      .eq("status", "actif")
-      .maybeSingle();
+    // ── Autorisation : une seule source, celle de la base ──
+    // 10/09/2026 — Ce bloc réécrivait à la main ce que `peut_operer_club` (migration v99) sait
+    // déjà : membre admin du club, délégation d'agence, super-accès CM. Il ignorait en revanche
+    // les affectations nominatives (`club_cm_affectations`) et les métiers d'exploitation
+    // SportVision — c'est-à-dire précisément la façon dont les vrais CM sont rattachés à leurs
+    // clubs aujourd'hui. Résultat : « Non autorisé sur ce club » pour la personne qui administre
+    // le club au quotidien, troisième occurrence du même défaut après les liens joueurs et
+    // l'écran « Coachs & dirigeants ».
+    //
+    // On demande donc, avec les droits de l'APPELANT, et on ne recopie plus la règle ici.
+    const { data: peutOperer } = await userClient.rpc("peut_operer_club", { p_club_id: clubId });
+    let autorise = peutOperer === true;
 
-    // CM délégué (cm_agency_club_access) : accès complet équivalent admin, toute équipe.
-    // Vérifié indépendamment de club_members (un CM délégué n'y a généralement pas de ligne).
-    let isDelegatedCm = false;
-    if (!callerMember || callerMember.role !== "admin") {
-      const today = new Date().toISOString().slice(0, 10);
-      const { data: delegations } = await admin
-        .from("cm_agency_club_access")
-        .select("cm_agency_org_id, expires_at")
-        .eq("club_id", clubId);
-      for (const d of delegations || []) {
-        if (d.expires_at && d.expires_at < today) continue;
-        const { data: membership } = await admin
-          .from("memberships")
-          .select("id")
-          .eq("organization_id", d.cm_agency_org_id)
-          .eq("user_id", caller.id)
-          .eq("status", "actif")
-          .maybeSingle();
-        if (membership) { isDelegatedCm = true; break; }
+    // Un coach ou un responsable d'équipe peut inviter, mais pour SON équipe seulement.
+    // `is_team_educateur` porte déjà cette restriction : inutile de comparer des noms d'équipes à
+    // la main, ce que faisait l'ancien code.
+    if (!autorise) {
+      if (!teamId) {
+        return json({ error: "Vous ne pouvez inviter que pour vos propres équipes : précisez laquelle." }, 403);
       }
+      const { data: team } = await admin
+        .from("club_teams")
+        .select("club_id")
+        .eq("id", teamId)
+        .maybeSingle();
+      if (!team || team.club_id !== clubId) {
+        return json({ error: "Cette équipe n'appartient pas à ce club." }, 400);
+      }
+      const { data: educateur } = await userClient.rpc("is_team_educateur", { p_team_id: teamId });
+      autorise = educateur === true;
     }
 
-    // "CM responsable" (22/08/2026, migration-cm-agency-super-access-staff.sql) : un membre actif
-    // d'une organisation cm_agency avec cm_super_access=true a accès à TOUS les clubs, sans ligne
-    // cm_agency_club_access par club — même garde-fou que is_club_admin()/is_team_educateur() côté
-    // SQL et buildDelegatedClubActiveContext() côté app-next.
-    if (!isDelegatedCm && (!callerMember || callerMember.role !== "admin")) {
-      const { data: superMemberships } = await admin
-        .from("memberships")
-        .select("organization_id")
-        .eq("user_id", caller.id)
-        .eq("status", "actif")
-        .eq("cm_super_access", true);
-      for (const sm of superMemberships || []) {
-        const { data: org } = await admin.from("organizations").select("organization_type").eq("id", sm.organization_id).maybeSingle();
-        if (org?.organization_type === "cm_agency") { isDelegatedCm = true; break; }
-      }
+    if (!autorise) {
+      return json({ error: "Vous n'êtes pas autorisé à inviter sur ce club." }, 403);
     }
 
-    if (!callerMember && !isDelegatedCm) return json({ error: "Non autorisé sur ce club." }, 403);
-
-    if (!isDelegatedCm && callerMember!.role !== "admin") {
-      if (!["coach", "resp_equipe"].includes(callerMember!.role)) {
-        return json({ error: "Seuls un administrateur ou un éducateur/responsable d'équipe peuvent inviter." }, 403);
-      }
-      if (!teamId) return json({ error: "Équipe obligatoire pour un éducateur." }, 400);
-      const { data: team } = await admin.from("club_teams").select("name, club_id").eq("id", teamId).maybeSingle();
-      const callerTeams: string[] = Array.isArray(callerMember!.teams) ? callerMember!.teams : [];
-      if (!team || team.club_id !== clubId || !callerTeams.includes(team.name)) {
-        return json({ error: "Vous ne pouvez inviter que pour vos propres équipes." }, 403);
-      }
-    }
 
     // Idempotence : une invitation en attente identique existe déjà.
     if (targetType === "joueur") {
