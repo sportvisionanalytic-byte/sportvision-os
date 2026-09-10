@@ -1,0 +1,20 @@
+[build]
+  publish = "."
+
+# Site volontairement non indexé et non référencé publiquement — même logique
+# que le sous-domaine privé de l'OS (bc6m3cgdz.sportvision-an.fr) : ce hub
+# documente l'architecture interne (routes, permissions, flux de données),
+# rien de secret dedans mais aucune raison qu'il soit trouvable par un moteur
+# de recherche ou lié depuis une page publique.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    # CSP resserrée à 'self' pour l'instant : le hub est 100% statique (Phase 1),
+    # aucun appel réseau externe. À élargir (Supabase Review, etc.) quand la
+    # Phase 2+ branche le hub sur le projet Supabase Review réel.
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'"

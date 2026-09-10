@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>SportVision Review — Routes</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="review-banner">SportVision — Environnement Review <span>Données fictives</span><span>Aucune action réelle</span></div>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> SportVision Review Hub</div>
+    <nav class="hubnav">
+      <a href="index.html">Accueil</a>
+      <a href="routes.html" class="active">Routes</a>
+      <a href="permissions.html">Permissions</a>
+      <a href="data-flow.html">Data Flow</a>
+      <a href="personas.html">Personas</a>
+      <a href="status.html">Status</a>
+    </nav>
+  </div>
+  <main>
+    <h1>Routes de l'écosystème</h1>
+    <p class="lead">Inventaire réel des écrans des 4 applications, extrait directement du code (objet <code>NAV</code> de l'OS, arborescence <code>app/</code> de Club+ et Connect, fichiers de la Vitrine). Pas une cible, l'état actuel.</p>
+
+    <h2>SportVision OS <span style="color:var(--text3);font-weight:400">— 9 rôles, menu défini dans l'objet <code>NAV</code></span></h2>
+    <p class="foot-note" style="margin-bottom:14px">Chaque rôle a son propre menu. Certains écrans historiques restent fonctionnels (<code>switchView()</code> direct) mais sont sortis de la sidebar — marqués « legacy » ci-dessous.</p>
+
+    <details open>
+      <summary>Admin <span class="count">36 écrans visibles + 21 legacy</span></summary>
+      <div class="details-body">
+        <p class="foot-note">Opérations : Tableau de bord, Pôles, Planning, Prestations · Clients &amp; Ventes : Full Com, Club+, Connect, Médias &amp; Ventes, Galeries photo, Prospection, Devis, Contrats, Agences CM, Réservations clubs, Paiement collectif, Demandes Club+ · Communication : Communication (hub), Media Bank · Équipe &amp; RH : Vue d'ensemble, Collaborateurs, Recrutement · Production : Production (hub), Kits, Incidents · Finances &amp; Documents : Vue d'ensemble, Revenus, Dépenses, Équipe, Ventes médias, Finance par pôle, Rémunération pôle, Rapports &amp; exports · Secondaire : Calendrier global, Documents pièces RH · Espace : À traiter, Intégrations, Messagerie · Ressources : Centre de formation, Centre SportVision, Paramètres.</p>
+        <p class="foot-note"><strong>Legacy (fonctionnels, hors menu)</strong> : Clients (vue générique), Compte de résultat, Rentabilité, Commissions, Immobilisations, Budgets, TVA, Rapprochement, Factures, Acomptes, Impayés, Avoirs, Encaissements, Dépenses (ancien), Frais, Paiements, Rémunérations (ancien), Clôtures, Exports, FEC, Journal d'audit, Rapport mensuel.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Secrétaire <span class="count">~24 écrans</span></summary>
+      <div class="details-body"><p class="foot-note">Tableau de bord, Demandes entrantes, Agenda, Tâches, Relances · Full Com, Club+, Connect, Devis, Contrats, Abonnements, Paiement collectif, Demandes Club+ · Recrutement · Prestations, Planning admin, Livraisons, Réservations clubs · Documents pièces RH, Documents (devis/factures) · Messagerie · Centre de formation, Centre SportVision, Paramètres.</p></div>
+    </details>
+
+    <details>
+      <summary>Responsable Production <span class="count">9 écrans (refonte 29/08)</span></summary>
+      <div class="details-body"><p class="foot-note">Accueil, Cockpit, Missions, Livraisons, Galeries photo · Équipe terrain, Matériel · Centre de formation, Centre SportVision, Messagerie, Paramètres.</p></div>
+    </details>
+
+    <details>
+      <summary>Photographe / Vidéaste <span class="count">9 écrans (refonte 28/08)</span></summary>
+      <div class="details-body"><p class="foot-note">Accueil, Mes missions, Mon planning, Galeries photo · Mes revenus, Formation · Messagerie, Centre SportVision · Mon profil.</p></div>
+    </details>
+
+    <details>
+      <summary>Community Manager <span class="count">7 écrans (refonte 29/08) + 2 dynamiques si Responsable</span></summary>
+      <div class="details-body"><p class="foot-note">Accueil, Mes structures, Planning, Demandes, Contenus · Mes revenus · Formation, Messagerie, Mon profil. Un CM au niveau d'autonomie « responsable » voit en plus « Pilotage CM » et « Performances », insérés dynamiquement (pas dans le menu statique).</p></div>
+    </details>
+
+    <details>
+      <summary>Comptable <span class="count">27 écrans</span></summary>
+      <div class="details-body"><p class="foot-note">Tableau de bord, Résultat, Rapprochement, Rentabilité, Commissions, Immobilisations, Budgets, Factures, Acomptes, Impayés, Avoirs, Encaissements, Paiement collectif, Documents, Paiements, Rémunérations, Dépenses, Frais, Clôtures, Exports, FEC, Journal d'audit, TVA, Annuaire, Messagerie, Centre SportVision, Paramètres.</p></div>
+    </details>
+
+    <details>
+      <summary>Commercial <span class="count">13 écrans (refonte 28/08)</span></summary>
+      <div class="details-body"><p class="foot-note">Tableau de bord, Prospects, Pipeline, Agenda, Commissions · Devis, Mes clients signés, Objectifs · Annuaire, Messagerie · Formation, Centre SportVision, Paramètres.</p></div>
+    </details>
+
+    <details>
+      <summary>RH <span class="count">= menu Secrétaire + Équipe/RH</span></summary>
+      <div class="details-body"><p class="foot-note">Construit dynamiquement : copie exacte du menu Secrétaire, avec en plus « Vue d'ensemble » et « Collaborateurs » (section Équipe &amp; RH).</p></div>
+    </details>
+
+    <details>
+      <summary>Expert-comptable / Auditeur <span class="count">lecture seule — 18 / 14 écrans</span></summary>
+      <div class="details-body"><p class="foot-note"><strong>Expert-comptable</strong> : Tableau de bord, Résultat, Rentabilité, Commissions, Immobilisations, Budgets, TVA, Factures, Avoirs, Documents, Dépenses, Frais, Rémunérations, Clôtures, Exports, FEC, Journal d'audit, Paramètres. <strong>Auditeur</strong> : sous-ensemble sans Commissions, Factures, Documents ni Journal d'audit détaillé.</p></div>
+    </details>
+
+    <h2>Club+ <span style="color:var(--text3);font-weight:400">— Next.js, 71 routes dans le groupe applicatif</span></h2>
+    <div class="finding">
+      <div class="finding-title">Constat</div>
+      Aucune route n'est bloquée au niveau du routage Next.js. Toute page charge pour tout compte connecté ; c'est le contenu affiché (menu + composant) qui varie selon le rôle et le type d'organisation, via <code>src/lib/permissions.ts</code> et <code>src/lib/navigation.ts</code> (9 menus différents selon rôle/type : Club+, Full Com, Coach, Directeur sportif, Communication, Secrétaire, Trésorier, Administratif, CM SportVision — plus des menus dédiés Sponsor/Parent/Joueur/Agence CM pour les organisations non-club). Un module non autorisé affiche un message « module verrouillé » plutôt qu'une redirection.
+    </div>
+    <details>
+      <summary>Liste des 71 routes applicatives <span class="count">app-next/src/app/(app)/</span></summary>
+      <div class="details-body"><p class="foot-note mono">accompagnement · analytics · appointments · authorizations · billing · calendar · camps · campsessions/[id] · campsessions · children · communication/credits · communication · communication/publications/[id] · content/[id] · content/collections/[id] · content · contracts · dashboard · documents · events/[id] · events · eventtimeline · galeries · invitations · live · matchcenter · media-sales · media · messages · mycm · newsroom · notifications · notifications/preferences · onboarding · presences · publications · reports · requests/new · requests · season-transition · services/[id] · services/new · services · sessions · settings/integrations · settings/organization · settings · settings/profile · sponsors/[id] · sponsors · studio/[template] · studio · support · team-requests · teams/[id] · teams · teams/players/[id] · users · validations</p></div>
+    </details>
+    <details>
+      <summary>Routes publiques / hors espace connecté <span class="count">15 routes</span></summary>
+      <div class="details-body"><p class="foot-note mono">activation · auth/confirming · auth/forgot · auth/login · auth/reset · demo/[profile]/[[...module]] · demo · org-activation · / (accueil) · rejoindre · signup-free · signup · signup/request/contact · signup/request/needs · signup/request · signup/request/review · signup/request/structure</p></div>
+    </details>
+
+    <h2>Connect <span style="color:var(--text3);font-weight:400">— Next.js, pas de colonne rôle, accès par relation</span></h2>
+    <details>
+      <summary>Espace Joueur <span class="count">23 routes</span></summary>
+      <div class="details-body"><p class="foot-note mono">acces · affiliations/ajouter · affiliations · calendrier · commandes/[id] · commandes · contenus · cotisations/[id] · cotisations/creer · cotisations · dashboard · equipes/[id] · equipes/creer · equipes · equipes/rejoindre/[id] · factures · medias · messages · mon-univers · photos · prestations/[id] · prestations/[id]/reserver · prestations · profil · services</p></div>
+    </details>
+    <details>
+      <summary>Espace Particulier (parent) <span class="count">21 routes, miroir de l'espace Joueur</span></summary>
+      <div class="details-body"><p class="foot-note mono">abonnement · calendrier · commandes/[id] · commandes · contenus · cotisations/[id] · cotisations/creer · cotisations · factures · medias · messages · mon-univers · (racine) · prestations · profil · rejoindre/[code] · reserver/[offerId] · services · sportifs/[kind]/[id] · sportifs/[kind]/[id]/photos · sportifs/ajouter/gere · sportifs/ajouter/inviter · sportifs/ajouter · sportifs</p></div>
+    </details>
+    <details>
+      <summary>Racines transverses <span class="count">20 routes</span></summary>
+      <div class="details-body"><p class="foot-note mono">aide · auth/confirming · auth/forgot · auth/login · auth/reset · cotisation/[token] · galeries/[albumId] · galeries · gallery/[slug] · gallery/commande/[token] · gallery/commande · join/[code] · media-checkout/[token] · mes-invitations · (racine) · signup/club · signup · signup/profil · signup/sport · signup/verify</p></div>
+    </details>
+    <details>
+      <summary>Mode démo existant <span class="count">17 routes, déjà en prod</span></summary>
+      <div class="details-body"><p class="foot-note mono">affiliations · calendrier · commandes · contenus · cotisations/[id] · cotisations/creer · cotisations · dashboard · equipes · factures · medias · messages · mon-univers · (racine) · prestations/[id] · prestations · profil · services</p>
+      <p class="foot-note">Ce mode démo préexistant reste utile en complément du backend Review — voir la note Phase 5/6 sur la combinaison des deux.</p></div>
+    </details>
+
+    <h2>Vitrine <span style="color:var(--text3);font-weight:400">— 37 pages statiques, sportvision-an.fr</span></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fichier</th><th>Titre</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">index.html</td><td>SportVision — Photo, vidéo &amp; communication sportive</td></tr>
+          <tr><td class="mono">prestations.html</td><td>Prestations SportVision — Match, shooting, tournoi</td></tr>
+          <tr><td class="mono">prestation-match-photo.html</td><td>Match Photo — 120 € TTC</td></tr>
+          <tr><td class="mono">prestation-match-video.html</td><td>Match Vidéo — 120 € TTC</td></tr>
+          <tr><td class="mono">prestation-pack-match.html</td><td>Pack Match Complet — 160 € TTC</td></tr>
+          <tr><td class="mono">prestation-camera-isolee.html</td><td>Caméra Isolée Joueur — Suivi vidéo individuel</td></tr>
+          <tr><td class="mono">prestation-montage-compilation.html</td><td>Montage &amp; Compilation Vidéo</td></tr>
+          <tr><td class="mono">prestation-shooting-joueur.html</td><td>Shooting Joueur — Portraits &amp; contenus personnels</td></tr>
+          <tr><td class="mono">prestation-shooting-equipe.html</td><td>Shooting d'Équipe — Photos officielles</td></tr>
+          <tr><td class="mono">prestation-media-day.html</td><td>Media Day — Portraits &amp; contenus partenaires</td></tr>
+          <tr><td class="mono">prestation-tournois.html</td><td>Couverture Tournois &amp; Stages</td></tr>
+          <tr><td class="mono">prestation-creations.html</td><td>Créations Graphiques</td></tr>
+          <tr><td class="mono">prestation-coachs.html</td><td>Prestations Coachs &amp; Préparateurs</td></tr>
+          <tr><td class="mono">club-plus.html</td><td>Club+ — Organisez la communication de votre structure</td></tr>
+          <tr><td class="mono">connect.html</td><td>SportVision Connect</td></tr>
+          <tr><td class="mono">full-communication.html</td><td>Full Communication</td></tr>
+          <tr><td class="mono">full-communication-clubs.html</td><td>Full Communication Clubs</td></tr>
+          <tr><td class="mono">full-communication-coachs.html</td><td>Full Communication Coachs</td></tr>
+          <tr><td class="mono">full-communication-academies.html</td><td>Full Communication Académies</td></tr>
+          <tr><td class="mono">full-communication-evenements.html</td><td>Full Communication Tournois &amp; Événements</td></tr>
+          <tr><td class="mono">accompagnements.html</td><td>Accompagnements — Trouvez la solution adaptée</td></tr>
+          <tr><td class="mono">accompagnements-joueurs.html</td><td>Accompagnement Joueur</td></tr>
+          <tr><td class="mono">accompagnements-coachs.html</td><td>Accompagnement Coach &amp; Préparateur</td></tr>
+          <tr><td class="mono">accompagnements-academies.html</td><td>Accompagnement Académie</td></tr>
+          <tr><td class="mono">accompagnements-evenements.html</td><td>Couverture Tournois &amp; Événements</td></tr>
+          <tr><td class="mono">realisations.html</td><td>Réalisations — Photos et vidéos sportives</td></tr>
+          <tr><td class="mono">a-propos.html</td><td>À propos</td></tr>
+          <tr><td class="mono">reserver.html</td><td>Réserver une prestation</td></tr>
+          <tr><td class="mono">demande-de-devis.html</td><td>Demande de devis</td></tr>
+          <tr><td class="mono">recrutement-photographe-videaste.html</td><td>Recrutement Photographe &amp; Vidéaste freelance</td></tr>
+          <tr><td class="mono">recrutement-community-manager.html</td><td>Recrutement Community Manager freelance</td></tr>
+          <tr><td class="mono">offres.html</td><td>(page technique de redirection)</td></tr>
+          <tr><td class="mono">mentions-legales.html</td><td>Mentions légales</td></tr>
+          <tr><td class="mono">cgv.html</td><td>Conditions Générales de Vente</td></tr>
+          <tr><td class="mono">confidentialite.html</td><td>Politique de confidentialité</td></tr>
+          <tr><td class="mono">cookies.html</td><td>Politique cookies</td></tr>
+          <tr><td class="mono">retractation.html</td><td>Rétractation</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+  <footer>SportVision Review Hub — routes extraites du code le 10/09/2026.</footer>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>SportVision Review — Permissions</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="review-banner">SportVision — Environnement Review <span>Données fictives</span><span>Aucune action réelle</span></div>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> SportVision Review Hub</div>
+    <nav class="hubnav">
+      <a href="index.html">Accueil</a>
+      <a href="routes.html">Routes</a>
+      <a href="permissions.html" class="active">Permissions</a>
+      <a href="data-flow.html">Data Flow</a>
+      <a href="personas.html">Personas</a>
+      <a href="status.html">Status</a>
+    </nav>
+  </div>
+  <main class="wide">
+    <h1>Matrice des permissions</h1>
+    <p class="lead">Ce que chaque rôle peut réellement faire, vérifié contre les fonctions RLS et le code de permission — pas une intention, l'état actuel du système.</p>
+
+    <div class="finding">
+      <div class="finding-title">Constat — documentation interne périmée</div>
+      <code>RBAC_MATRIX.md</code> (dernière modification 06/08) ne reflète plus l'état réel du schéma vérifié en base aujourd'hui : <code>profiles.role</code> accepte en réalité <strong>10 valeurs</strong> (pas 7 — <code>expert_comptable</code>, <code>auditeur</code>, <code>rh</code> ajoutés depuis), <code>club_members.role</code> en accepte <strong>13</strong> (pas 11 — <code>directeur_sportif</code>, <code>administratif</code> ajoutés). Plus important : le document affirme que seul <code>role='admin'</code> compte comme administrateur du club — c'est devenu faux <strong>le jour même de cet audit</strong> (migration du 10/09/2026) : <code>president</code> a désormais les mêmes droits d'administration courante que <code>admin</code>, via la fonction <code>is_club_admin()</code>. Une fonction distincte, <code>is_real_club_admin()</code>, réserve à <code>admin</code> strict seulement 2 pouvoirs : attribuer un rôle privilégié et supprimer définitivement un membre. La matrice ci-dessous reflète l'état réel, pas ce document.
+    </div>
+
+    <div class="finding">
+      <div class="finding-title">Constat — incohérence potentielle sur le rôle RH (OS)</div>
+      Le rôle <code>rh</code> existe dans le menu de navigation et dans la contrainte de colonne <code>profiles.role</code>, mais la fonction <code>is_staff()</code> (qui gouverne l'accès staff côté Connect, anti-fuite cross-tenant) ne liste toujours que les 7 rôles historiques et ne semble pas inclure <code>rh</code>. À vérifier avant de considérer ce rôle pleinement fonctionnel côté Connect — non corrigé dans ce chantier (documentation uniquement, voir consigne "pas de refactor métier").
+    </div>
+
+    <h2>Club+ <span style="color:var(--text3);font-weight:400">— 12 rôles réels (<code>club_members.role</code>)</span></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fonction</th><th>Admin</th><th>Président</th><th>Secrétaire</th><th>Comm</th><th>Coach</th><th>Resp. équipe</th><th>Dir. sportif</th><th>Trésorier</th><th>Membre bureau</th><th>Administratif</th><th>CM externe</th><th>Lecture seule</th></tr></thead>
+        <tbody>
+          <tr><td>Voir le club</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td></tr>
+          <tr><td>Modifier le club</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Créer/renommer une équipe</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕¹</td><td class="crx">✕¹</td><td class="crx">✕¹</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Voir toutes les équipes</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td></tr>
+          <tr><td>Créer un match / saisir un résultat</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td></tr>
+          <tr><td>Supprimer un match</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Inviter un membre (coach, secrétaire...)</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕²</td><td class="crx">✕²</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Attribuer un rôle privilégié (admin/président/CM externe)</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Supprimer définitivement un membre</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Gérer le droit à l'image (tags joueur/média)</td><td class="chk">✓</td><td class="chk">✓</td><td>³</td><td class="chk">✓⁴</td><td class="chk">✓⁴</td><td class="chk">✓⁴</td><td>—</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td>—</td><td class="crx">✕</td></tr>
+          <tr><td>Publier un contenu (actualité club)</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td></tr>
+          <tr><td>Supprimer un contenu</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Voir devis / factures / contrats</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Approuver devis / signer contrat / payer facture</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕⁵</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕⁵</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Gérer utilisateurs &amp; paramètres organisation</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="foot-note">
+      ¹ Le coach/resp. équipe/directeur sportif gère l'<em>activité</em> de son équipe (matchs, résultats, effectif) mais pas son existence structurelle — décision produit explicite documentée dans le code.<br>
+      ² Le rôle attribuable par invitation exclut <code>admin</code> — l'attribution d'un rôle privilégié passe uniquement par un administrateur réel, jamais par une invitation standard.<br>
+      ³ Non vérifié ligne à ligne dans cette passe — à confirmer avant de le tester en review.<br>
+      ⁴ Cohérent avec la note ¹ (« gère l'activité de son équipe ») mais fonction SQL exacte non relue en détail.<br>
+      ⁵ Lecture des documents financiers oui, mais pas d'action (signer/payer) — pas de mécanisme de délégation fine par utilisateur aujourd'hui, documenté comme tel dans le code.
+    </p>
+    <p class="foot-note">Rôles Club+ non couverts par ce tableau : <code>sponsor_mgr</code> (CRM sponsors), <code>cm_externe</code> (délégation communication externe, jamais de droit admin/président/CM), <code>lecture_seule</code> (aucune écriture possible, toute action bloquée).</p>
+
+    <h2>SportVision OS <span style="color:var(--text3);font-weight:400">— <code>profiles.role</code>, mono-tenant</span></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fonction</th><th>Admin</th><th>Secrétaire</th><th>Commercial</th><th>Prod</th><th>Photo</th><th>CM</th><th>Compta</th><th>Expert-comptable</th><th>Auditeur</th><th>RH</th></tr></thead>
+        <tbody>
+          <tr><td>Accès large clients / prestations / staff</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td>⁶</td></tr>
+          <tr><td>Modifier un club Club+ depuis l'OS</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Créer/éditer un contenu CM</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td></tr>
+          <tr><td>Voir toute la finance (résultat, rentabilité...)</td><td class="chk">✓</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="chk">✓</td><td class="chk">✓ (lecture)</td><td class="chk">✓ (lecture, subset)</td><td class="crx">✕</td></tr>
+          <tr><td>Voir/gérer les missions terrain</td><td class="chk">✓</td><td class="chk">✓</td><td class="crx">✕</td><td class="chk">✓</td><td>✓ (siennes)</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td class="crx">✕</td><td>⁶</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="foot-note">⁶ <code>rh</code> hérite du menu Secrétaire (cloné) mais aucune policy RLS dédiée n'a été identifiée — voir le constat sur <code>is_staff()</code> ci-dessus.</p>
+
+    <h2>Connect <span style="color:var(--text3);font-weight:400">— pas de colonne rôle, accès par relation</span></h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:10px">Il n'existe pas de rôle Connect à proprement parler. L'accès dépend de ce à quoi le compte est rattaché :</p>
+    <table>
+      <thead><tr><th>Profil</th><th>Rattachement</th><th>Ce qu'il voit</th></tr></thead>
+      <tbody>
+        <tr><td>Joueur</td><td>ligne(s) <code>player_profiles</code>, une par club</td><td>Son profil, son équipe, ses prestations, ses médias</td></tr>
+        <tr><td>Parent</td><td><code>parent_profiles</code> + lien confirmé vers un ou plusieurs joueurs</td><td>Les autorisations (droit à l'image) et le calendrier de ses enfants</td></tr>
+        <tr><td>Coach (côté Connect)</td><td>équipe(s) qu'il encadre</td><td>Non détaillé dans cette passe — accès via les mêmes équipes que côté Club+</td></tr>
+      </tbody>
+    </table>
+    <p class="foot-note">Les autorisations parentales (droit à l'image d'un mineur) sont lisibles par : le parent confirmé, le joueur lui-même, et le staff SportVision (admin).</p>
+  </main>
+  <footer>SportVision Review Hub — permissions extraites du code le 10/09/2026, certains points marqués « non vérifié ligne à ligne » à confirmer avant de les présenter comme testables.</footer>
+</body>
+</html>

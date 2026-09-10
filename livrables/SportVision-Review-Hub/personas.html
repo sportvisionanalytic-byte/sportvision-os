@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>SportVision Review — Personas</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="review-banner">SportVision — Environnement Review <span>Données fictives</span><span>Aucune action réelle</span></div>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> SportVision Review Hub</div>
+    <nav class="hubnav">
+      <a href="index.html">Accueil</a>
+      <a href="routes.html">Routes</a>
+      <a href="permissions.html">Permissions</a>
+      <a href="data-flow.html">Data Flow</a>
+      <a href="personas.html" class="active">Personas</a>
+      <a href="status.html">Status</a>
+    </nav>
+  </div>
+  <main>
+    <h1>Personas de démonstration</h1>
+    <p class="lead">Comptes fictifs prévus pour l'audit, avec sélecteur de rôle réel (pas un simple masquage visuel — les permissions RLS s'appliquent réellement à chaque persona sur le projet Supabase Review).</p>
+
+    <div class="section-hint">
+      <span class="badge badge-pending">Phase 7 — pas encore activé</span>
+      Cette page liste les personas <strong>planifiés</strong>. Ils seront créés dans le projet Supabase Review (Phase 2) puis reliés à un vrai sélecteur de rôle dans chaque application (Phase 7). Le contenu ci-dessous documente la cible, pas l'état actuel.
+    </div>
+
+    <h2>Rôles SportVision OS (personnel interne)</h2>
+    <table>
+      <thead><tr><th>Persona</th><th>Rôle technique</th><th>Usage prévu</th></tr></thead>
+      <tbody>
+        <tr><td>Admin Demo</td><td class="mono">profiles.role = admin</td><td>Vue directoriale complète, tous modules</td></tr>
+        <tr><td>CM Demo</td><td class="mono">profiles.role = cm</td><td>Communication, demandes clubs, contenus, planning éditorial</td></tr>
+        <tr><td>Secrétaire Demo</td><td class="mono">profiles.role = sec</td><td>Demandes, devis, documents, recrutement</td></tr>
+        <tr><td>Responsable Production Demo</td><td class="mono">profiles.role = prod</td><td>Missions, équipe terrain, matériel, livraisons</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Rôles Club+ (SV Demo FC)</h2>
+    <table>
+      <thead><tr><th>Persona</th><th>Rôle technique</th><th>Usage prévu</th></tr></thead>
+      <tbody>
+        <tr><td>Président Demo</td><td class="mono">club_members.role = president</td><td>Administration opérationnelle du club (pas la propriété — voir Permissions)</td></tr>
+        <tr><td>Dirigeant Demo</td><td class="mono">club_members.role = membre_bureau</td><td>Vue bureau, hors administration complète</td></tr>
+        <tr><td>Coach Nicolas Demo</td><td class="mono">club_members.role = coach</td><td>Équipe U14 D1 — effectif, calendrier, présences</td></tr>
+        <tr><td>Coach Sarah Demo</td><td class="mono">club_members.role = coach</td><td>Équipe U18 F — effectif, calendrier, présences</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Rôles Connect (espace personnel)</h2>
+    <table>
+      <thead><tr><th>Persona</th><th>Rattachement</th><th>Usage prévu</th></tr></thead>
+      <tbody>
+        <tr><td>Parent Demo</td><td>Parent de Lucas Demo, U10</td><td>Droits à l'image, calendrier enfant, messages</td></tr>
+        <tr><td>Joueur Demo</td><td>Seniors R2</td><td>Profil, calendrier, contenus le concernant</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Sélecteur de rôle prévu</h2>
+    <p style="color:var(--text2);font-size:13px">Une fois actif : bandeau "Mode Review · Voir comme : [rôle ▾]" présent sur chaque application Review. Le changement de persona déclenche une vraie session (nouveau JWT Supabase Review pour ce persona), pas un simple changement d'affichage — les policies RLS du projet Review s'appliquent normalement.</p>
+  </main>
+  <footer>SportVision Review Hub</footer>
+</body>
+</html>

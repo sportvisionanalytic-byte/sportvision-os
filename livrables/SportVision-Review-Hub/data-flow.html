@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>SportVision Review — Data Flow</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="review-banner">SportVision — Environnement Review <span>Données fictives</span><span>Aucune action réelle</span></div>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> SportVision Review Hub</div>
+    <nav class="hubnav">
+      <a href="index.html">Accueil</a>
+      <a href="routes.html">Routes</a>
+      <a href="permissions.html">Permissions</a>
+      <a href="data-flow.html" class="active">Data Flow</a>
+      <a href="personas.html">Personas</a>
+      <a href="status.html">Status</a>
+    </nav>
+  </div>
+  <main class="wide">
+    <h1>Flux de données</h1>
+    <p class="lead">Pour chaque donnée métier : qui la crée (source de vérité) et qui la lit. Vérifié sur les vraies clés étrangères en base, pas déduit des noms de migrations. Documente l'existant — aucune réorganisation proposée ici.</p>
+
+    <div class="finding">
+      <div class="finding-title">Piège à connaître avant l'audit — deux notions de « présence »</div>
+      L'écosystème a <strong>deux tables distinctes</strong> qui portent le mot « présence », dans deux domaines différents : <code>planned_presences</code> (OS — planification d'un opérateur SportVision qui vient filmer/photographier) et <code>club_presences</code> (Club+ — suivi des présences des joueurs aux entraînements/matchs). Ne pas les confondre pendant l'audit.
+    </div>
+
+    <div class="finding">
+      <div class="finding-title">Constat — deux modèles de club qui coexistent</div>
+      Une table <code>organizations</code> plus récente coexiste avec l'historique <code>clubs</code> (<code>organizations.legacy_club_id → clubs.id</code>). La facturation/abonnement (<code>stripe_customer_id</code>, <code>plan</code>, crédits...) reste portée par <code>clubs</code>, mais la table d'invitations la plus récente (<code>club_invitations</code>) référence déjà <code>organizations(id)</code>. Migration de modèle en cours, pas encore unifiée — à garder en tête si un parcours d'audit semble incohérent entre deux écrans.
+    </div>
+
+    <table>
+      <thead><tr><th>Donnée</th><th>Source de vérité</th><th>Consommateurs</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Club</strong></td><td>Club+ — table <code>clubs</code> (onboarding/signup Club+)</td><td>OS (lecture/écriture staff), Connect (lecture via <code>player_profiles.club_id</code>)</td></tr>
+        <tr><td><strong>Équipe</strong></td><td>Club+ — <code>club_teams</code></td><td>OS (via <code>club_matches.team_id</code>, événements calendrier), Connect (espace joueur « Mes équipes »)</td></tr>
+        <tr><td><strong>Membre / Collaborateur</strong></td><td>Deux tables séparées, non liées : <code>club_members</code> (rôle dans un club) et <code>profiles</code> (staff interne SportVision)</td><td>Pas d'entité « personne » unique transverse — la jointure se fait par email/identifiant Auth, pas par une table partagée</td></tr>
+        <tr><td><strong>Joueur</strong></td><td>Connect — <code>player_profiles</code></td><td>Club+ (effectif d'équipe, ventes de médias), OS (ventes de médias)</td></tr>
+        <tr><td><strong>Parent</strong></td><td>Connect — <code>parent_profiles</code>, lié au(x) joueur(s)</td><td>Club+ (droit à l'image)</td></tr>
+        <tr><td><strong>Coach</strong></td><td>Club+ — ligne <code>club_members</code> (pas de table dédiée)</td><td>Connect (affichage aux joueurs de l'équipe, non vérifié en détail)</td></tr>
+        <tr><td><strong>Présence SportVision</strong> (opérateur qui filme/photographie)</td><td>OS — <code>planned_presences</code></td><td>Club+ (visible via l'événement/match lié), OS Production (planning)</td></tr>
+        <tr><td><strong>Match / Résultat</strong></td><td>Club+ — <code>club_matches</code>, écriture ouverte à tout membre, suppression réservée aux admins/présidents</td><td>OS (missions, présences, contenus rattachés), Connect (calendrier joueur)</td></tr>
+        <tr><td><strong>Droit à l'image</strong></td><td>Partagé : politique générale sur <code>clubs</code> + autorisation nominative dans <code>parental_authorizations</code></td><td>Connect (parent/joueur consulte et signe), OS (staff admin), Club+ (politique visible par tout membre)</td></tr>
+        <tr><td><strong>Contenu (média/post)</strong></td><td>Deux tables selon qui le crée : <code>contenus</code> (OS, pipeline CM Full Com) et <code>club_newsroom_items</code> (Club+, communication interne du club)</td><td>Croisé : un contenu OS peut référencer un événement/match/mission/demande Club+, mais reste dans la table OS</td></tr>
+        <tr><td><strong>Demande de communication</strong> (Club+ → CM)</td><td>Club+ — <code>club_requests</code></td><td>OS (un contenu produit répond à une demande via <code>contenus.request_id</code>)</td></tr>
+        <tr><td><strong>Mission / Prestation</strong></td><td>OS — <code>prestations</code></td><td>Club+ (visible via le match/événement associé), Connect (le joueur/parent voit et peut réserver sa prestation), OS Secrétariat</td></tr>
+        <tr><td><strong>Facturation / Abonnement Club+</strong></td><td>Club+ — colonnes directement sur <code>clubs</code> (Stripe, plan, crédits)</td><td>OS (compta/finance, webhooks Stripe), Club+ (page facturation)</td></tr>
+        <tr><td><strong>Invitation</strong> (coach/joueur/parent)</td><td>Club+ — <code>club_invitations</code></td><td>Connect (la personne invitée reçoit le lien), OS (supervision/révocation par le staff)</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Ce qui n'a pas été vérifié en détail dans cette passe</h2>
+    <ul style="color:var(--text2);font-size:13px;line-height:1.9">
+      <li>Le mécanisme exact d'accès du « coach côté Connect » (par opposition au coach Club+) n'a pas été retracé table par table.</li>
+      <li>Deux documents produit plus larges (<code>MASTER-ECOSYSTEME-V2.md</code>, <code>CLUB-PLUS-PRODUCT-BIBLE.md</code>) n'ont été que partiellement exploités — ils contiennent probablement des précisions supplémentaires utiles avant une publication finale de cette page.</li>
+    </ul>
+  </main>
+  <footer>SportVision Review Hub — flux de données extraits du code et des clés étrangères réelles le 10/09/2026.</footer>
+</body>
+</html>
