@@ -16743,7 +16743,12 @@ async function modalEquipePrestation(prestationId,ref){
       <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="attribuerKitPrestation('${prestationId}','${ref}')">+ Attribuer</button></div>
       <div id="eq-kit-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">
+      <button class="btn bg2" onclick="closeModal()">Fermer</button>
+      <!-- 10/09/2026, première mission réelle : la fenêtre Équipe était une impasse (« Fermer »
+           seul). Valider l'équipe enchaîne sur le brief de la même mission. -->
+      ${['admin','sec','prod'].includes(S.role)?`<button class="btn bp" onclick="closeModal();setTimeout(()=>ouvrirFicheMission('${prestationId}','brief'),150)">Valider l'équipe → Brief</button>`:''}
+    </div>`);
   await chargerEquipe(prestationId,ref);
   await chargerKitsPrestation(prestationId,ref);
   sbFetch('prestations?id=eq.'+prestationId+'&select=format_mission').then(d=>{
@@ -31520,6 +31525,13 @@ async function loadKanban(){
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
+// Ouvre la fiche d'une mission directement sur une étape (onglet de la fiche Production ; pour
+// l'administration et le secrétariat, dont la fiche n'a pas d'onglets, on amène l'œil au brief).
+async function ouvrirFicheMission(id,onglet){
+  await modalDetailById(id);
+  if(document.getElementById('pf-tab-'+onglet)){setProdFicheTab(onglet);return;}
+  if(onglet==='brief')document.getElementById('pd-desc')?.scrollIntoView({block:'center'});
+}
 async function modalDetailById(id){
   try{
     const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,briefing_vu_at,options_selectionnees,mode_paiement_choisi,distance_km,frais_deplacement_ht,offre_id,catalogue_offres(nom,categorie,description,tarif_type,prix_ht,duree_estimee,livrables_inclus),clients(nom)&id=eq.'+id);
@@ -31767,8 +31779,11 @@ function modalProdFiche(p){
     <div id="pd-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:10px"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <!-- Les étapes s'enchaînent : Infos → Équipe → Brief → Budget (première mission réelle, 10/09). -->
+      <button id="pf-suivant" class="btn bg2" onclick="pfEtapeSuivante()">Suivant : Équipe →</button>
       <button class="btn bp" onclick="modifierPrestation('${pref}')">Enregistrer</button>
     </div>`);
+  _pfOnglet='infos';
   chargerEquipeModal(p.id);
   _chargerRemProdFiche(p.id);
   _chargerHistoriqueProdFiche(p.id);
@@ -31799,7 +31814,22 @@ async function validerProduction(prestationId){
   updateNavBadges(S.role);
 }
 
+const _PF_ETAPES=['infos','equipe','brief','budget'];
+const _PF_LIBELLES={infos:'Infos',equipe:'Équipe',brief:'Brief',budget:'Budget'};
+let _pfOnglet='infos';
+function pfEtapeSuivante(){
+  const i=_PF_ETAPES.indexOf(_pfOnglet);
+  if(i>=0&&i<_PF_ETAPES.length-1)setProdFicheTab(_PF_ETAPES[i+1]);
+}
 function setProdFicheTab(tab){
+  _pfOnglet=tab;
+  const suiv=document.getElementById('pf-suivant');
+  if(suiv){
+    const i=_PF_ETAPES.indexOf(tab);
+    const prochaine=i>=0&&i<_PF_ETAPES.length-1?_PF_ETAPES[i+1]:null;
+    suiv.hidden=!prochaine;
+    if(prochaine)suiv.textContent='Suivant : '+_PF_LIBELLES[prochaine]+' →';
+  }
   ['infos','equipe','brief','budget','historique'].forEach(t=>{
     const panel=document.getElementById('pf-panel-'+t);
     const btn=document.getElementById('pf-tab-'+t);
