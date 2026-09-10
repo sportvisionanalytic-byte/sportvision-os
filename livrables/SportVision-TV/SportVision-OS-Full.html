@@ -1903,7 +1903,7 @@ const VIEWS={
       <div class="cd-h"><div class="cd-t">Changer le mot de passe</div></div>
       <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau mot de passe</label><input id="set-mdp1" type="password" class="l-inp" placeholder="••••••••" style="height:38px"></div>
+          <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau mot de passe · 8 caractères minimum</label><input id="set-mdp1" type="password" class="l-inp" placeholder="••••••••" style="height:38px" autocomplete="new-password" minlength="8"></div>
           <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Confirmer</label><input id="set-mdp2" type="password" class="l-inp" placeholder="••••••••" style="height:38px"></div>
         </div>
         <div id="set-mdp-err" style="font-size:12px;min-height:14px"></div>
@@ -3443,7 +3443,7 @@ function _settingsView(){
       <div class="cd-h"><div class="cd-t">Sécurité — Mot de passe</div></div>
       <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau mot de passe</label><input id="set-mdp1" type="password" class="l-inp" placeholder="••••••••" style="height:38px"></div>
+          <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau mot de passe · 8 caractères minimum</label><input id="set-mdp1" type="password" class="l-inp" placeholder="••••••••" style="height:38px" autocomplete="new-password" minlength="8"></div>
           <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Confirmer</label><input id="set-mdp2" type="password" class="l-inp" placeholder="••••••••" style="height:38px"></div>
         </div>
         <div id="set-mdp-err" style="font-size:12px;min-height:14px"></div>
@@ -16414,6 +16414,20 @@ async function sauvegarderProfil(uid){
   }catch(e){if(err)err.style.color='var(--er)',err.textContent='Erreur lors de la sauvegarde.';}
 }
 
+// Regle de mot de passe : celle de Supabase (Auth > password_min_length = 8), pas une autre.
+// INCIDENT DU 10/09/2026 : l'OS annoncait et acceptait 6 caracteres. Un mot de passe de 6 ou 7
+// passait donc le controle de l'ecran, puis Supabase le refusait avec un message en anglais
+// (« Password should be at least 8 characters. ») : une recrue a clique son lien d'invitation,
+// n'a jamais pu enregistrer son mot de passe, et son lien, a usage unique, etait deja consomme.
+const MDP_MIN=8;
+function msgErreurMdp(d,status){
+  const m=String((d&&(d.msg||d.message||d.error_description||d.error_code||d.code))||'');
+  if(/at least|weak_password|should be|characters/i.test(m))return 'Le mot de passe doit contenir au moins '+MDP_MIN+' caractères.';
+  if(/same_password|different from the old/i.test(m))return 'Choisissez un mot de passe différent de l\'actuel.';
+  if(status===401||status===403||/jwt|session|expired|not.*logged/i.test(m))return 'Votre session a expiré. Demandez un nouveau lien avec « Mot de passe oublié ».';
+  return 'Enregistrement impossible. Réessayez, ou contactez votre administrateur.';
+}
+
 async function sauvegarderMdp(){
   if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const err=document.getElementById('set-mdp-err');
@@ -16421,7 +16435,7 @@ async function sauvegarderMdp(){
   const p2=(document.getElementById('set-mdp2')?.value)||'';
   if(!p1){if(err){err.style.color='var(--er)';err.textContent='Entrez un nouveau mot de passe.';}return;}
   if(p1!==p2){if(err){err.style.color='var(--er)';err.textContent='Les mots de passe ne correspondent pas.';}return;}
-  if(p1.length<6){if(err){err.style.color='var(--er)';err.textContent='Minimum 6 caractères requis.';}return;}
+  if(p1.length<MDP_MIN){if(err){err.style.color='var(--er)';err.textContent='Minimum '+MDP_MIN+' caractères requis.';}return;}
   if(err)err.textContent='Enregistrement…';
   try{
     const tok=localStorage.getItem('sv_tok');
@@ -16436,8 +16450,8 @@ async function sauvegarderMdp(){
       document.getElementById('set-mdp2').value='';
       fetch(SB_URL+'/functions/v1/notify-account-change',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({type:'password_changed'})}).catch(()=>{});
     }else{
-      const d=await r.json();
-      if(err){err.style.color='var(--er)';err.textContent=d.message||d.msg||'Erreur lors du changement.';}
+      const d=await r.json().catch(()=>({}));
+      if(err){err.style.color='var(--er)';err.textContent=msgErreurMdp(d,r.status);}
     }
   }catch(e){if(err){err.style.color='var(--er)';err.textContent='Erreur réseau.';}}
 }
@@ -33756,11 +33770,11 @@ async function consumeRecoveryHashOS(){
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:16px">Définir un nouveau mot de passe</div>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau mot de passe</label>
-        <input id="rec-pass1" type="password" class="l-inp" style="height:38px" placeholder="••••••••">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau mot de passe · 8 caractères minimum</label>
+        <input id="rec-pass1" type="password" class="l-inp" style="height:38px" placeholder="••••••••" autocomplete="new-password" minlength="8">
       </div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Confirmer</label>
-        <input id="rec-pass2" type="password" class="l-inp" style="height:38px" placeholder="••••••••">
+        <input id="rec-pass2" type="password" class="l-inp" style="height:38px" placeholder="••••••••" autocomplete="new-password" minlength="8">
       </div>
       <div id="rec-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <button class="btn bp" style="width:100%;justify-content:center;height:44px" onclick="validerNouveauMdpOS()">Enregistrer et me connecter</button>
@@ -33772,13 +33786,13 @@ async function validerNouveauMdpOS(){
   const err=document.getElementById('rec-err');
   const p1=document.getElementById('rec-pass1').value;
   const p2=document.getElementById('rec-pass2').value;
-  if(!p1||p1.length<6){err.textContent='Minimum 6 caractères requis.';return;}
+  if(!p1||p1.length<MDP_MIN){err.textContent='Minimum '+MDP_MIN+' caractères requis.';return;}
   if(p1!==p2){err.textContent='Les mots de passe ne correspondent pas.';return;}
   err.textContent='Enregistrement…';
   try{
     const tok=localStorage.getItem('sv_tok');
     const r=await fetch(SB_URL+'/auth/v1/user',{method:'PUT',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({password:p1})});
-    if(!r.ok){const d=await r.json().catch(()=>({}));err.textContent=d.message||d.msg||'Erreur lors de l\'enregistrement.';return;}
+    if(!r.ok){const d=await r.json().catch(()=>({}));err.textContent=msgErreurMdp(d,r.status);return;}
     fetch(SB_URL+'/functions/v1/notify-account-change',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({type:'password_changed'})}).catch(()=>{});
     closeModal();
     goApp(localStorage.getItem('sv_role'));
