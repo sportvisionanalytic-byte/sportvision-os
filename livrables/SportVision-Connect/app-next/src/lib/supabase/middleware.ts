@@ -1,14 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabasePublicEnv } from "./env";
 
 // Rafraîchit le cookie de session Supabase sur chaque requête et protège les routes
 // applicatives — appelé depuis src/middleware.ts (racine, requis par Next.js).
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const { url, anonKey } = getSupabasePublicEnv();
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),

@@ -19,6 +19,15 @@
 // ne change rien à la CSP réellement servie en production.
 const SCRIPT_SRC = process.env.NODE_ENV === "production" ? "'self' 'unsafe-inline'" : "'self' 'unsafe-inline' 'unsafe-eval'";
 
+// Dérivé de NEXT_PUBLIC_SUPABASE_URL plutôt que codé en dur : un environnement qui pointe
+// vers un autre projet Supabase (Review, notamment) doit voir sa CSP suivre automatiquement,
+// sinon le navigateur bloque silencieusement tous les appels REST/Realtime vers ce projet
+// même avec les bonnes variables d'environnement (aucune erreur JS visible, juste des
+// requêtes refusées par la CSP — piège déjà documenté dans lib/supabase/realtime.ts).
+const SUPABASE_HOST = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host
+  : "";
+
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -33,7 +42,7 @@ const SECURITY_HEADERS = [
       // URL https:// n'autorise pas automatiquement son équivalent wss://). Même bug reproduit et
       // corrigé côté app-connect (audit du 30/08/2026, compte Connect tout neuf) — jamais vérifié
       // ici jusqu'à cet audit, mais la CSP est strictement identique.
-      `default-src 'self'; script-src ${SCRIPT_SRC}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'`,
+      `default-src 'self'; script-src ${SCRIPT_SRC}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:${SUPABASE_HOST ? ` https://${SUPABASE_HOST}` : ""}; connect-src 'self'${SUPABASE_HOST ? ` https://${SUPABASE_HOST} wss://${SUPABASE_HOST}` : ""}; frame-src 'none'; object-src 'none'; base-uri 'self'`,
   },
 ];
 
