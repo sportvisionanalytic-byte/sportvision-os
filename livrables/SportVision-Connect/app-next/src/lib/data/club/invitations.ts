@@ -100,6 +100,20 @@ export function buildInvitationUrl(token: string): string {
   return `https://clubplus.sportvision-an.fr/clubplus/rejoindre?token=${encodeURIComponent(token)}`;
 }
 
+/**
+ * Le droit d'agir au nom de ce club, tel que la BASE le calcule (fonction `peut_operer_club`,
+ * migration v99). Un aller-retour, et aucune règle d'autorisation dupliquée côté écran.
+ *
+ * C'est la leçon du bug des liens joueurs : l'écran affichait les 43 équipes d'un club et
+ * proposait un bouton que la base refusait, parce que deux endroits décidaient séparément de qui
+ * a le droit de quoi. Ici, un seul décide, et l'écran se contente de lui demander.
+ */
+export async function peutOpererClub(supabase: SupabaseClient, clubId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("peut_operer_club", { p_club_id: clubId });
+  if (error) return false;
+  return data === true;
+}
+
 export async function fetchClubInvitations(
   supabase: SupabaseClient,
   clubId: string,

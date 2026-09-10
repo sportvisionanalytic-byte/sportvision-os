@@ -7,7 +7,21 @@ import { canAccess, isClubCommunicationOrEducateur } from "@/lib/permissions";
 import type { MembershipRole, OrgType } from "@/lib/types";
 import { mockOrgUsers } from "@/lib/mock/settings";
 import { ROLE_LABELS, type OrgUser } from "@/lib/types/settings";
-import { fetchClubMembers, inviteClubMember, setClubMemberStatus } from "@/lib/data/club/users";
+import { fetchClubMembers, setClubMemberStatus } from "@/lib/data/club/users";
+import {
+  fetchClubInvitations,
+  peutOpererClub,
+  revoquerInvitation,
+  buildInvitationUrl,
+  messageErreurInvitation,
+  STATUT_INVITATION_LABEL,
+  STATUT_INVITATION_TONE,
+  type InvitationClub,
+} from "@/lib/data/club/invitations";
+import { InviterEncadrantModal } from "@/components/teams/InviterEncadrantModal";
+import { fetchClubTeams } from "@/lib/data/club/teams";
+import { mapClubRole } from "@/lib/supabase/mappers";
+import type { Team } from "@/lib/types/teams";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -64,6 +78,11 @@ export default function UsersPage() {
   const isClub = ctx.organization.type === "club";
   const [users, setUsers] = useState<OrgUser[] | null>(() => (isClub ? null : mockOrgUsers[ctx.organization.id] ?? []));
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [invitations, setInvitations] = useState<InvitationClub[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  // `null` tant que la base n'a pas répondu : ni actions, ni message d'interdiction entre-temps.
+  const [peutGerer, setPeutGerer] = useState<boolean | null>(null);
+  const [erreurAction, setErreurAction] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   // Communication et Éducateur ne voient jamais Utilisateurs (§11 du master doc, les deux =
@@ -80,6 +99,21 @@ export default function UsersPage() {
       .then(setUsers)
       .catch(() => setLoadError(true));
   }, [isClub, isRestrictedClubRole, ctx.organization.id]);
+
+  useEffect(() => {
+    if (!isClub) {
+      setPeutGerer(true);
+      return;
+    }
+    const supabase = createClient();
+    peutOpererClub(supabase, ctx.organization.id).then(setPeutGerer);
+    fetchClubInvitations(supabase, ctx.organization.id)
+      .then(setInvitations)
+      .catch(() => setInvitations([]));
+    fetchClubTeams(supabase, ctx.organization.id)
+      .then(setTeams)
+      .catch(() => setTeams([]));
+  }, [isClub, ctx.organization.id]);
 
   useEffect(() => {
     loadUsers();
@@ -104,30 +138,37 @@ export default function UsersPage() {
   // mockOrgUsers sur un compte réel, même logique que /billing et /services.
   if (!isClub && !canAccess(ctx, "users")) return <LockedModule title="Membres & accès" />;
 
-  // Seul un admin de club a le droit d'inviter/désactiver côté RLS (is_club_admin) — la policy
-  // laisse un coach/lecture_seule voir la liste mais refuse toute écriture. On reflète ça côté UI
-  // plutôt que d'afficher des actions qui échoueront silencieusement.
-  const isAdmin = !isClub || ctx.membership.role === "admin";
+  // 10/09/2026 — Le droit de gérer les membres ne se devine plus depuis le rôle affiché.
+  //
+  // L'écran disait au CM SportVision « Seul un administrateur peut gérer les membres », alors
+  // qu'il EST l'administrateur opérationnel de ce club : dans un espace délégué, son rôle de
+  // session vaut `external_cm`, jamais `admin`. Deux endroits décidaient séparément de qui a le
+  // droit de quoi — exactement ce qui a produit le bug des liens joueurs.
+  //
+  // On demande donc à la base (`peut_operer_club`, migration v99), et l'écran se contente
+  // d'obéir. `peutGerer` reste `null` le temps de la réponse : on n'affiche ni les actions, ni le
+  // message qui dit qu'elles sont interdites.
+  const isAdmin = peutGerer === true;
 
   const availableRoles = ROLES_BY_ORG_TYPE[ctx.organization.type] ?? ["viewer"];
 
+  // Une invitation acceptée ou révoquée n'a plus rien à faire dans une liste d'attente. Les
+  // expirées y restent : le club doit voir qu'il a relancé quelqu'un sans suite.
+  const enAttente = invitations.filter((i) => i.statut === "preparee" || i.statut === "envoyee" || i.statut === "expiree");
+
+  function rechargerInvitations() {
+    if (!isClub) return;
+    const supabase = createClient();
+    fetchClubInvitations(supabase, ctx.organization.id)
+      .then(setInvitations)
+      .catch(() => setInvitations([]));
+  }
+
+  // Invitation pour les organisations AUTRES qu'un club (coach indépendant, académie, sponsor).
+  // Un club ne passe plus par ici depuis le 10/09/2026 : il prépare une personne sans lui créer
+  // de compte (InviterEncadrantModal). Cette branche-là crée bien un compte, faute d'équivalent
+  // porté pour ces types d'organisation.
   function handleInvite(input: { email: string; firstName: string; lastName: string; role: MembershipRole; team?: string; mode?: "email" | "direct" }) {
-    if (isClub) {
-      // clubplus-invite (edge function réelle) : crée le compte auth.users (par e-mail ou
-      // directement selon `mode`, voir InviteUserModal), insère la ligne club_members. On
-      // recharge la liste plutôt que d'ajouter une ligne locale fabriquée, pour refléter l'id
-      // réel attribué par la base. Le résultat (mot de passe en mode direct) remonte tel quel à
-      // la modale, qui décide de l'afficher.
-      const supabase = createClient();
-      return inviteClubMember(supabase, ctx.organization.id, input).then((result) =>
-        fetchClubMembers(supabase, ctx.organization.id)
-          .then(setUsers)
-          .then(() => result),
-      );
-    }
-    // Pas d'edge function d'invitation branchée pour ce type d'organisation dans cette phase
-    // (org-invite existe pour coach/académie/sponsor, pas encore vérifiée/branchée ici) — reste
-    // local-only, comme avant, pour ne pas prétendre envoyer une invitation qui ne part pas réellement.
     setUsers((prev) => [
       {
         id: `user-local-${Date.now()}`,
@@ -163,19 +204,81 @@ export default function UsersPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-[29px] font-extrabold tracking-tight">Membres & accès</h1>
+          <h1 className="text-[29px] font-extrabold tracking-tight">
+            {isClub ? "Coachs & dirigeants" : "Membres & accès"}
+          </h1>
           <p className="mt-1 text-[13.5px] text-text-soft">
-            Membres de {ctx.organization.name} et leur rôle.
-            {!isAdmin && " Seul un administrateur peut gérer les membres."}
+            Qui encadre {ctx.organization.name}, et où en est son accès.
+            {peutGerer === false && " Vous pouvez consulter cette liste, pas la modifier."}
           </p>
         </div>
         {isAdmin && (
           <Button onClick={() => setInviteOpen(true)}>
             <UserPlus className="h-4 w-4" aria-hidden />
-            Inviter un utilisateur
+            {isClub ? "Inviter un encadrant" : "Inviter un utilisateur"}
           </Button>
         )}
       </div>
+
+      {/* Les personnes préparées ou invitées, avant celles qui ont déjà leur accès : c'est là que
+          le club a quelque chose à faire. Une invitation acceptée disparaît d'ici — la personne
+          apparaît alors dans la liste des membres, où est sa place. */}
+      {enAttente.length > 0 && (
+        <Card className="overflow-hidden p-0">
+          <div className="border-b border-divider bg-surface-alt px-5 py-3 text-[12px] font-extrabold uppercase tracking-[.04em] text-text-faint">
+            Invitations en cours
+          </div>
+          {enAttente.map((inv) => (
+            <div
+              key={inv.id}
+              className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13.5px] font-bold">
+                  {[inv.prenom, inv.nom].filter(Boolean).join(" ") || inv.email}
+                </span>
+                <span className="mt-0.5 block truncate text-[12px] text-text-soft">{inv.email}</span>
+              </span>
+              <span className="w-44 flex-none text-[12.5px] font-semibold text-text-soft">
+                {ROLE_LABELS[mapClubRole(inv.role)] ?? inv.role}
+                {inv.teams.length > 0 && ` · ${inv.teams.join(", ")}`}
+              </span>
+              <Badge tone={STATUT_INVITATION_TONE[inv.statut]}>{STATUT_INVITATION_LABEL[inv.statut]}</Badge>
+              {isAdmin && (
+                <div className="flex flex-none items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    className="h-8 px-3 text-[12px]"
+                    onClick={() => {
+                      navigator.clipboard.writeText(buildInvitationUrl(inv.token));
+                      showToast("Lien copié.");
+                    }}
+                  >
+                    Copier le lien
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="h-8 px-3 text-[12px]"
+                    onClick={() => {
+                      setErreurAction(null);
+                      revoquerInvitation(createClient(), inv.id)
+                        .then(rechargerInvitations)
+                        .catch((e) =>
+                          setErreurAction(messageErreurInvitation(e, "Révocation impossible.")),
+                        );
+                    }}
+                  >
+                    Révoquer
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+          {erreurAction && (
+            <p className="px-5 py-3 text-[12.5px] font-bold text-danger-fg">{erreurAction}</p>
+          )}
+        </Card>
+      )}
 
       <Card>
         {loadError ? (
@@ -239,10 +342,21 @@ export default function UsersPage() {
         )}
       </Card>
 
-      {inviteOpen && (
+      {/* Un club passe par le modèle « préparer une personne » (aucun compte créé, la personne
+          active le sien depuis le lien). Les autres types d'organisation gardent le chemin
+          historique : leur edge function crée bien un compte, et rien n'a été porté pour eux. */}
+      {inviteOpen && isClub && (
+        <InviterEncadrantModal
+          clubId={ctx.organization.id}
+          equipes={teams.map((t) => ({ name: t.name, categorie: t.category }))}
+          onClose={() => setInviteOpen(false)}
+          onInvited={rechargerInvitations}
+        />
+      )}
+      {inviteOpen && !isClub && (
         <InviteUserModal
           roles={availableRoles}
-          allowDirectMode={isClub}
+          allowDirectMode={false}
           onClose={() => setInviteOpen(false)}
           onInvite={handleInvite}
         />

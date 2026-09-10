@@ -22,6 +22,7 @@ import { Check, Copy, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useModalA11y } from "@/lib/useModalA11y";
+import { TeamSelector } from "@/components/ui/TeamSelector";
 import { createClient } from "@/lib/supabase/client";
 import {
   buildInvitationUrl,
@@ -42,17 +43,22 @@ const ROLES = [
 
 interface Props {
   clubId: string;
-  teamName: string;
+  /** Fixée quand l'invitation part d'une fiche équipe. Absente depuis « Coachs & dirigeants »,
+   *  où l'on choisit l'équipe — un dirigeant peut d'ailleurs n'en avoir aucune. */
+  teamName?: string;
+  /** Les équipes du club, pour ce choix. Inutile quand `teamName` est fixée. */
+  equipes?: { name: string; categorie?: string | null }[];
   onClose: () => void;
   onInvited: () => void;
 }
 
-export function InviterEncadrantModal({ clubId, teamName, onClose, onInvited }: Props) {
+export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onInvited }: Props) {
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [telephone, setTelephone] = useState("");
   const [role, setRole] = useState<string>("coach");
+  const [equipe, setEquipe] = useState(teamName ?? "");
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<InvitationClub | null>(null);
@@ -73,7 +79,7 @@ export function InviterEncadrantModal({ clubId, teamName, onClose, onInvited }: 
       prenom: prenom.trim(),
       nom: nom.trim(),
       telephone: telephone.trim() || undefined,
-      teams: [teamName],
+      teams: equipe ? [equipe] : [],
     })
       .then((inv) => {
         setInvitation(inv);
@@ -126,7 +132,11 @@ export function InviterEncadrantModal({ clubId, teamName, onClose, onInvited }: 
   }
 
   return (
-    <Enveloppe refDiv={ref} titre={`Inviter un encadrant — ${teamName}`} onClose={onClose}>
+    <Enveloppe
+      refDiv={ref}
+      titre={teamName ? `Inviter un encadrant — ${teamName}` : "Inviter un encadrant"}
+      onClose={onClose}
+    >
       <p className="text-[12.5px] text-text-soft">
         Aucun compte n&apos;est créé maintenant : la personne activera le sien depuis le lien.
       </p>
@@ -153,10 +163,25 @@ export function InviterEncadrantModal({ clubId, teamName, onClose, onInvited }: 
         </select>
       </label>
 
-      <div className="rounded-xl bg-surface-sunken px-3.5 py-2.5 text-[12.5px]">
-        <span className="font-bold text-text-soft">Équipe : </span>
-        <span className="font-extrabold">{teamName}</span>
-      </div>
+      {teamName ? (
+        <div className="rounded-xl bg-surface-sunken px-3.5 py-2.5 text-[12.5px]">
+          <span className="font-bold text-text-soft">Équipe : </span>
+          <span className="font-extrabold">{teamName}</span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[12.5px] font-bold text-text-soft">Équipe</span>
+          <TeamSelector
+            equipes={(equipes ?? []).map((e) => ({ name: e.name, categorie: e.categorie ?? null }))}
+            valeur={equipe}
+            onChange={setEquipe}
+            libelleToutes="Aucune équipe (dirigeant)"
+          />
+          <span className="text-[11.5px] text-text-faint">
+            Détermine ce que cette personne verra. Un dirigeant sans équipe garde une vue club.
+          </span>
+        </div>
+      )}
 
       {erreur && <p className="text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
 
