@@ -1011,6 +1011,9 @@ const NAV={
     {id:'media',lb:'Galeries photo',ic:'med'},
     {type:'sep',lb:'Équipe & matériel'},
     {id:'equipe',lb:'Équipe terrain',ic:'col'},
+    // 10/09/2026, décision de Fouka (v130) : le recrutement opérationnel des opérateurs terrain
+    // de son pôle revient à la Production — la base ne lui montre que ceux-là.
+    {id:'recrutement',lb:'Recrutement',ic:'col'},
     {id:'kits',lb:'Matériel',ic:'kits'},
     {type:'sep',lb:'Ressources'},
     {id:'form',lb:'Centre de formation',ic:'form'},
@@ -1507,7 +1510,7 @@ const VIEWS={
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('taches')"><div class="kpi-ey">Tâches urgentes</div><div class="kpi-v" id="sec-kpi-taches">—</div><span class="kpi-d dnt">haute priorité</span></div>
     </div>
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-top:8px">
-      <div class="kpi" style="--kl:#8891A8;cursor:pointer" onclick="switchView('recrutement')"><div class="kpi-ey">Candidats à appeler</div><div class="kpi-v" id="sec-kpi-candidats">—</div><span class="kpi-d dnt">recrutement</span></div>
+      <div class="kpi" style="--kl:#8891A8;cursor:pointer" onclick="switchView('recrutement')"><div class="kpi-ey">Retenus à intégrer</div><div class="kpi-v" id="sec-kpi-candidats">—</div><span class="kpi-d dnt">recrutement</span></div>
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('docrh')"><div class="kpi-ey">Documents manquants</div><div class="kpi-v" id="sec-kpi-docmanq">—</div><span class="kpi-d dnt">pièces à obtenir</span></div>
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('agendasec')"><div class="kpi-ey">RDV aujourd'hui</div><div class="kpi-v" id="sec-kpi-rdvauj">—</div><span class="kpi-d dnt">agenda</span></div>
     </div>
@@ -1675,7 +1678,7 @@ const VIEWS={
   // "Recrutement - pipeline" — préqualification/appels, la Direction valide
   // la décision finale via le pipeline lui-même, pas un accès distinct).
   'sec.recrutement':()=>`
-    <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Candidatures reçues via le site — pipeline Nouveaux → Collaborateur</div></div></div>
+    <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Candidats retenus — dossier administratif et création du compte collaborateur</div></div></div>
     <div id="recrut-real"><div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:8px"><div class="skel" style="background:rgba(255,255,255,.05);flex:0 0 300px;height:220px;border-radius:12px"></div><div class="skel" style="background:rgba(255,255,255,.05);flex:0 0 300px;height:220px;border-radius:12px"></div><div class="skel" style="background:rgba(255,255,255,.05);flex:0 0 300px;height:220px;border-radius:12px"></div></div></div>`,
 
   'admin.form':()=>`
@@ -3423,7 +3426,11 @@ VIEWS['admin.docrh']=VIEWS['sec.docrh'];
 // déjà scopé côté RLS/nav) — même pattern d'alias que ci-dessus.
 VIEWS['rh.equipehub']=VIEWS['admin.equipehub'];
 VIEWS['rh.equipeoverview']=VIEWS['admin.equipeoverview'];
-VIEWS['rh.recrutement']=VIEWS['admin.recrutement'];
+VIEWS['rh.recrutement']=VIEWS['sec.recrutement'];
+// v130 (10/09/2026) : chaque rôle ne reçoit de la base que les candidatures qu'il traite.
+VIEWS['prod.recrutement']=()=>`
+    <div class="sh"><div><div class="sh-t">Recrutement</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Photographes et vidéastes candidats dans votre pôle — à appeler, entretien, retenir ou refuser</div></div></div>
+    <div id="recrut-real">${_recrutSkel()}</div>`;
 VIEWS['rh.set']=VIEWS['sec.set'];
 VIEWS['rh.centre']=VIEWS['sec.centre'];
 
@@ -5553,7 +5560,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='commhub') await loadCommHub();
   if(['admin','rh'].includes(role)&&view==='equipeoverview') await loadEquipeOverview();
   if(['admin','rh'].includes(role)&&view==='equipehub') await loadCollaborateurs();
-  if(['admin','sec','rh'].includes(role)&&view==='recrutement') await loadRecrutement();
+  if(['admin','sec','rh','prod'].includes(role)&&view==='recrutement') await loadRecrutement();
   if(role==='admin'&&view==='form'){await loadAdminForm();}
   // _kitsPoleF initialisé depuis S.activePoleId (audit v21, 31/08/2026) : avant, ce filtre était
   // 100% manuel et indépendant du sélecteur de pôle sidebar — changer de pôle actif n'avait
@@ -8191,7 +8198,7 @@ function recrutCard(c,stage){
     // "Proposer à la Direction" (migration-poles-v27, 31/08/2026) : un Responsable non-admin/sec/rh
     // n'a de toute façon pas accès à invite-collaborateur (edge function, réservée à ces 3 rôles) —
     // jamais lui montrer un bouton qui échouerait en 403, lui proposer l'action réellement disponible.
-    :(_recrutPoleMode&&!['admin','sec','rh'].includes(S.role))?`<button class="btn bp bs" onclick="proposerCandidatureDirection('${c.id}')">Proposer à la Direction</button>`
+    :!['admin','sec','rh'].includes(S.role)?`<button class="btn bp bs" onclick="proposerCandidatureDirection('${c.id}')">Proposer à la Direction</button>`
     :`<button class="btn bp bs" onclick="modalRecrutCreerCollaborateur('${c.id}')">+ Créer le collaborateur</button>`;
   else if(stage==='refuse')actions=`<button class="btn bg2 bs" onclick="recrutMove('${c.id}','vivier')">→ Vivier</button>`;
   else if(stage==='vivier')actions=`<button class="btn bg2 bs" onclick="recrutMove('${c.id}','nouveau')">Réexaminer</button>`;
@@ -28963,7 +28970,7 @@ async function loadSecDash(){
       sbFetch('devis?select=id,statut&limit=200'),
       sbFetch('contrats?select=id,statut&limit=500').catch(()=>[]),
       uid?sbFetch('notifications?select=id&type=eq.tache&lue=eq.false&destinataire_id=eq.'+uid).catch(()=>[]):[],
-      sbFetch('recruitment_applications?select=id&statut=eq.a_appeler').catch(()=>[]),
+      sbFetch('recruitment_applications?select=id&statut=eq.retenu&collaborateur_id=is.null').catch(()=>[]),
       sbFetch('secretariat_documents?select=id&statut_affichage=eq.manquant').catch(()=>[]),
       sbFetch('secretariat_agenda_events?select=id&statut=eq.a_faire&date_heure=gte.'+todayStr+'&date_heure=lt.'+tomorrowStr).catch(()=>[]),
     ]);

@@ -1,7 +1,5 @@
-// ⚠️  REDÉPLOIEMENT MANUEL REQUIS après toute modification de ce fichier.
-// Ce code ne se déploie PAS automatiquement sur Supabase depuis le repo.
-// Étape à faire à chaque édition : Supabase Dashboard → Edge Functions →
-// send-candidature-refus-email → coller ce code → Deploy.
+// ⚠️  Ce code ne se déploie PAS automatiquement depuis le repo. Après toute modification :
+//     bash livrables/SportVision-TV/scripts/deployer-fonction.sh send-candidature-refus-email
 
 // Supabase Edge Function — send-candidature-refus-email
 // Appelée depuis l'OS (recrutMove, SportVision-OS-Full.html) quand le staff passe
@@ -65,12 +63,16 @@ serve(async (req) => {
     // Les données du candidat (email, prénom, poste) sont relues côté serveur depuis
     // la table plutôt que fournies par le client, pour ne jamais envoyer un e-mail de
     // refus à une adresse qui n'est pas réellement celle du candidat concerné.
-    const { data: app, error: appErr } = await admin
+    // Relues SOUS L'IDENTITÉ DE L'APPELANT (v130, 10/09/2026) : la clé de service lisait
+    // n'importe quelle candidature, et tout profil interne, photographe compris, pouvait faire
+    // partir un refus à n'importe quel candidat. Les droits de la table font foi.
+    const { data: app, error: appErr } = await userClient
       .from("recruitment_applications")
       .select("email, prenom, poste, statut")
       .eq("id", application_id)
       .maybeSingle();
-    if (appErr || !app) return json({ error: "Candidature introuvable" }, 404);
+    if (appErr || !app) return json({ error: "Candidature introuvable ou hors de votre périmètre" }, 404);
+    if (app.statut !== "refuse") return json({ error: "Cette candidature n'est pas refusée" }, 409);
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) return json({ error: "RESEND_API_KEY non configurée dans les secrets Supabase." }, 500);
