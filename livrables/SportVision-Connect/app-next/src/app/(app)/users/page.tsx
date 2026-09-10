@@ -331,12 +331,17 @@ export default function UsersPage() {
                   {initials}
                 </span>
                 <span className="min-w-0 flex-1">
+                  {/* `club_members.prenom/nom` sont facultatifs et `email` n'est jamais exposé
+                      (auth.users n'est pas lisible via PostgREST) : sur le président de SF
+                      Villemomble, la ligne s'affichait entièrement vide — un avatar « ? » et un
+                      rôle, rien d'autre. On le dit, plutôt que de laisser un blanc que personne ne
+                      sait interpréter. */}
                   <span className="block truncate text-[13.5px] font-bold">
-                    {user.firstName} {user.lastName}
+                    {`${user.firstName} ${user.lastName}`.trim() || "Identité non renseignée"}
                   </span>
-                  {user.email && (
-                    <span className="mt-0.5 block truncate text-[12px] text-text-soft">{user.email}</span>
-                  )}
+                  <span className="mt-0.5 block truncate text-[12px] text-text-soft">
+                    {user.email || "Adresse connue de SportVision, non affichée ici"}
+                  </span>
                 </span>
                 <span className="w-44 flex-none text-[12.5px] font-semibold text-text-soft">
                   {ROLE_LABELS[user.role] ?? user.role}

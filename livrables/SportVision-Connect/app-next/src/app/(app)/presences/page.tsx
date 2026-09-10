@@ -41,7 +41,17 @@ export default function PresencesPage() {
   return <PresencesScreen />;
 }
 
-const CAN_REQUEST_ROLES = new Set(["admin", "president", "communication_manager", "sports_director"]);
+// `external_cm` ajouté le 10/09/2026 : c'est le CM SportVision qui décide des événements couverts
+// — « le CM choisit librement les matchs/entraînements où SportVision sera présent » — et il était
+// le seul à ne pas pouvoir en demander une. Huitième fois aujourd'hui qu'un droit déduit du rôle
+// affiché oublie celui qui exploite le club. Trouvé en ouvrant l'écran.
+const CAN_REQUEST_ROLES = new Set([
+  "admin",
+  "president",
+  "communication_manager",
+  "sports_director",
+  "external_cm",
+]);
 
 function PresencesScreen() {
   const { ctx } = useSession();

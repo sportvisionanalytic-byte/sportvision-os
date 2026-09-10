@@ -599,6 +599,11 @@ const NAV_CLUB_CM_SPORTVISION: NavEntry[] = [
   item("calendar", "Calendrier", "calendar"),
   item("teams", "Équipes", "teams"),
   item("users", "Coachs & dirigeants", "users"),
+  // 10/09/2026 — L'entree manquait ICI, la seule navigation que le CM voie reellement. Elle avait
+  // ete ajoutee a NAV_CLUB_PLUS et NAV_CLUB_FULLCOM, que `filterClubRoleNav` remplace entierement
+  // pour le role `external_cm`. La page existait, s'affichait correctement, et n'etait atteignable
+  // que par le bouton de l'ecran Equipes. Trouve en ouvrant l'ecran, pas autrement.
+  item("users", "Invitations", "invitations"),
   section("Communication"),
   item("visual_requests" as ModuleKey, "Demandes du club", "requests"),
   item("newsroom", "Actualités", "newsroom"),

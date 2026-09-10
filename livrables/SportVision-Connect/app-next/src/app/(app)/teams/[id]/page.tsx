@@ -37,6 +37,7 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchClubTeams } from "@/lib/data/club/teams";
 import { ACCOUNT_STATUS_LABEL, fetchTeamRoster, type TeamRosterPlayer } from "@/lib/data/club/team-detail";
 import { fetchClubMembers } from "@/lib/data/club/users";
+import { peutOpererClub } from "@/lib/data/club/invitations";
 import type { OrgUser } from "@/lib/types/settings";
 import { TeamStaffCard } from "@/components/teams/TeamStaffCard";
 import { TeamInvitationsCard } from "@/components/teams/TeamInvitationsCard";
@@ -87,15 +88,13 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
   // verrouiller cet écran. Les autres types d'organisation (CM externe, sponsor...) gardent le
   // rendu mock ci-dessous, hors périmètre de ce chantier.
   if (ctx.organization.type === "club") {
-    // Seul un admin de club peut écrire sur club_members (RLS `cm_admin_update`) : on reflète la
-    // règle côté écran plutôt que d'offrir des boutons qui échoueraient.
-    return (
-      <RealTeamDetail
-        organizationId={ctx.organization.id}
-        teamId={params.id}
-        canManageMembers={ctx.membership.role === "admin"}
-      />
-    );
+    // 10/09/2026 — Le droit d'agir se demande à la base, il ne se déduit pas du rôle affiché.
+    // Cette ligne testait `role === "admin"` : le CM SportVision, qui porte `external_cm` dans un
+    // espace délégué, n'avait donc AUCUNE action d'encadrement sur la fiche — ni inviter un coach,
+    // ni rattacher quelqu'un. Septième fois aujourd'hui que la même déduction produit le même bug.
+    // Trouvé en ouvrant l'écran, après l'avoir corrigé sur « Coachs & dirigeants » sans penser à
+    // regarder ici.
+    return <RealTeamDetail organizationId={ctx.organization.id} teamId={params.id} />;
   }
 
   const team = mockTeams.find((t) => t.id === params.id && t.organizationId === ctx.organization.id);
@@ -435,15 +434,9 @@ const REAL_TAB_LABEL: Record<RealTabKey, string> = {
   documents: "Documents",
 };
 
-function RealTeamDetail({
-  organizationId,
-  teamId,
-  canManageMembers,
-}: {
-  organizationId: string;
-  teamId: string;
-  canManageMembers: boolean;
-}) {
+function RealTeamDetail({ organizationId, teamId }: { organizationId: string; teamId: string }) {
+  // `null` tant que la base n'a pas répondu : ni actions offertes, ni actions retirées à tort.
+  const [canManageMembers, setCanManageMembers] = useState(false);
   const [tab, setTab] = useState<RealTabKey>("apercu");
   const [teams, setTeams] = useState<Team[] | null>(null);
   const [roster, setRoster] = useState<TeamRosterPlayer[] | null>(null);
@@ -470,6 +463,10 @@ function RealTeamDetail({
   // Les membres du club sont chargés à part : l'écran ne les attend pas pour s'afficher, et
   // `cm_member_select` les laisse lire à tout membre — un échec ici (droits, réseau) doit dégrader
   // la seule carte Encadrement, pas la fiche entière.
+  useEffect(() => {
+    peutOpererClub(createClient(), organizationId).then(setCanManageMembers);
+  }, [organizationId]);
+
   useEffect(() => {
     let cancelled = false;
     fetchClubMembers(createClient(), organizationId)
@@ -587,7 +584,18 @@ function RealOverviewTab({
 
       <Card className="p-4.5">
         <div className="text-[14px] font-extrabold tracking-tight">Droit à l&apos;image</div>
-        {missingRights > 0 ? (
+        {roster.length === 0 ? (
+          // « Toutes les autorisations de l'effectif sont validées » sur une équipe SANS joueur
+          // affirmait une conformité qui ne repose sur rien. Rien à vérifier n'est pas la même
+          // chose que tout vérifié — et c'est le cas de la totalité des équipes du club
+          // aujourd'hui, aucune n'ayant encore d'effectif.
+          <div className="mt-3 rounded-xl bg-surface-sunken px-3 py-3">
+            <p className="text-[12.5px] leading-relaxed text-text-soft">
+              Aucun joueur dans cette équipe : il n&apos;y a pour l&apos;instant aucune autorisation
+              à recueillir.
+            </p>
+          </div>
+        ) : missingRights > 0 ? (
           <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-warning-bg px-3 py-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-warning-fg" aria-hidden />
             <p className="text-[12.5px] leading-relaxed text-warning-fg">
