@@ -26,6 +26,11 @@
 --
 -- CE QUI RESTE A FAIRE : sortir ces albums de l'etat « publie », ou ils restent atteignables et
 -- se melangent aux vraies galeries dans les ecrans.
+--
+-- LE MOTIF A ETE ELARGI APRES COUP. Ecrit d'abord comme « test » ou « audit » entoures de
+-- non-lettres, il laissait passer un album nomme « testing match vc » — 4 medias, aucune commande,
+-- cree le 08/09 pendant la QA — qui restait publie avec un lien actif. La borne de fin est donc
+-- retiree : « testing » est attrape, « Contest » ne l'est pas puisque la borne de DEBUT reste.
 
 begin;
 
@@ -43,13 +48,13 @@ select a.id, a.title, a.status,
        'Decor de test des galeries. Archive le 10/09/2026 sur decision de Fouka. '
        'Les commandes rattachees sont conservees telles quelles comme historique financier.'
   from public.media_albums a
- where a.title ~* '(^|[^a-z])(test|audit)([^a-z]|$)'
+ where a.title ~* '(^|[^a-z])(test|audit)'
    and a.status = 'published'
 on conflict (album_id) do nothing;
 
 update public.media_albums a
    set status = 'archived'
- where a.title ~* '(^|[^a-z])(test|audit)([^a-z]|$)'
+ where a.title ~* '(^|[^a-z])(test|audit)'
    and a.status = 'published';
 
 -- Les liens de ces albums cessent de servir. On ne les supprime pas : un lien supprime casserait
@@ -66,7 +71,7 @@ commit;
 
 -- ── Verification : le decor est range, l'argent est intact ───────────────────
 select 'albums de test encore publies' as controle, count(*)::text as valeur
-  from media_albums where title ~* '(^|[^a-z])(test|audit)([^a-z]|$)' and status = 'published'
+  from media_albums where title ~* '(^|[^a-z])(test|audit)' and status = 'published'
 union all
 select 'liens de test encore actifs', count(*)::text
   from media_album_links l join media_albums_archives_test t on t.album_id = l.album_id

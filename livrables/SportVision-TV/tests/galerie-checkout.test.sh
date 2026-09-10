@@ -45,6 +45,17 @@ done
 sql "insert into media_assets (id, album_id, club_id, original_path, preview_path, thumb_path, original_filename, mime_type, checksum, width, height, bytes, status, position) values $VALUES;" > /dev/null
 
 R=$(sql "insert into media_album_links (album_id, slug) values ('$ALBUM', media_gallery_unique_slug('ZZ TEST checkout')) returning slug, token;")
+# Le lien porte ses FORMULES. Sans elles, media_gallery_quote rend NULL et le paiement repond
+# « Cette galerie n'est plus disponible a l'achat » — mesure du 10/09/2026, apres le passage au
+# modele multi-offres. Ce script construisait encore un lien nu, a l'ancienne : il mesurait alors
+# le refus, pas la chaine de paiement.
+LINKID=$(sql "select id from media_album_links where slug='$(echo "$R" | jqv slug)';" | jqv id)
+sql "insert into media_album_link_offers (link_id, product_id, price_override_cents, photos_allowance, label, display_order, offer_type, is_enabled)
+ select '$LINKID', p.id, p.price_cents,
+        case when p.type='pack' then 5 else 1 end,
+        p.name, row_number() over (order by p.price_cents), p.type, true
+   from media_products p
+  where p.club_id='$CLUB' and p.name in ('Photo a l unite','Pack 5 photos');" > /dev/null
 SLUG=$(echo "$R" | jqv slug); TOKEN=$(echo "$R" | jqv token)
 IDS=$(sql "select json_agg(id)::text as j from (select id from media_assets where album_id='$ALBUM' order by position limit 4) s" | jqv j)
 IDS2=$(sql "select json_agg(id)::text as j from (select id from media_assets where album_id='$ALBUM' order by position limit 2) s" | jqv j)
