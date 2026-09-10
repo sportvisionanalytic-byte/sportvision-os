@@ -63,7 +63,11 @@ export default function TeamsPage() {
     peutBasculerSaison(createClient(), ctx.organization.id).then(setPeutBasculer);
   }, [ctx.organization.id, ctx.organization.type]);
 
-  const isClubEducateurRole = ctx.organization.type === "club" && (ctx.membership.role === "coach" || ctx.membership.role === "sports_director");
+  // team_manager (10/09/2026, décisions Club+ n° 1) : le responsable d'équipe a le menu du coach,
+  // « Mon équipe {Nom} » compris ; cette entrée doit donc ouvrir SES équipes en tête, comme pour lui.
+  const isClubEducateurRole =
+    ctx.organization.type === "club" &&
+    (ctx.membership.role === "coach" || ctx.membership.role === "sports_director" || ctx.membership.role === "team_manager");
   const myTeams = isClubEducateurRole ? (teams ?? []).filter((t) => ctx.membership.teamScope.includes(t.name)) : [];
   const otherTeams = myTeams.length > 0 ? (teams ?? []).filter((t) => !ctx.membership.teamScope.includes(t.name)) : [];
 

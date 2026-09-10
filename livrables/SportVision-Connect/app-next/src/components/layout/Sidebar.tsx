@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, Lock, HelpCircle, LogOut, Shield, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess } from "@/lib/permissions";
+import { administreLeClub, canAccess } from "@/lib/permissions";
 import { filterAffiliatedPlayerNav, filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 import { formatPlanCredits, PLANS } from "@/lib/plans";
 import { cn } from "@/lib/cn";
@@ -50,7 +50,16 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   // "Offre / crédits" = Non) : le lien "Gérer mon offre" mènerait de toute façon à /billing,
   // retiré de son menu ci-dessus. Remplacé par une carte club légère (même famille visuelle que
   // la carte joueur) plutôt que masquée, pour ne pas laisser un vide en bas de sidebar.
-  const isClubEducateur = ctx.organization.type === "club" && ctx.membership.role === "coach";
+  // Le responsable d'équipe (10/09/2026, décisions Club+ n° 1) a le menu du coach : même carte,
+  // avec son propre libellé de rôle.
+  const isClubEducateur =
+    ctx.organization.type === "club" && (ctx.membership.role === "coach" || ctx.membership.role === "team_manager");
+  const libelleEducateur = ctx.membership.role === "team_manager" ? "Responsable d'équipe" : "Éducateur";
+  // « Gérer mon offre » mène à « Mon offre » (/billing), que seuls l'Owner Club+ et le Président
+  // voient dans un club (décision du 10/09 : souscrire à l'Owner, lecture au Président). Pour tout
+  // autre rôle de club, c'était une porte vers une page qui ne la montre pas — un membre du bureau
+  // ou une lecture seule y lisaient « Gérer mon offre » sans rien pouvoir gérer.
+  const peutVoirMonOffre = ctx.organization.type !== "club" || administreLeClub(ctx);
 
   const plan = PLANS[ctx.subscription.planCode];
   const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";
@@ -255,7 +264,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               <div className="mt-2.5 flex flex-col gap-1 text-[11px] font-semibold text-[#C6D3F0]">
                 <div className="flex justify-between">
                   <span>Rôle</span>
-                  <span className="font-extrabold text-white">Éducateur</span>
+                  <span className="font-extrabold text-white">{libelleEducateur}</span>
                 </div>
                 {ctx.membership.teamScope.length > 0 && (
                   <div className="flex justify-between">
@@ -307,13 +316,15 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 <span>Crédits</span>
                 <span className="font-extrabold text-white">{formatPlanCredits(plan)}</span>
               </div>
-              <Link
-                href="/billing"
-                onClick={onClose}
-                className="mt-3 block w-full rounded-[9px] bg-white/[.13] py-2.5 text-center text-[12px] font-bold text-white transition-colors hover:bg-white/[.22]"
-              >
-                Gérer mon offre
-              </Link>
+              {peutVoirMonOffre && (
+                <Link
+                  href="/billing"
+                  onClick={onClose}
+                  className="mt-3 block w-full rounded-[9px] bg-white/[.13] py-2.5 text-center text-[12px] font-bold text-white transition-colors hover:bg-white/[.22]"
+                >
+                  Gérer mon offre
+                </Link>
+              )}
             </div>
           )}
 

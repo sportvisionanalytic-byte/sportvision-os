@@ -571,10 +571,11 @@ const NAV_CLUB_ADMINISTRATIF: NavEntry[] = [
   item("settings", "Mon profil", "settings/profile"),
 ];
 
-/** Un rôle absent de cette table (admin/president/board_member/sponsor_manager/viewer, ou tout
- * rôle non-club) garde `entries` telle quelle — c'est le comportement historique et voulu :
- * admin/president/board_member voient NAV_CLUB_PLUS (ou la variante Full Communication) au
- * complet (Bible §6 : "vision large"), inchangée par ce chantier. */
+/** Un rôle absent de cette table garde `entries` telle quelle : depuis le 10/09/2026 (décisions
+ * Club+ n° 1), cela ne concerne plus que l'Owner Club+ (`admin`) et le Président (`president`),
+ * qui administrent le club, et les rôles hors club. board_member, sponsor_manager, viewer et
+ * team_manager ont désormais leur propre navigation (voir plus bas) : ils recevaient jusque-là
+ * le menu complet de l'Owner, Factures, Paramètres et Invitations compris. */
 // Navigation du Community Manager SportVision affilie a un club (08/09/2026, decision Fouka :
 // « OS = pilotage interne, Club+ = espace quotidien du CM »).
 //
@@ -624,8 +625,67 @@ const NAV_CLUB_CM_SPORTVISION: NavEntry[] = [
   item("onboarding", "Onboarding", "onboarding"),
 ];
 
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// Décisions Club+ du 10/09/2026, n° 1 — « chaque rôle ne voit que les entrées qu'il a le droit
+// d'utiliser ». Quatre rôles recevaient jusqu'ici tout le menu de l'Owner Club+ (Factures,
+// Paramètres, Invitations, Coachs & dirigeants…) parce qu'ils étaient absents de CLUB_ROLE_NAV.
+// Chaque entrée ci-dessous correspond à un droit que la base leur donne réellement (mesuré par
+// tests/clubplus-menus-roles.test.mjs, PostgREST avec leur propre jeton) ; là où la matrice ne
+// dit rien, l'entrée est masquée. Les pages restent protégées par la base, pas par ce menu.
+// ───────────────────────────────────────────────────────────────────────────────────────────
+
+/** Lecture seule : consulter la vie du club, rien de plus. Calendrier et équipes sont lisibles
+ * par tout membre actif ; aucune écriture d'exploitation ne lui est ouverte en base (migration
+ * decisions-clubplus-01). Pas de Messages, de Contenus ni de Demandes : ces écrans servent à
+ * écrire à SportVision ou à lui commander quelque chose. */
+const NAV_CLUB_LECTURE_SEULE: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("Club"),
+  item("calendar", "Calendrier", "calendar"),
+  item("teams", "Équipes", "teams"),
+  section("Compte"),
+  item("settings", "Mon profil", "settings/profile"),
+];
+
+/** Membre du bureau : la consultation du club, plus les documents financiers que la règle v41
+ * lui ouvre (club_member_has_financial_access : admin, président, trésorier, membre du bureau).
+ * Il n'administre pas le club — c'est le Président (règle V1 close) : ni Paramètres, ni
+ * Invitations, ni Coachs & dirigeants, ni « Mon offre ». */
+const NAV_CLUB_MEMBRE_BUREAU: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("Club"),
+  item("calendar", "Calendrier", "calendar"),
+  item("teams", "Équipes", "teams"),
+  section("Finance"),
+  item("billing", "Factures", "billing"),
+  item("contracts", "Contrats", "contracts"),
+  item("documents", "Documents", "documents"),
+  section("Compte"),
+  item("settings", "Mon profil", "settings/profile"),
+];
+
+/** Responsable sponsors : les sponsors, que la base lui laisse ajouter et modifier
+ * (csp_member_insert/update) — la suppression reste à l'administration du club. Le calendrier en
+ * consultation, pour situer les opérations partenaires. */
+const NAV_CLUB_RESPONSABLE_SPONSORS: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("Partenaires"),
+  item("sponsors", "Sponsors", "sponsors"),
+  section("Club"),
+  item("calendar", "Calendrier", "calendar"),
+  section("Compte"),
+  item("settings", "Mon profil", "settings/profile"),
+];
+
 const CLUB_ROLE_NAV: Partial<Record<MembershipRole, NavEntry[]>> = {
   coach: NAV_CLUB_COACH,
+  // Responsable d'équipe (« Dirigeant » d'une équipe) : la base le traite exactement comme un
+  // coach — is_team_educateur l'inclut, périmètre borné aux équipes de club_members.teams. Même
+  // menu, donc, avec le même libellé « Mon équipe {Nom} » (voir filterClubRoleNav).
+  team_manager: NAV_CLUB_COACH,
+  viewer: NAV_CLUB_LECTURE_SEULE,
+  board_member: NAV_CLUB_MEMBRE_BUREAU,
+  sponsor_manager: NAV_CLUB_RESPONSABLE_SPONSORS,
   sports_director: NAV_CLUB_DIRECTEUR_SPORTIF,
   communication_manager: NAV_CLUB_COMMUNICATION,
   // external_cm (Bible §9 "CM externe") : "il ne devient jamais administrateur" — avant ce
@@ -659,7 +719,7 @@ const CLUB_ROLE_NAV: Partial<Record<MembershipRole, NavEntry[]>> = {
 export function filterClubRoleNav(entries: NavEntry[], role: MembershipRole, teamNames: string[] = []): NavEntry[] {
   const roleNav = CLUB_ROLE_NAV[role];
   if (!roleNav) return entries;
-  if (role !== "coach") return roleNav;
+  if (role !== "coach" && role !== "team_manager") return roleNav;
 
   const label = teamNames.length === 1 ? `Mon équipe ${teamNames[0]}` : "Mes équipes";
   return roleNav.map((entry) => (entry.label === "Mon équipe" ? { ...entry, label } : entry));

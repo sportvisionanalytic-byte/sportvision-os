@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Calendar, Images, ShieldCheck, Sparkles, UserPlus, type LucideIcon } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
+import { canCreate } from "@/lib/permissions";
 import type { ModuleKey } from "@/lib/types";
 import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/client";
@@ -76,7 +77,12 @@ export function ClubPlusDashboard() {
       .filter((e) => e.kind === "item")
       .map((e) => (e.kind === "item" ? e.module : undefined)),
   );
-  const quickActions = QUICK_ACTIONS.filter((a) => roleNavModules.has(a.module));
+  // « Ajouter un événement » suppose le droit d'en créer : la lecture seule, le membre du bureau et
+  // le responsable sponsors ont le calendrier en consultation seulement (10/09/2026, décisions
+  // Club+ n° 1). Même question que le bouton de la page Calendrier, posée à canCreate.
+  const quickActions = QUICK_ACTIONS.filter(
+    (a) => roleNavModules.has(a.module) && (a.module !== "calendar" || canCreate(ctx, "calendar_event")),
+  );
 
   const plan = PLANS[ctx.subscription.planCode];
   const creditsPct =

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, isClubNonBureauRole, administreLeClub } from "@/lib/permissions";
+import { canAccess, sansReglagesDuClub, administreLeClub } from "@/lib/permissions";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -56,7 +56,10 @@ export default function OrganizationSettingsPage() {
     return <MesClubsSportVision />;
   }
 
-  if (isClubNonBureauRole(ctx) && ctx.membership.role !== "admin_staff") {
+  // sansReglagesDuClub (10/09/2026, décisions Club+ n° 1) : le même garde-fou par URL couvre
+  // désormais aussi le responsable d'équipe, la lecture seule, le membre du bureau et le
+  // responsable sponsors.
+  if (sansReglagesDuClub(ctx) && ctx.membership.role !== "admin_staff") {
     return (
       <Card className="p-8 text-center text-[13.5px] text-text-soft">
         Les informations de l&apos;organisation sont réservées à l&apos;administrateur du club.

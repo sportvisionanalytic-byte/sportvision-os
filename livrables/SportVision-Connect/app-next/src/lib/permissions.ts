@@ -124,9 +124,21 @@ export function administreLeClub(ctx: ActiveContext): boolean {
   return ctx.membership.role === "admin" || ctx.membership.role === "president";
 }
 
-export function canCreate(ctx: ActiveContext, _resource: ResourceKey): boolean {
+/** Rôles de club sans droit d'exploitation (décisions Club+ du 10/09/2026, n° 1) : miroir exact de
+ * `club_role_sans_exploitation` en base (migration-decisions-clubplus-01). Ils consultent le club ;
+ * ils n'y créent ni demande, ni événement, ni match, ni actualité, ni réservation. */
+const CLUB_ROLES_SANS_EXPLOITATION: ReadonlySet<MembershipRole> = new Set(["viewer", "board_member", "sponsor_manager"]);
+
+export function canCreate(ctx: ActiveContext, resource: ResourceKey): boolean {
   if (ctx.membership.status !== "active") return false;
   if (READ_ONLY_ROLES.has(ctx.membership.role)) return false;
+  // Un bouton « Ajouter » qui mène à un refus de la base est une promesse cassée. Seules exceptions
+  // pour ces rôles : le ticket d'aide et le message (ouverts à tout membre), et les sponsors pour le
+  // responsable sponsors (csp_member_insert, inchangée).
+  if (ctx.organization.type === "club" && CLUB_ROLES_SANS_EXPLOITATION.has(ctx.membership.role)) {
+    if (resource === "support_ticket" || resource === "message") return true;
+    return resource === "sponsor" && ctx.membership.role === "sponsor_manager";
+  }
   return true;
 }
 
@@ -266,4 +278,16 @@ const CLUB_NON_BUREAU_ROLES: ReadonlySet<MembershipRole> = new Set([
 
 export function isClubNonBureauRole(ctx: ActiveContext): boolean {
   return ctx.organization.type === "club" && CLUB_NON_BUREAU_ROLES.has(ctx.membership.role);
+}
+
+/** Décisions Club+ du 10/09/2026, n° 1 : responsable d'équipe, lecture seule, membre du bureau et
+ * responsable sponsors n'ont pas non plus les onglets Organisation / Intégrations. La matrice ne
+ * leur donne pas les paramètres du club (l'Owner Club+ et le Président les administrent, le CM les
+ * opère) : ils voyaient une fiche de club qu'ils ne pouvaient pas modifier, liste des membres
+ * comprise. Fonction distincte d'isClubNonBureauRole, dont le nom mentirait pour le membre du
+ * bureau, et qui pilote aussi le filtre des notifications, hors de cette décision. */
+const CLUB_ROLES_SANS_REGLAGES: ReadonlySet<MembershipRole> = new Set(["team_manager", "viewer", "board_member", "sponsor_manager"]);
+
+export function sansReglagesDuClub(ctx: ActiveContext): boolean {
+  return isClubNonBureauRole(ctx) || (ctx.organization.type === "club" && CLUB_ROLES_SANS_REGLAGES.has(ctx.membership.role));
 }

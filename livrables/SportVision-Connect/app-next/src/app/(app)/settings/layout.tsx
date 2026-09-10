@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/session-context";
-import { isClubNonBureauRole } from "@/lib/permissions";
+import { sansReglagesDuClub } from "@/lib/permissions";
 
 // Coque des 3 écrans Paramètres — voir ACTIONS.md § 25. Fichier nouveau (aucun `settings/
 // layout.tsx` n'existait), propre à mon périmètre : il ne touche à aucun layout partagé.
@@ -36,7 +36,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   // — isClubNonBureauRole() étend l'ancien filtre (isClubCommunicationOrEducateur, 2 des 6 rôles
   // réellement concernés) sans changer son comportement pour Communication/Coach. Même traitement
   // que player/parent ci-dessus, casse séparée pour garder le commentaire d'origine intact.
-  const hideOrgTabs = isPersonal || isClubNonBureauRole(ctx);
+  // 10/09/2026 (décisions Club+ n° 1) : sansReglagesDuClub ajoute les quatre rôles de second rang
+  // (responsable d'équipe, lecture seule, membre du bureau, responsable sponsors).
+  const hideOrgTabs = isPersonal || sansReglagesDuClub(ctx);
   const estCmSportVision = ctx.membership.role === "external_cm";
   const tabs = TABS.filter(
     (tab) => !hideOrgTabs || (tab.href !== "/settings/organization" && tab.href !== "/settings/integrations"),

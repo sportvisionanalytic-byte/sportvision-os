@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, isClubNonBureauRole } from "@/lib/permissions";
+import { canAccess, sansReglagesDuClub } from "@/lib/permissions";
 import { mockIntegrations } from "@/lib/mock/settings";
 import type { Integration } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
@@ -36,7 +36,9 @@ export default function IntegrationsSettingsPage() {
   // n'en couvrait que 2) : aucune intégration (Instagram, Stripe...) ne concerne un rôle
   // opérationnel, y compris Administratif — contrairement à settings/organization/page.tsx, aucune
   // exception ici, la Bible §10 ne liste jamais les Intégrations dans son périmètre.
-  if (isClubNonBureauRole(ctx)) {
+  // sansReglagesDuClub (10/09/2026, décisions Club+ n° 1) : mêmes six rôles, plus les quatre rôles
+  // de second rang.
+  if (sansReglagesDuClub(ctx)) {
     return (
       <Card className="p-8 text-center text-[13.5px] text-text-soft">
         Les intégrations sont réservées à l&apos;administrateur du club.
