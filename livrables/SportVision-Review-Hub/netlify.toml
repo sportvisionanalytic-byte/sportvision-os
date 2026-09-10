@@ -1,11 +1,14 @@
 [build]
   publish = "."
 
-# Site volontairement non indexé et non référencé publiquement — même logique
-# que le sous-domaine privé de l'OS (bc6m3cgdz.sportvision-an.fr) : ce hub
-# documente l'architecture interne (routes, permissions, flux de données),
-# rien de secret dedans mais aucune raison qu'il soit trouvable par un moteur
-# de recherche ou lié depuis une page publique.
+# Site volontairement non indexé et non référencé publiquement : ce hub
+# documente l'architecture interne (routes, permissions, flux de données).
+# noindex empêche l'indexation par les moteurs, pas l'accès — la protection
+# d'accès réelle est assurée par l'edge function basic-auth ci-dessous.
+[[edge_functions]]
+  path = "/*"
+  function = "basic-auth"
+
 [[headers]]
   for = "/*"
   [headers.values]

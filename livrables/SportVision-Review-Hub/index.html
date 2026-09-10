@@ -24,8 +24,9 @@
     <h1>Environnement de review SportVision</h1>
     <p class="lead">Point d'entrée unique pour auditer l'écosystème SportVision (OS, Club+, Connect, Vitrine) sans jamais toucher à la production. Cet environnement est construit progressivement — voir l'état d'avancement par phase ci-dessous.</p>
 
-    <div class="section-hint">
-      <strong>Isolation garantie :</strong> cet environnement utilise un projet Supabase entièrement séparé de la production (aucune connexion réseau vers la base réelle), des clés Stripe en mode test, et un simulateur d'envoi pour les emails/SMS. Aucune donnée personnelle réelle n'y figure. Détail complet dans <a href="#garanties">Garanties d'isolation</a> plus bas.
+    <div class="finding">
+      <div class="finding-title">État actuel — Phase 1 uniquement</div>
+      Aujourd'hui, ce Hub n'est que de la <strong>documentation statique</strong>. Aucune base de données Review, aucune clé Stripe test, aucun simulateur email/SMS n'existe encore. Le tableau ci-dessous (<a href="#garanties">Architecture d'isolation prévue</a>) décrit les garanties <strong>cibles</strong> que chaque phase suivante devra livrer et vérifier — pas un état déjà actif. La colonne « État » ci-dessous, et la page <a href="status.html">Status</a>, font foi sur ce qui est réellement en place à un instant T.
     </div>
 
     <h2>Applications</h2>
@@ -61,16 +62,18 @@
       <div class="card"><a href="status.html"><div class="card-title">→ Status</div></a><div class="card-desc">État de chaque brique de l'environnement review (à activer en Phase 8)</div></div>
     </div>
 
-    <h2 id="garanties">Garanties d'isolation</h2>
+    <h2 id="garanties">Architecture d'isolation prévue</h2>
+    <p class="lead" style="margin-top:-6px">Ce que chaque phase doit livrer — activé progressivement, jamais affirmé avant vérification réelle. État précis : <a href="status.html">page Status</a>.</p>
     <table>
-      <thead><tr><th>Aspect</th><th>Garantie</th></tr></thead>
+      <thead><tr><th>Aspect</th><th>Garantie cible</th><th>État</th></tr></thead>
       <tbody>
-        <tr><td>Base de données</td><td>Projet Supabase dédié, distinct de <code>lulgezzpvrlbftbykzrc</code> (production). Aucune app Review ne détient les identifiants de production.</td></tr>
-        <tr><td>Paiements</td><td>Clés Stripe TEST uniquement. Aucune transaction réelle possible depuis cet environnement.</td></tr>
-        <tr><td>Emails / SMS / notifications</td><td>Simulés (outbox review, aucun envoi réel).</td></tr>
-        <tr><td>Edge Functions</td><td>Déployées uniquement sur le projet Supabase Review. La configuration de production (dont les 8 fonctions sans vérification JWT) n'est jamais touchée par ce chantier.</td></tr>
-        <tr><td>Hébergement</td><td>Sites Netlify séparés des sites de production, variables d'environnement propres à chacun.</td></tr>
-        <tr><td>Données</td><td>100% fictives, générées pour l'audit. Bouton de réinitialisation disponible (Phase 8).</td></tr>
+        <tr><td>Base de données</td><td>Projet Supabase Review dédié, entièrement distinct du projet de production. Aucune app Review ne détiendra les identifiants de production.</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
+        <tr><td>Paiements</td><td>Clés Stripe TEST uniquement. Aucune transaction réelle possible depuis cet environnement.</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
+        <tr><td>Emails / SMS / notifications</td><td>Simulés (outbox review, aucun envoi réel).</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
+        <tr><td>Edge Functions</td><td>Déployées uniquement sur le futur projet Supabase Review. La configuration de production (dont les 8 fonctions sans vérification JWT) ne sera jamais touchée par ce chantier.</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
+        <tr><td>Hébergement</td><td>Sites Netlify séparés des sites de production, variables d'environnement propres à chacun.</td><td><span class="badge badge-ok">en place</span> — ce Hub tourne déjà sur un site Netlify indépendant</td></tr>
+        <tr><td>Accès</td><td>Hub et apps Review réservés aux personnes autorisées (au-delà du <code>noindex</code>, qui empêche seulement l'indexation, pas l'accès).</td><td><span class="badge badge-pending">en cours</span></td></tr>
+        <tr><td>Données</td><td>100% fictives, générées pour l'audit. Bouton de réinitialisation disponible.</td><td><span class="badge badge-pending">à venir — Phase 8</span></td></tr>
       </tbody>
     </table>
   </main>

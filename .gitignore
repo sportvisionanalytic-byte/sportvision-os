@@ -18,3 +18,6 @@ livrables/SportVision-TV/supabase/.temp/
 # Marqueur de version : ecrit au build par scripts/stamp-version.mjs, jamais versionne — sinon le
 # fichier du depot ecraserait celui du build et mentirait sur la version reellement servie.
 livrables/SportVision-TV/version.json
+
+# Local Netlify folder
+.netlify
