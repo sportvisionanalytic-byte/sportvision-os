@@ -76,7 +76,9 @@ export function FicheContenu({ clientId, clubId, cmId, peutModifier, teams, cont
   const [type, setType] = useState<string | null>(contenu?.typeContenu ?? "publication");
   const [date, setDate] = useState(contenu?.datePrevue ?? dateInitiale ?? isoJour(new Date()));
   const [heure, setHeure] = useState(contenu?.heurePrevue ?? "");
-  const [canaux, setCanaux] = useState<string[]>(lireCanaux(contenu?.plateforme ?? "instagram"));
+  // Instagram est proposé pour un nouveau contenu seulement : une fiche existante sans réseau le
+  // reste, sinon l'enregistrer pour changer l'heure lui attribuerait Instagram en silence.
+  const [canaux, setCanaux] = useState<string[]>(contenu ? lireCanaux(contenu.plateforme) : ["instagram"]);
   const [teamId, setTeamId] = useState(contenu?.teamId ?? "");
   const [evenement, setEvenement] = useState(
     contenu?.matchId ? `match:${contenu.matchId}` : contenu?.calendarEventId ? `evenement:${contenu.calendarEventId}` : contenu?.occurrenceRef ?? "",
