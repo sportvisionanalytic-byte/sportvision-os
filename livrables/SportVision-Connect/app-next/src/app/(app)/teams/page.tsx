@@ -127,7 +127,7 @@ export default function TeamsPage() {
               vivent désormais dans la fiche de l'équipe concernée, où le contexte est déjà posé
               (§37). Le suivi de toutes les invitations se lit dans « Coachs & dirigeants ». */}
           {isClub && (
-            <Link href="/users">
+            <Link href="/invitations">
               <Button variant="secondary" className="h-10 gap-1.5 px-4 text-[13px]">
                 <UserPlus className="h-3.5 w-3.5" aria-hidden />
                 Invitations

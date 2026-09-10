@@ -243,6 +243,80 @@ export async function accepterInvitation(supabase: SupabaseClient, token: string
   if (error) throw error;
 }
 
+// ── Le suivi, tous publics confondus ──
+// Trois tables, trois destinataires, un seul écran : le club veut savoir qui a rejoint et qui n'a
+// pas répondu, pas naviguer entre trois tableaux. La jointure et le contrôle d'accès vivent dans
+// `suivi_invitations_club` (migration v104), pas ici.
+
+export type GenreInvitation = "encadrant" | "joueur" | "parent";
+
+export interface LigneSuivi {
+  id: string;
+  genre: GenreInvitation;
+  email: string;
+  personne: string | null;
+  roleOuEquipe: string;
+  statut: string;
+  envoyeeLe: string | null;
+  creeeLe: string;
+}
+
+export const GENRE_LABEL: Record<GenreInvitation, string> = {
+  encadrant: "Coach ou dirigeant",
+  joueur: "Joueur",
+  parent: "Parent",
+};
+
+/** Les statuts des trois tables ne se ressemblent pas — « preparee/envoyee/acceptee/revoquee »
+ *  pour un encadrant, « envoyee/acceptee/expiree/annulee » pour une famille. On les ramène à un
+ *  vocabulaire unique, celui du club : ce qu'il a à faire, pas comment c'est stocké. */
+export function statutLisibleSuivi(statut: string): { label: string; ton: "neutral" | "info" | "success" | "warning" | "danger" } {
+  switch (statut) {
+    case "preparee":
+      return { label: "À envoyer", ton: "neutral" };
+    case "envoyee":
+      return { label: "Envoyée", ton: "info" };
+    case "acceptee":
+      return { label: "A rejoint", ton: "success" };
+    case "expiree":
+      return { label: "Expirée", ton: "warning" };
+    case "revoquee":
+    case "annulee":
+      return { label: "Annulée", ton: "danger" };
+    default:
+      return { label: statut, ton: "neutral" };
+  }
+}
+
+export async function fetchSuiviInvitations(supabase: SupabaseClient, clubId: string): Promise<LigneSuivi[]> {
+  const { data, error } = await supabase.rpc("suivi_invitations_club", { p_club_id: clubId });
+  if (error) throw error;
+  return ((data ?? []) as {
+    id: string; genre: string; email: string; personne: string | null;
+    role_ou_equipe: string; statut: string; envoyee_le: string | null; creee_le: string;
+  }[]).map((r) => ({
+    id: r.id,
+    genre: r.genre as GenreInvitation,
+    email: r.email,
+    personne: r.personne,
+    roleOuEquipe: r.role_ou_equipe,
+    statut: r.statut,
+    envoyeeLe: r.envoyee_le,
+    creeeLe: r.creee_le,
+  }));
+}
+
+/** Annule une invitation de joueur ou de parent. Une invitation annulée reste visible dans le
+ *  suivi : la supprimer ferait oublier au club qu'il a écrit à quelqu'un. */
+export async function annulerInvitationFamille(
+  supabase: SupabaseClient,
+  id: string,
+  genre: "joueur" | "parent",
+): Promise<void> {
+  const { error } = await supabase.rpc("annuler_invitation_famille", { p_id: id, p_genre: genre });
+  if (error) throw error;
+}
+
 /** Le message écrit par la base, ou un repli. Voir invite-links.ts § messageErreurLien : remplacer
  *  une erreur métier par « réessayez » a coûté plusieurs jours sur les liens joueurs. */
 export function messageErreurInvitation(e: unknown, repli: string): string {

@@ -42,7 +42,11 @@ const NAV_CLUB_PLUS: NavEntry[] = [
   section("Gestion"),
   item("contracts", "Contrats", "contracts"),
   item("billing", "Factures", "billing"),
-  item("users", "Membres & accès", "users"),
+  item("users", "Coachs & dirigeants", "users"),
+  // Même clé de module que ci-dessus : gérer les personnes et suivre leurs invitations relèvent
+  // du même droit. Une clé de plus aurait demandé un entitlement à provisionner sur chaque club,
+  // pour la même autorisation.
+  item("users", "Invitations", "invitations"),
   item("documents", "Documents", "documents"),
   item("messages", "Messages", "messages"),
   item("support", "Aide", "support"),
@@ -71,7 +75,8 @@ const NAV_CLUB_FULLCOM: NavEntry[] = [
   // NAV_CLUB_PLUS et NAV_ACADEMY_FULLCOM l'ont toutes les deux — un club Full Communication
   // n'avait donc AUCUN moyen d'inviter coach/secrétaire/trésorier/etc., malgré /users et
   // clubplus-invite déjà pleinement fonctionnels pour un club Club+ classique.
-  item("users", "Membres & accès", "users"),
+  item("users", "Coachs & dirigeants", "users"),
+  item("users", "Invitations", "invitations"),
   section("SportVision"),
   item("mycm", "Mon Community Manager", "mycm"),
   item("messages", "Messages", "messages"),
