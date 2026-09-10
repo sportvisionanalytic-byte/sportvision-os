@@ -221,6 +221,15 @@ export interface InvitationPubliee {
 
 /** Ce qu'un visiteur NON connecté voit du lien. Volontairement pauvre : ni adresse e-mail, ni
  *  identité complète — un jeton qui fuite ne doit pas révéler à qui il était destiné. */
+/** La personne a ouvert son lien (v121). Sert au suivi « envoyée » / « ouverte » côté club ;
+ *  un échec ne doit jamais gêner la page d'invitation, d'où l'absence d'erreur remontée. */
+export async function marquerInvitationOuverte(supabase: SupabaseClient, token: string): Promise<void> {
+  await supabase.rpc("marquer_invitation_ouverte", { p_token: token }).then(
+    () => undefined,
+    () => undefined,
+  );
+}
+
 export async function lireInvitation(supabase: SupabaseClient, token: string): Promise<InvitationPubliee | null> {
   const { data, error } = await supabase.rpc("lire_invitation_club", { p_token: token });
   if (error) throw error;

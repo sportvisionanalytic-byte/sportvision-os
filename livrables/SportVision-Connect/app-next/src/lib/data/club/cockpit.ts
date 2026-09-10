@@ -228,6 +228,8 @@ export interface EtatEquipe {
   team_id: string;
   nom: string;
   categorie: string | null;
+  /** `Masculin`, `Féminin` ou `Mixte` (v121). */
+  section: string | null;
   joueurs: number;
   encadrant: string | null;
   encadrant_statut: StatutEncadrant;
@@ -254,3 +256,77 @@ export const ENCADRANT_LIBELLE: Record<StatutEncadrant, string> = {
   renseigne: "Coach renseigné",
   aucun: "Sans coach",
 };
+
+// ── La fiche d'une équipe (equipe_apercu, v121) ─────────────────────────────────────────────
+
+export type StatutEncadrementFiche = "actif" | "suspendu" | "preparee" | "envoyee" | "ouverte" | "expiree";
+
+export interface EncadrantFiche {
+  source: "membre" | "invitation";
+  id: string;
+  nom: string;
+  email?: string;
+  role: string;
+  statut: StatutEncadrementFiche;
+  envoyee_at?: string | null;
+  ouverte_at?: string | null;
+}
+
+export type ImageJoueur = "valide" | "en_attente" | "refus" | "aucune";
+
+export interface AlerteEquipe {
+  niveau: "a_faire" | "information";
+  code: string;
+  texte: string;
+  action: "inviter_encadrant" | "inviter_joueurs" | "droit_image" | "creneaux" | "demandes";
+}
+
+export interface ApercuEquipe {
+  equipe: { id: string; nom: string; categorie: string | null; section: string | null; saison: string | null; joueurs: number; encadrants: number; creneaux: number };
+  prochain_evenement: {
+    genre: string; date_evenement: string; heure_debut: string | null; titre: string | null;
+    adversaire: string | null; domicile: boolean | null; lieu: string | null; couverture: string | null;
+  } | null;
+  prochain_entrainement: { date: string; debut: string | null; fin: string | null; lieu: string | null } | null;
+  droit_image: {
+    total: number; valides: number; en_attente: number; refus: number;
+    joueurs: { id: string; prenom: string; nom: string; image: ImageJoueur }[];
+  };
+  communication: { contenus_prevus: number };
+  sportvision: {
+    prochaine_presence: { date: string; heure: string | null; type: string | null; adversaire: string | null; lieu: string | null } | null;
+    souhaits: number;
+  };
+  encadrement: EncadrantFiche[];
+  inscriptions: {
+    inscrits: number; en_attente: number; invitations_joueurs: number;
+    recentes: { nom: string | null; statut: string; source: string; le: string }[];
+  };
+  alertes: AlerteEquipe[];
+}
+
+export async function fetchApercuEquipe(supabase: SupabaseClient, teamId: string): Promise<ApercuEquipe | null> {
+  const { data, error } = await supabase.rpc("equipe_apercu", { p_team_id: teamId });
+  if (error) throw error;
+  return (data as ApercuEquipe | null) ?? null;
+}
+
+/** Le jeton d'une invitation, lu seulement au moment de copier son lien. */
+export async function fetchJetonInvitation(supabase: SupabaseClient, invitationId: string): Promise<string> {
+  const { data, error } = await supabase.from("club_invitations").select("token").eq("id", invitationId).maybeSingle();
+  if (error) throw error;
+  const token = (data as { token: string } | null)?.token;
+  if (!token) throw new Error("Invitation introuvable.");
+  return token;
+}
+
+/** Fixe (ou retire, avec `null`) la date d'expiration du lien d'inscription d'une équipe. */
+export async function definirExpirationLien(supabase: SupabaseClient, codeId: string, expireAt: string | null): Promise<void> {
+  const { data, error } = await supabase
+    .from("team_invite_codes")
+    .update({ expire_at: expireAt })
+    .eq("id", codeId)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Modification refusée : droits insuffisants sur ce lien.");
+}
