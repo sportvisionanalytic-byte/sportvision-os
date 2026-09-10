@@ -22,7 +22,14 @@ import {
   TYPE_COUVERTURE_LABELS,
   type TypeCouverture,
 } from "@/lib/data/club/calendar";
-import { cancelCoverageWish, createCoverageWishes, ROLES_DEMANDE_PRESENCE } from "@/lib/data/club/coverageWishes";
+import {
+  cancelCoverageWish,
+  cibleDeReference,
+  createCoverageWishes,
+  rejectCoverageWish,
+  ROLES_DEMANDE_PRESENCE,
+  selectCoverageWish,
+} from "@/lib/data/club/coverageWishes";
 import { canAccess } from "@/lib/permissions";
 import { RequestPresenceModal } from "@/components/presences/RequestPresenceModal";
 import type { CalendarEvent } from "@/lib/types/calendar";
@@ -46,15 +53,8 @@ export const TYPE_DEMANDE_LABELS: Record<string, string> = {
   autre: "Autre",
 };
 
-/** `match:<id>` ou `evenement:<id>` : ce qu'une demande sait référencer. Un entraînement projeté
- *  n'a pas de ligne à lui — il se couvre par une présence, pas par une demande. */
-function cibleDemande(ref: string): { matchId?: string; calendarEventId?: string } | null {
-  const [genre, id] = ref.split(":");
-  if (!id) return null;
-  if (genre === "match") return { matchId: id };
-  if (genre === "evenement") return { calendarEventId: id };
-  return null;
-}
+// Ce qu'une demande sait viser : un match, un événement du club, ou UNE séance d'entraînement
+// (`entrainement:<créneau>:<date>`, la même référence que la présence ; v132). Voir cibleDeReference.
 
 export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; onFait: () => void }) {
   const { ctx } = useSession();
@@ -67,7 +67,8 @@ export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; on
   // Le club (président, admin, communication, direction sportive) ne décide pas : il DEMANDE.
   // Même modale que la page Présences, préremplie avec cet événement (refonte du 10/09/2026).
   const peutDemander = !peutDecider && ROLES_DEMANDE_PRESENCE.has(ctx.membership.role) && canAccess(ctx, "presences");
-  const cible = cibleDemande(evenement.id);
+  const cible = cibleDeReference(evenement.id);
+  const [refus, setRefus] = useState<string | null>(null);
 
   async function agir(action: () => Promise<unknown>, message: string) {
     setEnvoi(true);
@@ -122,16 +123,69 @@ export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; on
     );
   }
 
-  // ── Une demande attend l'OS ──
+  // ── Une demande attend une réponse ──
   if (evenement.wish) {
     const wish = evenement.wish;
+    const demandeDuClub = wish.source === "club_request";
+    const enAttente = wish.status === "wished" || wish.status === "reviewing";
+    // Le club demande, le CM décide (v132) : c'est ici qu'il répond, sur l'événement lui-même.
+    if (peutDecider && demandeDuClub && enAttente) {
+      return (
+        <span className="mt-1 flex flex-col gap-1.5" onClick={stop}>
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-brand-violet/60 bg-accent-bg px-2.5 py-1 text-[11.5px] font-bold text-accent-fg">
+              Demande du club · {TYPE_DEMANDE_LABELS[wish.type] ?? wish.type}
+            </span>
+            {refus === null && (
+              <>
+                <Button
+                  className="h-8 px-3 text-[12px]"
+                  loading={envoi}
+                  onClick={() => void agir(() => selectCoverageWish(createClient(), wish.id), "La demande n'a pas pu être acceptée.")}
+                >
+                  Accepter
+                </Button>
+                <Button variant="secondary" className="h-8 px-3 text-[12px]" disabled={envoi} onClick={() => setRefus("")}>
+                  Refuser
+                </Button>
+              </>
+            )}
+          </span>
+          {refus !== null && (
+            <span className="flex flex-wrap items-center gap-2">
+              <input
+                value={refus}
+                onChange={(e) => setRefus(e.target.value)}
+                placeholder="Motif pour le club (facultatif)"
+                aria-label="Motif du refus"
+                className="h-8 min-w-0 flex-1 rounded-lg border border-border-strong bg-input-bg px-2.5 text-[12.5px] text-text outline-none focus-visible:border-brand-blue"
+              />
+              <Button
+                variant="secondary"
+                className="h-8 px-3 text-[12px]"
+                loading={envoi}
+                onClick={() => void agir(() => rejectCoverageWish(createClient(), wish.id, refus), "Le refus n'a pas pu être enregistré.")}
+              >
+                Confirmer le refus
+              </Button>
+              <button type="button" onClick={() => setRefus(null)} className="text-[11.5px] font-bold text-text-faint hover:text-text">
+                Annuler
+              </button>
+            </span>
+          )}
+          {erreur && <span className="block w-full text-[11.5px] font-bold text-danger-fg">{erreur}</span>}
+        </span>
+      );
+    }
     return (
       <span className="mt-1 flex flex-wrap items-center gap-2" onClick={stop}>
         <span className="rounded-full border border-brand-violet/60 bg-accent-bg px-2.5 py-1 text-[11.5px] font-bold text-accent-fg">
           À couvrir · {TYPE_DEMANDE_LABELS[wish.type] ?? wish.type}
         </span>
-        <span className="text-[11.5px] text-text-soft">demande envoyée à SportVision</span>
-        {peutDecider && (
+        <span className="text-[11.5px] text-text-soft">
+          {demandeDuClub ? "demande envoyée à votre CM SportVision" : "demande envoyée à SportVision"}
+        </span>
+        {peutDecider && !demandeDuClub && (
           <button
             type="button"
             disabled={envoi}

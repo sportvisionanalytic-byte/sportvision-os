@@ -380,7 +380,7 @@ export async function annulerCouverture(supabase: SupabaseClient, refEvenement: 
 // ── « À couvrir » et publications prévues (v124, v125) ──────────────────────────────────────
 
 /** Les demandes de couverture en cours, rangées par référence d'événement du calendrier
- *  (`match:<id>`, `evenement:<id>`), pour les poser sur les événements déjà chargés. */
+ *  (`match:<id>`, `evenement:<id>`, `entrainement:<créneau>:<date>`), pour les poser sur les événements déjà chargés. */
 export async function fetchSouhaitsParEvenement(
   supabase: SupabaseClient,
   clubId: string,
@@ -389,10 +389,12 @@ export async function fetchSouhaitsParEvenement(
   if (error) throw error;
   const carte = new Map<string, NonNullable<CalendarEvent["wish"]>>();
   for (const w of (data ?? []) as {
-    id: string; match_id: string | null; calendar_event_id: string | null; status: string; requested_coverage_type: string; source: string | null;
+    id: string; match_id: string | null; calendar_event_id: string | null; occurrence_ref: string | null;
+    status: string; requested_coverage_type: string; source: string | null;
   }[]) {
-    if (["completed"].includes(w.status)) continue;
-    const ref = w.match_id ? `match:${w.match_id}` : w.calendar_event_id ? `evenement:${w.calendar_event_id}` : null;
+    // Un souhait refusé ne marque plus l'événement « À couvrir » (il reste lisible dans Présences).
+    if (["completed", "not_selected"].includes(w.status)) continue;
+    const ref = w.match_id ? `match:${w.match_id}` : w.calendar_event_id ? `evenement:${w.calendar_event_id}` : w.occurrence_ref;
     if (ref) carte.set(ref, { id: w.id, status: w.status, type: w.requested_coverage_type, source: w.source });
   }
   return carte;

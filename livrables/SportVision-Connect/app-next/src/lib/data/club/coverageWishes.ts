@@ -79,19 +79,30 @@ export interface CoverageWish {
   clubId: string;
   matchId: string | null;
   calendarEventId: string | null;
+  /** Une séance d'entraînement précise : `entrainement:<créneau>:<date>` (v132). */
+  occurrenceRef: string | null;
   coverageType: CoverageType;
   priority: CoveragePriority;
   note: string | null;
   status: CoverageWishStatus;
   notSelectedReason: string | null;
+  /** `club_request` (le club a demandé) ou `cm_initiated` (le CM l'a marqué lui-même). */
+  source: string | null;
+  /** L'événement demandé, tel que le club le lit (v132). */
+  evenementLibelle: string | null;
+  evenementDate: string | null;
   createdAt: string;
 }
 
 interface CoverageWishRow {
   id: string;
-  club_id: string;
+  club_id?: string;
   match_id: string | null;
   calendar_event_id: string | null;
+  occurrence_ref?: string | null;
+  source?: string | null;
+  evenement_libelle?: string | null;
+  evenement_date?: string | null;
   requested_coverage_type: string;
   priority: string;
   note: string | null;
@@ -100,12 +111,16 @@ interface CoverageWishRow {
   created_at: string;
 }
 
-function toCoverageWish(row: CoverageWishRow): CoverageWish {
+function toCoverageWish(row: CoverageWishRow, clubId?: string): CoverageWish {
   return {
     id: row.id,
-    clubId: row.club_id,
+    clubId: row.club_id ?? clubId ?? "",
     matchId: row.match_id,
     calendarEventId: row.calendar_event_id,
+    occurrenceRef: row.occurrence_ref ?? null,
+    source: row.source ?? null,
+    evenementLibelle: row.evenement_libelle ?? null,
+    evenementDate: row.evenement_date ?? null,
     coverageType: row.requested_coverage_type as CoverageType,
     priority: row.priority as CoveragePriority,
     note: row.note,
@@ -115,19 +130,41 @@ function toCoverageWish(row: CoverageWishRow): CoverageWish {
   };
 }
 
+/** Les souhaits du club, avec l'événement demandé et le motif d'un refus (club_souhaits_couverture,
+ *  v132) : le CM sait ce qu'il accepte, le club sait pourquoi on a refusé. */
 export async function fetchCoverageWishes(supabase: SupabaseClient, clubId: string): Promise<CoverageWish[]> {
-  const { data, error } = await supabase
-    .from("coverage_wishes")
-    .select("id, club_id, match_id, calendar_event_id, requested_coverage_type, priority, note, status, not_selected_reason, created_at")
-    .eq("club_id", clubId)
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("club_souhaits_couverture", { p_club_id: clubId });
   if (error) throw error;
-  return ((data ?? []) as CoverageWishRow[]).map(toCoverageWish);
+  return ((data ?? []) as CoverageWishRow[]).map((row) => toCoverageWish(row, clubId));
+}
+
+/** Le CM accepte : c'est SA décision, par le même chemin qu'en direct — présence, mission,
+ *  Production notifiée (cm_select_coverage_wish → cm_definir_couverture, v132). */
+export async function selectCoverageWish(supabase: SupabaseClient, wishId: string, type?: "photo" | "video" | "photo_video"): Promise<void> {
+  const { error } = await supabase.rpc("cm_select_coverage_wish", { p_wish_id: wishId, p_type: type ?? null });
+  if (error) throw error;
+}
+
+export async function rejectCoverageWish(supabase: SupabaseClient, wishId: string, motif?: string): Promise<void> {
+  const { error } = await supabase.rpc("cm_reject_coverage_wish", { p_wish_id: wishId, p_reason: motif?.trim() || null });
+  if (error) throw error;
+}
+
+/** `match:<id>`, `evenement:<id>`, `entrainement:<créneau>:<date>` : les références du calendrier,
+ *  traduites en ce qu'un souhait sait viser. */
+export function cibleDeReference(ref: string): { matchId?: string; calendarEventId?: string; occurrenceRef?: string } | null {
+  const [genre, id] = ref.split(":");
+  if (!id) return null;
+  if (genre === "match") return { matchId: id };
+  if (genre === "evenement") return { calendarEventId: id };
+  if (genre === "entrainement" && ref.split(":").length === 3) return { occurrenceRef: ref };
+  return null;
 }
 
 export interface CoverageWishItemInput {
   matchId?: string;
   calendarEventId?: string;
+  occurrenceRef?: string;
   coverageType: CoverageType;
   priority: CoveragePriority;
   note?: string;
@@ -143,13 +180,14 @@ export async function createCoverageWishes(
   const payload = items.map((it) => ({
     match_id: it.matchId ?? null,
     calendar_event_id: it.calendarEventId ?? null,
+    occurrence_ref: it.occurrenceRef ?? null,
     coverage_type: it.coverageType,
     priority: it.priority,
     note: it.note ?? null,
   }));
   const { data, error } = await supabase.rpc("create_coverage_wishes", { p_club_id: clubId, p_items: payload });
   if (error) throw error;
-  return ((data ?? []) as CoverageWishRow[]).map(toCoverageWish);
+  return ((data ?? []) as CoverageWishRow[]).map((row) => toCoverageWish(row, clubId));
 }
 
 export async function cancelCoverageWish(supabase: SupabaseClient, wishId: string): Promise<void> {

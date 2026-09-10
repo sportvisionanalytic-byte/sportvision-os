@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, Check, Film, Mic, MoreHorizontal, Search, Video, X } from "lucide-react";
+import { Camera, Check, Film, Megaphone, Mic, MoreHorizontal, Search, Video, X } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CalendarEvent, CalendarEventKind } from "@/lib/types/calendar";
 import { CALENDAR_EVENT_KIND_LABELS } from "@/lib/types/calendar";
-import { fetchClubCalendarEvents } from "@/lib/data/club/calendar";
+import { definirCouverture, fetchClubCalendrier, fetchSouhaitsParEvenement } from "@/lib/data/club/calendar";
 import {
+  cibleDeReference,
   createCoverageWishes,
   COVERAGE_TYPE_LABELS,
   COVERAGE_PRIORITY_LABELS,
@@ -36,11 +37,21 @@ import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // recherche et sélection par journée. Deux usages, une seule modale :
 //   • demande groupée depuis Présences (liste à cocher) ;
 //   • demande sur UN événement depuis le calendrier (`evenement` fourni : pas de liste).
+//
+// Deux autorités (décision de Fouka, 10/09/2026, migration v132) :
+//   • le club DEMANDE (`mode="club"`) : un souhait, que le CM accepte ou refuse ; rien ne part à
+//     la Production avant son acceptation ;
+//   • le CM PRÉVOIT (`mode="cm"`) : Photo, Vidéo, Photo + vidéo créent la présence et sa mission
+//     tout de suite (cm_definir_couverture) ; Communication et Autre, qui ne sont pas une présence
+//     sur le terrain, partent en demande — exactement comme dans le calendrier (Couverture.tsx).
+// La liste lit la même source que le calendrier (club_calendrier) : séances d'entraînement
+// comprises, chacune par sa référence d'occurrence, sans rien matérialiser.
 
 /** Un événement déjà choisi, quand la demande part du calendrier. */
 export interface EvenementDemande {
   matchId?: string;
   calendarEventId?: string;
+  occurrenceRef?: string;
   titre: string;
   startsAt: string;
   allDay?: boolean;
@@ -55,15 +66,26 @@ interface RequestPresenceModalProps {
   onClose: () => void;
   onSubmitted: () => void;
   evenement?: EvenementDemande;
+  mode?: "club" | "cm";
 }
 
-const COVERAGE_TYPES: { id: CoverageType; icone: typeof Camera }[] = [
+const COVERAGE_TYPES_CLUB: { id: CoverageType; icone: typeof Camera }[] = [
   { id: "photo", icone: Camera },
   { id: "video", icone: Video },
   { id: "photo_video", icone: Film },
   { id: "interview", icone: Mic },
   { id: "autre", icone: MoreHorizontal },
 ];
+const COVERAGE_TYPES_CM: { id: CoverageType; icone: typeof Camera }[] = [
+  { id: "photo", icone: Camera },
+  { id: "video", icone: Video },
+  { id: "photo_video", icone: Film },
+  { id: "communication", icone: Megaphone },
+  { id: "autre", icone: MoreHorizontal },
+];
+/** Ce que le CM décide sur place ; le reste est une demande. */
+const TYPES_PRESENCE = new Set<CoverageType>(["photo", "video", "photo_video"]);
+const HORIZON_JOURS = 90;
 const PRIORITIES: { id: CoveragePriority; aide: string }[] = [
   { id: "normale", aide: "SportVision la traite dans l'ordre habituel." },
   { id: "forte", aide: "Un temps fort à ne pas manquer." },
@@ -73,10 +95,8 @@ const PRIORITIES: { id: CoveragePriority; aide: string }[] = [
 // 10/09), et le type de couverture ne doit pas se retrouver sous soixante lignes.
 const PAR_PAGE = 20;
 
-function parseEventRef(id: string): { matchId?: string; calendarEventId?: string } {
-  if (id.startsWith("match-")) return { matchId: id.slice(6) };
-  if (id.startsWith("event-")) return { calendarEventId: id.slice(6) };
-  return {};
+function jourIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function dateCourte(iso: string): string {
@@ -133,10 +153,14 @@ function Section({ titre, aside, children }: { titre: string; aside?: React.Reac
   );
 }
 
-export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, evenement }: RequestPresenceModalProps) {
+export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, evenement, mode = "club" }: RequestPresenceModalProps) {
   // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
   useFermetureEchap(true, onClose);
   const unique = Boolean(evenement);
+  const cm = mode === "cm";
+  const TYPES = cm ? COVERAGE_TYPES_CM : COVERAGE_TYPES_CLUB;
+  // Événement déjà prévu ou déjà demandé : visible, mais plus cochable.
+  const [dejaTraites, setDejaTraites] = useState<Map<string, string>>(new Map());
   const [events, setEvents] = useState<CalendarEvent[] | null>(unique ? [] : null);
   const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -163,8 +187,22 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
 
   useEffect(() => {
     if (unique) return;
-    fetchClubCalendarEvents(supabase, clubId)
-      .then(setEvents)
+    const debut = new Date();
+    const fin = new Date(debut.getFullYear(), debut.getMonth(), debut.getDate() + HORIZON_JOURS);
+    Promise.all([
+      fetchClubCalendrier(supabase, clubId, jourIso(debut), jourIso(fin)),
+      fetchSouhaitsParEvenement(supabase, clubId).catch(() => new Map()),
+    ])
+      .then(([lignes, souhaits]) => {
+        const traites = new Map<string, string>();
+        for (const e of lignes) {
+          if (e.coverage) traites.set(e.id, "Déjà prévue");
+          else if (souhaits.has(e.id)) traites.set(e.id, "Déjà demandée");
+        }
+        setDejaTraites(traites);
+        // Seul ce qu'une présence sait viser : match, événement du club, séance d'entraînement.
+        setEvents(lignes.filter((e) => cibleDeReference(e.id)));
+      })
       .catch(() => {
         setLoadError(true);
         setEvents([]);
@@ -188,8 +226,14 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
   useEffect(() => setLimite(PAR_PAGE), [filtre, recherche]);
 
   const nbChoisis = unique ? 1 : selected.size;
+  const decisionDirecte = cm && TYPES_PRESENCE.has(coverageType);
+  useEffect(() => {
+    if (!TYPES.some((t) => t.id === coverageType)) setCoverageType("photo_video");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cm]);
 
   function toggle(id: string) {
+    if (dejaTraites.has(id)) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -201,8 +245,9 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
   function basculerJournee(ids: string[]) {
     setSelected((prev) => {
       const next = new Set(prev);
-      const toutes = ids.every((id) => next.has(id));
-      for (const id of ids) {
+      const libres = ids.filter((id) => !dejaTraites.has(id));
+      const toutes = libres.every((id) => next.has(id));
+      for (const id of libres) {
         if (toutes) next.delete(id);
         else next.add(id);
       }
@@ -214,18 +259,24 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
     if (nbChoisis === 0) return;
     setSubmitting(true);
     setError(null);
-    const commun = { coverageType, priority, note: note.trim() || undefined };
-    const items = evenement
-      ? [{ matchId: evenement.matchId, calendarEventId: evenement.calendarEventId, ...commun }]
-      : Array.from(selected).map((id) => ({ ...parseEventRef(id), ...commun }));
+    const refs = evenement ? [] : Array.from(selected);
     try {
-      await createCoverageWishes(supabase, clubId, items);
+      if (decisionDirecte && !evenement) {
+        // Le CM prévoit : une décision par événement, chacune crée sa présence et sa mission.
+        for (const ref of refs) await definirCouverture(supabase, ref, coverageType as "photo" | "video" | "photo_video");
+      } else {
+        const commun = { coverageType, priority, note: note.trim() || undefined };
+        const items = evenement
+          ? [{ matchId: evenement.matchId, calendarEventId: evenement.calendarEventId, occurrenceRef: evenement.occurrenceRef, ...commun }]
+          : refs.map((ref) => ({ ...cibleDeReference(ref), ...commun }));
+        await createCoverageWishes(supabase, clubId, items);
+      }
       setDone(true);
       onSubmitted();
     } catch (e) {
       const message = (e as { message?: string } | null)?.message ?? "";
       setError(
-        /offre/i.test(message)
+        /offre|CM SportVision/i.test(message)
           ? message
           : "Impossible d'envoyer votre demande pour le moment. Réessayez.",
       );
@@ -234,7 +285,12 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
     }
   }
 
-  const recap = `${COVERAGE_TYPE_LABELS[coverageType]} · Priorité ${COVERAGE_PRIORITY_LABELS[priority].toLowerCase()}`;
+  const recap = decisionDirecte
+    ? `${COVERAGE_TYPE_LABELS[coverageType]} · présence et mission créées aussitôt`
+    : `${COVERAGE_TYPE_LABELS[coverageType]} · Priorité ${COVERAGE_PRIORITY_LABELS[priority].toLowerCase()}`;
+  const titre = done
+    ? decisionDirecte ? "Présence prévue" : "Demande envoyée"
+    : cm ? "Prévoir SportVision" : "Demander une présence SportVision";
 
   return (
     <div
@@ -252,13 +308,15 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
         <header className="flex flex-none items-start gap-3 border-b border-border px-5 pb-4 pt-5 sm:px-6">
           <div className="min-w-0 flex-1">
             <h2 id="demande-presence-titre" className="text-[19px] font-extrabold tracking-tight text-text">
-              {done ? "Demande envoyée" : "Demander une présence SportVision"}
+              {titre}
             </h2>
             {!done && (
               <p className="mt-1 text-[13px] leading-snug text-text-soft">
-                {unique
-                  ? "Choisissez le type de présence pour cet événement, puis envoyez la demande."
-                  : "Sélectionnez les événements à couvrir, puis choisissez le type de présence."}
+                {cm
+                  ? "Choisissez les événements où SportVision sera présent : chaque présence part aussitôt en mission chez la Production."
+                  : unique
+                    ? "Choisissez le type de présence pour cet événement : votre CM SportVision étudiera la demande."
+                    : "Sélectionnez les événements à couvrir, puis le type de présence : votre CM SportVision étudiera la demande."}
               </p>
             )}
           </div>
@@ -276,8 +334,11 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
           <>
             <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-6">
               <p className="text-[14px] leading-relaxed text-text-soft">
-                Votre demande a été transmise à SportVision. La présence n&apos;est pas encore confirmée : vous suivrez son
-                avancement dans vos présences.
+                {decisionDirecte
+                  ? "C'est décidé : la Production a reçu la mission et va affecter un opérateur. Vous suivez la suite dans Présences."
+                  : cm
+                    ? "La demande est enregistrée. Elle apparaît dans Présences et au calendrier."
+                    : "Votre CM SportVision a reçu la demande. La présence n'est pas encore confirmée : vous verrez sa réponse dans Présences et au calendrier."}
               </p>
             </div>
             <footer className="flex flex-none justify-end border-t border-border px-5 py-3.5 pb-[max(14px,env(safe-area-inset-bottom))] sm:px-6">
@@ -365,7 +426,7 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] font-bold">
                           <button
                             type="button"
-                            onClick={() => setSelected((prev) => new Set([...prev, ...visibles.map((e) => e.id)]))}
+                            onClick={() => setSelected((prev) => new Set([...prev, ...visibles.filter((e) => !dejaTraites.has(e.id)).map((e) => e.id)]))}
                             className="text-accent-fg hover:underline"
                           >
                             Tout sélectionner{visibles.length < upcoming.length ? ` (${visibles.length})` : ""}
@@ -380,12 +441,13 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
                         <div className="flex flex-col gap-4">
                           {journees.map((j) => {
                             const ids = j.evenements.map((e) => e.id);
-                            const toutes = ids.every((id) => selected.has(id));
+                            const libres = ids.filter((id) => !dejaTraites.has(id));
+                            const toutes = libres.length > 0 && libres.every((id) => selected.has(id));
                             return (
                               <div key={j.cle} className="flex flex-col gap-1.5">
                                 <div className="flex items-center justify-between gap-3">
                                   <span className="text-[12.5px] font-extrabold text-text">{j.libelle}</span>
-                                  {ids.length > 1 && (
+                                  {libres.length > 1 && (
                                     <button
                                       type="button"
                                       onClick={() => basculerJournee(ids)}
@@ -397,22 +459,29 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
                                 </div>
                                 {j.evenements.map((e) => {
                                   const coche = selected.has(e.id);
+                                  const deja = dejaTraites.get(e.id);
                                   return (
                                     <button
                                       key={e.id}
                                       type="button"
                                       role="checkbox"
                                       aria-checked={coche}
+                                      aria-disabled={Boolean(deja)}
                                       onClick={() => toggle(e.id)}
                                       className={`flex min-h-[56px] w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${
-                                        coche ? "border-brand-blue bg-accent-bg" : "border-border hover:border-border-strong hover:bg-row-hover"
+                                        deja
+                                          ? "cursor-default border-border opacity-60"
+                                          : coche
+                                            ? "border-brand-blue bg-accent-bg"
+                                            : "border-border hover:border-border-strong hover:bg-row-hover"
                                       }`}
                                     >
-                                      <CaseACocher coche={coche} />
+                                      {deja ? <Check className="h-5 w-5 flex-none text-success-fg" aria-hidden /> : <CaseACocher coche={coche} />}
                                       <span className="min-w-0 flex-1">
                                         <span className="block truncate text-[14px] font-semibold text-text">{e.title}</span>
                                         <Details titre={e.title} startsAt={e.startsAt} allDay={e.allDay} teamName={e.teamName} location={e.location} />
                                       </span>
+                                      {deja && <span className="flex-none text-[11.5px] font-bold text-success-fg">{deja}</span>}
                                       <Badge kind={e.kind} />
                                     </button>
                                   );
@@ -438,7 +507,7 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
 
                 <Section titre="Type de couverture">
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                    {COVERAGE_TYPES.map(({ id, icone: Icone }) => {
+                    {TYPES.map(({ id, icone: Icone }) => {
                       const actif = coverageType === id;
                       return (
                         <button
@@ -462,6 +531,7 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
                   </div>
                 </Section>
 
+                {!decisionDirecte && (<>
                 <Section titre="Priorité">
                   <div className="flex w-full rounded-xl bg-surface-sunken p-1 sm:w-auto sm:self-start">
                     {PRIORITIES.map(({ id }) => (
@@ -491,6 +561,7 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
                     className="resize-none rounded-xl border border-border-strong bg-input-bg px-3.5 py-3 text-[14px] text-text outline-none placeholder:text-text-faint focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
                   />
                 </Section>
+                </>)}
               </div>
             </div>
 
@@ -513,7 +584,7 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
                   onClick={handleSubmit}
                   className="h-11 flex-[2] sm:flex-none"
                 >
-                  Envoyer la demande
+                  {decisionDirecte ? "Prévoir SportVision" : "Envoyer la demande"}
                 </Button>
               </div>
             </footer>

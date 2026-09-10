@@ -17,6 +17,8 @@ import { decompterLeMois, libelleMois } from "@/lib/presences/mois";
 import {
   fetchCoverageWishes,
   cancelCoverageWish,
+  rejectCoverageWish,
+  selectCoverageWish,
   COVERAGE_TYPE_LABELS,
   COVERAGE_PRIORITY_LABELS,
   COVERAGE_WISH_STATUS_LABELS,
@@ -58,6 +60,26 @@ function PresencesScreen() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const canSeeOperator = ctx.membership.role !== "viewer";
   const canRequest = CAN_REQUEST_ROLES.has(ctx.membership.role);
+  // Le club demande, le CM décide (v132) : le CM prévoit directement, et répond ici aux demandes.
+  const estCm = ctx.membership.role === "external_cm";
+  const [reponse, setReponse] = useState<{ id: string; motif: string | null } | null>(null);
+  const [reponseErreur, setReponseErreur] = useState<string | null>(null);
+
+  async function repondre(id: string, accepter: boolean, motif?: string) {
+    setCancellingId(id);
+    setReponseErreur(null);
+    try {
+      const supabase = createClient();
+      if (accepter) await selectCoverageWish(supabase, id);
+      else await rejectCoverageWish(supabase, id, motif);
+      setReponse(null);
+      await Promise.all([reloadWishes(), reload()]);
+    } catch (e) {
+      setReponseErreur((e as { message?: string } | null)?.message || "La réponse n'a pas pu être enregistrée.");
+    } finally {
+      setCancellingId(null);
+    }
+  }
 
   async function reload() {
     setLoadError(false);
@@ -128,7 +150,7 @@ function PresencesScreen() {
               className="border-white/25 bg-white/[.12] text-white hover:border-white/40"
               onClick={() => setShowRequestModal(true)}
             >
-              Demander une présence
+              {estCm ? "Prévoir SportVision" : "Demander une présence"}
             </Button>
           )}
         </div>
@@ -185,7 +207,8 @@ function PresencesScreen() {
 
       {canRequest && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-[15px] font-extrabold tracking-tight">Souhaits de présence</h2>
+          <h2 className="text-[15px] font-extrabold tracking-tight">{estCm ? "Demandes de présence" : "Souhaits de présence"}</h2>
+          {reponseErreur && <p className="text-[12.5px] font-bold text-danger-fg">{reponseErreur}</p>}
           {wishesError && (
             <Card className="flex flex-wrap items-center gap-3 border-danger-fg/30 bg-danger-bg px-5 py-4">
               <AlertTriangle className="h-[18px] w-[18px] flex-none text-danger-fg" aria-hidden />
@@ -204,10 +227,10 @@ function PresencesScreen() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[560px] border-collapse text-left">
+                <table className="w-full min-w-[720px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-divider bg-surface-alt">
-                      {["Type", "Priorité", "Statut", ""].map((h) => (
+                      {["Événement", "Type", "Priorité", "Statut", ""].map((h) => (
                         <th key={h} className="px-5 py-3 text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint">
                           {h}
                         </th>
@@ -217,13 +240,52 @@ function PresencesScreen() {
                   <tbody>
                     {wishes.map((w) => (
                       <tr key={w.id} className="border-b border-divider last:border-0 hover:bg-row-hover">
-                        <td className="px-5 py-3.5 text-[13.5px] font-bold text-text">{COVERAGE_TYPE_LABELS[w.coverageType]}</td>
+                        <td className="px-5 py-3.5">
+                          <span className="block text-[13.5px] font-bold text-text">{w.evenementLibelle ?? "Événement"}</span>
+                          <span className="block text-[12px] text-text-soft">
+                            {w.evenementDate ? formatDate(w.evenementDate) : ""}
+                            {estCm && w.source === "club_request" ? " · demande du club" : ""}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-[13px] font-semibold text-text">{COVERAGE_TYPE_LABELS[w.coverageType]}</td>
                         <td className="px-5 py-3.5 text-[13px] text-text-soft">{COVERAGE_PRIORITY_LABELS[w.priority]}</td>
                         <td className="px-5 py-3.5">
                           <Badge tone={COVERAGE_WISH_STATUS_TONE[w.status]}>{COVERAGE_WISH_STATUS_LABELS[w.status]}</Badge>
+                          {w.status === "not_selected" && w.notSelectedReason && (
+                            <span className="mt-1 block max-w-[240px] text-[12px] text-text-soft">{w.notSelectedReason}</span>
+                          )}
                         </td>
                         <td className="px-5 py-3.5 text-right">
-                          {(w.status === "wished" || w.status === "reviewing" || w.status === "selected" || w.status === "sent_to_production") && (
+                          {estCm && w.source === "club_request" && (w.status === "wished" || w.status === "reviewing") ? (
+                            reponse?.id === w.id ? (
+                              <span className="flex items-center justify-end gap-2">
+                                <input
+                                  value={reponse.motif ?? ""}
+                                  onChange={(e) => setReponse({ id: w.id, motif: e.target.value })}
+                                  placeholder="Motif (facultatif)"
+                                  aria-label="Motif du refus"
+                                  className="h-8 w-[180px] rounded-lg border border-border-strong bg-input-bg px-2.5 text-[12.5px] text-text outline-none focus-visible:border-brand-blue"
+                                />
+                                <Button variant="secondary" className="h-8 px-3 text-[12px]" loading={cancellingId === w.id}
+                                  onClick={() => void repondre(w.id, false, reponse.motif ?? undefined)}>
+                                  Confirmer le refus
+                                </Button>
+                                <button type="button" onClick={() => setReponse(null)} className="text-[12px] font-bold text-text-faint hover:text-text">
+                                  Annuler
+                                </button>
+                              </span>
+                            ) : (
+                              <span className="flex items-center justify-end gap-2">
+                                <Button className="h-8 px-3 text-[12px]" loading={cancellingId === w.id} onClick={() => void repondre(w.id, true)}>
+                                  Accepter
+                                </Button>
+                                <Button variant="secondary" className="h-8 px-3 text-[12px]" disabled={cancellingId === w.id}
+                                  onClick={() => setReponse({ id: w.id, motif: "" })}>
+                                  Refuser
+                                </Button>
+                              </span>
+                            )
+                          ) : w.status === "wished" || w.status === "reviewing" || w.status === "selected" || w.status === "sent_to_production" ? (
                             <button
                               onClick={() => handleCancelWish(w.id)}
                               disabled={cancellingId === w.id}
@@ -231,7 +293,7 @@ function PresencesScreen() {
                             >
                               {cancellingId === w.id ? "Annulation…" : "Annuler"}
                             </button>
-                          )}
+                          ) : null}
                         </td>
                       </tr>
                     ))}
@@ -248,7 +310,8 @@ function PresencesScreen() {
           supabase={createClient()}
           clubId={ctx.organization.id}
           onClose={() => setShowRequestModal(false)}
-          onSubmitted={reloadWishes}
+          onSubmitted={() => void Promise.all([reloadWishes(), reload()])}
+          mode={estCm ? "cm" : "club"}
         />
       )}
     </div>

@@ -82,6 +82,38 @@ const TITLE_FALLBACKS: Record<string, string> = {
   // (grep confirmé sur navigation.ts — toutes les variantes pointent vers /content), donc jamais
   // résolu par resolveNavigation() non plus, quel que soit le type d'organisation.
   "/media": "Contenus",
+  // 10/09/2026 — Le président de Villemomble lisait « calendar » en titre du calendrier : la page
+  // n'est pas dans son menu. Plutôt que d'attendre la prochaine page oubliée, chaque route de
+  // l'application a désormais son titre ici ; aucun slug d'URL ne remonte plus jamais en titre.
+  "/accompagnement": "Accompagnement",
+  "/analytics": "Statistiques",
+  "/appointments": "Rendez-vous",
+  "/calendar": "Calendrier",
+  "/camps": "Stages",
+  "/campsessions": "Sessions",
+  "/communication": "Communication",
+  "/content": "Contenus",
+  "/dashboard": "Accueil",
+  "/documents": "Documents",
+  "/events": "Événements",
+  "/eventtimeline": "Timeline",
+  "/galeries": "Galeries",
+  "/invitations": "Invitations",
+  "/live": "Live",
+  "/matchcenter": "Match Center",
+  "/media-sales": "Ventes de médias",
+  "/messages": "Messagerie",
+  "/mycm": "Mon Community Manager",
+  "/onboarding": "Onboarding",
+  "/publications": "Publications",
+  "/reports": "Rapports",
+  "/requests": "Demandes",
+  "/season-transition": "Changement de saison",
+  "/sessions": "Séances",
+  "/sponsors": "Sponsors",
+  "/support": "Aide",
+  "/teams": "Équipes",
+  "/validations": "À valider",
 };
 
 interface HeaderProps {
@@ -113,7 +145,7 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
   let navEntries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
   if (ctx.organization.type === "club") navEntries = filterClubRoleNav(navEntries, ctx.membership.role, ctx.membership.teamScope);
   const navLabel = navEntries.find((e) => e.kind === "item" && e.href === firstSegment)?.label;
-  const title = navLabel ?? TITLE_FALLBACKS[firstSegment] ?? (pathname?.slice(1) || "Accueil");
+  const title = navLabel ?? TITLE_FALLBACKS[firstSegment] ?? (firstSegment === "/" ? "Accueil" : "Club+");
   const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";
 
   return (
