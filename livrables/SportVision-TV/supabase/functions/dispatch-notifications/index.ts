@@ -47,6 +47,12 @@
 // PENDING, pour qu'elle soit réévaluée au prochain passage du cron plutôt
 // que de calculer précisément le prochain instant autorisé (plus simple,
 // et sans piège de fuseau horaire à l'approche de minuit).
+//
+// Adresses de test (10/09/2026) : une adresse de domaine réservé (.invalid, .test, .example,
+// .localhost, example.com/.net/.org), du domaine sportvision-test.fr ou en zz-…@sportvision-an.fr
+// n'est JAMAIS transmise à Brevo — ligne marquée SUPPRESSED avec la raison (voir
+// adresseNonDistribuable). L'authentification de cette fonction (secret partagé, sans
+// vérification JWT) n'est pas concernée par ce changement.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -71,11 +77,43 @@ function renderTemplate(
   { escape = false }: { escape?: boolean } = {},
 ): string {
   if (!str) return "";
-  return str.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+  // Un prénom inconnu ne doit pas laisser « Bonjour , » (10/09/2026). Dix gabarits actifs
+  // commencent par « Bonjour {{first_name}}, », un par « Merci {{prenom}} ! » ; or le prénom
+  // manque souvent (Connect l'enregistre sous first_name, l'OS sous prenom, un acheteur invité n'en
+  // donne parfois aucun). Pour ces seules variables de prénom, une valeur vide emporte l'espace qui
+  // la précède : « Bonjour, », « Merci ! ». Les autres variables restent rendues telles quelles.
+  const PRENOMS = ["first_name", "prenom"];
+  return str.replace(/([ \t\u00a0]*)\{\{(\w+)\}\}/g, (_, espace, key) => {
     const v = vars[key];
-    if (v === undefined || v === null) return "";
-    return escape ? escHtml(v) : String(v);
+    const vide = v === undefined || v === null || String(v).trim() === "";
+    if (vide) return PRENOMS.includes(key) ? "" : espace;
+    return espace + (escape ? escHtml(v) : String(v));
   });
+}
+
+/** Adresse qui ne doit JAMAIS partir chez Brevo : domaine réservé ou adresse de test (décision
+ *  du 10/09/2026). Renvoie la raison lisible, ou null si l'adresse est envoyable.
+ *
+ *  Pourquoi : sur les 7 jours précédents, Brevo comptait 62 envois dont 19 rebonds temporaires et
+ *  3 définitifs, presque tous vers des adresses de test (@example.invalid, @sportvision-test.fr,
+ *  zz-…@sportvision-an.fr). Chaque rebond abîme la réputation d'envoi de sportvision-an.fr, donc
+ *  la délivrabilité des e-mails des vrais parents. Ces domaines ne peuvent recevoir aucun courrier
+ *  par construction (RFC 2606 et 6761) : les transmettre ne sert à rien et coûte cher.
+ *  Filtrage ici, dans le seul point de sortie de la file, plutôt que dans chaque test : un test
+ *  oublié, un compte fictif de démonstration ou une saisie « test@test.test » sont couverts
+ *  d'office. */
+function adresseNonDistribuable(adresse: string | null | undefined): string | null {
+  const a = String(adresse ?? "").trim().toLowerCase();
+  const arobase = a.lastIndexOf("@");
+  if (arobase < 1) return null; // adresse mal formée : laissée au traitement habituel (Brevo la refusera)
+  const local = a.slice(0, arobase);
+  const domaine = a.slice(arobase + 1).replace(/\.+$/, "");
+  const tld = domaine.split(".").pop() || "";
+  if (["invalid", "test", "example", "localhost"].includes(tld)) return `domaine réservé (.${tld})`;
+  if (/(^|\.)example\.(com|net|org)$/.test(domaine)) return `domaine réservé (${domaine})`;
+  if (domaine === "sportvision-test.fr" || domaine.endsWith(".sportvision-test.fr")) return "domaine de test sportvision-test.fr";
+  if (domaine === "sportvision-an.fr" && local.startsWith("zz-")) return "adresse de test zz-…@sportvision-an.fr";
+  return null;
 }
 
 /** Enveloppe le fragment du gabarit dans un vrai document HTML.
@@ -213,6 +251,22 @@ serve(async (req) => {
         // on annule proprement plutôt que de retenter indéfiniment un canal non branché.
         await admin.from("notification_outbox").update({
           status: "CANCELLED", last_error: "Canal " + row.channel + " pas encore connecté (P1)", updated_at: new Date().toISOString(),
+        }).eq("id", row.id);
+        continue;
+      }
+
+      // Adresse de test ou de domaine réservé (voir adresseNonDistribuable) : jamais transmise à
+      // Brevo. Vérifiée AVANT tout le reste — clé Brevo, gabarit, préférences — pour qu'aucune
+      // configuration ne puisse la faire partir. SUPPRESSED est le statut terminal déjà utilisé
+      // pour « ne pas envoyer à cette adresse » (liste de suppression) : la ligne n'est plus
+      // jamais reprise par le cron, et la raison est lisible dans l'OS (Communication → Derniers
+      // envois, colonne Statut). Aucune tentative n'est enregistrée : il n'y en a eu aucune.
+      const raisonNonDistribuable = adresseNonDistribuable(row.recipient_email);
+      if (raisonNonDistribuable) {
+        await admin.from("notification_outbox").update({
+          status: "SUPPRESSED",
+          last_error: "Non envoyé : " + raisonNonDistribuable + ". Adresse de test, jamais transmise à Brevo.",
+          updated_at: new Date().toISOString(),
         }).eq("id", row.id);
         continue;
       }

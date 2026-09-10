@@ -63,7 +63,10 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey);
     const { type, new_email } = await req.json();
 
-    const firstName = user.user_metadata?.prenom || "";
+    // Même défaut que request-password-reset (10/09/2026) : Connect et Club+ enregistrent le
+    // prénom sous `first_name`, l'OS sous `prenom`. On lit l'un puis l'autre, sinon rien
+    // (dispatch-notifications rend alors « Bonjour, » et non « Bonjour , »).
+    const firstName = String(user.user_metadata?.first_name || user.user_metadata?.prenom || "").trim();
     const changedAt = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
     if (type === "password_changed") {

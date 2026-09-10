@@ -101,7 +101,10 @@ serve(async (req) => {
       p_entity_type: "collaborateur_ou_client",
       p_entity_id: linkData.user.id,
       p_payload: {
-        first_name: linkData.user.user_metadata?.prenom || "",
+        // Connect et Club+ enregistrent le prénom sous `first_name`, l'OS sous `prenom`
+        // (10/09/2026) : ne lire que `prenom` laissait « Bonjour , » à tout compte Connect. Rien
+        // si aucun des deux : dispatch-notifications rend alors « Bonjour, ».
+        first_name: String(linkData.user.user_metadata?.first_name || linkData.user.user_metadata?.prenom || "").trim(),
         expires_at_local: expiresAt.toLocaleString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "long" }),
         reset_url: linkData.properties.action_link,
       },
