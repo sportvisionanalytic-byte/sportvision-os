@@ -74,24 +74,49 @@ on conflict (collaborateur_id) do update
 update public.profiles set adresse = null, code_postal = null
  where adresse is not null or code_postal is not null;
 
--- Un declencheur empeche que le champ revienne s'installer sur profiles par un futur
--- formulaire distrait : ecrire une adresse ici est desormais sans effet et le dit.
-create or replace function public.refuser_adresse_sur_profiles()
+-- Un declencheur intercepte les adresses qui continueraient d'arriver sur profiles. Il ne
+-- REFUSE pas l'ecriture : il la RANGE au bon endroit, puis vide le champ. Deux raisons.
+--
+--   1. L'OS est un fichier unique deploye separement de la base. Entre la migration et la mise
+--      en ligne du correctif, la version en production envoie encore `adresse` avec le reste du
+--      profil : un refus ferait echouer tout l'enregistrement des reglages, pour tout le monde.
+--      Rediriger laisse cette version marcher exactement comme avant, sans fuite.
+--   2. Un futur formulaire distrait ne reintroduira pas la fuite en silence : la donnee finira
+--      dans la table protegee, quoi qu'il arrive.
+--
+-- A l'INSERT, la ligne profiles n'existe pas encore, donc la cle etrangere interdit d'ecrire les
+-- coordonnees tout de suite ; le champ est simplement vide. Aucun chemin de creation de compte
+-- ne transmet d'adresse (verifie sur invite-collaborateur et les deux declencheurs auth.users).
+create or replace function public.rediriger_adresse_hors_profiles()
 returns trigger language plpgsql security definer set search_path to 'public' as $$
 begin
-  if nullif(trim(coalesce(new.adresse,'')),'') is not null
-     or nullif(trim(coalesce(new.code_postal,'')),'') is not null then
-    raise exception 'L''adresse d''un collaborateur se stocke dans collaborateur_coordonnees, '
-                    'pas sur profiles (lisible par tout l''annuaire). Audit du 10/09/2026.';
+  if nullif(trim(coalesce(new.adresse,'')),'') is null
+     and nullif(trim(coalesce(new.code_postal,'')),'') is null then
+    return new;
   end if;
+
+  if tg_op = 'UPDATE' then
+    insert into public.collaborateur_coordonnees (collaborateur_id, adresse, code_postal, updated_at)
+    values (new.id, nullif(trim(coalesce(new.adresse,'')),''), nullif(trim(coalesce(new.code_postal,'')),''), now())
+    on conflict (collaborateur_id) do update
+      set adresse = coalesce(excluded.adresse, public.collaborateur_coordonnees.adresse),
+          code_postal = coalesce(excluded.code_postal, public.collaborateur_coordonnees.code_postal),
+          updated_at = now();
+  end if;
+
+  new.adresse := null;
+  new.code_postal := null;
   return new;
 end $$;
-revoke all on function public.refuser_adresse_sur_profiles() from public, anon, authenticated;
+revoke all on function public.rediriger_adresse_hors_profiles() from public, anon, authenticated;
 
 drop trigger if exists trg_refuser_adresse_sur_profiles on public.profiles;
-create trigger trg_refuser_adresse_sur_profiles
+drop trigger if exists trg_rediriger_adresse_hors_profiles on public.profiles;
+create trigger trg_rediriger_adresse_hors_profiles
   before insert or update of adresse, code_postal on public.profiles
-  for each row execute function public.refuser_adresse_sur_profiles();
+  for each row execute function public.rediriger_adresse_hors_profiles();
+
+drop function if exists public.refuser_adresse_sur_profiles();
 
 commit;
 

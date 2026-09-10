@@ -100,5 +100,32 @@ const d7 = await r7.json();
 t("l'annuaire interne repond toujours au photographe",
   r7.status === 200 && Array.isArray(d7) && d7.length > 1, `HTTP ${r7.status} — ${Array.isArray(d7) ? d7.length : 0} ligne(s)`);
 
+// ── 7. la version de l'OS encore en ligne continue de fonctionner ───────────
+// L'OS est un fichier deploye separement de la base : entre la migration et la mise en ligne,
+// la version en production envoie toujours `adresse` dans le PATCH du profil. Le declencheur
+// range la valeur dans la table protegee et vide le champ, au lieu de faire echouer tout
+// l'enregistrement des reglages. C'est la garantie qui evite une panne pendant l'ecart.
+const marqueur = "ZZ " + Date.now() + " rue de la Verification";
+const r8 = await fetch(`${SB}/rest/v1/profiles?id=eq.${photo.id}`, {
+  method: "PATCH",
+  headers: { apikey: ANON, Authorization: `Bearer ${photo.tok}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+  body: JSON.stringify({ adresse: marqueur, code_postal: "99999" }),
+});
+t("l'ancienne version de l'OS enregistre toujours sans erreur", r8.status < 300, `HTTP ${r8.status}`);
+
+const apres = await (await api(`profiles?select=adresse,code_postal&id=eq.${photo.id}`, photo.tok)).json();
+t("l'adresse n'atterrit pas sur profiles",
+  !((apres?.[0]?.adresse || "").trim()) && !((apres?.[0]?.code_postal || "").trim()),
+  JSON.stringify(apres?.[0] || {}));
+
+const range = await (await api(`collaborateur_coordonnees?select=adresse,code_postal&collaborateur_id=eq.${photo.id}`, photo.tok)).json();
+t("elle a bien ete rangee dans la table protegee", range?.[0]?.adresse === marqueur,
+  JSON.stringify(range?.[0] || {}));
+
+// Nettoyage : ce compte de test ne garde pas l'adresse fabriquee ici.
+await fetch(`${SB}/rest/v1/collaborateur_coordonnees?collaborateur_id=eq.${photo.id}`, {
+  method: "DELETE", headers: { apikey: KEY, Authorization: `Bearer ${KEY}` },
+});
+
 console.log(`\n${ok}/${ok + ko} verifications passees.`);
 process.exit(ko ? 1 : 0);
