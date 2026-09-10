@@ -33,20 +33,45 @@ begin
   insert into _res select p_role, 'albums dans son perimetre stats', '-', count(*)::text, true from _media_stats_albums(false);
 end $$;
 
+-- Les identifiants ne sont plus codes en dur. Au 10/09/2026, trois des six UUID inscrits ici
+-- ne correspondaient plus a aucun profil (comptes Production, Secretariat et CM supprimes) :
+-- quand le `sub` d'un jeton pointe vers un profil inexistant, get_my_role() rend NULL, donc ces
+-- trois lignes mesuraient un utilisateur sans role au lieu du role annonce. Le fichier se
+-- contentant d'AFFICHER des comptages, personne ne pouvait s'en apercevoir.
+--
+-- Les comptes sont donc resolus par leur role, ICI, tant qu'on est encore `postgres` : une fois
+-- passe en `authenticated` sans jeton, la RLS interdit de lire profiles et la resolution
+-- echouerait. Et si un role n'a aucun compte actif, on s'arrete au lieu de mesurer le vide.
+create temp table _who(libelle text, role text, id uuid) on commit drop;
+grant all on _who to authenticated;
+
+do $$
+declare r record; v uuid;
+begin
+  for r in select * from (values
+      ('Fondateur','admin'),('Production','prod'),('Secretariat','sec'),
+      ('Comptabilite','compta'),('Photographe','photo'),('CM','cm')
+    ) as x(libelle, role)
+  loop
+    select p.id into v from profiles p
+     where p.role = r.role and coalesce(p.actif,true) order by p.created_at limit 1;
+    if v is null then
+      raise exception 'Aucun compte actif de role % : la matrice ne peut pas mesurer %.', r.role, r.libelle;
+    end if;
+    insert into _who values (r.libelle, r.role, v);
+  end loop;
+end $$;
+
 set local role authenticated;
 
-set local request.jwt.claims = '{"sub":"b4ff9a0e-9ae6-43a5-bddf-412fdf7d2cca","role":"authenticated"}';
-select pg_temp.sonde('Fondateur');
-set local request.jwt.claims = '{"sub":"97a7f67a-baa0-41e8-a891-7751aec9fd76","role":"authenticated"}';
-select pg_temp.sonde('Production');
-set local request.jwt.claims = '{"sub":"b4eab475-3293-4804-8bf6-8b27a15d410c","role":"authenticated"}';
-select pg_temp.sonde('Secretariat');
-set local request.jwt.claims = '{"sub":"b2d5b116-ab57-47fe-987e-22eb9dc41e83","role":"authenticated"}';
-select pg_temp.sonde('Comptabilite');
-set local request.jwt.claims = '{"sub":"0831e5ee-2ad9-4efd-95ea-3d88f16dd1b2","role":"authenticated"}';
-select pg_temp.sonde('Photographe');
-set local request.jwt.claims = '{"sub":"2b0b7fae-33eb-45be-b393-707725ad9e7e","role":"authenticated"}';
-select pg_temp.sonde('CM');
+do $$
+declare r record;
+begin
+  for r in select libelle, id from _who order by id loop
+    perform set_config('request.jwt.claims', json_build_object('sub',r.id::text,'role','authenticated')::text, true);
+    perform pg_temp.sonde(r.libelle);
+  end loop;
+end $$;
 
 reset role;
 
