@@ -1,10 +1,18 @@
 // Ce que le PUBLIC recoit reellement d'une galerie payante, verifie en production.
 //
+// REBRANCHE LE 10/09/2026. Ce test visait en dur l'album « Test paiement — U18 ». Archive ce jour-la
+// avec le decor de test, il a cesse de surveiller quoi que ce soit — et son bilan « 3 ecart(s) » a
+// ete lu comme vert parce que la ligne precedente commencait par « OK ». Il cherchait en plus des
+// fichiers « -t.jpg » / « -p.jpg », alors que la chaine de l'OS produit du WebP : meme rebranche sur
+// une vraie galerie, il n'aurait rien trouve. Il fabrique desormais sa propre galerie temoin, avec
+// des derives rendus par le code de l'OS, et la supprime a la fin.
+//
 // On ne se fie pas au reglage en base ni au code du generateur : on telecharge les fichiers que
 // le navigateur telecharge, et on mesure. C'est exactement ce controle qui manquait — le reglage
 // disait « filigrane active » alors que les fichiers servis etaient propres.
 import { chromium } from "/Users/fouka/Downloads/jarvis-starter-kit/livrables/SportVision-Connect/app-next/node_modules/playwright/index.mjs";
 import { readFileSync } from "node:fs";
+import { creerGalerieTemoin } from "./_galerie-temoin.mjs";
 
 // Cle de service : le test est INTERNE. Il a besoin de lire l'original pour prouver que le
 // fichier public en differe — c'est justement ce qu'aucun visiteur ne peut faire.
@@ -23,15 +31,10 @@ async function signer(chemin) {
   return SB + "/storage/v1" + d.signedURL;
 }
 
-async function originaux() {
-  const r = await fetch(`${SB}/rest/v1/media_assets?select=id,original_path&album_id=eq.734573a4-c1bb-41b5-9697-b7ebe170b88e&status=eq.ready`, {
-    headers: { apikey: SECRET, Authorization: `Bearer ${SECRET}` },
-  });
-  return await r.json();
-}
-
-const URL = "https://connect.sportvision-an.fr/gallery/test-paiement-u18?k=z8Dk6uTkSSSlFRkvo42j2Ejv";
 const b = await chromium.launch();
+const temoin = await creerGalerieTemoin(b, { nom: "ZZ Temoin filigrane" });
+const URL = temoin.url;
+const originaux = async () => temoin.assets;
 let ko = 0;
 const dit = (nom, ok, det = "") => { if (!ok) ko++; console.log((ok ? "OK   " : "KO   ") + nom + (det ? "  (" + det + ")" : "")); };
 
@@ -45,6 +48,12 @@ dit("aucun original charge par la page", !vus.some((u) => u.includes("sportvisio
 const html = await p.content();
 dit("aucun chemin d'original dans le DOM", !/sportvision-media-prive/.test(html));
 dit("aucune URL signee dans le DOM", !/\/object\/sign\//.test(html));
+
+// On ouvre une photo, comme un parent : l'apercu grand format ne se charge qu'a ce moment-la. Sans
+// ce geste, seul la vignette est mesuree et le test declare l'apercu « introuvable ».
+await p.locator("img").nth(1).click().catch(() => {});
+await p.waitForLoadState("networkidle").catch(() => {});
+await p.waitForTimeout(2500);
 
 // 2. Les fichiers reellement servis dans la grille et la visionneuse.
 const derives = [...new Set(vus.filter((u) => u.includes("galerie-previews")))];
@@ -91,10 +100,11 @@ async function partModifiee(urlServi, cheminOriginal, variante, max) {
 
 // 2b. Le controle qui compte : le fichier PUBLIC differe-t-il de l'original ?
 const assets = await originaux();
-for (const [nom, motif, seuil] of [["vignette", "-t.jpg", 10], ["apercu", "-p.jpg", 12]]) {
-  const u = derives.find((x) => x.includes(motif));
+for (const [nom, motif, seuil] of [["vignette", "-t.", 10], ["apercu", "-p.", 12]]) {
+  // L'OS produit « -t.webp » / « -p.webp ». On compare sur le suffixe sans extension.
+  const u = derives.find((x) => new RegExp(`${motif.replace(".", "\\.")}(webp|jpg)(\\?|$)`).test(x));
   if (!u) { dit(`${nom} : fichier servi`, false, "introuvable"); continue; }
-  const id = u.split("/").pop().replace(motif, "");
+  const id = u.split("?")[0].split("/").pop().replace(/-(t|p)\.(webp|jpg)$/, "");
   const asset = (assets || []).find((a) => a.id === id);
   if (!asset) { dit(`${nom} : original retrouve`, false, id); continue; }
   const pc = await partModifiee(u, asset.original_path);
@@ -110,5 +120,11 @@ const r = await p.evaluate(async () => {
 dit("le bucket des originaux n'est pas public", r === 400 || r === 404 || r === 403, `HTTP ${r}`);
 
 await b.close();
-console.log(ko === 0 ? "\ntout conforme" : `\n${ko} ecart(s)`);
+const menage = await temoin.nettoyer();
+dit("la galerie temoin est supprimee, fichiers compris", menage.reste === 0 && !menage.fichierEncoreServi,
+  `${menage.reste} ligne(s), fichier public encore servi : ${menage.fichierEncoreServi}`);
+
+// Un bilan qu'on ne peut pas lire de travers : c'est une ligne « OK » suivie de « 3 ecart(s) » qui a
+// ete prise pour un succes le 10/09.
+console.log(ko === 0 ? "\nRESULTAT : VERT — tout conforme" : `\nRESULTAT : ROUGE — ${ko} ecart(s)`);
 process.exit(ko ? 1 : 0);

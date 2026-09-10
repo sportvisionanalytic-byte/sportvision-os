@@ -37,6 +37,13 @@ fermait tout au moindre toucher. Invisible en émulation, révélé par un vrai 
 
 **P0 : 0 · P1 bloquant : 0 · 36/36 suites SQL · vérification JWT des fonctions : conforme.**
 
+**Corrigé après la release, à la demande de Fouka (même jour)** : le formulaire de paiement demande
+désormais de **confirmer l'adresse e-mail** — « Payer » reste inactif tant que les deux ne
+correspondent pas, ce qui aurait bloqué la faute du paiement de validation — et suggère la bonne
+orthographe des domaines courants (« gmial.com » → « gmail.com ? »). Le test du filigrane, qui ne
+surveillait plus rien depuis l'archivage de sa galerie, fabrique désormais sa propre galerie
+témoin filigranée par le code de l'OS, et rougit sur une galerie sans filigrane.
+
 **V1 gelée : uniquement P0/P1 et retours des premiers clubs.**
 
 ---
@@ -97,6 +104,8 @@ node tests/connect-joueur-parent-parcours.test.mjs      # les deux parcours fami
 node tests/clubplus-hydratation-deployee.test.mjs       # 18 chargements directs
 node tests/os-adresse-ecrans.test.mjs                   # données personnelles des collaborateurs
 bash tests/galerie-checkout.test.sh                     # chaîne de paiement, 18 contrôles
+node tests/galerie-filigrane-public.test.mjs            # filigrane mesuré sur les fichiers servis (galerie témoin)
+node tests/galerie-checkout-email.test.mjs              # formulaire de paiement sur iPhone : 16 px, voile, confirmation
 ```
 
 ## Déployer une fonction serveur
