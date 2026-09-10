@@ -19,6 +19,7 @@ import { fetchAcademieGroups } from "@/lib/data/academie/groups";
 import { fetchCoachPlayers, type CoachPlayer } from "@/lib/data/coach/players";
 import { fetchDelegatedClubAccess, type DelegatedClubAccess } from "@/lib/data/shared/cm-agency-access";
 import { createClient } from "@/lib/supabase/client";
+import { peutOpererClub } from "@/lib/data/club/invitations";
 import type { Team } from "@/lib/types/teams";
 
 // Écran Équipes — ACTIONS.md § 16. Pour une académie, « Groupes » (academie_groups, réutilise
@@ -37,6 +38,10 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  // Le droit d'agir sur la STRUCTURE du club vient de la base, jamais du rôle affiché : c'est la
+  // leçon des huit mêmes bugs de la journée. `false` tant qu'elle n'a pas répondu — on n'offre
+  // pas une action avant de savoir.
+  const [peutOperer, setPeutOperer] = useState(false);
   const isAcademy = ctx.organization.type === "academy";
   const isCoach = ctx.organization.type === "coach";
   const isCmAgency = ctx.organization.type === "cm_agency";
@@ -49,6 +54,11 @@ export default function TeamsPage() {
   // ci-dessus, qui teste le TYPE d'organisation "Coach indépendant" (KD Performance), pas le RÔLE
   // dans un club. myTeams reste vide (pas de filtrage) si le rôle n'est ni coach ni sports_director,
   // ou si teamScope est vide (scope non renseigné : mieux vaut montrer tout que cacher à tort).
+  useEffect(() => {
+    if (ctx.organization.type !== "club") return;
+    peutOpererClub(createClient(), ctx.organization.id).then(setPeutOperer);
+  }, [ctx.organization.id, ctx.organization.type]);
+
   const isClubEducateurRole = ctx.organization.type === "club" && (ctx.membership.role === "coach" || ctx.membership.role === "sports_director");
   const myTeams = isClubEducateurRole ? (teams ?? []).filter((t) => ctx.membership.teamScope.includes(t.name)) : [];
   const otherTeams = myTeams.length > 0 ? (teams ?? []).filter((t) => !ctx.membership.teamScope.includes(t.name)) : [];
@@ -126,7 +136,7 @@ export default function TeamsPage() {
               de 43, sur un écran qu'on ouvre justement pour trouver une équipe. Les invitations
               vivent désormais dans la fiche de l'équipe concernée, où le contexte est déjà posé
               (§37). Le suivi de toutes les invitations se lit dans « Coachs & dirigeants ». */}
-          {isClub && (
+          {isClub && peutOperer && (
             <Link href="/invitations">
               <Button variant="secondary" className="h-10 gap-1.5 px-4 text-[13px]">
                 <UserPlus className="h-3.5 w-3.5" aria-hidden />
@@ -134,7 +144,12 @@ export default function TeamsPage() {
               </Button>
             </Link>
           )}
-          {!isAcademy && (
+          {/* 10/09/2026 — « Créer une équipe » n'était gardé par RIEN : il s'affichait pour un
+              coach, en bouton principal, et la base l'acceptait (ctm_member_insert ouvrait
+              l'écriture à tout membre du club). Créer, renommer et archiver une équipe relèvent de
+              son existence structurelle, pas de son activité — c'est le club qui décide.
+              Corrigé en base par la migration v112 ; ce masquage n'est que le reflet. */}
+          {!isAcademy && (!isClub || peutOperer) && (
             <Button className="h-10 gap-1.5 px-4 text-[13px]" onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4" aria-hidden />
               Créer une équipe
