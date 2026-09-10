@@ -80,6 +80,6 @@ serve(async (req) => {
 
     return json({ deleted: true, client_deleted: clientDeleted });
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: ((e as { message?: string })?.message ?? String(e)) }, 500);
   }
 });

@@ -46,6 +46,24 @@ etat() {
 
 for F in "$@"; do
   [ -d "supabase/functions/$F" ] || { echo "KO  $F : dossier introuvable"; continue; }
+
+  # Verification de types AVANT tout envoi. Le 10/09/2026, une seconde declaration `const admin`
+  # dans clubplus-envoyer-invitation a empeche la fonction de demarrer (BOOT_ERROR) : toutes les
+  # invitations par e-mail sont tombees jusqu'au retour a la version precedente. Le controle fait
+  # a la main avant ce deploiement ne verifiait rien — `deno check --no-remote` s'arrete sur les
+  # imports distants sans analyser le fichier, et son silence avait ete pris pour un feu vert.
+  # Ici, imports distants autorises : c'est une vraie verification, et un echec arrete tout.
+  if command -v deno >/dev/null 2>&1; then
+    if ! ERREURS=$(cd "supabase/functions/$F" && deno check index.ts 2>&1); then
+      echo "KO  $F : erreurs de type, rien n'a ete deploye"
+      echo "$ERREURS" | grep -E "ERROR|error" | head -5 | sed 's/^/      /'
+      exit 1
+    fi
+  else
+    echo "!!  $F : deno absent, verification de types impossible — deploiement refuse par prudence"
+    exit 1
+  fi
+
   AVANT=$(etat "$F")
   if [ "$AVANT" = "False" ]; then
     supabase functions deploy "$F" --project-ref "$REF" --no-verify-jwt >/dev/null

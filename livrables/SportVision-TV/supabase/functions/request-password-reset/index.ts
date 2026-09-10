@@ -108,7 +108,7 @@ serve(async (req) => {
   } catch (e) {
     // Même en cas d'erreur interne, ne pas renvoyer autre chose que la réponse
     // générique côté écran (l'erreur reste tracée côté serveur uniquement).
-    console.error("request-password-reset error:", e.message);
+    console.error("request-password-reset error:", ((e as { message?: string })?.message ?? String(e)));
     return json(genericResponse, 200);
   }
 });
