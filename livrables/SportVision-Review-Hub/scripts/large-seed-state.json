@@ -297,23 +297,23 @@
   ],
   "no_coach_keys": [
     "U8_B",
-    "U15_A",
-    "U6",
     "U10_C",
+    "U6",
+    "U15_A",
     "U18"
   ],
   "no_roster_keys": [
-    "U9_B",
     "U18_F",
     "U10_A",
+    "U9_B",
     "U11_B"
   ],
   "partial_roster_keys": [
-    "U9_A",
-    "U14_B",
     "U8_A",
+    "U9_A",
     "U7",
-    "Seniors_B",
-    "U14_F"
+    "U14_B",
+    "U14_F",
+    "Seniors_B"
   ]
 }

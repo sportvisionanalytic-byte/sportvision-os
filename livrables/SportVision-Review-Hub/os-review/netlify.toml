@@ -1,0 +1,21 @@
+[build]
+  publish = "."
+
+# Site volontairement non indexé, pas de domaine personnalisé (même logique que les autres
+# sites Review : accès par lien direct uniquement, jamais lié depuis une page publique).
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    # Identique à la CSP de production (netlify.toml racine), sauf le host Supabase qui pointe
+    # vers le projet Review (ffjktzmsezfrwmrtlhzo) au lieu de la production.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://ffjktzmsezfrwmrtlhzo.supabase.co https://api.qrserver.com; connect-src 'self' https://ffjktzmsezfrwmrtlhzo.supabase.co wss://ffjktzmsezfrwmrtlhzo.supabase.co; media-src 'self' blob: https://ffjktzmsezfrwmrtlhzo.supabase.co; frame-src https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'; form-action 'self'"
+
+[[redirects]]
+  from = "/"
+  to = "/SportVision-OS-Review.html"
+  status = 200

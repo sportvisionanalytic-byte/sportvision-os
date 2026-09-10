@@ -188,4 +188,41 @@ values ('{marie['id']}', 'particulier', 'parent')
 on conflict (user_id) do update set account_type = 'particulier', profil_particulier = 'parent';
 """)
 
+print("== 5. Affectation nominative CM (club_cm_affectations) ==")
+# Sans cette ligne, cm_mes_clubs() (RPC lue par le dashboard OS "Mes clubs") et
+# cm_clubs_autorises() (périmètre CM côté Club+) renvoient vide pour Camille —
+# cette ligne avait été ajoutée à la main en Phase 2, jamais dans les scripts
+# de seed persistants : un reset la supprimait sans la recréer (trouvé en
+# testant OS Review en réel, Phase 5).
+sql(f"""
+insert into club_cm_affectations (id, club_id, cm_id, role, date_debut, actif)
+values ('50ec2dd2-79ec-5dfd-a92c-5cb463fde14a', '{IDS['club_sv_demo']}', '{PERSONAS["camille_cm"]["id"]}', 'principal', current_date, true)
+on conflict (id) do update set actif = true, date_fin = null;
+""")
+
+print("== 6. Clients OS (CRM) — liaison avec les clubs Review ==")
+# L'OS a son propre modèle commercial (table clients, cm_id = "structure confiée"),
+# séparé de clubs/club_teams côté Club+ — lié par clubs.portail_client_id. Sans
+# cette ligne, "Mes structures" de Camille dans l'OS affiche "Aucun club confié"
+# alors que club_cm_affectations existe côté Club+ : deux systèmes réels et
+# distincts, pas un bug (trouvé en testant OS Review en réel, Phase 5).
+POLE_FOOTBALL = "713031b4-50b7-4177-838f-612285263be4"
+# ids déterministes (uuid5, namespace f6a5b9a0-0000-4000-8000-000000000001, même
+# schéma que les scripts seed-sv-demo-fc-large*) — fixés en dur ici pour ne pas
+# dépendre du module uuid, cohérents avec les lignes déjà en base.
+client_sv = "ebbe6444-b20f-5b5f-bd72-f27c00193dc6"
+client_other = "a9d64c0e-4ce7-56c8-986c-880aefb00e78"
+sql(f"""
+insert into clients (id, statut, type_client, nom, email, sport, cm_id, statut_relation, etape_pipeline, pole_id, created_by)
+values ('{client_sv}', 'client', 'club', 'SV Demo FC', 'contact@sv-demo-fc.invalid', 'Football', '{PERSONAS["camille_cm"]["id"]}', 'client', 'gagne', '{POLE_FOOTBALL}', '{PERSONAS["alex_admin"]["id"]}')
+on conflict (id) do update set cm_id = excluded.cm_id, pole_id = excluded.pole_id;
+""")
+sql(f"""
+insert into clients (id, statut, type_client, nom, email, sport, statut_relation, etape_pipeline, pole_id, created_by)
+values ('{client_other}', 'client', 'club', 'OTHER DEMO FC', 'contact@other-demo-fc.invalid', 'Football', 'client', 'gagne', '{POLE_FOOTBALL}', '{PERSONAS["alex_admin"]["id"]}')
+on conflict (id) do nothing;
+""")
+sql(f"update clubs set portail_client_id = '{client_sv}' where id = '{IDS['club_sv_demo']}';")
+sql(f"update clubs set portail_client_id = '{client_other}' where id = '{IDS['club_other_demo']}';")
+
 print("DONE")
