@@ -21,9 +21,16 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  // Décoché par défaut — un compte Connect sert aussi à gérer le profil de proches
-  // (enfants, sportifs suivis) depuis un appareil potentiellement partagé (audit du 18/08).
-  const [remember, setRemember] = useState(false);
+  // « Rester connecté » retiré le 10/09/2026 (décision de Fouka) : la case n'avait aucun effet.
+  // La session vit dans des cookies posés par @supabase/ssr (400 jours) et renouvelés à chaque
+  // requête par le middleware : cochée ou non, la personne restait connectée. Lui donner un vrai
+  // effet (cookies de session effacés à la fermeture du navigateur) demandait de changer la durée
+  // des cookies à quatre endroits qui les réécrivent — client navigateur, client serveur,
+  // middleware, /auth/callback — c'est-à-dire le mécanisme de session lui-même, celui dont une
+  // erreur déconnecte tout le monde ou casse le lien de confirmation. Et le résultat n'aurait pas
+  // été fiable là où Connect sert le plus : Safari iOS et Chrome Android restaurent les cookies de
+  // session à la réouverture. Une case qui promet sans tenir est pire que pas de case : sur un
+  // appareil partagé, c'est « Se déconnecter » qui protège (menu des Espaces joueur et particulier).
   const [touched, setTouched] = useState(false);
   const [authFailed, setAuthFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -312,26 +319,6 @@ export default function LoginPage() {
                 </div>
                 {pwBad && <span className="text-[12px] text-danger">Renseignez votre mot de passe.</span>}
               </div>
-
-              <label className="flex select-none items-center gap-2.5">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                  className="sr-only"
-                />
-                <span
-                  onClick={() => setRemember((v) => !v)}
-                  className={`flex h-5 w-5 cursor-pointer items-center justify-center rounded-md border transition-all duration-150 ${
-                    remember ? "border-transparent bg-sv-gradient" : "border-border-strong"
-                  }`}
-                >
-                  {remember && <span className="material-symbols-rounded !text-[15px] text-white" aria-hidden="true">check</span>}
-                </span>
-                <span className="cursor-pointer text-[13px] text-text-secondary" onClick={() => setRemember((v) => !v)}>
-                  Rester connecté
-                </span>
-              </label>
 
               <Button type="submit" loading={busy} className="w-full">
                 {busy ? "Connexion…" : "Se connecter"}
