@@ -57,6 +57,7 @@ for f in tests/*.test.sql; do …API Management… "$f"; done
 node tests/clubplus-calendrier-gros-volume.test.mjs     # 1204 événements, 390/768/1440
 node tests/clubplus-matchcenter.test.mjs                # saisie → propagation, état restauré
 node tests/clubplus-president-parcours.test.mjs         # 21 écrans
+node tests/clubplus-president-facturation-saison.test.mjs # facturation client, transition, coach refusé
 node tests/clubplus-assistant-et-echap.test.mjs         # assistant réservé au CM, Échap
 node tests/connect-joueur-parent-parcours.test.mjs      # les deux parcours famille
 node tests/clubplus-hydratation-deployee.test.mjs       # 18 chargements directs
