@@ -64,7 +64,10 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const { email, redirect_url } = await req.json();
+    const { email: saisie, redirect_url } = await req.json();
+    // Adresse canonique : Supabase Auth compare en minuscules, mais la file d'envoi gardait la
+    // saisie brute (« ZZ@EXAMPLE… », « Nophotopix@gmail.com » vus dans notification_outbox).
+    const email = String(saisie ?? "").trim().toLowerCase();
     if (!email) return json(genericResponse, 200);
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("cf-connecting-ip") || "inconnu";

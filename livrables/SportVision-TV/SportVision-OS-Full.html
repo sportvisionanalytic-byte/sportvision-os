@@ -407,6 +407,10 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
    (cf. commentaire sur #sv-modal.on ci-dessous). */
 #sv-modal{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s ease;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 #sv-modal.on{opacity:1;visibility:visible;pointer-events:auto!important}
+/* Fenêtre du mot de passe ouverte par un lien d'invitation / de récupération : pas de croix.
+   La fermer laissait la recrue sur l'écran de connexion avec une session cachée, sans mot de
+   passe (voir ouvrirFenetreMdpOS). Elle garde un bouton « Annuler » explicite. */
+#sv-modal:has(#rec-pass1)>div>button[aria-label="Fermer"]{display:none}
 #sv-modal>div{transform:scale(.96) translateY(10px);transition:transform .22s cubic-bezier(.4,0,.2,1)}
 #sv-modal.on>div{transform:scale(1) translateY(0)}
 .kpi,.cd,.fs{transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}
@@ -3816,7 +3820,8 @@ function svSave(token,refresh,uid,role){
   localStorage.setItem('sv_role',role);
 }
 function svClear(){
-  ['sv_tok','sv_ref','sv_uid','sv_role','sv_prenom'].forEach(k=>localStorage.removeItem(k));
+  // sv_mdp_a_definir : voir _entrerOuDefinirMdp() — il ne survit jamais à la session qu'il bloque.
+  ['sv_tok','sv_ref','sv_uid','sv_role','sv_prenom','sv_mdp_a_definir'].forEach(k=>localStorage.removeItem(k));
 }
 
 // Étoiles login (brand StarField)
@@ -3840,6 +3845,12 @@ async function doLogin(){
   const btn=document.getElementById('l-btn');
   if(!email||!pass){errEl.textContent='Remplissez email et mot de passe.';return;}
   errEl.textContent='';btn.textContent='Connexion…';btn.disabled=true;
+  // Les refus ci-dessous sont des phrases écrites pour la personne : elles doivent arriver telles
+  // quelles à l'écran. Depuis l'arrivée de msgErreur (qui masque tout texte technique), elles
+  // étaient TOUTES remplacées par « Erreur de connexion. » — mesuré le 10/09/2026 : mauvais mot
+  // de passe, compte désactivé, compte sans accès à l'OS, même phrase, aucune piste pour la
+  // recrue qui se trompe d'une lettre.
+  const refus=m=>Object.assign(new Error(m),{affichable:true});
   try{
     const r1=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
       method:'POST',
@@ -3847,18 +3858,24 @@ async function doLogin(){
       body:JSON.stringify({email,password:pass})
     });
     const d1=await r1.json();
-    if(!d1.access_token)throw new Error('Email ou mot de passe incorrect.');
-    const r2=await fetch(SB_URL+'/rest/v1/profiles?id=eq.'+d1.user.id+'&select=role,prenom,actif',{
+    if(!d1.access_token){
+      if(r1.status===429||/rate|too many/i.test(String(d1.error_code||d1.msg||'')))throw refus('Trop de tentatives. Patientez quelques minutes avant de réessayer.');
+      throw refus('Email ou mot de passe incorrect. Si vous n\'avez pas encore de mot de passe, utilisez le lien reçu par e-mail ou « Mot de passe oublié ».');
+    }
+    const r2=await fetch(SB_URL+'/rest/v1/profiles?id=eq.'+d1.user.id+'&select=role,prenom,actif,onboarding_started_at',{
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+d1.access_token}
     });
     const profs=await r2.json();
-    if(!profs||!profs[0])throw new Error('Profil introuvable. Contactez l\'administrateur.');
-    if(profs[0].actif===false)throw new Error('Ce compte a été désactivé. Contactez l\'administrateur.');
+    // Pas de profil interne : c'est un compte client (Connect, Club+), qui n'a rien à faire ici.
+    if(!profs||!profs[0])throw refus('Ce compte n\'a pas accès à SportVision OS.');
+    if(profs[0].actif===false)throw refus(profs[0].onboarding_started_at
+      ?'Votre accès sera ouvert dès la fin de votre intégration. Contactez SportVision si besoin.'
+      :'Ce compte a été désactivé. Contactez l\'administrateur.');
     svSave(d1.access_token,d1.refresh_token,d1.user.id,profs[0].role);
     if(profs[0].prenom)localStorage.setItem('sv_prenom',profs[0].prenom);
     goApp(profs[0].role);
   }catch(e){
-    errEl.textContent=msgErreur(e,'Erreur de connexion.');
+    errEl.textContent=e&&e.affichable?e.message:msgErreur(e,'Erreur de connexion.');
     btn.textContent='Se connecter';btn.disabled=false;
   }
 }
@@ -3917,7 +3934,7 @@ async function checkSession(){
       // FK — ceci corrige le vrai besoin : couper l'accès, pas supprimer la ligne).
       if(freshRole==='INACTIF'||freshRole==='SUPPRIME'){svClear();goLogin();return;}
       if(freshRole!==role)localStorage.setItem('sv_role',freshRole);
-      goApp(freshRole);
+      _entrerOuDefinirMdp(freshRole);
       return;
     }
     // Token expiré, on tente le refresh
@@ -3933,9 +3950,20 @@ async function checkSession(){
       const freshRole=await _refreshRoleFromDB(d.access_token,uid)||role;
       if(freshRole==='INACTIF'||freshRole==='SUPPRIME'){svClear();goLogin();return;}
       svSave(d.access_token,d.refresh_token,uid,freshRole);
-      goApp(freshRole);
+      _entrerOuDefinirMdp(freshRole);
     }else{svClear();}
   }catch(e){/* réseau HS, on reste sur login */}
+}
+
+// Une session ouverte par un lien d'invitation ou de récupération n'entre dans l'OS qu'une fois
+// le mot de passe choisi. Mesuré le 10/09/2026 : fermer la fenêtre (croix, Échap) laissait la
+// recrue sur l'écran de connexion, session cachée dans le navigateur ; au rechargement suivant
+// elle entrait dans l'OS SANS avoir jamais choisi de mot de passe, et ne pouvait plus se
+// connecter depuis un autre appareil. Même chose en rechargeant la page pendant la fenêtre.
+function _entrerOuDefinirMdp(role){
+  const enAttente=localStorage.getItem('sv_mdp_a_definir');
+  if(enAttente){ouvrirFenetreMdpOS(enAttente);return;}
+  goApp(role);
 }
 
 // ── MODE DÉMO ────────────────────────────
@@ -5380,6 +5408,15 @@ function modalNouveauKit(){
 }
 
 // ── MODALE INVITER COLLABORATEUR ─────────
+// Rôles proposés = rôles que invite-collaborateur accepte de la part de celui qui invite
+// (INVITABLE_ROLES_SEC / _RH côté serveur). La liste était la même pour tous : une secrétaire
+// pouvait choisir « Comptable » et n'apprenait qu'après envoi que ce rôle lui était refusé.
+function _fiRolesInvitables(){
+  const tous=[['sec','Secrétaire'],['prod','Resp. Production'],['photo','Photographe / Vidéaste'],['cm','Community Manager'],['compta','Comptable'],['com','Commercial'],['rh','Secrétaire générale / RH'],['expert_comptable','Expert-comptable (lecture seule)'],['auditeur','Auditeur (lecture seule)']];
+  if(S.role==='sec')return tous.filter(([v])=>['sec','prod','photo','cm','com'].includes(v));
+  if(S.role==='rh')return tous.filter(([v])=>['sec','prod','photo','cm','com','rh'].includes(v));
+  return tous;
+}
 function modalInviterCollaborateur(){
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Créer un compte collaborateur</div>
@@ -5397,15 +5434,7 @@ function modalInviterCollaborateur(){
       </div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Rôle *</label>
         <select id="fi-role" class="l-inp" style="height:38px" onchange="_fiOnRoleChange()">
-          <option value="sec">Secrétaire</option>
-          <option value="prod">Resp. Production</option>
-          <option value="photo">Photographe / Vidéaste</option>
-          <option value="cm">Community Manager</option>
-          <option value="compta">Comptable</option>
-          <option value="com">Commercial</option>
-          <option value="rh">Secrétaire générale / RH</option>
-          <option value="expert_comptable">Expert-comptable (lecture seule)</option>
-          <option value="auditeur">Auditeur (lecture seule)</option>
+          ${_fiRolesInvitables().map(([v,lb])=>`<option value="${v}">${lb}</option>`).join('')}
           ${(S.role==='admin'&&S.allPoles&&S.allPoles.length>1)?`<option value="__pole_responsable">★ Responsable de pôle</option>`:''}
         </select>
       </div>
@@ -5450,7 +5479,7 @@ function modalInviterCollaborateur(){
       <div id="fi-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
         <button class="btn bg2" onclick="closeModal()">Annuler</button>
-        <button class="btn bp" onclick="creerCollaborateur()">Envoyer l'invitation</button>
+        <button class="btn bp" id="fi-submit-btn" onclick="creerCollaborateur()">Envoyer l'invitation</button>
       </div>
     </div>`);
 }
@@ -5475,8 +5504,10 @@ async function creerCollaborateur(){
   const err=document.getElementById('fi-err');
   const prenom=document.getElementById('fi-prenom').value.trim();
   const nom=document.getElementById('fi-nom').value.trim();
-  const email=document.getElementById('fi-email').value.trim();
+  const emailSaisi=document.getElementById('fi-email').value.trim();
+  const email=emailCanonique(emailSaisi);
   const roleRaw=document.getElementById('fi-role').value;
+  if(emailSaisi&&!email){err.textContent='Adresse e-mail invalide. Vérifiez qu\'elle est complète (ex. prenom.nom@gmail.com).';return;}
   let role,poleIds,responsablePoleIds;
   if(roleRaw==='__pole_responsable'){
     // "★ Responsable de pôle" comme rôle à part entière (02/09/2026) : le métier de base
@@ -5504,6 +5535,10 @@ async function creerCollaborateur(){
     if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
     if(role!=='rh'&&document.getElementById('fi-pole-block')&&poleIds.length===0){err.textContent='Sélectionnez au moins un pôle.';return;}
   }
+  // Garde de ré-entrance : un double clic partait en deux appels, et le second (renvoi) tuait le
+  // lien que le premier venait d'envoyer.
+  const btn=document.getElementById('fi-submit-btn');
+  if(btn){if(btn.disabled)return;btn.disabled=true;}
   err.textContent='Envoi de l\'invitation…';
   try{
     const tok=localStorage.getItem('sv_tok');
@@ -5513,21 +5548,15 @@ async function creerCollaborateur(){
       headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
       body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_ids:poleIds,responsable_pole_ids:responsablePoleIds})
     });
-    const d=await r.json();
-    if(!r.ok||d.error){err.textContent=d.error||'Erreur.';return;}
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||d.error){err.textContent=msgErreurInvitation(d);if(btn)btn.disabled=false;return;}
     closeModal();
     if(document.getElementById('col-real')) loadCollaborateurs();
     updateNavBadges(S.role);
     // Le lien est montre, pas seulement envoye. Le 31/08, la meme personne a ete invitee trois
     // fois en huit minutes parce que l'e-mail tardait : trois comptes pour un collaborateur.
-    if(d.already_existed){
-      toast('Ce collaborateur avait déjà été invité — aucun nouvel envoi.','wa');
-    }else if(d.invitation_url){
-      afficherLienInvitation(prenom+' '+nom,email,d.invitation_url,d.expires_at);
-    }else{
-      toast('Invitation envoyée par e-mail.','ok');
-    }
-  }catch(e){err.textContent='Erreur réseau.';}
+    suiteInvitation(d,prenom+' '+nom,email);
+  }catch(e){err.textContent='Erreur réseau.';if(btn)btn.disabled=false;}
 }
 
 // ── CHARGEMENT DONNÉES RÉELLES ────────────
@@ -7516,9 +7545,19 @@ async function lancerCascadeFullCom(clientId){
  * Meme principe que pour l'activation d'un club : l'e-mail part, mais il cesse d'etre le seul
  * chemin. C'est ce qui evite de reinviter trois fois quelqu'un parce qu'on ne voit rien arriver.
  */
-function afficherLienInvitation(nom,email,url,expire){
-  const exp=expire?new Date(expire).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'';
-  openModal('Invitation — '+esc(nom||''),`
+// openModal() ne prend QU'UN argument, le contenu. Cette fenêtre (et celle du lien d'activation
+// Club+ ci-dessous) l'appelait avec (titre, contenu) : seul le titre s'affichait — « Invitation —
+// Prénom Nom », sans lien, sans bouton. Mesuré le 10/09/2026 sur la version en ligne.
+//
+// L'échéance affichée est celle que renvoie invite-collaborateur, qui suit la durée de vie réelle
+// du lien fixée par Supabase Auth (une heure) ; elle annonçait « 7 jours ».
+function afficherLienInvitation(nom,email,url,expire,opts={}){
+  // Plafond d'une heure : tant que l'ancienne version de la fonction tourne, elle renvoie encore
+  // J+7. Si Auth > mailer_otp_exp change, ajuster ici ET VALIDITE_LIEN_S dans invite-collaborateur.
+  const fin=expire?Math.min(new Date(expire).getTime(),Date.now()+3600*1000):0;
+  const exp=fin?new Date(fin).toLocaleString('fr-FR',{day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'}):'';
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:14px">${opts.renvoi?'Nouveau lien d\'invitation':'Invitation envoyée'} — ${esc(nom||'')}</div>
     <div style="padding:12px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.25);border-radius:var(--rb)">
       <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ok);margin-bottom:8px">Lien d'invitation</div>
       <textarea readonly class="l-inp" style="height:64px;resize:vertical;padding:8px;font-size:11.5px;word-break:break-all" onclick="this.select()">${esc(url)}</textarea>
@@ -7526,13 +7565,45 @@ function afficherLienInvitation(nom,email,url,expire){
         <button class="btn bp" onclick="copier(${escJs(JSON.stringify(url))})">⎘ Copier le lien</button>
         ${exp?`<span style="font-size:11px;color:var(--t3)">Valable jusqu'au ${esc(exp)}</span>`:''}
       </div>
-      <div style="font-size:11.5px;margin-top:8px;color:var(--ok)">✓ E-mail également envoyé à ${esc(email)}</div>
+      <div style="font-size:11.5px;margin-top:8px;color:${opts.emailEnFile===false?'var(--er)':'var(--ok)'}">${opts.emailEnFile===false?'⚠ L\'e-mail n\'a pas pu être mis en file d\'envoi : transmettez ce lien vous-même.':'✓ E-mail également envoyé à '+esc(email)}</div>
       <div style="font-size:11.5px;margin-top:10px;color:var(--t3);line-height:1.5">
-        Si l'e-mail tarde, transmettez ce lien directement. Inutile de relancer une invitation :
-        cela créerait un second compte pour la même personne.
+        ${opts.renvoi?'L\'ancien lien ne fonctionne plus. ':''}Le lien ne sert qu'une fois et expire au bout d'une heure.
+        S'il a expiré, relancez l'invitation avec la même adresse : un nouveau lien remplace l'ancien,
+        sans créer de second compte.
       </div>
     </div>
-    <div class="m-ft"><button class="btn bp" onclick="closeModal()">Fermer</button></div>`);
+    <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn bp" onclick="closeModal()">Fermer</button></div>`);
+}
+
+// Adresse saisie -> forme canonique (Supabase Auth l'enregistre en minuscules), ou null si elle ne
+// peut pas recevoir d'e-mail. « prenom@gmail » (sans extension) créait un compte dont l'e-mail
+// d'invitation restait bloqué dans la file ; une espace au milieu renvoyait un message anglais.
+function emailCanonique(v){
+  const e=String(v||'').trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)?e:null;
+}
+// Réponse d'erreur d'invite-collaborateur -> phrase française. La version de la fonction encore en
+// ligne peut renvoyer le texte brut de Supabase Auth, en anglais : il arrivait tel quel à l'écran.
+function msgErreurInvitation(d){
+  const m=String((d&&d.error)||'');
+  if(/already been registered|email_exists/i.test(m))return 'Cette adresse est déjà utilisée par un compte client (Connect ou Club+). Utilisez une autre adresse pour son accès à l\'OS.';
+  if(/validate email|invalid format|invalid email/i.test(m))return 'Adresse e-mail invalide. Vérifiez qu\'elle est complète (ex. prenom.nom@gmail.com).';
+  // Tout autre texte anglais (erreur interne remontée brute) : phrase générique.
+  if(!m||/\b(the|is|has|with|already|invalid|user|error|failed|not|unable|could)\b/i.test(m))return 'Invitation impossible pour le moment. Réessayez dans un instant.';
+  return m;
+}
+// Suite commune à une invitation réussie (écran Équipe et Recrutement).
+function suiteInvitation(d,nom,email){
+  if(d.renvoye&&d.invitation_url){afficherLienInvitation(nom,email,d.invitation_url,d.expires_at,{renvoi:true,emailEnFile:d.email_en_file});return;}
+  if(d.already_existed){
+    if(d.envoi_recent)toast('Une invitation vient d\'être envoyée à cette adresse, il y a moins d\'une minute.','wa');
+    else if(d.desactive)toast('Ce collaborateur existe déjà, avec un compte désactivé : réactivez-le depuis sa fiche.','wa');
+    else if(d.deja_active)toast('Ce collaborateur a déjà activé son compte. S\'il a oublié son mot de passe : « Mot de passe oublié » sur l\'écran de connexion.','wa');
+    else toast('Ce collaborateur avait déjà été invité — aucun nouvel envoi.','wa');
+    return;
+  }
+  if(d.invitation_url)afficherLienInvitation(nom,email,d.invitation_url,d.expires_at,{emailEnFile:d.email_en_file});
+  else toast('Invitation envoyée par e-mail.','ok');
 }
 
 /**
@@ -7544,7 +7615,10 @@ function afficherLienInvitation(nom,email,url,expire){
  */
 function afficherLienActivation(nomClub,lien){
   const exp=lien.expire?new Date(lien.expire).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'';
-  openModal('Accès Club+ — '+esc(nomClub||''),`
+  // Même défaut que afficherLienInvitation() : openModal() n'a qu'un argument, le titre seul
+  // s'affichait. Le titre fait désormais partie du contenu.
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:14px">Accès Club+ — ${esc(nomClub||'')}</div>
     <div style="padding:12px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.25);border-radius:var(--rb)">
       <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ok);margin-bottom:8px">Lien d'activation</div>
       <textarea readonly class="l-inp" style="height:64px;resize:vertical;padding:8px;font-size:11.5px;word-break:break-all" onclick="this.select()">${esc(lien.url)}</textarea>
@@ -7561,7 +7635,7 @@ function afficherLienActivation(nomClub,lien){
         devient administrateur du club.
       </div>
     </div>
-    <div class="m-ft"><button class="btn bp" onclick="closeModal()">Fermer</button></div>`);
+    <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn bp" onclick="closeModal()">Fermer</button></div>`);
 }
 
 // Version autonome de genererLienActivationClubPlus() (5256) — celle-ci lit
@@ -8303,11 +8377,13 @@ async function recrutCreerCollaborateur(candId){
   const err=document.getElementById('rcc-err');
   const prenom=document.getElementById('rcc-prenom').value.trim();
   const nom=document.getElementById('rcc-nom').value.trim();
-  const email=document.getElementById('rcc-email').value.trim();
+  const emailSaisi=document.getElementById('rcc-email').value.trim();
+  const email=emailCanonique(emailSaisi);
   const role=document.getElementById('rcc-role').value;
   // Multi-pôles (migration-poles-v11/v12, étendu v14 le 31/08/2026 pour un collaborateur
   // flexible multi-sport) : cf. creerCollaborateur() ci-dessus.
   const poleIds=Array.from(document.querySelectorAll('.rcc-pole-cb:checked')).map(el=>el.value);
+  if(emailSaisi&&!email){err.textContent='Adresse e-mail invalide. Vérifiez qu\'elle est complète (ex. prenom.nom@gmail.com).';return;}
   if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
   if(document.querySelector('.rcc-pole-cb')&&poleIds.length===0){err.textContent='Sélectionnez au moins un pôle.';return;}
   // Garde de ré-entrance (audit idempotence 29/08) : côté serveur, un double-clic est déjà
@@ -8319,15 +8395,7 @@ async function recrutCreerCollaborateur(candId){
   try{
     const tok=localStorage.getItem('sv_tok');
     const redirectTo=window.location.origin+window.location.pathname;
-    const r=await fetch(SB_URL+'/functions/v1/invite-collaborateur',{
-      method:'POST',
-      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
-      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_ids:poleIds})
-    });
-    const d=await r.json();
-    if(!r.ok||d.error){err.textContent=d.error||'Erreur.';if(btn){btn.disabled=false;btn.textContent='Créer et inviter';}return;}
-    const newId=d.user_id;
-    await sbFetch('profiles?id=eq.'+newId,{method:'PATCH',body:{
+    const fiche={
       ville:c.ville||null,
       telephone:c.telephone||null,
       vehicule:c.vehicule==='oui',
@@ -8335,12 +8403,31 @@ async function recrutCreerCollaborateur(candId){
       zone:c.zone||null,
       materiel_personnel:c.materiel||null,
       portfolio_url:c.portfolio_url||null,
-      actif:false,
-      onboarding_started_at:new Date().toISOString(),
-    }}).catch(()=>{});
+    };
+    // onboarding + fiche : posés par invite-collaborateur, avec les droits du serveur. La mise à
+    // jour du profil depuis l'OS n'est permise qu'à un administrateur : pour une secrétaire ou la
+    // RH elle était refusée sans bruit (mesuré le 10/09/2026) — fiche vide, et compte ouvert tout
+    // de suite alors que l'écran annonçait « onboarding démarré ».
+    const r=await fetch(SB_URL+'/functions/v1/invite-collaborateur',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
+      body:JSON.stringify({email,prenom,nom,role,redirect_url:redirectTo,pole_ids:poleIds,onboarding:true,fiche})
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||d.error){err.textContent=msgErreurInvitation(d);if(btn){btn.disabled=false;btn.textContent='Créer et inviter';}return;}
+    if(d.already_existed){closeModal();suiteInvitation(d,prenom+' '+nom,email);return;}
+    const newId=d.user_id;
+    // Version de la fonction qui ne connaît pas encore `onboarding` : repli sur l'ancienne mise à
+    // jour, dont on vérifie cette fois le résultat au lieu de l'ignorer.
+    let onboardingOk=d.onboarding_applique===true;
+    if(!onboardingOk){
+      const maj=await sbFetch('profiles?id=eq.'+newId,{method:'PATCH',body:{...fiche,actif:false,onboarding_started_at:new Date().toISOString()}}).catch(()=>null);
+      onboardingOk=Array.isArray(maj)&&maj.length>0;
+    }
     await sbFetch('recruitment_applications?id=eq.'+candId,{method:'PATCH',body:{statut:'retenu',collaborateur_id:newId}}).catch(()=>{});
     closeModal();
-    toast('Collaborateur créé — onboarding démarré.','ok');
+    if(onboardingOk)toast('Collaborateur créé — onboarding démarré.','ok');
+    else toast('Compte créé, mais la fiche n\'a pas pu passer en onboarding : son accès est déjà ouvert. Un administrateur doit compléter sa fiche.','wa');
     await loadRecrutement();
     if(typeof updateNavBadges==='function')updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur réseau.';if(btn){btn.disabled=false;btn.textContent='Créer et inviter';}}
@@ -33911,11 +33998,11 @@ async function consumeRecoveryHashOS(){
     history.replaceState({},'',window.location.pathname);
     const perime=/expired|invalid/i.test(code+' '+(p.get('error_description')||''));
     openModal(`
-      <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:10px">${perime?'Ce lien n\'est plus valable':'Lien impossible a utiliser'}</div>
+      <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:10px">${perime?'Ce lien n\'est plus valable':'Lien impossible à utiliser'}</div>
       <div style="font-size:13.5px;color:var(--t2);line-height:1.6;margin-bottom:16px">
         ${perime
-          ? 'Un lien de connexion est a usage unique et expire au bout d\'une heure. Il devient aussi inutilisable des qu\'un nouveau lien est demande pour le meme compte.'
-          : 'Ce lien n\'a pas pu etre utilise.'}
+          ? 'Un lien de connexion est à usage unique et expire au bout d\'une heure. Il devient aussi inutilisable dès qu\'un nouveau lien est demandé pour le même compte.'
+          : 'Ce lien n\'a pas pu être utilisé.'}
         <br><br>Demandez-en un nouveau ci-dessous, ou contactez votre administrateur SportVision.
       </div>
       <button class="btn bp" style="width:100%;justify-content:center;height:44px" onclick="closeModal();motDePasseOublie()">Recevoir un nouveau lien</button>`);
@@ -33951,31 +34038,70 @@ async function consumeRecoveryHashOS(){
     // connecte ici, ses cles resteraient melangees aux nouvelles.
     svClear();
 
-    const r=await fetch(SB_URL+'/rest/v1/profiles?id=eq.'+encodeURIComponent(u.id)+'&select=id,role,prenom,actif',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+accessToken}});
+    const r=await fetch(SB_URL+'/rest/v1/profiles?id=eq.'+encodeURIComponent(u.id)+'&select=id,role,prenom,actif,onboarding_started_at',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+accessToken}});
     const profs=await r.json();
     const prof=Array.isArray(profs)?profs[0]:null;
-    if(!prof||prof.id!==u.id)return false;
-    if(prof.actif===false){toast('Ce compte a ete desactive. Contactez l\'administrateur.','er');return false;}
+    // Compte client (Connect, Club+) arrivé ici par un lien de l'OS : l'écran de connexion
+    // s'affichait sans un mot, et la personne croyait son lien cassé.
+    if(!prof||prof.id!==u.id){toast('Ce compte n\'a pas accès à SportVision OS.','er');return false;}
+    if(prof.actif===false){
+      // Recrue créée depuis Recrutement : son accès reste fermé tant que son intégration n'est
+      // pas terminée, mais son lien d'invitation (valable une heure) ne doit pas être perdu pour
+      // autant. Jusqu'ici elle lisait « Ce compte a été désactivé » — faux, et inquiétant — et
+      // n'avait plus de lien valable le jour où l'administrateur ouvrait son accès. Elle choisit
+      // donc son mot de passe maintenant, sans entrer dans l'OS : la session n'est PAS enregistrée.
+      if(prof.onboarding_started_at&&typeLien!=='magiclink'){
+        _mdpJetonOnboarding=accessToken;
+        ouvrirFenetreMdpOS('onboarding');
+        return true;
+      }
+      toast('Ce compte a été désactivé. Contactez l\'administrateur.','er');
+      return false;
+    }
     svSave(accessToken,refreshToken||'',prof.id,prof.role);
     localStorage.setItem('sv_prenom',prof.prenom||'');
     // Un lien magique sert a SE CONNECTER, pas a changer de mot de passe : on entre directement.
     // Lui imposer la fenetre « nouveau mot de passe » ferait croire a la personne que son mot de
     // passe actuel a ete perdu.
     if(typeLien==='magiclink'){goApp(prof.role);return true;}
+    // Mémorisé AVANT d'ouvrir la fenêtre : un rechargement, ou une fenêtre fermée, ramène ici et
+    // non dans l'OS (voir _entrerOuDefinirMdp).
+    localStorage.setItem('sv_mdp_a_definir',typeLien);
   }catch(e){return false;}
+  ouvrirFenetreMdpOS(typeLien);
+  return true;
+}
+// Jeton d'une recrue en intégration : gardé en mémoire seulement, le temps d'enregistrer son mot
+// de passe — elle n'a pas encore le droit d'entrer, sa session n'est donc jamais enregistrée.
+let _mdpJetonOnboarding=null;
+// mode : 'invite' (première arrivée), 'recovery' (mot de passe oublié), 'onboarding' (recrue en
+// intégration). Cette fenêtre ne se ferme pas par la croix ni par Échap (voir le CSS
+// #sv-modal:has(#rec-pass1) et le gestionnaire de clavier) : on la quitte en enregistrant un mot
+// de passe, ou par « Annuler », qui ferme aussi la session ouverte par le lien.
+function ouvrirFenetreMdpOS(mode){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const titre=mode==='recovery'?'Définir un nouveau mot de passe':'Bienvenue sur SportVision OS';
+  const intro=mode==='recovery'?'':`<div style="font-size:13px;color:var(--t2);line-height:1.55;margin:-6px 0 16px">Choisissez votre mot de passe : c'est avec votre adresse e-mail et ce mot de passe que vous vous connecterez ensuite.</div>`;
   openModal(`
-    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:16px">Définir un nouveau mot de passe</div>
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:16px">${titre}</div>
+    ${intro}
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau mot de passe · 8 caractères minimum</label>
+      <div><label for="rec-pass1" style="${L}">${mode==='recovery'?'Nouveau mot de passe':'Mot de passe'} · 8 caractères minimum</label>
         <input id="rec-pass1" type="password" class="l-inp" style="height:38px" placeholder="••••••••" autocomplete="new-password" minlength="8">
       </div>
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Confirmer</label>
-        <input id="rec-pass2" type="password" class="l-inp" style="height:38px" placeholder="••••••••" autocomplete="new-password" minlength="8">
+      <div><label for="rec-pass2" style="${L}">Confirmer</label>
+        <input id="rec-pass2" type="password" class="l-inp" style="height:38px" placeholder="••••••••" autocomplete="new-password" minlength="8" onkeydown="if(event.key==='Enter')validerNouveauMdpOS()">
       </div>
       <div id="rec-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
-      <button class="btn bp" style="width:100%;justify-content:center;height:44px" onclick="validerNouveauMdpOS()">Enregistrer et me connecter</button>
+      <button class="btn bp" style="width:100%;justify-content:center;height:44px" onclick="validerNouveauMdpOS()">${mode==='onboarding'?'Enregistrer mon mot de passe':'Enregistrer et me connecter'}</button>
+      <button type="button" onclick="annulerNouveauMdpOS()" style="background:none;border:none;color:var(--t3);font-size:12px;cursor:pointer;padding:4px;font-family:var(--ff)">Annuler</button>
     </div>`);
-  return true;
+}
+function annulerNouveauMdpOS(){
+  _mdpJetonOnboarding=null;
+  svClear();
+  closeModal();
+  goLogin();
 }
 async function validerNouveauMdpOS(){
   if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
@@ -33986,10 +34112,23 @@ async function validerNouveauMdpOS(){
   if(p1!==p2){err.textContent='Les mots de passe ne correspondent pas.';return;}
   err.textContent='Enregistrement…';
   try{
-    const tok=localStorage.getItem('sv_tok');
+    const onboarding=!!_mdpJetonOnboarding;
+    const tok=_mdpJetonOnboarding||localStorage.getItem('sv_tok');
     const r=await fetch(SB_URL+'/auth/v1/user',{method:'PUT',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({password:p1})});
     if(!r.ok){const d=await r.json().catch(()=>({}));err.textContent=msgErreurMdp(d,r.status);return;}
     fetch(SB_URL+'/functions/v1/notify-account-change',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({type:'password_changed'})}).catch(()=>{});
+    localStorage.removeItem('sv_mdp_a_definir');
+    if(onboarding){
+      _mdpJetonOnboarding=null;
+      openModal(`
+        <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:10px">Mot de passe enregistré</div>
+        <div style="font-size:13.5px;color:var(--t2);line-height:1.6;margin-bottom:16px">
+          Votre accès à SportVision OS sera ouvert dès la fin de votre intégration. Vous pourrez alors
+          vous connecter avec votre adresse e-mail et ce mot de passe.
+        </div>
+        <button class="btn bp" style="width:100%;justify-content:center;height:44px" onclick="closeModal()">J'ai compris</button>`);
+      return;
+    }
     closeModal();
     goApp(localStorage.getItem('sv_role'));
   }catch(e){err.textContent='Erreur réseau.';}
@@ -34230,7 +34369,9 @@ document.addEventListener('keydown',e=>{
   // fermerait aussi le formulaire qu'on etait en train de remplir.
   if(e.key==='Escape'){
     if(document.getElementById('sv-confirm')?.classList.contains('on'))_confirmFermer(false);
-    else closeModal();
+    // La fenêtre du mot de passe (lien d'invitation / de récupération) ne se ferme pas par Échap :
+    // voir ouvrirFenetreMdpOS().
+    else if(!document.getElementById('rec-pass1'))closeModal();
   }
   // Piège de focus : tant qu'une modale est ouverte, Tab/Shift+Tab reste
   // cantonné à ses éléments focusables (cf. commentaire sur openModal/closeModal).
@@ -34286,7 +34427,9 @@ function motDePasseOublie(){
 async function envoyerResetMdp(){
   const emailEl=document.getElementById('reset-email');
   const msg=document.getElementById('reset-msg');
-  const email=(emailEl?.value||'').trim();
+  // Minuscules : c'est la forme sous laquelle Supabase Auth enregistre l'adresse (la file d'envoi
+  // gardait sinon la saisie brute, « ZZ@EXEMPLE.FR »).
+  const email=(emailEl?.value||'').trim().toLowerCase();
   if(!email){if(msg){msg.style.color='var(--er)';msg.textContent='Entre ton adresse email.';}return;}
   if(msg){msg.style.color='var(--t3)';msg.textContent='Envoi en cours…';}
   try{
