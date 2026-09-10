@@ -88,8 +88,9 @@ begin
   end if;
   select * into ligne from clients where id = fa;
   if ligne.id is null then e := e || '1. la fiche de A (avec facture) a été supprimée'::text;
-  elsif ligne.nom <> 'Client supprimé' or ligne.email is not null or ligne.telephone is not null or ligne.prenom_contact is not null or ligne.adresse is not null then
-    e := e || ('1. fiche de A pas anonymisée : ' || ligne.nom || ' / ' || coalesce(ligne.email, '-'))::text;
+  -- Fiche avec facture : nom et adresse CONSERVÉS (mentions obligatoires de la facture), le reste effacé.
+  elsif ligne.nom = 'Client supprimé' or ligne.adresse is null or ligne.email is not null or ligne.telephone is not null or ligne.prenom_contact is not null then
+    e := e || ('1. fiche de A mal traitée (nom/adresse à garder, contact à effacer) : ' || ligne.nom || ' / ' || coalesce(ligne.adresse, '-') || ' / ' || coalesce(ligne.email, '-'))::text;
   end if;
   if not exists (select 1 from factures where id = factA and client_id = fa) then e := e || '1. la facture de A a perdu sa fiche'::text; end if;
   if exists (select 1 from connect_profile_settings where user_id = a) then e := e || '1. le profil Connect de A subsiste'::text; end if;
@@ -110,7 +111,8 @@ begin
   perform set_config('role','postgres',true);
   if not exists (select 1 from factures where id = factD and client_id = fd) then e := e || '1 bis. une facture a perdu sa fiche (fiche supprimée malgré ses documents)'::text; end if;
   if not exists (select 1 from contrats where id = contratD) then e := e || '1 bis. un contrat a disparu avec la fiche'::text; end if;
-  if not exists (select 1 from clients where id = fd and nom = 'Client supprimé' and email is null) then e := e || '1 bis. fiche de D pas conservée anonymisée'::text; end if;
+  -- Facture et contrat : nom conservé (mention obligatoire), contact effacé (arbitrage du 10/09).
+  if not exists (select 1 from clients where id = fd and nom = 'Léa ZZDecSuppr' and email is null) then e := e || '1 bis. fiche de D : nom à garder (facture), e-mail à effacer'::text; end if;
 
   -- ── 2. Client B : aucun document ──
   insert into clients (nom, type_client, prenom_contact, nom_contact, email) values ('Marc ZZDecSuppr', 'particulier', 'Marc', 'ZZDecSuppr', 'zz-cx-dec-suppr-b@example.invalid') returning id into fb;
@@ -157,7 +159,10 @@ begin
   if not exists (select 1 from auth.users where id = g) then e := e || '5. le compte G a disparu'::text; end if;
 
   -- ── 6. Profil « photo » posé par une invitation sur un compte client ──
-  if not exists (select 1 from profiles where id = invite) then e := e || '6. DÉCOR : handle_new_user n''a pas posé de profil au compte invité'::text; end if;
+  -- Depuis migration-securite-handle-new-user-role-explicite (10/09) : un compte invité SANS rôle
+  -- n'a plus de fiche staff « photo ». L'inverse serait la faille : is_staff() le prendrait pour
+  -- un collaborateur interne.
+  if exists (select 1 from profiles where id = invite) then e := e || '6. un compte invité sans rôle a reçu une fiche staff (handle_new_user)'::text; end if;
   insert into clients (nom, type_client) values ('Invité ZZDecSuppr', 'particulier') returning id into fi;
   insert into connect_profile_settings (user_id, client_id, account_type) values (invite, fi, 'particulier');
   begin

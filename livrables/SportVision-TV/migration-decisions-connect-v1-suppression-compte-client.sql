@@ -156,12 +156,28 @@ begin
     -- sync_client_to_organization recopie le nom dans organizations, qui survit à la fiche.
     -- Les factures déjà émises (PDF, Pennylane) ne sont pas modifiées : elles restent telles
     -- qu'envoyées, c'est ce que la loi demande de conserver.
+    --
+    -- Arbitrage du 10/09/2026 (Fouka : « tranche tout ») : quand la fiche porte des documents
+    -- comptables, son NOM et son ADRESSE restent. Ce sont des mentions obligatoires d'une facture,
+    -- conservée 10 ans (Code de commerce, L123-22), et les factures ne les copient pas : elles les
+    -- relisent dans cette fiche (send-facture-email, « Destinataire »). Les effacer, c'était
+    -- produire un renvoi de facture adressé à « Client supprimé ». Le RGPD autorise expressément
+    -- cette conservation pour une obligation légale (art. 17-3-b). Tout ce qui n'est pas exigé
+    -- (e-mail, téléphone, notes, suivi commercial) est effacé.
     if p_anonymiser and v_fiche.type_client = 'particulier' then
-      update clients set
-        nom = 'Client supprimé', prenom_contact = null, nom_contact = null, email = null, telephone = null,
-        adresse = null, code_postal = null, ville = null, notes = null, siret = null, logo_url = null,
-        prochaine_action = null, date_prochaine_action = null, photo_preset_notes = null, updated_at = now()
-      where id = v_fiche.id;
+      if v_documents then
+        update clients set
+          prenom_contact = null, nom_contact = null, email = null, telephone = null, notes = null,
+          logo_url = null, prochaine_action = null, date_prochaine_action = null,
+          photo_preset_notes = null, updated_at = now()
+        where id = v_fiche.id;
+      else
+        update clients set
+          nom = 'Client supprimé', prenom_contact = null, nom_contact = null, email = null, telephone = null,
+          adresse = null, code_postal = null, ville = null, notes = null, siret = null, logo_url = null,
+          prochaine_action = null, date_prochaine_action = null, photo_preset_notes = null, updated_at = now()
+        where id = v_fiche.id;
+      end if;
       delete from client_contacts where client_id = v_fiche.id; -- notes de suivi sur la personne
     end if;
 

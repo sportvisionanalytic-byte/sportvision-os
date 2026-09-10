@@ -82,7 +82,8 @@ try {
   t("le compte est supprimé", !encore);
   t("la commande est conservée, détachée du compte", !!cmd && cmd.purchased_by_user_id === null, JSON.stringify(cmd));
   t("la facture est conservée, sur sa fiche", fct?.client_id === fiche?.id, JSON.stringify(fct));
-  t("la fiche est anonymisée", fch?.nom === "Client supprimé" && fch?.email === null, JSON.stringify(fch));
+  // Fiche avec facture : le nom reste (mention obligatoire de la facture, conservée 10 ans), le contact part.
+  t("la fiche garde son nom (facture), son e-mail est effacé", fch?.nom === "Zoé ZZDecSupprFn" && fch?.email === null, JSON.stringify(fch));
   if (r.status !== 200) {
     // Échec : il ne doit alors RIEN s'être passé (tout ou rien), et le message ne doit pas être brut.
     t("échec : rien n'a bougé (compte, commande, fiche intacts)", encore && cmd?.purchased_by_user_id === compte.id && fch?.nom === "Zoé ZZDecSupprFn");
