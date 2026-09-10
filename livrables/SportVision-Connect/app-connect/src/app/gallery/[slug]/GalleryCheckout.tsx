@@ -134,7 +134,16 @@ export function GalleryCheckout({
       else if (!e.shiftKey && (ici === dernier || !fenetre.current.contains(ici))) { e.preventDefault(); premier.focus(); }
     }
     document.addEventListener("keydown", clavier);
-    return () => { document.removeEventListener("keydown", clavier); avant?.focus?.(); };
+    return () => {
+      document.removeEventListener("keydown", clavier);
+      // Le bouton qui a ouvert la fenetre n'existe souvent plus : la barre de selection est retiree
+      // pendant le paiement et reconstruite a la fermeture — APRES ce nettoyage. On attend donc
+      // qu'elle revienne, puis on rend le focus a son bouton (marque data-ouvre-paiement).
+      setTimeout(() => {
+        const retour = avant?.isConnected ? avant : document.querySelector<HTMLElement>("[data-ouvre-paiement]");
+        retour?.focus();
+      }, 0);
+    };
   }, []);
 
   async function submit(e: React.FormEvent) {

@@ -426,6 +426,7 @@ export function GalleryView({
                     formule. Acheter avec moins de photos que le quota est permis — un parent qui
                     ne trouve que 11 photos de son enfant doit pouvoir acheter quand même. */}
                 <button
+                  data-ouvre-paiement
                   onClick={() => setCheckoutOpen(true)}
                   disabled={selected.length === 0}
                   className="flex-none rounded-sv-pill bg-sv-gradient px-5 py-2.5 text-[13.5px] font-bold text-white disabled:opacity-40"
@@ -445,6 +446,7 @@ export function GalleryView({
                   </button>
                 </div>
                 <button
+                  data-ouvre-paiement
                   onClick={() => setCheckoutOpen(true)}
                   className="flex-none rounded-sv-pill bg-sv-gradient px-5 py-2.5 text-[13.5px] font-bold text-white"
                 >
@@ -476,6 +478,7 @@ export function GalleryView({
               )}
             </div>
             <button
+              data-ouvre-paiement
               onClick={() => setCartOpen(true)}
               className="flex-none rounded-sv-pill bg-sv-gradient px-5 py-2.5 text-[13.5px] font-bold text-white"
             >
