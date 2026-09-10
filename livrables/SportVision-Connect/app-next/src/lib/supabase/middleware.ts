@@ -37,11 +37,20 @@ export async function updateSession(request: NextRequest) {
   // une fonction planifiee, pas par un navigateur. Elle n'a donc pas de session et s'authentifie
   // elle-meme avec un secret partage compare en temps constant (voir la route). Sans cette
   // exception, le middleware la renverrait vers /auth/login et la tache ne tournerait jamais.
+  // /rejoindre (10/09/2026) : l'atterrissage d'une invitation nominative. La page EST destinee a
+  // quelqu'un qui n'a pas encore de compte — c'est tout son objet : elle lit l'invitation, puis
+  // propose de se connecter ou de creer son acces sur place. L'oublier ici renvoyait le coach
+  // invite vers /auth/login en emportant son jeton dans l'URL, ou plus rien ne le lisait : le lien
+  // etait mort pour exactement le public auquel il s'adresse.
+  //
+  // Trouve en ouvrant la page dans un navigateur. Les tests, le typecheck, le build et la
+  // verification en base etaient tous verts : aucun d'eux ne traverse le middleware.
   const isPublicRoute =
     pathname.startsWith("/auth") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/activation") ||
     pathname.startsWith("/org-activation") ||
+    pathname.startsWith("/rejoindre") ||
     pathname.startsWith("/demo") ||
     pathname.startsWith("/api/calendar/cron");
 
