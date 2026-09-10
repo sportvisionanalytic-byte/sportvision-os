@@ -7,6 +7,40 @@
 
 ---
 
+## SPORTVISION MULTI-CLUBS V1 — RELEASE VALIDÉE
+
+**10 septembre 2026, 14h05 (Paris).** Commit déployé : `16a46a7` sur `main` (OS vérifié par
+`version.json`, Connect vérifié par le correctif iPhone constaté en ligne).
+
+**Paiement live de validation** — galerie « Essai paiement réel — 10/09 », formule 2 photos :
+
+| Étape | Constat |
+|---|---|
+| Stripe | `pi_3UE6aZCWWD3TQ2oU0tIZWKgd`, `livemode: true`, **1,50 € encaissés par carte** |
+| Webhook | `checkout.session.completed`, `payment_intent.succeeded`, `charge.succeeded` livrés ; **1 commande, 1 droit, 2 lignes** — aucun double traitement |
+| Commande | payée, attribuée au bon lien et à la bonne formule, hors statistiques (lien d'essai) |
+| Droit | 1 droit invité de 30 jours couvrant exactement les 2 photos ; 3ᵉ photo refusée |
+| E-mail | `galerie.commande_prete` parti via Brevo — vers `sportvisionalytic@gmail.com`, **adresse saisie avec une faute** : réception non constatée pour cet envoi (le même gabarit a été reçu le 08/09) |
+| Original | téléchargeable avec le droit, **HTTP 400 en accès public** |
+| ZIP | exactement 2 fichiers, archive valide |
+| Remboursement | `re_3UE6aZCWWD3TQ2oU0Q5VusVw` par Stripe ; le **webhook** passe la commande en « refunded » 1 s après — aucune écriture manuelle en base |
+| Droits après remboursement | expirés ; original refusé, ZIP en **410** « Cette commande a été remboursée » |
+| Galerie de validation | lien désactivé, album archivé ; nouvel achat refusé ; **0 session Stripe ouverte** |
+
+**Compte Admin** : mot de passe **conservé à la demande du propriétaire**. Seule session : navigateur
+humain, 12h26, même IP que le poste du propriétaire ; les 8 sessions ouvertes par les tests ont été
+révoquées.
+
+**Trouvé et corrigé pendant le paiement réel (P1)** : sur iPhone, le formulaire de paiement se
+fermait pendant la saisie de l'e-mail — champs en 14 px (zoom automatique de Safari) et voile qui
+fermait tout au moindre toucher. Invisible en émulation, révélé par un vrai téléphone.
+
+**P0 : 0 · P1 bloquant : 0 · 36/36 suites SQL · vérification JWT des fonctions : conforme.**
+
+**V1 gelée : uniquement P0/P1 et retours des premiers clubs.**
+
+---
+
 ## Ce que veut dire « V1 stable »
 
 La plateforme est prouvée. Le prochain test n'est plus technique : c'est la **charge
