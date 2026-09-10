@@ -72,10 +72,17 @@ export function GalleryCheckout({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={onClose}>
+    // Le voile ne ferme PAS le formulaire : seule la croix le fait. Signale par Fouka le
+    // 10/09/2026, en payant depuis son iPhone : « quand j'ecris mon mail, ca me quitte ». Deux
+    // causes s'additionnaient. Les champs etaient en 14 px, et Safari iOS zoome sur tout champ en
+    // dessous de 16 px : l'ecran se decalait sous le doigt. Et ce voile fermait tout au moindre
+    // clic : le toucher suivant — une suggestion d'adresse du clavier, un curseur replace — tombait
+    // dessus. Resultat, un parent perdait sa saisie au moment de payer. C'est la regle deja posee
+    // pour les modales de Club+ : sur un formulaire, un clic maladroit qui efface la saisie est
+    // pire que pas de raccourci du tout.
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60">
       <form
         onSubmit={submit}
-        onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[520px] rounded-t-sv-card border-t border-border-strong bg-bg-elevated px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5"
       >
         <div className="mb-4 flex items-center justify-between">
@@ -102,7 +109,7 @@ export function GalleryCheckout({
           value={nom}
           onChange={(e) => setNom(e.target.value)}
           autoComplete="name"
-          className="mb-3 w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[14px] outline-none focus:border-white/35"
+          className="mb-3 w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[16px] outline-none focus:border-white/35"
           placeholder="Camille Martin"
         />
 
@@ -116,7 +123,7 @@ export function GalleryCheckout({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
-          className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[14px] outline-none focus:border-white/35"
+          className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[16px] outline-none focus:border-white/35"
           placeholder="camille@exemple.fr"
         />
 

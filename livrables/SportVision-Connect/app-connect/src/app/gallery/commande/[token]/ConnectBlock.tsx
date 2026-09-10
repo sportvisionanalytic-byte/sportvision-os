@@ -144,7 +144,7 @@ export function ConnectBlock({
           id="cx-email"
           value={email}
           readOnly
-          className="mb-3 w-full rounded-sv border border-border bg-bg px-4 py-3 text-[14px] text-text-tertiary"
+          className="mb-3 w-full rounded-sv border border-border bg-bg px-4 py-3 text-[16px] text-text-tertiary"
         />
 
         <label htmlFor="cx-mdp" className="mb-1 block text-[11px] font-bold uppercase tracking-[.04em] text-text-label">
@@ -157,7 +157,7 @@ export function ConnectBlock({
           onChange={(e) => setMdp(e.target.value)}
           autoComplete="new-password"
           placeholder="8 caractères minimum"
-          className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[14px] outline-none focus:border-white/35"
+          className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[16px] outline-none focus:border-white/35"
         />
 
         {error && <p className="mt-3 text-[12.5px] font-semibold text-danger">{error}</p>}

@@ -99,7 +99,7 @@ export function GalleryPasswordGate({ slug, token }: { slug: string; token: stri
           onChange={(e) => setPassword(e.target.value)}
           autoFocus
           autoComplete="off"
-          className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[14px] outline-none focus:border-white/35"
+          className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[16px] outline-none focus:border-white/35"
           placeholder="Mot de passe"
         />
         {error && <p className="mt-2 text-[12.5px] font-semibold text-danger">{error}</p>}
