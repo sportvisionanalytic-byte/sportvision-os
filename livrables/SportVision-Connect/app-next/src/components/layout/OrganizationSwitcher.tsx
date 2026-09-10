@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronsUpDown } from "lucide-react";
 import { useSession } from "@/lib/session-context";
+import { createClient } from "@/lib/supabase/client";
 import type { Space } from "@/lib/supabase/session";
 import { cn } from "@/lib/cn";
 import { ROLE_LABELS } from "@/lib/types/settings";
@@ -25,6 +26,33 @@ function isExternalMandate(space: Space): boolean {
   return (space.kind === "organization" && space.role === EXTERNAL_MANDATE_ROLE) || space.kind === "delegated_club";
 }
 
+// L'écusson du club plutôt que ses initiales (11/09/2026, « bien afficher les logos ») : le haut du
+// menu montrait déjà le logo (ctx.organization.logoUrl), le sélecteur n'affichait que « SV », « V3S ».
+// Initiales en repli tant qu'un club n'a pas de logo, ou si l'image ne se charge pas.
+function Pastille({ nom, logo, taille }: { nom: string; logo?: string | null; taille: "grande" | "petite" }) {
+  const [casse, setCasse] = useState(false);
+  const dim = taille === "grande" ? "h-[30px] w-[30px] rounded-[9px] text-[11px]" : "h-7 w-7 rounded-lg text-[10.5px]";
+  if (logo && !casse) {
+    return (
+      <span className={cn("flex flex-none items-center justify-center overflow-hidden bg-white", dim)}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logo} alt="" className="h-full w-full object-contain p-[2px]" onError={() => setCasse(true)} />
+      </span>
+    );
+  }
+  return (
+    <span
+      className={cn(
+        "flex flex-none items-center justify-center bg-gradient-to-br from-brand-blue-electric font-extrabold text-white",
+        taille === "grande" ? "to-brand-cyan" : "to-brand-violet",
+        dim,
+      )}
+    >
+      {initials(nom)}
+    </span>
+  );
+}
+
 function initials(name: string) {
   return name
     .split(" ")
@@ -45,6 +73,26 @@ export function OrganizationSwitcher() {
   // "Mes espaces" comme avant (voir le libellé conditionnel plus bas), donc aucun changement
   // visuel pour l'immense majorité des comptes.
   const clientSpaces = spaces.filter(isExternalMandate);
+  // Les logos des clubs proposés, en une requête (clubs.logo_url, déjà lisible pour ces espaces).
+  const [logos, setLogos] = useState<Record<string, string>>({});
+  const idsClubs = spaces.filter((s) => s.kind === "organization" || s.kind === "delegated_club").map((s) => s.id).sort().join(",");
+  useEffect(() => {
+    if (!idsClubs) return;
+    let annule = false;
+    createClient()
+      .from("clubs")
+      .select("id, logo_url")
+      .in("id", idsClubs.split(","))
+      .then(({ data }) => {
+        if (annule || !data) return;
+        const carte: Record<string, string> = {};
+        for (const c of data as { id: string; logo_url: string | null }[]) if (c.logo_url) carte[c.id] = c.logo_url;
+        setLogos(carte);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [idsClubs]);
   const ownSpaces = spaces.filter((s) => !isExternalMandate(s));
 
   // L'espace ouvert est-il un club gere pour SportVision plutot qu'une organisation dont on est
@@ -78,9 +126,7 @@ export function OrganizationSwitcher() {
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.045] p-2.5 text-left transition-colors hover:bg-white/[.09]"
       >
-        <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[9px] bg-gradient-to-br from-brand-blue-electric to-brand-cyan text-[11px] font-extrabold text-white">
-          {initials(ctx.organization.name)}
-        </span>
+        <Pastille nom={ctx.organization.name} logo={ctx.organization.logoUrl ?? logos[ctx.organization.id]} taille="grande" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] font-bold text-white">{ctx.organization.name}</span>
           {/* 08/09/2026 — Un CM SportVision doit voir en permanence qu'il travaille POUR le club,
@@ -114,6 +160,7 @@ export function OrganizationSwitcher() {
                   key={`${space.kind}:${space.id}`}
                   space={space}
                   isActive={(space.kind === "organization" || space.kind === "delegated_club") && space.id === ctx.organization.id}
+                  logo={logos[space.id]}
                   onSelect={() => {
                     setActiveSpace(space);
                     setOpen(false);
@@ -133,6 +180,7 @@ export function OrganizationSwitcher() {
                   key={`${space.kind}:${space.id}`}
                   space={space}
                   isActive={(space.kind === "organization" || space.kind === "delegated_club") && space.id === ctx.organization.id}
+                  logo={logos[space.id]}
                   onSelect={() => {
                     setActiveSpace(space);
                     setOpen(false);
@@ -156,7 +204,7 @@ function isSwitchable(space: Space): boolean {
   return space.clickable && (space.status === undefined || space.status === "actif");
 }
 
-function SpaceRow({ space, isActive, onSelect }: { space: Space; isActive: boolean; onSelect: () => void }) {
+function SpaceRow({ space, isActive, onSelect, logo }: { space: Space; isActive: boolean; onSelect: () => void; logo?: string }) {
   const switchable = isSwitchable(space);
   return (
     <button
@@ -171,9 +219,7 @@ function SpaceRow({ space, isActive, onSelect }: { space: Space; isActive: boole
         isActive && "bg-white/[.06]",
       )}
     >
-      <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[10.5px] font-extrabold text-white">
-        {initials(space.name)}
-      </span>
+      <Pastille nom={space.name} logo={logo} taille="petite" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[12.5px] font-bold text-white">{space.name}</span>
         <span className="block truncate text-[11px] text-[#7E8FA5]">{space.subtitle}</span>

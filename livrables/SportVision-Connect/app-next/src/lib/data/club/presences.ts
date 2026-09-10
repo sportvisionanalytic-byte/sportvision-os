@@ -10,34 +10,44 @@ export interface ClubPresence {
   id: string;
   eventLabel: string;
   date: string;
+  /** « HH:MM », quand l'événement a une heure. */
+  heure: string | null;
   kind: PresenceKind;
+  /** photo, video, photo_video — ce que SportVision couvre. */
+  typeCouverture: string | null;
   operatorName: string | null;
   status: PresenceStatus;
+  missionReference: string | null;
 }
 
 interface PresenceRow {
   id: string;
   event_label: string;
   event_date: string;
+  heure: string | null;
   kind: string;
+  type_couverture: string | null;
   operator_name: string | null;
   status: string;
+  mission_reference: string | null;
 }
 
+// 11/09/2026 : les présences sont celles que le CM décide (planned_presences, v126), lues par
+// club_presences_sportvision (v140). `club_presences` (connect-v17) n'est plus alimentée : la page
+// affichait « Aucune présence programmée » à côté d'une carte « 8 prévues ».
 export async function fetchClubPresences(supabase: SupabaseClient, organizationId: string): Promise<ClubPresence[]> {
-  const { data, error } = await supabase
-    .from("club_presences")
-    .select("id, event_label, event_date, kind, operator_name, status")
-    .eq("organization_id", organizationId)
-    .order("event_date", { ascending: false });
+  const { data, error } = await supabase.rpc("club_presences_sportvision", { p_club_id: organizationId });
   if (error) throw error;
   return ((data ?? []) as PresenceRow[]).map((row) => ({
     id: row.id,
     eventLabel: row.event_label,
     date: row.event_date,
+    heure: row.heure ? row.heure.slice(0, 5) : null,
     kind: row.kind as PresenceKind,
+    typeCouverture: row.type_couverture,
     operatorName: row.operator_name,
     status: row.status as PresenceStatus,
+    missionReference: row.mission_reference,
   }));
 }
 
@@ -49,12 +59,7 @@ export async function fetchClubPresences(supabase: SupabaseClient, organizationI
 export async function fetchClubPresencesThisMonth(supabase: SupabaseClient, organizationId: string): Promise<number> {
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString().slice(0, 10);
-  const { count, error } = await supabase
-    .from("club_presences")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", organizationId)
-    .eq("status", "completed")
-    .gte("event_date", monthStart);
-  if (error) throw error;
-  return count ?? 0;
+  // Même source que la page Présences (v140), plus l'ancienne table vide.
+  const presences = await fetchClubPresences(supabase, organizationId);
+  return presences.filter((p) => p.status === "completed" && p.date >= monthStart).length;
 }

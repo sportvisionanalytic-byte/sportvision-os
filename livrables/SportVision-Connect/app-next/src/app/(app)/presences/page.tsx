@@ -188,9 +188,15 @@ function PresencesScreen() {
               <tbody>
                 {presences.map((p) => (
                   <tr key={p.id} className="border-b border-divider last:border-0 hover:bg-row-hover">
-                    <td className="px-5 py-3.5 text-[13px] font-semibold text-text-soft">{formatDate(p.date)}</td>
+                    <td className="px-5 py-3.5 text-[13px] font-semibold text-text-soft">
+                      {formatDate(p.date)}
+                      {p.heure ? <span className="block text-[12px] font-normal text-text-faint">{p.heure}</span> : null}
+                    </td>
                     <td className="px-5 py-3.5 text-[13.5px] font-bold text-text">{p.eventLabel}</td>
-                    <td className="px-5 py-3.5 text-[13px] text-text-soft">{PRESENCE_KIND_LABELS[p.kind]}</td>
+                    <td className="px-5 py-3.5 text-[13px] text-text-soft">
+                      {PRESENCE_KIND_LABELS[p.kind]}
+                      {p.typeCouverture ? <span className="block text-[12px] text-text-faint">{LIBELLE_COUVERTURE[p.typeCouverture] ?? p.typeCouverture}</span> : null}
+                    </td>
                     {canSeeOperator && (
                       <td className="px-5 py-3.5 text-[13px] text-text-soft">{p.operatorName ?? "À confirmer"}</td>
                     )}
@@ -317,6 +323,8 @@ function PresencesScreen() {
     </div>
   );
 }
+
+const LIBELLE_COUVERTURE: Record<string, string> = { photo: "Photo", video: "Vidéo", photo_video: "Photo + vidéo" };
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
