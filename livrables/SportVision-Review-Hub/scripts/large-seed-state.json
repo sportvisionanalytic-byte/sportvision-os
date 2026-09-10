@@ -1,0 +1,319 @@
+{
+  "all_teams": [
+    {
+      "key": "U6",
+      "name": "U6 SV Demo FC",
+      "categorie": "U6",
+      "section": "Mixte",
+      "id": "5ef2e127-b8a3-58a4-a140-a616d6da9224",
+      "coach": null,
+      "resp_comm": "Sandrine Bertrand"
+    },
+    {
+      "key": "U7",
+      "name": "U7 SV Demo FC",
+      "categorie": "U7",
+      "section": "Mixte",
+      "id": "0c13d641-4160-5f49-b49c-b076be6aa972",
+      "coach": "Bruno Martin",
+      "resp_comm": null
+    },
+    {
+      "key": "U8_A",
+      "name": "U8 A SV Demo FC",
+      "categorie": "U8",
+      "section": "Mixte",
+      "id": "3c50a52d-98e3-5b8f-8bab-d94eee66322e",
+      "coach": "Damien Girard",
+      "resp_comm": null
+    },
+    {
+      "key": "U8_B",
+      "name": "U8 B SV Demo FC",
+      "categorie": "U8",
+      "section": "Mixte",
+      "id": "6aa5066d-e20e-52ca-add8-894f3f685940",
+      "coach": null,
+      "resp_comm": null
+    },
+    {
+      "key": "U9_A",
+      "name": "U9 A SV Demo FC",
+      "categorie": "U9",
+      "section": "Masculin",
+      "id": "6be88e4c-c258-5396-8b8f-4008c37f05bb",
+      "coach": "Olivier Vincent",
+      "resp_comm": "Vincent Martin"
+    },
+    {
+      "key": "U9_B",
+      "name": "U9 B SV Demo FC",
+      "categorie": "U9",
+      "section": "Masculin",
+      "id": "3cccb367-4919-5be8-a9c8-1560548d65ed",
+      "coach": "Sophie Vidal",
+      "resp_comm": "Laetitia Simon"
+    },
+    {
+      "key": "U10_A",
+      "name": "U10 A SV Demo FC",
+      "categorie": "U10",
+      "section": "Masculin",
+      "id": "f1edd6c4-65bf-550f-b06e-33e3b610fad0",
+      "coach": "Marc Robert",
+      "resp_comm": "Sophie Simon"
+    },
+    {
+      "key": "U10_B",
+      "name": "U10 B SV Demo FC",
+      "categorie": "U10",
+      "section": "Masculin",
+      "id": "546a68ec-3f62-5062-81c0-9e4fcc6c8b8c",
+      "coach": "Karim Dubois",
+      "resp_comm": null
+    },
+    {
+      "key": "U10_C",
+      "name": "U10 C SV Demo FC",
+      "categorie": "U10",
+      "section": "Masculin",
+      "id": "f67629e4-9657-512d-a0f5-9a9a2a7eef8b",
+      "coach": null,
+      "resp_comm": null
+    },
+    {
+      "key": "U11_A",
+      "name": "U11 A SV Demo FC",
+      "categorie": "U11",
+      "section": "Masculin",
+      "id": "2d46360b-2a64-5369-be5f-10bd3f6ad192",
+      "coach": "Christophe Fournier",
+      "resp_comm": "Fabrice Fontaine"
+    },
+    {
+      "key": "U11_B",
+      "name": "U11 B SV Demo FC",
+      "categorie": "U11",
+      "section": "Masculin",
+      "id": "34d5fd19-7138-577b-bd1d-62b06dfdbd9f",
+      "coach": "Olivier Roux",
+      "resp_comm": "Aurelie Lefebvre"
+    },
+    {
+      "key": "U11_C",
+      "name": "U11 C SV Demo FC",
+      "categorie": "U11",
+      "section": "Masculin",
+      "id": "8a42ecb6-99d6-598f-90c8-5c3928d827a0",
+      "coach": "Karim Roux",
+      "resp_comm": "Stephanie Fournier"
+    },
+    {
+      "key": "U12_A",
+      "name": "U12 A SV Demo FC",
+      "categorie": "U12",
+      "section": "Masculin",
+      "id": "9897803c-515e-5073-943c-e4290a08977c",
+      "coach": "Aurelie Lefevre",
+      "resp_comm": null
+    },
+    {
+      "key": "U12_B",
+      "name": "U12 B SV Demo FC",
+      "categorie": "U12",
+      "section": "Masculin",
+      "id": "fa1d8633-d380-54ad-a67d-7f0b1addbb4d",
+      "coach": "Sandrine Lambert",
+      "resp_comm": "Stephanie Durand"
+    },
+    {
+      "key": "U12_C",
+      "name": "U12 C SV Demo FC",
+      "categorie": "U12",
+      "section": "Masculin",
+      "id": "dcd018ec-08a7-5aa8-a51b-e2e43ef3afdb",
+      "coach": "Sophie Moreau",
+      "resp_comm": null
+    },
+    {
+      "key": "U13_A",
+      "name": "U13 A SV Demo FC",
+      "categorie": "U13",
+      "section": "Masculin",
+      "id": "66c10cb0-37cb-51ab-9213-e83207d55d21",
+      "coach": "Vincent Durand",
+      "resp_comm": null
+    },
+    {
+      "key": "U13_B",
+      "name": "U13 B SV Demo FC",
+      "categorie": "U13",
+      "section": "Masculin",
+      "id": "5a4da8c7-6c63-5a1c-af6c-84a218651726",
+      "coach": "Laetitia Leroy",
+      "resp_comm": null
+    },
+    {
+      "key": "U13_C",
+      "name": "U13 C SV Demo FC",
+      "categorie": "U13",
+      "section": "Masculin",
+      "id": "9fb36646-0410-522f-a7f3-f583bd3fb362",
+      "coach": "Vincent Laurent",
+      "resp_comm": "Christophe Petit"
+    },
+    {
+      "key": "U14_A",
+      "name": "U14 A SV Demo FC",
+      "categorie": "U14",
+      "section": "Masculin",
+      "id": "2fc3b523-5ed1-54ed-b45e-ba70efda5bbd",
+      "coach": "Stephanie Leroy",
+      "resp_comm": null
+    },
+    {
+      "key": "U14_B",
+      "name": "U14 B SV Demo FC",
+      "categorie": "U14",
+      "section": "Masculin",
+      "id": "364c4931-ce1c-5703-90c7-f023a3e9b1ca",
+      "coach": "Stephanie Girard",
+      "resp_comm": "Stephanie Richard"
+    },
+    {
+      "key": "U15_A",
+      "name": "U15 A SV Demo FC",
+      "categorie": "U15",
+      "section": "Masculin",
+      "id": "ed273fc5-219a-5a3d-97e0-8fe1ae19fe47",
+      "coach": null,
+      "resp_comm": null
+    },
+    {
+      "key": "U15_B",
+      "name": "U15 B SV Demo FC",
+      "categorie": "U15",
+      "section": "Masculin",
+      "id": "0f885b94-87ab-58c7-b469-ef38f58c7171",
+      "coach": "Sandrine Richard",
+      "resp_comm": null
+    },
+    {
+      "key": "U16",
+      "name": "U16 SV Demo FC",
+      "categorie": "U16",
+      "section": "Masculin",
+      "id": "24b1c62c-884b-5885-bb36-106e73f21c8b",
+      "coach": "Marc Andre",
+      "resp_comm": null
+    },
+    {
+      "key": "U18",
+      "name": "U18 SV Demo FC",
+      "categorie": "U18",
+      "section": "Masculin",
+      "id": "e02b623a-c8d6-5e00-855e-e0da178f8b4c",
+      "coach": null,
+      "resp_comm": null
+    },
+    {
+      "key": "Seniors_A",
+      "name": "Seniors A SV Demo FC",
+      "categorie": "Seniors",
+      "section": "Masculin",
+      "id": "827306b8-17bf-50c9-869c-2c665c9b2b0f",
+      "coach": "Stephanie Simon",
+      "resp_comm": null
+    },
+    {
+      "key": "Seniors_B",
+      "name": "Seniors B SV Demo FC",
+      "categorie": "Seniors",
+      "section": "Masculin",
+      "id": "56be1ade-6584-5b6d-991c-71eaff06ab69",
+      "coach": "Sophie Bernard",
+      "resp_comm": "Fabrice Vidal"
+    },
+    {
+      "key": "U14_F",
+      "name": "U14 F\u00e9minines SV Demo FC",
+      "categorie": "U14",
+      "section": "F\u00e9minin",
+      "id": "c10e8ae2-85e5-577d-abcb-1ba076216f2e",
+      "coach": "Christophe Lefebvre",
+      "resp_comm": "Sandrine Andre"
+    },
+    {
+      "key": "U16_F",
+      "name": "U16 F\u00e9minines SV Demo FC",
+      "categorie": "U16",
+      "section": "F\u00e9minin",
+      "id": "874c93b6-b800-5034-ae95-e06c734f39a7",
+      "coach": "Bruno Faure",
+      "resp_comm": null
+    },
+    {
+      "key": "U18_F",
+      "name": "U18 F\u00e9minines SV Demo FC",
+      "categorie": "U18",
+      "section": "F\u00e9minin",
+      "id": "84489b2d-1a41-5f14-a209-beb720355385",
+      "coach": "Sandrine Girard",
+      "resp_comm": null
+    },
+    {
+      "key": "Seniors_F",
+      "name": "Seniors F\u00e9minines SV Demo FC",
+      "categorie": "Seniors",
+      "section": "F\u00e9minin",
+      "id": "2be02784-d7ea-5784-80a8-20a27684b19d",
+      "coach": "Aurelie Andre",
+      "resp_comm": null
+    },
+    {
+      "id": "76520a7c-b4cd-45e5-89c0-4715196248c9",
+      "name": "U14 D1 Demo",
+      "categorie": "U14",
+      "key": "u14_d1_p2"
+    },
+    {
+      "id": "e7ced9f3-bb58-4121-991c-15aaab09cac9",
+      "name": "U18 F\u00e9minines Demo",
+      "categorie": "U18",
+      "key": "u18_f_p2"
+    },
+    {
+      "id": "f978c192-1997-4328-b4c5-d640ef8b1196",
+      "name": "Seniors R2 Demo",
+      "categorie": "Seniors",
+      "key": "sr2_p2"
+    },
+    {
+      "id": "148ffc5b-2d74-4bc9-b2ab-4c3b1e56c3aa",
+      "name": "U10 A Demo",
+      "categorie": "U10",
+      "key": "u10a_p2"
+    }
+  ],
+  "no_coach_keys": [
+    "U18",
+    "U8_B",
+    "U6",
+    "U15_A",
+    "U10_C"
+  ],
+  "no_roster_keys": [
+    "U10_A",
+    "U18_F",
+    "U9_B",
+    "U11_B"
+  ],
+  "partial_roster_keys": [
+    "U8_A",
+    "U14_B",
+    "Seniors_B",
+    "U14_F",
+    "U7",
+    "U9_A"
+  ]
+}
