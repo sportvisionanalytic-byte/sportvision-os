@@ -16766,7 +16766,7 @@ async function modalEquipePrestation(prestationId,ref){
       <button class="btn bg2" onclick="closeModal()">Fermer</button>
       <!-- 10/09/2026, première mission réelle : la fenêtre Équipe était une impasse (« Fermer »
            seul). Valider l'équipe enchaîne sur le brief de la même mission. -->
-      ${['admin','sec','prod'].includes(S.role)?`<button class="btn bp" onclick="closeModal();setTimeout(()=>ouvrirFicheMission('${prestationId}','brief'),150)">Valider l'équipe → Brief</button>`:''}
+      ${['admin','sec','prod'].includes(S.role)?`<button class="btn bp" onclick="validerEquipeEtBrief('${prestationId}','${ref}')">Valider l'équipe → Brief</button>`:''}
     </div>`);
   await chargerEquipe(prestationId,ref);
   await chargerKitsPrestation(prestationId,ref);
@@ -17150,6 +17150,23 @@ async function historiqueRemuneration(prestationId){
     </div>`;
   }).join('');
 }
+// « Valider l'équipe → Brief » (première mission réelle, 10/09) : un opérateur choisi mais pas
+// encore ajouté l'est d'abord — c'est ce que la Production attend de ce bouton. On ne passe au
+// brief que si l'ajout a réussi ; un motif manquant, une confirmation refusée : on reste ici.
+async function validerEquipeEtBrief(prestationId,ref){
+  const sel=document.getElementById('eq-col')?.value;
+  if(sel){
+    await ajouterMembreEquipe(prestationId,ref);
+    if(document.getElementById('eq-col')?.value===sel)return;   // pas ajouté : le message est affiché
+  }
+  const eq=await sbFetch('prestations_equipe_display?select=id&prestation_id=eq.'+prestationId+'&statut=in.(a_envoyer,invitation_envoyée,en_attente,acceptée)').catch(()=>null);
+  if(Array.isArray(eq)&&!eq.length){
+    toast('Aucun opérateur dans l\'équipe : choisissez un photographe ou un vidéaste, puis « + Ajouter ».','warn');
+    return;
+  }
+  closeModal();
+  setTimeout(()=>ouvrirFicheMission(prestationId,'brief'),150);
+}
 async function ajouterMembreEquipe(prestationId,ref){
   const err=document.getElementById('eq-err');
   const colId=document.getElementById('eq-col').value;
@@ -17245,7 +17262,14 @@ async function ajouterMembreEquipe(prestationId,ref){
     }catch(e){}
     const motifRem=document.getElementById('eq-motif')?.value||null;
     const ecartAjout=ecartRemu(rem,autoPay);
-    if(ecartAjout&&ecartAjout.motifRequis&&!motifRem){err.textContent='Écart de '+ecartAjout.pct+' % avec le tarif recommandé : indique le motif de l\'ajustement.';if(btn)btn.disabled=false;return;}
+    if(ecartAjout&&ecartAjout.motifRequis&&!motifRem){
+      // Bien visible (première mission réelle, 10/09) : le petit texte rouge seul passait inaperçu.
+      const msg='Écart de '+ecartAjout.pct+' % avec le montant recommandé : choisissez le motif de l\'ajustement.';
+      err.textContent=msg;toast(msg,'warn');
+      const m=document.getElementById('eq-motif');
+      if(m){m.style.outline='2px solid var(--wa)';m.scrollIntoView({block:'center'});m.focus();}
+      if(btn)btn.disabled=false;return;
+    }
     const equipeBody={p_prestation_id:prestationId,p_collaborateur_id:colId,p_fonction:fonc||null,p_notes:notes||null,p_remuneration:rem?Number(rem):null,p_heure_rdv:rdv||null,
       p_montant_recommande:autoPay,p_motif_ajustement:ecartAjout&&ecartAjout.d?motifRem:null,p_motif_detail:document.getElementById('eq-motif-detail')?.value||null,
       // v136 (10/09/2026) : l'opérateur est PRÉVU ; la proposition part quand la Production valide la mission.
