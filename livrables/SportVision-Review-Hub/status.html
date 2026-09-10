@@ -35,7 +35,7 @@
       <thead><tr><th>Brique</th><th>État</th><th>Détail</th></tr></thead>
       <tbody>
         <tr><td>Supabase Review — schéma</td><td><span class="badge badge-ok">OK</span></td><td>551 migrations rejouées chronologiquement, 545 réussies (98,9%), 6 restantes expliquées ci-dessous (aucune ne bloque un parcours de démonstration)</td></tr>
-        <tr><td>Supabase Review — RLS</td><td><span class="badge badge-err">avertissement</span></td><td>1 récursion critique détectée sur <code>profiles</code>/<code>club_members</code>/<code>clubs</code> (voir <a href="permissions.html#ecarts">Permissions</a>) — comparaison structurelle avec la prod identique, à vérifier côté production. Reste des policies testées : conformes.</td></tr>
+        <tr><td>Supabase Review — RLS</td><td><span class="badge badge-ok">OK</span></td><td>Récursion sur <code>profiles</code>/<code>club_members</code>/<code>clubs</code> corrigée en Review (voir <a href="permissions.html#ecarts">Permissions</a>). Migration candidate documentée, <strong>non appliquée à production</strong> — comparaison structurelle avec la prod identique, à vérifier avec prudence côté production avant toute décision.</td></tr>
         <tr><td>Supabase Review — Auth</td><td><span class="badge badge-ok">OK</span></td><td>8 vrais <code>auth.users</code>, lignes métier réelles, testés par vraies requêtes JWT</td></tr>
         <tr><td>Personas</td><td><span class="badge badge-ok">OK</span></td><td>8 personas + club témoin OTHER DEMO FC — détail sur <a href="personas.html">Personas</a></td></tr>
         <tr><td>Second club de contrôle</td><td><span class="badge badge-ok">OK</span></td><td>OTHER DEMO FC — isolation testée et vérifiée pour chaque persona SV Demo FC</td></tr>
@@ -54,9 +54,10 @@
     <h2>Tests RLS — résultat réel (vrais JWT, vraies requêtes REST)</h2>
     <p class="foot-note" style="margin-bottom:10px">Chaque test signe une vraie requête PostgREST avec le <code>access_token</code> obtenu par un vrai <code>signInWithPassword</code> de la persona concernée — jamais une simple vérification d'affichage frontend.</p>
     <div class="section-hint">
-      RLS TESTS<br>
-      Passed : 19<br>
-      Failed : 5 (tous dus à la récursion ci-dessus sur profiles/club_members/clubs — 0 échec de logique métier une fois cette récursion mise de côté)
+      RLS TESTS (après correctif récursion, Review uniquement)<br>
+      Passed : 31<br>
+      Failed : 0<br>
+      <span style="color:var(--text3)">— 24 tests de la matrice initiale (tous passent désormais) + 7 tests anti-élargissement ajoutés pour vérifier qu'aucune persona n'a gagné plus d'accès que prévu suite au correctif.</span>
     </div>
     <table>
       <thead><tr><th>Persona</th><th>Test</th><th>Résultat</th></tr></thead>
@@ -65,7 +66,7 @@
         <tr><td>Camille CM Demo</td><td>Ne voit PAS les équipes d'un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Camille CM Demo</td><td>Peut modifier une équipe de son club</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Camille CM Demo</td><td>Ne peut pas modifier une équipe d'un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
-        <tr><td>Camille CM Demo</td><td>Voit les membres de son club (table <code>club_members</code>)</td><td><span class="badge badge-err">Failed — bloqué par la récursion RLS</span></td></tr>
+        <tr><td>Camille CM Demo</td><td>Voit les membres de son club (table <code>club_members</code>)</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Nicolas Coach Demo</td><td>Voit les équipes de son club</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Nicolas Coach Demo</td><td>Ne voit pas un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Nicolas Coach Demo</td><td>Ne peut pas modifier le club (niveau club)</td><td><span class="badge badge-ok">Passed</span></td></tr>
@@ -76,7 +77,7 @@
         <tr><td>Marie Parent Demo</td><td>Voit l'équipe de son enfant</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Lucas Joueur Demo</td><td>Voit son propre profil</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Lucas Joueur Demo</td><td>Ne voit pas le profil d'un autre enfant</td><td><span class="badge badge-ok">Passed</span></td></tr>
-        <tr><td>Lucas Joueur Demo</td><td>Ne peut pas lire <code>club_members</code> (donnée admin club)</td><td><span class="badge badge-err">Failed — bloqué par la récursion RLS (donc <em>impossible de vérifier</em> le refus attendu, pas une fuite)</span></td></tr>
+        <tr><td>Lucas Joueur Demo</td><td>Ne peut pas lire <code>club_members</code> (donnée admin club)</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Pierre Président Demo</td><td>Voit toutes les équipes de son club</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Pierre Président Demo</td><td>Peut modifier une équipe de son club</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Pierre Président Demo</td><td>Ne peut pas toucher formule/plan (réservé staff SportVision)</td><td><span class="badge badge-ok">Passed</span></td></tr>
@@ -84,10 +85,18 @@
         <tr><td>Diane Dirigeante Demo</td><td>Voit les équipes de son club</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Diane Dirigeante Demo</td><td>Ne voit pas un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
         <tr><td>Alex Admin Demo</td><td>Voit TOUS les clubs (y compris OTHER DEMO FC)</td><td><span class="badge badge-ok">Passed</span></td></tr>
-        <tr><td>Alex Admin Demo</td><td>Voit la table <code>clubs</code> entière</td><td><span class="badge badge-err">Failed — bloqué par la récursion RLS</span></td></tr>
+        <tr><td>Alex Admin Demo</td><td>Voit la table <code>clubs</code> entière</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td colspan="3" style="color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding-top:14px">Tests anti-élargissement (ajoutés après le correctif)</td></tr>
+        <tr><td>Nicolas Coach Demo</td><td>Coach (pas bureau) sur <code>club_members</code> de son club → doit voir SEULEMENT sa propre ligne, pas les 5 membres</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Sarah Coach Demo</td><td>Idem — coach non-bureau, une seule ligne visible</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Sarah Coach Demo</td><td>Ne voit pas les membres d'un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Diane Dirigeante Demo</td><td>Bureau (<code>membre_bureau</code>) → voit bien TOUS les membres (5), comme prévu avant la casse</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Pierre Président Demo</td><td>Voit TOUS les membres de son club (5)</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Marie Parent Demo</td><td>Ne peut pas lire <code>club_members</code> (aucun droit club)</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Camille CM Demo</td><td>Voit les 5 membres via son chemin CM/staff (pas via la policy bureau)</td><td><span class="badge badge-ok">Passed</span></td></tr>
       </tbody>
     </table>
-    <p class="foot-note">Détail complet (attendu / obtenu / policy probable) pour chaque échec : voir le constat « Récursion RLS » sur <a href="permissions.html#ecarts">Permissions</a>.</p>
+    <p class="foot-note">Détail complet de la cause, du correctif et de la migration candidate (non appliquée en production) : <a href="permissions.html#ecarts">Permissions</a> et <code>production-candidate-patches/</code>.</p>
 
     <h2>Les 551 migrations — détail des 6 non reconstruites</h2>
     <table>
