@@ -159,7 +159,12 @@ async function brancherLocal(ctx) {
     const envoyes = { ...route.request().headers() };
     if (envoyes.origin) envoyes.origin = LOCAL;
     try {
-      const rep = await route.fetch({ url, headers: envoyes, maxRedirects: 0 });
+      // Une seconde tentative sur coupure réseau (11/09/2026) : `next start` referme ses connexions
+      // inactives au bout de 5 s, et une requête qui tombe sur une connexion en train de se fermer
+      // revient en ECONNRESET. Trois passages de suite ont perdu un parcours entier pour cette
+      // seule raison, sans rapport avec l'application. Une vraie panne du serveur échoue deux fois.
+      const rep = await route.fetch({ url, headers: envoyes, maxRedirects: 0 })
+        .catch((e) => (/ECONNRESET|socket hang up/i.test(String(e)) ? route.fetch({ url, headers: envoyes, maxRedirects: 0 }) : Promise.reject(e)));
       const recus = { ...rep.headers() };
       if (recus.location) recus.location = recus.location.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, CP);
       // Une redirection servie par route.fulfill est suivie par le navigateur SANS repasser par
