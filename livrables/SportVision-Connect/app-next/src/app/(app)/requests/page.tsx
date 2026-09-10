@@ -14,7 +14,16 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { cn } from "@/lib/cn";
-import { cancelClubRequest, fetchClubRequests } from "@/lib/data/club/requests";
+import {
+  cancelClubRequest,
+  fetchClubRequests,
+  fetchContenusDesDemandes,
+  statutBrutDemande,
+  transformerDemandeEnContenu,
+  type ContenuDeDemande,
+} from "@/lib/data/club/requests";
+import { etatParcours } from "@/lib/communication/parcours";
+import { ParcoursCommunication } from "@/components/communication/ParcoursCommunication";
 import { cancelOrgRequest, fetchOrgRequests } from "@/lib/data/shared/requests";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -114,6 +123,17 @@ export default function RequestsPage() {
   }, [ctx.organization.id, isGenericOrg]);
 
   useEffect(() => loadRequests(), [loadRequests]);
+
+  // Le contenu né de chaque demande (v125) : c'est ce qui relie « Demandes » et le Centre
+  // communication. Un refus (rôle qui n'opère pas le club) laisse simplement la carte vide.
+  const [contenusParDemande, setContenusParDemande] = useState<Map<string, ContenuDeDemande>>(new Map());
+  const chargerContenus = useCallback(() => {
+    if (isGenericOrg) return;
+    fetchContenusDesDemandes(createClient(), ctx.organization.id)
+      .then(setContenusParDemande)
+      .catch(() => setContenusParDemande(new Map()));
+  }, [isGenericOrg, ctx.organization.id]);
+  useEffect(() => chargerContenus(), [chargerContenus]);
 
   if (!allowed) return <LockedModule title="Demandes de visuels" />;
 
@@ -500,6 +520,19 @@ export default function RequestsPage() {
             <div className="mt-4">
               <Badge tone={VISUAL_REQUEST_STATUS_TONE[detailRequest.status]}>{detailRequest.status}</Badge>
             </div>
+            {!isGenericOrg && (
+              <SuiviDemande
+                demandeId={detailRequest.id}
+                statut={detailRequest.status}
+                titreParDefaut={`${VISUAL_TYPE_LABELS[detailRequest.visualType]}${detailRequest.teamName ? ` — ${detailRequest.teamName}` : ""}`}
+                contenu={contenusParDemande.get(detailRequest.id) ?? null}
+                peutTransformer={estCmSportVision}
+                onTransforme={() => {
+                  chargerContenus();
+                  loadRequests();
+                }}
+              />
+            )}
             <dl className="mt-4 flex flex-col gap-2.5 text-[13px]">
               <Row label="Équipe" value={detailRequest.teamName ?? "—"} />
               <Row label="Urgence" value={URGENCY_META[detailRequest.urgency].label} />
@@ -554,6 +587,105 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-3 border-b border-divider pb-2">
       <dt className="font-bold text-text-soft">{label}</dt>
       <dd className="text-right text-text">{value}</dd>
+    </div>
+  );
+}
+
+const PLATEFORMES = ["Instagram", "Facebook", "TikTok", "LinkedIn", "YouTube", "Autre"];
+
+/** Le suivi d'une demande : la frise de son parcours, et le geste qui la fait avancer. Pour le CM,
+ *  « Transformer en contenu » crée le brouillon relié à la demande ; ce contenu apparaît aussitôt
+ *  dans le Centre communication. Un seul parcours, pas deux écrans à tenir à jour. */
+function SuiviDemande({
+  demandeId,
+  statut,
+  titreParDefaut,
+  contenu,
+  peutTransformer,
+  onTransforme,
+}: {
+  demandeId: string;
+  statut: string;
+  titreParDefaut: string;
+  contenu: ContenuDeDemande | null;
+  peutTransformer: boolean;
+  onTransforme: () => void;
+}) {
+  const [ouvert, setOuvert] = useState(false);
+  const [titre, setTitre] = useState(titreParDefaut);
+  const [date, setDate] = useState("");
+  const [plateforme, setPlateforme] = useState("Instagram");
+  const [envoi, setEnvoi] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  async function transformer() {
+    setEnvoi(true);
+    setErreur(null);
+    try {
+      await transformerDemandeEnContenu(createClient(), demandeId, { titre, datePrevue: date, plateforme: plateforme.toLowerCase() });
+      setOuvert(false);
+      onTransforme();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "La transformation a échoué.");
+    } finally {
+      setEnvoi(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 flex flex-col gap-3">
+      <ParcoursCommunication etat={etatParcours(statutBrutDemande(statut), contenu?.statut ?? null)} />
+      {contenu ? (
+        <div className="rounded-xl border border-border bg-surface-alt px-3.5 py-3 text-[12.5px]">
+          <div className="font-bold">{contenu.titre}</div>
+          <div className="mt-0.5 text-text-soft">
+            Contenu relié à cette demande{contenu.datePrevue ? ` · prévu le ${new Date(contenu.datePrevue).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}` : ""}
+          </div>
+          <Link href={`/communication/publications/${contenu.contenuId}`} className="mt-1.5 inline-block font-bold text-info-fg hover:underline">
+            Ouvrir dans le Centre communication →
+          </Link>
+        </div>
+      ) : peutTransformer && statut !== "Refusée" ? (
+        !ouvert ? (
+          <Button className="w-full" onClick={() => setOuvert(true)}>
+            Transformer en contenu
+          </Button>
+        ) : (
+          <div className="flex flex-col gap-2.5 rounded-xl border border-border-strong p-3.5">
+            <label className="flex flex-col gap-1 text-[12px] font-bold text-text-soft">
+              Titre du contenu
+              <input value={titre} onChange={(e) => setTitre(e.target.value)} className="h-10 rounded-lg border border-border-strong bg-input-bg px-3 text-[13.5px] font-normal text-text" />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1 text-[12px] font-bold text-text-soft">
+                Date prévue
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10 rounded-lg border border-border-strong bg-input-bg px-3 text-[13px] font-normal text-text" />
+              </label>
+              <label className="flex flex-col gap-1 text-[12px] font-bold text-text-soft">
+                Plateforme
+                <select value={plateforme} onChange={(e) => setPlateforme(e.target.value)} className="h-10 rounded-lg border border-border-strong bg-input-bg px-2 text-[13px] font-normal text-text">
+                  {PLATEFORMES.map((p) => (
+                    <option key={p}>{p}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="text-[11.5px] text-text-faint">
+              Le contenu naît en brouillon, relié à cette demande, et apparaît dans le Centre communication. La demande passe
+              « En traitement ».
+            </p>
+            {erreur && <p className="text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
+            <div className="flex gap-2">
+              <Button loading={envoi} onClick={transformer}>
+                Créer le contenu
+              </Button>
+              <Button variant="secondary" disabled={envoi} onClick={() => setOuvert(false)}>
+                Annuler
+              </Button>
+            </div>
+          </div>
+        )
+      ) : null}
     </div>
   );
 }

@@ -31,15 +31,19 @@ import {
   marquerInvitationEnvoyee,
   messageErreurInvitation,
   preparerInvitation,
+  definirFonctionInvitation,
   type InvitationClub,
 } from "@/lib/data/club/invitations";
 
 /** Les rôles qu'un opérateur de club peut accorder par ce chemin. `admin` en est absent : on
  *  prépare des encadrants et des dirigeants, on ne fabrique pas d'administrateur de club — la base
  *  le refuse d'ailleurs (contrainte de `club_invitations.role`). */
+// « Coach adjoint » (10/09/2026, décision de Fouka) : un libellé, pas un rôle. L'invitation part
+// avec le rôle `coach` — mêmes droits sur l'équipe — et la fonction « adjoint » à côté.
 const ROLES = [
   { value: "coach", label: "Coach" },
-  { value: "resp_equipe", label: "Responsable d'équipe" },
+  { value: "coach_adjoint", label: "Coach adjoint" },
+  { value: "resp_equipe", label: "Dirigeant (responsable d'équipe)" },
   { value: "directeur_sportif", label: "Directeur sportif" },
 ] as const;
 
@@ -92,16 +96,18 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
     setOccupe(true);
     setErreur(null);
     const supabase = createClient();
+    const adjoint = role === "coach_adjoint";
     preparerInvitation(supabase, {
       clubId,
       email: email.trim(),
-      role,
+      role: adjoint ? "coach" : role,
       prenom: prenom.trim(),
       nom: nom.trim(),
       telephone: telephone.trim() || undefined,
       teams: equipe ? [equipe] : [],
     })
-      .then((inv) => {
+      .then(async (inv) => {
+        if (adjoint) await definirFonctionInvitation(supabase, inv.id, "adjoint");
         setInvitation(inv);
         onInvited();
       })

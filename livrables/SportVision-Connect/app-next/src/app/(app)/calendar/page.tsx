@@ -39,11 +39,10 @@ import {
   CREATABLE_EVENT_TYPE_MAP,
   createClubCalendarEvent,
   fetchClubCalendrier,
-  definirCouverture,
-  annulerCouverture,
-  TYPE_COUVERTURE_LABELS,
-  type TypeCouverture,
+  fetchPublicationsCalendrier,
+  fetchSouhaitsParEvenement,
 } from "@/lib/data/club/calendar";
+import { Couverture } from "@/components/calendar/Couverture";
 import { fetchOrgCalendarEvents } from "@/lib/data/shared/calendar-events";
 import { createClient } from "@/lib/supabase/client";
 import { parseDateOnly } from "@/lib/date-only";
@@ -192,9 +191,19 @@ export default function CalendarPage() {
     let cancelled = false;
     setLoadError(false);
     const supabase = createClient();
+    // 10/09/2026 — Au calendrier d'un club s'ajoutent les demandes « À couvrir » (posées sur
+    // leur événement) et les publications prévues (filtre Communication). Les deux sont des
+    // compléments : un refus ou une panne ne doit jamais vider le calendrier lui-même.
     const fetcher = isGenericOrg
       ? fetchOrgCalendarEvents(supabase, calendarOrgId)
-      : fetchClubCalendrier(supabase, calendarOrgId, fenetre.du, fenetre.au);
+      : Promise.all([
+          fetchClubCalendrier(supabase, calendarOrgId, fenetre.du, fenetre.au),
+          fetchSouhaitsParEvenement(supabase, calendarOrgId).catch(() => new Map()),
+          fetchPublicationsCalendrier(supabase, calendarOrgId, fenetre.du, fenetre.au).catch(() => [] as CalendarEvent[]),
+        ]).then(([lignes, souhaits, publications]) => [
+          ...lignes.map((e) => (souhaits.has(e.id) ? { ...e, wish: souhaits.get(e.id) } : e)),
+          ...publications,
+        ]);
     fetcher
       .then((rows) => {
         if (!cancelled) setEvents(rows);
@@ -510,7 +519,16 @@ export default function CalendarPage() {
         />
       )}
 
-      {selectedEvent && <EventDetailPanel event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
+      {selectedEvent && (
+        <EventDetailPanel
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          onChanged={() => {
+            setSelectedEvent(null);
+            loadEvents();
+          }}
+        />
+      )}
       {addOpen && <AddEventModal onClose={() => setAddOpen(false)} onCreate={handleCreateEvent} teamNames={availableTeams} />}
       {importOpen && calendarOrgId && (
         <ImportMatchesModal
@@ -815,6 +833,11 @@ function DayPanel({
                     </span>
                     {e.score && <span className="flex-none text-[13px] font-extrabold tabular-nums">{e.score}</span>}
                     {aCouverture(e) && <span className="flex-none text-[12px]" title="Couverture SportVision">📸</span>}
+                    {!aCouverture(e) && e.wish && (
+                      <span className="flex-none rounded-full border border-brand-violet/60 px-1 text-[9.5px] font-extrabold text-accent-fg" title="À couvrir par SportVision">
+                        À couvrir
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -901,6 +924,11 @@ function DayView({ reference, events, onSelect }: { reference: Date; events: Cal
                 📸
               </span>
             )}
+            {!aCouverture(e) && e.wish && (
+              <span className="flex-none rounded-full border border-brand-violet/60 px-1.5 text-[10.5px] font-extrabold text-accent-fg" title="À couvrir par SportVision">
+                À couvrir
+              </span>
+            )}
             {e.score && <span className="flex-none text-[15px] font-extrabold tabular-nums">{e.score}</span>}
             {etat && (
               <Badge tone={etat.ton === "success" ? "success" : etat.ton === "danger" ? "danger" : "warning"}>
@@ -911,104 +939,6 @@ function DayView({ reference, events, onSelect }: { reference: Date; events: Cal
         );
       })}
     </Card>
-  );
-}
-
-/** Le geste complet sur la carte : décider, choisir le type, confirmer. Quelques secondes.
- *
- *  Réservé au CM SportVision : le président ne commande pas une couverture déjà incluse dans son
- *  accompagnement, c'est une décision de SportVision. */
-function Couverture({ evenement, onFait }: { evenement: CalendarEvent; onFait: () => void }) {
-  const { ctx } = useSession();
-  const [ouvert, setOuvert] = useState(false);
-  const [envoi, setEnvoi] = useState(false);
-  const [erreur, setErreur] = useState<string | null>(null);
-  const peutDecider = ctx.membership.role === "external_cm";
-
-  async function choisir(type: TypeCouverture) {
-    setEnvoi(true);
-    setErreur(null);
-    try {
-      await definirCouverture(createClient(), evenement.id, type);
-      setOuvert(false);
-      onFait();
-    } catch (e) {
-      setErreur(e instanceof Error ? e.message : "La couverture n'a pas pu être enregistrée.");
-    } finally {
-      setEnvoi(false);
-    }
-  }
-
-  async function retirer() {
-    setEnvoi(true);
-    setErreur(null);
-    try {
-      await annulerCouverture(createClient(), evenement.id);
-      onFait();
-    } catch (e) {
-      setErreur(e instanceof Error ? e.message : "La couverture n'a pas pu être retirée.");
-    } finally {
-      setEnvoi(false);
-    }
-  }
-
-  if (evenement.coverage) {
-    return (
-      <span className="mt-1 flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-success-bg px-2.5 py-1 text-[11.5px] font-bold text-success-fg">
-          SportVision présent
-        </span>
-        {peutDecider && evenement.coverage === "prevu" && (
-          <button
-            type="button"
-            disabled={envoi}
-            onClick={(ev) => { ev.stopPropagation(); void retirer(); }}
-            className="text-[11.5px] font-bold text-text-faint hover:text-danger-fg disabled:opacity-60"
-          >
-            Retirer
-          </button>
-        )}
-        {evenement.coverage === "mission_creee" && (
-          <span className="text-[11.5px] text-text-soft">équipe affectée</span>
-        )}
-        {erreur && <span className="block w-full text-[11.5px] font-bold text-danger-fg">{erreur}</span>}
-      </span>
-    );
-  }
-
-  if (!peutDecider) {
-    return <span className="mt-0.5 block text-[11.5px] font-bold text-text-faint">Couverture SportVision : à décider</span>;
-  }
-
-  if (!ouvert) {
-    return (
-      <span className="mt-1 block">
-        <Button
-          variant="secondary"
-          className="h-9 w-full px-3 text-[12.5px] sm:w-auto"
-          onClick={(ev) => { ev.stopPropagation(); setOuvert(true); }}
-        >
-          SportVision sera présent
-        </Button>
-      </span>
-    );
-  }
-
-  return (
-    <span className="mt-1 block" onClick={(ev) => ev.stopPropagation()}>
-      <span className="block text-[11.5px] font-bold text-text-soft">Comment SportVision couvrira cet événement ?</span>
-      <span className="mt-1.5 flex flex-wrap gap-1.5">
-        {(Object.keys(TYPE_COUVERTURE_LABELS) as TypeCouverture[]).map((t) => (
-          <Button key={t} variant="secondary" className="h-9 px-3 text-[12.5px]" loading={envoi} onClick={() => void choisir(t)}>
-            {TYPE_COUVERTURE_LABELS[t]}
-          </Button>
-        ))}
-        <Button variant="tertiary" className="h-9 px-3 text-[12.5px]" onClick={() => setOuvert(false)}>
-          Annuler
-        </Button>
-      </span>
-      {erreur && <span className="mt-1 block text-[11.5px] font-bold text-danger-fg">{erreur}</span>}
-    </span>
   );
 }
 

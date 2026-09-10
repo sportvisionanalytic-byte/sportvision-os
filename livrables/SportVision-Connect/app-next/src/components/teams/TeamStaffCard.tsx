@@ -104,7 +104,9 @@ export function TeamStaffCard({ clubId, teamName, headCoachName, members, canMan
               className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-sunken px-3 py-2.5"
             >
               <span className="flex-1 text-[13.5px] font-bold">{nomAffiche(m)}</span>
-              <span className="text-[12px] font-semibold text-text-soft">{ROLE_LABELS[m.role] ?? m.role}</span>
+              <span className="text-[12px] font-semibold text-text-soft">
+                {m.role === "coach" && m.fonction === "adjoint" ? "Coach adjoint" : ROLE_LABELS[m.role] ?? m.role}
+              </span>
               <Badge tone={STATUT_MEMBRE[m.status].ton}>{STATUT_MEMBRE[m.status].libelle}</Badge>
               {canManage && (
                 <button

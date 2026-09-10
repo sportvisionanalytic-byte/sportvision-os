@@ -376,3 +376,49 @@ export async function annulerCouverture(supabase: SupabaseClient, refEvenement: 
   const { error } = await supabase.rpc("cm_annuler_couverture", { p_ref: refEvenement });
   if (error) throw new Error(error.message);
 }
+
+// ── « À couvrir » et publications prévues (v124, v125) ──────────────────────────────────────
+
+/** Les demandes de couverture en cours, rangées par référence d'événement du calendrier
+ *  (`match:<id>`, `evenement:<id>`), pour les poser sur les événements déjà chargés. */
+export async function fetchSouhaitsParEvenement(
+  supabase: SupabaseClient,
+  clubId: string,
+): Promise<Map<string, NonNullable<CalendarEvent["wish"]>>> {
+  const { data, error } = await supabase.rpc("club_souhaits_couverture", { p_club_id: clubId });
+  if (error) throw error;
+  const carte = new Map<string, NonNullable<CalendarEvent["wish"]>>();
+  for (const w of (data ?? []) as {
+    id: string; match_id: string | null; calendar_event_id: string | null; status: string; requested_coverage_type: string; source: string | null;
+  }[]) {
+    if (["completed"].includes(w.status)) continue;
+    const ref = w.match_id ? `match:${w.match_id}` : w.calendar_event_id ? `evenement:${w.calendar_event_id}` : null;
+    if (ref) carte.set(ref, { id: w.id, status: w.status, type: w.requested_coverage_type, source: w.source });
+  }
+  return carte;
+}
+
+/** Les publications prévues du club, comme événements « Publication » du calendrier. Réservé à
+ *  qui opère le club : pour les autres, la base refuse et le calendrier n'en affiche aucune. */
+export async function fetchPublicationsCalendrier(
+  supabase: SupabaseClient,
+  clubId: string,
+  du: string,
+  au: string,
+): Promise<CalendarEvent[]> {
+  const { data, error } = await supabase.rpc("club_contenus_calendrier", { p_club_id: clubId, p_du: du, p_au: au });
+  if (error) throw error;
+  return ((data ?? []) as { id: string; titre: string; date_prevue: string; statut: string; plateforme: string | null; equipe: string | null }[]).map(
+    (c) => ({
+      id: `publication:${c.id}`,
+      organizationId: clubId,
+      kind: "publication" as const,
+      title: c.titre,
+      startsAt: `${c.date_prevue}T00:00:00`,
+      allDay: true,
+      teamName: c.equipe ?? undefined,
+      status: c.statut,
+      location: c.plateforme ?? undefined,
+    }),
+  );
+}

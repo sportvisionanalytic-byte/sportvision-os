@@ -267,6 +267,8 @@ export interface EncadrantFiche {
   nom: string;
   email?: string;
   role: string;
+  /** Coach principal ou adjoint (v124) : un libellé. */
+  fonction?: "principal" | "adjoint" | null;
   statut: StatutEncadrementFiche;
   envoyee_at?: string | null;
   ouverte_at?: string | null;

@@ -15,6 +15,7 @@ import { useSession } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/client";
 import { fetchCouvertureOperateurs, type OperateurAffecte } from "@/lib/data/club/calendar";
 import { cn } from "@/lib/cn";
+import { Couverture } from "./Couverture";
 
 import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Fiche latérale d'un événement du calendrier — voir ACTIONS.md § 15.
@@ -33,6 +34,8 @@ import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 interface EventDetailPanelProps {
   event: CalendarEvent;
   onClose: () => void;
+  /** Appelé après un geste qui change l'événement (couverture décidée ou demandée). */
+  onChanged?: () => void;
 }
 
 /** Un écusson, ou les initiales à sa place. Le bloc garde la même taille dans les deux cas : une
@@ -65,7 +68,7 @@ function Rubrique({ titre, children }: { titre: string; children: React.ReactNod
   );
 }
 
-export function EventDetailPanel({ event, onClose }: EventDetailPanelProps) {
+export function EventDetailPanel({ event, onClose, onChanged }: EventDetailPanelProps) {
   // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
   useFermetureEchap(true, onClose);
   const { ctx } = useSession();
@@ -189,6 +192,13 @@ export function EventDetailPanel({ event, onClose }: EventDetailPanelProps) {
             )}
           </div>
         </Rubrique>
+
+        {/* 10/09/2026 — Le geste « À couvrir par SportVision » vit aussi ici : il n'existait que
+            dans la vue Liste, alors que le CM travaille surtout en Semaine. Une présence déjà
+            décidée garde le bloc détaillé ci-dessous. */}
+        {!event.coverage && event.kind !== "publication" && (
+          <Couverture evenement={event} onFait={() => onChanged?.()} />
+        )}
 
         {/* Le bloc SportVision n'apparaît que s'il y a quelque chose à dire. Un « Aucune couverture »
             sur chacun des 80 entraînements de la semaine serait du bruit, pas de l'information. */}

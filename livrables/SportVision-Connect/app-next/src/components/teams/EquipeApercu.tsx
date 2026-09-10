@@ -202,7 +202,7 @@ export function EncadrementInvitations({
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-bold">{x.nom}</span>
                 <span className="block truncate text-[11.5px] text-text-soft">
-                  {ROLE_ENCADRANT[x.role] ?? x.role}
+                  {x.role === "coach" && x.fonction === "adjoint" ? "Coach adjoint" : ROLE_ENCADRANT[x.role] ?? x.role}
                   {x.email && x.email !== x.nom ? ` · ${x.email}` : ""}
                 </span>
               </span>

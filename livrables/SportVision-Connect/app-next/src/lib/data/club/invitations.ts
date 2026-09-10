@@ -366,3 +366,15 @@ export async function declineClubInvitation(supabase: SupabaseClient, clubId: st
   const { error } = await supabase.rpc("decline_club_invitation", { p_club_id: clubId });
   if (error) throw error;
 }
+
+/** Coach principal ou adjoint (v124) : un libellé posé sur l'invitation, recopié sur le membre à
+ *  l'acceptation. Il ne change aucun droit. */
+export async function definirFonctionInvitation(
+  supabase: SupabaseClient,
+  invitationId: string,
+  fonction: "principal" | "adjoint" | null,
+): Promise<void> {
+  const { data, error } = await supabase.from("club_invitations").update({ fonction }).eq("id", invitationId).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Modification refusée : droits insuffisants sur cette invitation.");
+}

@@ -98,13 +98,24 @@ test("les libellés raccourcis restent lisibles par un humain", () => {
   assert.equal(libelleCourt(ev("match", "19:00", "U16 D1", { opponent: "Montfermeil" })), "Montfermeil");
 });
 
-test("« À couvrir » ne propose que les matchs sans décision, jamais 80 entraînements", () => {
+test("« À couvrir » ne propose que ce qui a été marqué et attend sa présence", () => {
+  const demande = { id: "w", status: "wished", type: "communication", source: "cm_initiated" };
   const matchNu = ev("match", "15:00", "U18 R3", { opponent: "Argenteuil" });
-  const matchCouvert = ev("match", "15:00", "Séniors R2", { opponent: "Meaux", coverage: "prevu" });
+  const matchMarque = ev("match", "15:00", "U16 D1", { opponent: "Bobigny", wish: demande });
+  const matchCouvert = ev("match", "15:00", "Séniors R2", { opponent: "Meaux", coverage: "prevu", wish: demande });
   const seance = ev("training", "18:00", "U10 ELITE");
-  assert.equal(passeVueRapide(matchNu, "a_couvrir"), true);
+  // Un match non marqué n'est PAS « à couvrir » : couvrir est un choix, pas une tâche due.
+  assert.equal(passeVueRapide(matchNu, "a_couvrir"), false);
+  assert.equal(passeVueRapide(matchMarque, "a_couvrir"), true);
+  // Une fois la présence décidée, il quitte « À couvrir » pour « SportVision ».
   assert.equal(passeVueRapide(matchCouvert, "a_couvrir"), false);
+  assert.equal(passeVueRapide(matchCouvert, "sportvision"), true);
   assert.equal(passeVueRapide(seance, "a_couvrir"), false);
+});
+
+test("« Communication » ne retient que les publications prévues", () => {
+  assert.equal(passeVueRapide(ev("publication", "00:00", "Affiche tournoi U12"), "communication"), true);
+  assert.equal(passeVueRapide(ev("match", "15:00", "U18 R3", { opponent: "Argenteuil" }), "communication"), false);
 });
 
 test("« Résultats » ne retient que ce qui porte un score", () => {

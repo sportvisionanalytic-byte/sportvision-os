@@ -311,7 +311,7 @@ export function couvertureLisible(e: CalendarEvent): { label: string; icone: str
  *
  *  Elles ne remplacent pas les filtres équipe/type, elles évitent d'avoir à les combiner à la
  *  main pour retrouver une intention courante (« qu'est-ce qu'on doit couvrir ? »). */
-export type VueRapide = "tout" | "matchs" | "entrainements" | "sportvision" | "a_couvrir" | "resultats";
+export type VueRapide = "tout" | "matchs" | "entrainements" | "sportvision" | "a_couvrir" | "communication" | "resultats";
 
 export const VUES_RAPIDES: { id: VueRapide; label: string }[] = [
   { id: "tout", label: "Tout" },
@@ -319,6 +319,7 @@ export const VUES_RAPIDES: { id: VueRapide; label: string }[] = [
   { id: "entrainements", label: "Entraînements" },
   { id: "sportvision", label: "SportVision" },
   { id: "a_couvrir", label: "À couvrir" },
+  { id: "communication", label: "Communication" },
   { id: "resultats", label: "Résultats" },
 ];
 
@@ -331,9 +332,12 @@ export function passeVueRapide(e: CalendarEvent, vue: VueRapide): boolean {
     case "sportvision":
       return aCouverture(e);
     case "a_couvrir":
-      // Un match sans décision de couverture : c'est exactement la liste de travail de la
-      // production. Un entraînement non couvert n'y a pas sa place, on ne couvre pas 80 séances.
-      return e.kind === "match" && !aCouverture(e);
+      // 10/09/2026 — « À couvrir » = ce qui a été MARQUÉ à couvrir et attend encore sa présence.
+      // Avant, ce filtre listait tous les matchs sans couverture (425 chez SF Villemomble), soit
+      // une liste de tâches qui n'en sont pas : couvrir un match est un choix, pas un dû.
+      return Boolean(e.wish) && !aCouverture(e);
+    case "communication":
+      return e.kind === "publication";
     case "resultats":
       return Boolean(e.score);
     default:

@@ -6,7 +6,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // (priorité remontée par Fouka en post-audit, backend déjà complet mais sans écran depuis 4
 // jours) — voir create_coverage_wishes (RPC, gère l'idempotence bulk et les notifications CM).
 
-export type CoverageType = "photo" | "video" | "photo_video" | "interview" | "autre";
+// « communication » ajouté le 10/09/2026 (v124) : couvrir un événement en communication, sans
+// présence sur le terrain.
+export type CoverageType = "photo" | "video" | "photo_video" | "interview" | "communication" | "autre";
 export type CoveragePriority = "forte" | "normale" | "optionnelle";
 export type CoverageWishStatus =
   | "wished"
@@ -23,6 +25,7 @@ export const COVERAGE_TYPE_LABELS: Record<CoverageType, string> = {
   video: "Vidéo",
   photo_video: "Photo + vidéo",
   interview: "Interview / coulisses",
+  communication: "Communication",
   autre: "Autre",
 };
 

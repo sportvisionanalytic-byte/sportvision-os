@@ -62,4 +62,7 @@ export interface CalendarEvent {
   /** Statut de la présence SportVision existante ('prevu', 'mission_creee'), sinon absent.
    *  En lecture seule pour l'instant : le clic « SportVision sera présent » arrive en vague C. */
   coverage?: string;
+  /** Une demande de couverture en attente de l'OS (`coverage_wishes`, v124) : l'événement est
+   *  « À couvrir », sans présence encore décidée. */
+  wish?: { id: string; status: string; type: string; source: string | null };
 }

@@ -114,3 +114,47 @@ export async function cancelClubRequest(supabase: SupabaseClient, requestId: str
   if (error || !data) throw error ?? new Error("Annulation impossible.");
   return toVisualRequest(data as ClubRequestRow, organizationId);
 }
+
+// ── Le parcours Demande → Contenu (v125, 10/09/2026) ────────────────────────────────────────
+
+/** Le statut brut d'une demande, retrouvé depuis son libellé affiché. */
+export function statutBrutDemande(libelle: string): string {
+  return Object.entries(STATUS_MAP).find(([, v]) => v === libelle)?.[0] ?? "recues";
+}
+
+export interface ContenuDeDemande {
+  contenuId: string;
+  titre: string;
+  statut: string;
+  datePrevue: string | null;
+}
+
+/** Pour chaque demande du club transformée, son contenu et le statut de celui-ci. Réservé à qui
+ *  opère le club : pour les autres, la base refuse et la carte reste vide. */
+export async function fetchContenusDesDemandes(supabase: SupabaseClient, clubId: string): Promise<Map<string, ContenuDeDemande>> {
+  const { data, error } = await supabase.rpc("club_demandes_contenus", { p_club_id: clubId });
+  if (error) throw error;
+  return new Map(
+    ((data ?? []) as { request_id: string; contenu_id: string; titre: string; statut: string; date_prevue: string | null }[]).map((r) => [
+      r.request_id,
+      { contenuId: r.contenu_id, titre: r.titre, statut: r.statut, datePrevue: r.date_prevue },
+    ]),
+  );
+}
+
+/** « Transformer en contenu » : un brouillon relié à la demande, qui passe en traitement. Une
+ *  demande déjà transformée rend son contenu existant — jamais un doublon. */
+export async function transformerDemandeEnContenu(
+  supabase: SupabaseClient,
+  requestId: string,
+  input: { titre?: string; datePrevue?: string; plateforme?: string },
+): Promise<string> {
+  const { data, error } = await supabase.rpc("transformer_demande_en_contenu", {
+    p_request_id: requestId,
+    p_titre: input.titre?.trim() || null,
+    p_date_prevue: input.datePrevue || null,
+    p_plateforme: input.plateforme || null,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}

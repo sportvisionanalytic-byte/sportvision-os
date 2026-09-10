@@ -59,6 +59,8 @@ export interface OrgUser {
   invitedAt?: string;
   /** club_members.telephone (19/08/2026, "Organigramme" — settings/organization/page.tsx). */
   phone?: string;
+  /** Coach principal ou adjoint (club_members.fonction, v124) : un libellé, aucun droit. */
+  fonction?: "principal" | "adjoint";
 }
 
 export const ROLE_LABELS: Record<string, string> = {
