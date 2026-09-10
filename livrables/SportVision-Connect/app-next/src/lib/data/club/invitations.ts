@@ -114,6 +114,16 @@ export async function peutOpererClub(supabase: SupabaseClient, clubId: string): 
   return data === true;
 }
 
+/** La question que pose le trigger `protect_sensitive_club_member_fields` (v114) avant de laisser
+ *  toucher à la ligne d'un administrateur, d'un président ou d'un CM externe : l'utilisateur
+ *  est-il l'administrateur du club AU SENS STRICT (`club_members.role = 'admin'`) ? Ni le
+ *  président, ni le CM délégué ne le sont, par décision du 10/09/2026. */
+export async function administreStrictementLeClub(supabase: SupabaseClient, clubId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("is_real_club_admin", { target_club_id: clubId });
+  if (error) return false;
+  return data === true;
+}
+
 export async function fetchClubInvitations(
   supabase: SupabaseClient,
   clubId: string,

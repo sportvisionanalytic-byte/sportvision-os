@@ -11,6 +11,7 @@ import { fetchClubMembers, setClubMemberStatus } from "@/lib/data/club/users";
 import {
   fetchClubInvitations,
   peutOpererClub,
+  administreStrictementLeClub,
   revoquerInvitation,
   envoyerInvitationParEmail,
   buildInvitationUrl,
@@ -83,6 +84,7 @@ export default function UsersPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   // `null` tant que la base n'a pas répondu : ni actions, ni message d'interdiction entre-temps.
   const [peutGerer, setPeutGerer] = useState<boolean | null>(null);
+  const [proprietaire, setProprietaire] = useState(false);
   const [erreurAction, setErreurAction] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -108,6 +110,7 @@ export default function UsersPage() {
     }
     const supabase = createClient();
     peutOpererClub(supabase, ctx.organization.id).then(setPeutGerer);
+    administreStrictementLeClub(supabase, ctx.organization.id).then(setProprietaire);
     fetchClubInvitations(supabase, ctx.organization.id)
       .then(setInvitations)
       .catch(() => setInvitations([]));
@@ -322,6 +325,12 @@ export default function UsersPage() {
             // 09/08/2026 (migration-connect-v15-fix-club-admin-self-demote.sql, exécutée) — un
             // appel API direct qui contournerait ce masquage échoue désormais aussi.
             const isSelf = user.id === ctx.user.id;
+            // 10/09/2026 — Un administrateur, un président ou un CM externe ne se désactive que par
+            // l'administrateur du club au sens strict (v114). Le président et le CM voyaient le
+            // bouton sur la ligne de l'administrateur, et la base le refusait derrière un
+            // « Action impossible, réessayez » : réessayer n'y aurait rien changé.
+            const rolePrivilegie = user.role === "admin" || user.role === "president" || user.role === "external_cm";
+            const peutAgirSurLigne = isAdmin && (!isClub || !rolePrivilegie || proprietaire);
             return (
               <div
                 key={user.id}
@@ -351,7 +360,7 @@ export default function UsersPage() {
                 {isSelf ? (
                   <span className="w-[92px] flex-none text-center text-[11.5px] font-semibold text-text-faint">Vous</span>
                 ) : (
-                  isAdmin && (
+                  peutAgirSurLigne && (
                     <Button
                       variant="secondary"
                       className="h-8 flex-none px-3 text-[12px]"
