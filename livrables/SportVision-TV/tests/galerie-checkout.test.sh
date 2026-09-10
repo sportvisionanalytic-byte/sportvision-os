@@ -45,18 +45,33 @@ done
 sql "insert into media_assets (id, album_id, club_id, original_path, preview_path, thumb_path, original_filename, mime_type, checksum, width, height, bytes, status, position) values $VALUES;" > /dev/null
 
 R=$(sql "insert into media_album_links (album_id, slug) values ('$ALBUM', media_gallery_unique_slug('ZZ TEST checkout')) returning slug, token;")
+SLUG=$(echo "$R" | jqv slug); TOKEN=$(echo "$R" | jqv token)
+
 # Le lien porte ses FORMULES. Sans elles, media_gallery_quote rend NULL et le paiement repond
 # « Cette galerie n'est plus disponible a l'achat » — mesure du 10/09/2026, apres le passage au
 # modele multi-offres. Ce script construisait encore un lien nu, a l'ancienne : il mesurait alors
-# le refus, pas la chaine de paiement.
-LINKID=$(sql "select id from media_album_links where slug='$(echo "$R" | jqv slug)';" | jqv id)
+# le refus, pas la chaine de paiement. L'insertion vient APRES l'extraction du slug (une premiere
+# version la placait avant, le lien n'etait pas encore resolu et rien n'etait cree), et sa sortie
+# n'est plus jetee : une erreur ici doit se voir.
+LINKID=$(sql "select id from media_album_links where slug='$SLUG';" | jqv id)
 sql "insert into media_album_link_offers (link_id, product_id, price_override_cents, photos_allowance, label, display_order, offer_type, is_enabled)
  select '$LINKID', p.id, p.price_cents,
         case when p.type='pack' then 5 else 1 end,
-        p.name, row_number() over (order by p.price_cents), p.type, true
+        p.name, row_number() over (order by p.price_cents),
+        -- offer_type n'accepte que 'pack' ou 'album_complet'. media_products.type connait en plus
+        -- 'photo_unite' : le passer tel quel faisait echouer l'INSERT ENTIER, donc les DEUX
+        -- formules, et le paiement repondait « galerie plus disponible ». Une photo a l'unite est
+        -- un pack de 1.
+        case when p.type = 'album_complet' then 'album_complet' else 'pack' end, true
    from media_products p
-  where p.club_id='$CLUB' and p.name in ('Photo a l unite','Pack 5 photos');" > /dev/null
-SLUG=$(echo "$R" | jqv slug); TOKEN=$(echo "$R" | jqv token)
+  where p.club_id='$CLUB' and p.name in ('Photo a l unite','Pack 5 photos') returning id;" | head -c 120
+NBOFF=$(sql "select count(*)::text as v from media_album_link_offers where link_id='$LINKID'" | jqv v)
+[ "$NBOFF" = "2" ] && ok "2 formules posees sur le lien" || ko "formules du lien" "$NBOFF posee(s)"
+# Avec plusieurs formules, la fonction de paiement EXIGE qu'on dise laquelle : « Choisissez une
+# formule avant de payer ». C'est le modele multi-offres, et c'est volontaire — elle ne devine pas.
+# Le script, ecrit avant, n'envoyait rien et mesurait donc ce refus.
+OFFRE_PACK=$(sql "select id from media_album_link_offers where link_id='$LINKID' and photos_allowance=5 limit 1;" | jqv id)
+OFFRE_UNITE=$(sql "select id from media_album_link_offers where link_id='$LINKID' and photos_allowance=1 limit 1;" | jqv id)
 IDS=$(sql "select json_agg(id)::text as j from (select id from media_assets where album_id='$ALBUM' order by position limit 4) s" | jqv j)
 IDS2=$(sql "select json_agg(id)::text as j from (select id from media_assets where album_id='$ALBUM' order by position limit 2) s" | jqv j)
 echo "galerie $SLUG ($ALBUM)"
@@ -64,7 +79,7 @@ echo
 
 # ── 1. Checkout : 4 photos -> le pack 5 doit s'appliquer (15 EUR) ────────
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"email\":\"parent@exemple.fr\",\"nom\":\"Camille Martin\"}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"parent@exemple.fr\",\"nom\":\"Camille Martin\"}")
 echo "$RESP" | grep -q 'checkout.stripe.com' && ok "session de paiement Stripe creee" || ko "session Stripe" "$(echo "$RESP" | head -c 200)"
 
 MONTANT=$(sql "select amount_cents::text as v from media_orders order by created_at desc limit 1" | jqv v)
@@ -77,27 +92,31 @@ GUEST=$(sql "select (purchased_by_user_id is null and guest_email='parent@exempl
 # ── 2. Le client ne peut pas choisir son prix ───────────────────────────
 sql "delete from media_orders where album_id='$ALBUM';" > /dev/null
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"email\":\"parent@exemple.fr\",\"nom\":\"Camille Martin\",\"amount_cents\":1,\"total\":1,\"price\":1}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"parent@exemple.fr\",\"nom\":\"Camille Martin\",\"amount_cents\":1,\"total\":1,\"price\":1}")
 MONTANT=$(sql "select amount_cents::text as v from media_orders order by created_at desc limit 1" | jqv v)
 [ "$MONTANT" = "1500" ] && ok "montant force par le client : ignore" "$MONTANT c au lieu de 1" || ko "FUITE prix force" "$MONTANT"
 
 # ── 3. Jeton invalide, photos d'une autre galerie ───────────────────────
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"faux\",\"assetIds\":$IDS,\"email\":\"a@b.fr\",\"nom\":\"Test Test\"}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"faux\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"a@b.fr\",\"nom\":\"Test Test\"}")
 echo "$RESP" | grep -q "plus disponible" && ok "mauvais jeton : aucun paiement possible" || ko "mauvais jeton" "$(echo "$RESP" | head -c 120)"
 
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":[\"00000000-0000-0000-0000-000000000123\"],\"email\":\"a@b.fr\",\"nom\":\"Test Test\"}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":[\"00000000-0000-0000-0000-000000000123\"],\"offerId\":\"$OFFRE_UNITE\",\"email\":\"a@b.fr\",\"nom\":\"Test Test\"}")
 echo "$RESP" | grep -q "plus disponible" && ok "photo etrangere a la galerie : refusee" || ko "photo etrangere" "$(echo "$RESP" | head -c 120)"
 
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS2,\"email\":\"pas-un-email\",\"nom\":\"Test Test\"}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS2,\"offerId\":\"$OFFRE_UNITE\",\"email\":\"pas-un-email\",\"nom\":\"Test Test\"}")
 echo "$RESP" | grep -q "e-mail invalide" && ok "adresse e-mail invalide : refusee" || ko "email invalide" "$(echo "$RESP" | head -c 120)"
 
 # ── 4. Livraison : on place la commande dans l'etat que produit le webhook ──
 sql "delete from media_orders where album_id='$ALBUM';" > /dev/null
 curl -s -o /dev/null -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS2,\"email\":\"parent@exemple.fr\",\"nom\":\"Camille Martin\"}"
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS2,\"offerId\":\"$OFFRE_PACK\",\"email\":\"parent@exemple.fr\",\"nom\":\"Camille Martin\"}"
+# La formule PACK, pas celle a l'unite : la livraison porte sur DEUX photos, et une formule a
+# l'unite en couvre une seule — « Vous avez choisi 2 photos, cette formule en couvre 1 ». La
+# commande n'etait alors jamais creee, et toute la moitie « livraison » de ce script echouait avec
+# « Requete incomplete » sans que rien n'explique pourquoi.
 ORDER=$(sql "select id from media_orders where album_id='$ALBUM' order by created_at desc limit 1" | jqv id)
 GTOKEN=$(sql "update media_orders set status='paid', paid_at=now() where id='$ORDER';
  insert into media_download_grants (order_id, email) values ('$ORDER','parent@exemple.fr') returning token;" | jqv token)
@@ -138,10 +157,35 @@ sql "select original_path as p from media_assets where album_id='$ALBUM'" | pyth
   curl -s -o /dev/null -X DELETE "$SB/storage/v1/object/sportvision-media-prive/$p" -H "apikey: $SECRET" -H "Authorization: Bearer $SECRET"; done
 sql "select unnest(array[preview_path,thumb_path]) as p from media_assets where album_id='$ALBUM'" | python3 -c "import json,sys;[print(r['p']) for r in json.load(sys.stdin) if r.get('p')]" | while read -r p; do
   curl -s -o /dev/null -X DELETE "$SB/storage/v1/object/galerie-previews/$p" -H "apikey: $SECRET" -H "Authorization: Bearer $SECRET"; done
-sql "delete from media_orders where album_id='$ALBUM'; delete from media_albums where id='$ALBUM'; delete from media_products where club_id='$CLUB';" > /dev/null
+# On supprime dans l'ordre des dependances, sinon les cles etrangeres bloquent en silence et le
+# decor reste. Et on ne supprime QUE les deux produits crees ici : la ligne precedente faisait
+# `delete from media_products where club_id=...`, ce qui aurait efface les VRAIS produits du club.
+# Elle n'a rien detruit parce que ce club de test n'en a jamais eu d'autres — mais sur un club
+# reel, elle aurait emporte son catalogue.
+sql "delete from media_download_grants where order_id in (select id from media_orders where album_id='$ALBUM');
+     delete from media_order_items where order_id in (select id from media_orders where album_id='$ALBUM');
+     delete from media_orders where album_id='$ALBUM';
+     delete from media_album_link_offers where link_id in (select id from media_album_links where album_id='$ALBUM');
+     delete from media_album_links where album_id='$ALBUM';
+     delete from media_assets where album_id='$ALBUM';
+     delete from media_albums where id='$ALBUM';
+     delete from media_products where club_id='$CLUB' and name in ('Photo a l unite','Pack 5 photos');" > /dev/null
 
-R=$(sql "select (select count(*) from media_albums) a, (select count(*) from media_assets) b, (select count(*) from media_orders) c, (select count(*) from media_download_grants) d, (select count(*) from media_products) e, (select count(*) from storage.objects where bucket_id='galerie-previews') f;")
-echo "$R" | grep -q '"a":0.*"b":0.*"c":0.*"d":0.*"e":0.*"f":0' && ok "aucun residu" || ko "residu" "$R"
+# Le residu se mesure sur CE QUE CE SCRIPT A CREE, pas sur la base entiere.
+# Le controle precedent comptait toutes les lignes de toutes les tables et exigeait zero partout :
+# ecrit quand la base etait vide, il ne pouvait plus jamais passer des qu'une vraie commande
+# existait — et il aurait masque un vrai residu au milieu du bruit.
+R=$(sql "select (select count(*) from media_albums where id='$ALBUM') a,
+                (select count(*) from media_assets where album_id='$ALBUM') b,
+                (select count(*) from media_orders where album_id='$ALBUM') c,
+                (select count(*) from media_album_links where album_id='$ALBUM') d,
+                (select count(*) from media_products where club_id='$CLUB' and name in ('Photo a l unite','Pack 5 photos')) e;")
+echo "$R" | grep -q '"a":0,"b":0,"c":0,"d":0,"e":0' && ok "aucun residu de ce test" || ko "residu" "$R"
+
+# Et l'argent reel n'a pas bouge : c'est la verification qui compte le plus dans ce fichier.
+PAYEES=$(sql "select count(*)::text as v from media_orders where status='paid'" | jqv v)
+[ "$PAYEES" = "4" ] && ok "les 4 commandes payees historiques sont intactes" || ko "commandes payees" "$PAYEES au lieu de 4"
 
 echo
-[ "$FAIL" = "0" ] && echo "Tout conforme." || echo "$FAIL echec(s)."
+[ "$FAIL" = "0" ] && echo "Tout est vert." || echo "$FAIL echec(s)."
+exit $([ "$FAIL" = "0" ] && echo 0 || echo 1)
