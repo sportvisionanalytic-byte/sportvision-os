@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
-import { savePendingOnboarding, consumePendingOnboarding, type PendingPlayerOnboarding } from "@/lib/signup/pending-onboarding";
+import {
+  savePendingOnboarding,
+  consumePendingOnboarding,
+  cheminInterne,
+  CLE_META_INSCRIPTION,
+  type PendingPlayerOnboarding,
+} from "@/lib/signup/pending-onboarding";
+import { messageErreurAuth } from "@/lib/auth/messages";
 import { useSignup } from "../signup-context";
 import type { SignupProfile } from "../signup-context";
 
@@ -53,6 +61,10 @@ export default function SignupClubPage() {
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Adresse déjà inscrite : le message seul laissait la personne sans issue. On lui donne les
+  // deux portes utiles (se connecter, ou redéfinir son mot de passe).
+  const [dejaInscrit, setDejaInscrit] = useState(false);
+  const envoiEnCours = useRef(false);
 
   useEffect(() => {
     if (!state.email.trim() || !state.password) router.replace("/signup");
@@ -88,49 +100,23 @@ export default function SignupClubPage() {
     setTouched(true);
     if (choice === "declare" && (!declareName.trim() || !declareCity.trim())) return;
     if (choice === "search" && !selected) return;
-    if (busy) return;
+    // Verrou synchrone (10/09/2026), par précaution : `busy` est un état React, lu dans la fermeture
+    // du clic, et le bouton ne se désactive qu'au rendu suivant. Le double clic mesuré ce jour-là ne
+    // lançait qu'un signUp() ; mais un second appel refusé par Supabase (« un e-mail vient d'être
+    // envoyé ») afficherait une erreur par-dessus une inscription réussie. Une ref change tout de suite.
+    if (busy || envoiEnCours.current) return;
+    envoiEnCours.current = true;
 
     setBusy(true);
     setSubmitError(null);
+    setDejaInscrit(false);
     const supabase = createClient();
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: state.email,
-      password: state.password,
-      options: {
-        data: {
-          first_name: state.firstName,
-          last_name: state.lastName,
-        },
-        // Sans ça, le lien du mail de confirmation redirige vers "/" avec ?code=... jamais
-        // traité (bug corrigé le 14/08) — voir auth/callback/route.ts pour l'échange du code.
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (signUpError) {
-      setBusy(false);
-      setSubmitError(
-        signUpError.message.toLowerCase().includes("already")
-          ? "Un compte SportVision utilise déjà cette adresse."
-          : "Impossible de créer le compte pour le moment.",
-      );
-      return;
-    }
-
-    // BUGFIX (audit du 31/08/2026, confirmé en conditions réelles) : pour une adresse déjà
-    // enregistrée ET déjà confirmée, signUp() ne renvoie PAS d'erreur — Supabase répond HTTP 200
-    // avec un utilisateur dont `identities` est un tableau vide, une protection anti-énumération
-    // d'e-mails documentée par Supabase (aucun signal ne doit permettre de deviner qu'un compte
-    // existe déjà). Sans cette vérification, le tunnel poursuivait normalement : pending onboarding
-    // sauvegardé pour un compte qui n'est PAS le sien, redirection vers /signup/verify avec
-    // "Vérifiez votre boîte mail" — un utilisateur qui a déjà un compte et se réinscrit par erreur
-    // n'était jamais prévenu, et n'aurait jamais reçu de nouvel e-mail de confirmation (déjà
-    // confirmé), restant bloqué indéfiniment sur cet écran.
-    if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
-      setBusy(false);
-      setSubmitError("Un compte SportVision utilise déjà cette adresse.");
-      return;
-    }
+    // Adresse normalisée : Supabase la range en minuscules, et c'est elle que liront l'écran
+    // « Vérifiez votre boîte mail », le renvoi, et la comparaison avec les invitations du club.
+    const email = state.email.trim().toLowerCase();
+    const prenom = state.firstName.trim();
+    const nom = state.lastName.trim();
 
     // Type de compte (joueur vs particulier) — voir lib/signup/pending-onboarding.ts et
     // migration-connect-v51-espace-particulier.sql §1 : c'est ICI, au tout premier point où le
@@ -144,67 +130,124 @@ export default function SignupClubPage() {
     // poles-v13) reste exploitable côté staff.
     const sportValue = state.sport === "Autre" ? state.otherSport.trim() : state.sport;
 
+    // L'intention est construite AVANT signUp() (10/09/2026, elle l'était après) : elle part aussi
+    // dans les métadonnées du compte, pour survivre à un lien de confirmation ouvert dans un autre
+    // navigateur que celui de l'inscription — voir lib/signup/pending-onboarding.ts.
+    let pending: PendingPlayerOnboarding;
     if (isSportLike) {
       if (choice === "search" && selected) {
-        savePendingOnboarding({
+        pending = {
           action: "join",
           orgId: selected.id,
           orgName: selected.nom,
-          prenom: state.firstName,
-          nom: state.lastName,
+          prenom,
+          nom,
           dateNaissance: state.dateNaissance,
           accountType,
           sport: sportValue || undefined,
-        });
+        };
       } else if (choice === "declare") {
         // dateNaissance (audit du 31/08/2026, bug confirmé en conditions réelles) : manquait ici
-        // alors que les branches "join" et "skip" ci-dessous la transportent toutes les deux —
-        // player_profiles.date_naissance est NOT NULL en base (voir signup/sport/page.tsx), donc
-        // l'insertion échouait systématiquement côté edge function pour QUICONQUE déclarait un
-        // club non partenaire, sans jamais remonter d'erreur visible à l'écran (le tunnel affiche
-        // quand même "Vérifiez votre boîte mail" puisque l'échec ne se produit qu'au rejeu, après
-        // confirmation — voir lib/signup/pending-onboarding.ts). Le compte restait alors sans
-        // aucune ligne player_profiles pour toujours : buildPlayerContext() renvoie null en
-        // permanence, exactement le bug déjà documenté pour "skip" ci-dessous avant son propre
-        // correctif (migration-connect-v72).
-        savePendingOnboarding({
+        // alors que les branches "join" et "skip" la transportent toutes les deux —
+        // player_profiles.date_naissance est NOT NULL en base (voir signup/sport/page.tsx).
+        // 10/09/2026 : l'action "declare" de connect-player-onboarding ne créait en réalité AUCUNE
+        // fiche joueur, date ou pas (mesuré sur la fonction déployée) — corrigé dans la fonction.
+        pending = {
           action: "declare",
           name: declareName,
           city: declareCity,
           team: declareTeam,
-          prenom: state.firstName,
-          nom: state.lastName,
+          prenom,
+          nom,
           dateNaissance: state.dateNaissance,
           accountType,
           sport: sportValue || undefined,
-        });
+        };
       } else {
         // "Non / plus tard" (migration-connect-v72, 15/08) : prenom/nom/dateNaissance sont
         // désormais transportés pour que connect-player-onboarding puisse créer une ligne
         // player_profiles avec club_id = null au premier login — sans quoi buildPlayerContext()
         // renvoie null pour toujours et ce compte ne peut plus jamais réserver de prestation
         // (bug confirmé en conditions réelles). Voir en-tête de l'edge function.
-        savePendingOnboarding({
+        pending = {
           action: "skip",
           accountType,
-          prenom: state.firstName,
-          nom: state.lastName,
+          prenom,
+          nom,
           dateNaissance: state.dateNaissance,
           sport: sportValue || undefined,
-        });
+        };
       }
     } else {
       // Particulier / parent / autre : pas d'étape club (voir le rendu conditionnel ci-dessous),
       // mais le type de compte doit être rejoué au premier login comme pour un profil joueur —
       // et, depuis la migration-connect-v67, le choix précis (agent/parent/tuteur/autre) avec.
-      savePendingOnboarding({
+      pending = {
         action: "skip",
         accountType,
         profilParticulier: resolveProfilParticulier(state.profile, state.otherProfile),
-      });
+      };
+    }
+    const suite = cheminInterne(state.suite);
+    pending = { ...pending, email, suite: suite ?? undefined };
+
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password: state.password,
+      options: {
+        data: {
+          first_name: prenom,
+          last_name: nom,
+          [CLE_META_INSCRIPTION]: pending,
+        },
+        // Sans ça, le lien du mail de confirmation redirige vers "/" avec ?code=... jamais
+        // traité (bug corrigé le 14/08) — voir auth/callback/route.ts pour l'échange du code.
+        // `next` (10/09/2026) voyage DANS le lien : il est conservé même quand l'e-mail est ouvert
+        // sur un autre appareil que celui de l'inscription.
+        emailRedirectTo: `${window.location.origin}/auth/callback${suite ? `?next=${encodeURIComponent(suite)}` : ""}`,
+      },
+    });
+    if (signUpError) {
+      envoiEnCours.current = false;
+      setBusy(false);
+      setSubmitError(messageErreurAuth(signUpError, "inscription"));
+      setDejaInscrit(signUpError.code === "user_already_exists" || /already/i.test(signUpError.message));
+      return;
     }
 
+    // BUGFIX (audit du 31/08/2026, confirmé en conditions réelles) : pour une adresse déjà
+    // enregistrée ET déjà confirmée, signUp() ne renvoie PAS d'erreur — Supabase répond HTTP 200
+    // avec un utilisateur dont `identities` est un tableau vide, une protection anti-énumération
+    // d'e-mails documentée par Supabase (aucun signal ne doit permettre de deviner qu'un compte
+    // existe déjà). Sans cette vérification, le tunnel poursuivait normalement : pending onboarding
+    // sauvegardé pour un compte qui n'est PAS le sien, redirection vers /signup/verify avec
+    // "Vérifiez votre boîte mail" — un utilisateur qui a déjà un compte et se réinscrit par erreur
+    // n'était jamais prévenu, et n'aurait jamais reçu de nouvel e-mail de confirmation (déjà
+    // confirmé), restant bloqué indéfiniment sur cet écran.
+    if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
+      envoiEnCours.current = false;
+      setBusy(false);
+      setSubmitError("Un compte SportVision utilise déjà cette adresse.");
+      setDejaInscrit(true);
+      return;
+    }
+
+    savePendingOnboarding(pending);
+
+    // Inscription déjà commencée avec cette adresse, jamais confirmée (tunnel repris des jours plus
+    // tard, e-mail perdu). Mesuré le 10/09/2026 : Supabase répond 200 et renvoie l'e-mail, mais
+    // garde le mot de passe ET les métadonnées de la PREMIÈRE inscription — la personne confirme,
+    // se connecte avec son nouveau mot de passe et lit « mot de passe incorrect ». Signe
+    // distinctif : le compte existait bien avant l'envoi de cet e-mail.
+    const u = signUpData.user;
+    const reprise =
+      !!u?.created_at &&
+      !!u?.confirmation_sent_at &&
+      new Date(u.confirmation_sent_at).getTime() - new Date(u.created_at).getTime() > 60_000;
+
     patch({
+      email,
+      reprise,
       clubMode: choice,
       selectedClubId: selected?.id ?? null,
       selectedClubName: selected?.nom ?? "",
@@ -225,7 +268,7 @@ export default function SignupClubPage() {
         console.error("[signup/club] rejeu immédiat de l'action club échoué :", e);
       }
       setBusy(false);
-      router.push("/dashboard");
+      router.push(suite || "/dashboard");
       router.refresh();
       return;
     }
@@ -246,12 +289,7 @@ export default function SignupClubPage() {
             Vérifiez vos informations puis créez votre compte.
           </p>
         </div>
-        {submitError && (
-          <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-            <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-            <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{submitError}</span>
-          </div>
-        )}
+        {submitError && <ErrorBanner message={submitError} dejaInscrit={dejaInscrit} suite={state.suite} />}
         <Button onClick={() => { setChoice("none"); handleSubmit(); }} loading={busy} className="w-full">
           Créer mon compte
         </Button>
@@ -364,7 +402,7 @@ export default function SignupClubPage() {
             </div>
           )}
 
-          {submitError && <ErrorBanner message={submitError} />}
+          {submitError && <ErrorBanner message={submitError} dejaInscrit={dejaInscrit} suite={state.suite} />}
 
           <Button onClick={handleSubmit} disabled={!selected} loading={busy} className="w-full">
             Rejoindre {selected ? `« ${selected.nom} »` : ""}
@@ -405,7 +443,7 @@ export default function SignupClubPage() {
             value={declareTeam}
             onChange={(e) => setDeclareTeam(e.target.value)}
           />
-          {submitError && <ErrorBanner message={submitError} />}
+          {submitError && <ErrorBanner message={submitError} dejaInscrit={dejaInscrit} suite={state.suite} />}
           <Button onClick={handleSubmit} loading={busy} className="w-full">
             Ajouter à mon profil
           </Button>
@@ -425,7 +463,7 @@ export default function SignupClubPage() {
               ajouter une structure à tout moment depuis Mon affiliation.
             </p>
           </div>
-          {submitError && <ErrorBanner message={submitError} />}
+          {submitError && <ErrorBanner message={submitError} dejaInscrit={dejaInscrit} suite={state.suite} />}
           <Button onClick={handleSubmit} loading={busy} className="w-full">
             Créer mon compte
           </Button>
@@ -481,11 +519,27 @@ function BackLink({ onClick }: { onClick: () => void }) {
   );
 }
 
-function ErrorBanner({ message }: { message: string }) {
+function ErrorBanner({ message, dejaInscrit, suite }: { message: string; dejaInscrit?: boolean; suite?: string }) {
+  const suiteSure = cheminInterne(suite);
   return (
-    <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
+    <div role="alert" className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
       <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-      <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{message}</span>
+      <span className="flex flex-col gap-2 text-[13px] leading-relaxed text-[#FBCFE8]">
+        <span>{message}</span>
+        {dejaInscrit && (
+          <span className="flex flex-wrap gap-x-4 gap-y-1">
+            <Link
+              href={`/auth/login${suiteSure ? `?next=${encodeURIComponent(suiteSure)}` : ""}`}
+              className="font-semibold text-white underline underline-offset-2"
+            >
+              Me connecter
+            </Link>
+            <Link href="/auth/forgot" className="font-semibold text-white underline underline-offset-2">
+              Mot de passe oublié
+            </Link>
+          </span>
+        )}
+      </span>
     </div>
   );
 }

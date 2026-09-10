@@ -52,7 +52,12 @@ function SignupShell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
         </Link>
-        <Link href="/auth/login" className="text-[13px] font-medium text-text-tertiary hover:text-text">
+        <Link
+          // Garde la page d'origine (ex. /mes-invitations) pour qui se rend compte en cours de
+          // route qu'il avait déjà un compte.
+          href={state.suite ? `/auth/login?next=${encodeURIComponent(state.suite)}` : "/auth/login"}
+          className="text-[13px] font-medium text-text-tertiary hover:text-text"
+        >
           J&apos;ai déjà un compte
         </Link>
       </div>

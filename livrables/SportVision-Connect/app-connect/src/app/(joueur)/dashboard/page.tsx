@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { buildPlayerContext, getAccountType } from "@/lib/supabase/session";
+import { buildPlayerContext, getAccountType, resolveDisplayIdentity } from "@/lib/supabase/session";
 import {
   getNextClubEvent,
   getNextPrestation,
@@ -37,7 +37,10 @@ export default async function DashboardPage() {
   if (accountType === "particulier") redirect("/particulier");
 
   const player = await buildPlayerContext(supabase, user.id);
-  const firstName = player?.firstName || user.email?.split("@")[0] || "";
+  // Le prénom saisi à l'inscription (user_metadata.first_name) avant le repli sur l'adresse : un
+  // joueur tout juste inscrit, sans fiche joueur encore, lisait « Bonjour prenom.nom82 » au lieu de
+  // son prénom (constaté le 10/09/2026). resolveDisplayIdentity fait déjà cet ordre pour Mon profil.
+  const firstName = resolveDisplayIdentity(user, player).firstName;
 
   const [nextEvent, nextPrestation, unreadMessages, cotisation, contentGroups] = await Promise.all([
     player?.club ? getNextClubEvent(supabase, player.club.id) : Promise.resolve(null),

@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { savePendingClaim } from "@/lib/gallery/pending-claim";
-import { savePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { CLE_META_INSCRIPTION, savePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { messageErreurAuth } from "@/lib/auth/messages";
 
 // Conversion vers Connect, APRÈS les téléchargements.
 //
@@ -99,24 +100,38 @@ export function ConnectBlock({
     // confirmé, le rattachement ne peut donc pas se faire maintenant. Il se rejouera au retour.
     savePendingClaim(token);
     // Type de compte, rejoué par le même mécanisme que le tunnel normal : un acheteur de photos
-    // est un particulier, pas un joueur affilié à un club.
-    savePendingOnboarding({ action: "skip", accountType: "particulier" });
+    // est un particulier, pas un joueur affilié à un club. Il voyage aussi dans les métadonnées du
+    // compte (10/09/2026), pour le cas où l'e-mail de confirmation s'ouvre dans un autre navigateur
+    // — voir lib/signup/pending-onboarding.ts. L'achat, lui, se retrouve par l'adresse vérifiée.
+    const adresse = email.trim().toLowerCase();
+    const intention = { action: "skip" as const, accountType: "particulier" as const, email: adresse };
+    savePendingOnboarding(intention);
 
     const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: adresse,
       password: mdp,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        data: { [CLE_META_INSCRIPTION]: intention },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
 
-    if (signUpError) {
+    // Adresse déjà inscrite ET confirmée : Supabase ne renvoie PAS d'erreur (protection contre la
+    // découverte des comptes) mais un utilisateur sans identité, et n'envoie aucun e-mail. Jusqu'au
+    // 10/09/2026 ce bloc affichait alors « Vérifiez votre adresse e-mail » : l'acheteur attendait
+    // un message qui ne partirait jamais. Même correctif que le tunnel (signup/club, 31/08).
+    const dejaInscrit =
+      (signUpError && (signUpError.code === "user_already_exists" || /already|registered|exist/i.test(signUpError.message))) ||
+      (!signUpError && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
+
+    if (signUpError || dejaInscrit) {
       // Adresse déjà inscrite : ce n'est pas une erreur pour l'utilisateur, c'est qu'il a déjà un
       // compte. On l'oriente vers la connexion plutôt que de lui opposer un message technique.
-      const dejaInscrit = /already|registered|exist/i.test(signUpError.message);
       setError(
         dejaInscrit
           ? "Vous avez déjà un compte avec cette adresse. Connectez-vous, votre achat sera rattaché automatiquement."
-          : "La création du compte a échoué. Réessayez dans un instant.",
+          : messageErreurAuth(signUpError, "inscription"),
       );
       setBusy(false);
       return;

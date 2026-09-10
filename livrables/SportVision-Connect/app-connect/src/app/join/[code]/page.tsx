@@ -37,10 +37,9 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
 
   // Le compte déjà existant (le cas le plus fréquent : lien renvoyé, coach qui montre son propre
   // QR à un parent déjà inscrit) retrouve le code prérempli via /auth/login?next=... (déjà lu par
-  // AddClubForm.tsx). La création de compte, elle, redirige simplement vers /signup — le tunnel
-  // d'inscription multi-étapes n'a pas encore de mécanisme pour rejouer un code d'équipe après
-  // confirmation d'e-mail (contrairement à "join"/"declare", voir pending-onboarding.ts) ; on
-  // n'affiche donc jamais une promesse de préremplissage qu'on ne tient pas encore pour ce cas.
+  // AddClubForm.tsx). La création de compte passe par /signup?next=/join/<code> (10/09/2026) : le
+  // tunnel ne rejoue pas le code lui-même, il ramène sur cette page une fois l'adresse confirmée,
+  // et c'est d'ici que « Continuer » mène au formulaire prérempli.
   //
   // Décision produit du 04/09/2026 (finding D11 de l'audit transversal) : un compte 'particulier'
   // qui continuait vers /affiliations/ajouter se faisait rediriger en dur vers /particulier par
@@ -53,8 +52,16 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
   // convergence.sql).
   const accountType = user ? await getAccountType(supabase, user.id) : null;
   const joinPath = accountType === "particulier" ? `/particulier/rejoindre/${code}` : `/affiliations/ajouter?code=${encodeURIComponent(code)}`;
-  const continueHref = user ? joinPath : `/auth/login?next=${encodeURIComponent(joinPath)}`;
-  const signupHref = "/signup";
+  // Sans compte ouvert, on ne sait pas encore si la personne est joueur ou parent : on la ramène
+  // ICI après la connexion, et c'est cette page (qui connaît alors son type de compte) qui choisit
+  // la bonne suite. Jusqu'au 10/09/2026 la connexion menait droit à /affiliations/ajouter?code=…,
+  // réservé à l'Espace joueur : un parent (compte particulier) y était renvoyé vers son accueil,
+  // et le code de l'équipe perdu — la décision D11 du 04/09 ne valait que pour qui était déjà
+  // connecté. Même chose pour la création de compte : le tunnel ramène ici une fois l'adresse
+  // confirmée, au lieu d'un accueil qui a oublié le QR scanné.
+  const retourIci = `/join/${encodeURIComponent(code)}`;
+  const continueHref = user ? joinPath : `/auth/login?next=${encodeURIComponent(retourIci)}`;
+  const signupHref = `/signup?next=${encodeURIComponent(retourIci)}`;
 
   return (
     <div

@@ -11,9 +11,14 @@ export default function SignupProfilePage() {
   const router = useRouter();
   const { state, patch } = useSignup();
 
+  // Le mot de passe n'est jamais stocké (signup-context.tsx) : après une fermeture ou un
+  // rechargement, il faut le ressaisir. Sans `!state.password` ici (10/09/2026), la reprise
+  // s'arrêtait à cette étape, faisait refaire les étapes 2 et 3, puis l'étape 4 renvoyait à
+  // l'étape 1 — mesuré en rechargeant le tunnel à l'étape 3. On revient donc tout de suite à
+  // l'étape 1, préremplie.
   useEffect(() => {
-    if (!state.firstName.trim() || !state.email.trim()) router.replace("/signup");
-  }, [state.firstName, state.email, router]);
+    if (!state.firstName.trim() || !state.email.trim() || !state.password) router.replace("/signup");
+  }, [state.firstName, state.email, state.password, router]);
 
   const canContinue = state.profile !== null && (state.profile !== "autre" || state.otherProfile.trim());
 

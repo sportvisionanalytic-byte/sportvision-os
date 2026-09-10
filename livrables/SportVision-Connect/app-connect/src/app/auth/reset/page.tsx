@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
+import { consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { consumePendingClaim } from "@/lib/gallery/pending-claim";
 
 // /auth/reset — page atteinte via le lien reçu par e-mail (resetPasswordForEmail).
 // Port de l'écran "Nouveau mot de passe" du design de référence.
@@ -103,12 +105,31 @@ export default function ResetPage() {
     setBusy(true);
     const supabase = createClient();
     const { error } = await supabase.auth.updateUser({ password: pw });
-    setBusy(false);
     if (!error) {
-      router.push("/dashboard");
+      // Ce lien est parfois la PREMIÈRE session du compte (10/09/2026) : quelqu'un qui n'a jamais
+      // cliqué sa confirmation, ou qui a repris son inscription avec un autre mot de passe que
+      // Supabase n'a pas retenu, passe par « Mot de passe oublié » — le lien de réinitialisation
+      // confirme l'adresse au passage. Sans ce rejeu, il atterrissait dans l'Espace joueur avec
+      // son choix de profil et de club perdu. Même filet que /auth/confirming et /auth/login.
+      let suite: string | null = null;
+      try {
+        suite = (await consumePendingOnboarding(supabase))?.suite ?? null;
+        await consumePendingClaim(supabase).catch(() => null);
+      } catch (e) {
+        console.error("[auth/reset] rejeu de l'inscription en attente échoué :", e);
+      }
+      setBusy(false);
+      router.push(suite || "/dashboard");
       router.refresh();
     } else {
-      setSubmitError("Impossible d'enregistrer ce mot de passe. Réessayez ou demandez un nouveau lien.");
+      setBusy(false);
+      setSubmitError(
+        error.code === "same_password"
+          ? "Ce mot de passe est déjà le vôtre : choisissez-en un différent, ou connectez-vous directement avec lui."
+          : error.code === "weak_password"
+            ? "Ce mot de passe est trop faible. Choisissez-en un d'au moins 8 caractères."
+            : "Impossible d'enregistrer ce mot de passe. Réessayez ou demandez un nouveau lien.",
+      );
     }
   }
 

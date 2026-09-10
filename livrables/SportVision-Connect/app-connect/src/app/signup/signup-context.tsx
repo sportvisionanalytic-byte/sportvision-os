@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { cheminInterne } from "@/lib/signup/pending-onboarding";
 
 // État du tunnel d'inscription Connect personnel — voir design-connect-personnel-12-08/README.md
 // § Inscription. Persisté en localStorage (clé sv-connect-signup-v1) pour reprendre un parcours
@@ -33,6 +34,14 @@ export interface SignupState {
   declareName: string;
   declareCity: string;
   declareTeam: string;
+  // Page d'où la personne est partie créer son compte (10/09/2026) — `?next=` reçu de
+  // /auth/login ou de /join/<code>. Sans ce champ, le parent invité qui cliquait « Créer mon
+  // compte » depuis /auth/login?next=/mes-invitations terminait sur son accueil après la
+  // confirmation, sans jamais revoir l'invitation qui l'avait amené (mesuré en production).
+  suite: string;
+  // Posé après signUp() quand l'adresse avait DÉJÀ une inscription non confirmée : Supabase
+  // renvoie alors l'e-mail mais garde le mot de passe de la première fois (voir signup/club).
+  reprise: boolean;
 }
 
 const EMPTY_STATE: SignupState = {
@@ -55,6 +64,8 @@ const EMPTY_STATE: SignupState = {
   declareName: "",
   declareCity: "",
   declareTeam: "",
+  suite: "",
+  reprise: false,
 };
 
 const STORAGE_KEY = "sv-connect-signup-v1";
@@ -92,10 +103,12 @@ export function SignupProvider({ children }: { children: ReactNode }) {
     // QUE si aucun e-mail n'est déjà en cours de saisie dans un tunnel repris depuis le
     // localStorage (stored.email), pour ne jamais écraser une inscription déjà commencée.
     let emailFromUrl: string | undefined;
+    let suiteFromUrl: string | null = null;
     try {
       const params = new URLSearchParams(window.location.search);
       const fromQuery = params.get("email");
       if (fromQuery) emailFromUrl = fromQuery;
+      suiteFromUrl = cheminInterne(params.get("next"));
     } catch {
       // URL/localStorage indisponibles (rendu serveur, navigation privée stricte) : le tunnel
       // fonctionne quand même, simplement sans pré-remplissage.
@@ -104,6 +117,9 @@ export function SignupProvider({ children }: { children: ReactNode }) {
       ...prev,
       ...stored,
       email: stored.email || emailFromUrl || prev.email,
+      // Un `next` présent dans l'URL l'emporte : c'est le parcours en cours. Sans lui, on garde
+      // celui d'un tunnel repris (fermé puis rouvert) plutôt que de l'oublier.
+      suite: suiteFromUrl || cheminInterne(stored.suite) || "",
     }));
     setHydrated(true);
   }, []);

@@ -7,8 +7,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
-import { consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { cheminInterne, consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
 import { consumePendingClaim } from "@/lib/gallery/pending-claim";
+import { messageErreurAuth } from "@/lib/auth/messages";
 import { LEGAL_URLS } from "@/lib/legal-links";
 
 // /auth/login — port du design de référence design-connect-personnel-12-08/README.md
@@ -38,30 +39,62 @@ export default function LoginPage() {
   // atterrissait silencieusement sur /auth/login sans comprendre pourquoi son clic sur le
   // mail ne l'avait pas connecté.
   const [confirmationFailed, setConfirmationFailed] = useState(false);
+  // ?confirmation=ok — posé par auth/callback/route.ts quand le lien de confirmation a été ouvert
+  // dans un autre navigateur que celui de l'inscription (10/09/2026) : l'adresse EST confirmée,
+  // seule la session n'a pas pu être ouverte ici. La personne doit le lire, sinon elle recommence
+  // son inscription et tombe sur « adresse déjà utilisée ».
+  const [confirmationOk, setConfirmationOk] = useState(false);
+  // `next` explicitement demandé dans l'URL (et non la valeur par défaut) : il l'emporte sur la
+  // page mémorisée avec l'inscription.
+  const [nextDansUrl, setNextDansUrl] = useState(false);
+  // Erreur autre que « identifiants incorrects » : adresse pas encore confirmée, trop de
+  // tentatives, réseau coupé. Toutes s'affichaient « Adresse e-mail ou mot de passe incorrect »
+  // jusqu'au 10/09/2026 — mesuré en production avec un compte non confirmé : la personne, qui
+  // avait le bon mot de passe, partait le réinitialiser.
+  const [autreErreur, setAutreErreur] = useState<string | null>(null);
+  const [nonConfirme, setNonConfirme] = useState(false);
+  const [renvoi, setRenvoi] = useState<"idle" | "envoi" | "ok">("idle");
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const next = params.get("next");
-    if (next && next.startsWith("/") && !next.startsWith("//")) setNextPath(next);
+    const next = cheminInterne(params.get("next"));
+    if (next) {
+      setNextPath(next);
+      setNextDansUrl(true);
+    }
     if (params.get("confirmation") === "failed") setConfirmationFailed(true);
+    if (params.get("confirmation") === "ok") setConfirmationOk(true);
   }, []);
 
   const validEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
   const emailBad = touched && !validEmail(email);
-  const pwBad = touched && password.length < 6;
+  // À la connexion on ne juge pas la longueur (10/09/2026) : « 6 caractères minimum » contredisait
+  // les 8 exigés à l'inscription, et un compte ancien peut très bien avoir un mot de passe plus
+  // court que la règle actuelle. Seul Supabase sait s'il est bon.
+  const pwBad = touched && !password;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
     setTouched(true);
     setAuthFailed(false);
-    if (!validEmail(email) || password.length < 6) return;
+    setAutreErreur(null);
+    setNonConfirme(false);
+    setRenvoi("idle");
+    if (!validEmail(email) || !password) return;
 
     setBusy(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     if (error) {
       setBusy(false);
-      setAuthFailed(true);
+      if (error.code === "invalid_credentials" || (!error.code && error.status === 400)) {
+        setAuthFailed(true);
+      } else {
+        // Supabase ne répond « non confirmée » qu'APRÈS avoir vérifié le mot de passe : le dire
+        // ne révèle rien à qui ne connaît pas déjà le mot de passe.
+        setNonConfirme(error.code === "email_not_confirmed");
+        setAutreErreur(messageErreurAuth(error, "connexion"));
+      }
       return;
     }
 
@@ -69,19 +102,43 @@ export default function LoginPage() {
     // vient de confirmer son e-mail sans jamais avoir eu de session pour finaliser son
     // rattachement club, on le rejoue maintenant. Échec journalisé seulement, jamais bloquant
     // pour la connexion elle-même — même filet que app-next.
+    let suiteInscription: string | null = null;
     try {
-      await consumePendingOnboarding(supabase);
-        // Rattachement des achats galerie, au meme moment et pour la meme raison : c'est
-        // le premier instant ou une vraie session existe. Appele meme sans achat en
-        // attente, pour recuperer les commandes invitees eligibles d'un compte existant.
-        await consumePendingClaim(supabase).catch(() => null);
+      const rejeu = await consumePendingOnboarding(supabase);
+      suiteInscription = rejeu?.suite ?? null;
+      // Rattachement des achats galerie, au meme moment et pour la meme raison : c'est
+      // le premier instant ou une vraie session existe. Appele meme sans achat en
+      // attente, pour recuperer les commandes invitees eligibles d'un compte existant.
+      await consumePendingClaim(supabase).catch(() => null);
     } catch (e) {
       console.error("[login] rejeu de l'inscription en attente échoué :", e);
     }
 
     setBusy(false);
-    router.push(nextPath);
+    router.push(nextDansUrl ? nextPath : suiteInscription || nextPath);
     router.refresh();
+  }
+
+  // Nouveau lien de confirmation, depuis l'écran de connexion (10/09/2026) : c'est ici qu'arrive
+  // la personne dont le lien a expiré (1 h), a déjà servi, ou a été « consommé » par l'antivirus de
+  // sa messagerie. Sans ce bouton, la seule issue proposée était de recommencer l'inscription —
+  // qui échoue, l'adresse étant prise.
+  async function renvoyerConfirmation() {
+    if (renvoi === "envoi" || !validEmail(email)) return;
+    setRenvoi("envoi");
+    const { error } = await createClient().auth.resend({
+      type: "signup",
+      email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback${nextDansUrl ? `?next=${encodeURIComponent(nextPath)}` : ""}`,
+      },
+    });
+    if (error) {
+      setRenvoi("idle");
+      setAutreErreur(messageErreurAuth(error, "renvoi"));
+      return;
+    }
+    setRenvoi("ok");
   }
 
   return (
@@ -149,22 +206,56 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {confirmationFailed && !authFailed && !(touched && (emailBad || pwBad)) && (
-              <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-                <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-                <span className="text-[13px] leading-relaxed text-[#FBCFE8]">
-                  Ce lien de confirmation n&apos;est plus valide. Reconnectez-vous ou recommencez votre inscription.
+            {confirmationOk && !authFailed && !autreErreur && (
+              <div role="status" className="flex items-start gap-2.5 rounded-sv border border-affiliations/30 bg-affiliations-bg px-4 py-3.5">
+                <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">check_circle</span>
+                <span className="text-[13px] leading-relaxed text-text-secondary">
+                  Votre adresse e-mail est confirmée. Connectez-vous avec le mot de passe choisi à
+                  l&apos;inscription pour accéder à votre espace.
                 </span>
               </div>
             )}
 
-            {(authFailed || (touched && (emailBad || pwBad))) && (
-              <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
+            {/* 10/09/2026 : l'ancien texte (« … recommencez votre inscription ») envoyait vers une
+                impasse — l'adresse est déjà prise. Ce message s'affiche quand le lien a expiré ou
+                a déjà servi : dans le second cas l'adresse est confirmée et il suffit de se
+                connecter ; dans le premier, la connexion le dira et proposera un nouvel e-mail. */}
+            {confirmationFailed && !confirmationOk && !authFailed && !autreErreur && !(touched && (emailBad || pwBad)) && (
+              <div role="alert" className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
                 <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
                 <span className="text-[13px] leading-relaxed text-[#FBCFE8]">
-                  {authFailed
-                    ? "Adresse e-mail ou mot de passe incorrect."
-                    : "Vérifiez les champs signalés ci-dessous."}
+                  Ce lien de confirmation a déjà servi ou a expiré. Si vous avez déjà confirmé votre
+                  adresse, connectez-vous simplement. Sinon, connectez-vous quand même : nous vous
+                  proposerons de recevoir un nouveau lien.
+                </span>
+              </div>
+            )}
+
+            {(authFailed || autreErreur || (touched && (emailBad || pwBad))) && (
+              <div role="alert" className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
+                <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
+                <span className="flex flex-col gap-2.5 text-[13px] leading-relaxed text-[#FBCFE8]">
+                  <span>
+                    {authFailed
+                      ? "Adresse e-mail ou mot de passe incorrect."
+                      : autreErreur
+                        ? autreErreur
+                        : "Vérifiez les champs signalés ci-dessous."}
+                  </span>
+                  {nonConfirme && (
+                    <button
+                      type="button"
+                      onClick={renvoyerConfirmation}
+                      disabled={renvoi !== "idle"}
+                      className="self-start font-semibold text-white underline underline-offset-2 disabled:no-underline disabled:opacity-80"
+                    >
+                      {renvoi === "envoi"
+                        ? "Envoi…"
+                        : renvoi === "ok"
+                          ? `Nouveau lien envoyé à ${email.trim().toLowerCase()}.`
+                          : "Renvoyer l'e-mail de confirmation"}
+                    </button>
+                  )}
                 </span>
               </div>
             )}
@@ -219,11 +310,7 @@ export default function LoginPage() {
                     </span>
                   </button>
                 </div>
-                {pwBad && (
-                  <span className="text-[12px] text-danger">
-                    {password ? "6 caractères minimum." : "Renseignez votre mot de passe."}
-                  </span>
-                )}
+                {pwBad && <span className="text-[12px] text-danger">Renseignez votre mot de passe.</span>}
               </div>
 
               <label className="flex select-none items-center gap-2.5">
@@ -259,7 +346,10 @@ export default function LoginPage() {
 
             <div className="flex flex-col gap-2.5">
               <Link
-                href="/signup"
+                // `next` suit la personne dans le tunnel (10/09/2026) : le parent qui arrive de son
+                // invitation (/auth/login?next=/mes-invitations) et n'a pas encore de compte doit
+                // retrouver cette invitation une fois son adresse confirmée, pas un accueil vide.
+                href={nextDansUrl ? `/signup?next=${encodeURIComponent(nextPath)}` : "/signup"}
                 className="flex h-[54px] items-center justify-center rounded-sv border border-border-strong bg-surface font-sora text-[16px] font-semibold text-text hover:bg-surface-hover"
               >
                 Créer mon compte

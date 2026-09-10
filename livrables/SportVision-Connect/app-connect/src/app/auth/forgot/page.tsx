@@ -31,8 +31,10 @@ export default function ForgotPage() {
     const supabase = createClient();
     // Ne jamais révéler si le compte existe — réponse toujours identique (cf. README design §
     // note sécurité), c'est déjà le comportement de request-password-reset lui-même.
+    // Adresse normalisée (10/09/2026) : c'est elle qui sert de clé à l'anti-abus de la fonction et
+    // à la recherche du compte.
     await supabase.functions.invoke("request-password-reset", {
-      body: { email, redirect_url: `${window.location.origin}/auth/reset` },
+      body: { email: email.trim().toLowerCase(), redirect_url: `${window.location.origin}/auth/reset` },
     });
     setBusy(false);
     setSent(true);
@@ -77,7 +79,9 @@ export default function ForgotPage() {
               <h1 className="font-sora text-[28px] font-bold tracking-tight">Vérifiez votre boîte mail</h1>
               <p className="text-[15px] leading-relaxed text-text-tertiary">
                 Si un compte existe pour <span className="font-medium text-text">{email}</span>, un
-                lien de réinitialisation vient d&apos;être envoyé. Il expire dans 30 minutes.
+                lien de réinitialisation vient d&apos;être envoyé. Il est valable une heure.
+                {/* 10/09/2026 : cet écran disait « 30 minutes » alors que l'e-mail lui-même annonce
+                    une heure (request-password-reset, et mailer_otp_exp = 3600 s côté Supabase). */}
               </p>
             </div>
             <Link
