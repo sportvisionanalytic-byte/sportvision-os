@@ -17,6 +17,14 @@
 // invitations joueur/parent — même motif copié tel quel (inviteUserByEmail, catch "already", puis
 // listUsers pour retrouver le compte existant).
 //
+// DETTE CONNUE (10/09/2026, décision de Fouka de NE PAS la traiter maintenant) : le compte est créé,
+// et l'e-mail d'invitation Supabase envoyé, AVANT le paiement. Qui abandonne au moment de payer
+// garde un compte et un e-mail qu'il n'a pas demandés. Le bon ordre serait de ne créer le compte
+// qu'au paiement confirmé (stripe-webhook) — mais c'est le circuit Stripe de production, et cette
+// fonction n'est aujourd'hui atteinte par aucun lien : l'écran de l'OS qui fabrique les liens
+// /media-checkout/<jeton> existe, mais media_guest_checkout_tokens est vide (0 ligne au 10/09/2026).
+// À reprendre avant la première diffusion d'un tel lien.
+//
 // Sécurité : le token est LA vérification (généré côté staff pour un produit + bénéficiaire
 // précis, voir migration-media-guest-checkout.sql) — aucune donnée sensible n'est acceptée depuis
 // le client au-delà du token + l'e-mail de l'acheteur. Le tarif n'est jamais transmis par le
@@ -56,6 +64,25 @@ async function checkRateLimit(admin: any, identifiant: string) {
   });
   if (error) return false;
   return data === true;
+}
+
+/** Le compte dont l'adresse (en minuscules) est exactement `email`, en parcourant TOUTES les pages
+ *  de l'API d'administration, ou null.
+ *  La boucle ne s'arrête que sur une page VIDE, et non sur une page « incomplète » : si l'API
+ *  plafonnait un jour la taille des pages en dessous de ce qu'on demande, une page de 50 comptes
+ *  sur 1000 demandés ne voudrait pas dire « fin ». Coût : un appel de plus (au 10/09/2026, moins de
+ *  50 comptes : deux appels). Le plafond de pages n'est qu'un garde-fou contre une boucle sans fin. */
+// deno-lint-ignore no-explicit-any
+async function compteParAdresse(admin: any, email: string): Promise<{ id: string } | null> {
+  for (let page = 1; page <= 1000; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    const comptes: { id: string; email?: string }[] = data?.users ?? [];
+    if (comptes.length === 0) return null;
+    const trouve = comptes.find((u) => (u.email || "").trim().toLowerCase() === email);
+    if (trouve) return { id: trouve.id };
+  }
+  return null;
 }
 
 serve(async (req) => {
@@ -136,8 +163,11 @@ serve(async (req) => {
     if (inviteErr) {
       const msg = inviteErr.message || "";
       if (!/already/i.test(msg)) return json({ error: msg }, 500);
-      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      const match = list?.users?.find((u: { email?: string }) => (u.email || "").toLowerCase() === email);
+      // Recherche exhaustive (10/09/2026, décision de Fouka). L'ancienne ne lisait que la première
+      // page de 200 comptes : au 201e compte du projet, un acheteur déjà inscrit recevait « Cet
+      // e-mail est déjà utilisé mais introuvable » et ne pouvait plus payer. `email` est déjà en
+      // minuscules (plus haut) ; la comparaison l'est aussi côté comptes.
+      const match = await compteParAdresse(admin, email);
       if (!match) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
       buyerUserId = match.id;
     }
