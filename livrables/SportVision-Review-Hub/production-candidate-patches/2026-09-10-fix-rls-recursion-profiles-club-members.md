@@ -2,7 +2,7 @@
 
 **Statut : PROPOSÉ, NON APPLIQUÉ EN PRODUCTION.** Validé et testé uniquement sur le
 projet Supabase Review (`ffjktzmsezfrwmrtlhzo`). Ne pas exécuter contre la production
-(`lulgezzpvrlbftbykzrc`) sans validation explicite de Fouka.
+(projet Supabase Production, distinct de Review) sans validation explicite de Fouka.
 
 ## Cause exacte
 
