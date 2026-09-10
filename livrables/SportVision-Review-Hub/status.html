@@ -44,7 +44,7 @@
         <tr><td>Protection d'accès du Hub</td><td><span class="badge badge-warn">mécanisme OK, mot de passe non défini</span></td><td>Basic Auth via edge function, fail-closed vérifié — <code>netlify env:set REVIEW_HUB_PASSWORD</code> reste à exécuter</td></tr>
         <tr><td>SportVision OS (Review)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 5</td></tr>
         <tr><td>Club+ (Review)</td><td><span class="badge badge-ok">navigable</span></td><td><a href="https://sportvision-clubplus-review.netlify.app/clubplus/auth/login">sportvision-clubplus-review.netlify.app</a> — voir détail Phase 3 ci-dessous</td></tr>
-        <tr><td>Connect (Review)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 4</td></tr>
+        <tr><td>Connect (Review)</td><td><span class="badge badge-ok">navigable</span></td><td><a href="https://sportvision-connect-review.netlify.app/auth/login">sportvision-connect-review.netlify.app</a> — voir détail Phase 4 ci-dessous</td></tr>
         <tr><td>Stripe (mode test)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 3 (au premier besoin de paiement dans une app Review)</td></tr>
         <tr><td>Synchronisation inter-applications</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 6</td></tr>
         <tr><td>Réinitialisation des données (reset complet)</td><td><span class="badge badge-pending">amorcé</span></td><td>Script de seed idempotent en place (rejouable) ; garde-fou anti-prod (refus si project ref ≠ Review) à ajouter avant un vrai bouton reset</td></tr>
@@ -129,6 +129,37 @@
       </tbody>
     </table>
     <p class="foot-note">Passe volontairement ciblée (4 personas, ~15 routes) plutôt qu'exhaustive sur les 25 sections demandées — équipes/calendrier/effectifs/droits à l'image vérifiés par la présence réelle des données dans l'interface (captures d'écran), pas encore module par module (messagerie, sponsors, studio…). À approfondir avant un audit final si besoin.</p>
+
+    <h2>Phase 4 — Connect Review</h2>
+    <p class="lead" style="margin-top:-6px">Application Connect réelle (pas `/demo/*`, confirmé structurellement incapable de représenter RLS/invitations/paiements réels), branchée sur Supabase Review. <a href="https://sportvision-connect-review.netlify.app/auth/login">sportvision-connect-review.netlify.app</a></p>
+
+    <div class="finding">
+      <div class="finding-title">Écart de spec important — pas de rôle coach dans Connect</div>
+      Aucun espace, page ou notion d'effectif d'équipe côté coach n'existe dans le code réel de Connect — confirmé par recherche exhaustive. Le pilotage coach vit exclusivement dans Club+. Nicolas/Sarah Coach Demo n'ont donc rien de spécifique à tester côté Connect (décision validée : documenté, pas inventé).
+    </div>
+    <div class="finding">
+      <div class="finding-title">Écart de spec — droit à l'image sans interface dans Connect</div>
+      C'est une policy RLS invisible sur <code>club_media</code> (<code>cmd_family_select</code>) : un joueur sans droit validé voit simplement zéro contenu, sans écran explicatif. Aucun bouton côté parent dans Connect. Effet vérifié au niveau RLS (Phase 2.1) ; aucun contenu <code>club_media</code> seedé en Review pour une démonstration visuelle — gap documenté, non comblé par une fausse UI.
+    </div>
+    <div class="finding" style="border-color:rgba(46,204,138,.4);background:rgba(46,204,138,.06)">
+      <div class="finding-title" style="color:var(--ok)">Cycle d'invitation Club+ → Connect → Club+ — vérifié réellement, de bout en bout</div>
+      Trois tables séparées existent : <code>club_invitations</code> (Club+, rôles staff), <code>player_invitations</code>/<code>parent_invitations</code> (que lit Connect via <code>/mes-invitations</code>). Une invitation staff (coach, secrétaire...) ne peut structurellement jamais apparaître dans Connect — normal, Connect ne gère que joueur/parent. Testé avec de vraies sessions à chaque étape : (1) invitation <code>player_invitations</code> créée (simulant l'action Club+), (2) visible par Lucas via <code>lister_mes_invitations()</code> avec son vrai JWT, (3) acceptée via <code>accepter_invitation_joueur()</code> avec son vrai JWT. Découverte : l'acceptation crée une <code>membership_request</code> au statut <code>en_attente_parent</code> — un troisième acteur (le parent) doit aussi confirmer avant qu'elle devienne une adhésion effective (<code>team_memberships</code>). Chaîne réelle, pas supposée.
+    </div>
+
+    <table>
+      <thead><tr><th>Élément</th><th>Détail</th></tr></thead>
+      <tbody>
+        <tr><td>Personas testées en conditions réelles</td><td>Lucas Joueur Demo (6 routes : dashboard, calendrier, contenus, photos, profil, messages), Marie Parent Demo (5 routes /particulier/*) — vraie connexion, vraie session, vraies pages</td></tr>
+        <tr><td>Correctif de seed trouvé en testant</td><td>Marie n'avait pas de ligne <code>connect_profile_settings</code> — <code>account_type</code> retombait sur son défaut 'joueur', tout <code>/particulier/*</code> redirigeait silencieusement vers /dashboard. Corrigé, intégré au reset.</td></tr>
+        <tr><td>Isolation production</td><td><span class="badge badge-ok">OK</span> — 0 référence à la ref Supabase de production, 0 clé live, dans le build déployé</td></tr>
+        <tr><td>Storage Review</td><td><span class="badge badge-ok">OK</span> — 4 buckets migrés (club-logos, clubplus-media, galerie-previews, portail-media) + 1 bucket manquant trouvé et créé (sportvision-media-prive, pièces jointes messagerie)</td></tr>
+        <tr><td>RLS Connect (vrais JWT)</td><td><span class="badge badge-ok">9/9</span> — isolation famille (parent/joueur), isolation OTHER DEMO FC, refus des données staff/admin depuis un compte joueur/parent</td></tr>
+        <tr><td>RLS cumulés (Club+ + Connect)</td><td><span class="badge badge-ok">40/40</span></td></tr>
+        <tr><td>Outbox</td><td><span class="badge badge-ok">OK</span> — aucune action externe réelle</td></tr>
+        <tr><td>PWA / cache</td><td>Manifest présent, aucun service worker — aucun risque de cache polluant un appareil de production</td></tr>
+      </tbody>
+    </table>
+    <p class="foot-note">Passe ciblée sur le parcours joueur/parent central (auth, invitation cross-app, isolation RLS) plutôt qu'exhaustive sur les 31 sections demandées module par module (galeries payantes/Stripe, pass saison, multi-enfants, mobile, PWA en détail — existent mais non explorés en profondeur cette passe). Aucun P0/P1 trouvé sur les parcours testés.</p>
 
     <h2>Les 551 migrations — détail des 6 non reconstruites</h2>
     <table>

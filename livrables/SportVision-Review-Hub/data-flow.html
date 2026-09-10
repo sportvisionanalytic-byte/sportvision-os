@@ -35,6 +35,11 @@
       Une table <code>organizations</code> plus récente coexiste avec l'historique <code>clubs</code> (<code>organizations.legacy_club_id → clubs.id</code>). La facturation/abonnement (<code>stripe_customer_id</code>, <code>plan</code>, crédits...) reste portée par <code>clubs</code>, mais la table d'invitations la plus récente (<code>club_invitations</code>) référence déjà <code>organizations(id)</code>. Migration de modèle en cours, pas encore unifiée — à garder en tête si un parcours d'audit semble incohérent entre deux écrans.
     </div>
 
+    <div class="finding" style="border-color:rgba(46,204,138,.4);background:rgba(46,204,138,.06)">
+      <div class="finding-title" style="color:var(--ok)">Constat vérifié en réel (Phase 4) — le cycle d'invitation joueur/parent traverse bien 3 systèmes distincts</div>
+      Confirmé par un test de bout en bout avec de vraies sessions : Club+ écrit dans <code>player_invitations</code>/<code>parent_invitations</code> (tables séparées de <code>club_invitations</code>, qui ne concerne que les rôles staff et n'est jamais lue par Connect). Connect les lit via <code>lister_mes_invitations()</code> et les accepte via <code>accepter_invitation_joueur()</code>/<code>accept_parent_invitation()</code>. L'acceptation ne crée pas directement une adhésion : elle crée une <code>membership_requests</code>, qui reste <code>en_attente_parent</code> tant qu'un parent n'a pas aussi confirmé — un troisième acteur dans la chaîne, pas visible en lisant une seule des deux apps isolément.
+    </div>
+
     <table>
       <thead><tr><th>Donnée</th><th>Source de vérité</th><th>Consommateurs</th></tr></thead>
       <tbody>
@@ -51,7 +56,9 @@
         <tr><td><strong>Demande de communication</strong> (Club+ → CM)</td><td>Club+ — <code>club_requests</code></td><td>OS (un contenu produit répond à une demande via <code>contenus.request_id</code>)</td></tr>
         <tr><td><strong>Mission / Prestation</strong></td><td>OS — <code>prestations</code></td><td>Club+ (visible via le match/événement associé), Connect (le joueur/parent voit et peut réserver sa prestation), OS Secrétariat</td></tr>
         <tr><td><strong>Facturation / Abonnement Club+</strong></td><td>Club+ — colonnes directement sur <code>clubs</code> (Stripe, plan, crédits)</td><td>OS (compta/finance, webhooks Stripe), Club+ (page facturation)</td></tr>
-        <tr><td><strong>Invitation</strong> (coach/joueur/parent)</td><td>Club+ — <code>club_invitations</code></td><td>Connect (la personne invitée reçoit le lien), OS (supervision/révocation par le staff)</td></tr>
+        <tr><td><strong>Invitation staff</strong> (coach/secrétaire/trésorier...)</td><td>Club+ — <code>club_invitations</code></td><td>Club+ uniquement — <strong>Connect ne lit jamais cette table</strong> (corrigé en Phase 4, contredisait l'ancienne ligne de ce tableau)</td></tr>
+        <tr><td><strong>Invitation joueur</strong></td><td>Club+ (écriture) — <code>player_invitations</code></td><td>Connect, via <code>/mes-invitations</code> → RPC <code>lister_mes_invitations()</code>/<code>accepter_invitation_joueur()</code> — vérifié en réel, cycle complet Phase 4</td></tr>
+        <tr><td><strong>Invitation parent</strong></td><td>Club+ (écriture) — <code>parent_invitations</code></td><td>Connect, même RPC <code>lister_mes_invitations()</code>/<code>accept_parent_invitation()</code></td></tr>
       </tbody>
     </table>
 
