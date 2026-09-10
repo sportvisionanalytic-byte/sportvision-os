@@ -106,6 +106,8 @@ node tests/os-adresse-ecrans.test.mjs                   # données personnelles 
 bash tests/galerie-checkout.test.sh                     # chaîne de paiement, 18 contrôles
 node tests/galerie-filigrane-public.test.mjs            # filigrane mesuré sur les fichiers servis (galerie témoin)
 node tests/galerie-checkout-email.test.mjs              # formulaire de paiement sur iPhone : 16 px, voile, confirmation
+node tests/accessibilite-pages-publiques.test.mjs       # axe WCAG AA sur 9 écrans + paiement au clavier
+node tests/os-lien-invitation.test.mjs                  # invitation et lien magique de l'OS
 ```
 
 ## Déployer une fonction serveur
@@ -123,15 +125,20 @@ réglage réel et le reproduit.
 
 ## Liste V1.1 — à ordonner par l'usage réel
 
-Relevé pendant l'audit, **non corrigé** au titre du gel :
-
-| Sujet | Constat |
+| Sujet | État au 10/09/2026 |
 |---|---|
-| Accessibilité | Audit complet non fait (P2). Échap corrigé sur les quinze fenêtres Club+. |
-| Parent, après acceptation | Lit « Le club doit encore valider votre adhésion », alors que son rattachement est déjà confirmé. |
-| Assistant d'onboarding | Un état d'installation léger pour le président pourrait être utile. Non construit : à décider à l'usage. |
-| E-mails d'invitation Club+ | Passent directement par Resend, hors de la file d'envoi : pas de relance, pas de suivi dans `notification_outbox`. |
-| Liens magiques OS | L'OS ne traite que `recovery` et `invite` ; un `magiclink` atterrit sur la connexion sans message. Aucun code n'en envoie. |
+| Parent, après acceptation | **Fait.** Le parent lit « Vous êtes rattaché à {enfant} » ; le joueur garde « Le club doit encore valider votre adhésion ». Contrôlé par `connect-joueur-parent-parcours`. |
+| E-mails d'invitation Club+ | **Fait.** Passent par la file d'envoi (`notification_outbox`, gabarit `clubplus.invitation`, Brevo) : relance et suivi. Vérifié de bout en bout, e-mail reçu, jeton conforme. |
+| Liens magiques OS | **Fait.** Un `magiclink` fait entrer directement dans l'OS, sur le bon compte, sans fenêtre de mot de passe. Contrôlé par `os-lien-invitation` (vu rouge sur la version d'avant). |
+| Accessibilité | **Premier passage fait** (axe-core, WCAG 2.1 AA) sur Connect, la galerie, le paiement et quatre écrans Club+ : aucun champ sans étiquette ni bouton sans nom ; contrastes insuffisants corrigés ; fenêtre de paiement utilisable au clavier et annoncée aux lecteurs d'écran. **Non couvert** : l'OS, les écrans Club+ au-delà des quatre mesurés, un vrai lecteur d'écran (VoiceOver). |
+| Assistant d'onboarding | État d'installation léger pour le président : **non construit**, volontairement. À décider quand les premiers présidents l'utiliseront. |
+
+**Incident du 10/09, 14h27 (Paris).** Un redéploiement de `clubplus-envoyer-invitation`
+contenait une double déclaration : la fonction ne démarrait plus (BOOT_ERROR). Invitations Club+
+par e-mail en panne **environ 40 secondes** (déployée à 14:27:00, version précédente rétablie à
+14:27:41), vu par le test d'envoi lancé juste après. Cause : un
+contrôle de types fait à la main qui ne vérifiait rien. Depuis, `scripts/deployer-fonction.sh`
+exécute `deno check` et refuse d'envoyer une fonction qui ne compile pas.
 
 ## Décisions actées le 10/09/2026
 
