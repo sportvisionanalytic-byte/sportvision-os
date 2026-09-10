@@ -219,6 +219,10 @@ try {
     await page.unroute("**/auth/v1/token**");
 
     await page.goto(`${CX}/auth/login?next=%2Fmes-invitations`, { waitUntil: "networkidle" });
+    // Décision du 10/09/2026 : la case n'avait aucun effet (session de 400 jours dans tous les cas),
+    // elle est retirée plutôt que de promettre ce qu'elle ne tenait pas.
+    t("plus de case « Rester connecté » qui ne faisait rien",
+      !(await texte(page)).includes("Rester connecté") && (await page.locator("input[type=checkbox]").count()) === 0);
     const href = await page.locator("a", { hasText: "Créer mon compte" }).getAttribute("href");
     t("« Créer mon compte » garde la page d'origine (next)", href === "/signup?next=%2Fmes-invitations", href);
     t("aucune erreur JavaScript", erreurs.length === 0, erreurs.slice(0, 3).join(" | "));
@@ -230,7 +234,27 @@ try {
     await seConnecter(page, `  ${c.email.toUpperCase()}  `);
     t("adresse en majuscules et entourée d'espaces : connexion acceptée", /\/dashboard/.test(page.url()), page.url().replace(CX, ""));
     t("l'accueil salue par le prénom saisi, pas par l'adresse", /Bonjour ZZ\b/.test(await texte(page)), (await texte(page)).match(/Bonjour [^ ]+/)?.[0]);
+    // Ce que fait réellement la session, sans case à cocher : un cookie persistant.
+    const cookie = (await ctx.cookies()).find((k) => /^sb-.*-auth-token/.test(k.name));
+    t("la session est conservée (cookie persistant, plus de 300 jours)", !!cookie && cookie.expires > Date.now() / 1000 + 300 * 86400,
+      cookie ? `expire le ${new Date(cookie.expires * 1000).toISOString().slice(0, 10)}` : "aucun cookie de session");
     await ctx.close();
+  }
+  {
+    // Formulaire « code d'équipe » (10/09/2026, décision de Fouka) : la date de naissance déjà
+    // connue — ici sur la fiche joueur — est préremplie au lieu d'être redemandée à vide.
+    const c = await creerCompte("datenaissance");
+    await api("player_profiles", { method: "POST", body: JSON.stringify({ user_id: c.id, prenom: "ZZ", nom: "ZZConnectDate", date_naissance: "2010-04-17", account_status: "actif" }) });
+    const sansDate = await creerCompte("sansdate");
+    for (const [compte, attendu, libelle] of [[c, "2010-04-17", "la date de la fiche joueur est préremplie"], [sansDate, "", "sans date connue, le champ reste vide (rien n'est deviné)"]]) {
+      const { ctx, page } = await contexte(navigateur);
+      await seConnecter(page, compte.email);
+      await page.goto(`${CX}/affiliations/ajouter?code=${code}`, { waitUntil: "networkidle" });
+      const champ = page.locator("#ac-code-birth");
+      const valeur = (await champ.count()) ? await champ.inputValue() : "(champ absent)";
+      t(`formulaire « code d'équipe » : ${libelle}`, valeur === attendu, `valeur : « ${valeur} » — ${page.url().replace(CX, "")}`);
+      await ctx.close();
+    }
   }
   {
     const { ctx, page } = await contexte(navigateur);
