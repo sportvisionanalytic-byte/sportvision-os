@@ -1,65 +1,29 @@
-# CLAUDE.md
+# CLAUDE.md — SportVision
 
-This file provides guidance to Claude Code when working in this workspace.
-
----
-
-## What This Is
-
-Ce workspace est le Jarvis personnel de [VOTRE NOM]. Il a été créé avec le Jarvis Starter Kit pour servir d'assistant IA personnel au quotidien.
-
-**Ce fichier (CLAUDE.md) est la fondation.** Il est automatiquement chargé au début de chaque session. Gardez-le à jour, c'est la source de vérité unique sur la façon dont Claude doit comprendre et opérer dans ce workspace.
+> Workspace Jarvis de **SportVision**.
+> Mon identité, mon style de communication et l'identité légale Elkana Group sont dans le CLAUDE.md
+> global (`~/.claude/CLAUDE.md`), chargé automatiquement à chaque session. Ce fichier ne contient que
+> le métier SportVision.
 
 ---
 
-## Who I Am
+## Périmètre de ce workspace
 
-Je m'appelle Fouka et je vis à Villeneuve-la-Guyard. Je suis entrepreneur dans le sport : je développe SportVision, une activité de captation vidéo, photographie et création de contenus pour clubs, joueurs et familles. Je travaille aussi sur SportVision TV, une plateforme de diffusion de contenus sportifs.
+**Ce workspace couvre uniquement SportVision** : captation vidéo et photo d'événements sportifs,
+création de contenus pour clubs, joueurs et familles, et tout l'écosystème logiciel autour
+(Connect, Club+, l'OS, le site vitrine, SportVision TV).
 
-Mes objectifs prioritaires actuels sont de signer 5 clubs partenaires et d'automatiser l'écosystème SportVision pour qu'il tourne sans intervention constante.
+**Eloria Digital n'a rien à faire ici.** Mon agence de communication a son propre workspace,
+`~/Documents/jarvis-eloria/`. Ne cite jamais un client, une offre, un tarif ou un template Eloria dans
+un livrable SportVision, et n'écris jamais dans le workspace Eloria depuis cette session. Si ma demande
+semble concerner Eloria, dis-le moi et propose que je bascule de dossier plutôt que de répondre ici.
 
-À long terme, je veux devenir la référence du sport amateur en France, lancer SportVision TV à l'échelle nationale, et construire une activité qui fonctionne en autonomie.
-
-Le domaine où j'ai besoin du plus d'aide en ce moment : stratégie business, communication professionnelle et développement de l'organisation SportVision.
-
----
-
-## How You Should Help Me
-
-Voici comment Claude doit me parler et m'assister au quotidien :
-
-- **Communiquez en français** systématiquement, sauf si je vous demande explicitement une autre langue
-- **Soyez direct et efficace**, pas de blabla inutile, pas de phrases d'introduction creuses
-- **Posez des questions de clarification** avant d'exécuter quand le contexte n'est pas clair, plutôt que de deviner
-- **Soyez honnête**, même quand la vérité n'est pas agréable. Pas de flagornerie ni de validation systématique
-- **Pour les décisions importantes**, donnez-moi votre analyse avec les pour/contre plutôt que de trancher à ma place
-- **Adaptez votre niveau de détail** selon la complexité de la demande. Les questions simples méritent des réponses courtes
-- **N'utilisez pas de tirets longs** (em dashes) dans vos réponses. Préférez les virgules ou les points
+**Objectifs prioritaires actuels :** signer 5 clubs partenaires, et automatiser l'écosystème SportVision
+pour qu'il tourne sans intervention constante. Le détail est dans `context/CONTEXT.md`.
 
 ---
 
-## Critical Instruction: Maintain My Context
-
-**Quand Claude détecte un changement important dans ma vie, mon travail ou mes projets, Claude DOIT proposer de mettre à jour les fichiers de contexte concernés.**
-
-Exemples de changements à détecter :
-- Nouveau projet en cours
-- Changement de poste, d'activité ou de statut
-- Nouveau partenaire de travail ou collaboration importante
-- Nouvel objectif majeur
-- Décision stratégique prise
-- Changement personnel significatif (déménagement, formation, etc.)
-- Métrique ou résultat important atteint
-
-Quand je raconte un changement de ce type, Claude doit dire :
-
-> "Je remarque que tu m'as parlé de [changement]. Veux-tu que je mette à jour [fichier concerné] pour qu'il reflète cette information ?"
-
-Une fois que je confirme, Claude met à jour le fichier en question et ajoute une entrée dans `context/HISTORY.md` pour tracer le changement.
-
----
-
-## Workspace Structure
+## Structure du workspace
 
 ```
 .
@@ -67,83 +31,76 @@ Une fois que je confirme, Claude met à jour le fichier en question et ajoute un
 ├── .env                         # Secrets API (jamais versionné)
 ├── .env.example                 # Template des secrets (versionnable)
 ├── context/
-│   ├── CONTEXT.md               # Qui je suis, ce que je fais, mes objectifs
-│   ├── HISTORY.md               # Journal évolutif de mes sessions
-│   └── import/                  # Documents externes à analyser
-├── livrables/                   # Tous les documents produits par Claude
+│   ├── CONTEXT.md               # SportVision : activité, objectifs, projets en cours
+│   ├── HISTORY.md               # Journal évolutif des sessions
+│   └── import/                  # Documents externes à analyser (PDFs, exports, captures)
+├── livrables/                   # Tout ce que Claude produit
+│   ├── SportVision/             # Site vitrine public
+│   ├── SportVision-Connect/     # Connect (espace personnel : joueur, particulier)
+│   ├── SportVision-Connect-App/ # Application Connect
+│   ├── SportVision-TV/          # Plateforme de diffusion (projet ~2028)
 │   ├── strategie/               # Plans stratégiques, roadmaps, décisions
 │   ├── communication/           # Emails, scripts, pitchs, présentations
-│   ├── templates/               # Modèles réutilisables (contrats, devis)
 │   ├── analyses/                # Analyses de marché, audits
-│   └── SportVision-TV/          # Documents spécifiques à la plateforme
+│   ├── recrutement/             # Recrutement et organisation
+│   └── studio-templates/        # Modèles Studio
 ├── .claude/
-│   ├── commands/
-│   │   ├── prime.md             # /prime pour démarrer une session
-│   │   ├── update.md            # /update pour mettre à jour le contexte
-│   │   └── morning.md           # /morning pour démarrer la journée
-│   └── skills/
-│       └── recherche-actualites/ # Skill veille personnalisée
-└── module-installs/
-    └── jarvis-install/          # Module d'installation initial
+│   ├── commands/                # /prime /update /morning /commit
+│   └── skills/                  # recherche-actualites
+└── module-installs/             # Modules d'installation
 ```
 
 | Dossier | Utilité |
 |---------|---------|
-| `context/` | Tout ce qui me concerne et que Claude doit savoir |
-| `context/import/` | Documents externes (PDFs, exports, notes) à analyser |
-| `livrables/` | Tous les documents et livrables produits par Claude |
-| `.claude/commands/` | Commandes personnalisées de mon Jarvis |
-| `.claude/skills/` | Skills (super-pouvoirs) de mon Jarvis |
-| `module-installs/` | Modules d'installation (initial et futurs) |
+| `context/` | Tout ce qui concerne SportVision et que Claude doit savoir |
+| `context/import/` | Documents externes (PDFs, exports, captures) à analyser |
+| `livrables/` | Tous les documents et applications produits par Claude |
+| `.claude/commands/` | Commandes personnalisées |
+| `.claude/skills/` | Skills |
 
 ---
 
-## Commands
+## Commandes
 
-### /prime
-
-**Objectif :** Démarrer une nouvelle session avec contexte complet.
-
-À lancer au début de chaque session. Claude va :
-1. Lire CLAUDE.md, CONTEXT.md et HISTORY.md
-2. Résumer sa compréhension de qui je suis et où j'en suis
-3. Confirmer qu'il est prêt à m'aider
-
-### /update
-
-**Objectif :** Mettre à jour mes fichiers de contexte avec les derniers changements.
-
-À utiliser quand quelque chose d'important a changé et que je veux que Claude reflète cette information dans les fichiers, ou pour faire une mise à jour générale après une session productive.
-
-### /morning
-
-**Objectif :** Démarrer ma journée avec une veille personnalisée en 30 secondes.
-
-Claude va effectuer une veille des actualités du jour, filtrée selon mon contexte personnel (mes objectifs, mes projets), et me proposer un focus pour la journée. Cette commande utilise la skill `recherche-actualites-contextualisees`.
+| Commande | Objectif |
+|---|---|
+| `/prime` | Démarrer une session avec le contexte SportVision chargé |
+| `/update` | Mettre à jour CONTEXT.md et HISTORY.md après un changement |
+| `/morning` | Veille du jour filtrée sur le contexte SportVision |
+| `/commit` | Sauvegarder l'état du workspace dans Git |
 
 ---
 
 ## Skills disponibles
 
-### recherche-actualites-contextualisees
+### recherche-actualites
 
-Skill de veille intelligente qui filtre les actualités selon mon contexte personnel. Activée automatiquement quand je demande "fais-moi un point sur les actualités", "donne-moi les news du jour", ou via la commande `/morning`.
-
-L'avantage : pas de bruit. Seulement ce qui me concerne vraiment, vu mes objectifs et projets actuels.
-
----
-
-## Getting Started
-
-**Première fois ?** Lancez `/install module-installs/jarvis-install` pour démarrer l'installation interactive.
-
-**Sessions suivantes ?** Lancez `/prime` au début de chaque session pour charger le contexte.
+Veille intelligente filtrée sur mon contexte. Se déclenche sur "fais-moi un point sur les actualités",
+"donne-moi les news du jour", ou via `/morning`. L'avantage : pas de bruit, seulement ce qui concerne
+vraiment mes objectifs et projets actifs.
 
 ---
 
 ## Notes importantes
 
-- Les fichiers de contexte doivent rester synthétiques mais suffisants. Si une section devient trop longue, créez un fichier dédié dans `context/import/`
-- L'historique se construit naturellement au fil des sessions, pas besoin de tout y mettre
-- Pour les documents externes (PDFs, exports Notion, captures d'écran), utilisez systématiquement `context/import/`
-- Ne modifiez pas manuellement HISTORY.md, laissez Claude s'en charger via `/update`
+- Les fichiers de contexte restent synthétiques. Si une section devient trop longue, créer un fichier
+  dédié dans `context/import/`
+- L'historique se construit au fil des sessions, pas besoin de tout y mettre
+- Documents externes : toujours dans `context/import/`, jamais à la racine
+- Ne pas modifier HISTORY.md à la main, passer par `/update`
+
+---
+
+## Production : règles obligatoires (depuis le 10/09/2026)
+
+SportVision est en **PRODUCTION MULTI-CLUBS — V1 STABLE**. Référence :
+`livrables/SportVision-TV/PRODUCTION-MULTI-CLUBS-V1.md`.
+
+- **Gel fonctionnel.** Seuls les P0/P1 et les retours des premiers clubs réels. Pas de nouvelle
+  fonctionnalité, pas de refactor, pas de changement de règle métier sans demande explicite.
+- **Déployer une Edge Function : uniquement par `bash livrables/SportVision-TV/scripts/deployer-fonction.sh <nom>`.**
+  Jamais `supabase functions deploy` nu. Huit fonctions tournent volontairement sans vérification
+  JWT (dont `stripe-webhook`) et un déploiement nu la réactive : fin silencieuse de tous les
+  paiements. Ne jamais créer de `supabase/config.toml` pour contourner : un `config push` écraserait
+  les réglages d'authentification de production. Après tout déploiement, lancer
+  `bash livrables/SportVision-TV/tests/fonctions-verification-jwt.test.sh`.

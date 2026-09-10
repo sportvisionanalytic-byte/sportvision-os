@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-08-31
+
+### Cloisonnement SportVision / Eloria Digital
+
+- Constat : Fouka dirige deux activités distinctes, SportVision et **Eloria Digital** (son agence de communication), et les deux commençaient à se mélanger dans les sessions et dans la mémoire persistante de Claude
+- Confirmé par Fouka : les deux activités sont exploitées par la même société, la SASU **Elkana Group**. Seul le nom commercial affiché change selon l'activité
+- Architecture retenue, à trois niveaux : un `~/.claude/CLAUDE.md` **global** (identité de Fouka, style de communication, identité légale Elkana Group, règle de cloisonnement), chargé dans toutes les sessions, plus **un workspace par activité** avec son CLAUDE.md purement métier
+- Raison technique du choix : la mémoire persistante de Claude est indexée par chemin de dossier, donc deux dossiers distincts donnent une isolation totale sans effort. Les 42 mémoires SportVision restent attachées à ce workspace et ne fuiteront jamais côté Eloria
+- Workspace Eloria créé dans `~/Documents/jarvis-eloria/` (contexte, livrables, commandes `/prime` `/update` `/morning` `/commit`, skill de veille, dépôt Git initialisé)
+- `CLAUDE.md` de ce workspace réécrit : allégé de tout ce qui remonte au global, recentré sur SportVision, structure mise à jour pour refléter les dossiers réels de `livrables/`. La règle "Eloria n'a rien à faire ici" y est explicite
+- Reste à faire côté Eloria : remplir `context/CONTEXT.md`, encore à l'état de squelette, à partir des documents existants (`~/Documents/Eloria/`, plaquette, playbook ADN, contrats Mr Boms, offre Air Denizot, projet Les Milles)
+
+---
+
 ## 2026-08-15
 
 ### SportVision Connect (personnel) entièrement construit + feuille de route écosystème fixée
