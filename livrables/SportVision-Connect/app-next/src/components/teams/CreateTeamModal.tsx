@@ -11,6 +11,7 @@ import { TEAM_CATEGORY_OPTIONS } from "@/lib/types/teams";
 import type { OrgUser } from "@/lib/types/settings";
 import { useModalA11y } from "@/lib/useModalA11y";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Modale "Créer une équipe" (19/08/2026, retour utilisateur : aucune UI ne permettait de créer
 // une équipe. Puis affinée le même soir : catégorie en liste déroulante (TEAM_CATEGORY_OPTIONS)
 // + numéro d'équipe optionnel (club avec plusieurs équipes dans la même catégorie, ex. "U17 2"
@@ -31,6 +32,8 @@ interface CreateTeamModalProps {
 }
 
 export function CreateTeamModal({ clubId, existingNames, onClose, onCreate }: CreateTeamModalProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [categorie, setCategorie] = useState("");
   // Categories supplementaires couvertes par la meme equipe (U8 qui joue avec les U9). La
   // principale reste celle qui NOMME l'equipe : « U8 1 », pas « U8-U9 1 ».

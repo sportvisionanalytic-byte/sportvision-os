@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import type { Team } from "@/lib/types/teams";
 import type { FamilyInviteTargetType } from "@/lib/data/club/family-invites";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Modale « Inviter un joueur / un parent » — portage de club-gestion-joueurs-familles.js
 // (inviteModalHtml) dans la nouvelle Club+, même patron visuel que InviteUserModal.tsx.
 interface InviteFamilyModalProps {
@@ -17,6 +18,8 @@ interface InviteFamilyModalProps {
 }
 
 export function InviteFamilyModal({ targetType, teams, onClose, onInvite }: InviteFamilyModalProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const isJoueur = targetType === "joueur";
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");

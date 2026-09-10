@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useModalA11y } from "@/lib/useModalA11y";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Résultat renvoyé par onInvite — inviteClubMember (data/club/users.ts) renvoie un mot de passe
 // en mode "direct" ; les autres types d'organisation (non branchés sur une vraie edge function
 // encore, voir users/page.tsx) ne renvoient rien, undefined reste géré comme un cas normal.
@@ -50,6 +51,8 @@ interface InviteUserModalProps {
 const TEAM_AWARE_ROLES = new Set<MembershipRole>(["coach", "team_manager"]);
 
 export function InviteUserModal({ roles, allowDirectMode, lockedTeam, title, onClose, onInvite }: InviteUserModalProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

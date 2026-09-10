@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { NewsroomItemDetails, NewsroomItemInput, NewsroomItemPriority, NewsroomItemType } from "@/lib/data/club/newsroom";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Modale « Nouvelle remontée / Modifier » — Newsroom (chantier 16/08/2026, voir data/club/
 // newsroom.ts). Avant ce chantier, aucune remontée ne pouvait être créée ni éditée depuis Club+ ;
 // la table (club_newsroom_items, RLS cni_member_insert) le permettait déjà pour tout membre actif.
@@ -27,6 +28,8 @@ interface NewsroomItemModalProps {
 }
 
 export function NewsroomItemModal({ item, onClose, onSubmit }: NewsroomItemModalProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [title, setTitle] = useState(item?.title ?? "");
   const [body, setBody] = useState(item?.body ?? "");
   const [teamName, setTeamName] = useState(item?.teamName ?? "");

@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useModalA11y } from "@/lib/useModalA11y";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Interface Club+ du souhait de présence (§26-33, priorité remontée par Fouka en post-audit
 // 05/09/2026 — le backend E24/E25 existait depuis 4 jours sans aucun écran). Un souhait n'est
 // jamais une mission : SELECTED côté CM crée une vraie planned_presences plus tard, cette modale
@@ -42,6 +43,8 @@ function formatEventDate(iso: string): string {
 }
 
 export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted }: RequestPresenceModalProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());

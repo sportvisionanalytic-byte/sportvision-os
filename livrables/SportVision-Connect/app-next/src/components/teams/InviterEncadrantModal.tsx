@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/Button";
 import { useModalA11y } from "@/lib/useModalA11y";
 import { TeamSelector } from "@/components/ui/TeamSelector";
 import { createClient } from "@/lib/supabase/client";
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 import {
   buildInvitationUrl,
   envoyerInvitationParEmail,
@@ -54,6 +55,8 @@ interface Props {
 }
 
 export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onInvited }: Props) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");

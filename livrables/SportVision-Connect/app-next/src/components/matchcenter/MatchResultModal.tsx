@@ -8,6 +8,7 @@ import type { Match } from "@/lib/types/studio";
 import type { MatchOutcome } from "@/lib/data/club/matches";
 import { parseDateOnly } from "@/lib/date-only";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Modale « Saisir un résultat / Reporter / Annuler » — voir ACTIONS.md § 8, DATA_MODEL.md § Match
 // et CLUB-PLUS-PRODUCT-BIBLE.md § 7 (Saisie résultat : Score, Statut, Buteurs, Passeurs, Joueur du
 // match, Commentaire communication, Média, Historique). Composant propre au module Match Center.
@@ -99,6 +100,8 @@ export function MatchResultModal({
   onClose,
   onSubmit,
 }: MatchResultModalProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [matchId, setMatchId] = useState(initialMatchId);
   const match = matches.find((m) => m.id === matchId) ?? matches[0]!;
 

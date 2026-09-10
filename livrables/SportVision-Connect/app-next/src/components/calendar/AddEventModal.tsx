@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useModalA11y } from "@/lib/useModalA11y";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Modale « Ajouter un événement » — voir ACTIONS.md § 15. Champs Heure/Lieu réintégrés le
 // 09/08/2026 : migration-clubplus-v35-calendar-event-heure-lieu.sql (exécutée par Fouka) ajoute
 // event_time/location à club_calendar_events. Le type proposé reste limité aux 6 valeurs couvertes
@@ -28,6 +29,8 @@ interface AddEventModalProps {
 const CREATABLE_KINDS = Object.keys(CREATABLE_EVENT_TYPE_MAP) as CalendarEventKind[];
 
 export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventModalProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<CalendarEventKind>("meeting");
   const [date, setDate] = useState("");

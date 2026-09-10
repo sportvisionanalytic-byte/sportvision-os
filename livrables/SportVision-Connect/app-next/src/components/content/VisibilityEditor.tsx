@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Fiche « Visibilité vers Connect » — Bible §17 : 4 options (Privé Club+ / Affiliés du groupe /
 // Sportifs sélectionnés / Automatique pour tous, interdite par défaut). Écrit directement sur
 // media_access_rules / media_access_selected_players (voir data/club/content.ts,
@@ -46,6 +47,8 @@ interface VisibilityEditorProps {
 }
 
 export function VisibilityEditor({ asset, organizationId, onClose, onSaved }: VisibilityEditorProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [mode, setMode] = useState<ContentVisibilityMode | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());

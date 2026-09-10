@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchCouvertureOperateurs, type OperateurAffecte } from "@/lib/data/club/calendar";
 import { cn } from "@/lib/cn";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Fiche latérale d'un événement du calendrier — voir ACTIONS.md § 15.
 //
 // ── Ce qui a changé le 09/09/2026 ──
@@ -65,6 +66,8 @@ function Rubrique({ titre, children }: { titre: string; children: React.ReactNod
 }
 
 export function EventDetailPanel({ event, onClose }: EventDetailPanelProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const { ctx } = useSession();
   // event.startsAt est une date pure ("YYYY-MM-DD") quand allDay=true — voir le docstring de
   // parseDateOnly pour le décalage d'un jour que `new Date()` provoquerait hors fuseaux UTC+.

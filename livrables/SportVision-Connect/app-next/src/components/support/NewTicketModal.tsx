@@ -6,6 +6,7 @@ import type { SupportTicketCategory, SupportTicketPriority } from "@/lib/types/s
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Modale « Nouveau ticket » — voir ACTIONS.md § 24. Propre au module Support.
 const CATEGORY_LABELS: Record<SupportTicketCategory, string> = {
   content: "Contenus",
@@ -56,6 +57,8 @@ interface NewTicketModalProps {
 }
 
 export function NewTicketModal({ onClose, onSubmit, initialContext }: NewTicketModalProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [subject, setSubject] = useState(initialContext ? `À propos de : ${initialContext.label}` : "");
   const [category, setCategory] = useState<SupportTicketCategory>(initialContext ? CONTEXT_TYPE_CATEGORY[initialContext.type] : "content");
   const [priority, setPriority] = useState<SupportTicketPriority>("normal");

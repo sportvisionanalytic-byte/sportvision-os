@@ -27,6 +27,7 @@ import { cn } from "@/lib/cn";
 import { normalizeCalendarUrl } from "@/lib/calendar/normalize";
 import { detectXlsxLayout } from "@/lib/calendar/providers/xlsx";
 import { layoutToMapping, type DetectedLayout } from "@/lib/calendar/autodetect";
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 import {
   buildImportPreview,
   CHANGED_FIELD_LABELS,
@@ -99,6 +100,8 @@ export function ImportMatchesModal({
   onClose: () => void;
   onImported: () => void;
 }) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const containerRef = useRef<HTMLDivElement>(null);
   // Un PDF coûte cher à lire : on l'extrait une fois au dépôt, et toutes les relectures
   // (changement de colonnes, réessai) repartent de ces lignes-là.

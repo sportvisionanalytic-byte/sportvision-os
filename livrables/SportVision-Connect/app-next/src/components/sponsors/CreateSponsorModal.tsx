@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useModalA11y } from "@/lib/useModalA11y";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Modale "Ajouter un sponsor" (19/08/2026, retour utilisateur : aucune UI ne le permettait).
 // Même pattern que AddEventModal.tsx / CreateTeamModal.tsx. Niveau limité à Or/Argent/Bronze
 // (club_sponsors_niveau_check) — voir data/club/sponsors.ts.
@@ -15,6 +16,8 @@ interface CreateSponsorModalProps {
 }
 
 export function CreateSponsorModal({ onClose, onCreate }: CreateSponsorModalProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [name, setName] = useState("");
   const [niveau, setNiveau] = useState<"Or" | "Argent" | "Bronze">("Bronze");
   const [secteur, setSecteur] = useState("");

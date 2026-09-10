@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Award,
   Building2,
@@ -27,6 +27,7 @@ import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { getOnboardingProgress, setOnboardingProgress } from "./onboarding-storage";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Onboarding guidé — voir ACTIONS.md § 3. Affiché en overlay par-dessus le tableau de bord après
 // la première connexion (pas une route séparée dans la maquette d'origine). Monté depuis
 // src/app/(app)/dashboard/page.tsx — seule exception de montage autorisée pour ce module, voir
@@ -100,8 +101,29 @@ function useOnboardingVariant() {
   return { steps: GENERIC_STEPS, heading: "Bienvenue sur Club+" };
 }
 
+/**
+ * Qui voit l'assistant.
+ *
+ * DECISION DE FOUKA, 10/09/2026, apres l'audit de pre-lancement : « Il ne doit plus s'ouvrir
+ * automatiquement pour un coach ni pour un president. C'est avant tout un outil CM SportVision /
+ * Admin. Le president doit arriver sur un Club+ deja prepare et pouvoir utiliser son espace ; le
+ * coach doit arriver directement dans ses equipes. »
+ *
+ * Le constat qui a mene la : l'assistant s'ouvrait en modale plein ecran, z-100, interceptant tous
+ * les clics, pour un president qui venait d'accepter son invitation — mesure faite sur les deux
+ * parcours reels. Il posait neuf etapes de configuration a quelqu'un dont ce n'est pas le travail.
+ *
+ * `external_cm` est le role que porte un CM SportVision travaillant sur un club (voir
+ * supabase/session.ts). `admin` et `owner` sont les dirigeants qui installent reellement l'espace.
+ * Tous les autres — coach, president, secretaire, tresorier, joueur, parent... — ne le voient plus,
+ * ni en modale ni en banniere de reprise.
+ */
+const ROLES_ASSISTANT = new Set(["external_cm", "admin", "owner"]);
+
 export function OnboardingOverlay() {
   const { steps, heading } = useOnboardingVariant();
+  const { ctx } = useSession();
+  const peutVoirAssistant = ROLES_ASSISTANT.has(ctx.membership.role);
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -112,13 +134,28 @@ export function OnboardingOverlay() {
     const progress = getOnboardingProgress();
     setCompleted(progress.completed);
     setStepIndex(Math.min(progress.step, steps.length - 1));
-    setOpen(!progress.completed && progress.step === 0);
+    setOpen(peutVoirAssistant && !progress.completed && progress.step === 0);
     setReady(true);
     // Ne dépend que du montage initial : la variante ne doit pas relancer l'overlay si elle
     // change après coup (changement d'organisation active en cours de tutoriel).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Echap fait la meme chose que « Terminer plus tard » : il repousse, il ne termine pas. Marquer
+  // l'onboarding acheve sur un appui de touche le ferait disparaitre pour de bon alors que la
+  // personne voulait seulement respirer.
+  //
+  // L'appel est ici, AVANT les retours anticipes : un hook doit etre execute a chaque rendu. Place
+  // plus bas, il etait saute pour un coach, et React refuse un nombre de hooks variable d'un rendu
+  // a l'autre — l'ecran serait tombe au premier changement d'etat.
+  const repousser = useCallback(() => {
+    setOpen(false);
+    setOnboardingProgress({ step: stepIndex, completed: false });
+  }, [stepIndex]);
+  useFermetureEchap(open, repousser);
+
+  // Un coach ou un president n'a rien a voir ici, ni la modale ni la banniere de reprise.
+  if (!peutVoirAssistant) return null;
   if (!ready || completed) return null;
 
   const isLast = stepIndex === steps.length - 1;
@@ -148,9 +185,9 @@ export function OnboardingOverlay() {
   }
 
   function handleLater() {
-    setOpen(false);
-    persist({ step: stepIndex, completed: false });
+    repousser();
   }
+
 
   if (!open) {
     if (bannerDismissed || stepIndex === 0) return null;

@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Panneau de synchronisation d'une intégration — voir ACTIONS.md § 25 « Panneau de
 // synchronisation ». Modale : Synchroniser maintenant, Déconnecter, autorisations demandées
 // (mention explicite que la suppression d'événements n'est jamais demandée), table de
@@ -20,6 +21,8 @@ interface IntegrationSyncPanelProps {
 }
 
 export function IntegrationSyncPanel({ integration, onClose, onDisconnect, onSync }: IntegrationSyncPanelProps) {
+  // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
+  useFermetureEchap(true, onClose);
   const [syncing, setSyncing] = useState(false);
 
   function handleSync() {
