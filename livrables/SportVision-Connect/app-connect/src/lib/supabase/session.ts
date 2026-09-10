@@ -308,7 +308,7 @@ export async function getAccountType(supabase: SupabaseClient, userId: string): 
 const ROLES_COLLABORATEUR = new Set(["admin", "sec", "prod", "photo", "cm", "compta", "com", "rh"]);
 export const URL_OS = "https://bc6m3cgdz.sportvision-an.fr/sportvision-os-full";
 
-async function redirigerSiCollaborateur(supabase: SupabaseClient, userId: string): Promise<void> {
+export async function redirigerSiCollaborateur(supabase: SupabaseClient, userId: string): Promise<void> {
   const [{ data: profil }, { data: reglages }, { count: joueur }] = await Promise.all([
     supabase.from("profiles").select("role").eq("id", userId).maybeSingle(),
     supabase.from("connect_profile_settings").select("user_id").eq("user_id", userId).maybeSingle(),

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { buildPlayerContext, getAccountType, resolveDisplayIdentity } from "@/lib/supabase/session";
+import { buildPlayerContext, getAccountType, resolveDisplayIdentity, redirigerSiCollaborateur } from "@/lib/supabase/session";
 import {
   getNextClubEvent,
   getNextPrestation,
@@ -33,6 +33,9 @@ export default async function DashboardPage() {
   // le bon (et seul) endroit pour brancher ce choix sans dupliquer la vérification sur chaque
   // route — voir le rapport final pour la limite documentée de cette approche (une route Espace
   // joueur ouverte directement par URL par un compte particulier n'est pas re-vérifiée ici).
+  // Un collaborateur SportVision sans profil Connect va vers l'OS (10/09/2026) : /dashboard est le
+  // point d'entrée de toute connexion, et ne passe pas par requireJoueurAccount.
+  await redirigerSiCollaborateur(supabase, user.id);
   const accountType = await getAccountType(supabase, user.id);
   if (accountType === "particulier") redirect("/particulier");
 
