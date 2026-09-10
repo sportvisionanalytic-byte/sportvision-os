@@ -180,7 +180,7 @@ serve(async (req) => {
       roleLabel: ROLE_LABELS[inv.role] ?? inv.role,
       equipes: Array.isArray(inv.teams) ? inv.teams : [],
       url,
-      expireLe: new Date(inv.expire_at).toLocaleDateString("fr-FR", {
+      expireLe: new Date(inv.expire_at).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris",
         day: "numeric",
         month: "long",
         year: "numeric",

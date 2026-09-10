@@ -103,7 +103,7 @@ async function sendRetractationConfirmationEmail(
     return;
   }
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
-  const dateFmt = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  const dateFmt = new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", year: "numeric" });
 
   const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"></head>

@@ -658,7 +658,7 @@ serve(async (req) => {
                     consigne,
                     cta,
                     lien: `${connectUrl}/gallery/commande/${encodeURIComponent(grant.token)}`,
-                    expiration: new Date(grant.expires_at as string).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+                    expiration: new Date(grant.expires_at as string).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", year: "numeric" }),
                     numero: String(paidOrder.id).slice(0, 8).toUpperCase(),
                     montant,
                   },
@@ -1455,7 +1455,7 @@ serve(async (req) => {
         try {
           const contact = await getClubAdminContact(admin, club.id);
           if (contact) {
-            const dateEffet = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+            const dateEffet = new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "long", year: "numeric" });
             await admin.rpc("enqueue_notification", {
               p_event_type: "clubplus.abonnement_resilie",
               p_template_key: "clubplus.abonnement_resilie",

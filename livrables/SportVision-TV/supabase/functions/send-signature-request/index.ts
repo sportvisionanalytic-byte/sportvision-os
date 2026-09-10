@@ -52,7 +52,7 @@ const fmtMoney = (n: number | null | undefined) =>
 const fmtNum = (n: number | null | undefined) =>
   (n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (s: string | null | undefined) =>
-  s ? new Date(s).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+  s ? new Date(s).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "long", year: "numeric" }) : "—";
 
 // Découpe un texte en lignes qui tiennent dans maxWidth, pour une police/taille donnée.
 function wrapText(text: string, font: any, size: number, maxWidth: number): string[] {

@@ -97,7 +97,7 @@ serve(async (req) => {
     const fmt = (n: number) =>
       (n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
     const fd = (s: string) =>
-      s ? new Date(s).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+      s ? new Date(s).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "long", year: "numeric" }) : "—";
 
     const stLbl: Record<string, string> = {
       brouillon: "Brouillon", emise: "Émise", partiellement_payee: "Partiellement payée", payee: "Payée",

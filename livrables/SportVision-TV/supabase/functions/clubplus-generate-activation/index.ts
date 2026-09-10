@@ -76,7 +76,7 @@ async function sendActivationEmail(
     return false;
   }
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
-  const dateFmt = new Date(info.expiresAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  const dateFmt = new Date(info.expiresAt).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", year: "numeric" });
   const greeting = info.contactPrenom ? `Bonjour ${info.contactPrenom},` : "Bonjour,";
 
   const html = `<!DOCTYPE html>

@@ -72,7 +72,7 @@ async function sendRdvConfirmationEmail(
     return;
   }
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
-  const dateFmt = new Date(info.date_demandee).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  const dateFmt = new Date(info.date_demandee).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", year: "numeric" });
   const typeLbl = info.type_rdv === "physique" ? "Rendez-vous physique" : "Appel téléphonique";
 
   const html = `<!DOCTYPE html>

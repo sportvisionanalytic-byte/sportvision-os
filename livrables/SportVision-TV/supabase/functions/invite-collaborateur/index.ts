@@ -170,7 +170,7 @@ serve(async (req) => {
         inviter_name: userData.user.user_metadata?.prenom || "L'équipe SportVision",
         organization_name: organization_name || "SportVision",
         role_label: ROLE_LABELS[role],
-        expires_at_local: expiresAt.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }),
+        expires_at_local: expiresAt.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "long", year: "numeric" }),
         invitation_url: linkData.properties.action_link,
       },
     });

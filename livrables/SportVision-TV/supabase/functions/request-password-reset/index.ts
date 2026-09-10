@@ -99,7 +99,7 @@ serve(async (req) => {
       p_entity_id: linkData.user.id,
       p_payload: {
         first_name: linkData.user.user_metadata?.prenom || "",
-        expires_at_local: expiresAt.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "long" }),
+        expires_at_local: expiresAt.toLocaleString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "long" }),
         reset_url: linkData.properties.action_link,
       },
     });

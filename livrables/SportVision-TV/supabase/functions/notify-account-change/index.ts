@@ -64,7 +64,7 @@ serve(async (req) => {
     const { type, new_email } = await req.json();
 
     const firstName = user.user_metadata?.prenom || "";
-    const changedAt = new Date().toLocaleString("fr-FR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const changedAt = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
     if (type === "password_changed") {
       await admin.rpc("enqueue_notification", {

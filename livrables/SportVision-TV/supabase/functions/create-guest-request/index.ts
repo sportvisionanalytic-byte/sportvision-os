@@ -177,7 +177,7 @@ async function sendGuestRequestConfirmationEmail(
   }
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
   const dateFmt = info.date
-    ? new Date(info.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+    ? new Date(info.date).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", year: "numeric" })
     : null;
 
   const html = `<!DOCTYPE html>
