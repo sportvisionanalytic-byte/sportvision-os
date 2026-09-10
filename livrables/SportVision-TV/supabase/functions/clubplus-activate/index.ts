@@ -128,18 +128,6 @@ serve(async (req) => {
       return json({ error: "Trop de tentatives. Réessayez dans une heure." }, 429);
     }
 
-    // Idempotence : déjà onboardé (quel que soit le chemin) → ne rien recréer,
-    // et surtout ne pas consommer le token pour rien.
-    const { data: existing } = await admin
-      .from("club_members")
-      .select("id, club_id, role")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-    if (existing) {
-      return json({ club_id: existing.club_id, role: existing.role, already_activated: true });
-    }
-
     // Revérification complète du token côté serveur — jamais confiance dans
     // clubplus-check-activation-token, qui n'existe que pour l'affichage.
     const { data: tokenRow } = await admin
@@ -149,6 +137,34 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!tokenRow) return json({ error: STATUS_MESSAGES.invalid, status: "invalid" }, 403);
+
+    // Idempotence : déjà rattaché au club de CE lien → ne rien recréer, et surtout ne pas
+    // consommer le token pour rien (rejeu au login, double onglet, lien rouvert après coup).
+    //
+    // 10/09/2026 (audit des créations de compte) — la vérification portait sur N'IMPORTE QUELLE
+    // adhésion de la personne. Un coach d'un club A qui recevait le lien d'activation du club B
+    // (le président d'un club est souvent l'éducateur d'un autre) se voyait répondre « déjà activé »
+    // avec le club A : le club B n'était jamais créé, le lien restait inutilisé, et l'écran le
+    // posait dans le club A sans un mot. Elle est désormais bornée aux clubs de ce client Portail,
+    // ceux que ce lien a pour objet de rattacher.
+    const { data: clubsDuLien } = await admin
+      .from("clubs")
+      .select("id")
+      .eq("portail_client_id", tokenRow.client_id);
+    const idsClubsDuLien = (clubsDuLien ?? []).map((c: { id: string }) => c.id);
+    if (idsClubsDuLien.length > 0) {
+      const { data: existing } = await admin
+        .from("club_members")
+        .select("id, club_id, role")
+        .eq("user_id", user.id)
+        .in("club_id", idsClubsDuLien)
+        .limit(1)
+        .maybeSingle();
+      if (existing) {
+        return json({ club_id: existing.club_id, role: existing.role, already_activated: true });
+      }
+    }
+
     if (tokenRow.revoked_at) return json({ error: STATUS_MESSAGES.revoked, status: "revoked" }, 403);
     if (tokenRow.used_at) return json({ error: STATUS_MESSAGES.used, status: "used" }, 403);
     if (tokenRow.expires_at && new Date(tokenRow.expires_at).getTime() <= Date.now()) {

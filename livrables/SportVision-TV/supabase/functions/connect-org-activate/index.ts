@@ -125,18 +125,6 @@ serve(async (req) => {
       return json({ error: "Trop de tentatives. Réessayez dans une heure." }, 429);
     }
 
-    // Idempotence : déjà onboardé (quel que soit le chemin) → ne rien recréer,
-    // et surtout ne pas consommer le token pour rien.
-    const { data: existing } = await admin
-      .from("memberships")
-      .select("id, organization_id, role")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-    if (existing) {
-      return json({ organization_id: existing.organization_id, role: existing.role, already_activated: true });
-    }
-
     const { data: tokenRow } = await admin
       .from("connect_org_activation_tokens")
       .select("id, organization_type, nom_prefill, client_id, expires_at, used_at, revoked_at")
@@ -144,6 +132,28 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!tokenRow) return json({ error: STATUS_MESSAGES.invalid, status: "invalid" }, 403);
+
+    // Idempotence : déjà rattaché à l'organisation de CE lien → ne rien recréer, et surtout ne pas
+    // consommer le token pour rien (rejeu au login, double onglet, lien rouvert après coup).
+    //
+    // 10/09/2026 (audit des créations de compte) — la vérification portait sur N'IMPORTE QUELLE
+    // adhésion de la personne, club compris (memberships reflète aussi club_members). Un coach de
+    // club qui recevait le lien d'activation de son académie se voyait répondre « déjà activé » avec
+    // son club : l'académie n'était jamais créée et le lien restait inutilisé, sans un mot à
+    // l'écran. Bornée désormais au même type d'organisation et, quand le lien en porte un, au même
+    // client Portail. Sans client, seul un lien DÉJÀ consommé vaut « déjà activé » : un lien neuf
+    // est fait pour créer une organisation de plus.
+    let rechercheExistante = admin
+      .from("memberships")
+      .select("id, organization_id, role, organizations!inner(organization_type, legacy_client_id)")
+      .eq("user_id", user.id)
+      .eq("organizations.organization_type", tokenRow.organization_type);
+    if (tokenRow.client_id) rechercheExistante = rechercheExistante.eq("organizations.legacy_client_id", tokenRow.client_id);
+    const { data: existing } = await rechercheExistante.limit(1).maybeSingle();
+    if (existing && (tokenRow.client_id || tokenRow.used_at)) {
+      return json({ organization_id: existing.organization_id, role: existing.role, already_activated: true });
+    }
+
     if (tokenRow.revoked_at) return json({ error: STATUS_MESSAGES.revoked, status: "revoked" }, 403);
     if (tokenRow.used_at) return json({ error: STATUS_MESSAGES.used, status: "used" }, 403);
     if (tokenRow.expires_at && new Date(tokenRow.expires_at).getTime() <= Date.now()) {
