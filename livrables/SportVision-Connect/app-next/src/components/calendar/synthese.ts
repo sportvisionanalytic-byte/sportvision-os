@@ -301,9 +301,10 @@ export function couvertureLisible(e: CalendarEvent): { label: string; icone: str
   const type = e.coverageType ?? "";
   const icone = type === "video" ? "🎥" : type === "photo_video" ? "📸🎥" : "📸";
   const quoi = type === "video" ? "Vidéo" : type === "photo_video" ? "Photo et vidéo" : "Photo";
-  // `mission_creee` signifie qu'une équipe est affectée : c'est l'information qui compte pour le
-  // club, plus que le nom interne de l'étape.
-  const etat = e.coverage === "mission_creee" ? "Couverture confirmée" : "Couverture prévue";
+  // 10/09/2026 — `mission_creee` ne veut plus dire « équipe affectée » : depuis v126, la mission
+  // naît avec la décision, et l'équipe est choisie ensuite par la production. Les deux états se
+  // disent donc « prévue » ; qui couvre (et s'il a accepté) s'affiche à part, par opérateur.
+  const etat = "Couverture prévue";
   return { label: `${etat} · ${quoi}`, icone };
 }
 

@@ -96,7 +96,7 @@ export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; on
         <span className="rounded-full bg-gradient-to-r from-brand-blue to-brand-violet px-2.5 py-1 text-[11.5px] font-bold text-white">
           📸 SportVision présent{evenement.coverageType ? ` · ${TYPE_DEMANDE_LABELS[evenement.coverageType] ?? evenement.coverageType}` : ""}
         </span>
-        {peutDecider && evenement.coverage === "prevu" && (
+        {peutDecider && (evenement.coverage === "prevu" || evenement.coverage === "mission_creee") && (
           <button
             type="button"
             disabled={envoi}
@@ -106,7 +106,9 @@ export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; on
             Retirer
           </button>
         )}
-        {evenement.coverage === "mission_creee" && <span className="text-[11.5px] text-text-soft">équipe affectée</span>}
+        {/* Depuis v126, la mission part à la production dès la décision ; la base refuse le
+            retrait si une équipe est déjà invitée ou affectée, et le dit. */}
+        {evenement.coverage === "mission_creee" && <span className="text-[11.5px] text-text-soft">mission chez la production</span>}
         {erreur && <span className="block w-full text-[11.5px] font-bold text-danger-fg">{erreur}</span>}
       </span>
     );

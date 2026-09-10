@@ -259,6 +259,8 @@ test("la couverture dit l'état ET le type, ou rien du tout", () => {
   const prevue = couvertureLisible(ev("match", "15:00", "Séniors R2", { coverage: "prevu", coverageType: "photo" }))!;
   assert.equal(prevue.label, "Couverture prévue · Photo");
   const confirmee = couvertureLisible(ev("match", "15:00", "Séniors R2", { coverage: "mission_creee", coverageType: "photo_video" }))!;
-  assert.equal(confirmee.label, "Couverture confirmée · Photo et vidéo");
+  // Depuis v126, « mission créée » ne signifie plus « équipe affectée » : la mission naît avec la
+  // décision. L'état se dit donc « prévue » ; l'équipe s'affiche à part, par opérateur.
+  assert.equal(confirmee.label, "Couverture prévue · Photo et vidéo");
   assert.equal(confirmee.icone, "📸🎥");
 });
