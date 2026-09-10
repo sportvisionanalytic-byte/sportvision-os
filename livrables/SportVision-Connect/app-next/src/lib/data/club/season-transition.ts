@@ -27,6 +27,16 @@ interface MembershipRow {
   club_teams: { name: string } | null;
 }
 
+/** Qui valide la transition de saison (migration v115, décision de Fouka du 10/09/2026) :
+ *  Admin/Owner Club+, Président, ou Admin SportVision. Ni le CM — aucun workflow de préparation
+ *  n'existe en V1 —, ni le coach. On le demande à la base plutôt que de le déduire du rôle de
+ *  session : c'est la même fonction qui garde `clubs.saison` et `renew_season_membership`. */
+export async function peutBasculerSaison(supabase: SupabaseClient, clubId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("peut_basculer_saison", { p_club_id: clubId });
+  if (error) return false;
+  return data === true;
+}
+
 export async function fetchClubCurrentSaison(supabase: SupabaseClient, clubId: string): Promise<string> {
   const { data } = await supabase.from("clubs").select("saison").eq("id", clubId).maybeSingle();
   return (data as { saison: string } | null)?.saison ?? "";

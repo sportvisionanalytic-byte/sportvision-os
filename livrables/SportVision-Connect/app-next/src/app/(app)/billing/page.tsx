@@ -106,9 +106,10 @@ function ClubBillingView() {
   // EXÉCUTÉE) n'a pas été jouée : la RLS des vues client_devis/client_factures/client_contrats
   // reste bureau-strict jusque-là (club_member_has_financial_access, migration-connect-v41).
   // "Mon offre" (§19) : abonnement Club+ du club lui-même, distinct des devis/factures/contrats
-  // SportVision ci-dessous — visible pour l'admin seul (seul rôle que create-clubplus-
-  // subscription-checkout / clubplus-billing-portal acceptent côté serveur), avant la porte
-  // bureau-strict des documents financiers, qui ne le concerne pas.
+  // SportVision ci-dessous — visible pour l'Admin/Owner, et pour le Président en lecture (voir
+  // plus bas) ; seul l'Admin/Owner est accepté par create-clubplus-subscription-checkout /
+  // clubplus-billing-portal côté serveur. Placée avant la porte des documents financiers, qui
+  // ne la concerne pas.
   // Full Communication (19/08/2026, audit démo Club+) : bug produit trouvé — ClubSubscriptionCard
   // lit clubs.plan (jamais mis à jour au passage en Full Communication, ce plan est vendu par
   // contrat séparé, voir session.ts:buildClubActiveContext) et proposait donc "Club+ Performance
@@ -117,8 +118,12 @@ function ClubBillingView() {
   // contrat (dérivé côté serveur de client_contrats) : condition la plus simple et la plus fiable,
   // pas de nouvelle requête.
   const isFullCommunication = ctx.subscription.planCode === "full_communication";
+  // 10/09/2026 — Le Président voit « Mon offre » en lecture (décision de Fouka : facturation
+  // client, pas gestion d'abonnement). Souscrire et ouvrir le portail Stripe restent à
+  // l'Admin/Owner : ClubSubscriptionCard le reçoit en `lectureSeule`.
+  const estPresident = ctx.membership.role === "president";
   const subscriptionCard =
-    ctx.membership.role === "admin" ? (
+    ctx.membership.role === "admin" || estPresident ? (
       isFullCommunication ? (
         <Card className="p-5">
           <div className="text-[12px] font-bold text-text-soft">Mon offre</div>
@@ -128,7 +133,7 @@ function ClubBillingView() {
           </p>
         </Card>
       ) : (
-        <ClubSubscriptionCard clubId={ctx.organization.id} />
+        <ClubSubscriptionCard clubId={ctx.organization.id} lectureSeule={estPresident} />
       )
     ) : null;
 

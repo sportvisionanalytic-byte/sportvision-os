@@ -71,7 +71,11 @@ const TIERS: OfferTier[] = [
   },
 ];
 
-export function ClubSubscriptionCard({ clubId }: { clubId: string }) {
+// `lectureSeule` (10/09/2026) : le Président voit l'offre de son club, mais ne souscrit pas et
+// n'ouvre pas le portail Stripe. Les deux fonctions serveur n'acceptent que l'Admin/Owner, et le
+// portail Stripe configuré permet de RÉSILIER l'abonnement — ce qui ne fait pas partie de la
+// facturation client ouverte au président par Fouka.
+export function ClubSubscriptionCard({ clubId, lectureSeule = false }: { clubId: string; lectureSeule?: boolean }) {
   const [info, setInfo] = useState<ClubSubscriptionInfo | null | undefined>(undefined);
   const [engagement, setEngagement] = useState<Record<string, "12mois" | "sans">>({ club: "12mois", performance: "12mois" });
   const [submittingPlan, setSubmittingPlan] = useState<string | null>(null);
@@ -144,7 +148,11 @@ export function ClubSubscriptionCard({ clubId }: { clubId: string }) {
 
       {error && <p className="mt-4 text-[12.5px] font-semibold text-danger-fg">{error}</p>}
 
-      {info.hasActiveStripeSubscription ? (
+      {lectureSeule ? (
+        <p className="mt-4 text-[12.5px] leading-relaxed text-text-soft">
+          La souscription et la gestion de l&apos;abonnement relèvent de l&apos;administrateur du compte Club+.
+        </p>
+      ) : info.hasActiveStripeSubscription ? (
         <Button variant="secondary" onClick={openBillingPortal} disabled={submittingPlan !== null} className="mt-5">
           <CreditCard className="h-3.5 w-3.5" aria-hidden />
           {submittingPlan === "portal" ? "Ouverture…" : "Gérer mon abonnement"}

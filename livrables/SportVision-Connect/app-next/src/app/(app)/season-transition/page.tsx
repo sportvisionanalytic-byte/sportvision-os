@@ -15,6 +15,7 @@ import {
   commitSeasonTransition,
   fetchClubCurrentSaison,
   fetchSeasonTransitionCandidates,
+  peutBasculerSaison,
   suggestNextSaison,
   type SeasonTransitionAction,
   type SeasonTransitionCandidate,
@@ -22,8 +23,10 @@ import {
 } from "@/lib/data/club/season-transition";
 import type { Team } from "@/lib/types/teams";
 
-// Transition de saison — réservée à l'admin d'un club (même garde que /settings/organization :
-// clubs_admin_update, RLS is_club_admin, rejetterait de toute façon toute autre écriture).
+// Transition de saison — validée par l'Admin/Owner ou le Président du club (migration v115,
+// décision de Fouka du 10/09/2026). Pas de workflow de préparation en V1 : le CM et le coach ne
+// l'ouvrent pas. La base garde les deux gestes (`clubs.saison`, `renew_season_membership`) avec
+// la même fonction que l'écran interroge ici.
 // 3 étapes : choisir la saison de destination -> décider pour chaque joueur actif (renouveler
 // par défaut, jamais silencieux) -> valider. Construite sur renew_season_membership
 // (migration-clubplus-v22.sql), jamais réécrite ici.
@@ -40,12 +43,26 @@ type Stage = "start" | "review" | "done";
 
 export default function SeasonTransitionPage() {
   const { ctx } = useSession();
-  const canUse = ctx.organization.type === "club" && ctx.membership.role === "admin";
+  const isClub = ctx.organization.type === "club";
+  // `null` le temps de la réponse : ni le parcours, ni le message de refus entre-temps.
+  const [canUse, setCanUse] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!isClub) {
+      setCanUse(false);
+      return;
+    }
+    peutBasculerSaison(createClient(), ctx.organization.id).then(setCanUse);
+  }, [isClub, ctx.organization.id]);
+
+  if (canUse === null) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  }
 
   if (!canUse) {
     return (
       <Card className="p-8 text-center text-[13.5px] text-text-soft">
-        La transition de saison est réservée à l&apos;administrateur du club.
+        La transition de saison se valide par l&apos;administrateur ou le président du club.
       </Card>
     );
   }

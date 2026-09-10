@@ -20,6 +20,7 @@ import { fetchCoachPlayers, type CoachPlayer } from "@/lib/data/coach/players";
 import { fetchDelegatedClubAccess, type DelegatedClubAccess } from "@/lib/data/shared/cm-agency-access";
 import { createClient } from "@/lib/supabase/client";
 import { peutOpererClub } from "@/lib/data/club/invitations";
+import { peutBasculerSaison } from "@/lib/data/club/season-transition";
 import type { Team } from "@/lib/types/teams";
 
 // Écran Équipes — ACTIONS.md § 16. Pour une académie, « Groupes » (academie_groups, réutilise
@@ -42,6 +43,7 @@ export default function TeamsPage() {
   // leçon des huit mêmes bugs de la journée. `false` tant qu'elle n'a pas répondu — on n'offre
   // pas une action avant de savoir.
   const [peutOperer, setPeutOperer] = useState(false);
+  const [peutBasculer, setPeutBasculer] = useState(false);
   const isAcademy = ctx.organization.type === "academy";
   const isCoach = ctx.organization.type === "coach";
   const isCmAgency = ctx.organization.type === "cm_agency";
@@ -57,6 +59,7 @@ export default function TeamsPage() {
   useEffect(() => {
     if (ctx.organization.type !== "club") return;
     peutOpererClub(createClient(), ctx.organization.id).then(setPeutOperer);
+    peutBasculerSaison(createClient(), ctx.organization.id).then(setPeutBasculer);
   }, [ctx.organization.id, ctx.organization.type]);
 
   const isClubEducateurRole = ctx.organization.type === "club" && (ctx.membership.role === "coach" || ctx.membership.role === "sports_director");
@@ -123,7 +126,7 @@ export default function TeamsPage() {
         {/* academie_groups n'a pas encore d'équivalent createClubTeam — bouton réservé au club
             (club_teams), pas de promesse pour l'académie. */}
         <div className="flex flex-wrap gap-2">
-          {isClub && ctx.membership.role === "admin" && (
+          {isClub && peutBasculer && (
             <Link href="/season-transition">
               <Button variant="secondary" className="h-10 gap-1.5 px-4 text-[13px]">
                 <CalendarClock className="h-3.5 w-3.5" aria-hidden />
