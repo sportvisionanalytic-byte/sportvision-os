@@ -192,6 +192,11 @@ select pg_temp.essai('rentabilité du club — production', 'a1a1a1a1-0000-0000-
 select pg_temp.essai('rentabilité du club — CM', 'a1a1a1a1-0000-0000-0000-000000000004',
   'select rentabilite_club_mois(''f0d3bafa-3004-4831-bd85-249aa9af5c54'', current_date)', 'refusé');
 
+select pg_temp.essai('rentabilité de tous les clubs du mois — production', 'a1a1a1a1-0000-0000-0000-000000000001',
+  'select count(*) from rentabilite_clubs_mois(current_date)', 'autorisé');
+select pg_temp.essai('rentabilité de tous les clubs du mois — opérateur', 'a1a1a1a1-0000-0000-0000-000000000003',
+  'select count(*) from rentabilite_clubs_mois(current_date)', 'refusé');
+
 select case when attendu = obtenu then '✅' else '❌' end as ok, controle, attendu, obtenu from verdicts;
 
 rollback;

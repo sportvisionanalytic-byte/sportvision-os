@@ -2082,6 +2082,7 @@ const VIEWS={
       <div class="kpi" style="--kl:#00B8D4;cursor:pointer" onclick="openNotifPanel()"><div class="kpi-ey">Changements CM</div><div class="kpi-v" id="prod-kpi-cm">—</div><span class="kpi-d dnt">impact à valider</span></div>
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Conflits matériel</div><div class="kpi-v" id="prod-kpi-conflit" style="color:var(--er)">—</div><span class="kpi-d dnt">à résoudre</span></div>
     </div>
+    <div id="prod-rentab-clubs" style="margin-bottom:13px"></div>
     <div id="prod-dash-priorite" style="margin-bottom:13px;display:none">
       <div class="cd" style="padding:0;overflow:hidden;border-left:3px solid var(--er)">
         <div class="cd-h">
@@ -7078,6 +7079,31 @@ async function loadClientClubIdentite(clientId){
   }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
+// ── La rentabilité du mois, club par club, sur l'accueil de la Production (v128) ──
+// « Il comprend immédiatement ce qu'il fait » : revenus, coût production, marge estimée, par club.
+async function chargerRentabiliteClubs(mois){
+  const el=document.getElementById('prod-rentab-clubs');
+  if(!el||!['admin','prod','compta','sec'].includes(S.role))return;
+  const m=mois||new Date().toISOString().slice(0,7);
+  const r=await sbFetch('rpc/rentabilite_clubs_mois',{method:'POST',body:{p_mois:m+'-01'}});
+  if(sbErr(r)||!Array.isArray(r)||!r.length){el.innerHTML='';return;}
+  const eur=x=>Number(x||0).toLocaleString('fr-FR',{maximumFractionDigits:0})+' €';
+  el.innerHTML=`<div class="cd" style="padding:14px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">Rentabilité du mois par club</span>
+      <input type="month" value="${m}" class="l-inp" style="height:30px;width:150px;font-size:12px" onchange="chargerRentabiliteClubs(this.value)">
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;font-size:12.5px;border-collapse:collapse">
+      <thead><tr style="color:var(--t3);text-align:right"><th style="text-align:left;padding:4px 6px">Club</th><th style="padding:4px 6px">Revenus</th><th style="padding:4px 6px">Présences</th><th style="padding:4px 6px">Rémunérations</th><th style="padding:4px 6px">Déplacements</th><th style="padding:4px 6px">Coût production</th><th style="padding:4px 6px">Marge estimée</th></tr></thead>
+      <tbody>${r.map(c=>{const d=c.detail||{};return`<tr style="border-top:1px solid rgba(255,255,255,.05);text-align:right;color:var(--t2)">
+        <td style="text-align:left;padding:6px;color:var(--t1);font-weight:600">${esc(c.club_nom)}</td>
+        <td style="padding:6px">${eur(d.revenus_total)}</td><td style="padding:6px">${d.presences||0}</td>
+        <td style="padding:6px">${eur(d.remunerations)}</td><td style="padding:6px">${eur(d.deplacements)}</td>
+        <td style="padding:6px">${eur(d.cout_production)}</td>
+        <td style="padding:6px;font-weight:700;color:${Number(d.marge_estimee)<0?'var(--er)':'var(--t1)'}">${eur(d.marge_estimee)}</td></tr>`;}).join('')}</tbody>
+    </table></div></div>`;
+}
+
 // ── Rentabilité mensuelle d'un club (v127, décision de Fouka du 10/09/2026) ──
 // Revenus (abonnement + ponctuel), présences, rémunérations, déplacements, coût production, marge
 // opérationnelle estimée. Admin, Production, comptabilité, secrétariat : la base refuse les autres.
@@ -10611,7 +10637,7 @@ async function computeATraiterItems(roleFilter){
     safe(sbFetch('prestations?select=id,statut,statut_financier,reference,type_prestation,date_prestation,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(id,materiel_personnel))&order=date_prestation.desc.nullslast&limit=1000')),
     safe(sbFetch('kit_reservations?select=id,kit_id,prestation_id,statut,prestations(date_prestation,reference,clients(nom))&statut=in.(pré_réservé,réservé,sorti,en_prestation,à_récupérer,à_retourner)')),
     safe(sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.mission_refusee&lue=eq.false&order=created_at.desc&limit=10')),
-    safe(sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.changement_planning_cm&lue=eq.false&order=created_at.desc&limit=10')),
+    safe(sbFetch('notifications?select=id,type,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=in.(changement_planning_cm,nouvelle_mission)&lue=eq.false&order=created_at.desc&limit=10')),
     safe(sbFetch('incidents?select=id,type_incident,description,niveau,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&niveau=eq.critique&order=created_at.desc&limit=10')),
     safe(sbFetch('prestations?select=id,reference,clients(nom)&statut_financier=eq.en_retard&limit=20')),
     safe(sbFetch('paiements?select=id,montant,client:clients(nom),created_at&statut=eq.echoue&order=created_at.desc&limit=20')),
@@ -10652,7 +10678,7 @@ async function computeATraiterItems(roleFilter){
     add('production','important','Conflit matériel',`${g.length} réservations sur le même kit — ${g[0].prestations?.clients?.nom||g[0].prestations?.reference||'—'}`,`switchView('kits')`,'prod','kit_reservations',key,g[0].prestations?.date_prestation);
   });
   notifRefus.forEach(n=>add('production','important','Opérateur a refusé',n.prestations?.clients?.nom||msgErreur(n,'—'),n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
-  notifCm.forEach(n=>add('production','important','Mission modifiée par le CM',n.prestations?.clients?.nom||msgErreur(n,'—'),n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
+  notifCm.forEach(n=>add('production','important',n.type==='nouvelle_mission'?'Nouvelle mission à affecter':(n.titre||'Mission modifiée par le CM'),n.prestations?.clients?.nom||msgErreur(n,'—'),n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
   // Livraison soumise → à valider (§18) : statut='livrée' = seul statut que
   // validate_production() sait faire transitionner (même règle que loadProdDash).
   pre.filter(p=>p.statut==='livrée').forEach(p=>add('production','normal','Livraison à valider',p.clients?.nom||p.reference||'—',`modalDetailById('${p.id}')`,'prod','prestations',p.id,p.date_prestation));
@@ -11001,7 +11027,7 @@ async function loadProdDash(){
       sbFetch('kit_reservations?select=id,kit_id,prestation_id,statut,prestations(date_prestation,reference,clients(nom))&statut=in.(pré_réservé,réservé,sorti,en_prestation,à_récupérer,à_retourner)').catch(()=>[]),
       // §16/§4 "Mission modifiée par le CM" : notification posée par
       // migration-planning-cm-changement-a-examiner.sql (28/08) sur planned_presences→prestations.
-      sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.changement_planning_cm&lue=eq.false&order=created_at.desc&limit=10').catch(()=>[]),
+      sbFetch('notifications?select=id,type,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=in.(changement_planning_cm,nouvelle_mission)&lue=eq.false&order=created_at.desc&limit=10').catch(()=>[]),
       // §4 "Opérateur a refusé" : notification posée dans le flux de refus d'affectation
       // (creerNotifSiActive(..., 'mission_refusee', ...)).
       sbFetch('notifications?select=id,titre,message,prestation_id,created_at,prestations(reference,clients(nom))&type=eq.mission_refusee&lue=eq.false&order=created_at.desc&limit=10').catch(()=>[]),
@@ -11054,6 +11080,7 @@ async function loadProdDash(){
     set('prod-kpi-livval',livraisonsAValider.length||'0');
     set('prod-kpi-correc',mediaCorr.length||'0');
     set('prod-kpi-cm',notifCm.length||'0');
+    chargerRentabiliteClubs();
     set('prod-kpi-conflit',kitConflits.length||'0');
     const nbInc=document.getElementById('prod-inc-nb');
     if(nbInc)nbInc.textContent=inc.length?inc.length+' alerte'+(inc.length>1?'s':''):'';
@@ -11070,7 +11097,7 @@ async function loadProdDash(){
       &&!kitRes.some(r=>r.prestation_id===p.id))).slice(0,3)
       .forEach(p=>prioItems.push({lvl:'er',txt:`Kit à attribuer : ${esc(p.clients?.nom||'—')} (opérateur sans matériel perso)`,action:`switchView('kits')`}));
     notifRefus.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`Opérateur a refusé : ${esc(n.prestations?.clients?.nom||msgErreur(n,'—'))}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
-    notifCm.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`Mission modifiée par le CM : ${esc(n.prestations?.clients?.nom||msgErreur(n,'—'))}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
+    notifCm.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`${n.type==='nouvelle_mission'?'Nouvelle mission à affecter':esc(n.titre||'Mission modifiée par le CM')} : ${esc(n.prestations?.clients?.nom||msgErreur(n,'—'))}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
     livraisonsAValider.slice(0,3).forEach(p=>prioItems.push({lvl:'ok',txt:`Livraison à valider : ${esc(p.clients?.nom||'—')}`,action:`modalDetailById('${p.id}')`}));
     inc.filter(al=>al.niveau==='critique').slice(0,2).forEach(al=>prioItems.push({lvl:'er',txt:`Incident critique : ${esc(al.type_incident||al.description?.slice(0,40)||'—')}`,action:`switchView('incidents')`}));
     const elPrio=document.getElementById('prod-dash-priorite');
