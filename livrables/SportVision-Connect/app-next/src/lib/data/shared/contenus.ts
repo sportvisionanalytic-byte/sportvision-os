@@ -12,7 +12,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // spontané SportVision). Colonne de liaison uniquement dans ce chantier, aucune UI ne l'exploite
 // encore (pas de jointure vers club_requests ici) — voir CLUB-PLUS-PRODUCT-BIBLE.md §3/§17.
 
-export type ContenuStatut = "a_valider_client" | "corrections" | "valide" | "programme" | "publie" | "archive";
+// 11/09/2026 : le CM lit aussi ses contenus en préparation (planning éditorial, v141) — les statuts
+// internes s'ajoutent ; un club ne les voit toujours pas (la policy les filtre).
+export type ContenuStatut =
+  | "brouillon" | "a_valider_interne" | "a_valider_tuteur" | "pret"
+  | "a_valider_client" | "corrections" | "valide" | "programme" | "publie" | "archive";
 
 export interface Contenu {
   id: string;

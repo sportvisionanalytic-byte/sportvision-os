@@ -24,6 +24,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { useClientId } from "@/lib/data/shared/use-client-id";
+import { PlanningEditorial } from "@/components/communication/PlanningEditorial";
 import { createClient } from "@/lib/supabase/client";
 import { fetchContenus, type Contenu } from "@/lib/data/shared/contenus";
 import { CONTENU_STATUT_LABEL, CONTENU_STATUT_TONE } from "@/components/communication/contenuStatusTone";
@@ -87,7 +88,9 @@ function FullCommunicationPlanning() {
     );
   }
 
-  return <PlanningView clientId={resolution.clientId} />;
+  // 11/09/2026 : le planning éditorial devient le cockpit du CM (créer, modifier, reprogrammer,
+  // dupliquer, supprimer), sur la même table `contenus` — voir PlanningEditorial.tsx.
+  return <PlanningEditorial clientId={resolution.clientId} />;
 }
 
 function PlanningView({ clientId }: { clientId: string }) {

@@ -7,6 +7,7 @@ import { useSession } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
+import { ResumePlanningCm } from "@/components/communication/ResumePlanningCm";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { construireActions, pluriel, type NiveauAction } from "@/lib/cockpit/actions";
 import {
@@ -308,6 +309,9 @@ export function CmClubOverview() {
           </div>
         </section>
       )}
+
+      {/* ── Le planning éditorial du jour (11/09/2026) : même source que le Centre communication ── */}
+      <ResumePlanningCm />
 
       {/* ── Aujourd'hui + Activité récente ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
