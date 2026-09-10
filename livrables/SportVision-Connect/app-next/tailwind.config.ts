@@ -64,6 +64,12 @@ const config: Config = {
         sans: ["var(--font-plus-jakarta-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains-mono)", "ui-monospace", "monospace"],
       },
+      // `4.5` (18px) est utilisé par 13 composants (cartes d'équipe, de facturation…) mais n'était
+      // défini nulle part : Tailwind ignorait la classe et ces cartes n'avaient AUCUNE marge
+      // intérieure, le texte collé au bord. Trouvé à la passe navigateur du 10/09/2026.
+      spacing: {
+        "4.5": "1.125rem",
+      },
       borderRadius: {
         sv: "12px",
         "sv-card": "16px",
