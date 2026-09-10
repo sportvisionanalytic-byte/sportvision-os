@@ -50,6 +50,11 @@ Ce document ne ciblait d'abord que les fonctions qui **écrivent**. Le jour mêm
   joueur dont on connaît le club et le nom. `find_duplicate_club_candidates` rendait clubs et
   SIRET. Corrigé par v122, avec deux outils internes qui écrivaient sans contrôle.
 
+Un second balayage (v123) a ajouté les fonctions appelables par **tout compte connecté** et celles
+qui ne vérifient que la connexion, pas l'appartenance au club. Trois outils internes qui
+écrivaient sans contrôle ont été fermés : le limiteur de débit (un visiteur pouvait bloquer une
+adresse e-mail sur les parcours limités), la création de saisons, et `club_president_connu`.
+
 Un balayage ciblé a suivi : toute fonction à droits propriétaire, appelable sans compte, qui
 prend un identifiant et ne contient aucun contrôle reconnaissable. Les restantes ont été lues une
 par une : elles contrôlent par une fonction au nom non standard (`media_pricing_staff_album`,
