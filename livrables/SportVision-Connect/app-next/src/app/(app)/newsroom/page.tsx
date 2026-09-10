@@ -71,7 +71,9 @@ export default function NewsroomPage() {
   const canWrite = canCreate(ctx, "newsroom_item");
   // is_club_admin() (migration-clubplus-v2.sql) vérifie role==='admin' exactement — voir
   // data/club/newsroom.ts § deleteClubNewsroomItem.
-  const canDelete = canWrite && ctx.membership.role === "admin";
+  // 10/09/2026 — L'opérateur du club supprime aussi : les actualités sont son métier, et la base
+  // le lui accorde depuis la v108. `external_cm` est le rôle que porte un CM en espace délégué.
+  const canDelete = canWrite && (ctx.membership.role === "admin" || ctx.membership.role === "external_cm");
 
   const [items, setItems] = useState<NewsroomItemDetails[] | null>(null);
   const [loadError, setLoadError] = useState(false);

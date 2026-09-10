@@ -88,7 +88,10 @@ export default function OnboardingPage() {
   const estCmAffilie = membership.role === "external_cm";
   const canEdit = organization.type === "club" && (membership.role === "admin" || estCmAffilie);
   const canEditLegal = organization.type === "club" && membership.role === "admin";
-  const canInvite = organization.type === "club" && membership.role === "admin";
+  // 10/09/2026 — Le CM affilié prépare le club : `canEdit` le reconnaissait déjà (`estCmAffilie`),
+  // mais l'invitation lui restait fermée. Or préparer un club sans pouvoir inviter son encadrement
+  // n'a pas de sens, et la base l'y autorise (peut_operer_club).
+  const canInvite = organization.type === "club" && (membership.role === "admin" || estCmAffilie);
 
   const [completion, setCompletion] = useState<OnboardingCompletion | null>(null);
   const [statut, setStatut] = useState<string | null>(null);

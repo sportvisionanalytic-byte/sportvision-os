@@ -105,8 +105,14 @@ export default function MatchCenterPage() {
   // propre résultat. Le vrai garde-fou reste la RLS (voir les docstrings de assignClubMatchTeam et
   // verifyClubMatchResult dans data/club/matches.ts) ; ce masquage frontend n'est qu'un confort.
   const role = ctx.membership.role;
-  const canAssignTeam = ctx.organization.type === "club" && (role === "admin" || role === "sports_director");
-  const canVerifyResults = ctx.organization.type === "club" && (role === "admin" || role === "sports_director");
+  // 10/09/2026 — `external_cm` ajouté : depuis la migration v108, l'opérateur du club a réellement
+  // le droit d'assigner une équipe et de vérifier un résultat en base. L'écran le lui refusait
+  // encore, par déduction sur le rôle affiché. La vraie frontière reste la RLS, qui refuse un
+  // coach sur une équipe hors de son périmètre — vérifié.
+  const canAssignTeam =
+    ctx.organization.type === "club" && (role === "admin" || role === "sports_director" || role === "external_cm");
+  const canVerifyResults =
+    ctx.organization.type === "club" && (role === "admin" || role === "sports_director" || role === "external_cm");
 
   useEffect(() => {
     let cancelled = false;
@@ -187,7 +193,12 @@ export default function MatchCenterPage() {
   // Directeur sportif : ne propose que SES équipes (club_members.teams) dans le sélecteur
   // d'assignation — is_team_educateur() (RLS) ne le laisserait de toute façon écrire que sur
   // celles-là, autant ne pas afficher une option qui échouerait à la sauvegarde. Admin = toutes.
-  const assignableTeams = role === "admin" ? (teams ?? []) : (teams ?? []).filter((t) => ctx.membership.teamScope.includes(t.name));
+  // L'admin et l'opérateur du club voient toutes les équipes ; un directeur sportif, seulement
+  // les siennes — la RLS ne le laisserait de toute façon écrire que sur celles-là.
+  const assignableTeams =
+    role === "admin" || role === "external_cm"
+      ? (teams ?? [])
+      : (teams ?? []).filter((t) => ctx.membership.teamScope.includes(t.name));
 
   // Recalculé à chaque rendu, volontairement : une session laissée ouverte pendant la nuit doit
   // voir le match d'hier basculer en « à renseigner » au matin, pas rester « cette semaine ».
