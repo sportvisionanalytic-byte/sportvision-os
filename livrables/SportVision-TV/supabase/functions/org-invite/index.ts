@@ -45,8 +45,8 @@
 // Deploy via Supabase dashboard > Edge Functions > org-invite (redéployer
 // la fonction existante avec ce fichier)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (déjà présents par défaut)
-// Secret optionnel : CONNECT_URL (URL de SportVision Connect pour le lien de retour ;
-// à défaut une valeur par défaut est utilisée — à mettre à jour dès que le domaine est actif)
+// Secret optionnel : CLUBPLUS_URL (origine de Club+ pour le lien de retour, sans /clubplus ;
+// à défaut https://clubplus.sportvision-an.fr). CONNECT_URL n'est plus lu depuis le 10/09/2026.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -85,6 +85,31 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Recherche EXHAUSTIVE d'un compte existant par adresse (décisions Club+ du 10/09/2026, n° 3) —
+// même fonction que clubplus-invite (aucun code partagé entre edge functions sur ce projet).
+// L'ancien `listUsers({ page: 1, perPage: 200 })` ne regardait que les 200 premiers comptes : au-delà,
+// une personne déjà inscrite devenait « déjà utilisée mais introuvable ». Filtre par adresse de
+// l'API d'administration (LIKE sensible à la casse sur auth.users.email, stocké en minuscules),
+// page après page jusqu'à une page vide, égalité exacte en minuscules.
+async function trouverCompteParAdresse(supabaseUrl: string, serviceKey: string, adresse: string): Promise<string | null> {
+  const cible = adresse.trim().toLowerCase();
+  if (!cible) return null;
+  const parPage = 200;
+  for (let page = 1; page <= 10000; page++) {
+    const r = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users?filter=${encodeURIComponent(cible)}&page=${page}&per_page=${parPage}`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+    );
+    if (!r.ok) throw new Error(`Recherche du compte existant impossible (HTTP ${r.status}).`);
+    const d = await r.json();
+    const comptes: { id: string; email?: string | null }[] = Array.isArray(d?.users) ? d.users : [];
+    const trouve = comptes.find((u) => (u.email || "").trim().toLowerCase() === cible);
+    if (trouve) return trouve.id;
+    if (comptes.length === 0) return null;
+  }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -97,7 +122,20 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision-an.fr";
+    // Décisions Club+ du 10/09/2026, n° 5. Le lien de l'e-mail d'invitation menait à
+    // `${CONNECT_URL}/index.html` : l'ancienne app vanilla, retirée. Sur le domaine de Connect, il
+    // atterrit aujourd'hui sur l'espace personnel (joueur, parent) — pas sur l'organisation qui
+    // invite, qui vit dans Club+. Plus aucun écran déployé n'appelle cette fonction (seuls les
+    // modules de l'ancienne app vanilla, qu'aucun site ne sert plus, le faisaient), mais elle reste
+    // déployée et appelable : elle ne doit plus être un piège.
+    //
+    // Cible : /clubplus/auth/reset. Un lien d'invitation Supabase revient avec la session dans le
+    // fragment (#access_token=…&type=invite) ; c'est le seul écran de Club+ qui la lit (setSession),
+    // puis fait choisir le mot de passe et ouvre /dashboard, où l'invitation en attente se présente
+    // (NoActiveSpace : Accepter / Refuser). L'adresse est déjà dans la liste blanche des
+    // redirections (mot de passe oublié de Club+). CLUBPLUS_URL porte l'ORIGINE seule, sans le
+    // basePath, comme dans clubplus-envoyer-invitation.
+    const clubplusUrl = (Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision-an.fr").replace(/\/+$/, "");
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -164,7 +202,7 @@ serve(async (req) => {
     }
 
     const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${connectUrl}/index.html`,
+      redirectTo: `${clubplusUrl}/clubplus/auth/reset`,
       data: { prenom, nom },
     });
 
@@ -176,10 +214,9 @@ serve(async (req) => {
       // le rattacher à cette organisation.
       const msg = inviteErr.message || "";
       if (!/already/i.test(msg)) return json({ error: msg }, 500);
-      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      const match = list?.users?.find((u) => (u.email || "").toLowerCase() === email);
-      if (!match) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
-      invitedUserId = match.id;
+      const existant = await trouverCompteParAdresse(supabaseUrl, serviceKey, email);
+      if (!existant) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
+      invitedUserId = existant;
     }
 
     if (!invitedUserId) return json({ error: "Échec de la création du compte invité." }, 500);

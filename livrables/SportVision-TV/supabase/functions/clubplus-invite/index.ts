@@ -90,6 +90,32 @@ function generateTempPassword(): string {
   return `SV-${out}`;
 }
 
+// Recherche EXHAUSTIVE d'un compte existant par adresse (décisions Club+ du 10/09/2026, n° 3).
+// L'ancien `listUsers({ page: 1, perPage: 200 })` ne regardait que les 200 premiers comptes du
+// projet : au-delà, une personne déjà inscrite devenait « déjà utilisée mais introuvable » et son
+// accès n'était jamais créé. On interroge l'API d'administration avec son filtre par adresse
+// (`filter` : LIKE sensible à la casse sur auth.users.email, que Supabase stocke en minuscules),
+// page après page jusqu'à une page vide — donc exhaustif même si le filtre était un jour ignoré —
+// et on ne retient que l'égalité exacte, adresse comparée en minuscules.
+async function trouverCompteParAdresse(supabaseUrl: string, serviceKey: string, adresse: string): Promise<string | null> {
+  const cible = adresse.trim().toLowerCase();
+  if (!cible) return null;
+  const parPage = 200;
+  for (let page = 1; page <= 10000; page++) {
+    const r = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users?filter=${encodeURIComponent(cible)}&page=${page}&per_page=${parPage}`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+    );
+    if (!r.ok) throw new Error(`Recherche du compte existant impossible (HTTP ${r.status}).`);
+    const d = await r.json();
+    const comptes: { id: string; email?: string | null }[] = Array.isArray(d?.users) ? d.users : [];
+    const trouve = comptes.find((u) => (u.email || "").trim().toLowerCase() === cible);
+    if (trouve) return trouve.id;
+    if (comptes.length === 0) return null;
+  }
+  return null;
+}
+
 // 19/08/2026 — plafonds d'utilisateurs par plan (décision Fouka, ajout de Club+ Gratuit) :
 // null = illimité. Reste ici plutôt qu'importé de plans.ts côté app-next (aucun partage de code
 // entre l'app Next.js et les Edge Functions Deno sur ce projet — même limite déjà acceptée pour
@@ -233,10 +259,9 @@ serve(async (req) => {
       if (createErr) {
         const msg = createErr.message || "";
         if (!/already|registered|exists/i.test(msg)) return json({ error: msg }, 500);
-        const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-        const match = list?.users?.find((u) => (u.email || "").toLowerCase() === email);
-        if (!match) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
-        invitedUserId = match.id;
+        const existant = await trouverCompteParAdresse(supabaseUrl, serviceKey, email);
+        if (!existant) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
+        invitedUserId = existant;
         tempPassword = null; // compte déjà existant : son mot de passe n'est jamais modifié ici.
         accountAlreadyExisted = true;
       }
@@ -251,10 +276,9 @@ serve(async (req) => {
         // (autre club, ou invitation précédente). On le retrouve pour lier ce club.
         const msg = inviteErr.message || "";
         if (!/already/i.test(msg)) return json({ error: msg }, 500);
-        const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-        const match = list?.users?.find((u) => (u.email || "").toLowerCase() === email);
-        if (!match) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
-        invitedUserId = match.id;
+        const existant = await trouverCompteParAdresse(supabaseUrl, serviceKey, email);
+        if (!existant) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
+        invitedUserId = existant;
         accountAlreadyExisted = true;
       }
     }
