@@ -17,6 +17,7 @@
       <a href="permissions.html" class="active">Permissions</a>
       <a href="data-flow.html">Data Flow</a>
       <a href="personas.html">Personas</a>
+      <a href="outbox.html">Outbox</a>
       <a href="status.html">Status</a>
     </nav>
   </div>
@@ -26,6 +27,13 @@
 
     <h2 id="ecarts">Points d'attention / écarts détectés</h2>
     <p class="foot-note" style="margin-bottom:12px">Vérifiés directement contre la base live (définitions de fonctions, contraintes, policies RLS — pas contre les fichiers de migration isolés, qui peuvent être supersédés par une migration ultérieure sans qu'on le voie en les lisant seuls). Rien n'est corrigé ici, uniquement documenté.</p>
+
+    <div class="finding" style="border-color:rgba(240,68,94,.4);background:rgba(240,68,94,.06)">
+      <div class="finding-title" style="color:var(--err)">Récursion RLS sur profiles/club_members/clubs — sévérité élevée, à vérifier en production (10/09, Phase 2)</div>
+      Découvert en testant les personas Review avec de <strong>vrais JWT</strong> (pas via l'interface, via de vraies requêtes REST signées) : toute requête authentifiée sur <code>profiles</code>, <code>club_members</code> ou <code>clubs</code> échoue avec <code>42P17 infinite recursion detected in policy for relation "profiles"</code> (HTTP 500). Reproduit pour 3 rôles différents (admin, cm, joueur) et sur une requête minimale directe (<code>select exists(select 1 from profiles where id=...)</code>), donc structurel — pas lié à une persona ou une donnée précise.<br><br>
+      <strong>Comparaison faite avec la production</strong> (métadonnées uniquement, aucune requête exécutée contre la prod — action bloquée à raison par le garde-fou de sécurité) : définitions des fonctions (<code>est_cm_cloisonne</code>, <code>is_staff</code>, <code>is_admin_or_rh</code>), propriétaire des fonctions (<code>postgres</code>), attribut <code>BYPASSRLS</code>, et drapeaux RLS de la table <code>profiles</code> sont <strong>identiques byte pour byte</strong> entre Review et la production. Comme ce comportement est purement structurel (déterminé par les policies, pas par les données), cette identité totale rend probable — mais non prouvé — que la même récursion existe déjà en production aujourd'hui.<br><br>
+      <strong>Non corrigé.</strong> Nécessite une vérification directe en production (avec prudence, hors de portée de cet audit Review) avant toute action. Si confirmé, impact potentiel large : ces trois tables sont au cœur de la quasi-totalité des parcours OS/Club+.
+    </div>
 
     <div class="finding">
       <div class="finding-title">rh et is_staff() — inclus, décision produit assumée</div>
@@ -44,6 +52,20 @@
           <tr><td>Aucune action à double validation (remboursement, suppression club...) — manque réel</td><td>Confirmé, aucune table <code>admin_approvals</code> ou équivalent trouvée en base</td><td><span class="badge badge-ok">exact, gap toujours ouvert</span></td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="finding">
+      <div class="finding-title">Dette de réconciliation base/code — journal cumulatif</div>
+      Trois objets utilisés par des migrations mais jamais créés dans aucun fichier versionné, trouvés en préparant l'environnement Review (schéma reconstruit puis comparé objet par objet à la production réelle) :
+      <table style="margin-top:10px">
+        <thead><tr><th>Objet</th><th>Trouvé le</th><th>Corrigé par</th></tr></thead>
+        <tbody>
+          <tr><td>6 objets (fonction <code>claim_club_request</code>, trigger <code>protect_junior_content_publication</code>, colonnes rémunération/tutorat CM, table <code>cm_tutorships</code>)</td><td>29/08</td><td><code>migration-audit-final-schema-reconciliation.sql</code></td></tr>
+          <tr><td><code>profiles.cm_pool_clubplus_general</code></td><td>10/09 (test de rejeu Review)</td><td><code>migration-audit-reconciliation-cm-pool-clubplus-general.sql</code></td></tr>
+          <tr><td><code>get_my_role()</code>, <code>contenus.publication_external_id</code></td><td>10/09 (test de rejeu Review)</td><td><code>migration-audit-reconciliation-get-my-role-publication-id.sql</code></td></tr>
+        </tbody>
+      </table>
+      <p class="foot-note" style="margin-top:8px">Tous NO-OP sur la production (les objets y existent déjà) — ces fichiers ne font que rendre l'état actuel de la base reproductible depuis les migrations versionnées. Détail technique du test de rejeu complet (551 fichiers) : <a href="status.html">page Status</a>.</p>
     </div>
 
     <h2>Club+ <span style="color:var(--text3);font-weight:400">— 12 rôles réels (<code>club_members.role</code>)</span></h2>

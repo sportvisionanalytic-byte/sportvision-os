@@ -17,52 +17,55 @@
       <a href="permissions.html">Permissions</a>
       <a href="data-flow.html">Data Flow</a>
       <a href="personas.html" class="active">Personas</a>
+      <a href="outbox.html">Outbox</a>
       <a href="status.html">Status</a>
     </nav>
   </div>
   <main>
     <h1>Personas de démonstration</h1>
-    <p class="lead">Comptes fictifs prévus pour l'audit, avec sélecteur de rôle réel (pas un simple masquage visuel — les permissions RLS s'appliquent réellement à chaque persona sur le projet Supabase Review).</p>
+    <p class="lead">8 vrais comptes <code>auth.users</code> du projet Supabase Review, chacun avec ses vraies lignes métier (profil/membre/joueur) et son vrai rattachement club/équipe. « Voir comme » sur <a href="outbox.html">la page Outbox</a> échange réellement de session Supabase (JWT) — pas un simple changement d'affichage.</p>
 
-    <div class="section-hint">
-      <span class="badge badge-pending">Phase 7 — pas encore activé</span>
-      Cette page liste les personas <strong>planifiés</strong>. Ils seront créés dans le projet Supabase Review (Phase 2) puis reliés à un vrai sélecteur de rôle dans chaque application (Phase 7). Le contenu ci-dessous documente la cible, pas l'état actuel.
+    <div class="finding">
+      <div class="finding-title">Isolation testée, pas seulement déclarée</div>
+      Deux clubs fictifs existent : <strong>SV Demo FC</strong> (club principal, 4 équipes) et <strong>OTHER DEMO FC</strong> (club témoin, sert uniquement à vérifier qu'aucune persona de SV Demo FC ne voit ses données). Chaque ligne ci-dessous a été vérifiée par une vraie requête REST signée avec le JWT réel de la persona — détail complet sur <a href="status.html">Status</a>.
     </div>
 
     <h2>Rôles SportVision OS (personnel interne)</h2>
     <table>
-      <thead><tr><th>Persona</th><th>Rôle technique</th><th>Usage prévu</th></tr></thead>
+      <thead><tr><th>Persona</th><th>Rôle technique</th><th>Rattachement</th></tr></thead>
       <tbody>
-        <tr><td>Admin Demo</td><td class="mono">profiles.role = admin</td><td>Vue directoriale complète, tous modules</td></tr>
-        <tr><td>CM Demo</td><td class="mono">profiles.role = cm</td><td>Communication, demandes clubs, contenus, planning éditorial</td></tr>
-        <tr><td>Secrétaire Demo</td><td class="mono">profiles.role = sec</td><td>Demandes, devis, documents, recrutement</td></tr>
-        <tr><td>Responsable Production Demo</td><td class="mono">profiles.role = prod</td><td>Missions, équipe terrain, matériel, livraisons</td></tr>
+        <tr><td>Alex Admin Demo</td><td class="mono">profiles.role = admin</td><td>Vue globale, tous clubs (y compris OTHER DEMO FC)</td></tr>
+        <tr><td>Camille CM Demo</td><td class="mono">profiles.role = cm</td><td>Affectation nominative sur SV Demo FC (<code>club_cm_affectations</code>) + <code>club_members.role = cm_externe</code></td></tr>
       </tbody>
     </table>
 
     <h2>Rôles Club+ (SV Demo FC)</h2>
     <table>
-      <thead><tr><th>Persona</th><th>Rôle technique</th><th>Usage prévu</th></tr></thead>
+      <thead><tr><th>Persona</th><th>Rôle technique</th><th>Rattachement</th></tr></thead>
       <tbody>
-        <tr><td>Président Demo</td><td class="mono">club_members.role = president</td><td>Administration opérationnelle du club (pas la propriété — voir Permissions)</td></tr>
-        <tr><td>Dirigeant Demo</td><td class="mono">club_members.role = membre_bureau</td><td>Vue bureau, hors administration complète</td></tr>
-        <tr><td>Coach Nicolas Demo</td><td class="mono">club_members.role = coach</td><td>Équipe U14 D1 — effectif, calendrier, présences</td></tr>
-        <tr><td>Coach Sarah Demo</td><td class="mono">club_members.role = coach</td><td>Équipe U18 F — effectif, calendrier, présences</td></tr>
+        <tr><td>Pierre Président Demo</td><td class="mono">club_members.role = president</td><td>SV Demo FC — administration opérationnelle (pas la propriété, voir Permissions)</td></tr>
+        <tr><td>Diane Dirigeante Demo</td><td class="mono">club_members.role = membre_bureau</td><td>SV Demo FC — vue bureau</td></tr>
+        <tr><td>Nicolas Coach Demo</td><td class="mono">club_members.role = coach</td><td>SV Demo FC — équipe U14 D1 Demo uniquement (<code>teams</code> scopé)</td></tr>
+        <tr><td>Sarah Coach Demo</td><td class="mono">club_members.role = coach</td><td>SV Demo FC — équipe U18 Féminines Demo uniquement</td></tr>
       </tbody>
     </table>
 
     <h2>Rôles Connect (espace personnel)</h2>
     <table>
-      <thead><tr><th>Persona</th><th>Rattachement</th><th>Usage prévu</th></tr></thead>
+      <thead><tr><th>Persona</th><th>Rattachement</th></tr></thead>
       <tbody>
-        <tr><td>Parent Demo</td><td>Parent de Lucas Demo, U10</td><td>Droits à l'image, calendrier enfant, messages</td></tr>
-        <tr><td>Joueur Demo</td><td>Seniors R2</td><td>Profil, calendrier, contenus le concernant</td></tr>
+        <tr><td>Lucas Joueur Demo</td><td>Équipe Seniors R2 Demo, compte actif (<code>player_profiles</code>)</td></tr>
+        <tr><td>Marie Parent Demo</td><td>Parent confirmé de Noah Demo (<code>parent_player_relationships</code>, statut confirmé), équipe U10 A Demo</td></tr>
+        <tr><td>Noah Demo <span style="color:var(--text3)">(sans compte)</span></td><td>Enfant de Marie — <code>player_profiles.account_status = sans_compte</code>, réaliste (mineur sans accès direct)</td></tr>
       </tbody>
     </table>
 
-    <h2>Sélecteur de rôle prévu</h2>
-    <p style="color:var(--text2);font-size:13px">Une fois actif : bandeau "Mode Review · Voir comme : [rôle ▾]" présent sur chaque application Review. Le changement de persona déclenche une vraie session (nouveau JWT Supabase Review pour ce persona), pas un simple changement d'affichage — les policies RLS du projet Review s'appliquent normalement.</p>
+    <h2>« Voir comme » — mécanisme réel</h2>
+    <p style="color:var(--text2);font-size:13px;line-height:1.8">
+      Une fonction serveur dédiée au projet Review (<code>persona-session</code>, aucune fonction de production) reçoit une clé de persona, retrouve son mot de passe Review dans une variable d'environnement Netlify (jamais exposée au navigateur), et effectue un vrai <code>signInWithPassword</code> côté serveur contre l'API Auth du projet Review. Le navigateur ne reçoit que le résultat — un vrai <code>access_token</code>/<code>refresh_token</code> Supabase — jamais le mot de passe. Toute requête faite ensuite avec ce token est réellement soumise aux policies RLS de cette persona. Testable dès maintenant sur <a href="outbox.html">la page Outbox</a>.
+    </p>
+    <p class="foot-note">Emails réservés au domaine <code>@sportvision-review.invalid</code> (TLD réservé par l'IANA pour les données de test — ne délivre jamais, ne peut jamais correspondre à une vraie adresse). Mots de passe générés aléatoirement, connus uniquement du serveur Review — jamais communiqués dans ce Hub.</p>
   </main>
-  <footer>SportVision Review Hub</footer>
+  <footer>SportVision Review Hub — personas créés et vérifiés le 10/09/2026 sur le projet Supabase Review (ffjktzmsezfrwmrtlhzo), séparé de la production.</footer>
 </body>
 </html>

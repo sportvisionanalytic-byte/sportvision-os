@@ -1,5 +1,6 @@
 [build]
   publish = "."
+  functions = "netlify/functions"
 
 # Site volontairement non indexé et non référencé publiquement : ce hub
 # documente l'architecture interne (routes, permissions, flux de données).
@@ -17,7 +18,7 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     X-Frame-Options = "SAMEORIGIN"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-    # CSP resserrée à 'self' pour l'instant : le hub est 100% statique (Phase 1),
-    # aucun appel réseau externe. À élargir (Supabase Review, etc.) quand la
-    # Phase 2+ branche le hub sur le projet Supabase Review réel.
-    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'"
+    # Phase 2 : le hub appelle desormais le projet Supabase REVIEW (schema
+    # reconstruit, RLS reel) pour l'outbox et les sessions persona — jamais
+    # la production. connect-src limite explicitement a ce seul projet Review.
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://ffjktzmsezfrwmrtlhzo.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'"

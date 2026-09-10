@@ -17,35 +17,106 @@
       <a href="permissions.html">Permissions</a>
       <a href="data-flow.html">Data Flow</a>
       <a href="personas.html">Personas</a>
+      <a href="outbox.html">Outbox</a>
       <a href="status.html" class="active">Status</a>
     </nav>
   </div>
-  <main>
+  <main class="wide">
     <h1>État de l'environnement Review</h1>
     <p class="lead">Vue d'ensemble de la santé de chaque brique. Utile pour ChatGPT (ou toi) avant de commencer une session d'audit : si une brique est en panne, inutile de perdre du temps à chercher un bug côté application.</p>
 
-    <div class="section-hint">
-      <span class="badge badge-pending">Phase 8 — pas encore activé</span>
-      Cette page sera reliée à de vraies vérifications (ping Supabase Review, test Stripe test-mode, vérification de l'outbox email simulé) une fois les phases précédentes en place. En attendant, l'état ci-dessous est déclaratif.
+    <div class="finding" style="border-color:rgba(240,68,94,.4);background:rgba(240,68,94,.06)">
+      <div class="finding-title" style="color:var(--err)">Action requise — le Hub est actuellement inaccessible (503)</div>
+      La variable <code>REVIEW_HUB_PASSWORD</code> n'a pas encore été configurée sur Netlify — l'edge function de protection d'accès bloque donc tout le monde par défaut (fail closed, comportement voulu). Sans cette étape, cette page elle-même n'est pas consultable dans un navigateur.
     </div>
 
+    <h2>Bilan de fin de Phase 2</h2>
     <table>
       <thead><tr><th>Brique</th><th>État</th><th>Détail</th></tr></thead>
       <tbody>
-        <tr><td>Protection d'accès du Hub</td><td><span class="badge badge-ok">en place</span></td><td>Basic Auth via edge function — noindex seul ne suffisait pas</td></tr>
+        <tr><td>Supabase Review — schéma</td><td><span class="badge badge-ok">OK</span></td><td>551 migrations rejouées chronologiquement, 545 réussies (98,9%), 6 restantes expliquées ci-dessous (aucune ne bloque un parcours de démonstration)</td></tr>
+        <tr><td>Supabase Review — RLS</td><td><span class="badge badge-err">avertissement</span></td><td>1 récursion critique détectée sur <code>profiles</code>/<code>club_members</code>/<code>clubs</code> (voir <a href="permissions.html#ecarts">Permissions</a>) — comparaison structurelle avec la prod identique, à vérifier côté production. Reste des policies testées : conformes.</td></tr>
+        <tr><td>Supabase Review — Auth</td><td><span class="badge badge-ok">OK</span></td><td>8 vrais <code>auth.users</code>, lignes métier réelles, testés par vraies requêtes JWT</td></tr>
+        <tr><td>Personas</td><td><span class="badge badge-ok">OK</span></td><td>8 personas + club témoin OTHER DEMO FC — détail sur <a href="personas.html">Personas</a></td></tr>
+        <tr><td>Second club de contrôle</td><td><span class="badge badge-ok">OK</span></td><td>OTHER DEMO FC — isolation testée et vérifiée pour chaque persona SV Demo FC</td></tr>
+        <tr><td>Outbox Email/SMS</td><td><span class="badge badge-ok">OK</span></td><td>Table <code>review_outbox</code> + page <a href="outbox.html">/outbox</a>, aucun envoi réel possible</td></tr>
+        <tr><td>Production isolation check</td><td><span class="badge badge-ok">OK</span></td><td>Voir section dédiée ci-dessous</td></tr>
+        <tr><td>Protection d'accès du Hub</td><td><span class="badge badge-warn">mécanisme OK, mot de passe non défini</span></td><td>Basic Auth via edge function, fail-closed vérifié — <code>netlify env:set REVIEW_HUB_PASSWORD</code> reste à exécuter</td></tr>
         <tr><td>SportVision OS (Review)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 5</td></tr>
         <tr><td>Club+ (Review)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 3</td></tr>
         <tr><td>Connect (Review)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 4</td></tr>
-        <tr><td>Supabase Review — projet</td><td><span class="badge badge-ok">en place</span></td><td>Projet dédié créé, région Frankfurt (identique prod), totalement séparé de la production</td></tr>
-        <tr><td>Supabase Review — schéma</td><td><span class="badge badge-ok">reconstruit et vérifié</span></td><td>551 migrations rejouées chronologiquement (ordre réel des commits git) : 545 réussies (98,9%), 6 restantes expliquées et sans impact (2 doublons bénins, 4 dépendant des données réelles d'un club exclues du rejeu). 2 nouvelles dérives base/code détectées et documentées au passage.</td></tr>
-        <tr><td>Supabase Review — Auth</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 7 (personas + sélecteur de rôle)</td></tr>
-        <tr><td>Stripe (mode test)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 2</td></tr>
-        <tr><td>Simulateur email/SMS</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 2</td></tr>
+        <tr><td>Stripe (mode test)</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 3 (au premier besoin de paiement dans une app Review)</td></tr>
         <tr><td>Synchronisation inter-applications</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 6</td></tr>
-        <tr><td>Réinitialisation des données</td><td><span class="badge badge-pending">à venir</span></td><td>Phase 8</td></tr>
+        <tr><td>Réinitialisation des données (reset complet)</td><td><span class="badge badge-pending">amorcé</span></td><td>Script de seed idempotent en place (rejouable) ; garde-fou anti-prod (refus si project ref ≠ Review) à ajouter avant un vrai bouton reset</td></tr>
       </tbody>
     </table>
+
+    <h2>Tests RLS — résultat réel (vrais JWT, vraies requêtes REST)</h2>
+    <p class="foot-note" style="margin-bottom:10px">Chaque test signe une vraie requête PostgREST avec le <code>access_token</code> obtenu par un vrai <code>signInWithPassword</code> de la persona concernée — jamais une simple vérification d'affichage frontend.</p>
+    <div class="section-hint">
+      RLS TESTS<br>
+      Passed : 19<br>
+      Failed : 5 (tous dus à la récursion ci-dessus sur profiles/club_members/clubs — 0 échec de logique métier une fois cette récursion mise de côté)
+    </div>
+    <table>
+      <thead><tr><th>Persona</th><th>Test</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td>Camille CM Demo</td><td>Voit les équipes de SON club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Camille CM Demo</td><td>Ne voit PAS les équipes d'un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Camille CM Demo</td><td>Peut modifier une équipe de son club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Camille CM Demo</td><td>Ne peut pas modifier une équipe d'un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Camille CM Demo</td><td>Voit les membres de son club (table <code>club_members</code>)</td><td><span class="badge badge-err">Failed — bloqué par la récursion RLS</span></td></tr>
+        <tr><td>Nicolas Coach Demo</td><td>Voit les équipes de son club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Nicolas Coach Demo</td><td>Ne voit pas un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Nicolas Coach Demo</td><td>Ne peut pas modifier le club (niveau club)</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Nicolas Coach Demo</td><td>Ne peut pas modifier une équipe d'un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Nicolas Coach Demo</td><td>Ne peut pas modifier l'équipe de Sarah (hors périmètre <code>teams</code>)</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Marie Parent Demo</td><td>Voit son enfant (Noah)</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Marie Parent Demo</td><td>Ne voit pas un joueur d'une autre famille (Lucas)</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Marie Parent Demo</td><td>Voit l'équipe de son enfant</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Lucas Joueur Demo</td><td>Voit son propre profil</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Lucas Joueur Demo</td><td>Ne voit pas le profil d'un autre enfant</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Lucas Joueur Demo</td><td>Ne peut pas lire <code>club_members</code> (donnée admin club)</td><td><span class="badge badge-err">Failed — bloqué par la récursion RLS (donc <em>impossible de vérifier</em> le refus attendu, pas une fuite)</span></td></tr>
+        <tr><td>Pierre Président Demo</td><td>Voit toutes les équipes de son club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Pierre Président Demo</td><td>Peut modifier une équipe de son club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Pierre Président Demo</td><td>Ne peut pas toucher formule/plan (réservé staff SportVision)</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Pierre Président Demo</td><td>Ne voit pas un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Diane Dirigeante Demo</td><td>Voit les équipes de son club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Diane Dirigeante Demo</td><td>Ne voit pas un autre club</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Alex Admin Demo</td><td>Voit TOUS les clubs (y compris OTHER DEMO FC)</td><td><span class="badge badge-ok">Passed</span></td></tr>
+        <tr><td>Alex Admin Demo</td><td>Voit la table <code>clubs</code> entière</td><td><span class="badge badge-err">Failed — bloqué par la récursion RLS</span></td></tr>
+      </tbody>
+    </table>
+    <p class="foot-note">Détail complet (attendu / obtenu / policy probable) pour chaque échec : voir le constat « Récursion RLS » sur <a href="permissions.html#ecarts">Permissions</a>.</p>
+
+    <h2>Les 551 migrations — détail des 6 non reconstruites</h2>
+    <table>
+      <thead><tr><th>Fichier</th><th>Catégorie</th><th>Raison</th></tr></thead>
+      <tbody>
+        <tr><td><code>migration-messages-broadcast.sql</code></td><td><span class="badge badge-warn">non applicable</span></td><td>Policy déjà créée par un fichier antérieur du même nom — doublon bénin, aucune fonctionnalité manquante</td></tr>
+        <tr><td><code>migration-audit-qa-finance-fix-profiles-self-select-expert-comptable.sql</code></td><td><span class="badge badge-warn">non applicable</span></td><td>Même cas : policy déjà en place via un fichier antérieur</td></tr>
+        <tr><td><code>migration-federation-v8-realignement-equipes.sql</code></td><td><span class="badge badge-warn">non applicable au dataset Review</span></td><td>Réalignement d'équipes qui n'existent que pour le vrai club Villemomble (données réelles volontairement exclues du rejeu Review)</td></tr>
+        <tr><td><code>migration-federation-v14-u14c.sql</code></td><td><span class="badge badge-warn">non applicable au dataset Review</span></td><td>Contrainte de clé étrangère vers le <code>club_id</code> réel de Villemomble, absent par design de Review</td></tr>
+        <tr><td><code>migration-federation-v20-exclusions-synchro.sql</code></td><td><span class="badge badge-warn">non applicable au dataset Review</span></td><td>Idem — exclusions de synchronisation propres au club réel</td></tr>
+        <tr><td><code>migration-federation-v25-groupes-u8-u9.sql</code></td><td><span class="badge badge-warn">non applicable au dataset Review</span></td><td>Idem — groupes d'équipes du club réel</td></tr>
+      </tbody>
+    </table>
+    <p class="foot-note"><strong>Statut global du schéma : OK.</strong> 0 échec technique réel — les 6 cas restants sont soit des doublons sans conséquence, soit des données du club réel Villemomble volontairement hors périmètre Review. Aucun n'empêche un parcours de démonstration sur SV Demo FC / OTHER DEMO FC.</p>
+
+    <h2>Production isolation check</h2>
+    <table>
+      <thead><tr><th>Vérification</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td>Aucune URL Supabase PROD appelée depuis le Hub/l'outbox/la fonction persona-session</td><td><span class="badge badge-ok">confirmé</span> — seule <code>ffjktzmsezfrwmrtlhzo.supabase.co</code> (Review) est référencée, CSP <code>connect-src</code> limitée à ce seul host</td></tr>
+        <tr><td>Aucune Edge Function PROD appelée</td><td><span class="badge badge-ok">confirmé</span> — la seule fonction serveur Review (<code>persona-session</code>) est hébergée sur ce site Netlify indépendant</td></tr>
+        <tr><td>Aucune clé Stripe LIVE présente</td><td><span class="badge badge-ok">confirmé</span> — aucune intégration Stripe dans le Hub à ce stade (prévu Phase 3)</td></tr>
+        <tr><td>Aucun provider mail/SMS de production utilisé</td><td><span class="badge badge-ok">confirmé</span> — outbox simulée uniquement, aucune clé Brevo/Resend/SMS dans ce build</td></tr>
+        <tr><td>Aucun webhook Production appelé</td><td><span class="badge badge-ok">confirmé</span></td></tr>
+        <tr><td>Project ref de production absent de toute page publique</td><td><span class="badge badge-ok">confirmé</span> — retiré de l'accueil, recherche exhaustive sur les 8 pages du Hub</td></tr>
+      </tbody>
+    </table>
+    <p class="foot-note">Vérifié par recherche textuelle exhaustive (<code>lulgezzpvrlbftbykzrc</code>, URLs <code>*.supabase.co</code> hors Review, clés <code>sk_live_</code>/<code>sk_test_</code>/JWT) sur les 10 fichiers du Hub — aucune occurrence trouvée en dehors du projet Review.</p>
   </main>
-  <footer>SportVision Review Hub</footer>
+  <footer>SportVision Review Hub — Phase 2 complétée le 10/09/2026. Arrêt avant Phase 3 (Club+ Review) comme demandé.</footer>
 </body>
 </html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>SportVision Review — Outbox</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .outbox-row{cursor:pointer}
+  .outbox-detail{display:none;background:var(--panel2);border-radius:8px;padding:14px 16px;margin:-6px 0 10px;font-size:12.5px;color:var(--text2);white-space:pre-wrap}
+  .outbox-detail.open{display:block}
+  .chan{font-weight:700;font-size:11px;padding:2px 8px;border-radius:5px;background:var(--panel2);color:var(--text2)}
+  #loading{color:var(--text3);font-size:12.5px}
+  #error{display:none;color:var(--err);font-size:12.5px;margin-bottom:12px}
+</style>
+</head>
+<body>
+  <div class="review-banner">SportVision — Environnement Review <span>Données fictives</span><span>Aucune action réelle</span></div>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> SportVision Review Hub</div>
+    <nav class="hubnav">
+      <a href="index.html">Accueil</a>
+      <a href="routes.html">Routes</a>
+      <a href="permissions.html">Permissions</a>
+      <a href="data-flow.html">Data Flow</a>
+      <a href="personas.html">Personas</a>
+      <a href="outbox.html" class="active">Outbox</a>
+      <a href="status.html">Status</a>
+    </nav>
+  </div>
+  <main class="wide">
+    <h1>Outbox Review — Email / SMS / notifications</h1>
+    <p class="lead">Aucun envoi réel n'est jamais déclenché dans cet environnement. Toute action qui, en production, enverrait un email, un SMS ou une notification, crée ici une ligne dans <code>review_outbox</code> à la place — visible ci-dessous, jamais transmise à un vrai destinataire.</p>
+
+    <div class="finding">
+      <div class="finding-title">Lecture protégée par une vraie session, pas par la clé publique seule</div>
+      Cette page lit la table <code>review_outbox</code> du projet Supabase Review. La policy RLS réserve la lecture aux sessions authentifiées : il faut donc « Voir comme » une persona avant que la liste s'affiche — exactement le même mécanisme de session réelle que celui utilisé pour les tests RLS. Aucune clé Brevo/Resend/SMS de production n'existe dans ce build.
+    </div>
+
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-title">Voir comme…</div>
+      <div class="card-desc" style="margin-bottom:10px">Obtient une vraie session Supabase Review pour cette persona (via une fonction serveur dédiée — aucun mot de passe ne transite côté navigateur).</div>
+      <select id="persona-picker" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12.5px">
+        <option value="">— choisir une persona —</option>
+        <option value="alex_admin">Alex Admin Demo (SportVision Admin)</option>
+        <option value="camille_cm">Camille CM Demo (CM SportVision)</option>
+        <option value="pierre_president">Pierre Président Demo</option>
+        <option value="diane_dirigeante">Diane Dirigeante Demo</option>
+        <option value="nicolas_coach">Nicolas Coach Demo (U14 D1)</option>
+        <option value="sarah_coach">Sarah Coach Demo (U18 F)</option>
+        <option value="lucas_joueur">Lucas Joueur Demo</option>
+        <option value="marie_parent">Marie Parent Demo</option>
+      </select>
+      <span id="session-status" style="margin-left:10px;font-size:12px;color:var(--text3)"></span>
+    </div>
+
+    <div id="error"></div>
+    <p id="loading" style="display:none">Chargement de l'outbox…</p>
+    <table id="outbox-table" style="display:none">
+      <thead><tr><th>Date</th><th>Canal</th><th>Destinataire</th><th>Sujet</th><th>Statut</th></tr></thead>
+      <tbody id="outbox-body"></tbody>
+    </table>
+  </main>
+  <footer>SportVision Review Hub — la lecture de cette page nécessite une vraie session persona Review (bouton « Voir comme » ci-dessus).</footer>
+
+  <script>
+    const SUPABASE_URL = "https://ffjktzmsezfrwmrtlhzo.supabase.co";
+    const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmamt0em1zZXpmcndtcnRsaHpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNDI1NjQsImV4cCI6MjEwNDYxODU2NH0.vMaxNqi1pogfWq58bjESlvYnJmW6Jdr9baV5RVpR3W4";
+    let sessionToken = null;
+
+    document.getElementById("persona-picker").addEventListener("change", async (e) => {
+      const persona = e.target.value;
+      const statusEl = document.getElementById("session-status");
+      if (!persona) { sessionToken = null; statusEl.textContent = ""; return; }
+      statusEl.textContent = "Connexion…";
+      try {
+        const res = await fetch("/.netlify/functions/persona-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ persona }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        sessionToken = data.access_token;
+        statusEl.textContent = "Session active (JWT réel obtenu).";
+        loadOutbox();
+      } catch (err) {
+        statusEl.textContent = "Échec de connexion : " + err.message;
+      }
+    });
+
+    async function loadOutbox() {
+      const errEl = document.getElementById("error");
+      const loadingEl = document.getElementById("loading");
+      const tableEl = document.getElementById("outbox-table");
+      const bodyEl = document.getElementById("outbox-body");
+      bodyEl.innerHTML = "";
+      errEl.style.display = "none";
+      loadingEl.style.display = "block";
+      if (!sessionToken) { loadingEl.style.display = "none"; return; }
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/review_outbox?select=*&order=created_at.desc`, {
+          headers: { apikey: ANON_KEY, Authorization: `Bearer ${sessionToken}` }
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} — session Review requise (RLS), ou erreur serveur`);
+        }
+        const rows = await res.json();
+        loadingEl.style.display = "none";
+        if (!rows.length) {
+          errEl.textContent = "Aucune entrée dans l'outbox pour l'instant.";
+          errEl.style.display = "block";
+          return;
+        }
+        tableEl.style.display = "";
+        rows.forEach(r => {
+          const tr = document.createElement("tr");
+          tr.className = "outbox-row";
+          const badge = r.status === "SIMULATED" ? "badge-ok" : "badge-err";
+          tr.innerHTML = `
+            <td>${new Date(r.created_at).toLocaleString("fr-FR")}</td>
+            <td><span class="chan">${r.channel}</span></td>
+            <td>${r.recipient}</td>
+            <td>${r.subject || "(sans objet)"}</td>
+            <td><span class="badge ${badge}">${r.status}</span></td>`;
+          const detail = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 5;
+          td.innerHTML = `<div class="outbox-detail">${(r.body || "").replace(/</g, "&lt;")}</div>`;
+          detail.appendChild(td);
+          tr.addEventListener("click", () => {
+            td.querySelector(".outbox-detail").classList.toggle("open");
+          });
+          bodyEl.appendChild(tr);
+          bodyEl.appendChild(detail);
+        });
+      } catch (e) {
+        loadingEl.style.display = "none";
+        errEl.textContent = "Impossible de charger l'outbox : " + e.message;
+        errEl.style.display = "block";
+      }
+    }
+  </script>
+</body>
+</html>

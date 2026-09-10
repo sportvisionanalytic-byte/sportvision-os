@@ -17,6 +17,7 @@
       <a href="permissions.html">Permissions</a>
       <a href="data-flow.html">Data Flow</a>
       <a href="personas.html">Personas</a>
+      <a href="outbox.html">Outbox</a>
       <a href="status.html">Status</a>
     </nav>
   </div>
@@ -58,8 +59,9 @@
       <div class="card"><a href="routes.html"><div class="card-title">→ Routes</div></a><div class="card-desc">Toutes les pages/écrans des 4 applications, avec rôles autorisés</div></div>
       <div class="card"><a href="permissions.html"><div class="card-title">→ Permissions</div></a><div class="card-desc">Matrice fonction × rôle, basée sur le RLS et les rôles réels</div></div>
       <div class="card"><a href="data-flow.html"><div class="card-title">→ Data Flow</div></a><div class="card-desc">Qui est la source de vérité de chaque donnée, qui la consomme</div></div>
-      <div class="card"><a href="personas.html"><div class="card-title">→ Personas</div></a><div class="card-desc">Comptes de démonstration et sélecteur de rôle (à activer en Phase 7)</div></div>
-      <div class="card"><a href="status.html"><div class="card-title">→ Status</div></a><div class="card-desc">État de chaque brique de l'environnement review (à activer en Phase 8)</div></div>
+      <div class="card"><a href="personas.html"><div class="card-title">→ Personas</div></a><div class="card-desc">8 vrais comptes Supabase Review (auth.users réels), avec rôle et rattachement club/équipe réels</div></div>
+      <div class="card"><a href="outbox.html"><div class="card-title">→ Outbox</div></a><div class="card-desc">Emails/SMS/notifications simulés — jamais envoyés réellement</div></div>
+      <div class="card"><a href="status.html"><div class="card-title">→ Status</div></a><div class="card-desc">État réel de chaque brique de l'environnement review</div></div>
     </div>
 
     <h2 id="garanties">Architecture d'isolation prévue</h2>
@@ -69,10 +71,11 @@
       <tbody>
         <tr><td>Base de données</td><td>Projet Supabase Review dédié, entièrement distinct du projet de production. Aucune app Review ne détient les identifiants de production. Schéma reconstruit et vérifié par rejeu réel des 551 migrations (545 réussies, 6 restantes expliquées — voir <a href="status.html">Status</a>).</td><td><span class="badge badge-ok">en place</span></td></tr>
         <tr><td>Paiements</td><td>Clés Stripe TEST uniquement. Aucune transaction réelle possible depuis cet environnement.</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
-        <tr><td>Emails / SMS / notifications</td><td>Simulés (outbox review, aucun envoi réel).</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
-        <tr><td>Edge Functions</td><td>Déployées uniquement sur le futur projet Supabase Review. La configuration de production (dont les 8 fonctions sans vérification JWT) ne sera jamais touchée par ce chantier.</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
+        <tr><td>Emails / SMS / notifications</td><td>Simulés — table <code>review_outbox</code> sur le projet Review, jamais d'envoi réel. Voir <a href="outbox.html">Outbox</a>.</td><td><span class="badge badge-ok">en place</span></td></tr>
+        <tr><td>Auth Review</td><td>8 vrais <code>auth.users</code> sur le projet Review, avec vraies lignes métier (profils/membres/joueurs) et vrais rattachements club/équipe. Voir <a href="personas.html">Personas</a>.</td><td><span class="badge badge-ok">en place</span></td></tr>
+        <tr><td>Edge Functions</td><td>Déployées uniquement sur le projet Supabase Review (une fonction serveur Review pour l'échange persona → session). La configuration de production (dont les 8 fonctions sans vérification JWT) n'est jamais touchée par ce chantier.</td><td><span class="badge badge-ok">en place</span></td></tr>
         <tr><td>Hébergement</td><td>Sites Netlify séparés des sites de production, variables d'environnement propres à chacun.</td><td><span class="badge badge-ok">en place</span> — ce Hub tourne déjà sur un site Netlify indépendant</td></tr>
-        <tr><td>Accès</td><td>Hub et apps Review réservés aux personnes autorisées (au-delà du <code>noindex</code>, qui empêche seulement l'indexation, pas l'accès).</td><td><span class="badge badge-pending">en cours</span></td></tr>
+        <tr><td>Accès</td><td>Hub réservé aux personnes autorisées (Basic Auth via edge function — <code>noindex</code> seul n'aurait empêché que l'indexation, pas l'accès).</td><td><span class="badge badge-warn">mécanisme en place, mot de passe non encore défini</span></td></tr>
         <tr><td>Données</td><td>100% fictives, générées pour l'audit. Bouton de réinitialisation disponible.</td><td><span class="badge badge-pending">à venir — Phase 8</span></td></tr>
       </tbody>
     </table>
