@@ -8,16 +8,28 @@
 // checkout, dispatch-notifications, create-guest-rdv, create-guest-request).
 
 // Supabase Edge Function — delete-account
-// Permet à un client connecté de supprimer lui-même son compte Portail.
-// Supprime toujours l'accès (connexion) ; supprime aussi la fiche client si, et
-// seulement si, elle n'a aucun historique commercial (prestations, devis...).
-// prestations.client_id et devis.client_id n'ont pas de "on delete cascade" (contrainte
-// par défaut = bloquante), donc la suppression de la fiche échoue automatiquement et
-// sans risque s'il existe le moindre historique — pas besoin de vérifier nous-mêmes
-// chaque table liée. C'est cette contrainte SQL qui protège les obligations comptables
-// (10 ans), pas une logique applicative qu'on pourrait oublier de mettre à jour.
-// Deploy via Supabase dashboard > Edge Functions > New Function (name: delete-account)
+// Permet à un client connecté de supprimer lui-même son compte.
+//
+// 10/09/2026 (décision de Fouka) — la suppression d'un compte CLIENT passe entièrement par la
+// fonction SQL supprimer_compte_client (migration-decisions-connect-v1-suppression-compte-client),
+// en une seule transaction :
+//   • les commandes média et les droits d'accès sont CONSERVÉS, détachés du compte ;
+//   • factures, avoirs, paiements, contrats, devis, prestations : la fiche client qui les porte est
+//     conservée (obligation comptable, 10 ans), et anonymisée si c'est une fiche de particulier ;
+//   • une fiche sans aucun document est supprimée ; une fiche partagée avec un autre compte n'est
+//     pas touchée ;
+//   • le compte d'authentification est supprimé EN DERNIER. Si une étape échoue, rien n'a changé.
+// Avant, ce fichier supprimait le compte PUIS tentait la fiche : un client ayant une commande média
+// ne pouvait pas être supprimé (clé étrangère vers auth.users, « Database error deleting user »), et
+// une fiche avec facture mais sans prestation ni devis perdait le lien de sa facture et ses contrats.
+//
+// Aujourd'hui (10/09/2026), aucune application déployée n'appelle cette fonction : Connect n'a pas
+// d'écran de suppression de compte, et l'ancien Portail qui l'appelait n'est plus en ligne. Côté
+// staff, l'OS supprime un accès client par admin-delete-portal-account, qui suit la même règle.
+//
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (déjà présents par défaut)
+// Prérequis : la migration ci-dessus exécutée. Sans elle, la fonction répond une erreur et ne
+// supprime rien.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -55,24 +67,24 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const { data: cu } = await admin
-      .from("client_users")
-      .select("client_id")
-      .eq("id", userData.user.id)
-      .maybeSingle();
-
-    const { error: delErr } = await admin.auth.admin.deleteUser(userData.user.id);
-    if (delErr) return json({ error: delErr.message }, 500);
-
-    let clientDeleted = false;
-    if (cu?.client_id) {
-      const { error: clientDelErr } = await admin.from("clients").delete().eq("id", cu.client_id);
-      // Échec attendu et normal si la fiche a un historique (prestations, devis...) :
-      // la contrainte de clé étrangère bloque la suppression, on la laisse en place.
-      clientDeleted = !clientDelErr;
+    // ── Compte CLIENT (10/09/2026) ────────────────────────────────────────────────────────────
+    // Le compte supprimé est TOUJOURS celui du jeton vérifié ci-dessus, jamais un identifiant reçu
+    // dans le corps de la requête. p_anonymiser : c'est la personne elle-même qui demande à partir.
+    // supprimer_compte_client refuse aussi, par précaution, un compte de l'équipe SportVision
+    // (mêmes critères que is_staff()) et un compte qui porte l'activité d'un club.
+    const { data: bilan, error: suppressionErr } = await admin.rpc("supprimer_compte_client", {
+      p_user_id: userData.user.id,
+      p_anonymiser: true,
+    });
+    if (suppressionErr) {
+      // P0001 : refus lisible écrit pour la personne (voir la fonction SQL). Tout le reste est un
+      // incident : le détail reste dans les journaux, la personne sait seulement que rien n'a bougé.
+      if (suppressionErr.code === "P0001") return json({ error: suppressionErr.message }, 409);
+      console.error("[delete-account] supprimer_compte_client :", suppressionErr.code, suppressionErr.message);
+      return json({ error: "La suppression n'a pas pu aboutir. Rien n'a été supprimé : réessayez plus tard ou écrivez-nous." }, 500);
     }
 
-    return json({ deleted: true, client_deleted: clientDeleted });
+    return json({ deleted: true, client_deleted: !!(bilan as { client_deleted?: boolean } | null)?.client_deleted });
   } catch (e) {
     return json({ error: ((e as { message?: string })?.message ?? String(e)) }, 500);
   }

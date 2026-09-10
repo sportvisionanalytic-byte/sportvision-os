@@ -427,3 +427,37 @@ n'est pas encore faite n'est pas une commande sans photos. Une liste qui crie au
 liste qu'on cesse de lire.
 
 Vérifie enfin qu'un photographe ne voit aucune anomalie.
+
+## Envois d'e-mails des tests (règle du 10/09/2026)
+
+Aucun test n'envoie de vrai e-mail par défaut : les inscriptions sont interceptées et les comptes
+créés par l'API d'administration. `ENVOIS_REELS=1` rétablit les vrais envois (connect-creation-
+compte, clubplus-president-parcours, connect-joueur-parent-parcours ; clubplus-creation-compte :
+`ENVOIS_REELS=n`). Côté production, dispatch-notifications et clubplus-family-invite n'écrivent
+jamais à une adresse de domaine réservé (.invalid, .test, .example, .localhost, example.com/.net/
+.org), à sportvision-test.fr ni à zz-…@sportvision-an.fr. Une adresse mise en liste de suppression
+doit porter `reason = 'manual'` (contrainte) : un autre libellé est refusé et ne bloque rien.
+
+## `emails-adresses-test-prenom.test.mjs`
+
+Filtre des adresses de test de dispatch-notifications (code extrait, worker exécuté sous Deno
+contre une fausse base sans accès Internet), salutation « Bonjour, » quand le prénom manque (sur
+les gabarits actifs lus en base), prénom `first_name` puis `prenom` transmis par
+request-password-reset et notify-account-change (exécutées en local contre la vraie base).
+`REF_GIT=origin/main` pour le rouge ; `PROD_DISPATCH=1` vérifie la fonction déployée par le vrai
+cron (ligne protégée par la liste de suppression).
+
+## `guest-media-checkout-compte.test.mjs`
+
+create-guest-media-checkout retrouve un compte existant au-delà des 200 premiers (fausse API de
+2 500 comptes, puis vraie API d'administration). Sans Stripe, sans e-mail.
+
+## `suppression-compte-client.test.sql` (+ `.test.mjs`)
+
+supprimer_compte_client : commandes, droits et factures conservés, fiche anonymisée, compte
+supprimé en dernier, fiche partagée et comptes de l'équipe intouchés, fonction réservée à
+service_role. Le `.mjs` enchaîne la migration et le test dans une transaction annulée
+(`MIGRATION=0` une fois la migration exécutée). `suppression-compte-client-fonction.test.mjs` fait
+le chemin complet (jeton du client → delete-account → base), `FONCTION_LOCALE=1` pour la copie du
+dépôt. Les fonctions lancées en local passent par `_fonction-locale.mjs` (port libre : le 8000 de
+std/http est souvent pris par une autre copie locale).

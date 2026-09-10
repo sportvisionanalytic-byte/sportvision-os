@@ -13,7 +13,10 @@
 // supprime toujours l'accès, et supprime aussi la fiche client si elle n'a aucun
 // historique commercial (prestations, devis...) — protégé par la contrainte de clé
 // étrangère par défaut (bloquante) sur prestations.client_id / devis.client_id.
-// Deploy via Supabase dashboard > Edge Functions > New Function (name: admin-delete-portal-account)
+// Depuis le 10/09/2026, tout passe par supprimer_compte_client (voir plus bas) : la migration
+// migration-decisions-connect-v1-suppression-compte-client.sql doit être exécutée AVANT de déployer
+// cette version, sinon la fonction répond une erreur et ne supprime rien.
+// Deploy : bash livrables/SportVision-TV/scripts/deployer-fonction.sh admin-delete-portal-account
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (déjà présents par défaut)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -61,24 +64,27 @@ serve(async (req) => {
       .maybeSingle();
     if (profile?.role !== "admin") return json({ error: "Réservé aux administrateurs" }, 403);
 
-    const { data: cu } = await admin
-      .from("client_users")
-      .select("client_id")
-      .eq("id", target_user_id)
-      .maybeSingle();
-
-    const { error: delErr } = await admin.auth.admin.deleteUser(target_user_id);
-    if (delErr) return json({ error: delErr.message }, 500);
-
-    let clientDeleted = false;
-    if (cu?.client_id) {
-      const { error: clientDelErr } = await admin.from("clients").delete().eq("id", cu.client_id);
-      // Échec attendu et normal si la fiche a un historique (prestations, devis...) :
-      // la contrainte de clé étrangère bloque la suppression, on la laisse en place.
-      clientDeleted = !clientDelErr;
+    // 10/09/2026 (décision de Fouka) — même règle que delete-account, par la même fonction SQL
+    // supprimer_compte_client (migration-decisions-connect-v1-suppression-compte-client), en une
+    // seule transaction : commandes et droits conservés et détachés, fiche portant des documents
+    // (factures, contrats…) conservée, fiche vide supprimée, fiche partagée avec un autre compte
+    // intacte, compte d'authentification supprimé EN DERNIER. Avant, le compte partait d'abord :
+    // un client ayant une commande média ne pouvait pas être supprimé, et une fiche avec facture
+    // mais sans prestation ni devis était supprimée (factures détachées, contrats effacés).
+    // p_anonymiser = false : ici c'est SportVision qui retire un accès, pas la personne qui exerce
+    // son droit à l'effacement — sa fiche commerciale n'est pas anonymisée pour autant.
+    const { data: bilan, error: suppressionErr } = await admin.rpc("supprimer_compte_client", {
+      p_user_id: target_user_id,
+      p_anonymiser: false,
+    });
+    if (suppressionErr) {
+      if (suppressionErr.code === "P0001") return json({ error: suppressionErr.message }, 409);
+      if (suppressionErr.code === "P0002") return json({ error: "Compte introuvable (déjà supprimé ?)." }, 404);
+      console.error("[admin-delete-portal-account] supprimer_compte_client :", suppressionErr.code, suppressionErr.message);
+      return json({ error: "Suppression impossible pour le moment. Rien n'a été supprimé." }, 500);
     }
 
-    return json({ deleted: true, client_deleted: clientDeleted });
+    return json({ deleted: true, client_deleted: !!(bilan as { client_deleted?: boolean } | null)?.client_deleted });
   } catch (e) {
     return json({ error: ((e as { message?: string })?.message ?? String(e)) }, 500);
   }
