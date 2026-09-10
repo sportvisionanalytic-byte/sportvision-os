@@ -39,6 +39,29 @@ Les 218 fonctions exécutables par `anon` ne sont pas 218 failles : Postgres acc
 **constater** pour chacune, pas le supposer — c'est exactement ainsi qu'est née la faille RPC
 anonyme fermée le 09/09.
 
+## Correction du 10/09/2026 : la lecture compte autant que l'écriture
+
+Ce document ne ciblait d'abord que les fonctions qui **écrivent**. Le jour même, deux fuites ont
+été trouvées **en lecture**, hors de ce périmètre :
+
+- `club_calendrier` rendait sans compte le calendrier complet d'un club, horaires et lieux
+  d'entraînement d'équipes de mineurs compris. Corrigé par v120.
+- `find_player_match_candidates` rendait sans compte l'identifiant et la date de naissance d'un
+  joueur dont on connaît le club et le nom. `find_duplicate_club_candidates` rendait clubs et
+  SIRET. Corrigé par v122, avec deux outils internes qui écrivaient sans contrôle.
+
+Un balayage ciblé a suivi : toute fonction à droits propriétaire, appelable sans compte, qui
+prend un identifiant et ne contient aucun contrôle reconnaissable. Les restantes ont été lues une
+par une : elles contrôlent par une fonction au nom non standard (`media_pricing_staff_album`,
+`is_member_of_user_group`, `_media_stats_albums`), ou ne rendent qu'un booléen ou des tarifs
+publics. **L'audit V1.1 doit donc couvrir aussi les fonctions qui lisent des données
+personnelles**, en commençant par celles qui rendent des personnes (joueurs, parents,
+encadrants) ou des lieux et horaires.
+
+Repère pratique : une fonction publique **par conception** prend un secret (un jeton, un slug de
+galerie avec son jeton, un code d'invitation). Une fonction qui prend un simple identifiant et
+reste appelable sans compte est suspecte jusqu'à preuve du contraire.
+
 ## La grille, pour chaque fonction du périmètre
 
 1. **Qui a le droit** — le contrôle d'autorité est-il en tête, avant toute lecture ou écriture ?
