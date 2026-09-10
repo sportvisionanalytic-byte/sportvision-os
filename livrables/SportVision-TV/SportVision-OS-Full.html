@@ -26921,9 +26921,9 @@ async function loadComptaDash(){
     const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
     const [data,remData,fraisData,remAttData,depData]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,acompte_montant,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500'),
-      sbFetch('prestations_equipe_display?select=remuneration,statut_paiement,prestations!inner(date_prestation,statut)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
-      sbFetch('frais?select=montant&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext+'&statut=in.(validé,remboursé)').catch(()=>[]),
-      sbFetch('prestations_equipe_display?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=remuneration,statut_paiement,prestations!inner(date_prestation,statut)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>null),
+      sbFetch('frais?select=montant&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext+'&statut=in.(validé,remboursé)').catch(()=>null),
+      sbFetch('prestations_equipe_display?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>null),
       // statut=in.(engagee,payee,comptabilisee) : exclut 'prevue' (dépense simplement
       // planifiée, pas encore engagée), même filtre que toutes les autres lectures de
       // charges réelles du module (loadComptaResultat, loadComptaRentabilite, loadComptaTva
@@ -26931,9 +26931,18 @@ async function loadComptaDash(){
       // engagée gonflait "Charges du mois" et donc faussait "Marge brute" à la baisse alors
       // qu'aucun argent n'a été ni ne sera forcément dépensé (audit finance/rémunération
       // 29/08 — confusion dépense prévue ↔ charge réelle, bug confirmé et corrigé).
-      sbFetch('expenses?select=montant_ttc&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext+'&statut=in.(engagee,payee,comptabilisee)').catch(()=>[]),
+      sbFetch('expenses?select=montant_ttc&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext+'&statut=in.(engagee,payee,comptabilisee)').catch(()=>null),
     ]);
-    const list=data||[];
+    // sbFetch ne rejette pas sur une erreur HTTP : il rend {code,message}. Avant le 10/09/2026,
+    // `data||[]` gardait cet objet, `list.filter` levait, le catch l'avalait et le tableau de
+    // bord restait fige sans un mot (vu en balayant l'OS sous charge : 57014, statement timeout).
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
+    if(!Array.isArray(data)){
+      ['cptd-enc','cptd-imp','cptd-acomp','cptd-charges','cptd-nb','cptd-att','cptd-rem','cptd-marge'].forEach(id=>set(id,'—'));
+      toast('Tableau de bord comptable : chargement impossible, rechargez la page.','er');
+      return;
+    }
+    const list=data;
     const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','non_facturée':'bn','en_retard':'br'};
     const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','non_facturée':'Non facturée','en_retard':'En retard'};
     const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
@@ -26973,11 +26982,14 @@ async function loadComptaDash(){
     // centimes ; animateNumber arrondit systématiquement (Math.round) et changerait le montant
     // affiché pour toute somme non entière — inacceptable sur un écran financier. On garde
     // l'affichage instantané, fidèle au calcul, plutôt que de risquer un montant tronqué.
-    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
+    // Une source de charges en echec comptait pour 0 € : « Charges du mois » baissait et
+    // « Marge brute » montait, sans signal. Sur un ecran financier, « — » vaut mieux qu'un faux montant.
+    const chargesKo=[remData,fraisData,depData].some(d=>!Array.isArray(d));
     set('cptd-enc',fmt(enc));set('cptd-imp',fmt(imp));set('cptd-acomp',fmt(acomp));
-    set('cptd-charges',fmt(charges));set('cptd-nb',String(nbFact));
-    set('cptd-att',fmt(imp));set('cptd-rem',fmt(remAtt));
-    set('cptd-marge',fmt(marge));
+    set('cptd-charges',chargesKo?'—':fmt(charges));set('cptd-nb',String(nbFact));
+    set('cptd-att',fmt(imp));set('cptd-rem',Array.isArray(remAttData)?fmt(remAtt):'—');
+    set('cptd-marge',chargesKo?'—':fmt(marge));
+    if(chargesKo)toast('Charges du mois incomplètes : une source n\'a pas répondu, rechargez la page.','wa');
 
     // Bloc priorité
     const prioEl=document.getElementById('cptd-prio');const prioReal=document.getElementById('cptd-prio-real');
