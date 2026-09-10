@@ -39,7 +39,13 @@ function ConfirmingContent() {
     (async () => {
       const supabase = createClient();
       try {
-        await consumePendingOnboarding(supabase);
+        const resultat = await consumePendingOnboarding(supabase);
+        // Club+ Gratuit refusé : le compte a déjà un club (décisions Club+ du 10/09/2026, n° 2).
+        // /signup-free le dit et propose d'ouvrir cet espace ; on n'y bascule pas en silence.
+        if (resultat?.dejaRattache) {
+          if (!cancelled) router.replace("/signup-free");
+          return;
+        }
       } catch (e) {
         console.error("[auth/confirming] rejeu de l'inscription en attente échoué :", e);
         if (!cancelled && (e as { definitive?: boolean }).definitive) {

@@ -68,6 +68,12 @@ function LoginContent() {
         window.location.href = result.redirectUrl;
         return;
       }
+      // Club+ Gratuit refusé : le compte a déjà un club (décisions Club+ du 10/09/2026, n° 2).
+      // /signup-free l'annonce, avec le lien vers son espace, au lieu de l'y déposer sans un mot.
+      if (result?.dejaRattache) {
+        router.push("/signup-free");
+        return;
+      }
     } catch (e) {
       console.error("[login] rejeu de l'inscription en attente échoué :", e);
     }

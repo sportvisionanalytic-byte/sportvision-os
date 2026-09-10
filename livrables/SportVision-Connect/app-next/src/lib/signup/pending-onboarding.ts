@@ -210,12 +210,16 @@ async function appeler(supabase: SupabaseClient, fonction: string, body: Record<
  * déjà utilisé…) : l'entrée est alors oubliée, pour ne pas renvoyer la même erreur à chaque
  * connexion.
  */
-export async function consumePendingOnboarding(supabase: SupabaseClient): Promise<{ redirectUrl?: string } | null> {
+export async function consumePendingOnboarding(
+  supabase: SupabaseClient,
+): Promise<{ redirectUrl?: string; dejaRattache?: RattachementClub } | null> {
   const { pending } = await lirePending(supabase);
   if (!pending) return null;
 
   // L'espace que l'inscription vient de créer (ou de rattacher). Voir plus bas.
   let espaceCree: string | null = null;
+  // Club+ Gratuit refusé parce que le compte a déjà un club (voir le cas « clubplus-free-signup »).
+  let dejaRattache: RattachementClub | undefined;
 
   try {
     switch (pending.kind) {
@@ -249,7 +253,20 @@ export async function consumePendingOnboarding(supabase: SupabaseClient): Promis
           nom: pending.nom || undefined,
           telephone: pending.telephone || undefined,
         });
-        espaceCree = typeof r?.club_id === "string" ? r.club_id : null;
+        // Décisions Club+ du 10/09/2026, n° 2. clubplus_claim_self_service_onboarding n'accorde
+        // qu'un club gratuit par personne : si le compte est déjà rattaché à un club, elle ne crée
+        // rien et renvoie ce club-là (`already_onboarded`). On l'ouvrait jusqu'ici comme s'il venait
+        // d'être créé — la personne « retombait » dans son club existant sans un mot. Désormais on
+        // ne bascule nulle part : l'appelant l'annonce (voir /signup-free).
+        if (r?.already_onboarded) {
+          const clubId = typeof r?.club_id === "string" ? r.club_id : null;
+          dejaRattache = {
+            clubId,
+            clubNom: typeof r?.club_nom === "string" && r.club_nom.trim() ? r.club_nom : await nomDuClub(supabase, clubId),
+          };
+        } else {
+          espaceCree = typeof r?.club_id === "string" ? r.club_id : null;
+        }
         break;
       }
       case "connect-org-activation": {
@@ -293,5 +310,36 @@ export async function consumePendingOnboarding(supabase: SupabaseClient): Promis
   if (espaceCree) {
     await switchActiveSpace({ kind: "organization", id: espaceCree }).catch(() => undefined);
   }
-  return null;
+  return dejaRattache ? { dejaRattache } : null;
+}
+
+// ── Club+ Gratuit : un club par personne (décisions Club+ du 10/09/2026, n° 2) ──
+
+export interface RattachementClub {
+  clubId: string | null;
+  /** null quand la base ne laisse pas lire le nom (rattachement encore en invitation, ou suspendu). */
+  clubNom: string | null;
+}
+
+async function nomDuClub(supabase: SupabaseClient, clubId: string | null): Promise<string | null> {
+  if (!clubId) return null;
+  const { data } = await supabase.from("clubs").select("nom").eq("id", clubId).maybeSingle();
+  return (data as { nom?: string } | null)?.nom ?? null;
+}
+
+/**
+ * Le club auquel le compte connecté est déjà rattaché, s'il en a un — même question que pose la
+ * base dans clubplus_claim_self_service_onboarding (une ligne club_members, quel que soit son
+ * statut), pour pouvoir le dire AVANT de tenter la création. Lue par cm_self_select : chacun voit
+ * ses propres rattachements. Un rattachement actif est préféré pour nommer le club, parce que c'est
+ * le seul dont la fiche est lisible.
+ */
+export async function rattachementClubExistant(supabase: SupabaseClient): Promise<RattachementClub | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return null;
+  const { data } = await supabase.from("club_members").select("club_id, status").eq("user_id", auth.user.id);
+  const lignes = (data ?? []) as { club_id: string; status: string }[];
+  const choisie = lignes.find((l) => l.status === "actif") ?? lignes[0];
+  if (!choisie) return null;
+  return { clubId: choisie.club_id, clubNom: await nomDuClub(supabase, choisie.club_id) };
 }

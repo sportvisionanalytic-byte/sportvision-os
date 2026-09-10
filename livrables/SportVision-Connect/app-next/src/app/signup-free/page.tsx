@@ -1,11 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
-import { consumePendingOnboarding, pendingMetadata, savePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { switchActiveSpace } from "@/lib/supabase/actions";
+import {
+  consumePendingOnboarding,
+  pendingMetadata,
+  rattachementClubExistant,
+  savePendingOnboarding,
+  type RattachementClub,
+} from "@/lib/signup/pending-onboarding";
 import { inscriptionSurCompteExistant, messageErreurAuth } from "@/lib/supabase/erreurs-auth";
 
 // /signup-free — inscription Club+ Gratuit instantanée, sans validation staff (décision Fouka,
@@ -22,8 +29,16 @@ import { inscriptionSurCompteExistant, messageErreurAuth } from "@/lib/supabase/
 //  - la branche « l'inscription a ouvert une session » envoyait vers /dashboard SANS le préfixe
 //    /clubplus (window.location brut, jamais réécrit par Next) : une page 404 ;
 //  - les refus de Supabase s'affichaient en anglais.
+//
+// 10/09/2026 (décisions Club+ n° 2) : Club+ Gratuit se limite à UN club par personne
+// (clubplus_claim_self_service_onboarding, anti-abus du gratuit). Un compte déjà rattaché à un club
+// « retombait » jusqu'ici silencieusement dans ce club : la base ne créait rien, l'écran ouvrait
+// le club existant comme s'il venait d'être créé. La règle reste ; l'écran la dit désormais AVANT
+// (compte déjà connecté en arrivant, ou connexion avec un compte existant) et APRÈS (réponse
+// `already_onboarded` de clubplus-onboarding), avec un lien vers l'espace de la personne.
 export default function SignupFreePage() {
   const router = useRouter();
+  const [dejaRattache, setDejaRattache] = useState<RattachementClub | null>(null);
   const [clubNom, setClubNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
@@ -37,10 +52,28 @@ export default function SignupFreePage() {
   const [compteExistant, setCompteExistant] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
 
+  // AVANT : une personne déjà connectée qui arrive ici (depuis son club, ou revenue de /auth/login)
+  // l'apprend tout de suite, sans remplir le formulaire.
+  useEffect(() => {
+    let vivant = true;
+    rattachementClubExistant(createClient())
+      .then((r) => vivant && r && setDejaRattache(r))
+      .catch(() => undefined);
+    return () => {
+      vivant = false;
+    };
+  }, []);
+
   async function creerLeClubConnecte() {
     const supabase = createClient();
     try {
-      await consumePendingOnboarding(supabase);
+      const resultat = await consumePendingOnboarding(supabase);
+      // APRÈS : la base a refusé un second club gratuit. Aucune bascule vers le club existant.
+      if (resultat?.dejaRattache) {
+        setSubmitting(false);
+        setDejaRattache(resultat.dejaRattache);
+        return;
+      }
       router.push("/dashboard");
       router.refresh();
     } catch (e) {
@@ -82,6 +115,14 @@ export default function SignupFreePage() {
         setSubmitError(messageErreurAuth(error, "Connexion impossible. Vérifiez votre mot de passe."));
         return;
       }
+      // AVANT la création : ce compte a-t-il déjà un club ? Si oui, on le dit, et on ne demande
+      // rien au serveur — il ne créerait rien de toute façon.
+      const existant = await rattachementClubExistant(supabase).catch(() => null);
+      if (existant) {
+        setSubmitting(false);
+        setDejaRattache(existant);
+        return;
+      }
       savePendingOnboarding(pending);
       await creerLeClubConnecte();
       return;
@@ -114,8 +155,10 @@ export default function SignupFreePage() {
       setSubmitting(false);
       setCompteExistant(true);
       setPassword("");
+      // « votre club sera créé » n'est vrai que si ce compte n'a pas déjà un club : la règle d'un
+      // club gratuit par personne est annoncée ici, avant la connexion.
       setInfo(
-        "Un compte SportVision existe déjà avec cette adresse. Saisissez son mot de passe : votre club sera créé dès la connexion.",
+        "Un compte SportVision existe déjà avec cette adresse. Saisissez son mot de passe : votre club sera créé dès la connexion, sauf si ce compte est déjà rattaché à un club (Club+ Gratuit se limite à un club par personne).",
       );
       return;
     }
@@ -132,6 +175,10 @@ export default function SignupFreePage() {
 
     savePendingOnboarding(pending);
     await creerLeClubConnecte();
+  }
+
+  if (dejaRattache) {
+    return <DejaRattache rattachement={dejaRattache} onAutreAdresse={() => setDejaRattache(null)} />;
   }
 
   if (awaitingConfirmation) {
@@ -216,6 +263,68 @@ export default function SignupFreePage() {
             {compteExistant ? "Je n'ai pas encore de compte" : "J'ai déjà un compte SportVision"}
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// L'annonce de la règle « un club gratuit par personne ». Aucun club n'est créé, aucune bascule
+// n'a lieu : la personne choisit elle-même d'ouvrir son espace, d'écrire à SportVision pour un
+// second club, ou de recommencer avec une autre adresse.
+function DejaRattache({ rattachement, onAutreAdresse }: { rattachement: RattachementClub; onAutreAdresse: () => void }) {
+  const router = useRouter();
+  const [ouverture, setOuverture] = useState(false);
+  const club = rattachement.clubNom ? `« ${rattachement.clubNom} »` : "un club SportVision";
+
+  async function ouvrirMonEspace() {
+    if (ouverture) return;
+    setOuverture(true);
+    // Choix EXPLICITE de la personne : c'est ici, et seulement ici, que l'espace actif change.
+    if (rattachement.clubId) {
+      await switchActiveSpace({ kind: "organization", id: rattachement.clubId }).catch(() => undefined);
+    }
+    router.push("/dashboard");
+    router.refresh();
+  }
+
+  async function autreAdresse() {
+    await createClient().auth.signOut();
+    onAutreAdresse();
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-bg-alt p-8">
+      <div className="w-full max-w-[420px]">
+        <div className="flex items-center gap-3">
+          <span className="flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[15px] font-extrabold text-white">
+            SV
+          </span>
+          <span className="text-[17px] font-extrabold tracking-tight">
+            SportVision<span className="font-medium text-brand-blue-pale"> Club+</span>
+          </span>
+        </div>
+        <h2 className="mt-7 text-[24px] font-extrabold tracking-tight">Vous avez déjà un club</h2>
+        <div role="status" className="mt-4 flex gap-2.5 rounded-xl border border-border-strong bg-surface-alt px-3.5 py-3">
+          <Info className="mt-0.5 h-4 w-4 flex-none text-brand-blue-electric" aria-hidden />
+          <p className="text-[13.5px] font-semibold leading-relaxed text-text-soft">
+            Votre compte est déjà rattaché à {club}. Club+ Gratuit se limite à un club par personne ; pour un second
+            club, contactez SportVision.
+          </p>
+        </div>
+        <div className="mt-6 flex flex-col gap-3">
+          <Button onClick={ouvrirMonEspace} disabled={ouverture} className="h-12 w-full text-[15px]">
+            {ouverture ? "Ouverture…" : "Accéder à mon espace"}
+          </Button>
+          <a
+            href="mailto:contact@sportvision-an.fr?subject=Club%2B%20%E2%80%94%20un%20second%20club"
+            className="flex h-11 w-full items-center justify-center rounded-xl border border-border-strong text-[14px] font-bold text-text hover:bg-surface-alt"
+          >
+            Contacter SportVision
+          </a>
+          <button type="button" onClick={autreAdresse} className="text-[13px] font-bold text-brand-blue-electric hover:underline">
+            Utiliser une autre adresse e-mail
+          </button>
+        </div>
       </div>
     </div>
   );

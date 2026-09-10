@@ -161,7 +161,17 @@ serve(async (req) => {
     });
     if (claimErr) return json({ error: claimErr.message }, 500);
     if (claim.already_onboarded) {
-      return json({ club_id: claim.club_id, role: claim.role, already_onboarded: true });
+      // Décisions Club+ du 10/09/2026, n° 2 : un club gratuit par personne (règle gardée), mais
+      // /signup-free doit NOMMER le club auquel le compte est déjà rattaché. Lu ici en service :
+      // côté navigateur, la fiche d'un club où la personne n'est qu'invitée ou suspendue n'est pas
+      // lisible. Échec sans conséquence : l'écran dit alors « un club SportVision ».
+      const { data: clubExistant } = await admin.from("clubs").select("nom").eq("id", claim.club_id).maybeSingle();
+      return json({
+        club_id: claim.club_id,
+        club_nom: (clubExistant as { nom?: string } | null)?.nom ?? null,
+        role: claim.role,
+        already_onboarded: true,
+      });
     }
     const createdClub = { id: claim.club_id as string };
 
