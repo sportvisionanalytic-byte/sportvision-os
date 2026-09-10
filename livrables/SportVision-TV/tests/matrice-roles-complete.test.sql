@@ -21,6 +21,13 @@
 -- CE QUE LE TEST AFFIRME. Pas chaque case de la matrice : elle bougera legitimement. Seulement ce
 -- qui ne doit JAMAIS arriver, plus trois controles de vitalite du decor.
 
+-- NOTE DU 10/09/2026 SUR LE DECOR. Un garde (protect_sensitive_club_member_fields) interdit
+-- desormais d'attribuer les roles admin, president et cm_externe d'un club a quiconque n'en est
+-- pas l'administrateur. Ce durcissement a fait tomber ce test : son decor inserait ces roles en
+-- `postgres` sans identite, que le garde traite comme un inconnu. En production, ces roles
+-- n'entrent QUE par service_role (acceptation d'invitation, fonctions serveur) : le decor prend
+-- donc le meme chemin. Les assertions, elles, restent jouees sous l'identite de chaque role.
+
 begin;
 
 create or replace function pg_temp.incarner(p uuid) returns void language plpgsql as $i$
@@ -45,7 +52,7 @@ grant all on t to authenticated, anon;
 do $$
 declare cl uuid; pr uuid; org uuid; org2 uuid; team uuid; alb uuid; u uuid; x text; pf uuid;
 begin
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
   pf := pole_football_id();
 
   -- Un client, une mission, sa facture, son devis, un echange : la chaine commerciale complete.
@@ -120,7 +127,7 @@ begin
   end loop;
   perform set_config('role','anon',true); perform set_config('request.jwt.claims','',true);
   for i in 1..array_length(s,1) loop insert into res values ('anon', s[i][1], pg_temp.voit(s[i][2])); end loop;
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
 end $$;
 
 -- Ce qui ne doit jamais arriver

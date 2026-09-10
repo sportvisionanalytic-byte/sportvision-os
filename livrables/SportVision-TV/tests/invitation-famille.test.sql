@@ -15,6 +15,13 @@
 --
 -- Tout est fabrique dans la transaction et annule.
 
+-- NOTE DU 10/09/2026 SUR LE DECOR. Un garde (protect_sensitive_club_member_fields) interdit
+-- desormais d'attribuer les roles admin, president et cm_externe d'un club a quiconque n'en est
+-- pas l'administrateur. Ce durcissement a fait tomber ce test : son decor inserait ces roles en
+-- `postgres` sans identite, que le garde traite comme un inconnu. En production, ces roles
+-- n'entrent QUE par service_role (acceptation d'invitation, fonctions serveur) : le decor prend
+-- donc le meme chemin. Les assertions, elles, restent jouees sous l'identite de chaque role.
+
 begin;
 
 -- L'incarnation pose aussi le claim `email`. accept_player_invitation et
@@ -54,7 +61,7 @@ declare
   invJoueur uuid; invParent uuid;
   e text[] := '{}'; n integer;
 begin
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
 
   orgA := gen_random_uuid(); orgB := gen_random_uuid();
   insert into organizations (id, organization_type, nom, statut) values
@@ -95,7 +102,7 @@ begin
   perform pg_temp.incarner(intrus);
   begin
     perform accept_player_invitation(invJoueur);
-    perform set_config('role','postgres',true);
+    perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
     select count(*) into n from player_invitations where id = invJoueur and statut = 'acceptee';
     if n > 0 then
       e := e || 'Un tiers a accepte l invitation joueur adressee a quelqu un d autre'::text;
@@ -110,7 +117,7 @@ begin
     e := e || ('Le joueur invite ne peut pas accepter son invitation — '||left(sqlerrm,70))::text;
   end;
 
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
   select count(*) into n from player_invitations where id = invJoueur and statut in ('acceptee','accepted');
   if n = 0 then
     e := e || 'Apres acceptation, l invitation joueur n est pas marquee acceptee'::text;
@@ -122,7 +129,7 @@ begin
   declare
     invTropJeune uuid; enfantJeune uuid; compteJeune uuid := gen_random_uuid();
   begin
-    perform set_config('role','postgres',true);
+    perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
     insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
       values (compteJeune,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','zz-jeune@example.invalid','',now(),now(),now());
     insert into _mails values (compteJeune, 'zz-jeune@example.invalid');
@@ -135,7 +142,7 @@ begin
     perform pg_temp.incarner(compteJeune);
     begin
       perform accept_player_invitation(invTropJeune);
-      perform set_config('role','postgres',true);
+      perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
       select count(*) into n from player_invitations where id = invTropJeune and statut in ('acceptee','accepted');
       if n > 0 then
         e := e || 'Un enfant de 11 ans a ouvert un compte personnel'::text;
@@ -148,7 +155,7 @@ begin
   -- collectif ou la personne declarait elle-meme l'enfant.
   -- L'insertion revient en postgres : le bloc precedent a laisse le role sur `authenticated`, qui
   -- n'a pas le droit d'ecrire dans parent_invitations. C'est le club qui invite, via son ecran.
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
   insert into parent_invitations (club_id, player_id, email, prenom, nom, invited_by, statut)
     values (orgA, enfantA, 'zz-parent@example.invalid', 'ZZ', 'Parent', patron, 'envoyee')
     returning id into invParent;
@@ -156,7 +163,7 @@ begin
   perform pg_temp.incarner(intrus);
   begin
     perform accept_parent_invitation(invParent);
-    perform set_config('role','postgres',true);
+    perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
     select count(*) into n from parent_player_relationships ppr
       join parent_profiles pp on pp.id = ppr.parent_id
      where pp.user_id = intrus and ppr.player_id = enfantA;
@@ -172,7 +179,7 @@ begin
     e := e || ('Le parent invite ne peut pas accepter son invitation — '||left(sqlerrm,70))::text;
   end;
 
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
   select count(*) into n from parent_player_relationships ppr
     join parent_profiles pp on pp.id = ppr.parent_id
    where pp.user_id = parentCompte and ppr.player_id = enfantA and ppr.statut = 'confirme';
@@ -192,7 +199,7 @@ begin
   perform pg_temp.incarner(intrus);
   begin
     perform accept_parent_invitation(invParent);
-    perform set_config('role','postgres',true);
+    perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
     select count(*) into n from parent_player_relationships ppr
       join parent_profiles pp on pp.id = ppr.parent_id where pp.user_id = intrus;
     if n > 0 then
@@ -220,7 +227,7 @@ begin
     e := e || 'DECOR MORT : le parent ne voit meme pas SON enfant'::text;
   end if;
 
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
   if array_length(e,1) is not null then
     raise exception E'ECHECS :\n  - %', array_to_string(e, E'\n  - ');
   end if;

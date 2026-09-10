@@ -14,6 +14,13 @@
 -- CE CLUB. Un test qui oublie ce detail mesure un refus d'autorisation en croyant mesurer le
 -- mecanisme d'invitation.
 
+-- NOTE DU 10/09/2026 SUR LE DECOR. Un garde (protect_sensitive_club_member_fields) interdit
+-- desormais d'attribuer les roles admin, president et cm_externe d'un club a quiconque n'en est
+-- pas l'administrateur. Ce durcissement a fait tomber ce test : son decor inserait ces roles en
+-- `postgres` sans identite, que le garde traite comme un inconnu. En production, ces roles
+-- n'entrent QUE par service_role (acceptation d'invitation, fonctions serveur) : le decor prend
+-- donc le meme chemin. Les assertions, elles, restent jouees sous l'identite de chaque role.
+
 begin;
 
 create or replace function pg_temp.incarner(p uuid) returns void language plpgsql as $i$
@@ -33,7 +40,7 @@ declare
   patron uuid; coachCompte uuid;
   invit record; jeton text; e text[] := '{}'; n integer;
 begin
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
 
   -- ── Deux clubs, deux equipes dans le premier ──────────────────────────────
   orgA := gen_random_uuid(); orgB := gen_random_uuid();
@@ -101,7 +108,7 @@ begin
       e := e || ('Accepter l invitation echoue — '||left(sqlerrm,80))::text;
     end;
 
-    perform set_config('role','postgres',true);
+    perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
     select count(*) into n from club_members where club_id = orgA and user_id = coachCompte and status = 'actif';
     if n = 0 then
       e := e || 'Apres acceptation, le coach n est pas membre actif du club'::text;
@@ -115,7 +122,7 @@ begin
     perform pg_temp.incarner(coachCompte);
     begin
       perform accepter_invitation_club(jeton);
-      perform set_config('role','postgres',true);
+      perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
       select count(*) into n from club_members where club_id = orgA and user_id = coachCompte;
       if n > 1 then
         e := e || 'Rejouer le lien a cree un second rattachement'::text;
@@ -140,7 +147,7 @@ begin
   end if;
 
   -- ══ 6. UN JETON EXPIRE N OUVRE RIEN ══════════════════════════════════════
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
   declare
     jetonExpire text; autreCompte uuid := gen_random_uuid();
   begin
@@ -148,14 +155,14 @@ begin
       values (autreCompte,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','zz-expire-'||autreCompte||'@example.invalid','',now(),now(),now());
     perform pg_temp.incarner(patron);
     perform preparer_invitation_club(orgA, 'zz-expire@example.invalid', 'coach', 'ZZ', 'Expire', null, '[]'::jsonb);
-    perform set_config('role','postgres',true);
+    perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
     select token into jetonExpire from club_invitations where email = 'zz-expire@example.invalid';
     update club_invitations set expire_at = now() - interval '1 day' where token = jetonExpire;
 
     perform pg_temp.incarner(autreCompte);
     begin
       perform accepter_invitation_club(jetonExpire);
-      perform set_config('role','postgres',true);
+      perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
       select count(*) into n from club_members where club_id = orgA and user_id = autreCompte;
       if n > 0 then
         e := e || 'Un lien EXPIRE a quand meme rattache la personne au club'::text;
@@ -167,14 +174,14 @@ begin
   perform pg_temp.incarner(patron);
   begin
     perform preparer_invitation_club(orgB, 'zz-intrus@example.invalid', 'coach', 'ZZ', 'Intrus', null, '[]'::jsonb);
-    perform set_config('role','postgres',true);
+    perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
     select count(*) into n from club_invitations where club_id = orgB;
     if n > 0 then
       e := e || 'Un dirigeant a prepare une invitation pour un club qui n est pas le sien'::text;
     end if;
   exception when others then null; end;
 
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
   if array_length(e,1) is not null then
     raise exception E'ECHECS :\n  - %', array_to_string(e, E'\n  - ');
   end if;

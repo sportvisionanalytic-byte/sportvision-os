@@ -39,6 +39,10 @@ end $$;
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, created_at, updated_at, email_confirmed_at)
 values ('33333333-3333-4333-8333-333333333333','00000000-0000-0000-0000-000000000000','authenticated','authenticated',
         'zz-clubA@exemple.fr','x',now(),now(),now());
+-- Decor en service_role (10/09/2026) : protect_sensitive_club_member_fields interdit desormais
+-- d'attribuer un role admin ou president a quiconque n'administre pas deja le club. En production
+-- ces roles n'entrent que par service_role (acceptation d'invitation) : le decor prend ce chemin.
+set local request.jwt.claims = '{"role":"service_role"}';
 insert into club_members (club_id, user_id, role, status)
 select (select val::uuid from _ctx where nom='clubA'), '33333333-3333-4333-8333-333333333333', 'admin', 'actif';
 

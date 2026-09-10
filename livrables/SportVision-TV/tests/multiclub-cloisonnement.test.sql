@@ -11,6 +11,13 @@
 -- ne doit voir que son club. Tout est fabrique ici et annule avec la transaction — aucun club
 -- factice ne subsiste en production, conformement a la consigne.
 
+-- NOTE DU 10/09/2026 SUR LE DECOR. Un garde (protect_sensitive_club_member_fields) interdit
+-- desormais d'attribuer les roles admin, president et cm_externe d'un club a quiconque n'en est
+-- pas l'administrateur. Ce durcissement a fait tomber ce test : son decor inserait ces roles en
+-- `postgres` sans identite, que le garde traite comme un inconnu. En production, ces roles
+-- n'entrent QUE par service_role (acceptation d'invitation, fonctions serveur) : le decor prend
+-- donc le meme chemin. Les assertions, elles, restent jouees sous l'identite de chaque role.
+
 begin;
 
 create or replace function pg_temp.incarner(p uuid) returns void language plpgsql as $inner$
@@ -38,7 +45,7 @@ declare
 
   procedure_note text;
 begin
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
 
   -- ── Deux clubs complets et symetriques ──────────────────────────────────────
   clubA := gen_random_uuid(); clubB := gen_random_uuid();
@@ -149,7 +156,7 @@ begin
     if n <> 0 then e := e || format('Un anonyme lit %s match(s)', n); end if;
   exception when insufficient_privilege then null; end;
 
-  perform set_config('role','postgres',true);
+  perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
   if array_length(e,1) is not null then
     raise exception E'ECHECS :\n  - %', array_to_string(e, E'\n  - ');
   end if;
