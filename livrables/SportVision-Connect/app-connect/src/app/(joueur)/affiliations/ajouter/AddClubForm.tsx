@@ -23,9 +23,13 @@ interface TeamResult {
 export function AddClubForm({
   initialFirstName,
   initialLastName,
+  initialDateNaissance = "",
 }: {
   initialFirstName: string;
   initialLastName: string;
+  // Date déjà connue (fiche joueur ou inscription, voir page.tsx), sinon "" : le champ reste
+  // modifiable dans les trois formulaires qui la demandent (code, recherche, sans club).
+  initialDateNaissance?: string;
 }) {
   const router = useRouter();
   const [choice, setChoice] = useState<Choice>(null);
@@ -37,7 +41,7 @@ export function AddClubForm({
 
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
-  const [dateNaissance, setDateNaissance] = useState("");
+  const [dateNaissance, setDateNaissance] = useState(initialDateNaissance);
   const [team, setTeam] = useState("");
   const [teams, setTeams] = useState<TeamResult[] | null>(null);
   const [teamId, setTeamId] = useState("");

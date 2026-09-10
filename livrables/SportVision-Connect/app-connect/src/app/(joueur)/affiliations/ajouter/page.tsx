@@ -30,6 +30,26 @@ export default async function AjouterClubPage() {
   const firstName = player?.firstName || metaFirst || user.email?.split("@")[0] || "";
   const lastName = player?.lastName || metaLast || "";
 
+  // Date de naissance déjà connue (10/09/2026, décision de Fouka) : le joueur arrivé par le QR de
+  // son équipe l'avait saisie à l'inscription, et le formulaire « code d'invitation » la lui
+  // redemandait à vide. Source, dans l'ordre : sa fiche joueur (player_profiles, lisible par lui
+  // seul — pp_self_select), la plus récente s'il en a plusieurs ; sinon l'inscription encore en
+  // attente dans ses métadonnées (sv_inscription, effacée une fois rejouée). Jamais devinée :
+  // une valeur qui n'est pas une date AAAA-MM-JJ est ignorée, le champ reste à saisir.
+  const { data: fiche } = await supabase
+    .from("player_profiles")
+    .select("date_naissance")
+    .eq("user_id", user.id)
+    .not("date_naissance", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const inscription = user.user_metadata?.sv_inscription as { dateNaissance?: unknown } | null | undefined;
+  const dateConnue = [fiche?.date_naissance, inscription?.dateNaissance].find(
+    (d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d),
+  );
+  const dateNaissance = dateConnue ?? "";
+
   return (
     <div className="flex max-w-[560px] flex-col gap-6 animate-sv-in">
       <div className="flex flex-col gap-2">
@@ -39,7 +59,7 @@ export default async function AjouterClubPage() {
           n&apos;est pas encore partenaire.
         </p>
       </div>
-      <AddClubForm initialFirstName={firstName} initialLastName={lastName} />
+      <AddClubForm initialFirstName={firstName} initialLastName={lastName} initialDateNaissance={dateNaissance} />
     </div>
   );
 }
