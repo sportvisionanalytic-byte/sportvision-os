@@ -10,15 +10,8 @@ import { switchActiveSpace } from "@/lib/supabase/actions";
 import { acceptClubInvitation, declineClubInvitation } from "@/lib/data/club/invitations";
 import { ROLE_LABELS } from "@/lib/types/settings";
 import type { Space } from "@/lib/supabase/session";
+import { PastilleClub, useLogosClubs } from "@/components/layout/LogoClub";
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 3)
-    .toUpperCase();
-}
 
 // Affiché à la place de la coque applicative quand aucun espace n'a pu être sélectionné
 // automatiquement pour l'utilisateur connecté (voir pickActiveSpace, src/lib/supabase/session.ts) :
@@ -49,6 +42,7 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   const eligibleSpaces = spaces.filter((s) => s.clickable && (s.status === undefined || s.status === "actif"));
+  const logos = useLogosClubs(spaces.filter((s) => s.kind === "organization" || s.kind === "delegated_club").map((s) => s.id));
   // Tous les espaces sont des clubs geres pour SportVision : c'est le cas d'un CM affilie, qui
   // n'appartient a aucune organisation. On lui parle alors de SES clubs, pas d'« espaces ».
   const toutDelegue = eligibleSpaces.length > 0 && eligibleSpaces.every((s) => s.kind === "delegated_club");
@@ -152,9 +146,7 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
               return (
                 <Card key={key} className="p-4">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[12px] font-extrabold text-white">
-                      {initials(space.name)}
-                    </span>
+                    <PastilleClub nom={space.name} logo={logos[space.id]} className="h-9 w-9 rounded-lg text-[12px]" />
                     <div className="min-w-0 flex-1">
                       <p className="text-[14px] font-bold leading-snug">
                         <strong className="text-text">{space.name}</strong> vous invite à rejoindre Club+
@@ -197,9 +189,7 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
             {suspendedSpaces.map((space) => (
               <Card key={`${space.kind}:${space.id}`} className="p-4">
                 <div className="flex items-center gap-2.5">
-                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-[#8B93A6] to-[#5E6779] text-[12px] font-extrabold text-white opacity-70">
-                    {initials(space.name)}
-                  </span>
+                  <PastilleClub nom={space.name} logo={logos[space.id]} className="h-9 w-9 rounded-lg text-[12px] opacity-70" degrade="from-[#8B93A6] to-[#5E6779]" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-bold text-text">{space.name}</p>
                     <p className="mt-0.5 text-[12px] text-text-soft">
@@ -242,9 +232,7 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
                   onClick={() => handleActivate(space)}
                   className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2.5 text-left transition-colors hover:bg-surface-sunken disabled:cursor-wait"
                 >
-                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[11px] font-extrabold text-white">
-                    {initials(space.name)}
-                  </span>
+                  <PastilleClub nom={space.name} logo={logos[space.id]} className="h-8 w-8 rounded-lg text-[11px]" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-bold">{space.name}</span>
                     <span className="block truncate text-[11px] text-text-soft">{space.subtitle}</span>
@@ -261,9 +249,7 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
               const key = `${space.kind}:${space.id}`;
               return (
                 <div key={key} className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2.5 opacity-60">
-                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[11px] font-extrabold text-white">
-                    {initials(space.name)}
-                  </span>
+                  <PastilleClub nom={space.name} logo={logos[space.id]} className="h-8 w-8 rounded-lg text-[11px]" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-bold">{space.name}</span>
                     <span className="block truncate text-[11px] text-text-soft">{space.subtitle}</span>
