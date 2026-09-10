@@ -105,6 +105,25 @@ export function canAccess(ctx: ActiveContext, module: ModuleKey): boolean {
   return ctx.entitlements?.[connectModuleKey]?.actif ?? false;
 }
 
+/**
+ * Qui administre ce club, côté ÉCRAN. Miroir exact de `is_club_admin` en base (migration v114) :
+ * `admin` ET `president`.
+ *
+ * 10/09/2026 — Décision de Fouka : « president n'est pas un titre décoratif, c'est un véritable
+ * rôle d'administration Club+ ». La base l'a intégré ; une dizaine d'écrans testaient encore
+ * `role === "admin"` et auraient refusé au président, un par un, ce que la base lui accorde.
+ *
+ * Une seule définition, ici, plutôt que dix comparaisons dispersées : c'est précisément la
+ * dispersion qui a produit huit fois le même bug aujourd'hui.
+ *
+ * NE couvre PAS la propriété du club (attribuer un rôle privilégié, hard delete d'un membre) :
+ * celle-ci reste à `role === "admin"` strict, comme `is_real_club_admin` en base.
+ */
+export function administreLeClub(ctx: ActiveContext): boolean {
+  if (ctx.organization.type !== "club") return false;
+  return ctx.membership.role === "admin" || ctx.membership.role === "president";
+}
+
 export function canCreate(ctx: ActiveContext, _resource: ResourceKey): boolean {
   if (ctx.membership.status !== "active") return false;
   if (READ_ONLY_ROLES.has(ctx.membership.role)) return false;

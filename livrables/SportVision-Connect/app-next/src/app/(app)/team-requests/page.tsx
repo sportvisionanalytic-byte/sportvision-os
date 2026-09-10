@@ -108,7 +108,9 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
   const [infoSentId, setInfoSentId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const isAdmin = role === "admin";
+  // Même règle que `administreLeClub` (lib/permissions.ts) : admin ET president administrent le
+  // club, depuis la migration v114. Ce composant ne reçoit que le rôle, d'où la comparaison ici.
+  const isAdmin = role === "admin" || role === "president";
   // sports_director (17/08/2026, Bible §8) : le Directeur sportif confirme/valide les demandes
   // d'affiliation des équipes qu'il supervise, au même titre qu'un éducateur — is_team_educateur()
   // (migration-clubplus-v40.sql, NON EXÉCUTÉE) inclut déjà 'directeur_sportif' dans son scope

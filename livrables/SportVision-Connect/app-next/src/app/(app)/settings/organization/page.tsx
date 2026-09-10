@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, isClubNonBureauRole } from "@/lib/permissions";
+import { canAccess, isClubNonBureauRole, administreLeClub } from "@/lib/permissions";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -78,7 +78,7 @@ function OrganizationForm() {
   // clubs_admin_update, RLS), mais pour tout autre type d'organisation canEdit doit rester false
   // — jamais dérivé du rôle, qui n'a de toute façon aucun équivalent "admin" littéral pour un
   // coach/une agence CM (rôle réel "owner") ou un tournoi/stage ("event_admin", voir mappers.ts).
-  const canEdit = ctx.organization.type === "club" && ctx.membership.role === "admin";
+  const canEdit = administreLeClub(ctx);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [address, setAddress] = useState(organization.address ?? "");

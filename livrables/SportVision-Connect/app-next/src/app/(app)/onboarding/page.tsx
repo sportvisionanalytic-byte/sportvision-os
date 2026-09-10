@@ -86,12 +86,16 @@ export default function OnboardingPage() {
   // sur cet ecran — la base refuse le SIRET, l'edge function refuse l'invitation. On ne montre
   // simplement pas des commandes qui ne pourraient qu'echouer.
   const estCmAffilie = membership.role === "external_cm";
-  const canEdit = organization.type === "club" && (membership.role === "admin" || estCmAffilie);
-  const canEditLegal = organization.type === "club" && membership.role === "admin";
+  // `president` ajouté le 10/09/2026 (migration v114) : il administre son club, informations
+  // administratives et légales comprises — décision explicite de Fouka pour le SIRET. Le CM, lui,
+  // garde l'édition opérationnelle mais PAS l'identité légale.
+  const estAdministrateur = membership.role === "admin" || membership.role === "president";
+  const canEdit = organization.type === "club" && (estAdministrateur || estCmAffilie);
+  const canEditLegal = organization.type === "club" && estAdministrateur;
   // 10/09/2026 — Le CM affilié prépare le club : `canEdit` le reconnaissait déjà (`estCmAffilie`),
   // mais l'invitation lui restait fermée. Or préparer un club sans pouvoir inviter son encadrement
   // n'a pas de sens, et la base l'y autorise (peut_operer_club).
-  const canInvite = organization.type === "club" && (membership.role === "admin" || estCmAffilie);
+  const canInvite = organization.type === "club" && (estAdministrateur || estCmAffilie);
 
   const [completion, setCompletion] = useState<OnboardingCompletion | null>(null);
   const [statut, setStatut] = useState<string | null>(null);

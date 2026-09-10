@@ -146,7 +146,7 @@ function DashboardBody({ clientId }: { clientId: string }) {
   // ClubPlusDashboard avant ce même chantier. Même logique, réutilisée telle quelle. `role` peut
   // valoir "admin" (dirigeant) ici comme côté Club+ classique.
   const isCoachRole = ctx.membership.role === "coach";
-  const isAdminRole = ctx.membership.role === "admin";
+  const isAdminRole = ctx.membership.role === "admin" || ctx.membership.role === "president";
   const [pendingMembershipCount, setPendingMembershipCount] = useState(0);
   const [pendingInfoCount, setPendingInfoCount] = useState(0);
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { administreLeClub } from "@/lib/permissions";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
@@ -34,7 +36,7 @@ import { CmClubOverview } from "@/components/dashboard/CmClubOverview";
 export default function DashboardPage() {
   const { ctx } = useSession();
   const router = useRouter();
-  const isClubAdmin = ctx.organization.type === "club" && ctx.membership.role === "admin";
+  const isClubAdmin = administreLeClub(ctx);
   const [checkedOnboarding, setCheckedOnboarding] = useState(!isClubAdmin);
 
   useEffect(() => {

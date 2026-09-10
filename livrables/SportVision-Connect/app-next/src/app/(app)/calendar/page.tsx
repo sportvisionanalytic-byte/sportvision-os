@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Plus, Upload } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, canCreate } from "@/lib/permissions";
+import { canAccess, canCreate, administreLeClub } from "@/lib/permissions";
 import { CALENDAR_EVENT_KIND_LABELS, type CalendarEvent, type CalendarEventKind } from "@/lib/types/calendar";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -303,7 +303,7 @@ export default function CalendarPage() {
           {/* Un joueur consulte le calendrier de son club, il ne le modifie pas (brief § 11 :
               "le joueur ne devrait pas modifier le planning officiel") — même retrait que pour
               coach/académie/sponsor (calendrier en lecture seule côté membre). */}
-          {ctx.organization.type === "club" && ctx.membership.role === "admin" && (
+          {administreLeClub(ctx) && (
             <Button variant="secondary" onClick={() => setImportOpen(true)} aria-label="Importer un calendrier">
               <Upload className="h-4 w-4" aria-hidden />
               <span className="hidden sm:inline">Importer un calendrier</span>

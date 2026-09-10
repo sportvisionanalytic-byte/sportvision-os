@@ -121,7 +121,7 @@ export function ClubPlusDashboard() {
     setError(false);
     try {
       const isCoachRole = ctx.membership.role === "coach";
-      const isAdminRole = ctx.membership.role === "admin";
+      const isAdminRole = ctx.membership.role === "admin" || ctx.membership.role === "president";
 
       const [contentRes, joinRequests, visualRequests] = await Promise.all([
         supabase
