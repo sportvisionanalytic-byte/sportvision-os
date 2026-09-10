@@ -69,7 +69,9 @@ const PRIORITIES: { id: CoveragePriority; aide: string }[] = [
   { id: "forte", aide: "Un temps fort à ne pas manquer." },
   { id: "optionnelle", aide: "Seulement si SportVision est disponible." },
 ];
-const PAR_PAGE = 60;
+// 20 d'abord : un club peut avoir des centaines d'événements à venir (375 à Villemomble le
+// 10/09), et le type de couverture ne doit pas se retrouver sous soixante lignes.
+const PAR_PAGE = 20;
 
 function parseEventRef(id: string): { matchId?: string; calendarEventId?: string } {
   if (id.startsWith("match-")) return { matchId: id.slice(6) };
@@ -461,7 +463,7 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
                 </Section>
 
                 <Section titre="Priorité">
-                  <div className="inline-flex w-full rounded-xl bg-surface-sunken p-1 sm:w-auto">
+                  <div className="flex w-full rounded-xl bg-surface-sunken p-1 sm:w-auto sm:self-start">
                     {PRIORITIES.map(({ id }) => (
                       <button
                         key={id}
