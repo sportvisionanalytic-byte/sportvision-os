@@ -40,11 +40,17 @@
     # Les sources autorisees sont celles que l'OS utilise reellement, relevees dans la page
     # servie : Supabase (donnees et temps reel), jsDelivr (bibliotheques), l'API de QR codes,
     # et les images en data: (avatars du staff, logos).
+    #
+    # Correctif du 10/09/2026 : la premiere version portait `frame-src 'none'` et aucun
+    # `media-src`. Resultat, le Centre de formation n'affichait plus aucune video (les lecons
+    # integrent YouTube en iframe) et l'apercu video des realisations (blob:) etait bloque.
+    # Toute nouvelle integration (iframe, <video>, <audio>) doit etre ajoutee ici, sinon elle
+    # echoue en silence, seulement visible dans la console du navigateur.
     X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://lulgezzpvrlbftbykzrc.supabase.co https://api.qrserver.com; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://lulgezzpvrlbftbykzrc.supabase.co https://api.qrserver.com; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co wss://lulgezzpvrlbftbykzrc.supabase.co; media-src 'self' blob: https://lulgezzpvrlbftbykzrc.supabase.co; frame-src https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'; form-action 'self'"
 
 [[redirects]]
   from = "/demo"
