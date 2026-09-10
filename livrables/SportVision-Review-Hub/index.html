@@ -67,7 +67,7 @@
     <table>
       <thead><tr><th>Aspect</th><th>Garantie cible</th><th>État</th></tr></thead>
       <tbody>
-        <tr><td>Base de données</td><td>Projet Supabase Review dédié, entièrement distinct du projet de production. Aucune app Review ne détiendra les identifiants de production.</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
+        <tr><td>Base de données</td><td>Projet Supabase Review dédié, entièrement distinct du projet de production. Aucune app Review ne détient les identifiants de production. Schéma reconstruit et vérifié par rejeu réel des 551 migrations (545 réussies, 6 restantes expliquées — voir <a href="status.html">Status</a>).</td><td><span class="badge badge-ok">en place</span></td></tr>
         <tr><td>Paiements</td><td>Clés Stripe TEST uniquement. Aucune transaction réelle possible depuis cet environnement.</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
         <tr><td>Emails / SMS / notifications</td><td>Simulés (outbox review, aucun envoi réel).</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
         <tr><td>Edge Functions</td><td>Déployées uniquement sur le futur projet Supabase Review. La configuration de production (dont les 8 fonctions sans vérification JWT) ne sera jamais touchée par ce chantier.</td><td><span class="badge badge-pending">à venir — Phase 2</span></td></tr>
