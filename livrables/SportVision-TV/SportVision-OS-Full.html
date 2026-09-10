@@ -4422,7 +4422,24 @@ async function sbFetch(path,opts={}){
   if(res.ok||res.status===201||res.status===204){
     document.getElementById('mob-offline-banner')?.classList.remove('on');
   }
+  // Pas de faux succès (règle de Fouka, 10/09/2026). Quand la base refuse de toucher une ligne
+  // (droits, ligne disparue), PostgREST ne renvoie pas d'erreur : un tableau vide. Jusqu'ici
+  // l'écran concluait « enregistré » — c'est ainsi que le paiement des opérateurs est resté
+  // cassé de fin août au 10/09 sous des « ✓ Payé ». Un PATCH qui vise UNE ligne par son
+  // identifiant et n'en modifie aucune devient donc une erreur, que chaque écran affiche déjà
+  // via sbErr(). Les PATCH conditionnels (id + autre filtre, ex. « seulement si encore
+  // planifiée ») ne sont pas concernés : pour eux, 0 ligne peut être la réponse attendue.
+  if((opts.method||'GET')==='PATCH'&&Array.isArray(result)&&!result.length&&_visePrecisementUneLigne(path)){
+    console.warn('[sbFetch] PATCH sans effet : '+path.split('?')[0]);
+    return{code:'SV_AUCUNE_LIGNE',message:"Rien n'a été enregistré : cette fiche n'existe plus ou n'est pas modifiable depuis votre compte."};
+  }
   return result;
+}
+function _visePrecisementUneLigne(path){
+  const q=path.indexOf('?');
+  if(q===-1)return false;
+  const filtres=path.slice(q+1).split('&').filter(x=>x&&!x.startsWith('select='));
+  return filtres.length===1&&/^id=eq\.[^&]+$/.test(filtres[0]);
 }
 
 // sbFetch ne rejette jamais sur une erreur HTTP : PostgREST renvoie alors un objet
@@ -4469,6 +4486,7 @@ function msgErreur(r,repli){
   if(!r||typeof r!=='object')return defaut;
   const code=String(r.code||'');
   if(code==='P0001'&&r.message)return String(r.message);
+  if(code==='SV_AUCUNE_LIGNE')return String(r.message);   // sbFetch : PATCH sans effet
   if(_ERREURS_SQL[code])return _ERREURS_SQL[code];
   // Une erreur reseau remonte comme une exception, sans code : elle se reconnait au texte.
   if(/failed to fetch|networkerror|load failed/i.test(String(r.message||'')))return _ERREURS_SQL.network_error;
