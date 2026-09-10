@@ -57,12 +57,37 @@ serve(async (req) => {
     if (userErr || !userData?.user) return json({ error: "Session invalide" }, 401);
 
     const admin = createClient(supabaseUrl, serviceKey);
+    // `actif` lu aussi : un Admin désactivé garde un jeton valable jusqu'à une heure, et ce
+    // contrôle-ci ne passe pas par la base (clé service) — is_staff() n'y aurait rien vu.
     const { data: profile } = await admin
       .from("profiles")
-      .select("role")
+      .select("role, actif")
       .eq("id", userData.user.id)
       .maybeSingle();
-    if (profile?.role !== "admin") return json({ error: "Réservé aux administrateurs" }, 403);
+    if (profile?.role !== "admin" || profile?.actif === false) {
+      return json({ error: "Réservé aux administrateurs SportVision." }, 403);
+    }
+
+    // Décision du 10/09/2026 (Fouka). Cette fonction supprimait N'IMPORTE QUEL compte, y compris
+    // un collaborateur de l'OS ou un autre Admin SportVision, et l'appelant lui-même : l'écran ne
+    // propose que des comptes Connect, mais l'identifiant vient du navigateur. Deux refus :
+    //   - soi-même : un Admin qui se supprime ferme peut-être le dernier accès administrateur ;
+    //   - tout compte de l'OS (une ligne profiles = un compte collaborateur, quel que soit son
+    //     rôle) : un collaborateur se retire par DÉSACTIVATION, qui garde son historique
+    //     (missions, rémunérations, documents) et se défait. Une suppression ne se défait pas.
+    if (target_user_id === userData.user.id) {
+      return json({ error: "Vous ne pouvez pas supprimer votre propre compte." }, 403);
+    }
+    const { data: cible } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("id", target_user_id)
+      .maybeSingle();
+    if (cible) {
+      return json({
+        error: "Ce compte est un compte collaborateur de SportVision OS : il ne se supprime pas, il se désactive (Équipe, fiche du collaborateur, Désactiver).",
+      }, 403);
+    }
 
     // 10/09/2026 (décision de Fouka) — même règle que delete-account, par la même fonction SQL
     // supprimer_compte_client (migration-decisions-connect-v1-suppression-compte-client), en une

@@ -67,6 +67,22 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
+    // Décision du 10/09/2026 (Fouka) : un compte collaborateur de l'OS (une ligne profiles, quel
+    // que soit son rôle) ne se supprime pas lui-même. Il se retire par désactivation, décidée par
+    // l'administration : sa suppression effacerait son historique (missions, rémunérations,
+    // documents) et ne se défait pas. Les comptes clients (Connect, Club+) gardent leur droit de
+    // suppression, inchangé.
+    const { data: collaborateur } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("id", userData.user.id)
+      .maybeSingle();
+    if (collaborateur) {
+      return json({
+        error: "Ce compte est un compte collaborateur SportVision : il ne peut pas être supprimé depuis cet écran. Adressez-vous à l'administration de SportVision.",
+      }, 403);
+    }
+
     // ── Compte CLIENT (10/09/2026) ────────────────────────────────────────────────────────────
     // Le compte supprimé est TOUJOURS celui du jeton vérifié ci-dessus, jamais un identifiant reçu
     // dans le corps de la requête. p_anonymiser : c'est la personne elle-même qui demande à partir.
