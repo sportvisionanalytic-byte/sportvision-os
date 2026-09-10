@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-09-10
+
+### Circuit mission, rémunération et rentabilité figé ; recrutement cloisonné
+
+- Une présence SportVision décidée par le CM crée aussitôt une mission chez le Responsable Production du pôle (v126), qui choisit l'opérateur et fixe la « Rémunération mission » (jamais « salaire »)
+- Rémunération (v127) : la grille donne un montant recommandé ; au-delà de ±15 % d'écart, un motif est obligatoire, sans validation Admin. Après acceptation par l'opérateur, une hausse est possible (il est prévenu), une baisse devient une nouvelle proposition à ré-accepter. Tout changement est historisé (montant, auteur, rôle, motif)
+- Trois notions séparées : prix client (Secrétariat, Admin), coût production, rémunération opérateur. La Production voit le prix vendu sans pouvoir le modifier ; le Secrétariat ne modifie plus les rémunérations ; le CM et les photographes ne voient ni prix ni marge
+- Frontière de la Production (v129) : prix client en lecture, rémunérations, déplacements, coûts et marge, uniquement dans son pôle. Jamais la paie globale, les coordonnées bancaires, les coûts RH hors mission ni le barème des responsables de pôle
+- Rentabilité mensuelle par club (v128), sur l'accueil Production et la fiche club. Marge négative ou faible (moins de 20 % du prix vendu) : une alerte, jamais un blocage. Une mission à perte reste affectable et payable (partenariat, événement, urgence, relation club)
+- Recrutement (v130, P1 confidentialité) : les 37 candidatures, leurs CV et l'e-mail de refus étaient ouverts à tout le staff, photographes et CM compris. Désormais l'Admin voit tout ; la Production et le responsable de pôle voient les candidatures d'opérateurs terrain de leur pôle ; le Secrétariat, à partir de « retenu » ; CM, photographes, commerciaux et comptabilité n'y ont plus accès. Contrat, banque et dossier RH restent à l'Admin et au Secrétariat
+- Circuit gelé, en observation réelle : le seuil de 15 % se réévaluera sur la distribution réelle des écarts, pas avant. Le prochain retour utile doit venir d'une vraie mission rémunérée traitée de A à Z par le Responsable Production
+
+---
+
 ## 2026-08-31
 
 ### Cloisonnement SportVision / Eloria Digital
