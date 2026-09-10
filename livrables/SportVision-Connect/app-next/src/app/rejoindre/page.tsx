@@ -10,6 +10,7 @@ import { mapClubRole } from "@/lib/supabase/mappers";
 import {
   accepterInvitation,
   lireInvitation,
+  marquerInvitationOuverte,
   messageErreurInvitation,
   type InvitationPubliee,
 } from "@/lib/data/club/invitations";
@@ -63,6 +64,8 @@ function RejoindreContent() {
     }
     const supabase = createClient();
     let annule = false;
+    // Le club voit ainsi que l'invitation a été ouverte, pas seulement envoyée (v121).
+    marquerInvitationOuverte(supabase, token);
     Promise.all([lireInvitation(supabase, token), supabase.auth.getUser()])
       .then(([inv, { data }]) => {
         if (annule) return;

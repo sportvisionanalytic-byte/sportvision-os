@@ -26,8 +26,29 @@ import { InviteFamilyModal } from "@/components/teams/InviteFamilyModal";
 import { inviteFamilyMember, type FamilyInviteTargetType } from "@/lib/data/club/family-invites";
 import { createClient } from "@/lib/supabase/client";
 import type { Team } from "@/lib/types/teams";
+import type { ApercuEquipe } from "@/lib/data/club/cockpit";
 
-export function TeamInvitationsCard({ clubId, team }: { clubId: string; team: Team }) {
+const STATUT_DEMANDE: Record<string, string> = {
+  validee: "Inscrit",
+  a_verifier: "À vérifier",
+  pret_a_valider: "Prêt à valider",
+  autorisation_manquante: "Autorisation manquante",
+  en_attente_parent: "En attente du parent",
+  refusee: "Refusé",
+};
+
+export function TeamInvitationsCard({
+  clubId,
+  team,
+  inscriptions,
+  imageManquantes,
+}: {
+  clubId: string;
+  team: Team;
+  /** Le suivi, depuis equipe_apercu (v121). Absent pour un rôle qui ne lit pas la fiche. */
+  inscriptions?: ApercuEquipe["inscriptions"];
+  imageManquantes?: number;
+}) {
   const [cible, setCible] = useState<FamilyInviteTargetType | null>(null);
 
   return (
@@ -43,6 +64,32 @@ export function TeamInvitationsCard({ clubId, team }: { clubId: string; team: Te
       <div className="mt-3.5">
         <TeamPlayerInvite clubId={clubId} teamId={team.id} />
       </div>
+      {inscriptions && (
+        <div className="mt-3.5 flex flex-col gap-2 rounded-xl bg-surface-sunken px-3 py-2.5">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-text-soft">
+            <span><b className="tabular-nums text-text">{inscriptions.inscrits}</b> inscrit{inscriptions.inscrits > 1 ? "s" : ""}</span>
+            <span><b className="tabular-nums text-text">{inscriptions.en_attente}</b> demande{inscriptions.en_attente > 1 ? "s" : ""} à valider</span>
+            <span><b className="tabular-nums text-text">{inscriptions.invitations_joueurs}</b> invitation{inscriptions.invitations_joueurs > 1 ? "s" : ""} en attente</span>
+            {imageManquantes !== undefined && imageManquantes > 0 && (
+              <span><b className="tabular-nums text-warning-fg">{imageManquantes}</b> droit{imageManquantes > 1 ? "s" : ""} à l&apos;image manquant{imageManquantes > 1 ? "s" : ""}</span>
+            )}
+          </div>
+          {inscriptions.recentes.length > 0 ? (
+            <ul className="flex flex-col gap-1 border-t border-divider pt-2">
+              {inscriptions.recentes.slice(0, 6).map((r, i) => (
+                <li key={i} className="flex items-center justify-between gap-2 text-[12px]">
+                  <span className="min-w-0 truncate font-semibold">{r.nom ?? "Joueur"}</span>
+                  <span className="flex-none text-text-faint">
+                    {STATUT_DEMANDE[r.statut] ?? r.statut} · {new Date(r.le).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11.5px] text-text-faint">Personne n&apos;a encore rejoint l&apos;équipe par ce lien.</p>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 flex flex-col gap-2 border-t border-divider pt-3.5">
         <div className="text-[12px] font-bold text-text-soft">Inviter une personne en particulier</div>

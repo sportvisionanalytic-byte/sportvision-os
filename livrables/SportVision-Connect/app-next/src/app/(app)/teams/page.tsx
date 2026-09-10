@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { TeamCard } from "@/components/teams/TeamCard";
 import { TeamGroups } from "@/components/teams/TeamGroups";
+import { TeamsPilotage } from "@/components/teams/TeamsPilotage";
 import { CreateTeamModal } from "@/components/teams/CreateTeamModal";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -211,7 +212,13 @@ export default function TeamsPage() {
       ) : (
         // Repliées par catégorie dès qu'il y en a assez pour que la page devienne un annuaire.
         // Le composant décide seul du seuil : en dessous, il rend la grille telle quelle.
-        <TeamGroups teams={teams} />
+        // 10/09/2026 — Qui pilote le club (CM, Owner, président) voit ce qui manque à chaque
+        // équipe et filtre dessus. Les autres gardent le regroupement simple.
+        isClub && peutOperer ? (
+          <TeamsPilotage clubId={ctx.organization.id} />
+        ) : (
+          <TeamGroups teams={teams} />
+        )
       )}
     </div>
   );

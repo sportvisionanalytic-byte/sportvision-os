@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   CalendarDays,
@@ -41,6 +42,9 @@ import { peutOpererClub } from "@/lib/data/club/invitations";
 import type { OrgUser } from "@/lib/types/settings";
 import { TeamStaffCard } from "@/components/teams/TeamStaffCard";
 import { TeamInvitationsCard } from "@/components/teams/TeamInvitationsCard";
+import { InviterEncadrantModal } from "@/components/teams/InviterEncadrantModal";
+import { EncadrementInvitations, EquipeAlertes, EquipeApercuKpis, EquipeDroitImage } from "@/components/teams/EquipeApercu";
+import { fetchApercuEquipe, fetchStatutLancement, type AlerteEquipe, type ApercuEquipe } from "@/lib/data/club/cockpit";
 import { fetchClubCalendarEvents } from "@/lib/data/club/calendar";
 import { fetchClubMediaAssets } from "@/lib/data/club/content";
 import { fetchClubRequests } from "@/lib/data/club/requests";
@@ -444,6 +448,26 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
   // Incrémenté après chaque écriture sur l'encadrement : on relit la base plutôt que de recopier
   // localement ce qu'on croit avoir écrit, les périmètres étant modifiables ailleurs en parallèle.
   const [rechargement, setRechargement] = useState(0);
+  // La fiche en un appel (v121). `undefined` : en cours ; `null` : pas lisible pour ce rôle — on
+  // retombe alors sur l'affichage d'avant, sans rien casser.
+  const [apercu, setApercu] = useState<ApercuEquipe | null | undefined>(undefined);
+  const [enPreparation, setEnPreparation] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchApercuEquipe(createClient(), teamId)
+      .then((a) => !cancelled && setApercu(a))
+      .catch(() => !cancelled && setApercu(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId, rechargement]);
+
+  useEffect(() => {
+    fetchStatutLancement(createClient(), organizationId)
+      .then((l) => setEnPreparation(Boolean(l && l.statut !== "actif")))
+      .catch(() => setEnPreparation(false));
+  }, [organizationId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -511,7 +535,8 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
             {team.category} · Saison {team.season} · {roster.length} joueur{roster.length > 1 ? "s" : ""}
           </div>
         </div>
-        <Button variant="secondary">
+        {/* 10/09/2026 — Ce bouton n'avait aucune action. Il produit désormais un vrai fichier. */}
+        <Button variant="secondary" onClick={() => exporterEffectif(team.name, roster)} disabled={roster.length === 0}>
           <Download className="h-3.5 w-3.5" aria-hidden />
           Exporter l&apos;effectif
         </Button>
@@ -543,6 +568,8 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
           members={members}
           canManageMembers={canManageMembers}
           onStaffChanged={() => setRechargement((n) => n + 1)}
+          apercu={apercu ?? null}
+          enPreparation={enPreparation}
         />
       )}
       {tab === "effectif" && <RealRosterTab roster={roster} />}
@@ -562,6 +589,8 @@ function RealOverviewTab({
   members,
   canManageMembers,
   onStaffChanged,
+  apercu,
+  enPreparation,
 }: {
   team: Team;
   roster: TeamRosterPlayer[];
@@ -570,7 +599,69 @@ function RealOverviewTab({
   members: OrgUser[];
   canManageMembers: boolean;
   onStaffChanged: () => void;
+  apercu: ApercuEquipe | null;
+  enPreparation: boolean;
 }) {
+  const [inviterEncadrant, setInviterEncadrant] = useState(false);
+  const router = useRouter();
+
+  // 10/09/2026 — L'aperçu d'abord : l'équipe, son prochain événement, son droit à l'image, sa
+  // communication, SportVision ; puis ce qui lui manque, chaque alerte avec son geste.
+  if (apercu) {
+    const allerA = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const onAction = (action: AlerteEquipe["action"]) => {
+      if (action === "inviter_encadrant") setInviterEncadrant(true);
+      else if (action === "inviter_joueurs") allerA("invitations-joueurs");
+      else if (action === "droit_image") allerA("droit-image");
+      else if (action === "creneaux") router.push("/onboarding?section=entrainements");
+      else if (action === "demandes") router.push("/team-requests");
+    };
+    return (
+      <div className="flex flex-col gap-4">
+        <EquipeApercuKpis apercu={apercu} />
+        <EquipeAlertes alertes={apercu.alertes} onAction={onAction} />
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+          <div className="flex flex-col gap-4 lg:col-span-2">
+            <TeamStaffCard
+              clubId={clubId}
+              teamName={team.name}
+              headCoachName={team.headCoachName}
+              members={members}
+              canManage={canManageMembers}
+              onChanged={onStaffChanged}
+            />
+            <EncadrementInvitations
+              encadrement={apercu.encadrement}
+              peutGerer={canManageMembers}
+              enPreparation={enPreparation}
+              onChange={onStaffChanged}
+            />
+            <div id="droit-image">
+              <EquipeDroitImage droit={apercu.droit_image} onInviter={() => allerA("invitations-joueurs")} />
+            </div>
+          </div>
+          <div id="invitations-joueurs">
+            <TeamInvitationsCard
+              clubId={clubId}
+              team={team}
+              inscriptions={apercu.inscriptions}
+              imageManquantes={apercu.droit_image.total - apercu.droit_image.valides}
+            />
+          </div>
+        </div>
+        {inviterEncadrant && (
+          <InviterEncadrantModal
+            clubId={clubId}
+            teamName={team.name}
+            enPreparation={enPreparation}
+            onClose={() => setInviterEncadrant(false)}
+            onInvited={onStaffChanged}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <Card className="p-4.5 lg:col-span-2">
@@ -845,4 +936,31 @@ function EmptyTab({ icon: Icon, label }: { icon: typeof Inbox; label: string }) 
       <div className="text-[14px] font-extrabold">{label}</div>
     </Card>
   );
+}
+
+/** L'effectif en CSV, pour Excel : séparateur « ; » et BOM, sinon les accents s'y perdent. */
+function exporterEffectif(nomEquipe: string, roster: TeamRosterPlayer[]) {
+  const echapper = (v: string | number | null | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lignes = [
+    ["Numéro", "Prénom", "Nom", "Licence", "Compte", "Droit à l'image"].map(echapper).join(";"),
+    ...roster.map((p) =>
+      [
+        p.shirtNumber,
+        p.firstName,
+        p.lastName,
+        p.licenseNumber,
+        ACCOUNT_STATUS_LABEL[p.accountStatus] ?? p.accountStatus,
+        AUTHORIZATION_STATUS_LABELS[p.imageRightStatus] ?? p.imageRightStatus,
+      ]
+        .map(echapper)
+        .join(";"),
+    ),
+  ];
+  const blob = new Blob(["\ufeff" + lignes.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `effectif-${nomEquipe.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
