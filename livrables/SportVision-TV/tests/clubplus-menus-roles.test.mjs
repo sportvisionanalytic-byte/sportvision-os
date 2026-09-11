@@ -146,8 +146,12 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
   t("vitalité : l'Owner Club+ voit les contrats du club", vContrats.lignes > 0, JSON.stringify(vContrats).slice(0, 160));
   t("vitalité : l'Owner Club+ voit l'invitation préparée", vInvit.lignes > 0, JSON.stringify(vInvit).slice(0, 160));
   t("vitalité : l'Owner Club+ lit le suivi des invitations", vSuivi.status < 300 && vSuivi.lignes > 0, JSON.stringify(vSuivi).slice(0, 160));
-  const vClub = await commeRole(owner, `clubs?id=eq.${club.id}`, { method: "PATCH", body: { instagram_handle: club.instagram_handle } });
+  // `select=id` : sans lui, la réponse redemande toutes les colonnes, SIRET compris, que
+  // `authenticated` ne lit plus depuis le 11/09/2026 — c'est ainsi que Club+ l'envoie.
+  const vClub = await commeRole(owner, `clubs?id=eq.${club.id}&select=id`, { method: "PATCH", body: { instagram_handle: club.instagram_handle } });
   t("vitalité : l'Owner Club+ peut modifier la fiche du club", accepte(vClub), JSON.stringify(vClub).slice(0, 160));
+  const vSponsor = await commeRole(owner, `club_sponsors?select=id&id=eq.${sponsor.id}`);
+  t("vitalité : l'Owner Club+ lit le sponsor de décor", vSponsor.lignes === 1, JSON.stringify(vSponsor).slice(0, 160));
 
   const releve = {};
   for (const role of ROLES) {
@@ -184,7 +188,13 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
     t(`[${role}] ne peut pas modifier la fiche du club`, refuse(r.majClub), JSON.stringify(r.majClub).slice(0, 140));
 
     // Abonnement : lu dans `clubs` (formule, statut) ; souscription et portail Stripe côté serveur.
-    r.abonnement = await commeRole(j, `clubs?select=plan,subscription_status,stripe_customer_id,stripe_subscription_id&id=eq.${club.id}`);
+    // 11/09/2026 (décisions de Fouka) : les identifiants Stripe ne se lisent plus dans `clubs`
+    // (colonnes fermées à authenticated) mais par club_donnees_restreintes, qui ne les rend qu'à
+    // l'Owner Club+ et au Président. Le relevé lit donc la formule sans eux, et l'on affirme
+    // qu'aucun de ces quatre rôles ne reçoit d'identifiant Stripe.
+    r.abonnement = await commeRole(j, `clubs?select=plan,subscription_status&id=eq.${club.id}`);
+    r.stripe = await rpc(j, "club_donnees_restreintes", { p_club_id: club.id });
+    t(`[${role}] ne reçoit aucun identifiant Stripe`, r.stripe.status < 300 && r.stripe.lignes === 0, JSON.stringify(r.stripe).slice(0, 140));
     r.checkout = await fonction(j, "create-clubplus-subscription-checkout", { club_id: club.id, plan: "performance", engagement: "12mois" });
     r.portail = await fonction(j, "clubplus-billing-portal", { club_id: club.id });
     t(`[${role}] ne peut ni souscrire ni ouvrir le portail Stripe`, r.checkout.status === 403 && r.portail.status === 403, `${r.checkout.status} / ${r.portail.status}`);
@@ -212,9 +222,14 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
     r.majDroits = await commeRole(j, `organization_entitlements?organization_id=eq.${club.id}&module_key=eq.sponsors`, { method: "PATCH", body: { actif: true } });
     t(`[${role}] ne peut pas modifier les modules du club`, refuse(r.majDroits), JSON.stringify(r.majDroits).slice(0, 140));
 
-    // Sponsors : lisibles par tout membre ; écriture ouverte au responsable sponsors par la règle
-    // existante (csp_member_insert/update), suppression réservée à l'administration du club.
+    // Sponsors : écriture ouverte au responsable sponsors par la règle existante
+    // (csp_member_insert/update), suppression réservée à l'administration du club.
+    // 11/09/2026 (décision de Fouka n° 3) : la LECTURE n'est plus ouverte à tout membre. Parmi ces
+    // quatre rôles, seul le responsable sponsors lit les sponsors (et leurs montants). Attente
+    // modifiée : jusqu'ici le relevé montrait les sponsors lus par les quatre, sans l'affirmer.
     r.sponsors = await commeRole(j, `club_sponsors?select=id&club_id=eq.${club.id}`);
+    const voitSponsor = Array.isArray(r.sponsors.data) && r.sponsors.data.some((x) => x.id === sponsor.id);
+    t(`[${role}] ${role === "sponsor_mgr" ? "lit" : "ne lit pas"} les sponsors du club`, voitSponsor === (role === "sponsor_mgr"), JSON.stringify(r.sponsors).slice(0, 140));
     r.ajoutSponsor = await commeRole(j, "club_sponsors", { method: "POST", body: { club_id: club.id, name: `ZZ Sponsor ${role} ${T0}` } });
     if (r.ajoutSponsor.lignes) traces.sponsors.add(r.ajoutSponsor.data[0].id);
     r.majSponsor = await commeRole(j, `club_sponsors?id=eq.${sponsor.id}`, { method: "PATCH", body: { secteur: `zz ${role}` } });
