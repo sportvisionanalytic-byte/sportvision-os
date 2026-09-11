@@ -58,7 +58,7 @@ const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
       // commande de tournoi doit y accéder tout de suite. La page se charge elle-même de dire
       // « aucune galerie » quand il n'en a pas.
       { href: "/galeries", label: "Mes galeries", icon: "collections", color: "#A855F7" },
-      { href: "/photos", label: "Pass Photo", icon: "photo_camera", color: "#34D399" },
+      { href: "/photos", label: "Photos de mon équipe", icon: "photo_camera", color: "#34D399" },
     ],
   },
   {

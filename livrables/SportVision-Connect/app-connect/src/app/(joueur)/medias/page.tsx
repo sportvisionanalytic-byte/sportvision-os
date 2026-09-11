@@ -23,8 +23,8 @@ export default function MediasHubPage() {
         },
         {
           href: "/photos",
-          label: "Pass Photo",
-          description: "Débloquer l'accès aux albums de votre équipe",
+          label: "Photos de mon équipe",
+          description: "Les galeries de votre équipe, et le pass qui les ouvre",
           icon: "photo_camera",
           color: "#34D399",
         },

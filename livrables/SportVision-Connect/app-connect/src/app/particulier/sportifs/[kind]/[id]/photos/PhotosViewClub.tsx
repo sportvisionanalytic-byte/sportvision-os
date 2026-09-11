@@ -124,7 +124,7 @@ export function PhotosViewClub({
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
           <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
-            Paiement reçu, déverrouillage des albums en cours. Cette page se met à jour automatiquement.
+            Paiement reçu, déverrouillage des galeries en cours. Cette page se met à jour automatiquement.
           </span>
         </div>
       )}
@@ -142,7 +142,7 @@ export function PhotosViewClub({
       )}
 
       {!hasAlbums ? (
-        <EmptyState text="Aucun album publié pour le moment. Les prochains albums photo apparaîtront ici." />
+        <EmptyState text="Aucune galerie publiée pour le moment. Les prochaines galeries photo apparaîtront ici." />
       ) : (
         <>
           {albums.some((a) => !a.unlocked) && products.length > 0 && (
@@ -301,7 +301,7 @@ function AlbumCard({
               disabled={loading}
               className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus disabled:opacity-60"
             >
-              {loading ? "Ouverture…" : "Ouvrir l'album"}
+              {loading ? "Ouverture…" : "Ouvrir la galerie"}
               {!loading && <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>}
             </button>
             {linkError && (
@@ -327,7 +327,7 @@ function EmptyState({ text }: { text: string }) {
       <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-contenus-bg">
         <span className="material-symbols-rounded !text-[24px] text-contenus" aria-hidden="true">photo_camera</span>
       </span>
-      <span className="font-sora text-[18px] font-semibold">Aucun album ici</span>
+      <span className="font-sora text-[18px] font-semibold">Aucune galerie ici</span>
       <p className="text-[14px] leading-relaxed text-text-tertiary">{text}</p>
     </div>
   );

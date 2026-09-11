@@ -12354,7 +12354,10 @@ function renderPhotoAlbumsList(albums){
     const lb=PA_STATUT_LB[a.status]||a.status;
     // Le contexte affiche ce qui EXISTE, sans aligner des tirets pour ce qui manque : une galerie
     // sans club n'est pas une galerie incomplete, c'est un cas normal.
-    const contexte=[a.clubs?.nom, a.club_teams?.name, a.structure_externe, a.saisons?.label]
+    // La structure externe ne s'ajoute QUE si la galerie n'a pas de club SportVision : sinon la
+    // ligne repetait trois fois la meme chose (« RCPF · U9 · U9 RCPF »). Elle sert a nommer une
+    // structure qui n'est pas cliente, pas a doubler le nom du club. (12/09/2026)
+    const contexte=[a.clubs?.nom, a.club_teams?.name, a.clubs?.nom?null:a.structure_externe, a.saisons?.label]
       .filter(Boolean).map(esc).join(' · ');
     const dt=a.event_date?dateFr(a.event_date):null;
     const n=a.photo_count||0;
