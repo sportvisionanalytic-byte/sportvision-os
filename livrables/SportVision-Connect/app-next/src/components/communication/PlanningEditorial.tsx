@@ -232,7 +232,6 @@ export function PlanningEditorial({ clientId }: { clientId: string }) {
                 {liste.map((c) => (
                   <Pastille key={c.id} c={c} />
                 ))}
-                {liste.length === 0 && <span className="hidden text-[11.5px] text-text-faint md:block">·</span>}
               </div>
             );
           })}

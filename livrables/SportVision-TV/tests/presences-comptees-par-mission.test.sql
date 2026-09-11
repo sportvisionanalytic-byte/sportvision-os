@@ -4,7 +4,9 @@
 --   • trois matchs cochés le même jour au même stade (une mission, v133) plus un match dans un
 --     autre stade (une autre mission) : la carte du mois du CM dit 2 présences prévues, pas 4 ;
 --   • une fois la journée passée, 2 réalisées, pas 4 ;
---   • la rentabilité du mois (OS) compte 2 présences.
+--   • la rentabilité du mois (OS) compte 2 présences ;
+--   • un entraînement couvert compte aussi (v145) : le mois l'oubliait, la semaine le comptait ;
+--   • la case « Cette semaine » du tableau de bord suit la même règle que le mois (v145).
 --
 -- Décor fictif (« ZZ »), pôle sans Production réelle. Tout est annulé, rien ne subsiste.
 
@@ -84,11 +86,30 @@ select pg_temp.note('4 matchs couverts, 2 missions (3 au même stade + 1 ailleur
   (select count(*)::text || '/' || count(distinct created_prestation_id)::text from planned_presences
     where match_id in (select id from m) and statut <> 'annule'));
 
+-- ── Un entraînement couvert, le même jour (v145) ──
+insert into club_teams (club_id, name) select club_id, 'ZZ Séniors' from ctx;
+insert into club_team_training_slots (team_id, jour, heure_debut, heure_fin)
+select t.id, (array['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'])[extract(isodow from ctx.j)::int], '19:00', '20:30'
+  from ctx join club_teams t on t.club_id = ctx.club_id and t.name = 'ZZ Séniors';
+select pg_temp.comme('a8a8a8a8-0000-0000-0000-000000000001',
+  'select cm_definir_couverture(''entrainement:' || (select s.id from club_team_training_slots s join club_teams t on t.id = s.team_id
+     where t.club_id = (select club_id from ctx)) || ':' || (select j from ctx) || ''', ''photo'')::text');
+select pg_temp.note('l''entraînement a sa présence et sa mission', '1',
+  (select count(*)::text from planned_presences where occurrence_ref like 'entrainement:%'
+     and occurrence_ref like '%:' || (select j from ctx) and created_prestation_id is not null
+     and occurrence_ref like 'entrainement:' || (select s.id from club_team_training_slots s join club_teams t on t.id = s.team_id where t.club_id = (select club_id from ctx)) || ':%'));
+
 -- ── La carte du mois du CM ──
-select pg_temp.note('carte du mois du CM : 2 prévues, 0 réalisée', '2/0', pg_temp.mois_cm());
+select pg_temp.note('carte du mois du CM : 3 prévues (2 missions de matchs + l''entraînement), 0 réalisée', '3/0', pg_temp.mois_cm());
+select pg_temp.note('« Cette semaine » : même règle que le mois', 'oui',
+  (select case when w = attendu then 'oui' else w || ' au lieu de ' || attendu end from (
+     select pg_temp.comme('a8a8a8a8-0000-0000-0000-000000000001',
+       'select cm_tableau_de_bord(' || quote_literal((select club_id from ctx)) || '::uuid)->''semaine''->>''presences''') w,
+     case when (select j from ctx) between (current_date - (extract(isodow from current_date)::int - 1)) and (current_date - (extract(isodow from current_date)::int - 1) + 6)
+          then '3' else '0' end attendu) x));
 
 -- ── La rentabilité du mois (OS) ──
-select pg_temp.note('rentabilité du mois : 2 présences', '2',
+select pg_temp.note('rentabilité du mois : 3 présences', '3',
   pg_temp.comme('a8a8a8a8-0000-0000-0000-000000000002',
     'select rentabilite_club_mois(' || quote_literal((select club_id from ctx)) || '::uuid, current_date)->>''presences'''));
 
@@ -96,7 +117,8 @@ select pg_temp.note('rentabilité du mois : 2 présences', '2',
 -- Ramenée au premier jour du mois ; le 1er du mois, rien n'est encore passé dans le mois.
 update planned_presences set date_presence = date_trunc('month', current_date)::date
  where match_id in (select id from m);
-select pg_temp.note('journée passée : 2 prévues, 2 réalisées', case when extract(day from current_date) > 1 then '2/2' else '2/0' end, pg_temp.mois_cm());
+-- Seuls les matchs sont avancés : la date d'une séance fait partie de sa référence.
+select pg_temp.note('matchs passés : 3 prévues, 2 réalisées (l''entraînement reste à venir)', case when extract(day from current_date) > 1 then '3/2' else '3/0' end, pg_temp.mois_cm());
 
 select case when attendu = obtenu then '✅' else '❌' end as ok, controle, attendu, obtenu from verdicts order by n;
 

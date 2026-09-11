@@ -5788,7 +5788,7 @@ let _preStatutsFiltre=null;
 // clubplus) existait déjà en base sur `prestations` mais n'était affichée/filtrable nulle
 // part — impossible pour le staff de voir d'où vient une demande sans ouvrir chaque fiche.
 let _preSourceFiltre='';
-const SOURCE_PRE_LBL={interne:'Interne',vitrine:'Vitrine',connect:'Connect',clubplus:'Club+'};
+const SOURCE_PRE_LBL={interne:'Interne',vitrine:'Vitrine',connect:'Connect',clubplus:'Club+',planning_mensuel_cm:'Présence CM'};
 // Ajouté suite à l'audit du 20/08 (§24) : la route /demo/production (nav "Production (vue Resp.
 // Production)") pointe vers le même écran réel que /prestations (aucun écran Production séparé
 // dans le produit) — un Responsable Production y voyait donc aussi les demandes pas encore
@@ -9472,10 +9472,25 @@ async function loadAdminDash(){
         const days=Math.floor(h/24);if(days<7)return'il y a '+days+'j';
         return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
       };
+      // 11/09/2026 : le fil est écrit par des déclencheurs en base (« creation — prestations_equipe »,
+      // « Nouvelle candidature — community_manager »). On le traduit ici, à l'affichage, sans
+      // réécrire l'historique. Un titre inconnu s'affiche tel quel.
+      const ACT_OBJET={prestations_equipe:'Rémunération opérateur',prestations:'Mission',factures:'Facture',avoirs:'Avoir',avoir:'Avoir',
+        commissions:'Commission',expenses:'Dépense',tax_reserves:'Provision d\'impôt',vendors:'Fournisseur',bank_transactions:'Relevé bancaire'};
+      const ACT_VERBE={creation:'ajoutée',modification:'modifiée',suppression:'supprimée',paiement:'payée',validation:'validée',encaissement:'encaissée',
+        provisionnement:'enregistrée',rapprochement_bancaire:'rapprochée',import_csv_bancaire:'importé',avoir:'émis'};
+      const titreActivite=t=>{
+        const [act,obj]=String(t||'').split(' — ');
+        if(act==='Nouvelle candidature')return'Nouvelle candidature'+(obj?' · '+((typeof CAND_POSTE_LB!=='undefined'&&CAND_POSTE_LB[obj])||obj):'');
+        if(obj&&ACT_OBJET[obj]){const o=ACT_OBJET[obj];const v=ACT_VERBE[act]||act;
+          const accord=/^(Mission|Facture|Commission|Dépense|Provision|Rémunération)/.test(o)?v:v.replace(/ée$/,'é');
+          return o+' '+accord;}
+        return t||'';
+      };
       elAct.innerHTML=list.map(a=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 16px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="${CAT_ACTION[a.categorie]||"switchView('dash')"}">
         <span style="font-size:15px;flex-shrink:0">${CAT_ICON[a.categorie]||'•'}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.titre||'')}</div>
+          <div style="font-size:12.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(titreActivite(a.titre))}</div>
           ${a.description?`<div style="font-size:11px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.description)}</div>`:''}
         </div>
         <span style="font-size:10.5px;color:var(--t3);flex-shrink:0;white-space:nowrap">${relT(a.created_at)}</span>
