@@ -332,7 +332,10 @@ select format('[point 2] [%s] club_calendrier', c.qui),
          -- Sans lien avec le club, ou CM d'un autre club : peut_lire_calendrier_club refuse (v120).
          when c.qui in ('sans_lien', 'os_cm_autre') then 'refus 42501'
          when c.qui in ('coach', 'resp_equipe', 'directeur_sportif') then 'son équipe + le club'
-         when c.qui = 'sponsor_mgr' then 'le club seulement'
+         -- 12/09 : la v158 (autre session) ne borne que coach, responsable d'équipe et directeur
+         -- sportif — c'est la règle tranchée par Fouka. Le responsable sponsors voit donc tout le
+         -- club, contrairement à ce que ce test attendait en s'alignant sur la v124.
+         when c.qui = 'sponsor_mgr' then 'tout le club'
          -- Le coach qui est aussi parent d'un joueur du club garde ce que la v120 lui donne à ce titre.
          else 'tout le club'
        end,

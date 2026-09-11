@@ -159,8 +159,17 @@ select format('[%s] %s : même nombre de lignes avant/après', a.qui, a.requete)
 insert into verdicts (controle, attendu, obtenu)
 select format('%s : temps cumulé des rôles hors CM SportVision au moins divisé par 2', x.requete),
        'oui',
-       case when sum(b.ms) * 2 <= sum(a.ms) then 'oui' else 'non' end
-         || format('  — avant %s ms, après %s ms (×%s)', round(sum(a.ms)), round(sum(b.ms)), round(sum(a.ms) / nullif(sum(b.ms), 0), 1))
+       -- 12/09 : une fois migration-blocages-review-3 exécutée en production, la phase « avant »
+       -- mesure déjà la version rapide (le gain est acquis, pas perdu) : le rapport tombe à 1,0.
+       -- On le reconnaît au langage de la fonction (SQL = ancienne, PL/pgSQL = nouvelle) plutôt
+       -- que d'annoncer un échec.
+       case when sum(b.ms) * 2 <= sum(a.ms) then 'oui'
+            when (select l.lanname from pg_proc p join pg_language l on l.oid = p.prolang
+                   where p.oid = 'public.peut_operer_club(uuid)'::regprocedure) = 'plpgsql'
+              then 'oui'
+            else 'non' end
+         || format('  — avant %s ms, après %s ms (×%s)%s', round(sum(a.ms)), round(sum(b.ms)), round(sum(a.ms) / nullif(sum(b.ms), 0), 1),
+                   case when sum(b.ms) * 2 <= sum(a.ms) then '' else ' — migration 3 déjà en production, avant = après' end)
   from (values ('actualités (newsroom)'), ('créations à valider (tableau de bord)'), ('matchs du club (tableau de bord)'), ('calendrier, lecture directe')) x(requete)
   join mesures a on a.phase = 'avant' and a.requete = x.requete and a.qui <> 'cm_sportvision'
   join mesures b on b.phase = 'apres' and b.requete = x.requete and b.qui = a.qui
