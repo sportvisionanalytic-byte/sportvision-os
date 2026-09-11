@@ -20923,14 +20923,15 @@ async function loadCmDash(){
     const tier=await _ensureMyNiveauCm();
     const [contenus,preSoon,unread,demandes]=await Promise.all([
       sbFetch('contenus?select=id,titre,statut,plateforme,date_prevue,clients(nom)&statut=not.in.(publie,archive)&order=date_prevue.asc.nullslast&limit=100'),
-      sbFetch(`prestations?select=id,reference,type_prestation,date_prestation,clients(nom,cm_id)&date_prestation=gte.${todayStr}&date_prestation=lte.${ymdLocal(in14)}&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=20`),
+      // 11/09/2026 (v146) : aucune policy ne donne au CM la lecture des missions (elles portent les
+      // prix), cette requête rendait toujours [] : carte à 0 pour tous les CM. La fonction rend
+      // quand, où, quoi et pour quel club, dans le périmètre du CM, sans aucun montant.
+      sbFetch('rpc/cm_prestations_a_venir',{method:'POST',body:{p_jours:14}}),
       sbFetch('messages?select=expediteur_id&destinataire_id=eq.'+uid+'&lue=eq.false'),
       sbFetch('club_requests?select=id,type,urgency,created_at,clubs(nom,clients(nom))&status=eq.recues&order=urgency.desc,created_at.asc&limit=20'),
     ]);
-    const portfolioTiers=['cm_junior','cm_confirme','cm_full_communication'];
-    const presoonScoped=portfolioTiers.includes(tier)
-      ?(preSoon||[]).filter(p=>p.clients?.cm_id===uid)
-      :(preSoon||[]);
+    // Le périmètre (clubs affectés, clients dont il est référent) est appliqué par la fonction.
+    const presoonScoped=(Array.isArray(preSoon)?preSoon:[]).slice(0,20);
     // La visibilité par portefeuille est déjà appliquée par le RLS des
     // tables contenus/club_requests (migration-contenus.sql,
     // migration-clubplus-cm-bridge.sql) — pas besoin de re-filtrer ici.
@@ -20972,12 +20973,11 @@ async function loadCmDash(){
     if(ec){
       const list=presoonScoped.slice(0,8);
       ec.innerHTML=list.length?'<div class="cd-b">'+list.map(p=>`
-        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalDetailById('${p.id}')">
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03)">
           <div style="width:8px;height:8px;border-radius:50%;background:var(--acc);flex-shrink:0"></div>
-          <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${esc(p.clients?.nom||'—')} · ${p.type_prestation||'—'}</div>
-            <div style="font-size:11px;color:var(--t3)">${p.reference} · ${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</div>
+          <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${esc(p.club_nom||'—')} · ${esc(p.type_prestation||'—')}</div>
+            <div style="font-size:11px;color:var(--t3)">${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}):'—'}${p.heure_debut?' · '+String(p.heure_debut).slice(0,5):''}${p.lieu?' · '+esc(p.lieu):''} · ${esc(p.reference||'')}</div>
           </div>
-          <span style="font-size:11px;color:var(--acc)">›</span>
         </div>`).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation dans les 14 prochains jours.</div>';
     }
