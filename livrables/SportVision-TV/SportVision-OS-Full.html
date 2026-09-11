@@ -12299,7 +12299,7 @@ async function loadPhotoAlbums(el){
   if(!el)return;
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,watermark_previews,cover_asset_id,clubs(nom),club_teams(name),saisons(label)&order=created_at.desc&limit=200');
+    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,watermark_previews,access_mode,cover_asset_id,clubs(nom),club_teams(name),saisons(label)&order=created_at.desc&limit=200');
     if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(msgErreur(rows,'Impossible de charger les galeries.'))+'</div></div>';return;}
     _photoAlbums=Array.isArray(rows)?rows:[];
     renderPhotoAlbumsList(_photoAlbums);
@@ -13027,8 +13027,12 @@ async function ouvrirGalerie(albumId){
 
     <section style="margin-bottom:34px">
       <div style="${T}"><span style="${N}">2</span> Ce que vous vendez</div>
-      <div id="gl-offres" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px"></div>
-      <div id="gal-offres-actions" style="display:flex;gap:9px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2);cursor:pointer;min-height:40px;margin-bottom:8px">
+        <input type="checkbox" id="gal-gratuit" ${album.access_mode==='free_members'?'checked':''} onchange="galBasculerGratuit(this.checked)">
+        Galerie gratuite (visible pour le club sans achat, aucune offre requise)
+      </label>
+      <div id="gl-offres" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;${album.access_mode==='free_members'?'display:none':''}"></div>
+      <div id="gal-offres-actions" style="display:flex;gap:9px;flex-wrap:wrap;${album.access_mode==='free_members'?'display:none':''}">
         <button class="btn bg2" style="min-height:44px" onclick="galAjouterOffre('pack')">+ Sélection de photos</button>
         <button class="btn bg2" style="min-height:44px" onclick="galAjouterOffre('album_complet')">+ Galerie complète</button>
       </div>
@@ -13138,16 +13142,17 @@ async function galEnregistrerOffresPrincipales(){
 // galerie en ligne. Trois operations que l'utilisateur devait enchainer a la main, en comprenant
 // au passage la notion de lien commercial.
 async function galMettreEnLigne(){
+  const gratuit=_galAlbum.access_mode==='free_members';
   const offres=_galOffresPourEnregistrement();
   if(!offres)return;
-  if(!offres.length){toast('Ajoutez au moins une offre avant de mettre en ligne.','er');return;}
+  if(!offres.length&&!gratuit){toast('Ajoutez au moins une offre avant de mettre en ligne, ou cochez « Galerie gratuite ».','er');return;}
 
   const res=await _galEnregistrerLienPrincipal(offres);
   if(!res)return;
 
   if(_galAlbum.status!=='published'){
     const r=await sbFetch('media_albums?id=eq.'+_galAlbum.id,{method:'PATCH',
-      body:{status:'published',published_at:new Date().toISOString()}});
+      body:{status:'published',published_at:new Date().toISOString(),access_mode:_galAlbum.access_mode}});
     if(sbErr(r)){
       // Les offres sont enregistrees : on ne les perd pas parce que la publication a echoue.
       toast('Offres enregistrées, mais la mise en ligne a échoué : '+(msgErreur(r,'réessayez.')),'wa');
@@ -13170,12 +13175,13 @@ function _galRendreFinal(){
   const enLigne=_galAlbum.status==='published';
   const nbPhotos=(_galAssets||[]).filter(a=>a.status==='ready').length;
   const offresLisibles=_galOffres.filter(o=>(o.name||'').trim());
+  const gratuit=_galAlbum.access_mode==='free_members';
 
   if(enLigne&&_galLienPrincipal){
     const url=GAL_CONNECT_URL+'/gallery/'+_galLienPrincipal.slug+'?k='+encodeURIComponent(_galLienPrincipal.token);
     el.innerHTML=`<div style="border:1px solid rgba(46,204,138,.3);background:rgba(46,204,138,.06);border-radius:var(--rp);padding:14px">
       <div style="font-size:13px;font-weight:600;color:var(--ok);margin-bottom:4px">✓ Votre galerie est en ligne</div>
-      <div style="font-size:11.5px;color:var(--t3);margin-bottom:11px">${nbPhotos} photo${nbPhotos>1?'s':''} · ${offresLisibles.length} offre${offresLisibles.length>1?'s':''}</div>
+      <div style="font-size:11.5px;color:var(--t3);margin-bottom:11px">${nbPhotos} photo${nbPhotos>1?'s':''} · ${gratuit?'Galerie gratuite':offresLisibles.length+' offre'+(offresLisibles.length>1?'s':'')}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn bp bs" style="min-height:40px" onclick="galCopierLien('${esc(url)}')">Copier le lien</button>
         <button class="btn bg2 bs" style="min-height:40px" onclick="galQrCode('${esc(url)}')">QR Code</button>
@@ -13189,7 +13195,7 @@ function _galRendreFinal(){
   // Pas encore en ligne : on montre ce qui va etre publie, et ce qui manque le cas echeant.
   const manque=[];
   if(!nbPhotos) manque.push('aucune photo');
-  if(!offresLisibles.length) manque.push('aucune offre');
+  if(!offresLisibles.length&&!gratuit) manque.push('aucune offre (ou cochez « Galerie gratuite »)');
   const lignes=offresLisibles.map(o=>{
     const p=Number(String(o.prix).replace(',','.'));
     const prix=(!isFinite(p))?'prix à compléter':(p===0?'Offert':p.toLocaleString('fr-FR',{minimumFractionDigits:p%1?2:0})+' €');
@@ -13681,6 +13687,32 @@ async function galBasculerFiligrane(actif){
   // Les aperçus déjà produits ne sont pas régénérés : le réglage vaut pour les dépôts suivants.
   // Le dire plutôt que de laisser croire à un effet rétroactif.
   toast(actif?'Filigrane activé pour les prochains dépôts':'Filigrane désactivé pour les prochains dépôts','ok');
+}
+
+// Galerie gratuite : visible par le club sans achat (access_mode='free_members', vérifié cote
+// serveur par can_access_media() — inutile de créer une offre). Le filigrane, pensé pour protéger
+// un aperçu avant achat, n'a plus lieu d'être : on le désactive automatiquement, sans verrouiller
+// le réglage, au cas où l'utilisateur le veuille quand même.
+async function galBasculerGratuit(actif){
+  const r=await sbFetch('media_albums?id=eq.'+_galAlbum.id,{method:'PATCH',
+    body:{access_mode:actif?'free_members':'inherit'}});
+  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'modification impossible')),'error');return;}
+  _galAlbum.access_mode=actif?'free_members':'inherit';
+  const cache=_photoAlbums.find(a=>a.id===_galAlbum.id);
+  if(cache)cache.access_mode=_galAlbum.access_mode;
+
+  const zoneOffres=document.getElementById('gl-offres'), zoneActions=document.getElementById('gal-offres-actions');
+  if(zoneOffres)zoneOffres.style.display=actif?'none':'';
+  if(zoneActions)zoneActions.style.display=actif?'none':'';
+
+  if(actif&&_galAlbum.watermark_previews!==false){
+    const wm=document.getElementById('gal-wm');
+    if(wm)wm.checked=false;
+    await galBasculerFiligrane(false);
+  }
+
+  toast(actif?'Galerie gratuite : aucune offre requise pour la mettre en ligne.':'Galerie payante : au moins une offre est requise.','ok');
+  _galRendreFinal();
 }
 
 async function galDefinirCouverture(assetId){
