@@ -50,15 +50,28 @@ export default function GaleriesClubPage() {
   const [videos, setVideos] = useState<Record<string, VideoGalerie>>({});
   const [copie, setCopie] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
+  const [erreur, setErreur] = useState(false);
 
   useEffect(() => {
     if (!ctx?.organization?.id) return;
     let vivant = true;
     void (async () => {
       const supabase = createClient();
-      const { data } = await supabase.rpc("media_club_galleries", { p_club_id: ctx.organization.id });
+      const { data, error } = await supabase.rpc("media_club_galleries", { p_club_id: ctx.organization.id });
+      // Une erreur ne se déguise pas en « aucune galerie publiée » : le club en conclurait que
+      // SportVision ne lui a rien livré (12/09/2026).
+      if (error) {
+        if (vivant) {
+          setErreur(true);
+          setGaleries([]);
+        }
+        return;
+      }
       const liste = Array.isArray(data) ? (data as GalerieClub[]) : [];
-      if (vivant) setGaleries(liste);
+      if (vivant) {
+        setErreur(false);
+        setGaleries(liste);
+      }
       // La vidéo du match n'est pas dans la galerie : c'est le lien du montage déposé sur la
       // mission (v157). Les liens de livraison sont réservés au staff, d'où cette fonction dédiée
       // qui ne rend que le montage final des galeries que la personne a le droit de voir.
@@ -90,11 +103,30 @@ export default function GaleriesClubPage() {
     return <div className="p-6 text-[13px] text-slate-400">Chargement des galeries…</div>;
   }
 
+  if (erreur) {
+    return (
+      <div className="p-6">
+        <h1 className="text-[22px] font-bold tracking-tight">Galeries</h1>
+        <p className="mt-3 max-w-[460px] text-[13.5px] leading-relaxed text-text-soft">
+          Les galeries n&apos;ont pas pu être chargées. Ce n&apos;est pas qu&apos;il n&apos;y en a
+          aucune : la liste n&apos;a pas répondu.
+        </p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-4 rounded-full border border-white/15 px-4 py-2 text-[13px] font-semibold hover:bg-white/5"
+        >
+          Réessayer
+        </button>
+      </div>
+    );
+  }
+
   if (galeries.length === 0) {
     return (
       <div className="p-6">
         <h1 className="text-[22px] font-bold tracking-tight">Galeries</h1>
-        <p className="mt-3 max-w-[460px] text-[13.5px] leading-relaxed text-slate-400">
+        <p className="mt-3 max-w-[460px] text-[13.5px] leading-relaxed text-text-soft">
           Aucune galerie publiée pour le moment. Les galeries réalisées par SportVision
           apparaîtront ici dès leur publication, avec les liens à diffuser aux familles.
         </p>

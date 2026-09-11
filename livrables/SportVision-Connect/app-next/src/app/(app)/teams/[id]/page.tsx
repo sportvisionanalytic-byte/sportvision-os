@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -35,6 +35,7 @@ import {
 import type { LicenseStatus, Team } from "@/lib/types/teams";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
+import { fetchLiensParentsADecider, deciderLienParent, type LienParentADecider } from "@/lib/data/club/parentLinks";
 import { fetchClubTeams } from "@/lib/data/club/teams";
 import { ACCOUNT_STATUS_LABEL, fetchTeamRoster, type TeamRosterPlayer } from "@/lib/data/club/team-detail";
 import { fetchClubMembers } from "@/lib/data/club/users";
@@ -439,6 +440,7 @@ const REAL_TAB_LABEL: Record<RealTabKey, string> = {
 };
 
 function RealTeamDetail({ organizationId, teamId }: { organizationId: string; teamId: string }) {
+  const { ctx: sessionCtx } = useSession();
   // `null` tant que la base n'a pas répondu : ni actions offertes, ni actions retirées à tort.
   const [canManageMembers, setCanManageMembers] = useState(false);
   const [tab, setTab] = useState<RealTabKey>("apercu");
@@ -521,6 +523,29 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
     );
   }
 
+  // 12/09/2026 — Un coach qui ouvre une équipe hors de son périmètre lisait « Aucun joueur dans
+  // cette équipe » : la base ne lui rend rien, et l'écran l'interprétait comme un effectif vide.
+  // C'est affirmer une conformité qui n'existe pas. On le dit comme c'est : ce n'est pas son
+  // équipe. Le périmètre affiché vient de son adhésion, et la base reste seule à trancher.
+  const bornéAuxSiennes =
+    !!sessionCtx &&
+    ["coach", "team_manager", "sports_director"].includes(sessionCtx.membership.role) &&
+    sessionCtx.membership.teamScope.length > 0;
+  if (bornéAuxSiennes && !sessionCtx!.membership.teamScope.includes(team.name)) {
+    return (
+      <Card className="flex flex-col items-center gap-3 px-8 py-16 text-center">
+        <div className="text-[15px] font-extrabold">Cette équipe n&apos;est pas dans votre périmètre.</div>
+        <p className="max-w-[420px] text-[13px] leading-relaxed text-text-soft">
+          Vous encadrez {sessionCtx!.membership.teamScope.join(", ")}. Pour suivre une autre équipe,
+          demandez à un dirigeant du club de vous y rattacher.
+        </p>
+        <Link href="/teams">
+          <Button variant="secondary">Retour aux équipes</Button>
+        </Link>
+      </Card>
+    );
+  }
+
   const missingRights = roster.filter((p) => p.imageRightStatus !== "valide").length;
 
   return (
@@ -572,7 +597,12 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
           enPreparation={enPreparation}
         />
       )}
-      {tab === "effectif" && <RealRosterTab roster={roster} />}
+      {tab === "effectif" && (
+        <>
+          <RattachementsParents clubId={organizationId} equipe={team.name} />
+          <RealRosterTab roster={roster} />
+        </>
+      )}
       {tab === "calendrier" && <RealCalendarTab organizationId={organizationId} teamId={teamId} />}
       {tab === "contenus" && <RealContentTab organizationId={organizationId} teamName={team.name} />}
       {tab === "demandes" && <RealRequestsTab organizationId={organizationId} teamName={team.name} />}
@@ -963,4 +993,75 @@ function exporterEffectif(nomEquipe: string, roster: TeamRosterPlayer[]) {
   a.download = `effectif-${nomEquipe.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+
+// Rattachements de parents en attente (12/09/2026, migration v172).
+//
+// Un parent qui se rattache à un enfant reste « en attente de confirmation » : c'est le club qui
+// tranche. La fonction de décision existait depuis le durcissement du 10/09, mais aucun écran ne
+// l'appelait et aucune liste ne montrait ces demandes : les familles attendaient sans fin. La
+// carte n'apparaît que s'il y a quelque chose à décider, et pour l'équipe ouverte.
+function RattachementsParents({ clubId, equipe }: { clubId: string; equipe: string }) {
+  const [liens, setLiens] = useState<LienParentADecider[] | null>(null);
+  const [enCours, setEnCours] = useState<string | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  const recharger = useCallback(() => {
+    fetchLiensParentsADecider(createClient(), clubId)
+      .then(setLiens)
+      .catch(() => setLiens([]));
+  }, [clubId]);
+
+  useEffect(() => recharger(), [recharger]);
+
+  const pourCetteEquipe = (liens ?? []).filter((l) => !l.equipe || l.equipe === equipe);
+  if (!pourCetteEquipe.length) return null;
+
+  async function decider(relationId: string, decision: "confirme" | "refuse") {
+    setEnCours(relationId);
+    setErreur(null);
+    try {
+      await deciderLienParent(createClient(), relationId, decision);
+      recharger();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "La décision n'a pas pu être enregistrée.");
+    } finally {
+      setEnCours(null);
+    }
+  }
+
+  return (
+    <Card className="p-4.5">
+      <div className="text-[15px] font-extrabold">Rattachements de parents à confirmer</div>
+      <p className="mt-1 max-w-[560px] text-[12.5px] leading-relaxed text-text-soft">
+        Tant que vous n&apos;avez pas confirmé, le parent n&apos;a accès à rien. Ne confirmez que si
+        vous reconnaissez la personne comme responsable légal de l&apos;enfant.
+      </p>
+      {erreur && <p className="mt-3 text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
+      <div className="mt-3 flex flex-col gap-2">
+        {pourCetteEquipe.map((l) => (
+          <div key={l.relationId} className="flex flex-wrap items-center gap-3 rounded-xl bg-surface-sunken px-3 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-[13.5px] font-bold">
+                {l.parent} <span className="font-semibold text-text-soft">se déclare {l.relation} de</span> {l.enfant}
+              </div>
+              <div className="text-[12px] text-text-soft">
+                {l.parentEmail ?? "adresse inconnue"} · demandé le{" "}
+                {new Date(l.demandeLe).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" disabled={enCours === l.relationId} onClick={() => decider(l.relationId, "refuse")}>
+                Refuser
+              </Button>
+              <Button disabled={enCours === l.relationId} onClick={() => decider(l.relationId, "confirme")}>
+                Confirmer
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
 }

@@ -274,6 +274,10 @@ export function PlanningEditorial({ clientId }: { clientId: string }) {
 
       {items !== null && vue === "liste" && items.filter((c) => c.statut !== "archive").length > 0 && (
         <div className="flex flex-col gap-4">
+          {/* La liste s'ouvre sur les deux dernières semaines et la suite : c'est le plan de
+              travail, pas les archives. Elle affichait auparavant un écran blanc quand tout le
+              contenu du club était plus ancien, sans dire pourquoi — d'où la ligne qui suit la
+              liste (12/09/2026). */}
           {[...parJour.entries()]
             .sort(([a], [b]) => (a < b ? -1 : 1))
             .filter(([d]) => d >= isoJour(plusJours(maintenant, -14)))
@@ -299,6 +303,13 @@ export function PlanningEditorial({ clientId }: { clientId: string }) {
               ))}
             </div>
           )}
+          {[...parJour.entries()].filter(([d]) => d >= isoJour(plusJours(maintenant, -14))).length === 0 &&
+            sansDate.length === 0 && (
+              <p className="text-[13px] leading-relaxed text-text-soft">
+                Tout le contenu de ce club date de plus de deux semaines. La liste montre les quinze
+                derniers jours et la suite ; ouvrez la vue Calendrier pour remonter plus loin.
+              </p>
+            )}
         </div>
       )}
 
