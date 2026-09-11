@@ -29,8 +29,18 @@ try {
   const u = await (await fetch(`${SB}/auth/v1/admin/users`, { method: "POST", headers: H, body: JSON.stringify({ email, password: `Qa!${stamp}x${Math.random()}`, email_confirm: true }) })).json();
   ids.user = u.id;
   await svc("POST", "profiles?on_conflict=id", { id: u.id, prenom: "QA", nom: "Jour J", role: "photo", actif: true });
-  const cli = (await svc("POST", "clients", { nom: `ZZ Club Jour J ${stamp}`, statut_relation: "partenaire" }))[0]; ids.cli = cli.id;
-  const pre = (await svc("POST", "prestations", { client_id: cli.id, date_prestation: iso, heure_debut: "23:30", lieu: "Stade ZZ", type_prestation: "match", statut: "équipe_affectée", source: "interne" }))[0]; ids.pre = pre.id;
+  // Une Production de test pilote les missions fictives : sans Responsable Production, une livraison
+  // déposée notifierait TOUTES les Productions actives (destinataires_production), Christian compris.
+  const emailProd = `qa-sv-jourj-prod-${stamp}@example.invalid`;
+  const up = await (await fetch(`${SB}/auth/v1/admin/users`, { method: "POST", headers: H, body: JSON.stringify({ email: emailProd, password: `Qa!${stamp}p${Math.random()}`, email_confirm: true }) })).json();
+  ids.prod = up.id;
+  await svc("POST", "profiles?on_conflict=id", { id: up.id, prenom: "QA", nom: "Jour J Prod", role: "prod", actif: false });
+  // Comme en réel (Mikael et Villemomble sont sur Football) : opérateur et mission dans le même pôle,
+  // sinon l'opérateur ne lit pas les liens de livraison (ml_read). Pôle Basket, sans Production réelle.
+  const basket = (await svc("GET", "poles?select=id&nom=eq.Basket"))[0].id;
+  await svc("POST", "pole_affectations", { pole_id: basket, user_id: u.id, role_pole: "membre", actif: true });
+  const cli = (await svc("POST", "clients", { nom: `ZZ Club Jour J ${stamp}`, statut_relation: "partenaire", pole_id: basket }))[0]; ids.cli = cli.id;
+  const pre = (await svc("POST", "prestations", { client_id: cli.id, date_prestation: iso, heure_debut: "23:30", lieu: "Stade ZZ", type_prestation: "match", statut: "équipe_affectée", source: "interne", responsable_prod_id: ids.prod, pole_id: basket }))[0]; ids.pre = pre.id;
   await svc("POST", "prestations_equipe", { prestation_id: pre.id, collaborateur_id: u.id, statut: "acceptée", remuneration: 55, heure_rdv: "23:15" });
 
   const O = await ouvrirOS(nav, { id: u.id, email, role: "photo", prenom: "QA" }, { largeur: 390, hauteur: 844 });
@@ -48,14 +58,15 @@ try {
   t("base : « équipe en route », départ horodaté", b?.st === "équipe_en_route" && b?.parti === true, JSON.stringify(b));
 
   // ── L'après-match : sa livraison envoyée à la Production ──
-  const apres = (await svc("POST", "prestations", { client_id: ids.cli, date_prestation: iso, heure_debut: "09:30", lieu: "Stade ZZ", type_prestation: "match", statut: "médias_complets", source: "interne", couverture: "photo_video" }))[0];
+  const apres = (await svc("POST", "prestations", { client_id: ids.cli, date_prestation: iso, heure_debut: "09:30", lieu: "Stade ZZ", type_prestation: "match", statut: "médias_complets", source: "interne", couverture: "photo_video", responsable_prod_id: ids.prod, pole_id: basket }))[0];
   ids.pre2 = apres.id;
   await svc("POST", "prestations_equipe", { prestation_id: apres.id, collaborateur_id: ids.user, statut: "acceptée", remuneration: 55 });
-  await svc("POST", "media_liens", [
+  const liens = await svc("POST", "media_liens", [
     { prestation_id: apres.id, nom: "ZZ photos", url: "https://example.invalid/photos", categorie: "final", type_media: "photo", ajouteur_id: ids.user, transfert_confirme: true },
-    { prestation_id: apres.id, nom: "ZZ montage", url: "https://example.invalid/montage", categorie: "final", type_media: "video", ajouteur_id: ids.user },
-    { prestation_id: apres.id, nom: "ZZ rushs", url: "https://example.invalid/rushs", categorie: "rushs", type_media: "video", ajouteur_id: ids.user },
+    { prestation_id: apres.id, nom: "ZZ montage", url: "https://example.invalid/montage", categorie: "final", type_media: "video", ajouteur_id: ids.user, transfert_confirme: false },
+    { prestation_id: apres.id, nom: "ZZ rushs", url: "https://example.invalid/rushs", categorie: "rushs", type_media: "video", ajouteur_id: ids.user, transfert_confirme: false },
   ]);
+  if (!Array.isArray(liens) || liens.length !== 3) throw new Error("décor : liens de livraison non créés · " + JSON.stringify(liens).slice(0, 200));
   await page.evaluate((id) => window.modalSauvegarde(id), apres.id); await attendre(3500);
   const envoyer = page.locator("#sv-modal-ct button", { hasText: "Envoyer à Production" });
   t("après-match : « Envoyer à Production » proposé dès « médias complets »", (await envoyer.count()) === 1);
@@ -63,6 +74,8 @@ try {
   b = (await sql(`select p.statut::text st, (select livre_at is not null from mission_suivi_operateur where prestation_id = p.id and collaborateur_id = '${ids.user}') livre from prestations p where p.id = '${apres.id}'`))[0];
   t("base : mission « prête pour validation », livraison horodatée", b?.st === "prêt_validation" && b?.livre === true, JSON.stringify(b));
   t("aucune erreur JavaScript", vraiesErreurs(O.erreurs).length === 0, vraiesErreurs(O.erreurs).slice(0, 2).join(" | "));
+  const notifs = (await sql(`select count(*) n from notifications where (prestation_id in ('${pre.id}','${apres.id}') or lien_prestation_id in ('${pre.id}','${apres.id}')) and destinataire_id not in ('${ids.user}','${ids.prod}')`))[0];
+  t("aucune vraie personne notifiée", notifs?.n === 0, JSON.stringify(notifs));
   await page.context().close();
 } catch (e) {
   t("déroulé", false, String(e.message).slice(0, 220));
@@ -73,7 +86,7 @@ try {
     select set_config('request.jwt.claims', '{"role":"service_role"}', true);
     delete from activity_log where entity_id in (select id from prestations_equipe where prestation_id in (${pres})) or entity_id in (${pres});
     delete from financial_audit_log where ligne_id in (select id from prestations_equipe where prestation_id in (${pres})) or ligne_id in (${pres});
-    delete from notifications where destinataire_id = ${ids.user ? `'${ids.user}'` : "null"} or prestation_id in (${pres}) or lien_prestation_id in (${pres});
+    delete from notifications where destinataire_id in (${[ids.user, ids.prod].filter(Boolean).map((x) => `'${x}'`).join(",") || "null"}) or prestation_id in (${pres}) or lien_prestation_id in (${pres});
     delete from audit_logs where acteur_id = ${ids.user ? `'${ids.user}'` : "null"};
     delete from mission_suivi_operateur where prestation_id in (${pres});
     delete from prestations_equipe where prestation_id in (${pres});
@@ -81,11 +94,12 @@ try {
     delete from media_liens where prestation_id in (${pres});
     delete from prestations where id in (${pres});
     delete from clients where id = ${ids.cli ? `'${ids.cli}'` : "null"};
-    delete from profiles where id = ${ids.user ? `'${ids.user}'` : "null"};
-    delete from auth.users where id = ${ids.user ? `'${ids.user}'` : "null"};
+    delete from pole_affectations where user_id in (${[ids.user, ids.prod].filter(Boolean).map((x) => `'${x}'`).join(",") || "null"});
+    delete from profiles where id in (${[ids.user, ids.prod].filter(Boolean).map((x) => `'${x}'`).join(",") || "null"});
+    delete from auth.users where id in (${[ids.user, ids.prod].filter(Boolean).map((x) => `'${x}'`).join(",") || "null"});
     commit;`);
   if (!Array.isArray(net)) t("nettoyage : erreur", false, JSON.stringify(net).slice(0, 200));
-  const reste = (await sql(`select (select count(*) from auth.users where email like 'qa-sv-jourj-photo-%') comptes, (select count(*) from clients where nom like 'ZZ Club Jour J %') clients`))[0];
+  const reste = (await sql(`select (select count(*) from auth.users where email like 'qa-sv-jourj-%') comptes, (select count(*) from clients where nom like 'ZZ Club Jour J %') clients`))[0];
   t("nettoyage complet", Object.values(reste).every((v) => v === 0), JSON.stringify(reste));
   console.log(r.join("\n"));
 }
