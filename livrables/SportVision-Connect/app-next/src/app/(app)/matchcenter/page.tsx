@@ -330,7 +330,7 @@ export default function MatchCenterPage() {
           <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">Match Center</h1>
           <p className="mt-1.5 max-w-2xl text-[13.5px] text-text-soft">
             {aSaisir.length > 0
-              ? `${aSaisir.length} match${aSaisir.length > 1 ? "s" : ""} attend${aSaisir.length > 1 ? "ent" : ""} sa feuille de match.`
+              ? `${aSaisir.length} match${aSaisir.length > 1 ? "s" : ""} attend${aSaisir.length > 1 ? "ent leur" : " sa"} feuille de match.`
               : "Tous les matchs joués ont leur résultat."}
           </p>
         </div>
