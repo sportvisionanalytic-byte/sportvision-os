@@ -65,3 +65,14 @@ export async function markAllNotificationsRead(supabase: SupabaseClient): Promis
     .is("read_at", null);
   if (error) throw error;
 }
+
+/** Combien de notifications non lues (12/09/2026). La cloche de l'en-tête avait exactement la même
+ *  apparence avec zéro et avec quarante non lues : personne ne savait qu'il fallait cliquer. */
+export async function countUnreadNotifications(supabase: SupabaseClient): Promise<number> {
+  const { count, error } = await supabase
+    .from("member_notifications")
+    .select("id", { count: "exact", head: true })
+    .is("read_at", null);
+  if (error) return 0;
+  return count ?? 0;
+}

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/client";
 import { QrCode } from "@/components/ui/QrCode";
+import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 
 // Galeries — côté club.
 //
@@ -51,6 +52,8 @@ export default function GaleriesClubPage() {
   const [copie, setCopie] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [erreur, setErreur] = useState(false);
+  // Échap ferme la fenêtre du QR, comme les autres modales de Club+ depuis le 10/09.
+  useFermetureEchap(Boolean(qr), () => setQr(null));
 
   useEffect(() => {
     if (!ctx?.organization?.id) return;
@@ -100,7 +103,7 @@ export default function GaleriesClubPage() {
   }
 
   if (galeries === null) {
-    return <div className="p-6 text-[13px] text-slate-400">Chargement des galeries…</div>;
+    return <div className="p-6 text-[13px] text-text-soft">Chargement des galeries…</div>;
   }
 
   if (erreur) {
@@ -114,7 +117,7 @@ export default function GaleriesClubPage() {
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="mt-4 rounded-full border border-white/15 px-4 py-2 text-[13px] font-semibold hover:bg-white/5"
+          className="mt-4 rounded-full border border-border-strong px-4 py-2 text-[13px] font-semibold hover:bg-row-hover"
         >
           Réessayer
         </button>
@@ -137,20 +140,20 @@ export default function GaleriesClubPage() {
   return (
     <div className="p-4 sm:p-6">
       <h1 className="text-[22px] font-bold tracking-tight">Galeries</h1>
-      <p className="mt-1.5 text-[13px] text-slate-400">
+      <p className="mt-1.5 text-[13px] text-text-soft">
         Les galeries SportVision de votre club, et les liens que vous pouvez diffuser.
       </p>
 
       <div className="mt-5 flex flex-col gap-3">
         {galeries.map((g) => (
-          <div key={g.album_id} className="rounded-2xl border border-white/10 bg-white/[.03] p-3 sm:p-4">
+          <div key={g.album_id} className="rounded-2xl border border-border bg-surface p-3 sm:p-4">
             <div className="flex items-start gap-4">
-              <div className="h-[68px] w-[68px] flex-none overflow-hidden rounded-xl bg-white/5 sm:h-[86px] sm:w-[86px]">
+              <div className="h-[68px] w-[68px] flex-none overflow-hidden rounded-xl bg-surface-sunken sm:h-[86px] sm:w-[86px]">
                 {g.cover_url && <img src={g.cover_url} alt="" className="h-full w-full object-cover" />}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-bold tracking-tight">{g.titre}</div>
-                <div className="mt-0.5 truncate text-[12px] text-slate-400">
+                <div className="mt-0.5 truncate text-[12px] text-text-soft">
                   {[
                     g.equipe,
                     g.event_date
@@ -173,16 +176,16 @@ export default function GaleriesClubPage() {
                 href={videos[g.album_id]!.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[.04] px-3 py-2.5 text-[13px] font-semibold hover:bg-white/[.07]"
+                className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-[13px] font-semibold hover:bg-row-hover"
               >
                 <span aria-hidden>🎬</span>
                 <span className="min-w-0 flex-1 truncate">Vidéo du match</span>
-                <span className="text-[12px] font-normal text-slate-400">Ouvrir</span>
+                <span className="text-[12px] font-normal text-text-soft">Ouvrir</span>
               </a>
             )}
 
             {g.liens.length === 0 ? (
-              <p className="mt-3 text-[12px] text-slate-500">
+              <p className="mt-3 text-[12px] text-text-faint">
                 Aucun lien n&apos;est encore mis à votre disposition pour cette galerie.
               </p>
             ) : (
@@ -190,21 +193,21 @@ export default function GaleriesClubPage() {
                 {g.liens.map((l) => (
                   <div
                     key={l.slug}
-                    className={`flex flex-wrap items-center gap-2 rounded-xl border border-white/10 px-3 py-2.5 ${l.is_enabled ? "" : "opacity-50"}`}
+                    className={`flex flex-wrap items-center gap-2 rounded-xl border border-border px-3 py-2.5 ${l.is_enabled ? "" : "opacity-50"}`}
                   >
                     <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
                       {l.label ?? "Lien de galerie"}
-                      {!l.is_enabled && <span className="ml-2 text-[11px] font-normal text-slate-400">désactivé</span>}
+                      {!l.is_enabled && <span className="ml-2 text-[11px] font-normal text-text-soft">désactivé</span>}
                     </span>
                     <button
                       onClick={() => copier(l)}
-                      className="rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold hover:bg-white/5"
+                      className="rounded-full border border-border-strong px-3 py-1.5 text-[12px] font-semibold hover:bg-row-hover"
                     >
                       {copie === l.slug ? "Copié" : "Copier"}
                     </button>
                     <button
                       onClick={() => setQr(url(l))}
-                      className="rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold hover:bg-white/5"
+                      className="rounded-full border border-border-strong px-3 py-1.5 text-[12px] font-semibold hover:bg-row-hover"
                     >
                       QR Code
                     </button>
@@ -212,7 +215,7 @@ export default function GaleriesClubPage() {
                       href={url(l)}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold hover:bg-white/5"
+                      className="rounded-full border border-border-strong px-3 py-1.5 text-[12px] font-semibold hover:bg-row-hover"
                     >
                       Ouvrir
                     </a>
@@ -225,8 +228,22 @@ export default function GaleriesClubPage() {
       </div>
 
       {qr && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6" onClick={() => setQr(null)}>
-          <div className="rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+          onClick={() => setQr(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="QR code du lien de galerie"
+        >
+          <div className="relative rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setQr(null)}
+              aria-label="Fermer"
+              className="absolute -right-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full border border-border-strong bg-surface text-text"
+            >
+              ×
+            </button>
             {/* Le QR est fabrique dans le navigateur (composant QrCode). Il partait auparavant
                 chez api.qrserver.com avec le lien COMPLET de la galerie, jeton d'acces compris :
                 le secret qui ouvre les photos d'enfants se retrouvait dans les journaux d'un

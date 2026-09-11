@@ -491,6 +491,9 @@ const NAV_CLUB_COACH: NavEntry[] = [
   item("teams", "Affiliations", "team-requests"),
   item("matchcenter", "Matchs & résultats", "matchcenter"),
   section("Compte"),
+  // 12/09/2026 : le coach recevait des notifications (galerie publiee, demande d'affiliation) sans
+  // aucune entree pour les lire. La cloche de l'en-tete existe, mais elle ne se remarque pas.
+  item("dashboard", "Notifications", "notifications"),
   item("settings", "Mon profil", "settings/profile"),
 ];
 

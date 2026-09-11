@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, HelpCircle, Menu, Moon, Plus, Sun } from "lucide-react";
 import { useSession } from "@/lib/session-context";
+import { createClient } from "@/lib/supabase/client";
+import { countUnreadNotifications } from "@/lib/data/shared/notifications";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 
@@ -122,6 +124,21 @@ interface HeaderProps {
 
 export function Header({ onOpenMobileNav }: HeaderProps) {
   const pathname = usePathname();
+  // Le compteur de la cloche : sans lui, une notification arrive sans que personne ne le sache.
+  const [nonLues, setNonLues] = useState(0);
+  useEffect(() => {
+    let vivant = true;
+    countUnreadNotifications(createClient())
+      .then((n) => {
+        if (vivant) setNonLues(n);
+      })
+      .catch(() => {
+        /* la barre reste utilisable sans compteur */
+      });
+    return () => {
+      vivant = false;
+    };
+  }, [pathname]);
   const router = useRouter();
   const { ctx } = useSession();
   const [theme, setTheme] = useState<Theme>("dark");
@@ -191,9 +208,14 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
       <button
         aria-label="Notifications"
         onClick={() => router.push("/notifications")}
-        className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
+        className="relative flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
       >
         <Bell className="h-4 w-4" aria-hidden />
+        {nonLues > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-extrabold leading-none text-white">
+            {nonLues > 9 ? "9+" : nonLues}
+          </span>
+        )}
       </button>
 
       <button

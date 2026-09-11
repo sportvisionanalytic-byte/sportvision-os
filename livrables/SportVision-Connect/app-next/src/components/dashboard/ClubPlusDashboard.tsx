@@ -144,10 +144,13 @@ export function ClubPlusDashboard() {
         return;
       }
       const contentRows = (contentRes.data ?? []) as { id: string; title: string; team: string | null }[];
-      const contentInScope =
-        ctx.membership.teamScope.length === 0
-          ? contentRows
-          : contentRows.filter((row) => !row.team || ctx.membership.teamScope.includes(row.team));
+      // Périmètre vide : l'écran montrait tout, « mieux vaut trop que pas assez ». La base fait
+      // l'inverse depuis v158 : un coach sans équipe ne reçoit rien. L'application paraissait donc
+      // vide sans un mot d'explication. On garde la règle de la base, et on le DIT (12/09/2026,
+      // bandeau plus bas).
+      const contentInScope = ctx.membership.teamScope.length === 0
+        ? contentRows.filter((row) => !row.team)
+        : contentRows.filter((row) => !row.team || ctx.membership.teamScope.includes(row.team));
 
       const membershipItems: TodoItem[] = joinRequests
         .filter((req) => {
@@ -325,6 +328,25 @@ export function ClubPlusDashboard() {
           </h1>
         </div>
       </div>
+
+      {/* Coach sans aucune équipe : la base ne lui rend rien, et l'application paraissait
+          simplement vide. On le dit, avec la marche à suivre (12/09/2026). */}
+      {["coach", "team_manager", "sports_director"].includes(ctx.membership.role) &&
+        ctx.membership.teamScope.length === 0 && (
+          <Card className="flex flex-wrap items-center gap-3 border-warning-fg/40 bg-warning-bg p-4">
+            <div>
+              <div className="text-[13.5px] font-extrabold text-text">
+                Aucune équipe ne vous est encore rattachée.
+              </div>
+              <p className="mt-1 max-w-[560px] text-[12.5px] leading-relaxed text-text-soft">
+                Tant que c&apos;est le cas, votre calendrier, vos contenus et vos matchs restent
+                vides : il n&apos;y a rien à vous montrer. Demandez à un dirigeant du club de vous
+                rattacher à votre équipe, cela prend quelques secondes dans la fiche de
+                l&apos;équipe.
+              </p>
+            </div>
+          </Card>
+        )}
 
       {suitLesResultats && !!pendingResultsCount && (
         <Card className="flex flex-wrap items-center justify-between gap-3 border-brand-blue-electric/40 bg-info-bg p-4">
