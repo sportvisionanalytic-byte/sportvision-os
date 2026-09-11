@@ -177,10 +177,11 @@ try {
   t("un double clic ne part qu'en un seul appel", (await sql(`select count(*)::int n from notification_outbox where lower(recipient_email)='${recrue}'`))[0]?.n === 1);
   t("la fenetre montre le lien d'invitation (et pas seulement son titre)", (await pa.locator("#sv-modal textarea").count()) === 1, e1.modale.slice(0, 80));
   const fin = await pa.evaluate(() => (document.getElementById("sv-modal-ct")?.innerText || "").match(/Valable jusqu'au ([^\n]+)/)?.[1] || "");
-  // Le lien vit une heure (Auth > mailer_otp_exp). L'ecran affiche l'heure d'expiration ; la
+  // Le lien vit 24 h (Auth > mailer_otp_exp = 86400 s depuis le 11/09). L'ecran affiche l'heure d'expiration ; la
   // fonction doit annoncer la meme chose (c'est ce qu'elle met dans l'e-mail).
   t("l'ecran affiche l'heure d'expiration", /\d{1,2} \S+ à \d{2}:\d{2}/.test(fin), `affiche « ${fin} »`);
-  t("la fonction n'annonce pas plus d'une heure (e-mail compris)", new Date(corps1.expires_at).getTime() - Date.now() <= 3600e3 + 60e3,
+  const duree = new Date(corps1.expires_at).getTime() - Date.now();
+  t("la fonction annonce la duree reelle, 24 h (e-mail compris)", duree <= 86400e3 + 60e3 && duree >= 86400e3 - 300e3,
     `expires_at = ${corps1.expires_at} (version de la fonction anterieure au correctif ?)`);
   const prof = (await sql(`select p.role, p.prenom, p.email, (select string_agg(po.slug||':'||pa.role_pole, ',') from pole_affectations pa join poles po on po.id=pa.pole_id where pa.user_id=p.id) aff from profiles p where p.email='${recrue}'`))[0];
   t("profil cree : role photo, prenom, adresse en minuscules", prof?.role === "photo" && prof?.prenom === "Zoé", JSON.stringify(prof));
@@ -246,8 +247,8 @@ try {
   const tard = adresse("renvoi");
   await suppression(tard);
   const i1 = await inviter(admin.acces, { email: tard, prenom: "Zoé", nom: "Tard", role: "photo", pole_ids: [FOOT] });
-  await sql(`update auth.users set confirmation_sent_at = now() - interval '2 hours', invited_at = now() - interval '2 hours' where email='${tard}'`);
-  t("le lien d'origine, 2 h plus tard, est expire", /otp_expired/.test(await fragment(i1.corps.invitation_url)));
+  await sql(`update auth.users set confirmation_sent_at = now() - interval '25 hours', invited_at = now() - interval '25 hours' where email='${tard}'`);
+  t("le lien d'origine, 25 h plus tard, est expire", /otp_expired/.test(await fragment(i1.corps.invitation_url)));
   const i2 = await inviter(admin.acces, { email: tard, prenom: "Zoé", nom: "Tard", role: "photo", pole_ids: [FOOT] });
   t("une nouvelle invitation renvoie un NOUVEAU lien", i2.corps.renvoye === true && !!i2.corps.invitation_url, JSON.stringify(i2.corps).slice(0, 120));
   t("ce nouveau lien fonctionne", /access_token/.test(i2.corps.invitation_url ? await fragment(i2.corps.invitation_url) : ""));

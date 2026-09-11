@@ -7609,11 +7609,13 @@ async function lancerCascadeFullCom(clientId){
 // Prénom Nom », sans lien, sans bouton. Mesuré le 10/09/2026 sur la version en ligne.
 //
 // L'échéance affichée est celle que renvoie invite-collaborateur, qui suit la durée de vie réelle
-// du lien fixée par Supabase Auth (une heure) ; elle annonçait « 7 jours ».
+// du lien fixée par Supabase Auth (24 heures depuis le 11/09/2026, une heure avant) ; elle
+// annonçait « 7 jours ».
 function afficherLienInvitation(nom,email,url,expire,opts={}){
-  // Plafond d'une heure : tant que l'ancienne version de la fonction tourne, elle renvoie encore
-  // J+7. Si Auth > mailer_otp_exp change, ajuster ici ET VALIDITE_LIEN_S dans invite-collaborateur.
-  const fin=expire?Math.min(new Date(expire).getTime(),Date.now()+3600*1000):0;
+  // Plafond de 24 h (Auth > mailer_otp_exp = 86400 s depuis le 11/09/2026) : l'échéance affichée
+  // ne dépasse jamais la durée réelle du lien. Si ce réglage change, ajuster ici ET
+  // VALIDITE_LIEN_S dans invite-collaborateur.
+  const fin=expire?Math.min(new Date(expire).getTime(),Date.now()+86400*1000):0;
   const exp=fin?new Date(fin).toLocaleString('fr-FR',{day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'}):'';
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:14px">${opts.renvoi?'Nouveau lien d\'invitation':'Invitation envoyée'} — ${esc(nom||'')}</div>
@@ -7626,7 +7628,7 @@ function afficherLienInvitation(nom,email,url,expire,opts={}){
       </div>
       <div style="font-size:11.5px;margin-top:8px;color:${opts.emailEnFile===false?'var(--er)':'var(--ok)'}">${opts.emailEnFile===false?'⚠ L\'e-mail n\'a pas pu être mis en file d\'envoi : transmettez ce lien vous-même.':'✓ E-mail également envoyé à '+esc(email)}</div>
       <div style="font-size:11.5px;margin-top:10px;color:var(--t3);line-height:1.5">
-        ${opts.renvoi?'L\'ancien lien ne fonctionne plus. ':''}Le lien ne sert qu'une fois et expire au bout d'une heure.
+        ${opts.renvoi?'L\'ancien lien ne fonctionne plus. ':''}Le lien ne sert qu'une fois et expire au bout de 24 heures.
         S'il a expiré, relancez l'invitation avec la même adresse : un nouveau lien remplace l'ancien,
         sans créer de second compte.
       </div>
@@ -34182,7 +34184,7 @@ async function consumeRecoveryHashOS(){
       <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:10px">${perime?'Ce lien n\'est plus valable':'Lien impossible à utiliser'}</div>
       <div style="font-size:13.5px;color:var(--t2);line-height:1.6;margin-bottom:16px">
         ${perime
-          ? 'Un lien de connexion est à usage unique et expire au bout d\'une heure. Il devient aussi inutilisable dès qu\'un nouveau lien est demandé pour le même compte.'
+          ? 'Un lien de connexion est à usage unique et expire au bout de 24 heures. Il devient aussi inutilisable dès qu\'un nouveau lien est demandé pour le même compte.'
           : 'Ce lien n\'a pas pu être utilisé.'}
         <br><br>Demandez-en un nouveau ci-dessous, ou contactez votre administrateur SportVision.
       </div>
@@ -34227,7 +34229,7 @@ async function consumeRecoveryHashOS(){
     if(!prof||prof.id!==u.id){toast('Ce compte n\'a pas accès à SportVision OS.','er');return false;}
     if(prof.actif===false){
       // Recrue créée depuis Recrutement : son accès reste fermé tant que son intégration n'est
-      // pas terminée, mais son lien d'invitation (valable une heure) ne doit pas être perdu pour
+      // pas terminée, mais son lien d'invitation (valable 24 heures) ne doit pas être perdu pour
       // autant. Jusqu'ici elle lisait « Ce compte a été désactivé » — faux, et inquiétant — et
       // n'avait plus de lien valable le jour où l'administrateur ouvrait son accès. Elle choisit
       // donc son mot de passe maintenant, sans entrer dans l'OS : la session n'est PAS enregistrée.

@@ -62,7 +62,10 @@ function json(body: unknown, status = 200) {
 // envoi revient en `otp_expired`). Jusqu'ici l'e-mail et l'OS annoncaient « 7 jours » : une recrue
 // qui ouvrait son e-mail le lendemain tombait sur « Ce lien n'est plus valable » en ayant suivi
 // les consignes a la lettre. Si mailer_otp_exp change, cette valeur doit suivre.
-const VALIDITE_LIEN_S = 3600;
+// 11/09/2026 : mailer_otp_exp passe a 86400 s (24 h, decision de Fouka) — un e-mail retarde ou
+// ouvert le lendemain ne doit plus tomber sur un lien mort. Plafond equivalent dans l'OS
+// (afficherLienInvitation).
+const VALIDITE_LIEN_S = 86400;
 
 // Adresse canonique : Supabase Auth enregistre l'adresse en minuscules, mais la file d'envoi
 // gardait la saisie brute (« Nophotopix@gmail.Com » vu le 09/09). Une adresse qui ne peut pas

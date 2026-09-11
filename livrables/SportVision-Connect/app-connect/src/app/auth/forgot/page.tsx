@@ -79,9 +79,10 @@ export default function ForgotPage() {
               <h1 className="font-sora text-[28px] font-bold tracking-tight">Vérifiez votre boîte mail</h1>
               <p className="text-[15px] leading-relaxed text-text-tertiary">
                 Si un compte existe pour <span className="font-medium text-text">{email}</span>, un
-                lien de réinitialisation vient d&apos;être envoyé. Il est valable une heure.
+                lien de réinitialisation vient d&apos;être envoyé. Il est valable 24 heures.
                 {/* 10/09/2026 : cet écran disait « 30 minutes » alors que l'e-mail lui-même annonce
-                    une heure (request-password-reset, et mailer_otp_exp = 3600 s côté Supabase). */}
+                    une heure. 11/09/2026 : 24 heures, mailer_otp_exp = 86400 s côté Supabase et
+                    request-password-reset alignés (décision de Fouka). */}
               </p>
             </div>
             <Link

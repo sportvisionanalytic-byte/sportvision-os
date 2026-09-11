@@ -83,7 +83,9 @@ serve(async (req) => {
     // Compte inconnu ou erreur : même réponse générique, rien de plus.
     if (linkErr || !linkData?.user) return json(genericResponse, 200);
 
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
+    // 24 h : Auth > mailer_otp_exp = 86400 s depuis le 11/09/2026 (decision de Fouka). L'e-mail
+    // annonce cette echeance ; elle doit suivre le reglage Supabase, sinon il ment.
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await admin.rpc("enqueue_notification", {
       p_event_type: "password.reset.requested",

@@ -127,7 +127,7 @@ export default function LoginPage() {
   }
 
   // Nouveau lien de confirmation, depuis l'écran de connexion (10/09/2026) : c'est ici qu'arrive
-  // la personne dont le lien a expiré (1 h), a déjà servi, ou a été « consommé » par l'antivirus de
+  // la personne dont le lien a expiré (24 h), a déjà servi, ou a été « consommé » par l'antivirus de
   // sa messagerie. Sans ce bouton, la seule issue proposée était de recommencer l'inscription —
   // qui échoue, l'adresse étant prise.
   async function renvoyerConfirmation() {

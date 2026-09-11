@@ -582,7 +582,7 @@ try {
     await page.waitForTimeout(5000);
     const ecran = await texte(page);
     t("adresse inconnue : même réponse qu'une adresse connue (rien à deviner)", /Si un compte existe/.test(ecran), ecran.slice(0, 160));
-    t("durée annoncée cohérente avec l'e-mail (une heure)", /valable une heure/.test(ecran), ecran.slice(0, 220));
+    t("durée annoncée cohérente avec l'e-mail (24 heures)", /valable 24 heures/.test(ecran), ecran.slice(0, 220));
     await ctx.close();
 
     // Première session d'un compte jamais confirmé, par « mot de passe oublié » : le choix fait à
