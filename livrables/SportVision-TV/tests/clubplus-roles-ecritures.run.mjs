@@ -24,9 +24,13 @@ const MIGRATION = process.env.MIGRATION || "migration-decisions-clubplus-01-ecri
 let sql = readFileSync(ici(`./${TEST}`), "utf8");
 
 if (process.env.AVEC_MIGRATION === "1") {
-  const migration = readFileSync(ici(`../${MIGRATION}`), "utf8")
-    .replace(/^\s*begin;\s*$/m, "")
-    .replace(/^\s*commit;\s*$/m, "");
+  // MIGRATION peut en lister plusieurs, séparées par des virgules, jouées dans cet ordre (ex. les
+  // deux temps de club-donnees-restreintes, qui ne s'exécutent jamais l'un sans l'autre).
+  const migration = MIGRATION.split(",").map((f) => f.trim()).filter(Boolean)
+    .map((f) => readFileSync(ici(`../${f}`), "utf8")
+      .replace(/^\s*begin;\s*$/m, "")
+      .replace(/^\s*commit;\s*$/m, ""))
+    .join("\n");
   if (/^\s*(begin|commit);\s*$/im.test(migration)) throw new Error("la migration contient encore un begin/commit : elle serait validée");
   // Fonction de remplacement, pas chaîne : dans une chaîne de remplacement, « $$ » devient « $ »,
   // et tous les corps de fonction de la migration seraient cassés.
