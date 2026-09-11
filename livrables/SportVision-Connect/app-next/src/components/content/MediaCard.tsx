@@ -20,7 +20,7 @@ interface MediaCardProps {
 export function MediaCard({ asset, isFavorite, onToggleFavorite, onDownload }: MediaCardProps) {
   return (
     <Card className="group relative flex flex-col overflow-hidden hover:-translate-y-0.5 hover:border-brand-blue-pale hover:shadow-sv-card-hover">
-      <Link href={`/content/${asset.id}`} className="contents">
+      <Link href={asset.externalUrl ?? `/content/${asset.id}`} className="contents">
         <MediaThumb kind={asset.kind} className="aspect-[4/3] w-full">
           {asset.durationSeconds !== undefined && (
             <span className="absolute bottom-2 right-2 rounded-md bg-black/55 px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-white">

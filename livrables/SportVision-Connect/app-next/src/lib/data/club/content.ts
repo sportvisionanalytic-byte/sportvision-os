@@ -66,6 +66,17 @@ interface ClubMediaRow {
   created_at: string;
 }
 
+interface ClubGalleryRow {
+  album_id: string;
+  titre: string;
+  equipe: string | null;
+  event_date: string | null;
+  cover_url: string | null;
+  photos: number;
+  publie: boolean;
+  liens: unknown;
+}
+
 interface ClubCreationRow {
   id: string;
   title: string;
@@ -106,7 +117,7 @@ async function fetchVisibilityByRef(supabase: SupabaseClient, organizationId: st
 }
 
 export async function fetchClubMediaAssets(supabase: SupabaseClient, organizationId: string): Promise<MediaAsset[]> {
-  const [mediaRes, creationsRes, livrablesRes, visibilityByRef] = await Promise.all([
+  const [mediaRes, creationsRes, livrablesRes, galleriesRes, visibilityByRef] = await Promise.all([
     supabase
       .from("club_media")
       .select("id, title, type, team, source, link, tags, author_name, created_at")
@@ -126,6 +137,11 @@ export async function fetchClubMediaAssets(supabase: SupabaseClient, organizatio
       .from("club_media_livrables")
       .select("id, prestation_id, nom, type_livrable, date_validation, created_at, lien_url")
       .order("created_at", { ascending: false }),
+    // Galeries de production (media_albums, page dédiée galeries/page.tsx) : mêmes photos, pas de
+    // copie de table — media_club_galleries() est déjà la lecture RLS-correcte (membre du club OU
+    // staff SportVision affecté, v154). On ne relit ici que ce qu'il faut pour une carte dans la
+    // bibliothèque ; le lien "Copier"/QR Code reste sur l'écran Galeries, pas dupliqué ici.
+    supabase.rpc("media_club_galleries", { p_club_id: organizationId }),
     fetchVisibilityByRef(supabase, organizationId),
   ]);
 
@@ -209,7 +225,38 @@ export async function fetchClubMediaAssets(supabase: SupabaseClient, organizatio
     versions: [],
   }));
 
-  return [...fromMedia, ...fromCreations, ...fromLivrables];
+  const fromGalleries: MediaAsset[] = ((galleriesRes.data ?? []) as ClubGalleryRow[])
+    .filter((row) => row.publie)
+    .map((row) => ({
+      id: `galerie-${row.album_id}`,
+      organizationId,
+      name: row.titre,
+      kind: "photo",
+      mimeType: "",
+      fileUrl: "",
+      thumbnailUrl: row.cover_url ?? "",
+      sizeBytes: 0,
+      aspectRatio: "4:3",
+      teamId: row.equipe ?? undefined,
+      storageOrigin: "sportvision_delivered",
+      // La carte renvoie vers l'écran Galeries (lien à copier, QR code) plutôt que vers une fiche
+      // détail qui n'existe pas pour ce type de contenu — voir MediaCard.tsx.
+      externalUrl: "/galeries",
+      usageRights: "",
+      visibility: "organization",
+      downloadAllowed: false,
+      version: 1,
+      isFinalVersion: true,
+      status: "validated",
+      tags: [`${row.photos} photo${row.photos > 1 ? "s" : ""}`],
+      createdAt: row.event_date ?? new Date().toISOString(),
+      revisionCount: 0,
+      chapters: [],
+      comments: [],
+      versions: [],
+    }));
+
+  return [...fromMedia, ...fromCreations, ...fromLivrables, ...fromGalleries];
 }
 
 // ── Édition de la visibilité (Bible §17) ────────────────────────────────────────────────────
