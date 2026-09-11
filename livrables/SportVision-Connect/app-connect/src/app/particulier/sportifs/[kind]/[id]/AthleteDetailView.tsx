@@ -210,6 +210,17 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
                 Voir les photos
               </Link>
             )}
+            {/* Autorisations parentales (v176) : sans le droit à l'image signé, les médias où
+                l'enfant est identifié restent masqués, y compris pour sa famille. */}
+            {isClub && (
+              <Link
+                href={`/particulier/sportifs/${detail.kind}/${detail.ref_id}/autorisations`}
+                className="flex h-12 items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
+              >
+                <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">assignment_turned_in</span>
+                Ses autorisations
+              </Link>
+            )}
             {/* Reconnaissance du visage de l'enfant (v159/v161) : option facultative, réservée à un
                 enfant affilié à un club, comme les galeries. Le refus n'enlève rien. */}
             {isClub && (
