@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, canCreate } from "@/lib/permissions";
+import { canAccess, canCreate, administreLeClub } from "@/lib/permissions";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -109,10 +109,15 @@ export default function MatchCenterPage() {
   // le droit d'assigner une équipe et de vérifier un résultat en base. L'écran le lui refusait
   // encore, par déduction sur le rôle affiché. La vraie frontière reste la RLS, qui refuse un
   // coach sur une équipe hors de son périmètre — vérifié.
+  // 12/09/2026 — Le Président était resté au bord : il administre son club comme l'Owner Club+
+  // (is_club_admin le reconnaît en base depuis le 10/09), mais ces deux écrans testaient encore
+  // « admin » tout court. Il pouvait donc voir le Match Center sans pouvoir assigner une équipe
+  // ni vérifier un résultat.
+  const administre = administreLeClub(ctx);
   const canAssignTeam =
-    ctx.organization.type === "club" && (role === "admin" || role === "sports_director" || role === "external_cm");
+    ctx.organization.type === "club" && (administre || role === "sports_director" || role === "external_cm");
   const canVerifyResults =
-    ctx.organization.type === "club" && (role === "admin" || role === "sports_director" || role === "external_cm");
+    ctx.organization.type === "club" && (administre || role === "sports_director" || role === "external_cm");
 
   useEffect(() => {
     let cancelled = false;
@@ -196,7 +201,7 @@ export default function MatchCenterPage() {
   // L'admin et l'opérateur du club voient toutes les équipes ; un directeur sportif, seulement
   // les siennes — la RLS ne le laisserait de toute façon écrire que sur celles-là.
   const assignableTeams =
-    role === "admin" || role === "external_cm"
+    administre || role === "external_cm"
       ? (teams ?? [])
       : (teams ?? []).filter((t) => ctx.membership.teamScope.includes(t.name));
 

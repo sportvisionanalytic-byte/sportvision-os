@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, MessageSquarePlus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, canCreate } from "@/lib/permissions";
+import { canAccess, canCreate, administreLeClub } from "@/lib/permissions";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -73,7 +73,9 @@ export default function NewsroomPage() {
   // data/club/newsroom.ts § deleteClubNewsroomItem.
   // 10/09/2026 — L'opérateur du club supprime aussi : les actualités sont son métier, et la base
   // le lui accorde depuis la v108. `external_cm` est le rôle que porte un CM en espace délégué.
-  const canDelete = canWrite && (ctx.membership.role === "admin" || ctx.membership.role === "external_cm");
+  // 12/09/2026 — Le Président supprime aussi : il administre le club au même titre que l'Owner
+  // Club+ (administreLeClub, miroir de is_club_admin en base).
+  const canDelete = canWrite && (administreLeClub(ctx) || ctx.membership.role === "external_cm");
 
   const [items, setItems] = useState<NewsroomItemDetails[] | null>(null);
   const [loadError, setLoadError] = useState(false);

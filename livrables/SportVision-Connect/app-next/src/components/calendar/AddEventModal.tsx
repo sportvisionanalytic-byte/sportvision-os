@@ -70,9 +70,19 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
       isHome: isMatch ? isHome : undefined,
     })
       .then(() => onClose())
-      .catch(() => {
+      .catch((e: unknown) => {
         setSubmitting(false);
-        setError("Impossible de créer l'événement. Réessayez.");
+        // Un refus de droits n'est pas une panne : dire « Réessayez » à quelqu'un qui n'a pas le
+        // droit d'écrire le fait réessayer indéfiniment. Le message de la base passe tel quel.
+        const message = e instanceof Error ? e.message : "";
+        const refus = /droit|autoris|permission|42501|policy/i.test(message);
+        setError(
+          refus
+            ? "Vous n'avez pas le droit de créer un événement pour cette équipe. Demandez-le à un dirigeant du club."
+            : message && message.length < 160
+              ? message
+              : "Impossible de créer l'événement. Réessayez.",
+        );
       });
   }
 

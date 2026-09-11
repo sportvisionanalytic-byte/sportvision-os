@@ -1048,6 +1048,10 @@ const NAV={
     {id:'cockpit',lb:'Cockpit',ic:'check'},
     {id:'pre',lb:'Missions',ic:'pre'},
     {id:'livr',lb:'Livraisons',ic:'check'},
+    // 12/09/2026 — Le Mode Jour J etait atteignable depuis une fiche mission et depuis le menu
+    // mobile, mais pas depuis le menu sur poste fixe : le jour d'une mission, la supervision se
+    // cherchait. Il reprend sa place dans « Operations ».
+    {id:'jourj',lb:'Mode Jour J',ic:'pre'},
     // 08/09/2026 — Meme correction que pour l'admin, validee par Fouka : cet ecran est l'outil
     // quotidien de la production (creer un album, y verser les photos, regenerer les apercus
     // filigranes, construire les offres, lire les ventes) et il n'avait aucune entree de menu.
@@ -1063,6 +1067,11 @@ const NAV={
     {id:'kits',lb:'Matériel',ic:'kits'},
     // 11/09/2026 (v149) : ses finances, calculées par le système, validées par l'Admin/la compta.
     {type:'sep',lb:'Finance'},
+    // 12/09/2026 — « Remunerations » portait les seuls boutons « Valider » et « Transmettre a la
+    // compta » de tout l'OS, et n'etait dans aucun menu de poste fixe : le circuit de paiement des
+    // operateurs etait bloque des sa premiere etape, celle qui appartient a la Production.
+    // Il s'appelle ici « Remunerations equipe » pour ne pas se confondre avec « Mes finances ».
+    {id:'rem',lb:'Rémunérations équipe',ic:'col'},
     {id:'mesfinances',lb:'Mes finances',ic:'fin'},
     {type:'sep',lb:'Ressources'},
     {id:'form',lb:'Centre de formation',ic:'form'},
@@ -14185,13 +14194,14 @@ async function modalAjouterLien(prestationId){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Catégorie</label>
           <select id="ml-cat" class="l-inp" style="height:38px">
-            ${Object.entries(ML_CAT).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+            ${Object.entries(ML_CAT).map(([v,l])=>`<option value="${v}"${v==='rushs'?' selected':''}>${l}</option>`).join('')}
           </select></div>
         <div><label style="${L}">Type de médias</label>
           <select id="ml-type" class="l-inp" style="height:38px">
             ${Object.entries(ML_TYPE).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
           </select></div>
       </div>
+      <div style="font-size:11px;color:var(--t3);margin-top:-2px">La catégorie décide de la suite : <b>Rushs</b> = les fichiers bruts que la Production récupère. <b>Final</b> = le montage livré, le seul qui remonte au club et aux familles. « Dépôt » ne va nulle part, c'est un simple rangement.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Fournisseur</label>
           <select id="ml-four" class="l-inp" style="height:38px">
@@ -19632,13 +19642,13 @@ const SV_IDENTITE_CONTRAT={
   nomCommercial:'SportVision',
   raisonSociale:'Elkana Group',
   formeJuridique:'SAS',
-  adresse:'4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne',
+  adresse:'4 Place Pierre Semard, 77130 Montereau-Fault-Yonne',
   siren:'105 173 124',
   siret:'105 173 124 00014',
   rcs:'RCS Melun',
   ape:'APE 74.20Z',
   tvaIntra:'FR15 105 173 124',
-  email:'contact@sportvision.fr',
+  email:'contact@sportvision-an.fr',
 };
 
 // Libellés des catégories de la Banque de contrats (migration-contrats-v2-types-banque.sql).
@@ -19995,7 +20005,7 @@ async function genererAvoirPDF(id){
   <div>
     <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
     <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Elkana Group</div>
-    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>contact@sportvision.fr</div>
+    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>contact@sportvision-an.fr</div>
   </div>
   <div style="text-align:right">
     <div style="font-size:30px;font-weight:800;color:#F0445E;letter-spacing:-.01em">AVOIR</div>
@@ -20005,7 +20015,7 @@ async function genererAvoirPDF(id){
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px">
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Émetteur</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision</div>
-    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
+    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision-an.fr</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Destinataire</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${esc(cl.nom)||'—'}</div>
     <div style="font-size:12px;color:#555E73;line-height:1.7">${esc(cl.email)}${cl.telephone?'<br>'+esc(cl.telephone):''}${cl.ville?'<br>'+esc(cl.ville):''}</div></div>
@@ -20557,7 +20567,7 @@ async function imprimerDevis(id){
   <div>
     <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
     <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Elkana Group</div>
-    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>contact@sportvision.fr</div>
+    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>contact@sportvision-an.fr</div>
   </div>
   <div style="text-align:right">
     <div style="font-size:30px;font-weight:800;color:#366BFF;letter-spacing:-.01em">DEVIS</div>
@@ -20568,7 +20578,7 @@ async function imprimerDevis(id){
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px">
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Émetteur</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision</div>
-    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
+    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision-an.fr</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Destinataire</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${esc(c.nom||'—')}</div>
     <div style="font-size:12px;color:#555E73;line-height:1.7">${esc([c.prenom_contact,c.nom_contact].filter(Boolean).join(' '))}${c.email?'<br>'+esc(c.email):''}${c.telephone?'<br>'+esc(c.telephone):''}${c.ville?'<br>'+esc(c.ville):''}</div></div>
@@ -20790,7 +20800,7 @@ ${apercuBanner}
   <div>
     <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
     <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Elkana Group</div>
-    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>contact@sportvision.fr</div>
+    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>contact@sportvision-an.fr</div>
   </div>
   <div style="text-align:right">
     <div style="font-size:30px;font-weight:800;color:#2ECC8A;letter-spacing:-.01em">FACTURE</div>
@@ -20802,7 +20812,7 @@ ${apercuBanner}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px">
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Prestataire</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision</div>
-    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
+    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision-an.fr</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Client</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${esc(c.nom||'—')}</div>
     <div style="font-size:12px;color:#555E73;line-height:1.7">${esc([c.prenom_contact,c.nom_contact].filter(Boolean).join(' '))}${c.email?'<br>'+esc(c.email):''}${c.telephone?'<br>'+esc(c.telephone):''}${c.ville?'<br>'+esc(c.ville):''}</div></div>
@@ -20828,7 +20838,7 @@ ${apercuBanner}
 <div style="border-top:1px solid #E8EBF4;padding-top:20px;font-size:11px;color:#8891A8;line-height:1.6">
   Paiement par virement bancaire à 30 jours. Pas d'escompte pour paiement anticipé.<br>
   Pénalité de retard : taux d'intérêt légal x3. Indemnité forfaitaire pour frais de recouvrement : 40 €.<br>
-  SportVision — Elkana Group, SAS — 4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne — RCS Melun 105 173 124
+  SportVision — Elkana Group, SAS — 4 Place Pierre Semard, 77130 Montereau-Fault-Yonne — RCS Melun 105 173 124
 </div>
 </div></body></html>`);
     win.document.close();

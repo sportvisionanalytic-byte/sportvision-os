@@ -8,6 +8,7 @@ import { CALENDAR_EVENT_KIND_LABELS, type CalendarEvent, type CalendarEventKind 
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { TeamSelector } from "@/components/ui/TeamSelector";
+import { fetchClubTeams } from "@/lib/data/club/teams";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -228,12 +229,36 @@ export default function CalendarPage() {
   // Liste dérivée des valeurs `team` réellement présentes pour ce club (jamais une liste
   // inventée) — calculée sur `events` non filtré pour que les deux équipes restent proposables
   // même quand un filtre de type est déjà actif.
+  //
+  // 12/09/2026 : elle ne suffisait pas. Sur un club neuf, ou sur une équipe qui n'a encore aucun
+  // événement, cette liste était vide, le sélecteur d'équipe disparaissait du formulaire, et
+  // « Ajouter » restait grisé sans un mot : on ne pouvait littéralement pas créer son premier
+  // match. Les équipes réelles du club (club_teams) s'y ajoutent donc.
+  const [teamsDuClub, setTeamsDuClub] = useState<string[]>([]);
+  useEffect(() => {
+    if (!calendarOrgId || isGenericOrg) return;
+    let annule = false;
+    fetchClubTeams(createClient(), calendarOrgId)
+      .then((equipes) => {
+        if (!annule) setTeamsDuClub(equipes.map((e) => e.name));
+      })
+      .catch(() => {
+        /* le calendrier fonctionne sans : la liste se limitera aux équipes déjà vues */
+      });
+    return () => {
+      annule = true;
+    };
+  }, [calendarOrgId, isGenericOrg]);
+
   const availableTeams = useMemo(
     () =>
-      Array.from(new Set((events ?? []).map((e) => e.teamName).filter((t): t is string => Boolean(t)))).sort((a, b) =>
-        a.localeCompare(b, "fr"),
-      ),
-    [events],
+      Array.from(
+        new Set([
+          ...(events ?? []).map((e) => e.teamName).filter((t): t is string => Boolean(t)),
+          ...teamsDuClub,
+        ]),
+      ).sort((a, b) => a.localeCompare(b, "fr")),
+    [events, teamsDuClub],
   );
 
   // Combien de lignes une case de mois peut porter : mesure sur ce que le club contient
