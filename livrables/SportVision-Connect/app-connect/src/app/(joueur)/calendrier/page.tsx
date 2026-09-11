@@ -52,6 +52,36 @@ export default async function CalendrierPage() {
     }
   }
 
+  // Les MATCHS de l'équipe (12/09/2026). Ils vivent dans `club_matches`, pas dans
+  // `club_calendar_events` : depuis le 04/09 tout match saisi dans Club+ y est routé, et ce
+  // calendrier n'en lisait aucun — 677 matchs réels invisibles pour les familles. La policy
+  // `cma_family_select` (is_family_of_team) borne déjà la lecture à l'équipe de l'enfant : on ne
+  // filtre pas une seconde fois côté application, on lit ce que la base accepte de rendre.
+  if (player?.club) {
+    const { data: matchRows } = await supabase
+      .from("club_matches")
+      .select("id, match_date, kickoff_time, team, opponent, lieu, is_home, sport_status")
+      .eq("club_id", player.club.id)
+      .not("match_date", "is", null)
+      .order("match_date", { ascending: true });
+
+    for (const row of matchRows ?? []) {
+      const adversaire = (row.opponent as string | null) || "adversaire à confirmer";
+      const etat = (row.sport_status as string | null) ?? "scheduled";
+      events.push({
+        id: `match-${row.id}`,
+        kind: "match",
+        title: row.is_home === false ? `Déplacement à ${adversaire}` : `Match contre ${adversaire}`,
+        date: row.match_date as string,
+        time: (row.kickoff_time as string | null) ?? null,
+        location: (row.lieu as string | null) ?? null,
+        clubName: player.club.nom,
+        teamName: (row.team as string | null) ?? null,
+        mention: etat === "postponed" ? "Reporté" : etat === "cancelled" ? "Annulé" : null,
+      });
+    }
+  }
+
   if (player?.playerId) {
     const { data: profileRow } = await supabase
       .from("player_profiles")

@@ -26,8 +26,13 @@ export interface ParticulierEvent {
 
 const TYPE_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   match: { label: "Match", color: "#8CA9FF", bg: "rgba(79,125,255,.16)" },
+  // Un match reporté ou annulé se dit, il ne se range pas sous « Événement » (12/09/2026, v166).
+  match_reporte: { label: "Match reporté", color: "#FBBF24", bg: "rgba(251,191,36,.14)" },
+  match_annule: { label: "Match annulé", color: "#F472B6", bg: "rgba(244,114,182,.14)" },
+  entrainement: { label: "Entraînement", color: "#C7C7DE", bg: "rgba(255,255,255,.08)" },
   shooting: { label: "Shooting", color: "#C084FC", bg: "rgba(168,85,247,.16)" },
   tournoi: { label: "Événement SportVision", color: "#22D3EE", bg: "rgba(34,211,238,.14)" },
+  contenu: { label: "Événement du club", color: "#C084FC", bg: "rgba(168,85,247,.16)" },
 };
 
 function formatDate(iso: string) {

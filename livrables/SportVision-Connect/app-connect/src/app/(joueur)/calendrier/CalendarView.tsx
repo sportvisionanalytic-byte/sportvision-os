@@ -15,6 +15,9 @@ export interface CalendarEventData {
   location: string | null;
   clubName: string | null;
   teamName: string | null;
+  /** « Reporté » ou « Annulé » pour un match dont l'état sportif n'est plus « programmé » (v165).
+   *  Absent pour tout le reste : un événement normal ne porte aucune mention. */
+  mention?: string | null;
 }
 
 const TYPE_BADGES: Record<string, { label: string; color: string; bg: string }> = {
@@ -211,7 +214,7 @@ function EventGroups({
                     className="ml-auto flex-none rounded-sv-pill px-2.5 py-1 text-[11px] font-medium"
                     style={{ color: badge.color, background: badge.bg }}
                   >
-                    {badge.label}
+                    {ev.mention ? `${badge.label} · ${ev.mention.toLowerCase()}` : badge.label}
                   </span>
                 </button>
               );
@@ -407,6 +410,13 @@ function EventDetail({ event, onClose }: { event: CalendarEventData; onClose: ()
           </button>
         </div>
         <h2 className="font-sora text-[22px] font-bold tracking-tight">{event.title}</h2>
+        {event.mention && (
+          <p className="rounded-sv border border-danger-border bg-danger-bg px-4 py-3 text-[14px] font-semibold text-danger">
+            {event.mention === "Reporté"
+              ? "Ce match a été reporté par le club. Une nouvelle date vous sera communiquée."
+              : "Ce match a été annulé par le club."}
+          </p>
+        )}
         <div className="flex flex-col gap-3">
           {facts.map((f) => (
             <div key={f.label} className="flex items-center gap-3">

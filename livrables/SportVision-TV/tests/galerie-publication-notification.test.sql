@@ -5,7 +5,8 @@
 -- (Connect : joueur affilié, parent confirmé) la voient arriver.
 -- Ce test tient pour vrai : le coach de l'équipe, le joueur et son parent sont prévenus ; le coach
 -- d'une autre équipe, un joueur d'une autre équipe et un parent non confirmé ne le sont pas ;
--- repasser la galerie en brouillon puis la republier ne prévient pas deux fois.
+-- chacun est envoyé sur une page qui existe pour lui ; repasser la galerie en brouillon puis la
+-- republier ne prévient pas deux fois.
 -- Décor fictif, tout est annulé.
 
 begin;
@@ -60,8 +61,18 @@ select pg_temp.note('galerie en brouillon : personne n''est prévenu', '∅', pg
 update media_albums set status = 'published', published_at = now() where id = (select id from a);
 select pg_temp.note('à la publication : le coach de l''équipe, le joueur et son parent confirmé',
   'zz-gp-coach13, zz-gp-joueur13, zz-gp-parent13', pg_temp.prevenus());
-select pg_temp.note('la notification dit où aller', '/galeries|/photos',
-  (select string_agg(distinct target_href, '|' order by target_href) from member_notifications where title like '%ZZ Galerie U13%' or body like '%ZZ Galerie U13%'));
+-- Chacun est envoyé sur une page qui existe POUR LUI (v168) : le parent était renvoyé vers
+-- « /photos », page de l'Espace joueur, qui le redirigeait chez lui sans lui montrer les photos.
+select pg_temp.note('le coach va aux galeries du club', 'oui',
+  (select case when count(*) = 1 then 'oui' else 'NON' end from member_notifications n
+    where n.user_id = 'fbfbfbfb-0000-0000-0000-000000000001' and n.target_href like '/galeries?galerie=%'));
+select pg_temp.note('le joueur va à ses photos', 'oui',
+  (select case when count(*) = 1 then 'oui' else 'NON' end from member_notifications n
+    where n.user_id = 'fbfbfbfb-0000-0000-0000-000000000003' and n.target_href like '/photos?galerie=%'));
+select pg_temp.note('le parent va aux photos de son enfant, pas dans l''espace joueur', 'oui',
+  (select case when count(*) = 1 then 'oui' else 'NON' end from member_notifications n
+    where n.user_id = 'fbfbfbfb-0000-0000-0000-000000000004'
+      and n.target_href like '/particulier/sportifs/club/%/photos?galerie=%'));
 update media_albums set status = 'draft' where id = (select id from a);
 update media_albums set status = 'published', published_at = now() where id = (select id from a);
 select pg_temp.note('republier ne prévient pas deux fois', '3',
