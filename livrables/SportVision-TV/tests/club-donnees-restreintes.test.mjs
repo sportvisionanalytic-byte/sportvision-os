@@ -4,9 +4,10 @@
 //   1. Identifiants Stripe : Owner Club+, Président (+ Admin SportVision, Compta dans l'OS).
 //      SIRET : les mêmes, plus Secrétaire et Trésorier. Jamais le CM SportVision.
 //   2. Coordonnées des AUTRES membres (téléphone ; e-mail d'un encadrant invité) : Owner Club+,
-//      Président, CM SportVision du club, Secrétaire, Trésorier. Chacun lit sa propre fiche.
-//   3. Sponsors et montants : Owner Club+, Président, CM SportVision du club, Secrétaire,
-//      Trésorier, Responsable sponsors.
+//      Président, CM SportVision du club, CM externe (depuis le 11/09 au soir), Secrétaire,
+//      Trésorier. Chacun lit sa propre fiche.
+//   3. Sponsors et montants : Owner Club+, Président, CM SportVision du club, CM externe (idem),
+//      Secrétaire, Trésorier, Responsable sponsors.
 //
 // POURQUOI CE TEST, EN PLUS DU TEST SQL. tests/club-donnees-restreintes.test.sql prouve les
 // migrations AVANT leur exécution, en transaction annulée. Celui-ci prouve, APRÈS, que la base de
@@ -166,14 +167,18 @@ async function preparer() {
 
 // ── 1. DONNÉES ───────────────────────────────────────────────────────────────────────────────
 // Les listes des décisions. Tout le monde n'y figurant pas doit « ne pas lire ».
+// cm_externe (CM invité directement par le club) : ajouté à l'annuaire et aux sponsors le 11/09 au
+// soir, décision de Fouka « mêmes droits que le CM SportVision » (migration-blocages-review-1). Il
+// reste hors du SIRET et de Stripe, comme le CM SportVision, et n'ouvre pas la fiche d'équipe
+// (equipe_apercu), d'où « e-mail invité » inchangé.
 const LISTES = {
   stripe: ["admin", "president"],
   siret: ["admin", "president", "secretaire", "tresorier"],
-  annuaire: ["admin", "president", "secretaire", "tresorier", "cm_sportvision"],
+  annuaire: ["admin", "president", "secretaire", "tresorier", "cm_sportvision", "cm_externe"],
   "e-mail invité": ["admin", "president", "cm_sportvision"],
-  sponsors: ["admin", "president", "secretaire", "tresorier", "sponsor_mgr", "cm_sportvision"],
-  montants: ["admin", "president", "secretaire", "tresorier", "sponsor_mgr", "cm_sportvision"],
-  "opérations sponsor": ["admin", "president", "secretaire", "tresorier", "sponsor_mgr", "cm_sportvision"],
+  sponsors: ["admin", "president", "secretaire", "tresorier", "sponsor_mgr", "cm_sportvision", "cm_externe"],
+  montants: ["admin", "president", "secretaire", "tresorier", "sponsor_mgr", "cm_sportvision", "cm_externe"],
+  "opérations sponsor": ["admin", "president", "secretaire", "tresorier", "sponsor_mgr", "cm_sportvision", "cm_externe"],
 };
 
 async function mesurerDonnees(d) {
