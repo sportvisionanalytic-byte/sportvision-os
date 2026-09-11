@@ -74,8 +74,9 @@ try {
   t("détail mission : coordination 10 € et terrain 55 € sur la même ligne, acquise", /ZZ U13.* 10 € 55 € .*Acquis/.test(txt), (txt.match(/ZZ U13.{0,60}/) || [""])[0]);
   t("prime ventes : le calcul résumé puis les ventes, « Pris en compte »", /CA encaissé éligible 100 € HT/.test(txt) && /Prime calculée 5 €/.test(txt) && /Pris en compte/.test(txt));
   await page.locator("tr.mf-clic", { hasText: "ZZ U13" }).click(); await attendre(2500);
-  t("une mission se clique et ouvre sa fiche", (await page.locator("text=SV-2026").count()) > 1 && (await page.locator(".modal, [role=dialog], #modal-bg.on, .mo.on").count()) > 0);
-  await page.keyboard.press("Escape"); await attendre(500);
+  t("une mission se clique et ouvre sa fiche", ((await page.locator("#sv-modal-ct").innerText().catch(() => "")) || "").includes(m1.reference || "SV-"),
+    ((await page.locator("#sv-modal-ct").innerText().catch(() => "")) || "").replace(/\s+/g, " ").slice(0, 80));
+  await page.evaluate(() => window.closeModal && window.closeModal()); await attendre(600);
   await page.setViewportSize({ width: 390, height: 844 }); await attendre(1200);
   const deborde = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   t("mobile 390 px : pas de défilement horizontal de la page", !deborde);
