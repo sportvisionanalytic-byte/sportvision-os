@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-09-11
+
+### Finance du Responsable Production ; chasse aux petits défauts OS et Club+
+
+- Module Finance du Responsable Production (v148 à v150) : quatre blocs séparés (terrain, coordination, prime ventes, frais), fixe tiré du barème de pôle existant, prime ventes sur le CA encaissé HT net de remboursements par familles cochées, statuts prévisionnel, acquis (livraison validée), validé, transmis compta, payé. Écrans « Mes finances » (Production) et « Finance Production » (Admin, compta, Secrétariat)
+- Principe tranché par Fouka : il peut s'affecter lui-même, mais sa rémunération vient de la grille ; tout autre montant part en validation Admin, et il ne valide, ne transmet ni ne règle jamais ses propres montants ni ses frais
+- Trois trous fermés à l'audit : le montant recommandé venait du navigateur (falsifiable), la Production pouvait valider sa propre rémunération et ses propres notes de frais
+- Aucun taux inventé : coordination et prime ventes restent à 0 € tant que Fouka ne les a pas réglés ; Christian n'a pas encore de niveau opérateur
+- Chasse aux défauts sur 212 écrans : fil d'activité qui exposait les rémunérations et la finance au commercial et à la Production de tous les pôles (v144), accueil CM qui ne montrait jamais les prestations à venir (v146), coéquipiers invisibles des opérateurs (v143), compteurs de présences et de résultats incohérents (v142, v145, v147), plus une dizaine de petits défauts d'affichage
+- Club+ : le Centre communication devient le planning éditorial du CM (v141), testé de bout en bout sur Villemomble ; une mission regroupée compte pour une seule présence
+
+---
+
 ## 2026-09-10
 
 ### Circuit mission, rémunération et rentabilité figé ; recrutement cloisonné
