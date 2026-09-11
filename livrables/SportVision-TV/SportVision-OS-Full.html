@@ -4501,6 +4501,19 @@ function _visePrecisementUneLigne(path){
 // ni ignorer silencieusement un objet d'erreur comme si c'était un succès.
 function sbErr(r){return !!(r&&typeof r==='object'&&!Array.isArray(r)&&(r.code||r.message));}
 
+// ── `clients` : jamais `*`, jamais `siret` (11/09/2026) ──────────────────────
+// Décision de Fouka : le CM SportVision ne voit pas le SIRET. La colonne clients.siret est
+// fermée en lecture à tous les comptes (migration-os-cm-siret-client-2-colonne.sql) ; seuls
+// ceux qui en ont l'usage la lisent, par rpc/client_siret. Or PostgREST fait échouer TOUTE la
+// requête (42501) dès qu'elle demande une colonne fermée, `*` compris — pour tous les rôles,
+// direction comprise. Donc, sur `clients` :
+//   - lectures et jointures : une liste de colonnes, jamais l'étoile → CLIENTS_COLONNES ;
+//   - POST/PATCH : sbFetch envoie `return=representation`, qui renvoie `*` sans liste → toujours
+//     `select=id`.
+// Liste = toutes les colonnes de `clients` sauf siret, au 11/09/2026 (une colonne ajoutée plus
+// tard devra aussi recevoir son `grant select`, voir la migration).
+const CLIENTS_COLONNES='id,statut,type_client,nom,nom_contact,prenom_contact,email,telephone,ville,code_postal,adresse,sport,ligue,division,origine_prospect,notes,created_by,created_at,updated_at,prochaine_action,date_prochaine_action,score_priorite,promo_bienvenue_disponible,pennylane_customer_id,cm_id,statut_relation,etape_pipeline,logo_url,pole_id,photo_preset_name,photo_preset_notes';
+
 // ── TRADUIRE UNE ERREUR AVANT DE L'AFFICHER ─────────────────────────────────
 // Jusqu'ici, environ 180 endroits ecrivaient `msgErreur(r,'Action impossible.')`. La phrase
 // francaise n'etait donc utilisee que si Postgres ne disait rien — c'est-a-dire presque
@@ -5378,7 +5391,8 @@ async function creerClient(){
     // pas encore chargé au moment de l'ouverture du formulaire, cas rare) → pole_id omis, la
     // colonne retombe sur son DEFAULT (pole_football_id()), comportement inchangé d'avant Basket.
     const polePicked=(S.allPoles||[]).find(p=>p.id===document.getElementById('fc-pole')?.value);
-    const r=await sbFetch('clients',{method:'POST',body:{
+    // select=id : le retour sans liste demanderait `*`, donc siret, fermé en lecture (voir CLIENTS_COLONNES).
+    const r=await sbFetch('clients?select=id',{method:'POST',body:{
       nom,
       type_client:document.getElementById('fc-type').value,
       statut:document.getElementById('fc-statut')?.value||'prospect',
@@ -5414,7 +5428,7 @@ async function creerClient(){
       const rc=await sbFetch('contrats',{method:'POST',body:contratPayload});
       if(!sbErr(rc)){
         contratMsg=' Contrat créé.';
-        if(contratPayload.statut==='actif')await sbFetch('clients?id=eq.'+created.id,{method:'PATCH',body:{statut:'partenaire'}});
+        if(contratPayload.statut==='actif')await sbFetch('clients?id=eq.'+created.id+'&select=id',{method:'PATCH',body:{statut:'partenaire'}});
       }else contratMsg=' (contrat non créé : '+(msgErreur(rc,'erreur'))+')';
     }
     closeModal();
@@ -6405,7 +6419,7 @@ function renderClientsTable(){
 }
 
 async function crmAvancerStatut(id,statut){
-  const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
+  const r=await sbFetch('clients?id=eq.'+id+'&select=id',{method:'PATCH',body:{statut}});
   if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
   const lb={qualifié:'Client qualifié.',devis_envoyé:'Devis à envoyer.',négociation:'En négociation.',partenaire:'Nouveau partenaire !',client:'Client signé !'}[statut]||'Statut mis à jour.';
   toast(lb,'ok');
@@ -7603,7 +7617,7 @@ async function chargerCmAssignSelect(clientId,currentCmId){
 }
 
 async function assignerCmClient(clientId,cmId){
-  const r=await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{cm_id:cmId||null}});
+  const r=await sbFetch('clients?id=eq.'+clientId+'&select=id',{method:'PATCH',body:{cm_id:cmId||null}});
   if(sbErr(r)){toast('Erreur affectation CM','er');return;}
   const idx=_clientsCache.findIndex(c=>c.id===clientId);
   if(idx>=0)_clientsCache[idx].cm_id=cmId||null;
@@ -7938,7 +7952,7 @@ async function modifierClient(id){
     // entre pôles (readonly de fait, pas juste visuel). sport dérivé du pôle choisi, comme pour la
     // création — remplace l'ancienne saisie libre fce-sport.
     const poleEditPicked=(S.allPoles||[]).find(p=>p.id===document.getElementById('fce-pole')?.value);
-    const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{
+    const r=await sbFetch('clients?id=eq.'+id+'&select=id',{method:'PATCH',body:{
       nom,
       type_client:document.getElementById('fce-type').value||null,
       statut:document.getElementById('fce-statut').value,
@@ -9419,7 +9433,7 @@ async function sauvegarderContact(clientId){
       }else if(next)score+=5;
       patchCli.score_priorite=Math.max(0,score);
     }catch(e){}
-    if(Object.keys(patchCli).length)await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:patchCli}).catch(()=>{});
+    if(Object.keys(patchCli).length)await sbFetch('clients?id=eq.'+clientId+'&select=id',{method:'PATCH',body:patchCli}).catch(()=>{});
     closeModal();
     toast('Contact enregistré.','ok');
     setTimeout(()=>{
@@ -19633,7 +19647,7 @@ function contratConditionsParticulieresHTML(type,x){
 
 // Construit le document HTML complet d'un contrat (clauses générales + conditions
 // particulières par type — la « Banque de contrats ») à partir d'une ligne `contrats`
-// déjà chargée avec ses clients(*). Utilisé à la fois par genererContratPDF (aperçu/
+// déjà chargée avec son client (CLIENTS_COLONNES). Utilisé à la fois par genererContratPDF (aperçu/
 // impression) et envoyerContratParEmail (envoi direct) : une seule source du texte
 // contractuel, jamais deux implémentations qui pourraient diverger silencieusement.
 // Retourne {numContrat, styleTag, pageHtml} — pageHtml est le contenu de <div class="page">,
@@ -19751,7 +19765,8 @@ function _construireContratHTML(c){
 
 async function genererContratPDF(id){
   try{
-    const cArr=await sbFetch(`contrats?id=eq.${id}&select=*,clients(*)`);
+    // L'étoile sur clients demanderait siret, fermé en lecture : la requête entière échouerait (voir CLIENTS_COLONNES).
+    const cArr=await sbFetch(`contrats?id=eq.${id}&select=*,clients(${CLIENTS_COLONNES})`);
     const c=cArr?.[0];
     if(!c){toast('Contrat introuvable.');return;}
     const {numContrat,styleTag,pageHtml}=_construireContratHTML(c);
@@ -19813,7 +19828,7 @@ async function _sendContratEmailConfirm(id){
   const btn=document.querySelector('#sv-modal .mf .btn.bp');
   if(btn){btn.disabled=true;btn.textContent='Envoi en cours…';}
   try{
-    const cArr=await sbFetch(`contrats?id=eq.${id}&select=*,clients(*)`);
+    const cArr=await sbFetch(`contrats?id=eq.${id}&select=*,clients(${CLIENTS_COLONNES})`);
     const c=cArr?.[0];
     if(!c)throw new Error('Contrat introuvable.');
     const {numContrat,styleTag,pageHtml}=_construireContratHTML(c);
@@ -19845,7 +19860,7 @@ async function _sendContratEmailConfirm(id){
 // ── PDF Avoir ─────────────────────────────────────────────────────────────────
 async function genererAvoirPDF(id){
   try{
-    const aArr=await sbFetch(`avoirs?id=eq.${id}&select=*,clients(*),prestation:prestations(reference,date_prestation)`);
+    const aArr=await sbFetch(`avoirs?id=eq.${id}&select=*,clients(${CLIENTS_COLONNES}),prestation:prestations(reference,date_prestation)`);
     const a=aArr?.[0];
     if(!a){toast('Avoir introuvable.');return;}
     const cl=a.clients||{};
@@ -20231,7 +20246,7 @@ async function creerDevis(){
       return;
     }
     if(document.getElementById('dv-promo-apply')?.checked){
-      const rPromo=await sbFetch('clients?id=eq.'+cli,{method:'PATCH',body:{promo_bienvenue_disponible:false}}).catch(()=>({code:'network_error'}));
+      const rPromo=await sbFetch('clients?id=eq.'+cli+'&select=id',{method:'PATCH',body:{promo_bienvenue_disponible:false}}).catch(()=>({code:'network_error'}));
       if(sbErr(rPromo))toast('Devis créé, mais la promo de bienvenue n\'a pas pu être marquée consommée — vérifiez le client.','wa');
     }
     closeModal();toast('Devis créé.','ok');
@@ -20334,7 +20349,7 @@ async function sauvegarderDevis(id){
         try{
           const cl=await sbFetch('clients?select=id,statut&id=eq.'+dv.client_id);
           if(cl&&cl[0]&&['prospect','qualifié','devis_envoyé'].includes(cl[0].statut)){
-            const rCl=await sbFetch('clients?id=eq.'+dv.client_id,{method:'PATCH',body:{statut:'négociation'}});
+            const rCl=await sbFetch('clients?id=eq.'+dv.client_id+'&select=id',{method:'PATCH',body:{statut:'négociation'}});
             if(sbErr(rCl))toast('Devis accepté, mais le client n\'a pas pu être avancé dans le pipeline.','wa');
           }
         }catch(e){}
@@ -20370,7 +20385,7 @@ async function envoyerDevis(id){
     if(dv?.client_id){
       const cl=await sbFetch('clients?select=id,statut&id=eq.'+dv.client_id).catch(()=>[]);
       if(cl&&cl[0]&&['prospect','qualifié'].includes(cl[0].statut)){
-        const rCl=await sbFetch('clients?id=eq.'+dv.client_id,{method:'PATCH',body:{statut:'devis_envoyé'}}).catch(()=>({code:'network_error'}));
+        const rCl=await sbFetch('clients?id=eq.'+dv.client_id+'&select=id',{method:'PATCH',body:{statut:'devis_envoyé'}}).catch(()=>({code:'network_error'}));
         if(sbErr(rCl))toast('Devis envoyé, mais le client n\'a pas pu être avancé dans le pipeline.','wa');
       }
     }
@@ -20399,7 +20414,7 @@ async function envoyerDevis(id){
 // ── PDF Devis ─────────────────────────────────────────────────────────────────
 async function imprimerDevis(id){
   try{
-    const dArr=await sbFetch(`devis?id=eq.${id}&select=*,clients(*),prestation:prestations(id,reference,date_prestation,lieu,description_besoin,livrables_demandes)`);
+    const dArr=await sbFetch(`devis?id=eq.${id}&select=*,clients(${CLIENTS_COLONNES}),prestation:prestations(id,reference,date_prestation,lieu,description_besoin,livrables_demandes)`);
     const d=dArr?.[0];
     if(!d){toast('Devis introuvable.');return;}
     const c=d.clients||{};
@@ -20616,7 +20631,7 @@ async function getOrCreateFacture(prestationId){
 // ── PDF Facture ───────────────────────────────────────────────────────────────
 async function imprimerFacture(id){
   try{
-    const pArr=await sbFetch(`prestations?id=eq.${id}&select=*,clients(*),devis(id,numero,statut,total_ht,total_ttc,tva_pct,lignes,remise_pct,remise_montant)`);
+    const pArr=await sbFetch(`prestations?id=eq.${id}&select=*,clients(${CLIENTS_COLONNES}),devis(id,numero,statut,total_ht,total_ttc,tva_pct,lignes,remise_pct,remise_montant)`);
     const p=pArr?.[0];
     if(!p){toast('Prestation introuvable.');return;}
     const c=p.clients||{};
@@ -21455,7 +21470,7 @@ function renderPipeline(){
 
 async function avancerPipeline(id,statut){
   try{
-    const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
+    const r=await sbFetch('clients?id=eq.'+id+'&select=id',{method:'PATCH',body:{statut}});
     if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');return;}
     const lb={prospect:'Prospect',qualifié:'Qualifié',devis_envoyé:'Devis envoyé',négociation:'Négociation',partenaire:'Partenaire',client:'Client'}[statut]||statut;
     toast('→ '+lb,'ok');
@@ -36732,7 +36747,7 @@ async function sauvegarderContrat(){
       try{
         const cl=await sbFetch('clients?select=id,statut&id=eq.'+clientId);
         if(cl&&cl[0]&&cl[0].statut!=='partenaire'){
-          const rCl=await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{statut:'partenaire'}});
+          const rCl=await sbFetch('clients?id=eq.'+clientId+'&select=id',{method:'PATCH',body:{statut:'partenaire'}});
           if(sbErr(rCl))toast('Contrat créé, mais le statut du client n\'a pas pu être mis à jour en "partenaire".','wa');
         }
       }catch(e){}
@@ -36930,7 +36945,7 @@ async function mettreAJourContrat(id){
         cidPourCascade=cid;
         const cl=await sbFetch('clients?select=id,statut&id=eq.'+cid);
         if(cl&&cl[0]&&cl[0].statut!=='partenaire'){
-          const rCl=await sbFetch('clients?id=eq.'+cid,{method:'PATCH',body:{statut:'partenaire'}});
+          const rCl=await sbFetch('clients?id=eq.'+cid+'&select=id',{method:'PATCH',body:{statut:'partenaire'}});
           if(sbErr(rCl))toast('Contrat mis à jour, mais le statut du client n\'a pas pu être mis à jour en "partenaire".','wa');
         }
       }
