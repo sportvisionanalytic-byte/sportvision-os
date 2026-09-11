@@ -66,12 +66,21 @@ try {
   await page.evaluate(() => window.switchView("mesfinances")); await attendre(5000);
   let txt = (await page.locator("#mf-real").innerText()).replace(/\s+/g, " ");
   t("les quatre blocs, séparés", /Fixe \/ forfait/.test(txt) && /Prime coordination/.test(txt) && /Missions terrain/.test(txt) && /Prime ventes/.test(txt) && /Frais remboursables/.test(txt));
-  t("coordination : 2 missions × 10 €, dont 10 € acquis", /2 missions × 10 €.*dont 10 € acquis/.test(txt), (txt.match(/Prime coordination.{0,60}/) || [""])[0]);
-  t("terrain : 2 missions = 110 €", /Missions terrain 2 missions 110 €/.test(txt), (txt.match(/Missions terrain.{0,30}/) || [""])[0]);
-  t("prime ventes : 100 € HT encaissés × 5 % = 5 €", /Base 100 € HT encaissés × 5 % 5 €/.test(txt), (txt.match(/Prime ventes.{0,50}/) || [""])[0]);
-  t("total prévisionnel 135 €", /Total prévisionnel 135 €/.test(txt), (txt.match(/Total prévisionnel.{0,15}/) || [""])[0]);
-  t("détail mission : coordination +10 € et terrain +55 € sur la même ligne, acquise", /ZZ U13.*\+10 €.*\+55 €.*Acquis/.test(txt));
-  t("détail ventes : le calcul écrit en clair", /CA encaissé éligible : 100 € HT/.test(txt) && /Prime calculée : 5 €/.test(txt));
+  t("coordination : 20 € pour 2 missions × 10 €", /Prime coordination 20 € 2 missions × 10 €/.test(txt), (txt.match(/Prime coordination.{0,40}/) || [""])[0]);
+  t("terrain : 110 € pour 2 missions", /Missions terrain 110 € 2 missions/.test(txt), (txt.match(/Missions terrain.{0,30}/) || [""])[0]);
+  t("prime ventes : 5 € = 5 % de 100 € HT", /Prime ventes 5 € 5 % de 100 € HT/.test(txt), (txt.match(/Prime ventes.{0,40}/) || [""])[0]);
+  t("total prévisionnel 135 €, mis en avant", /Total prévisionnel 135 €/.test(txt) && (await page.locator(".mf-kpi.total").count()) === 1, (txt.match(/Total prévisionnel.{0,15}/) || [""])[0]);
+  t("état du paiement : acquis, validé, payé, restant à payer", /Acquis .*Validé .*Payé .*Restant à payer/.test(txt));
+  t("détail mission : coordination 10 € et terrain 55 € sur la même ligne, acquise", /ZZ U13.* 10 € 55 € .*Acquis/.test(txt), (txt.match(/ZZ U13.{0,60}/) || [""])[0]);
+  t("prime ventes : le calcul résumé puis les ventes, « Pris en compte »", /CA encaissé éligible 100 € HT/.test(txt) && /Prime calculée 5 €/.test(txt) && /Pris en compte/.test(txt));
+  await page.locator("tr.mf-clic", { hasText: "ZZ U13" }).click(); await attendre(2500);
+  t("une mission se clique et ouvre sa fiche", (await page.locator("text=SV-2026").count()) > 1 && (await page.locator(".modal, [role=dialog], #modal-bg.on, .mo.on").count()) > 0);
+  await page.keyboard.press("Escape"); await attendre(500);
+  await page.setViewportSize({ width: 390, height: 844 }); await attendre(1200);
+  const deborde = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  t("mobile 390 px : pas de défilement horizontal de la page", !deborde);
+  if (process.env.CAPTURE) await page.screenshot({ path: `${process.env.CAPTURE}-mobile.png`, fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 900 }); await attendre(800);
 
   // ── 2. Elle se demande 150 € au lieu de 55 € sur la mission du 30 ──
   await page.evaluate(([e, p]) => window.modifierRemunerationMembre(e, p, "ZZ", 55, 55, "acceptée", true), [e2.id, m2.id]); await attendre(800);
@@ -114,8 +123,8 @@ try {
   O = await ouvrirOS(nav, prod); page = O.page;
   await page.evaluate(() => window.switchView("mesfinances")); await attendre(5000);
   txt = (await page.locator("#mf-real").innerText()).replace(/\s+/g, " ");
-  t("elle voit le mois « Payé », 15 € payés", /Payé/.test(txt) && /Payé 15 €/.test(txt), (txt.match(/Validé.{0,40}/) || [""])[0]);
-  t("sa demande approuvée apparaît au bon montant (terrain 205 €)", /Missions terrain 2 missions 205 €/.test(txt), (txt.match(/Missions terrain.{0,30}/) || [""])[0]);
+  t("elle voit 15 € payés, rien de restant", /Payé 15 €/.test(txt) && /Restant à payer 0 €/.test(txt), (txt.match(/Acquis.{0,120}/) || [""])[0]);
+  t("sa demande approuvée apparaît au bon montant (terrain 205 €)", /Missions terrain 205 €/.test(txt), (txt.match(/Missions terrain.{0,30}/) || [""])[0]);
   const refus = await page.evaluate(async (id) => {
     const res = await sbFetch("rpc/production_regler_remuneration", { method: "POST", body: { p_calcul_id: id, p_action: "rouvrir" } });
     return sbErr(res) ? "refusé" : "accepté";

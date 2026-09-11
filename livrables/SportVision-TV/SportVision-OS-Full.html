@@ -140,6 +140,48 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t1);font-size:14px;l
 .kpi-ey{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:9px}
 .kpi-v{font-size:28px;font-weight:700;color:var(--t1);line-height:1;font-variant-numeric:tabular-nums;margin-bottom:9px}
 .kpi-d{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:var(--rp)}
+/* Mes finances (Responsable Production, 11/09/2026) : un tableau de rémunération personnel. */
+.mf-info{font-size:12px;color:var(--t3);padding:8px 12px;border-radius:8px;background:var(--s2);margin-bottom:12px}
+.mf-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.mf-kpi{background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:12px 14px;min-width:0}
+.mf-kpi .l,.mf-etat .l,.mf-mini .l{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)}
+.mf-kpi .v{font-size:20px;font-weight:700;color:var(--t1);margin-top:6px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mf-kpi .s,.mf-etat .s,.mf-mini .s{font-size:11px;color:var(--t3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mf-kpi.total{background:linear-gradient(135deg,rgba(54,107,255,.18),rgba(124,77,255,.16));border-color:rgba(124,77,255,.5)}
+.mf-kpi.total .l{color:var(--t2)}
+.mf-kpi.total .v{font-size:24px;margin-top:4px}
+.mf-etat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);margin:10px 0 14px;overflow:hidden}
+.mf-etat>div:not(.mf-barre){padding:11px 14px;border-left:1px solid var(--b1);min-width:0}
+.mf-etat>div:first-child{border-left:none}
+.mf-etat .v{font-size:17px;font-weight:700;color:var(--t1);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mf-barre{grid-column:1/-1;height:4px;background:var(--s2);position:relative}
+.mf-barre span{position:absolute;left:0;top:0;bottom:0;border-radius:0 2px 2px 0}
+.mf-bloc{margin-bottom:12px}
+.mf-table td,.mf-table th{padding-top:8px;padding-bottom:8px}
+.mf-table .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mf-table tr.mf-clic{cursor:pointer}
+.mf-table tr.mf-clic:hover td,.mf-table tr.mf-clic:focus-visible td{background:var(--s2)}
+.mf-table tr.mf-clic:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+.mf-table tr.mf-hors td{color:var(--t3)}
+.mf-vide{padding:14px 16px;color:var(--t3);font-size:12.5px}
+.mf-mini{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px 14px}
+.mf-mini>div{background:var(--s2);border-radius:8px;padding:9px 11px;min-width:0}
+.mf-mini>div.fort{background:rgba(54,107,255,.12)}
+.mf-mini .v{font-size:15px;font-weight:700;color:var(--t1);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mf-mini .v small{font-size:10.5px;font-weight:600;color:var(--t3)}
+.mf-grid2{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;align-items:start}
+.mf-frais{display:grid;gap:0;padding:4px 16px}
+.mf-frais>div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--b1)}
+@media (max-width:1180px){.mf-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:900px){.mf-grid2{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:600px){
+  .mf-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mf-kpi.total{grid-column:1/-1}
+  .mf-etat{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mf-etat>div:nth-child(3){border-left:none}
+  .mf-etat>div:nth-child(3),.mf-etat>div:nth-child(4){border-top:1px solid var(--b1)}
+  .mf-mini{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 .dup{background:rgba(46,204,138,.1);color:var(--ok)}
 .ddn{background:rgba(240,68,94,.1);color:var(--er)}
 .dnt{background:rgba(255,255,255,.06);color:var(--t2)}
@@ -1897,8 +1939,8 @@ const VIEWS={
 
   // v149 (11/09/2026) : la Finance du Responsable Production.
   'prod.mesfinances':()=>`
-    <div class="sh"><div><div class="sh-t">Finance Production</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Calculée par le système, validée par l'Admin ou la comptabilité, réglée par la comptabilité ou le secrétariat.</div></div>
-      <input type="month" class="l-inp" id="mf-mois" style="height:36px;width:auto;flex:0 0 auto" onchange="loadMesFinances()"></div>
+    <div class="sh" style="flex-wrap:wrap;gap:10px"><div><div class="sh-t">Mes finances</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Suivez vos primes, missions, frais et paiements.</div></div>
+      <input type="month" class="l-inp" id="mf-mois" aria-label="Mois" style="height:36px;width:auto;flex:0 0 auto" onchange="loadMesFinances()"></div>
     <div id="mf-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
   'admin.finprod':()=>_finProdView(),
   'compta.finprod':()=>_finProdView(),
@@ -31336,7 +31378,10 @@ async function loadJourJ(){
     // 09/09/2026 — Les libelles restent, l'action passe desormais par avancerParcours() :
     // elle pose l'horodatage personnel (mission_suivi_operateur) en plus du statut, et
     // declenche la bascule vers Sauvegarde apres « Prestation terminee ».
+    // 11/09/2026 (v151) : une mission affectée n'avait aucun bouton ici tant que personne ne
+    // l'avait passée « prête » ; l'opérateur restait bloqué le matin du match.
     const JOURJ_BTNS={
+      'équipe_affectée':{lb:'✓ Kit prêt, je peux partir',ns:'prête',clr:'var(--ok)',tc:'#fff'},
       'prête':{lb:'🚗 Je suis en route',ns:'équipe_en_route',clr:'var(--acc)',tc:'#fff'},
       'équipe_en_route':{lb:'📍 Je suis arrivé',ns:'arrivée_sur_place',clr:'var(--wa)',tc:'#fff'},
       'arrivée_sur_place':{lb:'▶ Démarrer la production',ns:'production_démarrée',clr:'var(--er)',tc:'#fff'},
@@ -33081,6 +33126,9 @@ async function loadMesFinances(){
 }
 
 function renderMesFinances(d){
+  // 11/09/2026 : refonte de lecture demandée par Fouka. Un tableau de rémunération personnel, pas
+  // une page comptable : combien je vais toucher, où en est le paiement, d'où vient chaque euro,
+  // ma prime commerciale, mes frais. Aucun calcul ici : tout vient de production_mes_finances.
   const poles=d.poles||[],terrain=d.terrain||[],frais=d.frais||[],T=d.totaux||{};
   const somme=(l,f)=>l.reduce((s,x)=>s+Number(f(x)||0),0);
   const fixe=somme(poles,p=>p.fixe?.montant);
@@ -33089,78 +33137,88 @@ function renderMesFinances(d){
   const unit=coord[0]?.montant_unitaire||0;
   const ventes=somme(poles,p=>p.ventes?.montant);
   const terrainTot=somme(terrain,t=>t.montant),fraisTot=somme(frais,f=>f.montant);
-  const moisLb=new Date(String(d.mois)+'T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
-  const statutMensuel=poles[0]?.statut;
-  const ligne=(lb,sous,v,fort)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;${fort?'border-top:1px solid var(--b1);margin-top:4px;padding-top:10px;':''}">
-    <div><div style="font-size:13px;color:${fort?'var(--t1)':'var(--t2)'};font-weight:${fort?700:500}">${lb}</div>${sous?`<div style="font-size:11px;color:var(--t3);margin-top:1px">${sous}</div>`:''}</div>
-    <div style="font-size:13.5px;font-weight:700;color:var(--t1);white-space:nowrap;font-variant-numeric:tabular-nums">${v}</div></div>`;
+  const pluriel=(n,mot)=>n+' '+mot+(n>1?'s':'');
   const palier=poles[0]?.fixe;
-  let html=`<div class="cd" style="padding:16px 18px;margin-bottom:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px">
-      <div style="font-size:15px;font-weight:800;color:var(--t1)">Finance Production · ${esc(moisLb.charAt(0).toUpperCase()+moisLb.slice(1))}</div>
-      ${statutMensuel?_mfBadge(statutMensuel):''}
-    </div>
-    ${!poles.length?`<div style="padding:8px 10px;border-radius:8px;background:var(--s2);font-size:12px;color:var(--t3);margin-bottom:6px">Vous n'êtes pas désigné Responsable Production d'un pôle : seules vos missions terrain et vos frais apparaissent.</div>`:''}
-    ${poles.some(p=>!p.configure)?`<div style="padding:8px 10px;border-radius:8px;background:rgba(245,165,36,.1);font-size:12px;color:var(--wa);margin-bottom:6px">La prime de coordination et la prime sur ventes n'ont pas encore été réglées par la Direction : elles comptent 0 € d'ici là.</div>`:''}
-    ${ligne('Fixe / forfait',palier?esc(palier.palier||'Barème de pôle')+' · '+palier.nb_contrats+' contrat'+(palier.nb_contrats>1?'s':'')+' Full Com':'',_mfEur(fixe))}
-    ${ligne('Prime coordination',nbCoord+' mission'+(nbCoord>1?'s':'')+' × '+_mfEur(unit)+(coordAcq!==coordPrev?' · dont '+_mfEur(coordAcq)+' acquis':''),_mfEur(coordPrev))}
-    ${ligne('Missions terrain',terrain.length+' mission'+(terrain.length>1?'s':''),_mfEur(terrainTot))}
-    ${ligne('Prime ventes',poles[0]?.ventes?'Base '+_mfEur(poles[0].ventes.base)+' HT encaissés × '+(poles[0].ventes.taux_pct||0)+' %':'',_mfEur(ventes))}
-    ${ligne('Frais remboursables',frais.length+' ligne'+(frais.length>1?'s':''),_mfEur(fraisTot))}
-    ${ligne('Total prévisionnel','',_mfEur(T.previsionnel),true)}
-    ${ligne('Acquis','',_mfEur(T.acquis))}
-    ${ligne('Validé','',_mfEur(T.valide))}
-    ${ligne('Payé','',_mfEur(T.paye))}
-    ${ligne('Restant à payer','',_mfEur(T.restant),true)}
+  const v0=poles[0]?.ventes;
+
+  const kpi=(lb,val,sous,cls='')=>`<div class="mf-kpi ${cls}"><div class="l">${lb}</div><div class="v">${val}</div><div class="s" title="${esc(sous||'')}">${esc(sous||'')}</div></div>`;
+  let html=`<div class="mf-info">${poles.length
+      ?'Les primes de coordination et de ventes sont calculées automatiquement selon les règles définies, puis validées par la Direction ou la comptabilité.'
+      :'Vous n\'êtes pas Responsable Production d\'un pôle ce mois-ci : seules vos missions terrain et vos frais apparaissent.'}</div>
+  <div class="mf-kpis">
+    ${kpi('Fixe / forfait',_mfEur(fixe),palier?pluriel(palier.nb_contrats,'contrat')+' Full Com':'—')}
+    ${kpi('Prime coordination',_mfEur(coordPrev),nbCoord?pluriel(nbCoord,'mission')+' × '+_mfEur(unit):'Aucune mission pilotée')}
+    ${kpi('Missions terrain',_mfEur(terrainTot),terrain.length?pluriel(terrain.length,'mission'):'Aucune mission terrain')}
+    ${kpi('Prime ventes',_mfEur(ventes),v0?(v0.taux_pct||0)+' % de '+_mfEur(v0.base)+' HT':'—')}
+    ${kpi('Frais remboursables',_mfEur(fraisTot),frais.length?pluriel(frais.length,'frais'):'Aucun frais')}
+    ${kpi('Total prévisionnel',_mfEur(T.previsionnel),'Si tout se déroule comme prévu','total')}
   </div>`;
 
-  // Détail mission par mission : coordination, terrain et déplacement réunis sur la même ligne.
+  // Où en est l'argent. « Restant à payer » ne compte que ce qui est validé : le prévisionnel
+  // n'est jamais présenté comme une dette de la comptabilité.
+  const prev=Number(T.previsionnel||0)||1;
+  const pct=x=>Math.max(0,Math.min(100,Number(x||0)/prev*100)).toFixed(1)+'%';
+  html+=`<div class="mf-etat">
+    <div><div class="l">Acquis</div><div class="v">${_mfEur(T.acquis)}</div><div class="s">Missions livrées, mois échu</div></div>
+    <div><div class="l">Validé</div><div class="v">${_mfEur(T.valide)}</div><div class="s">Par la Direction ou la compta</div></div>
+    <div><div class="l">Payé</div><div class="v" style="color:var(--ok)">${_mfEur(T.paye)}</div><div class="s">Déjà réglé</div></div>
+    <div><div class="l">Restant à payer</div><div class="v">${_mfEur(T.restant)}</div><div class="s">Validé, pas encore réglé</div></div>
+    <div class="mf-barre" aria-hidden="true"><span style="width:${pct(T.acquis)};background:rgba(124,77,255,.35)"></span><span style="width:${pct(T.valide)};background:var(--acc)"></span><span style="width:${pct(T.paye)};background:var(--ok)"></span></div>
+  </div>`;
+
+  // Pourquoi je touche cette somme : une ligne par mission, cliquable.
   const parMission=new Map();
-  const cle=x=>x.prestation_id;
   poles.forEach(p=>(p.coordination?.missions||[]).forEach(m=>{
-    parMission.set(cle(m),{date:m.date,ref:m.reference,client:m.client,libelle:m.libelle,coord:Number(m.coordination||0),coordAcquis:m.acquis,statut:m.acquis?'acquis':'previsionnel'});
+    parMission.set(m.prestation_id,{id:m.prestation_id,date:m.date,ref:m.reference,client:m.client,libelle:m.libelle,coord:Number(m.coordination||0),statut:m.acquis?'acquis':'previsionnel'});
   }));
   terrain.forEach(t=>{
-    const x=parMission.get(cle(t))||{date:t.date,ref:t.reference,client:t.client,libelle:t.libelle,coord:0};
+    const x=parMission.get(t.prestation_id)||{id:t.prestation_id,date:t.date,ref:t.reference,client:t.client,libelle:t.libelle,coord:null};
     x.terrain=Number(t.montant||0);x.km=Number(t.frais_km||0);x.statut=t.statut;x.exception=t.exception_statut==='a_valider'?t.exception_montant:null;
-    parMission.set(cle(t),x);
+    parMission.set(t.prestation_id,x);
   });
   const missions=[...parMission.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-  html+=`<div class="cd" style="margin-bottom:14px"><div class="cd-h"><div class="cd-t">Détail des missions</div></div>
-    ${missions.length?'<div class="tw"><table><thead><tr><th>Mission</th><th style="text-align:right">Coordination</th><th style="text-align:right">Terrain</th><th style="text-align:right">Déplacement</th><th>Statut</th></tr></thead><tbody>'+missions.map(m=>`<tr>
-      <td class="tp"><div style="font-weight:600;color:var(--t1)">${_mfDate(m.date)} · ${esc(m.client||'—')}${m.libelle?' — '+esc(m.libelle):''}</div><div style="font-size:11px;color:var(--t3)">${esc(m.ref||'')}</div></td>
-      <td class="tm" style="text-align:right">${m.coord?'+'+_mfEur(m.coord):'—'}</td>
-      <td class="tm" style="text-align:right">${m.terrain!=null?'+'+_mfEur(m.terrain):'—'}${m.exception!=null?`<div style="font-size:10.5px;color:var(--wa)">${_mfEur(m.exception)} demandés · attente Admin</div>`:''}</td>
-      <td class="tm" style="text-align:right">${m.km?'+'+_mfEur(m.km):'—'}</td>
-      <td>${_mfBadge(m.statut)}</td></tr>`).join('')+'</tbody></table></div>'
-      :'<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucune mission ce mois-ci.</div>'}
-    <div style="padding:8px 14px 12px;font-size:11px;color:var(--t3)">Une mission devient « acquise » à la livraison validée. Annulée avant, elle ne rapporte rien.</div></div>`;
+  const montant=v=>v?_mfEur(v):'<span style="color:var(--t3)">—</span>';
+  html+=`<div class="cd mf-bloc"><div class="cd-h"><div class="cd-t">Détail des missions</div><span style="font-size:11px;color:var(--t3)">Acquise à la livraison validée</span></div>
+    ${missions.length?`<div class="tw"><table class="mf-table"><thead><tr><th>Date</th><th>Mission</th><th class="n">Coordination</th><th class="n">Terrain</th><th class="n">Déplacement</th><th>Statut</th></tr></thead><tbody>`+missions.map(m=>`<tr class="mf-clic" tabindex="0" role="button" onclick="_mfOuvrirMission('${escJs(m.id||'')}')" onkeydown="if(event.key==='Enter')_mfOuvrirMission('${escJs(m.id||'')}')">
+        <td class="tm">${_mfDate(m.date)}</td>
+        <td><div style="font-weight:600;color:var(--t1)">${esc(m.client||'—')}${m.libelle?' — '+esc(m.libelle):''}</div><div style="font-size:11px;color:var(--t3)">${esc(m.ref||'')}</div></td>
+        <td class="n">${montant(m.coord)}</td>
+        <td class="n">${montant(m.terrain)}${m.exception!=null?`<div style="font-size:10.5px;color:var(--wa)">${_mfEur(m.exception)} demandés, en attente Admin</div>`:''}</td>
+        <td class="n">${montant(m.km)}</td>
+        <td>${_mfBadge(m.statut)}</td></tr>`).join('')+'</tbody></table></div>'
+      :'<div class="mf-vide">Aucune mission ce mois-ci.</div>'}
+  </div>`;
 
-  // Détail des ventes : le calcul, écrit en clair, puis chaque encaissement.
-  poles.forEach(p=>{
+  // Prime ventes (résumé puis ventes) et frais, côte à côte sur grand écran.
+  const ventesHtml=poles.map(p=>{
     const v=p.ventes||{};
-    const familles=(v.familles||[]).map(f=>MF_FAMILLES[f]||f).join(', ')||'aucune famille retenue';
-    const bareme=(v.paliers||[]).length?'paliers : '+(v.paliers||[]).map(x=>'dès '+_mfEur(x.a_partir_de)+' → '+x.taux_pct+' %').join(' · '):(v.taux_pct||0)+' % du CA éligible';
-    html+=`<div class="cd" style="margin-bottom:14px"><div class="cd-h"><div class="cd-t">Prime ventes${poles.length>1?' · '+esc(p.pole):''}</div></div>
-      <div style="padding:12px 16px;display:grid;gap:4px;font-size:12.5px;color:var(--t2)">
-        <div>CA encaissé éligible : <b style="color:var(--t1)">${_mfEur(v.ca_eligible)} HT</b> <span style="color:var(--t3)">(${esc(familles)})</span></div>
-        <div>Remboursements déduits : <b style="color:var(--t1)">${_mfEur(v.rembourse)} HT</b></div>
-        <div>Barème : <b style="color:var(--t1)">${esc(bareme)}</b>${v.objectif!=null?' · bonus '+_mfEur(p.ventes.bonus)+' si '+_mfEur(v.objectif)+' atteints':''}</div>
-        <div>Prime calculée : <b style="color:var(--acc)">${_mfEur(v.montant)}</b></div>
+    const familles=(v.familles||[]).map(f=>MF_FAMILLES[f]||f).join(', ');
+    const bareme=(v.paliers||[]).length?'Par paliers':(v.taux_pct||0)+' %';
+    const lignes=v.lignes||[];
+    return `<div class="cd mf-bloc"><div class="cd-h"><div class="cd-t">Prime ventes${poles.length>1?' · '+esc(p.pole):''}</div></div>
+      <div class="mf-mini">
+        <div><div class="l">CA encaissé éligible</div><div class="v">${_mfEur(v.ca_eligible)} <small>HT</small></div><div class="s">${esc(familles||'Aucune famille retenue')}</div></div>
+        <div><div class="l">Remboursements déduits</div><div class="v">${_mfEur(v.rembourse)} <small>HT</small></div></div>
+        <div><div class="l">Barème</div><div class="v">${esc(bareme)}</div>${v.objectif!=null?`<div class="s">Bonus ${_mfEur(v.bonus)} dès ${_mfEur(v.objectif)}</div>`:''}</div>
+        <div class="fort"><div class="l">Prime calculée</div><div class="v">${_mfEur(v.montant)}</div></div>
       </div>
-      ${(v.lignes||[]).length?'<div class="tw"><table><thead><tr><th>Date</th><th>Vente</th><th>Famille</th><th style="text-align:right">HT</th><th>Compte</th></tr></thead><tbody>'+(v.lignes||[]).map(l=>`<tr style="${l.eligible?'':'opacity:.55'}">
-        <td class="tm">${_mfDate(l.date)}</td><td class="tp">${esc(l.libelle||'')}</td><td class="tm">${esc(MF_FAMILLES[l.famille]||l.famille)}</td>
-        <td class="tm" style="text-align:right;font-variant-numeric:tabular-nums">${_mfEur(l.ht)}</td><td class="tm">${l.eligible?'Oui':'Non'}</td></tr>`).join('')+'</tbody></table></div>'
-        :'<div style="padding:0 16px 14px;color:var(--t3);font-size:12.5px">Aucun encaissement ce mois-ci pour ce pôle.</div>'}
+      ${lignes.length?`<div class="tw"><table class="mf-table"><thead><tr><th>Date</th><th>Vente</th><th>Famille</th><th class="n">HT</th><th>Pris en compte</th></tr></thead><tbody>`+lignes.map(l=>`<tr${l.eligible?'':' class="mf-hors"'}>
+          <td class="tm">${_mfDate(l.date)}</td><td>${esc(l.libelle||'')}</td><td class="tm">${esc(MF_FAMILLES[l.famille]||l.famille)}</td>
+          <td class="n">${_mfEur(l.ht)}</td><td>${l.eligible?'<span style="color:var(--ok)">Oui</span>':'<span style="color:var(--t3)">Non</span>'}</td></tr>`).join('')+'</tbody></table></div>'
+        :'<div class="mf-vide">Aucune vente encaissée ce mois-ci.</div>'}
     </div>`;
-  });
-
-  html+=`<div class="cd"><div class="cd-h"><div class="cd-t">Frais</div></div>
-    ${frais.length?'<div class="tw"><table><thead><tr><th>Date</th><th>Frais</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead><tbody>'+frais.map(f=>`<tr>
-      <td class="tm">${_mfDate(f.date)}</td><td class="tp">${esc(f.libelle||f.type||'')}</td><td class="tm" style="text-align:right">${_mfEur(f.montant)}</td><td>${_mfBadge(f.statut)}</td></tr>`).join('')+'</tbody></table></div>'
-      :'<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucun frais ce mois-ci.</div>'}
-    <div style="padding:8px 14px 12px;font-size:11px;color:var(--t3)">Vos frais sont validés par l'Admin ou la comptabilité, jamais par vous-même.</div></div>`;
+  }).join('');
+  const fraisHtml=`<div class="cd mf-bloc"><div class="cd-h"><div class="cd-t">Frais</div>${frais.length?`<span style="font-size:12px;font-weight:700;color:var(--t1)">${_mfEur(fraisTot)}</span>`:''}</div>
+    ${frais.length?'<div class="mf-frais">'+frais.map(f=>`<div><div style="min-width:0"><div style="font-size:12.5px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.libelle||f.type||'')}</div><div style="font-size:11px;color:var(--t3)">${_mfDate(f.date)}</div></div><div style="text-align:right"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">${_mfEur(f.montant)}</div>${_mfBadge(f.statut)}</div></div>`).join('')+'</div>'
+      :'<div class="mf-vide" style="padding:14px 16px 4px">Aucun frais ce mois-ci</div>'}
+    <div style="padding:6px 16px 12px;font-size:11px;color:var(--t3)">Vos frais sont validés par l'Admin ou la comptabilité.</div></div>`;
+  html+=`<div class="mf-grid2"><div>${ventesHtml||''}</div><div>${fraisHtml}</div></div>`;
   return html;
+}
+function _mfOuvrirMission(id){
+  if(!id)return;
+  if(typeof ouvrirFicheMission==='function')ouvrirFicheMission(id);
+  else if(typeof modalDetailById==='function')modalDetailById(id);
 }
 
 // ── Pilotage : Admin (règle, valide, tranche), comptabilité (valide, règle), secrétariat (règle) ──
