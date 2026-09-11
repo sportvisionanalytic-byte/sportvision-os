@@ -318,6 +318,87 @@ export async function fetchClubCalendrier(
   }));
 }
 
+// ── RPC dédiées, filtrage équipe/rôle côté serveur (11/09/2026) ────────────────────────
+//
+// club_calendrier() est club-wide par conception (RPC SECURITY DEFINER, décision produit du
+// 11/09) : correct pour l'écran /calendar, mais dangereux pour un widget qui ne doit montrer
+// qu'une partie du calendrier à certains rôles — un filtrage React après coup n'empêche rien
+// côté réseau (payload brute déjà reçue). Ces 3 fonctions appellent des RPC dédiées qui
+// déterminent le rôle/l'équipe autorisée EN SQL et ne renvoient jamais plus que ce que l'écran
+// doit montrer. Colonnes exposées par club_calendrier_interne en production (21, mêmes que
+// LigneCalendrier ci-dessus — contrairement à Review, qui n'en a que 15, écart environnemental
+// documenté séparément).
+interface LigneCalendrierCompacte {
+  ref: string;
+  genre: "match" | "entrainement" | "evenement";
+  date_evenement: string;
+  heure_debut: string | null;
+  heure_fin: string | null;
+  titre: string | null;
+  equipe: string | null;
+  team_id: string | null;
+  adversaire: string | null;
+  domicile: boolean | null;
+  lieu: string | null;
+  competition: string | null;
+  score: string | null;
+  statut: string | null;
+  couverture: string | null;
+}
+
+function ligneCompacteVersCalendarEvent(l: LigneCalendrierCompacte, organizationId: string): CalendarEvent {
+  return {
+    id: l.ref,
+    organizationId,
+    kind: GENRE_VERS_KIND[l.genre] ?? "event",
+    title: l.titre ?? "Événement",
+    startsAt: l.heure_debut ? `${l.date_evenement}T${l.heure_debut}` : `${l.date_evenement}T00:00:00`,
+    endsAt: l.heure_fin ? `${l.date_evenement}T${l.heure_fin}` : undefined,
+    allDay: !l.heure_debut,
+    location: l.lieu ?? undefined,
+    teamName: l.equipe ?? undefined,
+    teamId: l.team_id ?? undefined,
+    status: l.statut ?? undefined,
+    opponent: l.adversaire ?? undefined,
+    isHome: l.domicile ?? undefined,
+    competition: l.competition ?? undefined,
+    score: l.score ?? undefined,
+    coverage: l.couverture ?? undefined,
+  };
+}
+
+/** Widget "Prochains événements" du dashboard. Filtre équipe (coach/resp_equipe/directeur_
+ * sportif) appliqué côté serveur par la RPC — remplace fetchClubCalendarEvents (11/09/2026,
+ * timeouts 57014 sous RLS pour les rôles non-président) sans reproduire la fuite réseau de
+ * club_calendrier() (toutes les équipes reçues par un coach avant filtrage React, constatée le
+ * 11/09/2026). */
+export async function fetchClubDashboardUpcomingEvents(
+  supabase: SupabaseClient,
+  clubId: string,
+  limit = 5,
+): Promise<CalendarEvent[]> {
+  const { data, error } = await supabase.rpc("club_dashboard_upcoming_events", { p_club_id: clubId, p_limit: limit });
+  if (error) throw error;
+  return ((data ?? []) as LigneCalendrierCompacte[]).map((l) => ligneCompacteVersCalendarEvent(l, clubId));
+}
+
+/** Étape Calendrier de l'onboarding club. Réservée serveur-side à admin/president/cm_externe
+ * (ou opérateur du club) — la RPC refuse explicitement les autres rôles (403), la lecture était
+ * jusqu'ici sans garde alors que l'édition (canEdit) l'était déjà côté React. */
+export async function fetchClubOnboardingCalendrier(supabase: SupabaseClient, clubId: string): Promise<CalendarEvent[]> {
+  const { data, error } = await supabase.rpc("club_onboarding_calendrier", { p_club_id: clubId });
+  if (error) throw error;
+  return ((data ?? []) as LigneCalendrierCompacte[]).map((l) => ligneCompacteVersCalendarEvent(l, clubId));
+}
+
+/** Modale "Demander une présence". Réservée serveur-side aux 5 rôles de CAN_REQUEST_ROLES
+ * (presences/page.tsx) — jusqu'ici seul le bouton React qui ouvre la modale le vérifiait. */
+export async function fetchClubPresenceRequestCalendrier(supabase: SupabaseClient, clubId: string): Promise<CalendarEvent[]> {
+  const { data, error } = await supabase.rpc("club_presence_request_calendrier", { p_club_id: clubId });
+  if (error) throw error;
+  return ((data ?? []) as LigneCalendrierCompacte[]).map((l) => ligneCompacteVersCalendarEvent(l, clubId));
+}
+
 /**
  * Qui couvre cet événement — chargé À LA DEMANDE, quand une fiche s'ouvre.
  *

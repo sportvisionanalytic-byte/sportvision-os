@@ -57,7 +57,7 @@ import {
   type RosterImportResult,
 } from "@/lib/data/club/roster-import";
 import { fetchClubSponsors, createClubSponsor, uploadSponsorLogo } from "@/lib/data/club/sponsors";
-import { fetchClubCalendarEvents, createClubCalendarEvent } from "@/lib/data/club/calendar";
+import { fetchClubOnboardingCalendrier, createClubCalendarEvent } from "@/lib/data/club/calendar";
 import { TEAM_CATEGORY_OPTIONS, type Team } from "@/lib/types/teams";
 import type { Sponsor } from "@/lib/types/sponsors";
 import type { CalendarEvent } from "@/lib/types/calendar";
@@ -1739,9 +1739,15 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
   // bouton qui arrete simplement de tourner.
   const [error, setError] = useState<string | null>(null);
 
+  // fetchClubOnboardingCalendrier (11/09/2026), pas fetchClubCalendarEvents : cette étape
+  // interrogeait club_calendar_events sans filtre ni garde de lecture — canEdit protégeait déjà
+  // l'écriture côté React, mais rien ne limitait qui pouvait VOIR le calendrier complet du club
+  // en arrivant sur cette page (aucune route ne redirige un membre non-admin hors d'/onboarding).
+  // La RPC dédiée refuse désormais explicitement (403) tout rôle hors admin/president/cm_externe/
+  // opérateur du club — le même périmètre que canEdit, appliqué côté serveur.
   function reload() {
     const supabase = createClient();
-    fetchClubCalendarEvents(supabase, clubId).then(setEvents).catch(() => setEvents([]));
+    fetchClubOnboardingCalendrier(supabase, clubId).then(setEvents).catch(() => setEvents([]));
     fetchClubTeams(supabase, clubId).then(setTeams).catch(() => setTeams([]));
   }
   useEffect(reload, [clubId]);

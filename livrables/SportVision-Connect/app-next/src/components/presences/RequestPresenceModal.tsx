@@ -5,7 +5,7 @@ import { Camera, Check, Film, Megaphone, Mic, MoreHorizontal, Search, Video, X }
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CalendarEvent, CalendarEventKind } from "@/lib/types/calendar";
 import { CALENDAR_EVENT_KIND_LABELS } from "@/lib/types/calendar";
-import { definirCouverture, fetchClubCalendrier, fetchSouhaitsParEvenement } from "@/lib/data/club/calendar";
+import { definirCouverture, fetchClubPresenceRequestCalendrier, fetchSouhaitsParEvenement } from "@/lib/data/club/calendar";
 import {
   cibleDeReference,
   createCoverageWishes,
@@ -185,12 +185,18 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
     };
   }, []);
 
+  // fetchClubPresenceRequestCalendrier (11/09/2026), pas fetchClubCalendrier : cette RPC-là est
+  // club-wide par conception mais renvoie sa réponse À TOUT rôle authentifié qui l'appelle — le
+  // bouton React qui ouvre cette modale n'est affiché qu'aux 5 rôles de CAN_REQUEST_ROLES
+  // (presences/page.tsx), mais rien ne l'imposait côté serveur. La RPC dédiée refuse désormais
+  // explicitement (403) tout rôle hors admin/president/comm/directeur_sportif/cm_externe/
+  // opérateur du club. Fenêtre fixée côté serveur (hier à +180 jours), volontairement plus large
+  // que l'ancien HORIZON_JOURS=90 — strict sur-ensemble, aucun événement auparavant visible n'en
+  // disparaît.
   useEffect(() => {
     if (unique) return;
-    const debut = new Date();
-    const fin = new Date(debut.getFullYear(), debut.getMonth(), debut.getDate() + HORIZON_JOURS);
     Promise.all([
-      fetchClubCalendrier(supabase, clubId, jourIso(debut), jourIso(fin)),
+      fetchClubPresenceRequestCalendrier(supabase, clubId),
       fetchSouhaitsParEvenement(supabase, clubId).catch(() => new Map()),
     ])
       .then(([lignes, souhaits]) => {

@@ -11,7 +11,7 @@ import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClubMatches, fetchClubRequiresResultVerification } from "@/lib/data/club/matches";
 import { fileDuMatch } from "@/lib/matches/etat";
-import { fetchClubCalendarEvents } from "@/lib/data/club/calendar";
+import { fetchClubDashboardUpcomingEvents } from "@/lib/data/club/calendar";
 import { deriveStage, fetchClubJoinRequests } from "@/lib/data/club/team-requests";
 import { fetchClubRequests } from "@/lib/data/club/requests";
 import { fetchClientDevis, fetchClientInvoices } from "@/lib/data/projet/billing";
@@ -278,17 +278,20 @@ export function ClubPlusDashboard() {
     loadFinanceSummary();
   }, [loadFinanceSummary]);
 
-  // Prochains événements (19/08/2026, retour utilisateur : le dashboard ne montrait rien du
-  // calendrier). Réutilise fetchClubCalendarEvents telle quelle (déjà agrégée club_calendar_
-  // events + club_matches, voir data/club/calendar.ts) — filtrée aux dates futures et triée ici,
-  // pas une nouvelle requête. Masqué pour le trésorier (Bible §10 : "aucun contenu sportif
-  // parasite"), même règle que le bloc "À traiter" ci-dessus.
+  // fetchClubDashboardUpcomingEvents, ni fetchClubCalendarEvents ni fetchClubCalendrier
+  // (11/09/2026) : la première interrogeait club_calendar_events sans filtre équipe ni plage de
+  // dates — sous RLS, un rôle non-président doit évaluer sa policy d'accès sur l'ensemble des
+  // lignes du club, jusqu'au timeout Postgres (57014) pour un coach (mesuré sur Review : 8-10s).
+  // La seconde (club_calendrier(), SECURITY DEFINER) est rapide mais renvoie le calendrier
+  // COMPLET du club dans la réponse réseau quel que soit le rôle — vérifié en réel : un coach
+  // recevait toutes les équipes du club avant tout filtrage React, qui n'est PAS un contrôle
+  // d'autorisation. fetchClubDashboardUpcomingEvents appelle une RPC dédiée qui détermine le
+  // rôle/l'équipe autorisée et applique la fenêtre de dates/tri/limite à 5 EN SQL, avant de
+  // renvoyer la réponse — un coach ne reçoit plus jamais que sa propre équipe. Le filtrage
+  // équipe ci-dessous devient redondant avec la RPC (défense en profondeur, pas la garantie).
   //
-  // Scope équipe (03/09/2026) : même correction que "À traiter" ci-dessus — un coach voyait tous
-  // les événements du club, pas seulement ceux de ses équipes ("Coach U15 : voit U15, pas U12
-  // sauf s'il possède également ce scope"). Même idiome que pendingResults : event.teamName vide
-  // OU teamScope non renseigné = toujours affiché, seul un événement d'une AUTRE équipe précise
-  // est filtré.
+  // Masqué pour le trésorier (Bible §10 : "aucun contenu sportif parasite"), même règle que le
+  // bloc "À traiter" ci-dessus.
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[] | null>(null);
   const [eventsError, setEventsError] = useState(false);
 
@@ -297,17 +300,12 @@ export function ClubPlusDashboard() {
     setEventsError(false);
     try {
       const supabase = createClient();
-      const events = await fetchClubCalendarEvents(supabase, ctx.organization.id);
-      const now = Date.now();
+      const events = await fetchClubDashboardUpcomingEvents(supabase, ctx.organization.id, 5);
       const inScope =
         ctx.membership.teamScope.length === 0
           ? events
           : events.filter((e) => !e.teamName || ctx.membership.teamScope.includes(e.teamName));
-      const upcoming = inScope
-        .filter((e) => new Date(e.startsAt).getTime() >= now)
-        .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
-        .slice(0, 5);
-      setUpcomingEvents(upcoming);
+      setUpcomingEvents(inScope);
     } catch {
       setEventsError(true);
     }
