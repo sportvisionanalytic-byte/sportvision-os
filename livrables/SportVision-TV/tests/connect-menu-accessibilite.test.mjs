@@ -3,15 +3,34 @@
 // Ce bouton ne contient qu'un avatar : sans libellé, un lecteur d'écran n'annonce rien, et c'est
 // pourtant le seul accès au menu complet sur téléphone. On vérifie donc le NOM ACCESSIBLE (ce que
 // la synthèse vocale prononcera), l'état annoncé, l'accès au clavier, et l'absence de régression.
-import { chromium } from "/Users/fouka/Downloads/jarvis-starter-kit/livrables/SportVision-Connect/app-next/node_modules/playwright/index.mjs";
+//
+// COMPTES. Les comptes fixes zz-particulier@ / zz-joueur@ ont disparu (ménage des comptes de test) :
+// le 11/09/2026, le test échouait à la connexion sans rien vérifier. Désormais il crée ses deux
+// comptes (adresses .invalid, créés par l'API d'administration : aucun e-mail) et les supprime à la
+// fin. SV_MAIL_PART / SV_MAIL_JOUEUR (+ SV_MDP) permettent toujours de viser des comptes existants.
+import { chromium } from "../../SportVision-Connect/app-next/node_modules/playwright/index.mjs";
+import { SB, enTeteAdmin } from "./_session-os.mjs";
 
 const BASE = "https://connect.sportvision-an.fr";
+const stamp = Date.now();
+const MDP = process.env.SV_MDP || `QaMenu!${stamp}`;
+const crees = [];
+async function compteTemporaire(type) {
+  const email = `qa-sv-connect-menu-${type}-${stamp}@example.invalid`;
+  const u = await (await fetch(`${SB}/auth/v1/admin/users`, { method: "POST", headers: { ...enTeteAdmin, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: MDP, email_confirm: true, user_metadata: { prenom: "QA", nom: "Menu" } }) })).json();
+  if (!u.id) throw new Error("compte de test : " + JSON.stringify(u).slice(0, 120));
+  crees.push(u.id);
+  await fetch(`${SB}/rest/v1/connect_profile_settings?on_conflict=user_id`, { method: "POST",
+    headers: { ...enTeteAdmin, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" },
+    body: JSON.stringify({ user_id: u.id, account_type: type, ...(type === "particulier" ? { profil_particulier: "parent" } : {}) }) });
+  return email;
+}
 const COMPTES = [
-  ["particulier", process.env.SV_MAIL_PART || "zz-particulier@sportvision-an.fr", /\/particulier/],
+  ["particulier", process.env.SV_MAIL_PART || await compteTemporaire("particulier"), /\/particulier/],
   // L'espace joueur partage desormais le meme bouton : on verifie qu'il n'a pas regresse.
-  ["joueur", process.env.SV_MAIL_JOUEUR || "zz-joueur@sportvision-an.fr", /\/dashboard/],
+  ["joueur", process.env.SV_MAIL_JOUEUR || await compteTemporaire("joueur"), /\/dashboard/],
 ];
-const MDP = "MotDePasseTest2026!";
 
 const b = await chromium.launch();
 let ko = 0;
@@ -68,5 +87,8 @@ for (const [espace, mail, url] of COMPTES) {
 }
 
 await b.close();
+for (const id of crees) await fetch(`${SB}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: enTeteAdmin });
+const restants = (await (await fetch(`${SB}/auth/v1/admin/users?per_page=1000`, { headers: enTeteAdmin })).json())?.users?.filter((u) => u.email?.startsWith(`qa-sv-connect-menu-`) && u.email.includes(String(stamp))).length ?? 0;
+dit("nettoyage : comptes de test supprimés", restants === 0, `${restants} restant(s)`);
 console.log(ko === 0 ? "\ntout conforme" : `\n${ko} ecart(s)`);
 process.exit(ko ? 1 : 0);
