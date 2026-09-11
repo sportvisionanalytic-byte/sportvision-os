@@ -219,7 +219,7 @@ function AppointmentsContent({ clientId }: { clientId: string }) {
                 onChange={(e) => setPrestationId(e.target.value)}
                 className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13.5px] outline-none focus-visible:border-brand-blue"
               >
-                <option value="">Aucune — nouveau projet</option>
+                <option value="">Aucune, nouveau projet</option>
                 {prestations.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.label}

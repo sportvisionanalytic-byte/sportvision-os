@@ -129,7 +129,7 @@ export function AthletesListView({
           </span>
           <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
             Palier {AGENT_TIER_LABEL[agentInfo.tier]} · {agentInfo.athletesCount} / {agentInfo.limit} sportifs suivis en tant qu&apos;agent
-            {!agentInfo.canAcceptMore && " — limite atteinte, les nouvelles demandes ne pourront pas être acceptées"}
+            {!agentInfo.canAcceptMore && ", limite atteinte, les nouvelles demandes ne pourront pas être acceptées"}
           </span>
           <Link href="/particulier/abonnement" className="ml-auto flex-none text-[14px] font-semibold text-affiliations hover:underline lg:text-[13px]">
             Gérer mon abonnement

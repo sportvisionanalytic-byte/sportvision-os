@@ -179,7 +179,7 @@ export default function EventEditionPage() {
           <Card className="flex flex-col gap-3.5 p-5">
             <div>
               <div className="text-[13.5px] font-extrabold">Équipes participantes</div>
-              <p className="mt-1 text-[12px] text-text-soft">Facultatif — pour identifier vos contenus et briefs, pas une inscription.</p>
+              <p className="mt-1 text-[12px] text-text-soft">Facultatif, pour identifier vos contenus et briefs, pas une inscription.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {edition.equipesParticipantes.length === 0 && <span className="text-[12.5px] text-text-faint">Aucune équipe ajoutée.</span>}
@@ -236,7 +236,7 @@ export default function EventEditionPage() {
               </span>
               <div>
                 <div className="text-[13.5px] font-extrabold">Bilan léger</div>
-                <p className="mt-0.5 text-[12px] text-text-soft">Vainqueur, finaliste, score, MVP — tout est facultatif.</p>
+                <p className="mt-0.5 text-[12px] text-text-soft">Vainqueur, finaliste, score, MVP, tout est facultatif.</p>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">

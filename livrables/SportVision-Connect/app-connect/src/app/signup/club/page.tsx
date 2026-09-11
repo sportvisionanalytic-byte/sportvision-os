@@ -85,7 +85,7 @@ export default function SignupClubPage() {
       setSearching(false);
       if (error || data?.error) {
         setSearchError(
-          "Recherche indisponible pour le moment — vous pouvez ajouter votre club manuellement.",
+          "Recherche indisponible pour le moment, vous pouvez ajouter votre club manuellement.",
         );
         return;
       }
@@ -318,7 +318,7 @@ export default function SignupClubPage() {
             <ClubChoiceCard
               icon="add_home_work"
               iconColor="#C084FC"
-              label="Autre — mon club n'est pas sur SportVision"
+              label="Autre, mon club n'est pas sur SportVision"
               sub="Je l'ajoute moi-même comme club déclaré."
               onClick={() => setChoice("declare")}
             />

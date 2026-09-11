@@ -81,7 +81,7 @@ export function AddClubForm({
       });
       setSearching(false);
       if (fnError || data?.error) {
-        setSearchError("Recherche indisponible pour le moment — vous pouvez ajouter votre club manuellement.");
+        setSearchError("Recherche indisponible pour le moment, vous pouvez ajouter votre club manuellement.");
         return;
       }
       setResults(data?.results || []);

@@ -1464,7 +1464,7 @@ function EquipesCard({
                       </div>
                       <div className="flex items-center gap-2">
                         <Button className="h-9 px-3 text-[12px]" loading={importBusy} onClick={() => handleConfirmImport(team.id, team.season || "2026-2027")}>
-                          Confirmer l&apos;import ({importRows.length} joueurs)
+                          Confirmer l&apos;import ({importRows.length} joueur{importRows.length > 1 ? "s" : ""})
                         </Button>
                         <Button variant="secondary" className="h-9 px-3 text-[12px]" onClick={() => setImportTeamId(null)}>
                           Annuler
@@ -1475,9 +1475,19 @@ function EquipesCard({
                   {importResults && (
                     <div className="flex flex-col gap-2">
                       <div className="flex flex-wrap gap-2 text-[12px]">
-                        <Badge tone="success">{importResults.filter((r) => r.statut === "nouveau").length} créés</Badge>
-                        <Badge tone="info">{importResults.filter((r) => r.statut === "existant").length} rattachés</Badge>
-                        <Badge tone="danger">{importResults.filter((r) => r.statut === "erreur").length} erreurs</Badge>
+                        {/* « 1 créés » : les compteurs s'accordent (12/09/2026). */}
+                        <Badge tone="success">
+                          {importResults.filter((r) => r.statut === "nouveau").length} créé
+                          {importResults.filter((r) => r.statut === "nouveau").length > 1 ? "s" : ""}
+                        </Badge>
+                        <Badge tone="info">
+                          {importResults.filter((r) => r.statut === "existant").length} rattaché
+                          {importResults.filter((r) => r.statut === "existant").length > 1 ? "s" : ""}
+                        </Badge>
+                        <Badge tone="danger">
+                          {importResults.filter((r) => r.statut === "erreur").length} erreur
+                          {importResults.filter((r) => r.statut === "erreur").length > 1 ? "s" : ""}
+                        </Badge>
                       </div>
                       <Button variant="secondary" className="h-9 w-fit px-3 text-[12px]" onClick={() => setImportTeamId(null)}>
                         Fermer

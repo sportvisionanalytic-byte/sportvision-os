@@ -101,7 +101,7 @@ export default function PlayerDetailPage({ params }: { params: { id: string } })
             </Button>
           ) : (
             <>
-              <Button variant="secondary" disabled title="Autorisation manquante — les contenus de ce joueur ne sont pas publiables.">
+              <Button variant="secondary" disabled title="Autorisation manquante, les contenus de ce joueur ne sont pas publiables.">
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 Demander un visuel
               </Button>

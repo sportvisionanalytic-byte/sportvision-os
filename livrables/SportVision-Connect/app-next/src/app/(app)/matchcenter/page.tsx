@@ -438,8 +438,9 @@ export default function MatchCenterPage() {
                         variant="secondary"
                         onClick={() => setVisibles((prev) => ({ ...prev, [g.file]: limite + PAR_TRANCHE }))}
                       >
-                        Afficher {Math.min(PAR_TRANCHE, g.matchs.length - affiches.length)} matchs de plus
-                        <span className="ml-1.5 text-text-faint">({g.matchs.length - affiches.length} restants)</span>
+                        Afficher {Math.min(PAR_TRANCHE, g.matchs.length - affiches.length)} match
+                  {Math.min(PAR_TRANCHE, g.matchs.length - affiches.length) > 1 ? "s" : ""} de plus
+                        <span className="ml-1.5 text-text-faint">({g.matchs.length - affiches.length} restant{g.matchs.length - affiches.length > 1 ? "s" : ""})</span>
                       </Button>
                     )}
                   </div>

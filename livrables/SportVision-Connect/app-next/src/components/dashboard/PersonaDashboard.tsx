@@ -154,7 +154,7 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra, extraLoading: bool
         secondaryTitle: "Prochainement",
         secondaryItems: [
           { title: `Prochain match — ${children[0]?.firstName ?? "votre enfant"}`, meta: children[0]?.teamName ?? "", due: "Dimanche 17 août · 10h00" },
-          { title: "Facture SportVision — Août", meta: "0,00 € · inclus dans l'offre du club" },
+          { title: "Facture SportVision, Août", meta: "0,00 € · inclus dans l'offre du club" },
         ],
         contentsTitle: "Leurs derniers contenus",
         // Pas de club_id unique exposé par enfant ici (ConfirmedChild n'expose que clubName) —

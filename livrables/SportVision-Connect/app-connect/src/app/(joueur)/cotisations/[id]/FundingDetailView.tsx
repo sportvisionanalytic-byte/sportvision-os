@@ -82,7 +82,7 @@ export function FundingDetailView({
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
           <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
-            Votre paiement est en cours de confirmation par Stripe. Le montant collecté ci-dessous se mettra à jour
+            Votre paiement est en cours de confirmation. Le montant collecté ci-dessous se mettra à jour
             automatiquement dès la confirmation — rafraîchissez la page dans quelques instants si besoin.
           </span>
         </div>

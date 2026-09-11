@@ -11923,7 +11923,7 @@ async function _statsSante(){
         <div style="min-width:0;flex:1">
           <div><strong>${x.nombre}</strong> · ${esc(x.probleme)}</div>
           <div style="font-size:11px;color:var(--t3)">${esc(x.domaine)}</div>
-          ${x.detail&&x.detail.length?`<button class="btn bg2 bs" style="font-size:10.5px;margin-top:4px" onclick="_statsDetailSante(${i})">Voir le detail</button>`:''}
+          ${x.detail&&x.detail.length?`<button class="btn bg2 bs" style="font-size:10.5px;margin-top:4px" onclick="_statsDetailSante(${i})">Voir le détail</button>`:''}
         </div>
       </div>`).join('')}
     </div>
@@ -12073,9 +12073,9 @@ function _statsCourbe(evo){
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Evolution</span>
       <span style="font-size:11px;color:var(--ac)">— chiffre d’affaires</span>
       <span style="font-size:11px;color:var(--t3)">— commandes</span>
-      <span style="font-size:11px;color:var(--t3);margin-left:auto">${_eur(total)} sur la periode</span>
+      <span style="font-size:11px;color:var(--t3);margin-left:auto">${_eur(total)} sur la période</span>
     </div>
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:520px;height:${H}px" role="img" aria-label="Evolution du chiffre d affaires et des commandes">
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:520px;height:${H}px" role="img" aria-label="Évolution du chiffre d'affaires et des commandes">
       <line x1="${P}" y1="${H-P}" x2="${W-P}" y2="${H-P}" stroke="var(--b1)" stroke-width="1"/>
       <path d="${ligne(p=>p.commandes||0,yCmd)}" fill="none" stroke="var(--t3)" stroke-width="1.5" stroke-dasharray="3 3"/>
       <path d="${ligne(p=>p.ca_cents||0,yCa)}" fill="none" stroke="var(--ac)" stroke-width="2"/>
@@ -12088,7 +12088,7 @@ function _statsCourbe(evo){
 
 function _statsTableGaleries(gal){
   const rows=Array.isArray(gal)?gal:[];
-  if(!rows.length)return '<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:22px;text-align:center;font-size:12.5px;color:var(--t3)">Aucune galerie consultee ni vendue sur cette periode.</div>';
+  if(!rows.length)return '<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:22px;text-align:center;font-size:12.5px;color:var(--t3)">Aucune galerie consultée ni vendue sur cette période.</div>';
   return `<div style="border:1px solid var(--b1);border-radius:var(--rp);overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:560px">
       <thead><tr style="color:var(--t3);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em">
@@ -12192,7 +12192,7 @@ async function statsOuvrirGalerie(albumId){
 
 function _statsTableLiens(liens){
   const rows=Array.isArray(liens)?liens:[];
-  if(!rows.length)return '<div style="font-size:12px;color:var(--t3);padding:10px 0">Aucun lien sur cette periode.</div>';
+  if(!rows.length)return '<div style="font-size:12px;color:var(--t3);padding:10px 0">Aucun lien sur cette période.</div>';
   return `<div style="border:1px solid var(--b1);border-radius:var(--rp);overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:460px">
       <thead><tr style="color:var(--t3);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em">
@@ -12218,7 +12218,7 @@ function _statsTableLiens(liens){
 
 function _statsTableOffres(offres){
   const rows=Array.isArray(offres)?offres:[];
-  if(!rows.length)return '<div style="font-size:12px;color:var(--t3);padding:10px 0">Aucune vente sur cette periode.</div>';
+  if(!rows.length)return '<div style="font-size:12px;color:var(--t3);padding:10px 0">Aucune vente sur cette période.</div>';
   return `<div style="border:1px solid var(--b1);border-radius:var(--rp);overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:480px">
       <thead><tr style="color:var(--t3);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em">
@@ -13521,7 +13521,7 @@ async function _galChargerLien(){
     el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px">${entete}
       <div style="font-size:12px;color:var(--t2)">Aucun lien. ${peut
         ?'Creez-en un par public a servir : les parents du club, l’equipe adverse… Chacun peut avoir son tarif, sans dupliquer les photos.'
-        :'<span style="color:var(--t3)">Creation reservee a la direction, a la production et aux responsables de pole.</span>'}</div>
+        :'<span style="color:var(--t3)">Création réservée à la direction, à la production et aux responsables de pôle.</span>'}</div>
     </div>`;
     return;
   }
@@ -13604,7 +13604,7 @@ async function _galOuvrirConstructeur(linkId){
 
     <label class="l-lbl">Nom du lien</label>
     <input id="gl-label" class="l-inp" value="${esc(d.label||'')}" placeholder="Parents U12">
-    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">Pour vous reperer. Le visiteur ne le voit pas.</div>
+    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">Pour vous repérer. Le visiteur ne le voit pas.</div>
 
     <label class="l-lbl">Public</label>
     <select id="gl-audience" class="l-inp">
@@ -13615,22 +13615,22 @@ async function _galOuvrirConstructeur(linkId){
 
     <label class="l-lbl">Photos visibles avant achat</label>
     <input id="gl-apercu" class="l-inp" inputmode="numeric" value="${d.preview_limit!==null&&d.preview_limit!==undefined?d.preview_limit:''}" placeholder="Laisser vide = toutes">
-    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">Laissez vide sur un tournoi : le parent doit pouvoir parcourir toutes les photos pour retrouver son enfant. Plafonnez seulement un lien que vous ne voulez pas exposer entierement.</div>
+    <div style="font-size:11px;color:var(--t3);margin:4px 0 11px">Laissez vide sur un tournoi : le parent doit pouvoir parcourir toutes les photos pour retrouver son enfant. Plafonnez seulement un lien que vous ne voulez pas exposer entièrement.</div>
 
     <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:4px">
       <input type="checkbox" id="gl-actif"${d.is_enabled!==false?' checked':''}> Lien actif
     </label>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:11px">Desactiver arrete les nouveaux achats. Les commandes deja payees restent accessibles.</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:11px">Désactiver arrête les nouveaux achats. Les commandes déjà payées restent accessibles.</div>
 
     <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:4px">
       <input type="checkbox" id="gl-essai"${d.analytics_excluded?' checked':''}> Lien d’essai (hors statistiques)
     </label>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:11px">A cocher pour vos tests : ses ventes et ses vues ne comptent pas dans le chiffre d’affaires. Vous pourrez toujours les reafficher depuis l’ecran Statistiques.</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:11px">À cocher pour vos tests : ses ventes et ses vues ne comptent pas dans le chiffre d’affaires. Vous pourrez toujours les réafficher depuis l’écran Statistiques.</div>
 
     <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:4px;min-height:40px;cursor:${_galAlbum.club_id?'pointer':'default'};opacity:${_galAlbum.club_id?'1':'.5'}">
       <input type="checkbox" id="gl-clubplus"${d.visible_in_clubplus?' checked':''}${_galAlbum.club_id?'':' disabled'}> Confier ce lien au club dans Club+
     </label>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:16px">${_galAlbum.club_id?'':'<span style="color:var(--wa)">Cette galerie n’est rattachée à aucun club SportVision. Rattachez-en un depuis « Modifier la galerie » pour pouvoir la lui confier. La vente fonctionne parfaitement sans.</span><br>'}Le club pourra le copier et le diffuser lui-meme. Il ne verra aucun tarif et ne pourra rien modifier. Laissez decoche pour un lien qui reste interne a SportVision (equipe adverse, promotion...).</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:16px">${_galAlbum.club_id?'':'<span style="color:var(--wa)">Cette galerie n’est rattachée à aucun club SportVision. Rattachez-en un depuis « Modifier la galerie » pour pouvoir la lui confier. La vente fonctionne parfaitement sans.</span><br>'}Le club pourra le copier et le diffuser lui-même. Il ne verra aucun tarif et ne pourra rien modifier. Laissez décoché pour un lien qui reste interne à SportVision (équipe adverse, promotion…).</div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px">
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Offres proposees</span>
@@ -13821,7 +13821,7 @@ async function galEnregistrerLien(){
 }
 
 function galCopierLien(url){
-  navigator.clipboard.writeText(url).then(()=>toast('Lien copie.','ok')).catch(()=>toast('Copie impossible — selectionnez le lien a la main.','error'));
+  navigator.clipboard.writeText(url).then(()=>toast('Lien copié.','ok')).catch(()=>toast('Copie impossible, sélectionnez le lien à la main.','error'));
 }
 
 // QR Code genere a la demande par une image, sans embarquer de bibliotheque : le lien est deja
@@ -13832,7 +13832,7 @@ function galQrCode(url){
     <div style="text-align:center;background:#fff;padding:16px;border-radius:var(--rp)">
       <img alt="QR Code" style="width:240px;height:240px" src="https://api.qrserver.com/v1/create-qr-code/?size=480x480&data=${encodeURIComponent(url)}">
     </div>
-    <div style="font-size:11.5px;color:var(--t3);margin:11px 0 14px;text-align:center">A afficher au club ou a projeter. Il ouvre exactement le meme lien.</div>
+    <div style="font-size:11.5px;color:var(--t3);margin:11px 0 14px;text-align:center">À afficher au club ou à projeter. Il ouvre exactement le même lien.</div>
     <div style="display:flex;gap:9px;justify-content:flex-end">
       <button class="btn bg2" onclick="galCopierLien('${esc(url)}')">Copier le lien</button>
       <button class="btn bp" onclick="closeModal()">Fermer</button>
@@ -29707,7 +29707,9 @@ async function modalClubRequestApercu(id){
 
 // Aperçu lecture seule d'une demande d'adhésion (membership_requests) — ajouté le 29/08
 // (migration-staff-access-membership-support-tickets.sql). Double validation éducateur→admin
-// déjà gérée côté Connect ; pas de bouton d'action ici, uniquement de la visibilité staff.
+// déjà gérée dans Club+ (/team-requests) ; pas de bouton d'action ici, uniquement de la
+// visibilité staff. Le message disait « côté Connect » : un agent au téléphone cherchait au
+// mauvais endroit (12/09/2026).
 async function modalMembershipRequestApercu(id){
   const data=await sbFetch('membership_requests?select=id,statut,validation_mode,refus_motif,created_at,clubs(nom),club_teams(name),player_profiles(prenom,nom)&id=eq.'+id);
   const d=Array.isArray(data)&&data[0];
@@ -29720,7 +29722,7 @@ async function modalMembershipRequestApercu(id){
       <div><span style="color:var(--t3)">Statut</span><br>${esc(MR_STATUT_LBL[d.statut]||d.statut)}</div>
       ${d.refus_motif?`<div><span style="color:var(--t3)">Motif de refus</span><br>${esc(d.refus_motif)}</div>`:''}
     </div>
-    <div style="margin-top:16px;font-size:12px;color:var(--t3)">Validation (éducateur puis admin) gérée côté Connect — lecture seule ici.</div>`);
+    <div style="margin-top:16px;font-size:12px;color:var(--t3)">Validation (éducateur de l’équipe, puis dirigeant du club) dans Club+, écran « Demandes d’équipe ». Lecture seule ici.</div>`);
 }
 
 // Aperçu lecture seule d'un ticket support club (club_support_tickets) — ajouté le 29/08

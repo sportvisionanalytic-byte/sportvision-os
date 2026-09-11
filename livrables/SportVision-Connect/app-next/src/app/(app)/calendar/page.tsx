@@ -707,7 +707,7 @@ function MonthView({
                   onOpenDay(day);
                 }
               }}
-              aria-label={dayEvents.length ? `${day.getDate()} — ${resume.total} événements, ouvrir le détail` : undefined}
+              aria-label={dayEvents.length ? `${day.getDate()} : ${resume.total} événement${resume.total > 1 ? "s" : ""}, ouvrir le détail` : undefined}
               className={cn(
                 // Sur telephone, sept colonnes font 50 px de large : aucun texte n'y tient. La case
                 // se reduit alors au numero et a des pastilles de couleur, et tout le detail passe

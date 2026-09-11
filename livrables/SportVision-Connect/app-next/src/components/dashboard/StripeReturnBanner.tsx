@@ -53,7 +53,7 @@ function StripeReturnBannerContent() {
       <div className={cn("flex-1 text-[13px] font-semibold", isSuccess ? "text-success-fg" : "text-warning-fg")}>
         {isSuccess ? (
           <>
-            Paiement confirmé par Stripe. Votre abonnement s&apos;active en général en quelques secondes — si les crédits
+            Paiement confirmé. Votre abonnement s&apos;active en général en quelques secondes, si les crédits
             n&apos;apparaissent pas tout de suite dans Facturation, rafraîchissez la page dans un instant.
           </>
         ) : (

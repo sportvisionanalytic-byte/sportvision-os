@@ -135,14 +135,14 @@ export function AbonnementView({
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
           <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
-            Paiement reçu par Stripe — confirmation de votre abonnement en cours. Cette page se met à jour automatiquement.
+            Paiement reçu, confirmation de votre abonnement en cours. Cette page se met à jour automatiquement.
           </span>
         </div>
       )}
       {returnStatus === "annule" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
-          <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">Paiement annulé — aucun changement n&apos;a été effectué.</span>
+          <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">Paiement annulé, aucun changement n&apos;a été effectué.</span>
         </div>
       )}
 
@@ -156,7 +156,7 @@ export function AbonnementView({
             <div className="flex flex-col gap-0.5">
               <span className="font-sora text-[19px] font-semibold">Palier {AGENT_TIER_LABEL[info.tier]}</span>
               <span className="text-[14px] text-text-tertiary lg:text-[13px]">
-                {info.status === "past_due" ? "Paiement en échec — Stripe va retenter automatiquement." : AGENT_STATUS_LABEL[info.status]}
+                {info.status === "past_due" ? "Paiement en échec, Stripe va retenter automatiquement." : AGENT_STATUS_LABEL[info.status]}
                 {info.currentPeriodEnd && info.status === "active" && !info.cancelAtPeriodEnd && ` · renouvellement le ${formatDateLong(info.currentPeriodEnd)}`}
               </span>
             </div>

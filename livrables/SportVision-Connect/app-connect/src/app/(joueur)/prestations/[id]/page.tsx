@@ -7,7 +7,7 @@ import { formatEUR } from "@/lib/prestations/format";
 import { MontageCompilationModes } from "@/components/prestations/MontageCompilationModes";
 
 const HOW_IT_WORKS = [
-  { icon: "edit_note", title: "1. Vous envoyez votre demande", text: "Renseignez le match, la date et le lieu — votre demande passe au statut « En validation »." },
+  { icon: "edit_note", title: "1. Vous envoyez votre demande", text: "Renseignez le match, la date et le lieu, votre demande passe au statut « En validation »." },
   { icon: "verified", title: "2. SportVision confirme", text: "Votre demande est vérifiée puis planifiée. Vous êtes prévenu à chaque étape." },
   { icon: "cloud_download", title: "3. Vos contenus sont livrés", text: "Retrouvez vos photos et vidéos directement dans Connect, dès qu'elles sont prêtes." },
 ];
@@ -117,14 +117,14 @@ export default async function PrestationFichePage({ params }: { params: Promise<
             <Section title="À savoir">
               <ul className="flex flex-col gap-2 text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                 <li>Des frais de déplacement peuvent s&apos;appliquer selon la localisation du match.</li>
-                <li>Disponibilité soumise au planning des équipes SportVision — votre demande est confirmée après vérification.</li>
+                <li>Disponibilité soumise au planning des équipes SportVision, votre demande est confirmée après vérification.</li>
                 {offer.dureeEstimee && <li>Délai de livraison estimé : {offer.dureeEstimee}.</li>}
               </ul>
             </Section>
 
             <Section title="Questions fréquentes">
               <FaqItem q="Quand vais-je recevoir mes contenus ?" a={offer.dureeEstimee ? `Comptez généralement ${offer.dureeEstimee} après la prestation, selon le volume à traiter.` : "Le délai vous est communiqué une fois votre demande confirmée."} />
-              <FaqItem q="Puis-je annuler ma demande ?" a="Contactez SportVision depuis Connect dès que possible — le traitement dépend de l'avancement de votre dossier." />
+              <FaqItem q="Puis-je annuler ma demande ?" a="Contactez SportVision depuis Connect dès que possible, le traitement dépend de l'avancement de votre dossier." />
             </Section>
           </div>
 

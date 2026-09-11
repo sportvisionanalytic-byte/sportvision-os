@@ -37,7 +37,7 @@ async function fetchArchiveInfo(token: string): Promise<ArchiveInfo | null> {
 // par cette page : chaque téléchargement est signé au clic par l'Edge Function gallery-download.
 
 export const metadata: Metadata = {
-  title: "Vos photos — SportVision",
+  title: "Vos photos, SportVision",
   // Une commande n'a rien à faire dans un moteur de recherche.
   robots: { index: false, follow: false },
 };

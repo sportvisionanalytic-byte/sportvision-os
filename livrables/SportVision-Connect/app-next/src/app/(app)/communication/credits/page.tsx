@@ -87,7 +87,7 @@ export default function CommunicationCreditsPage() {
           <li>• Enregistrer un résultat de match : aucun crédit.</li>
           <li>• Ouvrir un formulaire de demande de visuel : aucun crédit.</li>
           <li>• Envoyer une demande de visuel confirmée : selon l&apos;urgence choisie, décompté à l&apos;envoi.</li>
-          <li>• Recharge, report et expiration sont définis par votre offre — parlez-en à votre interlocuteur SportVision.</li>
+          <li>• Recharge, report et expiration sont définis par votre offre, parlez-en à votre interlocuteur SportVision.</li>
         </ul>
       </Card>
     </div>

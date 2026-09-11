@@ -147,7 +147,7 @@ export default function RequestsPage() {
         setDetailId(null);
         showToast(`Demande ${r.reference} annulée.`);
       })
-      .catch(() => showToast("Cette demande ne peut plus être annulée — elle est déjà prise en charge.", "error"));
+      .catch(() => showToast("Cette demande ne peut plus être annulée, elle est déjà prise en charge.", "error"));
   }
 
   const requests = orgRequests ?? [];
@@ -205,7 +205,7 @@ export default function RequestsPage() {
           `${updated.length} demande${updated.length > 1 ? "s" : ""} annulée${updated.length > 1 ? "s" : ""}, ${failedCount} déjà prise${failedCount > 1 ? "s" : ""} en charge.`,
         );
       } else {
-        showToast("Aucune annulation n'a abouti — ces demandes sont déjà prises en charge.", "error");
+        showToast("Aucune annulation n'a abouti, ces demandes sont déjà prises en charge.", "error");
       }
     });
   }

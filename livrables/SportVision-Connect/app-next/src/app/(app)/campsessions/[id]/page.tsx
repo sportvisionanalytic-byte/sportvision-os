@@ -180,7 +180,7 @@ export default function EventSessionPage() {
             />
             <NameListCard
               title="Participants"
-              description="Noms libres, pas une inscription — pour briefer SportVision."
+              description="Noms libres, pas une inscription, pour briefer SportVision."
               names={session.participants}
               canWrite={canWrite}
               saving={saving}

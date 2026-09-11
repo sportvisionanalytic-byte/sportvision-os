@@ -172,7 +172,7 @@ export function ClubServicesBoard({
       setBookings((prev) => [created, ...(prev ?? [])]);
       setWizardOpen(false);
       setView("reservations");
-      showToast("Demande de présence envoyée — en attente de confirmation SportVision.");
+      showToast("Demande de présence envoyée, en attente de confirmation SportVision.");
     } catch {
       showToast("Erreur lors de l'envoi de la demande.", "error");
     } finally {

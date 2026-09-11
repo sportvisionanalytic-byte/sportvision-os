@@ -131,14 +131,14 @@ export function PhotosView({
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
           <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
-            Paiement reçu par Stripe — déverrouillage de vos albums en cours. Cette page se met à jour automatiquement.
+            Paiement reçu, déverrouillage de vos albums en cours. Cette page se met à jour automatiquement.
           </span>
         </div>
       )}
       {returnStatus === "annule" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
-          <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">Paiement annulé — aucun changement n&apos;a été effectué.</span>
+          <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">Paiement annulé, aucun changement n&apos;a été effectué.</span>
         </div>
       )}
       {error && (
@@ -296,7 +296,7 @@ function AlbumCard({ album, nbPhotosJoueur }: { album: PhotoAlbumTeaser; nbPhoto
             </button>
             {linkError && (
               <span className="mt-1 text-[13px] leading-relaxed text-danger">
-                Accès indisponible pour le moment — contactez SportVision si cela persiste.
+                Accès indisponible pour le moment, contactez SportVision si cela persiste.
               </span>
             )}
           </>

@@ -63,9 +63,13 @@ export interface OrgUser {
   fonction?: "principal" | "adjoint";
 }
 
+// « Administrateur » tout court ne dit pas lequel : dans l'écosystème SportVision il y a quatre
+// autorités distinctes (le propriétaire du compte Club+, le président du club, le CM SportVision
+// et l'administration SportVision). Les libellés le disent (12/09/2026). Le vocabulaire affiché
+// reste celui du club : on n'écrit pas notre jargon interne dans son organigramme.
 export const ROLE_LABELS: Record<string, string> = {
-  owner: "Propriétaire",
-  admin: "Administrateur",
+  owner: "Propriétaire du compte Club+",
+  admin: "Administrateur du club",
   president: "Président",
   communication_manager: "Responsable communication",
   secretary: "Secrétaire",

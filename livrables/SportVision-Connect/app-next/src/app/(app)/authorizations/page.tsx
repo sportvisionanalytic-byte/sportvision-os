@@ -149,7 +149,7 @@ export default function AuthorizationsPage() {
           )}
 
       <Card className="p-5 text-[12.5px] leading-relaxed text-text-soft">
-        <span className="font-bold text-text">RGPD</span> — le retrait d&apos;une autorisation entraîne le retrait
+        <span className="font-bold text-text">RGPD</span>, le retrait d&apos;une autorisation entraîne le retrait
         des contenus déjà publiés sous 72 heures.
       </Card>
 
