@@ -23,7 +23,13 @@ const navigateur = await chromium.launch();
 const bruit = (s) => /favicon|Download the React DevTools|net::ERR_ABORTED|ResizeObserver loop/i.test(s);
 
 async function balayer(role) {
-  const personne = await compte(`role=eq.${role}&actif=is.true`);
+  // Comptes de test de Fouka d'abord (c fka, chris fouka, christian fouka) : le 11/09, ce test a
+  // pris le compte reel d'une recrue pour le role photo. Generer un lien de connexion pour un vrai
+  // compte peut invalider un lien « mot de passe oublie » qu'il n'a pas encore clique. Un compte
+  // reel n'est pris que pour un role sans compte de test (admin, compta, sec, com).
+  const personne = (await compte(`role=eq.${role}&actif=is.true&nom=ilike.*fka*`))
+    || (await compte(`role=eq.${role}&actif=is.true&nom=ilike.*fouka*`))
+    || (await compte(`role=eq.${role}&actif=is.true`));
   if (!personne) return { role, absent: true };
   const { page } = await ouvrirOS(navigateur, personne);
   let courant = "(demarrage)";
