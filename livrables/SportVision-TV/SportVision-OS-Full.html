@@ -15763,8 +15763,14 @@ async function loadPhotoDash(){
       try{
         const futurIds=futures.slice(0,5).map(d=>d.prestations?.id).filter(Boolean);
         if(futurIds.length){
-          const teammates=await sbFetch('prestations_equipe_display?select=collaborateur_id,statut,prestations(id,reference,date_prestation,type_prestation),profiles(id,prenom,nom,role)&prestation_id=in.('+futurIds.join(',')+')'+'&collaborateur_id=neq.'+uid+'&statut=in.(invitation_envoyée,acceptée)');
-          const tm=Array.isArray(teammates)?teammates:[];
+          // 11/09/2026 (v143) : la vue d'équipe ne rend à un opérateur que sa propre ligne (les
+          // rémunérations des collègues sont masquées), la carte restait donc toujours vide.
+          // mes_coequipiers rend qui, quel rôle, quel RDV, sans aucun montant.
+          const teammates=await sbFetch('rpc/mes_coequipiers',{method:'POST',body:{p_prestation_ids:futurIds}});
+          const tm=(Array.isArray(teammates)?teammates:[]).map(t=>({
+            collaborateur_id:t.collaborateur_id,statut:t.statut,
+            prestations:{id:t.prestation_id,reference:t.reference,date_prestation:t.date_prestation,type_prestation:t.type_prestation},
+            profiles:{id:t.collaborateur_id,prenom:t.prenom,nom:t.nom,role:t.role}}));
           // Dédupliquer par collaborateur + regrouper ses missions
           const byCollab={};
           tm.forEach(t=>{
@@ -15785,8 +15791,8 @@ async function loadPhotoDash(){
               return`<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
                 <div style="width:34px;height:34px;border-radius:50%;background:${rclr}22;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${rclr};flex-shrink:0">${ini.toUpperCase()}</div>
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:13px;font-weight:600;color:var(--t1)">${nom}</div>
-                  <div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mTxt||'Missions à venir'}</div>
+                  <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(nom)}</div>
+                  <div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(mTxt)||'Missions à venir'}</div>
                 </div>
                 <button onclick="ouvrirConvAvec('${p?.id}','${escJs(nom)}')
 " style="padding:7px 12px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);white-space:nowrap">💬 Message</button>
