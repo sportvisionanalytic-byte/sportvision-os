@@ -38,8 +38,11 @@ begin
   end if;
   return is_team_educateur(p_team_id);
 end $$;
-revoke execute on function public.peut_lire_calendrier_equipe(uuid) from public, anon;
-grant execute on function public.peut_lire_calendrier_equipe(uuid) to authenticated;
+-- Droits d'exécution : laissés ouverts (voir v175). Ces fonctions sont appelées par des POLICIES,
+-- donc avec les droits du lecteur, visiteur anonyme compris : les fermer fait échouer la lecture
+-- au lieu de la borner. Le cloisonnement vient de ce qu'elles répondent, pas du droit de les
+-- appeler.
+grant execute on function public.peut_lire_calendrier_equipe(uuid) to public, anon, authenticated, service_role;
 
 -- Recopie conforme de la production (le coach est borné à ses équipes, sauf s'il est aussi joueur
 -- du club ou parent confirmé d'un joueur : le lien de famille ouvre le calendrier complet depuis
@@ -58,8 +61,7 @@ returns boolean language sql stable security definer set search_path = public, p
        and (pp.user_id = auth.uid() or is_confirmed_parent_of(pp.id))
   );
 $$;
-revoke execute on function public.membre_borne_a_ses_equipes(uuid) from public, anon;
-grant execute on function public.membre_borne_a_ses_equipes(uuid) to authenticated;
+grant execute on function public.membre_borne_a_ses_equipes(uuid) to public, anon, authenticated, service_role;
 
 drop policy if exists cma_member_select on public.club_matches;
 create policy cma_member_select on public.club_matches for select to public
