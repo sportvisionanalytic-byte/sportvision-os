@@ -185,8 +185,9 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
     };
   }, []);
 
-  // fetchClubPresenceRequestCalendrier (11/09/2026), pas fetchClubCalendrier : cette RPC-là est
-  // club-wide par conception mais renvoie sa réponse À TOUT rôle authentifié qui l'appelle — le
+  // fetchClubPresenceRequestCalendrier (11/09/2026), pas fetchClubCalendrier : cette RPC-là
+  // renvoie sa réponse à tout rôle authentifié du club (limitée aux équipes d'un rôle d'équipe
+  // depuis migration-blocages-review-2), sans condition sur le droit de demander — le
   // bouton React qui ouvre cette modale n'est affiché qu'aux 5 rôles de CAN_REQUEST_ROLES
   // (presences/page.tsx), mais rien ne l'imposait côté serveur. La RPC dédiée refuse désormais
   // explicitement (403) tout rôle hors admin/president/comm/directeur_sportif/cm_externe/

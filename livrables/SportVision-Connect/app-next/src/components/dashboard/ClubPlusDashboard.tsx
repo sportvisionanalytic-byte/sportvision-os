@@ -285,8 +285,9 @@ export function ClubPlusDashboard() {
   // (11/09/2026) : la première interrogeait club_calendar_events sans filtre équipe ni plage de
   // dates — sous RLS, un rôle non-président doit évaluer sa policy d'accès sur l'ensemble des
   // lignes du club, jusqu'au timeout Postgres (57014) pour un coach (mesuré sur Review : 8-10s).
-  // La seconde (club_calendrier(), SECURITY DEFINER) est rapide mais renvoie le calendrier
-  // COMPLET du club dans la réponse réseau quel que soit le rôle — vérifié en réel : un coach
+  // La seconde (club_calendrier(), SECURITY DEFINER) est rapide mais renvoyait le calendrier
+  // COMPLET du club dans la réponse réseau quel que soit le rôle (corrigé depuis par
+  // migration-blocages-review-2, et sans fenêtre ni limite pour ce widget) — vérifié en réel : un coach
   // recevait toutes les équipes du club avant tout filtrage React, qui n'est PAS un contrôle
   // d'autorisation. fetchClubDashboardUpcomingEvents appelle une RPC dédiée qui détermine le
   // rôle/l'équipe autorisée et applique la fenêtre de dates/tri/limite à 5 EN SQL, avant de

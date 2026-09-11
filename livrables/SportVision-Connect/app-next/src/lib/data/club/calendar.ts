@@ -263,6 +263,10 @@ const GENRE_VERS_KIND: Record<LigneCalendrier["genre"], CalendarEventKind> = {
   evenement: "event",
 };
 
+/** Le calendrier d'un club, par la RPC club_calendrier. C'est la base qui décide du périmètre
+ * (migration-blocages-review-2) : un coach, un responsable d'équipe ou un directeur sportif ne
+ * reçoit que ses équipes et les événements du club sans équipe ; les rôles administratifs et qui
+ * opère le club reçoivent tout. Aucun filtre de rôle à ajouter ici. */
 export async function fetchClubCalendrier(
   supabase: SupabaseClient,
   clubId: string,
@@ -324,12 +328,12 @@ export async function fetchClubCalendrier(
 
 // ── RPC dédiées, filtrage équipe/rôle côté serveur (11/09/2026) ────────────────────────
 //
-// club_calendrier() est club-wide par conception (RPC SECURITY DEFINER, décision produit du
-// 11/09) : correct pour l'écran /calendar, mais dangereux pour un widget qui ne doit montrer
-// qu'une partie du calendrier à certains rôles — un filtrage React après coup n'empêche rien
-// côté réseau (payload brute déjà reçue). Ces 3 fonctions appellent des RPC dédiées qui
-// déterminent le rôle/l'équipe autorisée EN SQL et ne renvoient jamais plus que ce que l'écran
-// doit montrer. Colonnes exposées par club_calendrier_interne en production (21, mêmes que
+// club_calendrier() rendait tout le calendrier du club à tout rôle jusqu'au 11/09/2026. Depuis
+// migration-blocages-review-2 (décision de Fouka, même règle que club_dashboard_upcoming_events),
+// elle rend tout le club aux rôles administratifs et à qui opère le club, et aux rôles d'équipe
+// leurs équipes + les événements sans équipe. Les 3 widgets ci-dessous gardent leurs RPC dédiées,
+// qui fixent en plus leur fenêtre, leur limite et leurs rôles autorisés EN SQL — un filtrage React
+// après coup n'empêche rien côté réseau (payload brute déjà reçue). Colonnes exposées par club_calendrier_interne en production (21, mêmes que
 // LigneCalendrier ci-dessus — contrairement à Review, qui n'en a que 15, écart environnemental
 // documenté séparément).
 interface LigneCalendrierCompacte {
@@ -373,9 +377,9 @@ function ligneCompacteVersCalendarEvent(l: LigneCalendrierCompacte, organization
 
 /** Widget "Prochains événements" du dashboard. Filtre équipe (coach/resp_equipe/directeur_
  * sportif) appliqué côté serveur par la RPC — remplace fetchClubCalendarEvents (11/09/2026,
- * timeouts 57014 sous RLS pour les rôles non-président) sans reproduire la fuite réseau de
- * club_calendrier() (toutes les équipes reçues par un coach avant filtrage React, constatée le
- * 11/09/2026). */
+ * timeouts 57014 sous RLS pour les rôles non-président) sans reproduire la fuite réseau qu'avait
+ * club_calendrier() avant migration-blocages-review-2 (toutes les équipes reçues par un coach
+ * avant filtrage React, constatée le 11/09/2026). */
 export async function fetchClubDashboardUpcomingEvents(
   supabase: SupabaseClient,
   clubId: string,

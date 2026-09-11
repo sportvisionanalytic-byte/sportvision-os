@@ -56,7 +56,9 @@ grant all on ids, mesures, verdicts to authenticated;
 grant usage on sequence verdicts_n_seq to authenticated;
 
 -- Les rôles de club mesurés. `cm_externe` est le CM externe invité directement par le club (pas le
--- CM SportVision) : il n'est dans aucune des trois listes des décisions.
+-- CM SportVision). Absent des décisions du 11/09 au matin, il a rejoint l'annuaire et les sponsors
+-- le 11/09 au soir (décision de Fouka : mêmes droits que le CM SportVision, migration
+-- blocages-review-1) ; il reste exclu du SIRET et de Stripe, comme le CM SportVision.
 create temp table roles_club (role text) on commit drop;
 insert into roles_club values ('admin'), ('president'), ('secretaire'), ('tresorier'), ('sponsor_mgr'),
   ('coach'), ('resp_equipe'), ('directeur_sportif'), ('comm'), ('lecture_seule'), ('membre_bureau'),
@@ -202,7 +204,8 @@ select format('[%s] %s', m.qui, m.donnee),
               when 'sa fiche' then array(select role from roles_club)
               -- La fiche d'équipe ne s'ouvre qu'à qui opère le club et au coach de l'équipe : parmi
               -- eux, l'e-mail ne va qu'à l'annuaire (le coach, le responsable d'équipe et le
-              -- directeur sportif lisent le nom et le statut, pas l'adresse).
+              -- directeur sportif lisent le nom et le statut, pas l'adresse). Le CM externe, dans
+              -- l'annuaire depuis blocages-review-1, n'ouvre pas la fiche d'équipe : il ne lit rien.
               when 'e-mail invité' then array['admin', 'president', 'os_cm', 'os_admin', 'os_com', 'os_sec']
               -- Les opérations (libellé, date : aucun montant) restent lisibles par tout le staff de
               -- l'OS (sop_staff_all, is_staff) — « + staff SportVision de l'OS » dans la décision —,
