@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
-import { fetchAvailableMediaProducts, fetchPhotoAlbums } from "@/lib/supabase/photoPass";
+import { fetchAlbumsVideos, fetchAvailableMediaProducts, fetchPhotoAlbums } from "@/lib/supabase/photoPass";
 import { PhotosView } from "./PhotosView";
 
 // Moteur média générique (Espace joueur) — 02/09/2026, voir migration-media-v1-moteur-generique.sql
@@ -47,9 +47,11 @@ export default async function PhotosPage({
     saisonId = (membership?.saison_id as string | null) || null;
   }
 
-  const [albums, products] = clubId && teamId && saisonId
+  const [albumsBruts, products] = clubId && teamId && saisonId
     ? await Promise.all([fetchPhotoAlbums(supabase, clubId, teamId, saisonId), fetchAvailableMediaProducts(supabase, clubId, teamId)])
     : [[], []];
+  // La vidéo du match s'ouvre par le lien du montage déposé sur la mission (v157).
+  const albums = await fetchAlbumsVideos(supabase, albumsBruts);
 
   return (
     <PhotosView

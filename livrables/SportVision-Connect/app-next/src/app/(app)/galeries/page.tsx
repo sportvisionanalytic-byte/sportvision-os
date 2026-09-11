@@ -26,6 +26,12 @@ interface LienClub {
   is_enabled: boolean;
 }
 
+interface VideoGalerie {
+  album_id: string;
+  nom: string;
+  url: string;
+}
+
 interface GalerieClub {
   album_id: string;
   titre: string;
@@ -40,6 +46,7 @@ interface GalerieClub {
 export default function GaleriesClubPage() {
   const { ctx } = useSession();
   const [galeries, setGaleries] = useState<GalerieClub[] | null>(null);
+  const [videos, setVideos] = useState<Record<string, VideoGalerie>>({});
   const [copie, setCopie] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
 
@@ -47,8 +54,19 @@ export default function GaleriesClubPage() {
     if (!ctx?.organization?.id) return;
     let vivant = true;
     void (async () => {
-      const { data } = await createClient().rpc("media_club_galleries", { p_club_id: ctx.organization.id });
-      if (vivant) setGaleries(Array.isArray(data) ? (data as GalerieClub[]) : []);
+      const supabase = createClient();
+      const { data } = await supabase.rpc("media_club_galleries", { p_club_id: ctx.organization.id });
+      const liste = Array.isArray(data) ? (data as GalerieClub[]) : [];
+      if (vivant) setGaleries(liste);
+      // La vidéo du match n'est pas dans la galerie : c'est le lien du montage déposé sur la
+      // mission (v157). Les liens de livraison sont réservés au staff, d'où cette fonction dédiée
+      // qui ne rend que le montage final des galeries que la personne a le droit de voir.
+      if (liste.length) {
+        const { data: v } = await supabase.rpc("media_galeries_video", { p_album_ids: liste.map((g) => g.album_id) });
+        if (vivant && Array.isArray(v)) {
+          setVideos(Object.fromEntries((v as VideoGalerie[]).map((x) => [x.album_id, x])));
+        }
+      }
     })();
     return () => {
       vivant = false;
@@ -116,6 +134,19 @@ export default function GaleriesClubPage() {
                 </div>
               </div>
             </div>
+
+            {videos[g.album_id] && (
+              <a
+                href={videos[g.album_id]!.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[.04] px-3 py-2.5 text-[13px] font-semibold hover:bg-white/[.07]"
+              >
+                <span aria-hidden>🎬</span>
+                <span className="min-w-0 flex-1 truncate">Vidéo du match</span>
+                <span className="text-[12px] font-normal text-slate-400">Ouvrir</span>
+              </a>
+            )}
 
             {g.liens.length === 0 ? (
               <p className="mt-3 text-[12px] text-slate-500">

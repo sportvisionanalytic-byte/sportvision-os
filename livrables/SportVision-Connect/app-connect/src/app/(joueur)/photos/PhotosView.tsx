@@ -263,6 +263,17 @@ function AlbumCard({ album }: { album: PhotoAlbumTeaser }) {
       <div className="flex flex-col gap-1.5 p-4">
         <span className="font-sora text-[16px] font-semibold">{album.title}</span>
         <span className="text-[13px] text-text-tertiary">{formatDate(album.eventDate) || "Date non précisée"}</span>
+        {album.videoUrl && (
+          <a
+            href={album.videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus"
+          >
+            <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">movie</span>
+            Vidéo du match
+          </a>
+        )}
         {album.unlocked ? (
           <>
             <button

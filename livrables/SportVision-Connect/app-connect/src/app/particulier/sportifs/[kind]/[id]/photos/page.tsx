@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireParticulierAccount } from "@/lib/supabase/session";
-import { fetchAvailableMediaProducts, fetchPhotoAlbums } from "@/lib/supabase/photoPass";
+import { fetchAlbumsVideos, fetchAvailableMediaProducts, fetchPhotoAlbums } from "@/lib/supabase/photoPass";
 import { PhotosViewClub } from "./PhotosViewClub";
 import type { AthleteDetail } from "../AthleteDetailView";
 
@@ -21,10 +21,13 @@ export default async function AthletePhotosPage({ params }: { params: Promise<{ 
   const detail = data as AthleteDetail | null;
   if (!detail || !detail.club_id || !detail.team_id || !detail.saison_id) notFound();
 
-  const [albums, products] = await Promise.all([
+  const [albumsBruts, products] = await Promise.all([
     fetchPhotoAlbums(supabase, detail.club_id, detail.team_id, detail.saison_id),
     fetchAvailableMediaProducts(supabase, detail.club_id, detail.team_id),
   ]);
+
+  // La vidéo du match s'ouvre par le lien du montage déposé sur la mission (v157).
+  const albums = await fetchAlbumsVideos(supabase, albumsBruts);
 
   return <PhotosViewClub detail={detail} albums={albums} products={products} />;
 }

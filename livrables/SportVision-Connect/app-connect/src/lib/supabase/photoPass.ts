@@ -22,6 +22,9 @@ export interface PhotoAlbumTeaser {
   photoCount: number;
   publishedAt: string | null;
   unlocked: boolean;
+  /** Lien du montage final déposé sur la mission (v157). La vidéo n'est pas versée dans la
+   *  galerie : elle s'ouvre par ce lien, rendu seulement aux personnes concernées. */
+  videoUrl?: string | null;
 }
 
 interface AlbumListRpcRow {
@@ -55,6 +58,19 @@ export async function fetchPhotoAlbums(
     publishedAt: r.published_at,
     unlocked: r.unlocked === true,
   }));
+}
+
+/** Le lien du montage final de chaque galerie, quand il existe (v157, media_galeries_video) : la
+ *  base ne le rend qu'au coach de l'équipe, au joueur affilié et à son parent confirmé. */
+export async function fetchAlbumsVideos(
+  supabase: SupabaseClient,
+  albums: PhotoAlbumTeaser[],
+): Promise<PhotoAlbumTeaser[]> {
+  if (!albums.length) return albums;
+  const { data, error } = await supabase.rpc("media_galeries_video", { p_album_ids: albums.map((a) => a.id) });
+  if (error || !Array.isArray(data)) return albums;
+  const parAlbum = new Map((data as { album_id: string; url: string }[]).map((v) => [v.album_id, v.url]));
+  return albums.map((a) => ({ ...a, videoUrl: parAlbum.get(a.id) ?? null }));
 }
 
 /** Révèle le lien HD réel d'un album déjà déverrouillé — jamais pré-chargé, appelée seulement au
