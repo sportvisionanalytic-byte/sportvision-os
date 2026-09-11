@@ -124,6 +124,17 @@ export function administreLeClub(ctx: ActiveContext): boolean {
   return ctx.membership.role === "admin" || ctx.membership.role === "president";
 }
 
+/** Décision de Fouka du 11/09/2026 (annuaire du club) : les coordonnées des autres membres sont
+ * lisibles par l'Owner Club+, le Président, le CM SportVision du club, la Secrétaire et le
+ * Trésorier. Miroir d'affichage de `peut_lire_annuaire_club` en base — c'est la base qui décide
+ * (club_membres_coordonnees ne rend rien aux autres) ; ceci sert seulement à ne pas afficher une
+ * colonne « Téléphone » vide qui laisserait croire que personne n'en a renseigné. */
+const CLUB_ROLES_ANNUAIRE: ReadonlySet<MembershipRole> = new Set(["admin", "president", "external_cm", "secretary", "treasurer"]);
+
+export function litAnnuaireDuClub(ctx: ActiveContext): boolean {
+  return ctx.organization.type === "club" && CLUB_ROLES_ANNUAIRE.has(ctx.membership.role);
+}
+
 /** Rôles de club sans droit d'exploitation (décisions Club+ du 10/09/2026, n° 1) : miroir exact de
  * `club_role_sans_exploitation` en base (migration-decisions-clubplus-01). Ils consultent le club ;
  * ils n'y créent ni demande, ni événement, ni match, ni actualité, ni réservation. */

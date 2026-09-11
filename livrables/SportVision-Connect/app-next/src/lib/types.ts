@@ -65,6 +65,11 @@ export interface Organization {
   logoUrl?: string;
   address?: string;
   siret?: string;
+  /** Vrai seulement si la base autorise cette personne à lire le SIRET du club (décisions de
+   * Fouka du 11/09/2026 : Owner Club+, Président, Secrétaire, Trésorier — jamais le CM
+   * SportVision). Sert à distinguer un SIRET vide (« Non renseigné ») d'un SIRET qu'on n'a pas le
+   * droit de lire (champ masqué), et à ne jamais renvoyer à la base un SIRET qu'on n'a pas lu. */
+  siretLisible?: boolean;
   legalName?: string;
   brandColors?: string[];
   instagramHandle?: string;

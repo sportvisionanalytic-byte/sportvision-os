@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, sansReglagesDuClub, administreLeClub } from "@/lib/permissions";
+import { canAccess, sansReglagesDuClub, administreLeClub, litAnnuaireDuClub } from "@/lib/permissions";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -82,6 +82,12 @@ function OrganizationForm() {
   // — jamais dérivé du rôle, qui n'a de toute façon aucun équivalent "admin" littéral pour un
   // coach/une agence CM (rôle réel "owner") ou un tournoi/stage ("event_admin", voir mappers.ts).
   const canEdit = administreLeClub(ctx);
+  // 11/09/2026 — Décisions de Fouka. Le SIRET n'est lisible que par l'Owner Club+, le Président,
+  // la Secrétaire et le Trésorier : l'Administratif, qui voit aussi cette page en lecture, ne le
+  // reçoit plus de la base. On masque alors le champ (« Non renseigné » serait faux) et on ne le
+  // renvoie jamais à l'enregistrement. Même principe pour les téléphones de l'organigramme.
+  const siretLisible = organization.siretLisible === true;
+  const annuaireLisible = litAnnuaireDuClub(ctx);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [address, setAddress] = useState(organization.address ?? "");
@@ -109,7 +115,7 @@ function OrganizationForm() {
   const infoDirty =
     address !== (organization.address ?? "") ||
     instagram !== (organization.instagramHandle ?? "") ||
-    siret !== (organization.siret ?? "");
+    (siretLisible && siret !== (organization.siret ?? ""));
   const originalColors = organization.brandColors ?? ["#4F7DFF", "#A855F7"];
   const colorsDirty = colors[0] !== originalColors[0] || colors[1] !== originalColors[1];
 
@@ -119,7 +125,11 @@ function OrganizationForm() {
     setSaved(null);
     try {
       const supabase = createClient();
-      await updateClubOrganization(supabase, organization.id, { adresse: address, instagramHandle: instagram, siret });
+      await updateClubOrganization(
+        supabase,
+        organization.id,
+        siretLisible ? { adresse: address, instagramHandle: instagram, siret } : { adresse: address, instagramHandle: instagram },
+      );
       setSaved("info");
     } catch {
       setError("Impossible d'enregistrer ces informations. Réessayez.");
@@ -245,15 +255,17 @@ function OrganizationForm() {
               className={cn(fieldClass, !canEdit && "cursor-not-allowed text-text-faint")}
             />
           </Field>
-          <Field label="SIRET">
-            <input
-              value={siret}
-              onChange={(e) => setSiret(e.target.value)}
-              disabled={!canEdit}
-              placeholder="Non renseigné"
-              className={cn(fieldClass, !canEdit && "cursor-not-allowed text-text-faint")}
-            />
-          </Field>
+          {siretLisible && (
+            <Field label="SIRET">
+              <input
+                value={siret}
+                onChange={(e) => setSiret(e.target.value)}
+                disabled={!canEdit}
+                placeholder="Non renseigné"
+                className={cn(fieldClass, !canEdit && "cursor-not-allowed text-text-faint")}
+              />
+            </Field>
+          )}
         </div>
         {canEdit && (
           <div className="flex items-center gap-3">
@@ -337,7 +349,7 @@ function OrganizationForm() {
           <div>
             <div className="text-[13.5px] font-extrabold">Organigramme</div>
             <p className="mt-0.5 text-[12px] text-text-soft">
-              Rôle, nom et téléphone des membres actifs de {organization.name}.
+              {annuaireLisible ? "Rôle, nom et téléphone" : "Rôle et nom"} des membres actifs de {organization.name}.
             </p>
           </div>
           {members === null ? (
@@ -358,7 +370,7 @@ function OrganizationForm() {
                     <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text">
                       {m.firstName || m.lastName ? `${m.firstName} ${m.lastName}`.trim() : "—"}
                     </span>
-                    <span className="flex-none text-[12.5px] text-text-soft">{m.phone || "—"}</span>
+                    {annuaireLisible && <span className="flex-none text-[12.5px] text-text-soft">{m.phone || "—"}</span>}
                   </div>
                 ))}
             </div>

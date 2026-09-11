@@ -6669,8 +6669,17 @@ async function cfpLoadUsers(clubId){
   if(!el)return;
   el.innerHTML=_cmSkel(3,22);
   try{
-    const data=await sbFetch('club_members?select=id,prenom,nom,telephone,role,status,created_at&club_id=eq.'+clubId+'&order=created_at.asc');
-    const list=Array.isArray(data)?data:[];
+    // 11/09/2026 (décisions de Fouka) : le téléphone des membres d'un club n'est plus lisible
+    // dans club_members (colonne fermée à authenticated, migration club-donnees-restreintes-2).
+    // Le demander ici ferait échouer TOUTE la requête (42501). On lit la liste sans lui, puis les
+    // téléphones par club_membres_coordonnees, qui les rend au staff et au CM du club. Un refus
+    // de cette seconde lecture laisse la liste s'afficher, avec « — ».
+    const [data,coord]=await Promise.all([
+      sbFetch('club_members?select=id,prenom,nom,role,status,created_at&club_id=eq.'+clubId+'&order=created_at.asc'),
+      sbFetch('rpc/club_membres_coordonnees',{method:'POST',body:{p_club_id:clubId}}).catch(()=>null),
+    ]);
+    const telDe=new Map((Array.isArray(coord)?coord:[]).map(c=>[c.membre_id,c.telephone]));
+    const list=(Array.isArray(data)?data:[]).map(m=>({...m,telephone:telDe.get(m.id)||null}));
     if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Aucun utilisateur Club+ pour ce club.</div>';return;}
     el.innerHTML=`<div class="tw"><table><thead><tr><th>Nom</th><th>Rôle</th><th>Téléphone</th><th>Statut</th><th>Depuis</th></tr></thead><tbody>${
       list.map(m=>`<tr>

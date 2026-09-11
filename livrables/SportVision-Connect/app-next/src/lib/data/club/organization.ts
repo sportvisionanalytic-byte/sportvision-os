@@ -8,6 +8,43 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // d'écriture existait déjà côté RLS (clubs_admin_update, USING is_club_admin(id)) : c'est
 // uniquement l'absence de colonnes/bucket qui bloquait, pas un manque de policy.
 
+// 11/09/2026 — Décisions de Fouka : le SIRET et les identifiants Stripe d'un club ne se lisent
+// plus dans `clubs` (colonnes fermées à `authenticated`, migration club-donnees-restreintes-2 :
+// les demander fait échouer TOUTE la requête, 42501). Seul chemin : club_donnees_restreintes(),
+// qui les rend masqués personne par personne — SIRET : Owner Club+, Président, Secrétaire,
+// Trésorier ; Stripe : Owner Club+ et Président (plus Admin SportVision et Compta côté OS).
+// Aucune ligne = rien de lisible pour cette personne, ce qui n'est pas une erreur.
+export interface ClubDonneesRestreintes {
+  siret: string | null;
+  siretLisible: boolean;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  paiementLisible: boolean;
+}
+
+export const AUCUNE_DONNEE_RESTREINTE: ClubDonneesRestreintes = {
+  siret: null,
+  siretLisible: false,
+  stripeCustomerId: null,
+  stripeSubscriptionId: null,
+  paiementLisible: false,
+};
+
+export async function fetchClubDonneesRestreintes(supabase: SupabaseClient, clubId: string): Promise<ClubDonneesRestreintes> {
+  const { data, error } = await supabase.rpc("club_donnees_restreintes", { p_club_id: clubId });
+  // Une erreur (réseau, fonction pas encore déployée) ne doit pas empêcher d'entrer dans le club :
+  // on se replie sur « rien de lisible », qui masque les champs au lieu d'afficher un faux vide.
+  const ligne = !error && Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+  if (!ligne) return AUCUNE_DONNEE_RESTREINTE;
+  return {
+    siret: (ligne.siret as string | null) ?? null,
+    siretLisible: ligne.siret_lisible === true,
+    stripeCustomerId: (ligne.stripe_customer_id as string | null) ?? null,
+    stripeSubscriptionId: (ligne.stripe_subscription_id as string | null) ?? null,
+    paiementLisible: ligne.paiement_lisible === true,
+  };
+}
+
 export interface UpdateClubOrganizationInput {
   ville?: string;
   adresse?: string;
@@ -22,6 +59,11 @@ export interface UpdateClubOrganizationInput {
  * `{ adresse, siret }` (ex. l'onboarding Identité) ne doit jamais écraser couleur_primaire/
  * couleur_secondaire à null (bug trouvé en QA le 02/09 : chaque section de l'onboarding qui
  * appelait cette fonction avec un sous-ensemble de champs effaçait silencieusement les autres).
+ *
+ * 11/09/2026 — Même règle pour le SIRET, et elle compte davantage : une personne qui ne peut pas
+ * LIRE le SIRET (CM SportVision, Administratif) le voit vide. Si l'écran le renvoyait quand même,
+ * il l'effacerait (Owner, Président) ou ferait refuser tout l'enregistrement (CM, déclencheur
+ * proteger_identite_legale_club). Les écrans ne passent donc `siret` que s'ils l'ont lu.
  */
 export async function updateClubOrganization(
   supabase: SupabaseClient,

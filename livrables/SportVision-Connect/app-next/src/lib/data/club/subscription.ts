@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchClubDonneesRestreintes } from "@/lib/data/club/organization";
 
 // Champs `clubs` nécessaires à « Mon offre » (CLUB-PLUS-PRODUCT-BIBLE.md §19) et au choix
 // Checkout/Portail de facturation — jamais exposés par ActiveContext.subscription
@@ -21,15 +22,21 @@ interface ClubSubscriptionRow {
   credits_monthly: number;
   credits_balance: number;
   subscription_status: string | null;
-  stripe_subscription_id: string | null;
 }
 
 export async function fetchClubSubscriptionInfo(supabase: SupabaseClient, clubId: string): Promise<ClubSubscriptionInfo | null> {
-  const { data } = await supabase
-    .from("clubs")
-    .select("plan, engagement, pilot_mode, credits_monthly, credits_balance, subscription_status, stripe_subscription_id")
-    .eq("id", clubId)
-    .maybeSingle();
+  // 11/09/2026 — L'identifiant d'abonnement Stripe ne se lit plus dans `clubs` : décision de
+  // Fouka, il n'est lisible que par l'Owner Club+ et le Président (les deux seuls qui voient
+  // « Mon offre »), par club_donnees_restreintes(). La colonne est fermée à `authenticated` :
+  // la garder dans ce `select` ferait échouer toute la carte.
+  const [{ data }, restreintes] = await Promise.all([
+    supabase
+      .from("clubs")
+      .select("plan, engagement, pilot_mode, credits_monthly, credits_balance, subscription_status")
+      .eq("id", clubId)
+      .maybeSingle(),
+    fetchClubDonneesRestreintes(supabase, clubId),
+  ]);
   if (!data) return null;
   const row = data as ClubSubscriptionRow;
   return {
@@ -39,6 +46,6 @@ export async function fetchClubSubscriptionInfo(supabase: SupabaseClient, clubId
     creditsMonthly: row.credits_monthly,
     creditsBalance: row.credits_balance,
     subscriptionStatus: row.subscription_status,
-    hasActiveStripeSubscription: Boolean(row.stripe_subscription_id) && row.subscription_status === "actif",
+    hasActiveStripeSubscription: Boolean(restreintes.stripeSubscriptionId) && row.subscription_status === "actif",
   };
 }

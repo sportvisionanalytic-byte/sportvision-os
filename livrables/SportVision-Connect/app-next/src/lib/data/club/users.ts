@@ -31,7 +31,6 @@ interface ClubMemberRow {
   user_id: string;
   prenom: string | null;
   nom: string | null;
-  telephone: string | null;
   role: string;
   status: string;
   created_at: string;
@@ -45,14 +44,31 @@ const STATUS_MAP: Record<string, OrgUser["status"]> = {
   suspendu: "disabled",
 };
 
+// 11/09/2026 — Décision de Fouka : les coordonnées des AUTRES membres d'un club ne sont lisibles
+// que par l'Owner Club+, le Président, le CM SportVision du club, la Secrétaire et le Trésorier
+// (plus le staff SportVision). Chacun lit toujours sa propre fiche ; noms et rôles restent
+// visibles (sélecteurs d'encadrant, « coach : X » sur une équipe…).
+//
+// La colonne `telephone` est donc fermée à `authenticated` (migration club-donnees-restreintes-2) :
+// la demander ferait échouer TOUTE la liste, pour tout le monde. On lit la liste sans elle, puis
+// les téléphones par club_membres_coordonnees(), qui ne rend que ce que la personne a le droit de
+// voir. Un échec de cette seconde lecture laisse la liste s'afficher, sans téléphone.
 export async function fetchClubMembers(supabase: SupabaseClient, clubId: string): Promise<OrgUser[]> {
-  const { data, error } = await supabase
-    .from("club_members")
-    .select("id, user_id, prenom, nom, telephone, role, status, created_at, teams, fonction")
-    .eq("club_id", clubId)
-    .order("created_at", { ascending: true });
+  const [{ data, error }, coordonnees] = await Promise.all([
+    supabase
+      .from("club_members")
+      .select("id, user_id, prenom, nom, role, status, created_at, teams, fonction")
+      .eq("club_id", clubId)
+      .order("created_at", { ascending: true }),
+    supabase.rpc("club_membres_coordonnees", { p_club_id: clubId }),
+  ]);
 
   if (error) throw error;
+
+  const telephones = new Map<string, string | null>();
+  for (const c of (coordonnees.error ? [] : (coordonnees.data ?? [])) as { membre_id: string; telephone: string | null }[]) {
+    telephones.set(c.membre_id, c.telephone);
+  }
 
   return ((data ?? []) as ClubMemberRow[]).map((row) => ({
     id: row.user_id,
@@ -60,7 +76,7 @@ export async function fetchClubMembers(supabase: SupabaseClient, clubId: string)
     firstName: row.prenom ?? "",
     lastName: row.nom ?? "",
     email: "",
-    phone: row.telephone ?? undefined,
+    phone: telephones.get(row.id) ?? undefined,
     fonction: row.fonction === "adjoint" || row.fonction === "principal" ? row.fonction : undefined,
     role: mapClubRole(row.role),
     teamScope: Array.isArray(row.teams) ? row.teams : [],
@@ -125,7 +141,10 @@ export async function setClubMemberStatus(
   membershipId: string,
   status: "actif" | "suspendu",
 ): Promise<void> {
-  const { data, error } = await supabase.from("club_members").update({ status }).eq("id", membershipId).select();
+  // `select("id")` et non `select()` : ce dernier redemande toutes les colonnes, téléphone compris,
+  // que `authenticated` ne peut plus lire (11/09/2026) — l'écriture réussirait, et la réponse
+  // échouerait (42501), l'écran annonçant alors un échec qui n'en est pas un.
+  const { data, error } = await supabase.from("club_members").update({ status }).eq("id", membershipId).select("id");
   if (error) throw error;
   if (!data || data.length === 0) {
     throw new Error("Action impossible : droits insuffisants ou membre introuvable.");
@@ -143,7 +162,8 @@ export async function setClubMemberTeams(
   membershipId: string,
   teams: string[],
 ): Promise<void> {
-  const { data, error } = await supabase.from("club_members").update({ teams }).eq("id", membershipId).select();
+  // `select("id")` : voir setClubMemberStatus ci-dessus.
+  const { data, error } = await supabase.from("club_members").update({ teams }).eq("id", membershipId).select("id");
   if (error) throw error;
   if (!data || data.length === 0) {
     throw new Error("Action impossible : droits insuffisants ou membre introuvable.");

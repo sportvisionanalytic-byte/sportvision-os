@@ -209,7 +209,7 @@ export default function OnboardingPage() {
   const carte = (() => {
     switch (active) {
       case "identite":
-        return <IdentiteCard clubId={organization.id} address={organization.address ?? ""} siret={organization.siret ?? ""} canEdit={canEdit} canEditLegal={canEditLegal} onSaved={refresh} />;
+        return <IdentiteCard clubId={organization.id} address={organization.address ?? ""} siret={organization.siret ?? ""} siretLisible={organization.siretLisible === true} canEdit={canEdit} canEditLegal={canEditLegal} onSaved={refresh} />;
       case "responsables":
         return <ResponsablesCard clubId={organization.id} canEdit={canEdit} canInvite={canInvite} estCm={estCmAffilie} enPreparation={enPreparation} onSaved={refresh} />;
       case "equipes":
@@ -664,6 +664,7 @@ function IdentiteCard({
   clubId,
   address,
   siret,
+  siretLisible,
   canEdit,
   canEditLegal,
   onSaved,
@@ -671,6 +672,9 @@ function IdentiteCard({
   clubId: string;
   address: string;
   siret: string;
+  // 11/09/2026 — Décision de Fouka : le CM SportVision ne lit pas le SIRET (la base ne le lui
+  // rend plus). Le champ n'est donc affiché qu'à qui le lit réellement, et jamais renvoyé sinon.
+  siretLisible: boolean;
   canEdit: boolean;
   canEditLegal: boolean;
   onSaved: () => void;
@@ -701,9 +705,15 @@ function IdentiteCard({
     setSaved(false);
     setError(null);
     try {
-      // On renvoie le SIRET tel qu'il etait quand on n'a pas le droit d'y toucher : le
-      // declencheur en base ne se declenche que sur un changement reel, et l'adresse passe.
-      await updateClubOrganization(createClient(), clubId, { adresse, ville, siret: canEditLegal ? siretVal : siret });
+      // Le SIRET ne part que si on a le droit de le modifier ET qu'on l'a lu. Jusqu'au 11/09/2026,
+      // le CM renvoyait le SIRET tel qu'il l'avait lu ; il ne le lit plus (décision de Fouka) :
+      // renvoyer la valeur vide l'aurait effacé, ou fait refuser tout l'enregistrement par le
+      // déclencheur proteger_identite_legale_club — adresse et ville comprises.
+      await updateClubOrganization(
+        createClient(),
+        clubId,
+        canEditLegal && siretLisible ? { adresse, ville, siret: siretVal } : { adresse, ville },
+      );
       setSaved(true);
       onSaved();
     } catch (e) {
@@ -723,14 +733,16 @@ function IdentiteCard({
         <Field label="Ville">
           <input value={ville} onChange={(e) => setVille(e.target.value)} disabled={!canEdit} placeholder="Non renseignée" className={fieldClass} />
         </Field>
-        <Field label="SIRET (si association)">
-          <input value={siretVal} onChange={(e) => setSiretVal(e.target.value)} disabled={!canEdit || !canEditLegal} placeholder="Non renseigné" className={fieldClass} />
-          {canEdit && !canEditLegal && (
-            <p className="mt-1 text-[11.5px] text-muted-fg">
-              Identité légale du club : seule l&apos;administration SportVision peut la corriger.
-            </p>
-          )}
-        </Field>
+        {siretLisible && (
+          <Field label="SIRET (si association)">
+            <input value={siretVal} onChange={(e) => setSiretVal(e.target.value)} disabled={!canEdit || !canEditLegal} placeholder="Non renseigné" className={fieldClass} />
+            {canEdit && !canEditLegal && (
+              <p className="mt-1 text-[11.5px] text-muted-fg">
+                Identité légale du club : seule l&apos;administration SportVision peut la corriger.
+              </p>
+            )}
+          </Field>
+        )}
       </div>
       {canEdit && (
         <div className="flex items-center gap-3">

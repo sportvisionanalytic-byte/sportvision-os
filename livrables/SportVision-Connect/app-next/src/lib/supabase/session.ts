@@ -1,6 +1,7 @@
 import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
 import type { ActiveContext, User } from "@/lib/types";
 import { mapClubPlan, mapClubRole, mapOrgRole, mapOrgType, mapProjetRole, SPACE_TYPE_LABELS } from "./mappers";
+import { fetchClubDonneesRestreintes } from "@/lib/data/club/organization";
 
 function buildUserFromAuth(authUser: SupabaseUser): User {
   const meta = (authUser.user_metadata ?? {}) as { prenom?: string; nom?: string; telephone?: string; locale?: "fr" | "en" };
@@ -227,7 +228,8 @@ interface ClubRow {
   logo_url: string | null;
   adresse: string | null;
   instagram_handle: string | null;
-  siret: string | null;
+  // `siret` n'est plus lu ici (11/09/2026) : colonne fermée à `authenticated`, voir
+  // fetchClubDonneesRestreintes (data/club/organization.ts).
   couleur_primaire: string | null;
   couleur_secondaire: string | null;
   // Comment le Club+ de ce club a ete provisionne : 'full_com_included' quand il est inclus dans
@@ -253,12 +255,15 @@ export async function buildClubActiveContext(
 ): Promise<ActiveContext | null> {
   if (space.kind !== "organization" || !space.clickable) return null;
 
-  const [orgRes, clubRes, entitlementsRes, memberRes] = await Promise.all([
+  const [orgRes, clubRes, entitlementsRes, memberRes, restreintes] = await Promise.all([
     supabase.from("organizations").select("id, nom, organization_type, created_at").eq("id", space.id).maybeSingle(),
+    // 11/09/2026 — sans `siret` : la colonne est fermée à `authenticated` (décisions de Fouka,
+    // migration club-donnees-restreintes-2). La demander ici faisait échouer la requête ENTIÈRE,
+    // donc la session de chaque membre, quel que soit son rôle.
     supabase
       .from("clubs")
       .select(
-        "id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id, logo_url, ecusson_url, adresse, instagram_handle, siret, couleur_primaire, couleur_secondaire, club_plus_source",
+        "id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id, logo_url, ecusson_url, adresse, instagram_handle, couleur_primaire, couleur_secondaire, club_plus_source",
       )
       .eq("id", space.id)
       .maybeSingle(),
@@ -272,6 +277,9 @@ export async function buildClubActiveContext(
     // ciblée" d'un éducateur (§14) — voir ClubServicesBoard.tsx. cm_self_select (auth.uid() =
     // user_id, migration-clubplus-v1.sql) l'autorise sans condition de statut.
     supabase.from("club_members").select("teams").eq("club_id", space.id).eq("user_id", authUser.id).maybeSingle(),
+    // Le SIRET, seulement pour qui a le droit de le lire (Owner Club+, Président, Secrétaire,
+    // Trésorier) : la base décide, l'écran obéit.
+    fetchClubDonneesRestreintes(supabase, space.id),
   ]);
 
   const org = orgRes.data as { id: string; nom: string; organization_type: string; created_at: string } | null;
@@ -325,7 +333,8 @@ export async function buildClubActiveContext(
       logoUrl: club.logo_url ?? undefined,
       address: club.adresse ?? undefined,
       instagramHandle: club.instagram_handle ?? undefined,
-      siret: club.siret ?? undefined,
+      siret: restreintes.siret ?? undefined,
+      siretLisible: restreintes.siretLisible,
       brandColors:
         club.couleur_primaire || club.couleur_secondaire
           ? [club.couleur_primaire ?? "#4F7DFF", club.couleur_secondaire ?? "#A855F7"]
@@ -394,14 +403,16 @@ export async function buildDelegatedClubActiveContext(
 ): Promise<ActiveContext | null> {
   if (space.kind !== "delegated_club") return null;
 
-  const [clubRes, myMembershipsRes, entitlementsRes] = await Promise.all([
+  const [clubRes, myMembershipsRes, entitlementsRes, restreintes] = await Promise.all([
     supabase
       .from("clubs")
       .select(
         // adresse/siret/instagram/couleurs manquaient ici : l'onboarding les affichait donc vides
         // pour un CM, et « Enregistrer les couleurs » réécrivait les valeurs par défaut par-dessus
         // les vraies (signalé le 08/09/2026). Même colonnes que buildClubActiveContext.
-        "id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id, logo_url, ecusson_url, adresse, instagram_handle, siret, couleur_primaire, couleur_secondaire, club_plus_source",
+        // 11/09/2026 — sauf le SIRET : décision de Fouka, le CM SportVision ne le lit pas, et la
+        // colonne est fermée à `authenticated` (la demander ferait échouer la requête entière).
+        "id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id, logo_url, ecusson_url, adresse, instagram_handle, couleur_primaire, couleur_secondaire, club_plus_source",
       )
       .eq("id", space.id)
       .maybeSingle(),
@@ -418,6 +429,9 @@ export async function buildDelegatedClubActiveContext(
       .from("organization_entitlements")
       .select("module_key, actif, quota_credits, priorite")
       .eq("organization_id", space.id),
+    // La base répond « rien » pour un CM ; on pose quand même la question plutôt que de coder la
+    // règle ici : elle ne doit vivre qu'à un seul endroit (peut_lire_siret_club).
+    fetchClubDonneesRestreintes(supabase, space.id),
   ]);
 
   const club = clubRes.data as ClubRow | null;
@@ -512,7 +526,8 @@ export async function buildDelegatedClubActiveContext(
       logoUrl: club.logo_url ?? club.ecusson_url ?? undefined,
       address: club.adresse ?? undefined,
       instagramHandle: club.instagram_handle ?? undefined,
-      siret: club.siret ?? undefined,
+      siret: restreintes.siret ?? undefined,
+      siretLisible: restreintes.siretLisible,
       brandColors:
         club.couleur_primaire || club.couleur_secondaire
           ? [club.couleur_primaire ?? "#4F7DFF", club.couleur_secondaire ?? "#A855F7"]
