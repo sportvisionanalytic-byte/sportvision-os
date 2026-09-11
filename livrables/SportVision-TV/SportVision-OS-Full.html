@@ -31038,7 +31038,7 @@ async function modalSauvegarde(prestationId){
 
     <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn bg2 bs" onclick="modalIncidentFichiers('${escJs(prestationId)}')">⚠ Problème avec les fichiers</button>
-      ${tousFournis&&p.statut==='montage_en_cours'?`<button class="btn bp bs" onclick="envoyerAProduction('${escJs(prestationId)}')">📤 Envoyer à Production</button>`:''}
+      ${tousFournis&&['médias_complets','à_monter','montage_en_cours'].includes(p.statut)?`<button class="btn bp bs" onclick="envoyerAProduction('${escJs(prestationId)}','${escJs(p.statut)}')">📤 Envoyer à Production</button>`:''}
     </div>`;
 }
 
@@ -31152,9 +31152,16 @@ async function signalerCarteNonVide(prestationId){
   toast('Production est prévenue. N’effacez rien en attendant sa réponse.','warn');
 }
 
-async function envoyerAProduction(prestationId){
-  const r=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:'prêt_validation'}});
-  if(sbErr(r)){toast(msgErreur(r,'Envoi impossible.'),'er');return;}
+// 11/09/2026 (v152) : le bouton n'apparaissait qu'en « montage en cours », que l'opérateur ne
+// pouvait pas atteindre, et la base refusait l'envoi. Depuis « médias complets », la mission
+// franchit ses étapes une à une (la base n'autorise pas de saut), jusqu'à « prête pour validation ».
+async function envoyerAProduction(prestationId,statutActuel){
+  const suite=['médias_complets','à_monter','montage_en_cours','prêt_validation'];
+  const depart=Math.max(0,suite.indexOf(statutActuel||'montage_en_cours'));
+  for(const st of suite.slice(depart+1)){
+    const r=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:st}});
+    if(sbErr(r)){toast(msgErreur(r,'Envoi impossible.'),'er');rafraichirParcours(prestationId);return;}
+  }
   await majSuivi(prestationId,{livre_at:new Date().toISOString(),postproduction_terminee_at:new Date().toISOString()});
   toast('Livraison envoyée à Production.','ok');
   closeModal();

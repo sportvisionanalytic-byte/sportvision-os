@@ -5,7 +5,10 @@
 // Trouvé en répétant la première mission réelle (SF Villemomble, 12/09) : une mission « équipe
 // affectée » n'offrait aucun bouton dans le Mode Jour J, et « Kit prêt » était refusé par la base.
 // Ce test ouvre le Mode Jour J avec un opérateur de test sur une mission fictive du jour, clique
-// les deux premières étapes et relit la base après chaque clic. Tout est supprimé à la fin.
+// les deux premières étapes et relit la base après chaque clic. Puis l'après-match (v152) : sur
+// une seconde mission « médias complets » dont les trois livrables photo + vidéo sont déposés,
+// l'écran Sauvegarde & livraison propose « Envoyer à Production » et la mission arrive « prête
+// pour validation ». Tout est supprimé à la fin.
 import { chromium } from "../../SportVision-Connect/app-next/node_modules/playwright/index.mjs";
 import { SB, env, enTeteAdmin, ouvrirOS, vraiesErreurs } from "./_session-os.mjs";
 const H = { ...enTeteAdmin, "Content-Type": "application/json", Prefer: "return=representation" };
@@ -43,21 +46,40 @@ try {
   if (await route.count()) { await route.click(); await attendre(3500); }
   b = (await sql(`select p.statut::text st, (select parti_at is not null from mission_suivi_operateur where prestation_id = p.id and collaborateur_id = '${u.id}') parti from prestations p where p.id = '${pre.id}'`))[0];
   t("base : « équipe en route », départ horodaté", b?.st === "équipe_en_route" && b?.parti === true, JSON.stringify(b));
+
+  // ── L'après-match : sa livraison envoyée à la Production ──
+  const apres = (await svc("POST", "prestations", { client_id: ids.cli, date_prestation: iso, heure_debut: "09:30", lieu: "Stade ZZ", type_prestation: "match", statut: "médias_complets", source: "interne", couverture: "photo_video" }))[0];
+  ids.pre2 = apres.id;
+  await svc("POST", "prestations_equipe", { prestation_id: apres.id, collaborateur_id: ids.user, statut: "acceptée", remuneration: 55 });
+  await svc("POST", "media_liens", [
+    { prestation_id: apres.id, nom: "ZZ photos", url: "https://example.invalid/photos", categorie: "final", type_media: "photo", ajouteur_id: ids.user, transfert_confirme: true },
+    { prestation_id: apres.id, nom: "ZZ montage", url: "https://example.invalid/montage", categorie: "final", type_media: "video", ajouteur_id: ids.user },
+    { prestation_id: apres.id, nom: "ZZ rushs", url: "https://example.invalid/rushs", categorie: "rushs", type_media: "video", ajouteur_id: ids.user },
+  ]);
+  await page.evaluate((id) => window.modalSauvegarde(id), apres.id); await attendre(3500);
+  const envoyer = page.locator("#sv-modal-ct button", { hasText: "Envoyer à Production" });
+  t("après-match : « Envoyer à Production » proposé dès « médias complets »", (await envoyer.count()) === 1);
+  if (await envoyer.count()) { await envoyer.click(); await attendre(4000); }
+  b = (await sql(`select p.statut::text st, (select livre_at is not null from mission_suivi_operateur where prestation_id = p.id and collaborateur_id = '${ids.user}') livre from prestations p where p.id = '${apres.id}'`))[0];
+  t("base : mission « prête pour validation », livraison horodatée", b?.st === "prêt_validation" && b?.livre === true, JSON.stringify(b));
   t("aucune erreur JavaScript", vraiesErreurs(O.erreurs).length === 0, vraiesErreurs(O.erreurs).slice(0, 2).join(" | "));
   await page.context().close();
 } catch (e) {
   t("déroulé", false, String(e.message).slice(0, 220));
 } finally {
   await nav.close();
+  const pres = [ids.pre, ids.pre2].filter(Boolean).map((x) => `'${x}'`).join(",") || "null";
   const net = await sql(`begin;
     select set_config('request.jwt.claims', '{"role":"service_role"}', true);
-    delete from activity_log where entity_id in (select id from prestations_equipe where prestation_id = ${ids.pre ? `'${ids.pre}'` : "null"}) or entity_id = ${ids.pre ? `'${ids.pre}'` : "null"};
-    delete from financial_audit_log where ligne_id in (select id from prestations_equipe where prestation_id = ${ids.pre ? `'${ids.pre}'` : "null"}) or ligne_id = ${ids.pre ? `'${ids.pre}'` : "null"};
-    delete from notifications where destinataire_id = ${ids.user ? `'${ids.user}'` : "null"} or prestation_id = ${ids.pre ? `'${ids.pre}'` : "null"} or lien_prestation_id = ${ids.pre ? `'${ids.pre}'` : "null"};
+    delete from activity_log where entity_id in (select id from prestations_equipe where prestation_id in (${pres})) or entity_id in (${pres});
+    delete from financial_audit_log where ligne_id in (select id from prestations_equipe where prestation_id in (${pres})) or ligne_id in (${pres});
+    delete from notifications where destinataire_id = ${ids.user ? `'${ids.user}'` : "null"} or prestation_id in (${pres}) or lien_prestation_id in (${pres});
     delete from audit_logs where acteur_id = ${ids.user ? `'${ids.user}'` : "null"};
-    delete from mission_suivi_operateur where prestation_id = ${ids.pre ? `'${ids.pre}'` : "null"};
-    delete from prestations_equipe where prestation_id = ${ids.pre ? `'${ids.pre}'` : "null"};
-    delete from prestations where id = ${ids.pre ? `'${ids.pre}'` : "null"};
+    delete from mission_suivi_operateur where prestation_id in (${pres});
+    delete from prestations_equipe where prestation_id in (${pres});
+    delete from media_historique where prestation_id in (${pres});
+    delete from media_liens where prestation_id in (${pres});
+    delete from prestations where id in (${pres});
     delete from clients where id = ${ids.cli ? `'${ids.cli}'` : "null"};
     delete from profiles where id = ${ids.user ? `'${ids.user}'` : "null"};
     delete from auth.users where id = ${ids.user ? `'${ids.user}'` : "null"};

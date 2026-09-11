@@ -8,7 +8,9 @@
 -- Ce que ce test tient pour vrai, sous l'identité de l'opérateur affecté, par les mêmes écritures
 -- que l'écran (statut de la mission + horodatage dans mission_suivi_operateur) :
 --   kit prêt → en route → arrivé → production démarrée → terminée → fichiers sauvegardés → copie
---   vérifiée ; chaque étape horodatée ; un photographe non affecté ne peut rien faire avancer.
+--   vérifiée → post-production → « Envoyer à Production » (v152) ; chaque étape horodatée ;
+--   un photographe non affecté ne peut rien faire avancer ; la validation et la livraison au club
+--   restent à la Production.
 -- Décor fictif, tout est annulé.
 
 begin;
@@ -71,6 +73,14 @@ select pg_temp.note('chaque étape horodatée pour l''opérateur', 'kit,parti,ar
                     case when fichiers_securises_at is not null then 'sécurisé' end)
      from mission_suivi_operateur where prestation_id = (select mission from ctx) and collaborateur_id = 'f7f7f7f7-0000-0000-0000-000000000001'));
 select pg_temp.note('il ne peut pas sauter à « livrée »', 'refusé',
+  left(pg_temp.etape('f7f7f7f7-0000-0000-0000-000000000001', 'livrée', null), 6));
+-- ── Après le match : sa post-production, puis l'envoi à la Production (v152) ──
+select pg_temp.note('post-production : « à monter »', 'autorisé', pg_temp.etape('f7f7f7f7-0000-0000-0000-000000000001', 'à_monter', null));
+select pg_temp.note('post-production : « montage en cours »', 'autorisé', pg_temp.etape('f7f7f7f7-0000-0000-0000-000000000001', 'montage_en_cours', null));
+select pg_temp.note('« Envoyer à Production »', 'autorisé', pg_temp.etape('f7f7f7f7-0000-0000-0000-000000000001', 'prêt_validation', 'livre_at'));
+select pg_temp.note('la validation reste à la Production', 'refusé',
+  left(pg_temp.etape('f7f7f7f7-0000-0000-0000-000000000001', 'à_valider_client', null), 6));
+select pg_temp.note('la livraison au club aussi', 'refusé',
   left(pg_temp.etape('f7f7f7f7-0000-0000-0000-000000000001', 'livrée', null), 6));
 
 select case when attendu = obtenu then '✅' else '❌' end as ok, controle, attendu, obtenu from verdicts order by n;
