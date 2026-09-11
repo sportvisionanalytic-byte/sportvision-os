@@ -176,7 +176,6 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t1);font-size:14px;l
 @media (max-width:900px){.mf-grid2{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:600px){
   .mf-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .mf-kpi.total{grid-column:1/-1}
   .mf-etat{grid-template-columns:repeat(2,minmax(0,1fr))}
   .mf-etat>div:nth-child(3){border-left:none}
   .mf-etat>div:nth-child(3),.mf-etat>div:nth-child(4){border-top:1px solid var(--b1)}
@@ -33203,7 +33202,7 @@ function renderMesFinances(d){
         <div class="fort"><div class="l">Prime calculée</div><div class="v">${_mfEur(v.montant)}</div></div>
       </div>
       ${lignes.length?`<div class="tw"><table class="mf-table"><thead><tr><th>Date</th><th>Vente</th><th>Famille</th><th class="n">HT</th><th>Pris en compte</th></tr></thead><tbody>`+lignes.map(l=>`<tr${l.eligible?'':' class="mf-hors"'}>
-          <td class="tm">${_mfDate(l.date)}</td><td>${esc(l.libelle||'')}</td><td class="tm">${esc(MF_FAMILLES[l.famille]||l.famille)}</td>
+          <td class="tm">${_mfDate(l.date)}</td><td>${esc(_mfLibelleVente(l.libelle))}</td><td style="font-size:12px;color:var(--t2)">${esc(MF_FAMILLES[l.famille]||l.famille)}</td>
           <td class="n">${_mfEur(l.ht)}</td><td>${l.eligible?'<span style="color:var(--ok)">Oui</span>':'<span style="color:var(--t3)">Non</span>'}</td></tr>`).join('')+'</tbody></table></div>'
         :'<div class="mf-vide">Aucune vente encaissée ce mois-ci.</div>'}
     </div>`;
@@ -33214,6 +33213,13 @@ function renderMesFinances(d){
     <div style="padding:6px 16px 12px;font-size:11px;color:var(--t3)">Vos frais sont validés par l'Admin ou la comptabilité.</div></div>`;
   html+=`<div class="mf-grid2"><div>${ventesHtml||''}</div><div>${fraisHtml}</div></div>`;
   return html;
+}
+// « Paiement totalite » : le type de paiement brut n'a rien à faire à l'écran.
+function _mfLibelleVente(lb){
+  const m=/^Paiement (?:remboursé )?(acompte|solde|totalite)$/.exec(String(lb||''));
+  if(!m)return lb||'';
+  const t={acompte:'acompte',solde:'solde',totalite:'total'}[m[1]];
+  return (String(lb).includes('remboursé')?'Remboursement en ligne · ':'Paiement en ligne · ')+t;
 }
 function _mfOuvrirMission(id){
   if(!id)return;

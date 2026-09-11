@@ -65,14 +65,14 @@ try {
   t("Production : « Mes finances » est dans son menu", (await page.locator("text=Mes finances").count()) > 0);
   await page.evaluate(() => window.switchView("mesfinances")); await attendre(5000);
   let txt = (await page.locator("#mf-real").innerText()).replace(/\s+/g, " ");
-  t("les quatre blocs, séparés", /Fixe \/ forfait/.test(txt) && /Prime coordination/.test(txt) && /Missions terrain/.test(txt) && /Prime ventes/.test(txt) && /Frais remboursables/.test(txt));
-  t("coordination : 20 € pour 2 missions × 10 €", /Prime coordination 20 € 2 missions × 10 €/.test(txt), (txt.match(/Prime coordination.{0,40}/) || [""])[0]);
-  t("terrain : 110 € pour 2 missions", /Missions terrain 110 € 2 missions/.test(txt), (txt.match(/Missions terrain.{0,30}/) || [""])[0]);
-  t("prime ventes : 5 € = 5 % de 100 € HT", /Prime ventes 5 € 5 % de 100 € HT/.test(txt), (txt.match(/Prime ventes.{0,40}/) || [""])[0]);
-  t("total prévisionnel 135 €, mis en avant", /Total prévisionnel 135 €/.test(txt) && (await page.locator(".mf-kpi.total").count()) === 1, (txt.match(/Total prévisionnel.{0,15}/) || [""])[0]);
-  t("état du paiement : acquis, validé, payé, restant à payer", /Acquis .*Validé .*Payé .*Restant à payer/.test(txt));
+  t("les quatre blocs, séparés", /Fixe \/ forfait/i.test(txt) && /Prime coordination/i.test(txt) && /Missions terrain/i.test(txt) && /Prime ventes/i.test(txt) && /Frais remboursables/i.test(txt));
+  t("coordination : 20 € pour 2 missions × 10 €", /Prime coordination 20 € 2 missions × 10 €/i.test(txt), (txt.match(/Prime coordination.{0,40}/i) || [""])[0]);
+  t("terrain : 110 € pour 2 missions", /Missions terrain 110 € 2 missions/i.test(txt), (txt.match(/Missions terrain.{0,30}/i) || [""])[0]);
+  t("prime ventes : 5 € = 5 % de 100 € HT", /Prime ventes 5 € 5 % de 100 € HT/i.test(txt), (txt.match(/Prime ventes.{0,40}/i) || [""])[0]);
+  t("total prévisionnel 135 €, mis en avant", /Total prévisionnel 135 €/i.test(txt) && (await page.locator(".mf-kpi.total").count()) === 1, (txt.match(/Total prévisionnel.{0,15}/i) || [""])[0]);
+  t("état du paiement : acquis, validé, payé, restant à payer", /Acquis .*Validé .*Payé .*Restant à payer/i.test(txt));
   t("détail mission : coordination 10 € et terrain 55 € sur la même ligne, acquise", /ZZ U13.* 10 € 55 € .*Acquis/.test(txt), (txt.match(/ZZ U13.{0,60}/) || [""])[0]);
-  t("prime ventes : le calcul résumé puis les ventes, « Pris en compte »", /CA encaissé éligible 100 € HT/.test(txt) && /Prime calculée 5 €/.test(txt) && /Pris en compte/.test(txt));
+  t("prime ventes : le calcul résumé puis les ventes, « Pris en compte »", /CA encaissé éligible 100 € HT/i.test(txt) && /Prime calculée 5 €/i.test(txt) && /Pris en compte/i.test(txt) && /Paiement en ligne · total/.test(txt));
   await page.locator("tr.mf-clic", { hasText: "ZZ U13" }).click(); await attendre(2500);
   t("une mission se clique et ouvre sa fiche", ((await page.locator("#sv-modal-ct").innerText().catch(() => "")) || "").includes(m1.reference || "SV-"),
     ((await page.locator("#sv-modal-ct").innerText().catch(() => "")) || "").replace(/\s+/g, " ").slice(0, 80));
@@ -124,8 +124,8 @@ try {
   O = await ouvrirOS(nav, prod); page = O.page;
   await page.evaluate(() => window.switchView("mesfinances")); await attendre(5000);
   txt = (await page.locator("#mf-real").innerText()).replace(/\s+/g, " ");
-  t("elle voit 15 € payés, rien de restant", /Payé 15 €/.test(txt) && /Restant à payer 0 €/.test(txt), (txt.match(/Acquis.{0,120}/) || [""])[0]);
-  t("sa demande approuvée apparaît au bon montant (terrain 205 €)", /Missions terrain 205 €/.test(txt), (txt.match(/Missions terrain.{0,30}/) || [""])[0]);
+  t("elle voit 15 € payés, rien de restant", /Payé 15 €/i.test(txt) && /Restant à payer 0 €/i.test(txt), (txt.match(/Acquis.{0,120}/i) || [""])[0]);
+  t("sa demande approuvée apparaît au bon montant (terrain 205 €)", /Missions terrain 205 €/i.test(txt), (txt.match(/Missions terrain.{0,30}/i) || [""])[0]);
   const refus = await page.evaluate(async (id) => {
     const res = await sbFetch("rpc/production_regler_remuneration", { method: "POST", body: { p_calcul_id: id, p_action: "rouvrir" } });
     return sbErr(res) ? "refusé" : "accepté";
