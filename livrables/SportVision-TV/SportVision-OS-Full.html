@@ -13288,6 +13288,25 @@ async function galMettreEnLigne(){
   if(!offres)return;
   if(!offres.length&&!gratuit){toast('Ajoutez au moins une offre avant de mettre en ligne, ou cochez « Galerie gratuite ».','er');return;}
 
+  // Mettre en ligne previent le coach, les joueurs et les parents de l'equipe, UNE SEULE FOIS et
+  // pour toujours (v156/v168) : republier ne les previendra plus. Une galerie vide envoyee par
+  // erreur ne se rattrape donc pas. Depublier et archiver demandaient deja confirmation ; celle-ci
+  // manquait, alors que c'est la seule qui sort de SportVision. (12/09/2026)
+  const nbPretes=(_galAssets||[]).filter(a=>a.status==='ready').length;
+  if(_galAlbum.status!=='published'){
+    if(!nbPretes){
+      const sansPhoto=await demanderConfirmation(
+        'Aucune photo n\'est prête dans cette galerie.\n\nSi elle est rattachée à une équipe, les familles seront prévenues et ouvriront une galerie vide. Elles ne seront pas prévenues une seconde fois quand vous ajouterez les photos.',
+        {titre:'Publier une galerie sans photo ?',action:'Publier quand même'});
+      if(!sansPhoto)return;
+    }else if(_galAlbum.team_id){
+      const ok=await demanderConfirmation(
+        nbPretes+' photo'+(nbPretes>1?'s':'')+' prête'+(nbPretes>1?'s':'')+'.\n\nLe coach de l\'équipe, les joueurs et leurs parents vont recevoir une notification. Elle ne part qu\'une fois : republier plus tard ne les préviendra pas de nouveau.',
+        {titre:'Mettre en ligne et prévenir l\'équipe ?',action:'Mettre en ligne',danger:false});
+      if(!ok)return;
+    }
+  }
+
   const res=await _galEnregistrerLienPrincipal(offres);
   if(!res)return;
 
@@ -33486,7 +33505,10 @@ async function loadFinProd(){
     sbFetch('rpc/responsable_production_du_pole',{method:'POST',body:{p_pole_id:poleId}}).catch(()=>null),
     sbFetch('pole_remuneration_calculs?select=*&pole_id=eq.'+poleId+'&periode=eq.'+debut+'&beneficiaire=eq.responsable_production').catch(()=>[]),
     sbFetch('prestations_equipe_display?select=id,remuneration,montant_recommande,exception_montant,exception_motif,exception_demandee_le,collaborateur:profiles(id,prenom,nom),prestations(id,reference,date_prestation,pole_id)&exception_statut=eq.a_valider').catch(()=>[]),
-    sbFetch('profiles?select=id,prenom,nom,pole_affectations!pole_affectations_user_id_fkey!inner(pole_id,actif)&role=eq.prod&pole_affectations.pole_id=eq.'+poleId).catch(()=>[]),
+    // 12/09/2026 : la jointure sur pole_affectations ne rendait rien a la comptabilite, qui n'a
+    // pas acces a cette table — elle validait et reglait un montant sans voir a QUI il revenait.
+    // production_du_pole() rend la liste a ceux qui ont a la lire (v174).
+    sbFetch('rpc/production_du_pole',{method:'POST',body:{p_pole_id:poleId}}).catch(()=>[]),
   ]);
   _fpCfg=Array.isArray(cfg)&&cfg[0]?cfg[0]:null;
   _fpResp=typeof resp==='string'?resp:null;

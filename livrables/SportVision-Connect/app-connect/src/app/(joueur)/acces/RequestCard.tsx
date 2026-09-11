@@ -12,7 +12,12 @@ const RELATION_LABEL: Record<string, string> = {
   autre: "Autre",
 };
 
-const PREVIEW_RIGHTS = ["Voir vos contenus", "Suivre vos prestations", "Voir vos commandes"];
+// Ce que l'acceptation donne REELLEMENT (verifie le 12/09/2026 dans
+// connect_respond_profile_access_request : right_voir et right_download passent a true, et
+// right_calendrier vaut deja true a la creation). L'ecran annoncait « Suivre vos prestations » et
+// « Voir vos commandes », deux droits qui restent faux, et taisait le telechargement, qui est
+// accorde : on promettait ce qu'on ne donne pas et on cachait ce qu'on donne.
+const PREVIEW_RIGHTS = ["Voir vos contenus", "Télécharger vos contenus", "Voir votre calendrier"];
 
 // Accepter/refuser une demande — appelle connect_respond_profile_access_request (RPC SECURITY
 // DEFINER, migration §2) : la vérification "c'est bien le propriétaire du profil qui répond" est

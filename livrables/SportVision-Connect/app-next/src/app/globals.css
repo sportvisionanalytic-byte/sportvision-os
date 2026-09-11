@@ -117,3 +117,22 @@ body {
     transition: none !important;
   }
 }
+
+/* Zoom iOS sur les formulaires (12/09/2026).
+ *
+ * Safari sur iPhone zoome automatiquement des qu'on entre dans un champ dont le texte fait moins
+ * de 16px, et ne dezoome pas en sortant : la page reste decalee, l'utilisateur doit la remettre a
+ * la main. C'est arrive sur les champs d'adresse de livraison, juste avant un paiement.
+ *
+ * Plutot que de corriger une taille dans trente fichiers et de laisser le defaut revenir au
+ * prochain champ ecrit, la regle est posee une fois, ici, et seulement sur petit ecran : le
+ * design garde ses 14px partout ailleurs. Le !important est necessaire pour passer devant les
+ * classes utilitaires de Tailwind, qui sont plus specifiques qu'un selecteur d'element.
+ */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
