@@ -31,6 +31,9 @@ const NAV_CLUB_PLUS: NavEntry[] = [
   item("communication", "Communication", "communication"),
   item("visual_requests" as ModuleKey, "Demandes", "requests"),
   item("content", "Contenus", "content"),
+  // Même clé de module que Contenus : les galeries de production (SportVision-TV) sont un
+  // autre format de contenu du même club, pas un droit distinct à provisionner à part.
+  item("content", "Galeries", "galeries"),
   section("Club"),
   item("calendar", "Calendrier", "calendar"),
   item("teams", "Équipes", "teams"),

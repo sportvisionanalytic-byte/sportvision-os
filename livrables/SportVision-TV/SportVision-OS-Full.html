@@ -13109,12 +13109,16 @@ function _galOffresPourEnregistrement(){
 // que « lien » disparait du vocabulaire de l'utilisateur : il definit ce qu'il vend, le lien se
 // fabrique tout seul.
 async function _galEnregistrerLienPrincipal(offres){
+  // Gratuite : rien a vendre, donc rien a garder confidentiel cote club — le lien principal est
+  // confie a Club+ directement. Payante : le lien reste prive par defaut, la diffusion commerciale
+  // se decide au cas par cas (bouton dedie dans les options avancees).
+  const gratuite=_galAlbum.access_mode==='free_members';
   const r=await sbFetch('rpc/media_link_save',{method:'POST',body:{
     p_album_id:_galAlbum.id, p_offers:offres,
     p_link_id:_galLienPrincipal?_galLienPrincipal.id:null,
     p_label:_galLienPrincipal?_galLienPrincipal.label:'Lien principal',
     p_audience:null, p_expires_at:null, p_is_enabled:true,
-    p_preview_limit:null, p_visible_in_clubplus:false
+    p_preview_limit:null, p_visible_in_clubplus:gratuite
   }});
   const res=Array.isArray(r)?r[0]:r;
   if(sbErr(r)||!res){toast('Erreur : '+(msgErreur(r,'enregistrement impossible.')),'er');return null;}
