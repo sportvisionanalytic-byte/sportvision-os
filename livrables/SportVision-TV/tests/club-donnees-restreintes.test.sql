@@ -196,7 +196,9 @@ select format('[%s] %s', m.qui, m.donnee),
        case when m.qui = any (case m.donnee
               when 'stripe'   then array['admin', 'president', 'os_admin', 'os_compta']
               when 'siret'    then array['admin', 'president', 'secretaire', 'tresorier', 'os_admin', 'os_compta']
-              when 'annuaire' then array['admin', 'president', 'secretaire', 'tresorier', 'os_cm', 'os_admin', 'os_com', 'os_sec']
+              -- cm_externe : decision de Fouka du 11/09/2026, memes droits d'annuaire que le CM
+              -- SportVision (voir peut_lire_annuaire_club).
+              when 'annuaire' then array['admin', 'president', 'secretaire', 'tresorier', 'cm_externe', 'os_cm', 'os_admin', 'os_com', 'os_sec']
               when 'sa fiche' then array(select role from roles_club)
               -- La fiche d'équipe ne s'ouvre qu'à qui opère le club et au coach de l'équipe : parmi
               -- eux, l'e-mail ne va qu'à l'annuaire (le coach, le responsable d'équipe et le
@@ -205,9 +207,11 @@ select format('[%s] %s', m.qui, m.donnee),
               -- Les opérations (libellé, date : aucun montant) restent lisibles par tout le staff de
               -- l'OS (sop_staff_all, is_staff) — « + staff SportVision de l'OS » dans la décision —,
               -- mais plus par un CM hors de son club (policy restrictive cm_perim_sponsor_operations).
-              when 'opérations sponsor' then array['admin', 'president', 'secretaire', 'tresorier', 'sponsor_mgr', 'os_cm',
+              when 'opérations sponsor' then array['admin', 'president', 'secretaire', 'tresorier', 'sponsor_mgr', 'cm_externe', 'os_cm',
                                                    'os_admin', 'os_com', 'os_sec', 'os_compta', 'os_prod', 'os_photo']
-              else array['admin', 'president', 'secretaire', 'tresorier', 'sponsor_mgr', 'os_cm', 'os_admin', 'os_com', 'os_sec']
+              -- cm_externe lit les sponsors et leurs montants comme le CM SportVision : meme
+              -- decision du 11/09/2026, portee par peut_lire_sponsors_club.
+              else array['admin', 'president', 'secretaire', 'tresorier', 'sponsor_mgr', 'cm_externe', 'os_cm', 'os_admin', 'os_com', 'os_sec']
             end) then 'lit' else 'ne lit pas' end,
        case when m.lit then 'lit' else 'ne lit pas' end || '  — ' || m.detail
   from mesures m

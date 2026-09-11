@@ -12318,7 +12318,7 @@ async function loadPhotoAlbums(el){
   if(!el)return;
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,watermark_previews,access_mode,cover_asset_id,clubs(nom),club_teams(name),saisons(label)&order=created_at.desc&limit=200');
+    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,watermark_previews,access_mode,cover_asset_id,clubs(nom),club_teams(name),saisons(label),prestations(reference)&order=created_at.desc&limit=200');
     if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(msgErreur(rows,'Impossible de charger les galeries.'))+'</div></div>';return;}
     _photoAlbums=Array.isArray(rows)?rows:[];
     renderPhotoAlbumsList(_photoAlbums);
@@ -12435,9 +12435,9 @@ function modalCreerAlbum(albumId){
             <div><label style="${L}">Saison</label>
               <input id="pa-season" type="text" class="l-inp" style="height:38px" placeholder="2026-2027" value="${esc(existing?.saisons?.label||'')}"></div>
             <div><label style="${L}">Prestation liée</label>
-              <input id="pa-mission" type="text" class="l-inp" style="height:38px" placeholder="SPV-2026-001…"></div>
+              <input id="pa-mission" type="text" class="l-inp" style="height:38px" placeholder="SPV-2026-001…" value="${esc(existing?.prestations?.reference||'')}"></div>
           </div>
-          <div style="font-size:11px;color:var(--t3)">Nécessaire uniquement pour confier la galerie au club dans Club+.</div>
+          <div style="font-size:11px;color:var(--t3)">La saison est ce qui rend la galerie visible aux familles dans Connect : sans elle, le club la voit, les parents non. La prestation liee donne l'acces au photographe de la mission et fait remonter le lien du montage video.</div>
         </div>
       </details>
 
@@ -12486,10 +12486,22 @@ async function sauvegarderAlbum(albumId){
     const season=v('pa-season');
     const missionRef=v('pa-mission');
 
+    // Le champ mission part desormais rempli (12/09/2026). Tant qu'il l'etait pas, enregistrer un
+    // simple changement de titre ecrivait mission_id: null et DETACHAIT la mission : le photographe
+    // perdait l'acces a sa galerie et le lien du montage video disparaissait cote familles.
+    // Un champ laisse vide sur une galerie qui avait une mission est desormais traite comme un
+    // detachement VOULU, mais il faut l'avoir efface soi-meme.
+    const albumExistant=albumId?_photoAlbums.find(a=>a.id===albumId):null;
     let missionId=null;
     if(missionRef){
-      const pres=await sbFetch('prestations?select=id&reference=ilike.%25'+encodeURIComponent(missionRef)+'%25&limit=1');
-      missionId=pres?.[0]?.id||null;
+      const refActuelle=albumExistant?.prestations?.reference||'';
+      if(albumExistant&&missionRef===refActuelle){
+        missionId=albumExistant.mission_id||null;
+      }else{
+        const pres=await sbFetch('prestations?select=id&reference=ilike.%25'+encodeURIComponent(missionRef)+'%25&limit=1');
+        missionId=pres?.[0]?.id||null;
+        if(!missionId){err.textContent='Aucune prestation ne porte la reference « '+missionRef+' ».';return;}
+      }
     }
 
     // La saison n'est resolue que si elle est saisie : media_albums.saison_id est un uuid (FK

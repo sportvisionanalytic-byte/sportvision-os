@@ -33,16 +33,27 @@ create temp table cm on commit drop as
    where club_cm_affectations.club_id = ctx.club_id and actif limit 1;
 
 -- La chaîne réelle : plan du mois → présence planifiée → prestation → équipe.
-insert into monthly_production_plans (id, client_id, cm_id, mois)
-select '55555555-5555-5555-5555-555555555555', client_id,
-       '11111111-1111-1111-1111-111111111111', date_trunc('month', current_date)::date
-  from ctx;
+-- Le plan du mois : on REPREND celui du client s'il existe deja. Depuis que Villemomble est un
+-- client reel, son plan de septembre existe en base, et une contrainte d'unicite (client, mois)
+-- refusait le plan fabrique par ce test. Le decor s'aligne sur la realite au lieu de la doubler.
+create temp table plan on commit drop as
+  with existant as (
+    select mpp.id from monthly_production_plans mpp, ctx
+     where mpp.client_id = ctx.client_id and mpp.mois = date_trunc('month', current_date)::date
+  ), cree as (
+    insert into monthly_production_plans (id, client_id, cm_id, mois)
+    select '55555555-5555-5555-5555-555555555555', ctx.client_id,
+           '11111111-1111-1111-1111-111111111111', date_trunc('month', current_date)::date
+      from ctx where not exists (select 1 from existant)
+    returning id
+  )
+  select id from existant union all select id from cree;
 
 insert into prestations (id, client_id, date_prestation, type_prestation, statut)
 select '66666666-6666-6666-6666-666666666666', client_id, current_date, 'match', 'équipe_affectée' from ctx;
 
 insert into planned_presences (plan_id, date_presence, match_id, occurrence_ref, type_couverture, statut, created_prestation_id)
-select '55555555-5555-5555-5555-555555555555', current_date, match_id, ref, 'photo_video', 'mission_creee',
+select (select id from plan), current_date, match_id, ref, 'photo_video', 'mission_creee',
        '66666666-6666-6666-6666-666666666666'
   from ctx;
 

@@ -103,7 +103,11 @@ export function EventDetailPanel({ event, onClose, onChanged }: EventDetailPanel
 
   // 12/09/2026 : reprogrammer un match depuis sa fiche. Ouvert à qui la base laisse écrire (CM
   // affecté, dirigeants, éducateur de l'équipe) ; un refus de la base s'affiche tel quel.
-  const matchId = event.id.startsWith("match-") ? event.id.slice("match-".length) : null;
+  // L'identifiant d'un match arrive sous deux formes selon la source : `match:<id>` pour le
+  // calendrier du club (RPC club_calendrier, le cas courant) et `match-<id>` pour le calendrier
+  // d'une organisation generique. Ne reconnaitre que la seconde rendait ce bloc invisible partout
+  // ou il sert vraiment (defaut introduit le 12/09, trouve par l'audit du meme jour).
+  const matchId = /^match[:-]/.test(event.id) ? event.id.slice(6) : null;
   const peutModifier = Boolean(matchId) && ctx.membership.status === "active" && canCreate(ctx, "calendar_event");
   const [edition, setEdition] = useState(false);
   const [form, setForm] = useState({

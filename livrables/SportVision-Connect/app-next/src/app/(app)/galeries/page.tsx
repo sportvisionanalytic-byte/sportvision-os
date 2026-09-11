@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/client";
+import { QrCode } from "@/components/ui/QrCode";
 
 // Galeries — côté club.
 //
@@ -194,11 +195,11 @@ export default function GaleriesClubPage() {
       {qr && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6" onClick={() => setQr(null)}>
           <div className="rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-            <img
-              alt="QR Code du lien"
-              className="h-[260px] w-[260px]"
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=520x520&data=${encodeURIComponent(qr)}`}
-            />
+            {/* Le QR est fabrique dans le navigateur (composant QrCode). Il partait auparavant
+                chez api.qrserver.com avec le lien COMPLET de la galerie, jeton d'acces compris :
+                le secret qui ouvre les photos d'enfants se retrouvait dans les journaux d'un
+                tiers. Trouve par l'audit du 12/09/2026. */}
+            <QrCode value={qr} size={260} />
           </div>
         </div>
       )}
