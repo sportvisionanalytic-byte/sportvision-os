@@ -898,6 +898,7 @@ const NAV={
     // aucun changement backend, seulement un point d'entrée UI supplémentaire.
     {id:'finpoles',lb:'Finance par pôle',ic:'fin'},
     {id:'polerem',lb:'Rémunération pôle',ic:'col'},
+    {id:'finprod',lb:'Finance Production',ic:'fin'},
     {id:'finrapports',lb:'Rapports & exports',ic:'export'},
     {id:'resultat',lb:'Compte de résultat',ic:'fin',hidden:true},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin',hidden:true},
@@ -968,6 +969,7 @@ const NAV={
     {id:'planning',lb:'Planning admin',ic:'cal'},
     {id:'livraisons',lb:'Livraisons',ic:'pub'},
     {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
+    {id:'finprod',lb:'Finance Production',ic:'fin'},
     {type:'sep',lb:'Documents & Suivi'},
     {id:'docrh',lb:'Documents (pièces)',ic:'doc'},
     {id:'docs',lb:'Documents (devis/factures)',ic:'doc'},
@@ -1018,6 +1020,9 @@ const NAV={
     // Recrutement : retiré à la Production le 10/09/2026 au soir (décision de Fouka, v139) ; il
     // reste à l'administration, au secrétariat (retenus) et aux responsables de pôle (Mon pôle).
     {id:'kits',lb:'Matériel',ic:'kits'},
+    // 11/09/2026 (v149) : ses finances, calculées par le système, validées par l'Admin/la compta.
+    {type:'sep',lb:'Finance'},
+    {id:'mesfinances',lb:'Mes finances',ic:'fin'},
     {type:'sep',lb:'Ressources'},
     {id:'form',lb:'Centre de formation',ic:'form'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
@@ -1098,6 +1103,7 @@ const NAV={
     {type:'sep',lb:'Paiements'},
     {id:'paiements',lb:'Paiements équipe',ic:'fin'},
     {id:'rem',lb:'Rémunérations',ic:'col'},
+    {id:'finprod',lb:'Finance Production',ic:'fin'},
     {type:'sep',lb:'Dépenses'},
     {id:'depenses',lb:'Dépenses',ic:'fin'},
     {id:'frais',lb:'Frais & km',ic:'fin'},
@@ -1888,6 +1894,15 @@ const VIEWS={
       <div class="cd-h"><div class="cd-t">Grille de référence</div></div>
       <div id="polerem-grille-real"><div style="padding:16px;color:var(--t3);font-size:12.5px">Chargement…</div></div>
     </div>`,
+
+  // v149 (11/09/2026) : la Finance du Responsable Production.
+  'prod.mesfinances':()=>`
+    <div class="sh"><div><div class="sh-t">Finance Production</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Calculée par le système, validée par l'Admin ou la comptabilité, réglée par la comptabilité ou le secrétariat.</div></div>
+      <input type="month" class="l-inp" id="mf-mois" style="height:36px" onchange="loadMesFinances()"></div>
+    <div id="mf-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+  'admin.finprod':()=>_finProdView(),
+  'compta.finprod':()=>_finProdView(),
+  'sec.finprod':()=>_finProdView(),
 
   'admin.finrapports':()=>`
     <div class="sh"><div class="sh-t">Rapports & exports</div></div>
@@ -5657,6 +5672,8 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='finequipe') await loadFinEquipe();
   if(role==='admin'&&view==='finpoles') await loadFinPoles();
   if(role==='admin'&&view==='polerem') await loadPoleRem();
+  if(role==='prod'&&view==='mesfinances') await loadMesFinances();
+  if(['admin','compta','sec'].includes(role)&&view==='finprod') await loadFinProd();
   const _isComptaLike=['compta','expert_comptable','auditeur'].includes(role);
   if(_isComptaLike&&view==='factures') await loadComptaFactures();
   if(role==='expert_comptable'&&view==='dash') await loadExpertComptableDash(); else if(_isComptaLike&&view==='dash') await loadComptaDash();
@@ -9487,14 +9504,17 @@ async function loadAdminDash(){
       // « Nouvelle candidature — community_manager »). On le traduit ici, à l'affichage, sans
       // réécrire l'historique. Un titre inconnu s'affiche tel quel.
       const ACT_OBJET={prestations_equipe:'Rémunération opérateur',prestations:'Mission',factures:'Facture',avoirs:'Avoir',avoir:'Avoir',
-        commissions:'Commission',expenses:'Dépense',tax_reserves:'Provision d\'impôt',vendors:'Fournisseur',bank_transactions:'Relevé bancaire'};
+        commissions:'Commission',expenses:'Dépense',tax_reserves:'Provision d\'impôt',vendors:'Fournisseur',bank_transactions:'Relevé bancaire',
+        pole_remuneration_calculs:'Rémunération mensuelle',production_remuneration_config:'Règle de rémunération Production'};
       const ACT_VERBE={creation:'ajoutée',modification:'modifiée',suppression:'supprimée',paiement:'payée',validation:'validée',encaissement:'encaissée',
-        provisionnement:'enregistrée',rapprochement_bancaire:'rapprochée',import_csv_bancaire:'importé',avoir:'émis'};
+        provisionnement:'enregistrée',rapprochement_bancaire:'rapprochée',import_csv_bancaire:'importé',avoir:'émis',
+        calcul:'calculée',valider:'validée',transmettre:'transmise à la compta',payer:'payée',rouvrir:'rouverte',
+        exception_approuvee:': exception approuvée',exception_refusee:': exception refusée'};
       const titreActivite=t=>{
         const [act,obj]=String(t||'').split(' — ');
         if(act==='Nouvelle candidature')return'Nouvelle candidature'+(obj?' · '+((typeof CAND_POSTE_LB!=='undefined'&&CAND_POSTE_LB[obj])||obj):'');
         if(obj&&ACT_OBJET[obj]){const o=ACT_OBJET[obj];const v=ACT_VERBE[act]||act;
-          const accord=/^(Mission|Facture|Commission|Dépense|Provision|Rémunération)/.test(o)?v:v.replace(/ée$/,'é');
+          const accord=/^(Mission|Facture|Commission|Dépense|Provision|Rémunération|Règle)/.test(o)||v.startsWith(':')?v:v.replace(/ée$/,'é');
           return o+' '+accord;}
         return t||'';
       };
@@ -16997,7 +17017,7 @@ async function chargerEquipe(prestationId,ref){
   try{
     const voitCouts=['admin','prod','compta','sec'].includes(S.role);
     const [data,rentabRaw]=await Promise.all([
-      sbFetch('prestations_equipe_display?select=id,statut,fonction,notes,remuneration,montant_recommande,motif_ajustement,motif_detail,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId),
+      sbFetch('prestations_equipe_display?select=id,statut,fonction,notes,remuneration,montant_recommande,motif_ajustement,motif_detail,exception_statut,exception_montant,exception_motif,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId),
       voitCouts?sbFetch('v_rentabilite_missions?select=revenu_ht,cout_remunerations,cout_frais&prestation_id=eq.'+prestationId).catch(()=>[]):Promise.resolve([]),
     ]);
     // Prix vendu et coût terrain, côte à côte : la Production comprend ce qu'elle engage, sans
@@ -17024,7 +17044,9 @@ async function chargerEquipe(prestationId,ref){
       const remLbl=m.remuneration?m.remuneration.toLocaleString('fr-FR')+' €':'—';
       const ec=ecartRemu(m.remuneration,m.montant_recommande!=null?Number(m.montant_recommande):null);
       const ecartLbl=ec&&ec.d?` <span style="font-size:11px;color:var(--t3)">(recommandé ${Number(m.montant_recommande).toLocaleString('fr-FR')} € · ${ec.d>0?'+':''}${ec.d.toLocaleString('fr-FR')} €${m.motif_ajustement?' · '+esc(MOTIFS_REMU[m.motif_ajustement]||m.motif_ajustement):''})</span>`:'';
-      const remLine=(canSetRem?`<button onclick="modifierRemunerationMembre('${m.id}','${prestationId}','${ref}',${m.remuneration||0},${m.montant_recommande!=null?Number(m.montant_recommande):'null'},'${m.statut}')" style="font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Rémunération : ${remLbl}</button>`
+      // v148 (11/09/2026) : une demande sur sa propre rémunération attend l'Admin ; elle se voit ici.
+      const exc=m.exception_statut==='a_valider'?`<span style="font-size:11px;color:var(--wa)">${Number(m.exception_montant||0).toLocaleString('fr-FR')} € demandés${m.exception_motif?' ('+esc(MOTIFS_REMU[m.exception_motif]||m.exception_motif)+')':''} · en attente Admin</span>${S.role==='admin'&&t.id!==S.uid?` <button onclick="deciderExceptionRemu('${m.id}',true,'${prestationId}','${ref}')" class="btn bp bs" style="padding:2px 8px;font-size:10.5px">Approuver</button> <button onclick="deciderExceptionRemu('${m.id}',false,'${prestationId}','${ref}')" class="btn bg2 bs" style="padding:2px 8px;font-size:10.5px">Refuser</button>`:''}`:'';
+      const remLine=exc+(canSetRem?`<button onclick="modifierRemunerationMembre('${m.id}','${prestationId}','${ref}',${m.remuneration||0},${m.montant_recommande!=null?Number(m.montant_recommande):'null'},'${m.statut}',${t.id===S.uid})" style="font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Rémunération : ${remLbl}</button>`
         :`<span style="font-size:11px;color:var(--t3)">Rémunération : ${remLbl}</span>`)+(voitCouts?ecartLbl:'');
       return`<div style="display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
         <div style="display:flex;align-items:center;gap:10px">
@@ -17138,10 +17160,13 @@ function _svSurcouche(html){
   document.body.appendChild(o);
   return o;
 }
-function modifierRemunerationMembre(equipeId,prestationId,ref,current,recommande,statut){
+function modifierRemunerationMembre(equipeId,prestationId,ref,current,recommande,statut,estMoi){
   const accepte=statut==='acceptée';
+  // v148 : sur sa propre ligne, la grille fait foi ; tout autre montant part en validation Admin.
+  const moi=estMoi&&S.role!=='admin';
   const o=_svSurcouche(`
     <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">Rémunération mission</div>
+    ${moi?`<div style="margin:6px 0 12px;padding:10px;border-radius:8px;background:rgba(54,107,255,.1);color:var(--t2);font-size:12px">C'est votre propre rémunération : la grille donne <b style="color:var(--t1)">${recommande!=null?Number(recommande).toLocaleString('fr-FR')+' €':'aucun montant (niveau opérateur non renseigné)'}</b>. Un autre montant demande un motif et part en validation Admin ; le montant de la grille reste retenu d'ici sa décision.</div>`:''}
     <div style="font-size:12px;color:var(--t3);margin-bottom:14px">${recommande!=null?'Tarif recommandé : <b style="color:var(--t1)">'+Number(recommande).toLocaleString('fr-FR')+' €</b> · ':''}Actuel : <b style="color:var(--t1)">${Number(current||0).toLocaleString('fr-FR')} €</b>${accepte?' · <span style="color:var(--ok)">accepté par l\'opérateur</span>':''}</div>
     <label style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Montant retenu (€)</label>
     <input id="rm-montant" type="number" min="0" class="l-inp" style="height:38px;margin:4px 0 6px" value="${current||''}">
@@ -17160,7 +17185,7 @@ function modifierRemunerationMembre(equipeId,prestationId,ref,current,recommande
     const v=o.querySelector('#rm-montant').value;
     const e=ecartRemu(v,recommande!=null?Number(recommande):null);
     o.querySelector('#rm-ecart').innerHTML=e&&e.d?'Écart avec le recommandé : <b>'+(e.d>0?'+':'')+e.d.toLocaleString('fr-FR')+' € ('+e.pct+' %)</b>':'';
-    o.querySelector('#rm-motif-bloc').style.display=e&&e.motifRequis?'flex':'none';
+    o.querySelector('#rm-motif-bloc').style.display=(e&&e.motifRequis)||(moi&&v!==''&&Number(v)!==Number(recommande))?'flex':'none';
     o.querySelector('#rm-baisse').style.display=accepte&&v!==''&&Number(v)<Number(current||0)?'block':'none';
   };
   o.querySelector('#rm-montant').addEventListener('input',maj);maj();
@@ -17173,12 +17198,23 @@ function modifierRemunerationMembre(equipeId,prestationId,ref,current,recommande
     const e=ecartRemu(v,recommande!=null?Number(recommande):null);
     const motif=o.querySelector('#rm-motif').value||null;
     if(e&&e.motifRequis&&!motif){errEl.textContent='Écart de '+e.pct+' % : indique le motif de l\'ajustement.';return;}
-    const r=await sbFetch('rpc/modifier_remuneration_mission',{method:'POST',body:{p_equipe_id:equipeId,p_montant:n,p_montant_recommande:recommande,p_motif:e&&e.d?motif:null,p_motif_detail:o.querySelector('#rm-detail').value||null}});
+    if(moi&&n!==null&&Number(n)!==Number(recommande)&&!motif){errEl.textContent='Votre propre rémunération : indiquez le motif, la demande part en validation Admin.';return;}
+    const r=await sbFetch('rpc/modifier_remuneration_mission',{method:'POST',body:{p_equipe_id:equipeId,p_montant:n,p_montant_recommande:recommande,p_motif:(e&&e.d)||moi?motif:null,p_motif_detail:o.querySelector('#rm-detail').value||null}});
     if(sbErr(r)){errEl.textContent=msgErreur(r,'Modification impossible.');return;}
     o.remove();
-    toast(r&&r.nouvelle_proposition?'Nouvelle proposition envoyée à l\'opérateur.':'Rémunération mise à jour.','ok');
+    if(r&&r.exception)toast('Demande envoyée à l\'Admin : '+Number(r.montant_demande).toLocaleString('fr-FR')+' € demandés. '+Number(r.montant_retenu||0).toLocaleString('fr-FR')+' € restent retenus d\'ici sa décision.','warn');
+    else toast(r&&r.nouvelle_proposition?'Nouvelle proposition envoyée à l\'opérateur.':'Rémunération mise à jour.','ok');
     chargerEquipe(prestationId,ref);
   };
+}
+// v148 : l'Admin tranche une demande d'exception sur la rémunération d'une Production.
+async function deciderExceptionRemu(equipeId,approuver,prestationId,ref){
+  if(!await demanderConfirmation(approuver?'Approuver le montant demandé ?':'Refuser : le montant de la grille reste retenu.',{action:approuver?'Approuver':'Refuser',danger:!approuver}))return;
+  const r=await sbFetch('rpc/decider_exception_remuneration',{method:'POST',body:{p_equipe_id:equipeId,p_approuver:approuver}});
+  if(sbErr(r)){toast(msgErreur(r,'Décision impossible.'),'er');return;}
+  toast(approuver?'Exception approuvée : '+Number(r.remuneration||0).toLocaleString('fr-FR')+' € retenus.':'Exception refusée : la grille reste retenue.','ok');
+  if(prestationId&&document.getElementById('eq-liste'))chargerEquipe(prestationId,ref);
+  if(document.getElementById('fp-real'))loadFinProd();
 }
 async function historiqueRemuneration(prestationId){
   const o=_svSurcouche('<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:10px">Historique des montants</div><div id="hr-liste" style="font-size:12.5px;color:var(--t3)">Chargement…</div><div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn bg2 bs" data-hr="fermer">Fermer</button></div>');
@@ -33022,6 +33058,258 @@ function _monthBounds(monthStr){
   return{debut,fin};
 }
 
+// ── Finance du Responsable Production (v149, 11/09/2026) ──────────────────────────────────────
+// Décision de Fouka : il pilote, le système calcule, l'Admin et la comptabilité valident, la
+// comptabilité ou le secrétariat règlent. Quatre blocs jamais mélangés (terrain, coordination,
+// ventes, frais), et chaque euro se retrouve ligne par ligne. Tous les montants viennent de
+// production_mes_finances / production_remuneration_detail : l'écran n'additionne que ce que la
+// base a déjà calculé, il ne décide rien.
+const MF_STATUTS={previsionnel:['Prévisionnel','bn'],acquis:['Acquis','bw'],valide:['Validé','ba'],transmis_compta:['Transmis compta','ba'],paye:['Payé','ba']};
+const MF_FAMILLES={abonnements:'Abonnements',ponctuelles:'Prestations ponctuelles',galeries:'Galeries',autres:'Autres ventes'};
+function _mfEur(n){return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:2})+' €';}
+function _mfBadge(s){const [lb,cl]=MF_STATUTS[s]||[s||'—','bn'];return `<span class="bd ${cl}" style="font-size:9.5px"><span class="bd-d"></span>${lb}</span>`;}
+function _mfDate(d){return d?new Date(String(d).slice(0,10)+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—';}
+
+async function loadMesFinances(){
+  const el=document.getElementById('mf-real');
+  if(!el)return;
+  const{debut}=_monthBounds(_monthPickerDefault('mf-mois'));
+  el.innerHTML=_finSkelRows(4,44);
+  const r=await sbFetch('rpc/production_mes_finances',{method:'POST',body:{p_mois:debut}});
+  if(sbErr(r)||!r){el.innerHTML='<div style="padding:20px;color:var(--er)">'+esc(msgErreur(r,'Vos finances sont indisponibles.'))+'</div>';return;}
+  el.innerHTML=renderMesFinances(r);
+}
+
+function renderMesFinances(d){
+  const poles=d.poles||[],terrain=d.terrain||[],frais=d.frais||[],T=d.totaux||{};
+  const somme=(l,f)=>l.reduce((s,x)=>s+Number(f(x)||0),0);
+  const fixe=somme(poles,p=>p.fixe?.montant);
+  const coord=poles.map(p=>p.coordination||{});
+  const nbCoord=somme(coord,c=>c.nb_missions),coordPrev=somme(coord,c=>c.montant_previsionnel),coordAcq=somme(coord,c=>c.montant_acquis);
+  const unit=coord[0]?.montant_unitaire||0;
+  const ventes=somme(poles,p=>p.ventes?.montant);
+  const terrainTot=somme(terrain,t=>t.montant),fraisTot=somme(frais,f=>f.montant);
+  const moisLb=new Date(String(d.mois)+'T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const statutMensuel=poles[0]?.statut;
+  const ligne=(lb,sous,v,fort)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;${fort?'border-top:1px solid var(--b1);margin-top:4px;padding-top:10px;':''}">
+    <div><div style="font-size:13px;color:${fort?'var(--t1)':'var(--t2)'};font-weight:${fort?700:500}">${lb}</div>${sous?`<div style="font-size:11px;color:var(--t3);margin-top:1px">${sous}</div>`:''}</div>
+    <div style="font-size:13.5px;font-weight:700;color:var(--t1);white-space:nowrap;font-variant-numeric:tabular-nums">${v}</div></div>`;
+  const palier=poles[0]?.fixe;
+  let html=`<div class="cd" style="padding:16px 18px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="font-size:15px;font-weight:800;color:var(--t1)">Finance Production · ${esc(moisLb.charAt(0).toUpperCase()+moisLb.slice(1))}</div>
+      ${statutMensuel?_mfBadge(statutMensuel):''}
+    </div>
+    ${!poles.length?`<div style="padding:8px 10px;border-radius:8px;background:var(--s2);font-size:12px;color:var(--t3);margin-bottom:6px">Vous n'êtes pas désigné Responsable Production d'un pôle : seules vos missions terrain et vos frais apparaissent.</div>`:''}
+    ${poles.some(p=>!p.configure)?`<div style="padding:8px 10px;border-radius:8px;background:rgba(245,165,36,.1);font-size:12px;color:var(--wa);margin-bottom:6px">La prime de coordination et la prime sur ventes n'ont pas encore été réglées par la Direction : elles comptent 0 € d'ici là.</div>`:''}
+    ${ligne('Fixe / forfait',palier?esc(palier.palier||'Barème de pôle')+' · '+palier.nb_contrats+' contrat'+(palier.nb_contrats>1?'s':'')+' Full Com':'',_mfEur(fixe))}
+    ${ligne('Prime coordination',nbCoord+' mission'+(nbCoord>1?'s':'')+' × '+_mfEur(unit)+(coordAcq!==coordPrev?' · dont '+_mfEur(coordAcq)+' acquis':''),_mfEur(coordPrev))}
+    ${ligne('Missions terrain',terrain.length+' mission'+(terrain.length>1?'s':''),_mfEur(terrainTot))}
+    ${ligne('Prime ventes',poles[0]?.ventes?'Base '+_mfEur(poles[0].ventes.base)+' HT encaissés × '+(poles[0].ventes.taux_pct||0)+' %':'',_mfEur(ventes))}
+    ${ligne('Frais remboursables',frais.length+' ligne'+(frais.length>1?'s':''),_mfEur(fraisTot))}
+    ${ligne('Total prévisionnel','',_mfEur(T.previsionnel),true)}
+    ${ligne('Acquis','',_mfEur(T.acquis))}
+    ${ligne('Validé','',_mfEur(T.valide))}
+    ${ligne('Payé','',_mfEur(T.paye))}
+    ${ligne('Restant à payer','',_mfEur(T.restant),true)}
+  </div>`;
+
+  // Détail mission par mission : coordination, terrain et déplacement réunis sur la même ligne.
+  const parMission=new Map();
+  const cle=x=>x.prestation_id;
+  poles.forEach(p=>(p.coordination?.missions||[]).forEach(m=>{
+    parMission.set(cle(m),{date:m.date,ref:m.reference,client:m.client,libelle:m.libelle,coord:Number(m.coordination||0),coordAcquis:m.acquis,statut:m.acquis?'acquis':'previsionnel'});
+  }));
+  terrain.forEach(t=>{
+    const x=parMission.get(cle(t))||{date:t.date,ref:t.reference,client:t.client,libelle:t.libelle,coord:0};
+    x.terrain=Number(t.montant||0);x.km=Number(t.frais_km||0);x.statut=t.statut;x.exception=t.exception_statut==='a_valider'?t.exception_montant:null;
+    parMission.set(cle(t),x);
+  });
+  const missions=[...parMission.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  html+=`<div class="cd" style="margin-bottom:14px"><div class="cd-h"><div class="cd-t">Détail des missions</div></div>
+    ${missions.length?'<div class="tw"><table><thead><tr><th>Mission</th><th style="text-align:right">Coordination</th><th style="text-align:right">Terrain</th><th style="text-align:right">Déplacement</th><th>Statut</th></tr></thead><tbody>'+missions.map(m=>`<tr>
+      <td class="tp"><div style="font-weight:600;color:var(--t1)">${_mfDate(m.date)} · ${esc(m.client||'—')}${m.libelle?' — '+esc(m.libelle):''}</div><div style="font-size:11px;color:var(--t3)">${esc(m.ref||'')}</div></td>
+      <td class="tm" style="text-align:right">${m.coord?'+'+_mfEur(m.coord):'—'}</td>
+      <td class="tm" style="text-align:right">${m.terrain!=null?'+'+_mfEur(m.terrain):'—'}${m.exception!=null?`<div style="font-size:10.5px;color:var(--wa)">${_mfEur(m.exception)} demandés · attente Admin</div>`:''}</td>
+      <td class="tm" style="text-align:right">${m.km?'+'+_mfEur(m.km):'—'}</td>
+      <td>${_mfBadge(m.statut)}</td></tr>`).join('')+'</tbody></table></div>'
+      :'<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucune mission ce mois-ci.</div>'}
+    <div style="padding:8px 14px 12px;font-size:11px;color:var(--t3)">Une mission devient « acquise » à la livraison validée. Annulée avant, elle ne rapporte rien.</div></div>`;
+
+  // Détail des ventes : le calcul, écrit en clair, puis chaque encaissement.
+  poles.forEach(p=>{
+    const v=p.ventes||{};
+    const familles=(v.familles||[]).map(f=>MF_FAMILLES[f]||f).join(', ')||'aucune famille retenue';
+    const bareme=(v.paliers||[]).length?'paliers : '+(v.paliers||[]).map(x=>'dès '+_mfEur(x.a_partir_de)+' → '+x.taux_pct+' %').join(' · '):(v.taux_pct||0)+' % du CA éligible';
+    html+=`<div class="cd" style="margin-bottom:14px"><div class="cd-h"><div class="cd-t">Prime ventes${poles.length>1?' · '+esc(p.pole):''}</div></div>
+      <div style="padding:12px 16px;display:grid;gap:4px;font-size:12.5px;color:var(--t2)">
+        <div>CA encaissé éligible : <b style="color:var(--t1)">${_mfEur(v.ca_eligible)} HT</b> <span style="color:var(--t3)">(${esc(familles)})</span></div>
+        <div>Remboursements déduits : <b style="color:var(--t1)">${_mfEur(v.rembourse)} HT</b></div>
+        <div>Barème : <b style="color:var(--t1)">${esc(bareme)}</b>${v.objectif!=null?' · bonus '+_mfEur(p.ventes.bonus)+' si '+_mfEur(v.objectif)+' atteints':''}</div>
+        <div>Prime calculée : <b style="color:var(--acc)">${_mfEur(v.montant)}</b></div>
+      </div>
+      ${(v.lignes||[]).length?'<div class="tw"><table><thead><tr><th>Date</th><th>Vente</th><th>Famille</th><th style="text-align:right">HT</th><th>Compte</th></tr></thead><tbody>'+(v.lignes||[]).map(l=>`<tr style="${l.eligible?'':'opacity:.55'}">
+        <td class="tm">${_mfDate(l.date)}</td><td class="tp">${esc(l.libelle||'')}</td><td class="tm">${esc(MF_FAMILLES[l.famille]||l.famille)}</td>
+        <td class="tm" style="text-align:right;font-variant-numeric:tabular-nums">${_mfEur(l.ht)}</td><td class="tm">${l.eligible?'Oui':'Non'}</td></tr>`).join('')+'</tbody></table></div>'
+        :'<div style="padding:0 16px 14px;color:var(--t3);font-size:12.5px">Aucun encaissement ce mois-ci pour ce pôle.</div>'}
+    </div>`;
+  });
+
+  html+=`<div class="cd"><div class="cd-h"><div class="cd-t">Frais</div></div>
+    ${frais.length?'<div class="tw"><table><thead><tr><th>Date</th><th>Frais</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead><tbody>'+frais.map(f=>`<tr>
+      <td class="tm">${_mfDate(f.date)}</td><td class="tp">${esc(f.libelle||f.type||'')}</td><td class="tm" style="text-align:right">${_mfEur(f.montant)}</td><td>${_mfBadge(f.statut)}</td></tr>`).join('')+'</tbody></table></div>'
+      :'<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucun frais ce mois-ci.</div>'}
+    <div style="padding:8px 14px 12px;font-size:11px;color:var(--t3)">Vos frais sont validés par l'Admin ou la comptabilité, jamais par vous-même.</div></div>`;
+  return html;
+}
+
+// ── Pilotage : Admin (règle, valide, tranche), comptabilité (valide, règle), secrétariat (règle) ──
+function _finProdView(){
+  return `<div class="sh"><div><div class="sh-t">Finance Production</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Rémunération du Responsable Production : règles, calcul du mois, validation, règlement, exceptions.</div></div></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+      <div><label style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Pôle</label>
+        <select class="l-inp" id="fp-pole" style="height:36px;min-width:200px" onchange="loadFinProd()"></select></div>
+      <div><label style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Mois</label>
+        <input type="month" class="l-inp" id="fp-mois" style="height:36px" onchange="loadFinProd()"></div>
+    </div>
+    <div id="fp-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+let _fpCfg=null,_fpResp=null,_fpCalc=null;
+async function loadFinProd(){
+  const el=document.getElementById('fp-real');
+  if(!el)return;
+  const poleId=_polePickerFill('fp-pole');
+  const{debut}=_monthBounds(_monthPickerDefault('fp-mois'));
+  if(!poleId){el.innerHTML='<div style="padding:20px;color:var(--t3)">Aucun pôle configuré.</div>';return;}
+  el.innerHTML=_finSkelRows(4,44);
+  const[cfg,resp,calc,exc,prods]=await Promise.all([
+    sbFetch('production_remuneration_config?select=*&pole_id=eq.'+poleId).catch(()=>[]),
+    sbFetch('rpc/responsable_production_du_pole',{method:'POST',body:{p_pole_id:poleId}}).catch(()=>null),
+    sbFetch('pole_remuneration_calculs?select=*&pole_id=eq.'+poleId+'&periode=eq.'+debut+'&beneficiaire=eq.responsable_production').catch(()=>[]),
+    sbFetch('prestations_equipe_display?select=id,remuneration,montant_recommande,exception_montant,exception_motif,exception_demandee_le,collaborateur:profiles(id,prenom,nom),prestations(id,reference,date_prestation,pole_id)&exception_statut=eq.a_valider').catch(()=>[]),
+    sbFetch('profiles?select=id,prenom,nom,pole_affectations!pole_affectations_user_id_fkey!inner(pole_id,actif)&role=eq.prod&pole_affectations.pole_id=eq.'+poleId).catch(()=>[]),
+  ]);
+  _fpCfg=Array.isArray(cfg)&&cfg[0]?cfg[0]:null;
+  _fpResp=typeof resp==='string'?resp:null;
+  _fpCalc=Array.isArray(calc)&&calc[0]?calc[0]:null;
+  const listeProds=Array.isArray(prods)?prods:[];
+  const exceptions=(Array.isArray(exc)?exc:[]).filter(x=>x.prestations?.pole_id===poleId);
+  const estAdmin=S.role==='admin';
+  const nomDe=id=>{const p=listeProds.find(x=>x.id===id);return p?[p.prenom,p.nom].filter(Boolean).join(' '):'—';};
+  const c=_fpCfg||{};
+  const dis=estAdmin?'':'disabled';
+  const champ=(id,lb,val,suffixe,aide)=>`<label style="display:grid;gap:4px"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">${lb}</span>
+    <span style="display:flex;align-items:center;gap:6px"><input id="${id}" type="number" min="0" step="0.01" class="l-inp" style="height:36px;width:140px" value="${val??''}" ${dis}><span style="font-size:12px;color:var(--t3)">${suffixe}</span></span>${aide?`<span style="font-size:11px;color:var(--t3)">${aide}</span>`:''}</label>`;
+  const regles=`<div class="cd" style="margin-bottom:14px"><div class="cd-h"><div class="cd-t">Règles du pôle</div>${estAdmin?'':'<span style="font-size:11px;color:var(--t3)">Modifiables par l\'Admin</span>'}</div>
+    <div style="padding:14px 16px;display:grid;gap:14px">
+      <label style="display:grid;gap:4px"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Responsable Production</span>
+        <select id="fp-resp" class="l-inp" style="height:36px;max-width:320px" ${dis}>
+          <option value="">Automatique${!c.responsable_production_id&&_fpResp?' : '+esc(nomDe(_fpResp)):' (aucune Production unique)'}</option>
+          ${listeProds.map(p=>`<option value="${p.id}"${c.responsable_production_id===p.id?' selected':''}>${esc([p.prenom,p.nom].filter(Boolean).join(' '))}</option>`).join('')}
+        </select></label>
+      <div style="display:flex;flex-wrap:wrap;gap:18px">
+        ${champ('fp-coord','Prime de coordination',c.coordination_montant??0,'€ par mission pilotée','Acquise à la livraison validée.')}
+        ${champ('fp-taux','Taux sur ventes',c.ventes_taux_pct??0,'% du CA encaissé HT','Sans palier. 0 % : pas de prime.')}
+        ${champ('fp-bonus','Bonus fixe',c.ventes_bonus_fixe??0,'€','Versé si l\'objectif est atteint.')}
+        ${champ('fp-objectif','Objectif mensuel',c.ventes_objectif_mensuel??'','€ HT','Vide : pas de bonus.')}
+        ${champ('fp-tva','TVA des galeries',c.tva_pct??20,'%','Les galeries sont vendues TTC.')}
+      </div>
+      <div><div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Ventes qui entrent dans la prime</div>
+        <div style="display:flex;flex-wrap:wrap;gap:14px">${Object.entries(MF_FAMILLES).map(([k,lb])=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t2)"><input type="checkbox" class="fp-fam" value="${k}" ${(c.ventes_familles||[]).includes(k)?'checked':''} ${dis}> ${lb}</label>`).join('')}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">Aucune case cochée : aucune vente ne donne droit à une prime. « Autres ventes » ne correspond aujourd'hui à aucun encaissement identifié.</div></div>
+      <label style="display:grid;gap:4px"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Paliers (facultatif)</span>
+        <textarea id="fp-paliers" class="l-inp" rows="3" style="max-width:320px;padding:8px;font-family:inherit" placeholder="2000 : 5&#10;5000 : 7" ${dis}>${(c.ventes_paliers||[]).map(x=>x.a_partir_de+' : '+x.taux_pct).join('\n')}</textarea>
+        <span style="font-size:11px;color:var(--t3)">Une ligne par palier : « à partir de X € HT : Y % ». Le palier le plus haut atteint s'applique à tout le CA ; sans palier, le taux ci-dessus.</span></label>
+      ${estAdmin?'<div><button class="btn bp bs" onclick="enregistrerRegleFinProd()">Enregistrer les règles</button></div>':''}
+    </div></div>`;
+
+  const k=_fpCalc;
+  const stLb={a_valider:'À valider',valide:'Validé',transmis_compta:'Transmis compta',paye:'Payé'};
+  const actions=k?[
+    k.statut==='a_valider'&&['admin','compta'].includes(S.role)?`<button class="btn bp bs" onclick="reglerFinProd('valider')">Valider</button>`:'',
+    k.statut==='valide'&&['admin','compta'].includes(S.role)?`<button class="btn bp bs" onclick="reglerFinProd('transmettre')">Transmettre à la compta</button>`:'',
+    ['valide','transmis_compta'].includes(k.statut)&&['admin','compta','sec'].includes(S.role)?`<button class="btn bp bs" onclick="reglerFinProd('payer')">Marquer payé</button>`:'',
+    ['valide','transmis_compta'].includes(k.statut)&&estAdmin?`<button class="btn bg2 bs" onclick="reglerFinProd('rouvrir')">Rouvrir</button>`:'',
+  ].join(''):'';
+  const calcul=`<div class="cd" style="margin-bottom:14px"><div class="cd-h"><div class="cd-t">Calcul du mois${_fpResp?' · '+esc(nomDe(_fpResp)):''}</div>
+      ${k?`<span class="bd ${k.statut==='a_valider'?'bw':'ba'}"><span class="bd-d"></span>${stLb[k.statut]||k.statut}</span>`:''}</div>
+    <div style="padding:14px 16px">
+      ${!_fpResp?'<div style="font-size:12.5px;color:var(--wa)">Aucun Responsable Production pour ce pôle : désignez-le dans les règles.</div>':
+      k?`<div class="tw" style="margin-bottom:12px"><table><tbody>
+          <tr><td class="tp">Fixe (barème de pôle, ${k.nb_contrats_recurrents} contrat${k.nb_contrats_recurrents>1?'s':''})</td><td class="tm" style="text-align:right">${_mfEur(k.fixe_mensuel)}</td></tr>
+          <tr><td class="tp">Coordination (${k.coordination_nb} mission${k.coordination_nb>1?'s':''} livrée${k.coordination_nb>1?'s':''})</td><td class="tm" style="text-align:right">${_mfEur(k.coordination_montant)}</td></tr>
+          <tr><td class="tp">Prime ventes (${_mfEur(Number(k.ventes_ca_eligible)-Number(k.ventes_rembourse))} HT × ${k.variable_pct||0} %)</td><td class="tm" style="text-align:right">${_mfEur(k.ventes_montant)}</td></tr>
+          <tr><td class="tp" style="font-weight:700;color:var(--t1)">Total à valider</td><td class="tm" style="text-align:right;font-weight:700;color:var(--acc)">${_mfEur(k.total)}</td></tr>
+        </tbody></table></div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:10px">La rémunération terrain et les frais suivent leur propre circuit (Paiements équipe, Frais). Une fois validé, ce montant est figé ; « Rouvrir » le rend de nouveau recalculable.</div>`
+      :'<div style="font-size:12.5px;color:var(--t3);margin-bottom:10px">Pas encore calculé pour ce mois.</div>'}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${_fpResp&&(!k||k.statut==='a_valider')?'<button class="btn bg2 bs" onclick="calculerFinProd()">↻ Calculer / recalculer</button>':''}
+        ${actions}
+        ${_fpResp?'<button class="btn bg2 bs" onclick="voirDetailFinProd()">Voir le détail complet</button>':''}
+      </div>
+      <div id="fp-detail" style="margin-top:14px"></div>
+    </div></div>`;
+
+  const excHtml=`<div class="cd"><div class="cd-h"><div class="cd-t">Exceptions de rémunération à trancher</div></div>
+    ${exceptions.length?'<div class="tw"><table><thead><tr><th>Mission</th><th>Personne</th><th style="text-align:right">Grille</th><th style="text-align:right">Demandé</th><th>Motif</th><th></th></tr></thead><tbody>'+exceptions.map(x=>`<tr>
+      <td class="tp">${_mfDate(x.prestations?.date_prestation)} · ${esc(x.prestations?.reference||'')}</td>
+      <td class="tp">${esc([x.collaborateur?.prenom,x.collaborateur?.nom].filter(Boolean).join(' '))}</td>
+      <td class="tm" style="text-align:right">${x.montant_recommande!=null?_mfEur(x.montant_recommande):'—'}</td>
+      <td class="tm" style="text-align:right;color:var(--wa);font-weight:700">${_mfEur(x.exception_montant)}</td>
+      <td class="tm">${esc(MOTIFS_REMU[x.exception_motif]||x.exception_motif||'')}</td>
+      <td>${estAdmin&&x.collaborateur?.id!==S.uid?`<button class="btn bp bs" style="padding:3px 9px" onclick="deciderExceptionRemu('${x.id}',true)">Approuver</button> <button class="btn bg2 bs" style="padding:3px 9px" onclick="deciderExceptionRemu('${x.id}',false)">Refuser</button>`:'<span style="font-size:11px;color:var(--t3)">Décision Admin</span>'}</td></tr>`).join('')+'</tbody></table></div>'
+      :'<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucune exception en attente pour ce pôle.</div>'}</div>`;
+  el.innerHTML=regles+calcul+excHtml;
+}
+async function enregistrerRegleFinProd(){
+  const poleId=document.getElementById('fp-pole')?.value;
+  if(!poleId)return;
+  const num=id=>{const v=document.getElementById(id)?.value;return v===''||v==null?null:Number(v);};
+  const paliers=[];
+  for(const l of (document.getElementById('fp-paliers')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean)){
+    const m=l.match(/^([\d\s.,]+)\s*[:;→>-]+\s*([\d.,]+)/);
+    if(!m){toast('Palier illisible : « '+l+' ». Format : 2000 : 5','er');return;}
+    paliers.push({a_partir_de:Number(m[1].replace(/\s/g,'').replace(',','.')),taux_pct:Number(m[2].replace(',','.'))});
+  }
+  const body={responsable_production_id:document.getElementById('fp-resp')?.value||null,
+    coordination_montant:num('fp-coord')||0,ventes_taux_pct:num('fp-taux')||0,ventes_bonus_fixe:num('fp-bonus')||0,
+    ventes_objectif_mensuel:num('fp-objectif'),tva_pct:num('fp-tva')??20,ventes_paliers:paliers.sort((a,b)=>a.a_partir_de-b.a_partir_de),
+    ventes_familles:[...document.querySelectorAll('.fp-fam:checked')].map(x=>x.value)};
+  const r=_fpCfg
+    ?await sbFetch('production_remuneration_config?pole_id=eq.'+poleId,{method:'PATCH',body})
+    :await sbFetch('production_remuneration_config',{method:'POST',body:{...body,pole_id:poleId}});
+  if(sbErr(r)){toast(msgErreur(r,'Enregistrement impossible.'),'er');return;}
+  toast('Règles enregistrées. Elles s\'appliquent aux calculs non encore validés.','ok');
+  loadFinProd();
+}
+async function calculerFinProd(){
+  const poleId=document.getElementById('fp-pole')?.value;
+  const{debut}=_monthBounds(document.getElementById('fp-mois')?.value);
+  const r=await sbFetch('rpc/production_calculer_remuneration',{method:'POST',body:{p_pole_id:poleId,p_periode:debut}});
+  if(sbErr(r)){toast(msgErreur(r,'Calcul impossible.'),'er');return;}
+  toast('Calcul effectué : '+_mfEur(r.total)+'.','ok');
+  loadFinProd();
+}
+async function reglerFinProd(action){
+  if(!_fpCalc)return;
+  const lb={valider:'Valider ce montant ?',transmettre:'Transmettre à la comptabilité ?',payer:'Marquer ce montant comme payé ?',rouvrir:'Rouvrir ce calcul ? Il redevient recalculable.'}[action];
+  if(!await demanderConfirmation(lb,{action:'Confirmer',danger:action==='rouvrir'}))return;
+  const r=await sbFetch('rpc/production_regler_remuneration',{method:'POST',body:{p_calcul_id:_fpCalc.id,p_action:action}});
+  if(sbErr(r)){toast(msgErreur(r,'Action impossible.'),'er');return;}
+  toast({valider:'Montant validé.',transmettre:'Transmis à la comptabilité.',payer:'Marqué payé.',rouvrir:'Calcul rouvert.'}[action],'ok');
+  loadFinProd();
+}
+async function voirDetailFinProd(){
+  const el=document.getElementById('fp-detail');
+  if(!el||!_fpResp)return;
+  const{debut}=_monthBounds(document.getElementById('fp-mois')?.value);
+  el.innerHTML=_finSkelRows(3,40);
+  const r=await sbFetch('rpc/production_mes_finances',{method:'POST',body:{p_mois:debut,p_user:_fpResp}});
+  if(sbErr(r)||!r){el.innerHTML='<div style="color:var(--er)">'+esc(msgErreur(r,'Détail indisponible.'))+'</div>';return;}
+  el.innerHTML=renderMesFinances(r);
+}
+
 // ── Finance par pôle (ventilation revenus/charges) ──
 async function loadFinPoles(){
   const poleId=_polePickerFill('finpoles-pole');
@@ -33096,7 +33384,7 @@ async function loadPoleRem(){
       // a 2 FK vers profiles (responsable_id ET valide_par) — trouvé en testant en réel (31/08/2026),
       // l'embed ambigu renvoyait une erreur PGRST201 silencieusement absorbée par le .catch(()=>[])
       // ci-dessous, affichant à tort "Aucun calcul pour ce mois" alors que le calcul existait bien.
-      sbFetch('pole_remuneration_calculs?select=*,profiles!pole_remuneration_calculs_responsable_id_fkey(prenom,nom)&pole_id=eq.'+poleId+'&periode=eq.'+debut).catch(()=>[]),
+      sbFetch('pole_remuneration_calculs?select=*,profiles!pole_remuneration_calculs_responsable_id_fkey(prenom,nom)&pole_id=eq.'+poleId+'&periode=eq.'+debut+'&beneficiaire=eq.responsable_pole').catch(()=>[]),
       sbFetch('pole_remuneration_paliers?select=*&actif=eq.true&order=borne_min.asc').catch(()=>[]),
     ]);
     renderPoleRemGrille(Array.isArray(paliers)?paliers:[]);
@@ -38918,7 +39206,7 @@ const MOB_MORE_ITEMS={
   // commercialisation le même jour, mais oublié de MOB_MORE_ITEMS.admin ET de BNAV_ITEMS.admin :
   // un admin sur mobile n'avait aucun moyen d'atteindre cet écran (bug trouvé en audit
   // transversal Médias & Ventes, aucun autre écran touché).
-  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'medias',lb:'Médias & Ventes',ic:'📸',sub:'Politique & produits par club'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finmedias',lb:'Ventes médias',ic:'📸',sub:'CA Pass Photo & opérations'},{id:'finpoles',lb:'Finance par pôle',ic:'🏢',sub:'Ventilation'},{id:'polerem',lb:'Rémunération pôle',ic:'📐',sub:'Grille responsable'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
+  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'medias',lb:'Médias & Ventes',ic:'📸',sub:'Politique & produits par club'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finmedias',lb:'Ventes médias',ic:'📸',sub:'CA Pass Photo & opérations'},{id:'finpoles',lb:'Finance par pôle',ic:'🏢',sub:'Ventilation'},{id:'polerem',lb:'Rémunération pôle',ic:'📐',sub:'Grille responsable'},{id:'finprod',lb:'Finance Production',ic:'🎬',sub:'Responsable Production'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'agendasec',lb:'Agenda',ic:'📅',sub:'RDV & rappels'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'docrh',lb:'Documents',ic:'📁',sub:'Pièces'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
   // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
