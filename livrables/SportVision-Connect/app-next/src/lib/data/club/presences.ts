@@ -61,5 +61,7 @@ export async function fetchClubPresencesThisMonth(supabase: SupabaseClient, orga
   const monthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString().slice(0, 10);
   // Même source que la page Présences (v140), plus l'ancienne table vide.
   const presences = await fetchClubPresences(supabase, organizationId);
-  return presences.filter((p) => p.status === "completed" && p.date >= monthStart).length;
+  // Une mission regroupée (v133) est une seule présence, quel que soit le nombre de matchs.
+  const faites = presences.filter((p) => p.status === "completed" && p.date >= monthStart);
+  return new Set(faites.map((p) => p.missionReference ?? p.id)).size;
 }

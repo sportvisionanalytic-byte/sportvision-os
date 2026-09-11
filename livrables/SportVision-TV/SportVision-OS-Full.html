@@ -25312,9 +25312,12 @@ async function loadCmPlanningMensuel(){
       }
       return{...p,_niveau:niveau,_label:label};
     });
-    set('pm-kpi-total',_pmPresences.length);
+    // 11/09/2026 : une présence = un déplacement = une mission. Les matchs regroupés dans une même
+    // mission (v133) comptent une fois, comme dans Club+ et la rentabilité (v142). Annulées exclues.
+    const _pmActives=_pmPresences.filter(p=>p.statut!=='annule');
+    set('pm-kpi-total',new Set(_pmActives.map(p=>p.created_prestation_id||p.id)).size);
     set('pm-kpi-alert',withAlert.filter(p=>['attention','urgent'].includes(p._niveau)).length);
-    set('pm-kpi-missions',_pmPresences.filter(p=>p.statut==='mission_creee').length);
+    set('pm-kpi-missions',new Set(_pmActives.filter(p=>p.statut==='mission_creee'&&p.created_prestation_id).map(p=>p.created_prestation_id)).size);
     const sendBtn=document.getElementById('pm-send-btn');
     if(sendBtn)sendBtn.style.opacity=_pmPresences.some(p=>p.statut==='prevu')?'1':'.5';
     if(!_pmPresences.length){

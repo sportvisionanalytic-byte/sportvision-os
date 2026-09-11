@@ -19,6 +19,8 @@ export interface PresenceDatee {
   /** DATE Postgres, « YYYY-MM-DD ». */
   date: string;
   status: "scheduled" | "completed" | "cancelled";
+  /** La mission créée pour cette présence. Plusieurs matchs regroupés (v133) la partagent. */
+  missionReference?: string | null;
 }
 
 export interface DecompteMois {
@@ -50,18 +52,26 @@ function isoLocal(d: Date): string {
  */
 export function decompterLeMois(presences: PresenceDatee[], reference: Date = new Date()): DecompteMois {
   const aujourdhui = isoLocal(reference);
-  let programmees = 0;
+
+  // 11/09/2026 — Une présence, c'est un déplacement de SportVision : une mission. Quatre matchs
+  // cochés le même jour au même stade n'en font qu'une (v133), l'écran en comptait quatre. Les
+  // lignes d'une même mission sont réunies ; une présence sans mission compte pour elle-même.
+  // Même règle en base (v142) pour la carte du mois et la rentabilité.
+  const parMission = new Map<string, PresenceDatee[]>();
+  presences.forEach((p, i) => {
+    if (!memeMois(p.date, reference) || p.status === "cancelled") return;
+    const cle = p.missionReference ? `mission:${p.missionReference}` : `seule:${i}`;
+    parMission.set(cle, [...(parMission.get(cle) ?? []), p]);
+  });
+
   let realisees = 0;
   let aVenir = 0;
-
-  for (const p of presences) {
-    if (!memeMois(p.date, reference) || p.status === "cancelled") continue;
-    programmees++;
-    if (p.status === "completed") realisees++;
-    else if (p.date >= aujourdhui) aVenir++;
+  for (const lignes of parMission.values()) {
+    if (lignes.some((p) => p.status === "completed")) realisees++;
+    else if (lignes.some((p) => p.date >= aujourdhui)) aVenir++;
   }
 
-  return { programmees, realisees, aVenir };
+  return { programmees: parMission.size, realisees, aVenir };
 }
 
 /** « Septembre 2026 », capitale initiale comprise. */

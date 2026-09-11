@@ -77,3 +77,34 @@ test("une date illisible est ignorée plutôt que comptée de travers", () => {
 test("le mois s'écrit avec une capitale", () => {
   assert.equal(libelleMois(LE_10_SEPTEMBRE), "Septembre 2026");
 });
+
+// 11/09/2026, Villemomble : quatre matchs cochés le même jour au même stade forment une seule
+// mission (v133). L'écran en comptait quatre ; c'est un seul déplacement de SportVision.
+test("une mission regroupée compte pour une présence", () => {
+  const m = (date: string, mission: string | null, status: PresenceDatee["status"] = "scheduled"): PresenceDatee => ({
+    date,
+    status,
+    missionReference: mission,
+  });
+  const d = decompterLeMois(
+    [
+      m("2026-09-12", "SV-2026-0268"), m("2026-09-12", "SV-2026-0268"), m("2026-09-12", "SV-2026-0268"), m("2026-09-12", "SV-2026-0268"),
+      m("2026-09-13", "SV-2026-0274"), m("2026-09-13", "SV-2026-0274"), m("2026-09-13", "SV-2026-0274"), m("2026-09-13", "SV-2026-0274"),
+      m("2026-09-05", "SV-2026-0200", "completed"), m("2026-09-05", "SV-2026-0200", "completed"),
+      m("2026-09-20", null), m("2026-09-21", null),
+    ],
+    LE_10_SEPTEMBRE,
+  );
+  assert.deepEqual(d, { programmees: 5, realisees: 1, aVenir: 4 });
+});
+
+test("un match retiré d'une mission regroupée ne la retire pas", () => {
+  const d = decompterLeMois(
+    [
+      { date: "2026-09-12", status: "cancelled", missionReference: "SV-2026-0268" },
+      { date: "2026-09-12", status: "scheduled", missionReference: "SV-2026-0268" },
+    ],
+    LE_10_SEPTEMBRE,
+  );
+  assert.deepEqual(d, { programmees: 1, realisees: 0, aVenir: 1 });
+});
