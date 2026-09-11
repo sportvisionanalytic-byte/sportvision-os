@@ -202,7 +202,7 @@ begin
   -- date_debut recule aussi : la contrainte cca_dates_coherentes refuse une fin anterieure au
   -- debut, et elle a raison de le faire.
   update club_cm_affectations
-     set actif = true, date_debut = current_date - 10, date_fin = current_date - 1
+     set actif = true, date_debut = current_date - 10, date_fin = (now() at time zone 'Europe/Paris')::date - 1
    where id = v_aff;
   perform pg_temp.incarner(v_cmA);
   select count(*)::integer into n from clubs where id = v_clubA;
@@ -212,7 +212,10 @@ begin
 
   -- ══ 6. Une affectation qui commence demain ne donne rien aujourd'hui ═══════
   perform set_config('role','postgres',true);
-  update club_cm_affectations set date_fin = null, date_debut = current_date + 1 where id = v_aff;
+  -- Depuis v153, la fenetre d'une affectation se lit en jours de PARIS : entre minuit et 2 h,
+  -- « current_date + 1 » (UTC) est deja aujourd'hui a Paris, et l'acces serait legitimement ouvert.
+  update club_cm_affectations set date_fin = null,
+         date_debut = (now() at time zone 'Europe/Paris')::date + 1 where id = v_aff;
   -- (affectation qui ne commence que demain)
   perform pg_temp.incarner(v_cmA);
   select count(*)::integer into n from clubs where id = v_clubA;
