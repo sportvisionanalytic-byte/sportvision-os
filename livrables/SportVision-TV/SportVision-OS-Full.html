@@ -6157,6 +6157,10 @@ function modalDetailPrestation(idx){
         <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Équipe affectée</div>
         <div id="pd-equipe-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
       </div>`:''}
+      ${S.role==='admin'?`<div style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
+        <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Photos &amp; galeries</div>
+        <div id="pd-galeries" style="display:flex;flex-direction:column;gap:11px;font-size:12px;color:var(--t3)">Chargement…</div>
+      </div>`:''}
       <div id="pd-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:2px">
         ${['admin','sec','prod'].includes(S.role)?`<button onclick="supprimerPrestation('${p.id}','${escJs(p.reference||'')}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>`:'<div></div>'}
@@ -6169,6 +6173,7 @@ function modalDetailPrestation(idx){
       </div>
     </div>`);
   if(['admin','sec','prod'].includes(S.role))chargerEquipeModal(p.id);
+  if(S.role==='admin')chargerGaleriesMission(p.id,'pd-galeries');
 }
 
 async function validerPrestation(id,nouveauStatut){
@@ -31963,7 +31968,7 @@ function modalProdFiche(p){
       <button onclick="validerProduction('${pref}')" id="btn-valider-production" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;flex-shrink:0">✓ Valider la production</button>
     </div>`:''}
     <div style="display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--b1)">
-      ${[['infos','Infos'],['equipe','Équipe'],['brief','Brief'],['budget','Budget'],['historique','Historique']].map(([t,lb],i)=>
+      ${[['infos','Infos'],['equipe','Équipe'],['brief','Brief'],['budget','Budget'],['galeries','Photos & galeries'],['historique','Historique']].map(([t,lb],i)=>
         `<button id="pf-tab-${t}" onclick="setProdFicheTab('${t}')" style="padding:7px 14px;font-size:12px;font-weight:600;background:none;border:none;border-bottom:2px solid ${i===0?'var(--acc)':'transparent'};color:${i===0?'var(--acc)':'var(--t3)'};cursor:pointer;margin-bottom:-1px;transition:color .15s,border-color .15s">${lb}</button>`
       ).join('')}
     </div>
@@ -32020,6 +32025,9 @@ function modalProdFiche(p){
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:8px">Rémunérations équipe</div>
         <div id="pf-rem-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
       </div>
+    </div>
+    <div id="pf-panel-galeries" style="display:none;flex-direction:column;gap:11px">
+      <div id="pf-galeries" data-prestation="${pref}" style="font-size:12px;color:var(--t3)">Chargement…</div>
     </div>
     <div id="pf-panel-historique" style="display:none;flex-direction:column;gap:8px">
       <div id="pf-hist-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
@@ -32085,12 +32093,62 @@ function setProdFicheTab(tab){
     suiv.hidden=!prochaine;
     if(prochaine)suiv.textContent='Suivant : '+_PF_LIBELLES[prochaine]+' →';
   }
-  ['infos','equipe','brief','budget','historique'].forEach(t=>{
+  ['infos','equipe','brief','budget','galeries','historique'].forEach(t=>{
     const panel=document.getElementById('pf-panel-'+t);
     const btn=document.getElementById('pf-tab-'+t);
     if(panel)panel.style.display=t===tab?'flex':'none';
     if(btn){btn.style.borderBottom=t===tab?'2px solid var(--acc)':'2px solid transparent';btn.style.color=t===tab?'var(--acc)':'var(--t3)';}
   });
+  if(tab==='galeries'){const g=document.getElementById('pf-galeries');if(g)chargerGaleriesMission(g.dataset.prestation,'pf-galeries');}
+}
+
+// ── Photos & galeries d'une mission (v154, 11/09/2026) ──────────────────────
+// Le circuit voulu par Fouka : le photographe dépose le lien de ses fichiers, la Production les
+// télécharge et les verse dans la galerie de chaque équipe, puis la publie. Une galerie par
+// équipe (jamais de mélange), rattachée au club, à l'équipe et à la mission ; pour une prestation
+// ponctuelle, une galerie de la prestation. creer_galeries_mission fait le rattachement.
+const GM_LIVRABLE={'final|photo':'Photos traitées','final|video':'Montage final','rushs|video':'Rushs vidéo'};
+const GM_STATUT={draft:['Brouillon','bw'],published:['Publiée','ba'],archived:['Archivée','bn']};
+function _gmUrlSure(u){return /^https?:\/\//i.test(String(u||''))?String(u):'';}
+async function chargerGaleriesMission(prestationId,elId){
+  const el=document.getElementById(elId);
+  if(!el||!prestationId)return;
+  el.innerHTML='Chargement…';
+  const[liens,albums,equipes]=await Promise.all([
+    sbFetch('media_liens?select=id,nom,url,categorie,type_media,transfert_confirme&prestation_id=eq.'+prestationId+'&categorie=in.(final,rushs)&order=created_at.asc').catch(()=>[]),
+    sbFetch('media_albums?select=id,title,status,photo_count,team_id,club_teams(name)&mission_id=eq.'+prestationId+'&order=title.asc').catch(()=>[]),
+    sbFetch('rpc/equipes_de_mission',{method:'POST',body:{p_prestation_id:prestationId}}).catch(()=>[]),
+  ]);
+  const L=Array.isArray(liens)?liens:[],A=Array.isArray(albums)?albums:[],E=Array.isArray(equipes)?equipes:[];
+  const manquantes=E.filter(e=>!A.some(a=>a.team_id===e.team_id));
+  const libBouton=E.length?(A.length?'Créer les galeries manquantes ('+manquantes.length+')':'Créer les galeries ('+E.length+' équipe'+(E.length>1?'s':'')+')'):'Créer la galerie de la prestation';
+  const peutCreer=E.length?manquantes.length>0:A.length===0;
+  el.innerHTML=`
+    <div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px">Fichiers déposés par l'équipe</div>
+      ${L.length?'<div style="display:flex;flex-direction:column;gap:5px">'+L.map(l=>{const u=_gmUrlSure(l.url);return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:8px">
+        <div style="flex:1;min-width:0"><div style="font-size:12.5px;color:var(--t1);font-weight:600">${esc(GM_LIVRABLE[l.categorie+'|'+l.type_media]||l.nom||'Lien')}</div><div style="font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.nom||'')}${l.transfert_confirme?' · transfert confirmé':''}</div></div>
+        ${u?`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer" class="btn bg2 bs">Ouvrir</a>`:'<span style="font-size:11px;color:var(--wa)">Lien invalide</span>'}</div>`;}).join('')+'</div>'
+        :'<div style="font-size:12px;color:var(--t3)">Aucun fichier déposé pour l\'instant. Le photographe les ajoute depuis « Sauvegarde & livraison ».</div>'}
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px">Galeries${E.length?' · une par équipe':''}</div>
+      ${A.length?'<div style="display:flex;flex-direction:column;gap:5px">'+A.map(a=>{const[lb,cl]=GM_STATUT[a.status]||[a.status,'bn'];return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:8px">
+        <div style="flex:1;min-width:0"><div style="font-size:12.5px;color:var(--t1);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.title||'')}</div><div style="font-size:11px;color:var(--t3)">${esc(a.club_teams?.name||'Sans équipe')} · ${Number(a.photo_count||0)} photo${Number(a.photo_count||0)>1?'s':''}</div></div>
+        <span class="bd ${cl}" style="font-size:9.5px"><span class="bd-d"></span>${lb}</span>
+        <button class="btn bg2 bs" onclick="closeModal();setTimeout(()=>modalMediasAlbum('${escJs(a.id)}'),150)">Ouvrir</button></div>`;}).join('')+'</div>'
+        :'<div style="font-size:12px;color:var(--t3)">Aucune galerie pour cette mission.</div>'}
+      ${E.length&&manquantes.length?`<div style="font-size:11.5px;color:var(--t3);margin-top:6px">Équipes : ${esc(E.map(e=>e.team_name).join(', '))}</div>`:''}
+    </div>
+    ${peutCreer?`<div><button class="btn bp bs" onclick="creerGaleriesMission('${escJs(prestationId)}','${escJs(elId)}')">${libBouton}</button></div>`:''}
+    <div style="font-size:11px;color:var(--t3);line-height:1.5">Versez les photos de chaque équipe dans sa galerie, puis publiez-la : elle apparaît dans Club+ pour l'équipe et dans Connect pour ses familles, selon la formule du club.</div>`;
+}
+async function creerGaleriesMission(prestationId,elId){
+  const r=await sbFetch('rpc/creer_galeries_mission',{method:'POST',body:{p_prestation_id:prestationId}});
+  if(sbErr(r)){toast(msgErreur(r,'Création impossible.'),'er');return;}
+  const creees=(Array.isArray(r)?r:[]).filter(x=>x.cree);
+  toast(creees.length?(creees.length>1?creees.length+' galeries créées, une par équipe.':'Galerie créée : '+creees[0].titre):'Les galeries existaient déjà.','ok');
+  chargerGaleriesMission(prestationId,elId);
 }
 
 async function _chargerRemProdFiche(prestationId){
