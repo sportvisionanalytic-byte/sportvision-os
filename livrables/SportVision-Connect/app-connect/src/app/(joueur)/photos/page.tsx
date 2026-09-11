@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
 import { fetchAlbumsVideos, fetchAvailableMediaProducts, fetchPhotoAlbums } from "@/lib/supabase/photoPass";
+import { fetchComptesPhotosDuJoueur } from "@/lib/supabase/reconnaissance";
 import { PhotosView } from "./PhotosView";
 
 // Moteur média générique (Espace joueur) — 02/09/2026, voir migration-media-v1-moteur-generique.sql
@@ -52,9 +53,15 @@ export default async function PhotosPage({
     : [[], []];
   // La vidéo du match s'ouvre par le lien du montage déposé sur la mission (v157).
   const albums = await fetchAlbumsVideos(supabase, albumsBruts);
+  // Combien de photos de CE joueur dans chaque galerie (v160/v162) : rien ne s'affiche là où
+  // aucune photo ne lui est rattachée.
+  const comptes = player?.playerId
+    ? await fetchComptesPhotosDuJoueur(supabase, albums.map((a) => a.id), player.playerId)
+    : new Map<string, number>();
 
   return (
     <PhotosView
+      comptesParAlbum={Object.fromEntries(comptes)}
       clubId={clubId}
       teamId={teamId}
       teamName={teamName}

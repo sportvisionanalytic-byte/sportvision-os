@@ -210,6 +210,17 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
                 Voir les photos
               </Link>
             )}
+            {/* Reconnaissance du visage de l'enfant (v159/v161) : option facultative, réservée à un
+                enfant affilié à un club, comme les galeries. Le refus n'enlève rien. */}
+            {isClub && (
+              <Link
+                href={`/particulier/sportifs/${detail.kind}/${detail.ref_id}/reconnaissance`}
+                className="flex h-12 items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
+              >
+                <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">face_retouching_natural</span>
+                Retrouver ses photos automatiquement
+              </Link>
+            )}
             {rights.voir && (
               <Link
                 href={`/particulier/contenus?sportif=${sportifKey}`}

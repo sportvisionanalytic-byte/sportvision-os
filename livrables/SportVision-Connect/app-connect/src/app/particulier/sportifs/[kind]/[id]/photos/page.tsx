@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchAlbumsVideos, fetchAvailableMediaProducts, fetchPhotoAlbums } from "@/lib/supabase/photoPass";
+import { fetchComptesPhotosDuJoueur } from "@/lib/supabase/reconnaissance";
 import { PhotosViewClub } from "./PhotosViewClub";
 import type { AthleteDetail } from "../AthleteDetailView";
 
@@ -28,6 +29,16 @@ export default async function AthletePhotosPage({ params }: { params: Promise<{ 
 
   // La vidéo du match s'ouvre par le lien du montage déposé sur la mission (v157).
   const albums = await fetchAlbumsVideos(supabase, albumsBruts);
+  // Combien de photos de CET enfant dans chaque galerie (v160/v162) : le compteur n'apparaît que
+  // là où la Production a rattaché au moins une photo, jamais sous la forme d'un « 0 photo ».
+  const comptes = await fetchComptesPhotosDuJoueur(supabase, albums.map((a) => a.id), id);
 
-  return <PhotosViewClub detail={detail} albums={albums} products={products} />;
+  return (
+    <PhotosViewClub
+      detail={detail}
+      albums={albums}
+      products={products}
+      comptesParAlbum={Object.fromEntries(comptes)}
+    />
+  );
 }

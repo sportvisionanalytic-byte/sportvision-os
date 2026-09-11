@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
@@ -35,6 +36,7 @@ export function PhotosView({
   albums: initialAlbums,
   products,
   returnStatus,
+  comptesParAlbum = {},
 }: {
   clubId: string | null;
   teamId: string | null;
@@ -43,6 +45,8 @@ export function PhotosView({
   albums: PhotoAlbumTeaser[];
   products: AvailableMediaProduct[];
   returnStatus: "succes" | "annule" | null;
+  /** Nombre de photos rattachées à ce joueur, par galerie (v160/v162). Absent = aucune. */
+  comptesParAlbum?: Record<string, number>;
 }) {
   const router = useRouter();
   const [albums, setAlbums] = useState(initialAlbums);
@@ -213,7 +217,7 @@ export function PhotosView({
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {albums.map((a) => (
-              <AlbumCard key={a.id} album={a} />
+              <AlbumCard key={a.id} album={a} nbPhotosJoueur={comptesParAlbum[a.id] ?? 0} />
             ))}
           </div>
         </>
@@ -222,7 +226,7 @@ export function PhotosView({
   );
 }
 
-function AlbumCard({ album }: { album: PhotoAlbumTeaser }) {
+function AlbumCard({ album, nbPhotosJoueur }: { album: PhotoAlbumTeaser; nbPhotosJoueur: number }) {
   const [loading, setLoading] = useState(false);
   const [linkError, setLinkError] = useState(false);
 
@@ -263,6 +267,12 @@ function AlbumCard({ album }: { album: PhotoAlbumTeaser }) {
       <div className="flex flex-col gap-1.5 p-4">
         <span className="font-sora text-[16px] font-semibold">{album.title}</span>
         <span className="text-[13px] text-text-tertiary">{formatDate(album.eventDate) || "Date non précisée"}</span>
+        {nbPhotosJoueur > 0 && (
+          <Link href={`/photos/${album.id}`} className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus">
+            <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">person_search</span>
+            {nbPhotosJoueur === 1 ? "1 photo de vous" : `${nbPhotosJoueur} photos de vous`}
+          </Link>
+        )}
         {album.videoUrl && (
           <a
             href={album.videoUrl}

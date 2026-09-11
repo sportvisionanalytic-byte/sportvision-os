@@ -27,10 +27,13 @@ export function PhotosViewClub({
   detail,
   albums: initialAlbums,
   products,
+  comptesParAlbum = {},
 }: {
   detail: AthleteDetail;
   albums: PhotoAlbumTeaser[];
   products: AvailableMediaProduct[];
+  /** Nombre de photos rattachées à CET enfant, par galerie (v160/v162). Absent = aucune. */
+  comptesParAlbum?: Record<string, number>;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -205,7 +208,13 @@ export function PhotosViewClub({
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {albums.map((a) => (
-              <AlbumCard key={a.id} album={a} />
+              <AlbumCard
+                key={a.id}
+                album={a}
+                nbPhotosEnfant={comptesParAlbum[a.id] ?? 0}
+                prenom={detail.first_name}
+                lienSesPhotos={`/particulier/sportifs/${detail.kind}/${detail.ref_id}/photos/${a.id}`}
+              />
             ))}
           </div>
         </>
@@ -214,7 +223,17 @@ export function PhotosViewClub({
   );
 }
 
-function AlbumCard({ album }: { album: PhotoAlbumTeaser }) {
+function AlbumCard({
+  album,
+  nbPhotosEnfant,
+  prenom,
+  lienSesPhotos,
+}: {
+  album: PhotoAlbumTeaser;
+  nbPhotosEnfant: number;
+  prenom: string;
+  lienSesPhotos: string;
+}) {
   const [loading, setLoading] = useState(false);
   const [linkError, setLinkError] = useState(false);
 
@@ -258,6 +277,12 @@ function AlbumCard({ album }: { album: PhotoAlbumTeaser }) {
       <div className="flex flex-col gap-1.5 p-4">
         <span className="font-sora text-[16px] font-semibold">{album.title}</span>
         <span className="text-[13px] text-text-tertiary">{formatDate(album.eventDate) || "Date non précisée"}</span>
+        {nbPhotosEnfant > 0 && (
+          <Link href={lienSesPhotos} className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus">
+            <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">person_search</span>
+            {nbPhotosEnfant === 1 ? `1 photo de ${prenom}` : `${nbPhotosEnfant} photos de ${prenom}`}
+          </Link>
+        )}
         {album.videoUrl && (
           <a
             href={album.videoUrl}
