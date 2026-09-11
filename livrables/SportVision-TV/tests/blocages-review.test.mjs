@@ -484,6 +484,14 @@ try {
 } catch (e) {
   t("le test va jusqu'au bout", false, String(e?.stack || e).split("\n").slice(0, 3).join(" · "));
 } finally {
-  if (decor || traces.comptes.length) await nettoyer(decor);
+  // Une coupure réseau pendant le nettoyage (constatée le 11/09/2026 : ENOTFOUND) ne doit pas
+  // passer inaperçue : le test le dit et donne les comptes à retrouver.
+  if (decor || traces.comptes.length) {
+    try {
+      await nettoyer(decor);
+    } catch (e) {
+      t("nettoyage : aucune trace", false, `NETTOYAGE INTERROMPU (${String(e?.cause?.code || e).slice(0, 60)}) : supprimer les comptes zz-blocages-*-${T0}@example.invalid et leurs lignes`);
+    }
+  }
 }
 process.exit(bilan() ? 1 : 0);
