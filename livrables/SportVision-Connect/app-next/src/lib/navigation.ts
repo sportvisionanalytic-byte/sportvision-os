@@ -539,6 +539,8 @@ const NAV_CLUB_SECRETAIRE: NavEntry[] = [
   section("Structure"),
   item("documents", "Documents", "documents"),
   item("teams", "Affiliations", "team-requests"),
+  // 11/09/2026 (décision de Fouka) : SIRET et annuaire du club, en lecture seule.
+  item("settings", "Informations du club", "settings/organization"),
   section("Compte"),
   item("settings", "Mon profil", "settings/profile"),
 ];
@@ -553,6 +555,8 @@ const NAV_CLUB_TRESORIER: NavEntry[] = [
   section("Finance"),
   item("billing", "Factures & devis", "billing"),
   item("contracts", "Contrats", "contracts"),
+  // 11/09/2026 (décision de Fouka) : SIRET et annuaire du club, en lecture seule.
+  item("settings", "Informations du club", "settings/organization"),
   section("Compte"),
   item("settings", "Mon profil", "settings/profile"),
 ];

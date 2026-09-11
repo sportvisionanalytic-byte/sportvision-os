@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/session-context";
-import { sansReglagesDuClub } from "@/lib/permissions";
+import { sansReglagesDuClub, consulteLaFicheDuClub } from "@/lib/permissions";
 
 // Coque des 3 écrans Paramètres — voir ACTIONS.md § 25. Fichier nouveau (aucun `settings/
 // layout.tsx` n'existait), propre à mon périmètre : il ne touche à aucun layout partagé.
@@ -39,9 +39,15 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   // 10/09/2026 (décisions Club+ n° 1) : sansReglagesDuClub ajoute les quatre rôles de second rang
   // (responsable d'équipe, lecture seule, membre du bureau, responsable sponsors).
   const hideOrgTabs = isPersonal || sansReglagesDuClub(ctx);
+  // 11/09/2026 : Secrétaire et Trésorier gardent l'onglet Organisation, en lecture seule (SIRET et
+  // annuaire du club, décision de Fouka). Intégrations reste masqué pour eux.
+  const ficheEnLecture = consulteLaFicheDuClub(ctx);
   const estCmSportVision = ctx.membership.role === "external_cm";
   const tabs = TABS.filter(
-    (tab) => !hideOrgTabs || (tab.href !== "/settings/organization" && tab.href !== "/settings/integrations"),
+    (tab) =>
+      !hideOrgTabs ||
+      (tab.href !== "/settings/organization" && tab.href !== "/settings/integrations") ||
+      (ficheEnLecture && tab.href === "/settings/organization"),
   ).map((tab) =>
     // « Organisation » sous-entend « la mienne ». Un CM accompagne des clubs, il n'en fait pas
     // partie : le libellé doit dire lequel des deux (Fouka, 08/09/2026).

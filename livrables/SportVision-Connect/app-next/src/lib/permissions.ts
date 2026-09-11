@@ -302,3 +302,14 @@ const CLUB_ROLES_SANS_REGLAGES: ReadonlySet<MembershipRole> = new Set(["team_man
 export function sansReglagesDuClub(ctx: ActiveContext): boolean {
   return isClubNonBureauRole(ctx) || (ctx.organization.type === "club" && CLUB_ROLES_SANS_REGLAGES.has(ctx.membership.role));
 }
+
+/** Décision de Fouka du 11/09/2026 : la Secrétaire et le Trésorier lisent le SIRET et l'annuaire
+ * du club (rôle, nom, téléphone des membres), réservés par ailleurs à l'Owner Club+, au Président
+ * et au CM. Ils consultent donc la fiche « Informations du club » (/settings/organization), en
+ * LECTURE SEULE : l'écriture reste à `administreLeClub`, et la base le garantit de toute façon
+ * (SIRET et téléphones par les fonctions autorisées, clubs_admin_update pour l'écriture). */
+const CLUB_ROLES_FICHE_EN_LECTURE: ReadonlySet<MembershipRole> = new Set(["secretary", "treasurer"]);
+
+export function consulteLaFicheDuClub(ctx: ActiveContext): boolean {
+  return ctx.organization.type === "club" && CLUB_ROLES_FICHE_EN_LECTURE.has(ctx.membership.role);
+}

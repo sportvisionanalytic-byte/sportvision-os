@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, sansReglagesDuClub, administreLeClub, litAnnuaireDuClub } from "@/lib/permissions";
+import { canAccess, sansReglagesDuClub, consulteLaFicheDuClub, administreLeClub, litAnnuaireDuClub } from "@/lib/permissions";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -59,7 +59,9 @@ export default function OrganizationSettingsPage() {
   // sansReglagesDuClub (10/09/2026, décisions Club+ n° 1) : le même garde-fou par URL couvre
   // désormais aussi le responsable d'équipe, la lecture seule, le membre du bureau et le
   // responsable sponsors.
-  if (sansReglagesDuClub(ctx) && ctx.membership.role !== "admin_staff") {
+  // consulteLaFicheDuClub (11/09/2026) : Secrétaire et Trésorier passent, en lecture seule (SIRET
+  // et annuaire du club, décision de Fouka). canEdit reste faux pour eux.
+  if (sansReglagesDuClub(ctx) && ctx.membership.role !== "admin_staff" && !consulteLaFicheDuClub(ctx)) {
     return (
       <Card className="p-8 text-center text-[13.5px] text-text-soft">
         Les informations de l&apos;organisation sont réservées à l&apos;administrateur du club.
@@ -221,7 +223,9 @@ function OrganizationForm() {
             </span>
           )}
         </button>
-        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={handleLogoChange} />
+        {/* disabled aussi, pas seulement le bouton (11/09/2026) : la fiche s'ouvre désormais en lecture
+            seule à la Secrétaire et au Trésorier, et un champ fichier actif restait déclenchable. */}
+        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={handleLogoChange} disabled={!canEdit} />
         <div>
           <div className="text-[13.5px] font-extrabold">Logo</div>
           <div className="text-[12px] text-text-soft">
