@@ -15597,6 +15597,8 @@ async function loadPhotoDash(){
     // d.statut='acceptée', donc le test doit porter sur les DEUX champs, sinon
     // le photographe continue de voir une mission annulée comme active.
     const actives=data.filter(d=>d.statut!=='refusée'&&d.prestations&&d.prestations.statut!=='annulée');
+    // 11/09/2026 : « réalisée » comptait aussi les missions à venir. Seules celles dont la date est passée.
+    const nbRealisees=actives.filter(d=>d.prestations?.date_prestation&&d.prestations.date_prestation<ymdLocal()).length;
     const prestations=actives.map(d=>d.prestations).filter(Boolean);
     const now=new Date();now.setHours(0,0,0,0);
     const futures=actives.filter(d=>d.prestations?.date_prestation&&new Date(d.prestations.date_prestation+'T12:00:00')>=now);
@@ -15662,8 +15664,9 @@ async function loadPhotoDash(){
         const p=nextRow.prestations;
         const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00'):null;
         const dateStr=d?d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'—';
-        const hdeb=nextRow.heure_rdv||p.heure_debut||'—';
-        const hfin=p.heure_fin||'—';
+        // Heures « 09:10 » et non « 09:10:00 » (colonnes time de Postgres, 11/09/2026).
+        const hdeb=(nextRow.heure_rdv||p.heure_debut||'').slice(0,5)||'—';
+        const hfin=(p.heure_fin||'').slice(0,5)||'—';
         const mapsUrl=p.adresse_complete?'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(p.adresse_complete):'https://maps.google.com/';
         const sLb={'confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','équipe_affectée':'Équipe OK'};
         const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl','équipe_affectée':'bw'};
@@ -15767,7 +15770,7 @@ async function loadPhotoDash(){
         <div class="pg"><div class="pg-f" style="width:${pct}%;background:${grade.color}"></div></div>
         <div style="font-size:10px;color:var(--t3);margin-top:5px">${(next.xp-xp).toLocaleString('fr-FR')} XP restants pour ${next.nom}</div>`
         :`<div style="font-size:12px;color:${grade.color};font-weight:600;text-align:center;padding:8px">👑 Grade maximum atteint !</div>`}
-        <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--t3)">100 XP / mission · +50 XP si responsable · +XP formations · ${actives.length} mission${actives.length>1?'s':''} réalisée${actives.length>1?'s':''}</div>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--t3)">100 XP / mission · +50 XP si responsable · +XP formations · ${nbRealisees} mission${nbRealisees>1?'s':''} réalisée${nbRealisees>1?'s':''}</div>
       </div>`;
     }
     // ── Équipe sur mes missions à venir ──
@@ -15883,7 +15886,7 @@ function renderPhotoPre(){
   el.innerHTML=rows.map(row=>{
     const p=row.prestations;
     const d=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'—';
-    const hdeb=row.heure_rdv||p.heure_debut;
+    const hdeb=(row.heure_rdv||p.heure_debut||'').slice(0,5);
     return`<div class="cd" style="margin-bottom:10px;cursor:pointer" onclick="modalParcoursMission('${p.id}')">
       <div style="padding:14px 18px">
         <div style="display:flex;align-items:flex-start;gap:12px">
@@ -17577,13 +17580,16 @@ function kitsSetPoleFilter(v){
 }
 // Applique le filtre local _kitsPoleF à un tableau de kits/materiels (les
 // deux exposent pole_id). 'Tous' = pas de filtre, 'commun' = pole_id null,
-// sinon = pole_id égal à l'id de pôle choisi (Dédié ET Priorité confondus —
-// la nuance Dédié/Priorité reste visible via le badge sur chaque ligne).
+// sinon = ce que le pôle peut utiliser : ses kits (Dédié ET Priorité
+// confondus, la nuance reste visible via le badge) PLUS le matériel commun.
+// 11/09/2026 : le filtre ne gardait que pole_id égal. La Production arrive
+// présélectionnée sur son pôle, et tous les kits de SportVision sont communs :
+// la liste disait « Aucun kit » sous des compteurs à 1 disponible, 1 déployé.
 function _kitsApplyPoleFilter(list){
   const f=window._kitsPoleF||'Tous';
   if(f==='Tous')return list;
   if(f==='commun')return list.filter(x=>!x.pole_id);
-  return list.filter(x=>x.pole_id===f);
+  return list.filter(x=>x.pole_id===f||!x.pole_id);
 }
 
 function kitsSetTab(tab){
@@ -30382,6 +30388,7 @@ const COCKPIT_GROUPES=[
 
 let _cockpitData=[];
 let _cockpitGroupe='attente_acceptation';
+let _cockpitChoisi=false;
 
 // §D : l'ordre doit refléter l'urgence réelle, pas un identifiant. Un incident ouvert passe
 // devant un retard, qui passe devant une mission du jour.
@@ -30408,6 +30415,13 @@ async function loadCockpitProduction(){
     const data=await sbFetch('v_production_missions?select=*&groupe=neq.annulees&order=date_prestation.desc');
     if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
     _cockpitData=data;
+    // 11/09/2026 : le cockpit s'ouvrait sur « En attente d'acceptation » même vide, avec trois
+    // missions à venir un onglet plus loin. Tant que la personne n'a pas choisi elle-même, on
+    // ouvre la première file de travail qui contient quelque chose.
+    if(!_cockpitChoisi&&!_cockpitData.some(m=>m.groupe===_cockpitGroupe)){
+      const premier=COCKPIT_GROUPES.find(g=>g.k!=='terminees'&&_cockpitData.some(m=>m.groupe===g.k));
+      if(premier)_cockpitGroupe=premier.k;
+    }
     renderCockpitOnglets();
     renderCockpitProduction();
   }catch(e){
@@ -30431,6 +30445,7 @@ function renderCockpitOnglets(){
 
 function setCockpitGroupe(k){
   _cockpitGroupe=k;
+  _cockpitChoisi=true;
   renderCockpitOnglets();
   renderCockpitProduction();
 }
@@ -38312,7 +38327,7 @@ async function loadEquipeEnDirect(){
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
     sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone,zone,materiel_personnel'+_eqPoleSelect+_eqRoleFilter+_eqPoleQS+'&order=prenom.asc').catch(()=>[]),
     sbFetch('prestations_equipe_display?select=collaborateur_id,statut,prestations!inner(id,reference,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
-    sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
+    sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(id,date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
   ]);
 
@@ -38327,12 +38342,16 @@ async function loadEquipeEnDirect(){
   _equipeCache=collabs;
 
   // KPIs
-  let nbDispo=0,nbMission=0,nbMois=0;
+  let nbDispo=0,nbMission=0;
   collabs.forEach(c=>{
     if(missionToday[c.id])nbMission++;
     else if(dispoMap[c.id]==='disponible'||dispoMap[c.id]===undefined)nbDispo++;
-    nbMois+=missionCount[c.id]||0;
   });
+  // 11/09/2026 : « Ce mois » additionnait les compteurs de chacun, donc une mission à deux
+  // opérateurs comptait deux fois (3 affichées pour 2 missions). On compte les missions.
+  const idsCollabs=new Set(collabs.map(c=>c.id));
+  const nbMois=new Set((Array.isArray(monthMissions)?monthMissions:[])
+    .filter(m=>idsCollabs.has(m.collaborateur_id)&&m.prestations?.id).map(m=>m.prestations.id)).size;
   const el=id=>document.getElementById(id);
   if(el('eq-kpi-dispo'))el('eq-kpi-dispo').textContent=nbDispo;
   if(el('eq-kpi-mission'))el('eq-kpi-mission').textContent=nbMission;
