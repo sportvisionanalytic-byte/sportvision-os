@@ -158,7 +158,7 @@ export async function fetchClubCalendarEvents(
 export async function createClubCalendarEvent(
   supabase: SupabaseClient,
   organizationId: string,
-  input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string; teamId?: string },
+  input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string; teamId?: string; competition?: string; isHome?: boolean },
 ): Promise<CalendarEvent> {
   if (input.kind === "match") {
     // `kickoff_time` (Lot 0 calendrier, 05/09/2026) : la saisie manuelle porte désormais l'heure,
@@ -174,6 +174,10 @@ export async function createClubCalendarEvent(
         match_date: input.date,
         kickoff_time: input.time || null,
         lieu: input.location || null,
+        // 12/09/2026 : un match saisi à la main est le plus souvent un amical. La compétition et le
+        // terrain viennent du formulaire ; la source fédérale ne réclame jamais ces lignes-là.
+        competition: input.competition?.trim() || null,
+        is_home: input.isHome ?? null,
         status: "a_venir",
       })
       .select("id, team, opponent, match_date, kickoff_time, lieu, status")

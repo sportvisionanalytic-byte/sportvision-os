@@ -18,7 +18,7 @@ import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // d'équivalent réel et retombaient silencieusement sur "Tournage" en base.
 interface AddEventModalProps {
   onClose: () => void;
-  onCreate: (event: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string }) => Promise<unknown>;
+  onCreate: (event: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string; competition?: string; isHome?: boolean }) => Promise<unknown>;
   /** Équipes réelles du club (fetchClubTeams), affichées uniquement si non vide — voir
    * calendar/page.tsx. club_calendar_events.team (migration-clubplus-v4.sql) existait déjà et
    * était déjà lu partout (calendrier, filtrage coach par équipe), mais jamais proposé à la
@@ -37,6 +37,10 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
   const [team, setTeam] = useState("");
+  // 12/09/2026, demande de Fouka : « permettre au CM de créer des matchs amicaux ». Un amical
+  // n'arrive pas par la source fédérale : il se saisit ici, avec sa compétition et son terrain.
+  const [competition, setCompetition] = useState("Amical");
+  const [isHome, setIsHome] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,7 +59,16 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
   function handleSubmit() {
     setSubmitting(true);
     setError(null);
-    onCreate({ title, kind, date, time: time || undefined, location: location || undefined, team: team || undefined })
+    onCreate({
+      title,
+      kind,
+      date,
+      time: time || undefined,
+      location: location || undefined,
+      team: team || undefined,
+      competition: isMatch ? competition.trim() || undefined : undefined,
+      isHome: isMatch ? isHome : undefined,
+    })
       .then(() => onClose())
       .catch(() => {
         setSubmitting(false);
@@ -110,6 +123,47 @@ export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventMod
             <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={fieldClass} />
           </label>
         </div>
+
+        {isMatch && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12.5px] font-bold text-text-soft">Compétition</span>
+              <input
+                value={competition}
+                onChange={(e) => setCompetition(e.target.value)}
+                list="competitions-frequentes"
+                className={fieldClass}
+                placeholder="Amical"
+              />
+              <datalist id="competitions-frequentes">
+                <option value="Amical" />
+                <option value="Championnat" />
+                <option value="Coupe" />
+                <option value="Tournoi" />
+                <option value="Plateau" />
+              </datalist>
+            </label>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[12.5px] font-bold text-text-soft">Terrain</span>
+              <div className="inline-flex rounded-xl bg-surface-sunken p-1">
+                {[
+                  { v: true, lb: "Domicile" },
+                  { v: false, lb: "Extérieur" },
+                ].map((o) => (
+                  <button
+                    key={o.lb}
+                    type="button"
+                    aria-pressed={isHome === o.v}
+                    onClick={() => setIsHome(o.v)}
+                    className={`h-9 flex-1 rounded-lg px-3 text-[13px] font-bold ${isHome === o.v ? "bg-surface text-text shadow-sv-card" : "text-text-soft hover:text-text"}`}
+                  >
+                    {o.lb}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[12.5px] font-bold text-text-soft">Lieu (optionnel)</span>

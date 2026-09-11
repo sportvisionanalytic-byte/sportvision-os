@@ -294,7 +294,7 @@ export default function CalendarPage() {
     }
   }
 
-  function handleCreateEvent(input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string }) {
+  function handleCreateEvent(input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string; competition?: string; isHome?: boolean }) {
     const supabase = createClient();
     return createClubCalendarEvent(supabase, ctx.organization.id, {
       title: input.title,
@@ -303,6 +303,8 @@ export default function CalendarPage() {
       time: input.time,
       location: input.location,
       team: input.team,
+      competition: input.competition,
+      isHome: input.isHome,
     }).then((created) => setEvents((prev) => (prev ? [...prev, created] : prev)));
   }
 

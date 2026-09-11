@@ -290,6 +290,35 @@ export async function importClubMatches(
 
 /** Utilisé par le Studio pour préremplir un formulaire depuis un match réel (?matchId=uuid),
  * voir studio/[template]/page.tsx. */
+/** Reprogrammer ou corriger un match — date, heure, lieu, adversaire, compétition, terrain.
+ *
+ * 12/09/2026, demande de Fouka : « il faut que le CM puisse modifier ou rajouter des matchs dans
+ * les calendriers des équipes ». Un match saisi à la main (amical, plateau) change souvent d'heure
+ * ou de terrain, et la source fédérale ne le corrigera jamais : elle ne connaît que les siens.
+ *
+ * La base décide qui a le droit (RLS : opérateur du club, CM affecté, ou éducateur de l'équipe) ;
+ * on ne le redit pas ici. Zéro ligne modifiée = refus, jamais un faux succès.
+ */
+export async function updateClubMatch(
+  supabase: SupabaseClient,
+  matchId: string,
+  patch: { date?: string; time?: string | null; lieu?: string | null; opponent?: string; competition?: string | null; isHome?: boolean },
+): Promise<void> {
+  const body: Record<string, unknown> = {};
+  if (patch.date) body.match_date = patch.date;
+  if (patch.time !== undefined) body.kickoff_time = patch.time || null;
+  if (patch.lieu !== undefined) body.lieu = patch.lieu?.trim() || null;
+  if (patch.opponent !== undefined) body.opponent = patch.opponent.trim();
+  if (patch.competition !== undefined) body.competition = patch.competition?.trim() || null;
+  if (patch.isHome !== undefined) body.is_home = patch.isHome;
+  if (!Object.keys(body).length) return;
+  const { data, error } = await supabase.from("club_matches").update(body).eq("id", matchId).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Rien n'a été enregistré : ce match ne vous est pas ouvert en modification.");
+  }
+}
+
 export async function fetchClubMatchById(
   supabase: SupabaseClient,
   organizationId: string,

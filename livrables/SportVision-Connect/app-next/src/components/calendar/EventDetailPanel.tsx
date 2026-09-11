@@ -14,6 +14,8 @@ import { useEffect, useState } from "react";
 import { useSession } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/client";
 import { fetchCouvertureOperateurs, type OperateurAffecte } from "@/lib/data/club/calendar";
+import { updateClubMatch } from "@/lib/data/club/matches";
+import { canCreate } from "@/lib/permissions";
 import { cn } from "@/lib/cn";
 import { Couverture } from "./Couverture";
 
@@ -98,6 +100,43 @@ export function EventDetailPanel({ event, onClose, onChanged }: EventDetailPanel
     };
   }, [event.id, event.coverage]);
   const equipe = event.teamName ?? "Notre équipe";
+
+  // 12/09/2026 : reprogrammer un match depuis sa fiche. Ouvert à qui la base laisse écrire (CM
+  // affecté, dirigeants, éducateur de l'équipe) ; un refus de la base s'affiche tel quel.
+  const matchId = event.id.startsWith("match-") ? event.id.slice("match-".length) : null;
+  const peutModifier = Boolean(matchId) && ctx.membership.status === "active" && canCreate(ctx, "calendar_event");
+  const [edition, setEdition] = useState(false);
+  const [form, setForm] = useState({
+    date: event.startsAt.slice(0, 10),
+    time: event.allDay ? "" : event.startsAt.slice(11, 16),
+    lieu: event.location ?? "",
+    opponent: event.opponent ?? "",
+    competition: event.competition ?? "",
+    isHome: event.isHome ?? true,
+  });
+  const [enregistre, setEnregistre] = useState(false);
+  const [erreurEdition, setErreurEdition] = useState<string | null>(null);
+  async function enregistrerMatch() {
+    if (!matchId) return;
+    setEnregistre(true);
+    setErreurEdition(null);
+    try {
+      await updateClubMatch(createClient(), matchId, {
+        date: form.date,
+        time: form.time || null,
+        lieu: form.lieu,
+        opponent: form.opponent,
+        competition: form.competition,
+        isHome: form.isHome,
+      });
+      setEdition(false);
+      onChanged?.();
+    } catch (e) {
+      setErreurEdition(e instanceof Error ? e.message : "Modification impossible.");
+    } finally {
+      setEnregistre(false);
+    }
+  }
   const heure = event.allDay
     ? null
     : `${start.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}${end ? ` – ${end.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}`;
@@ -261,6 +300,70 @@ export function EventDetailPanel({ event, onClose, onChanged }: EventDetailPanel
           </Rubrique>
         )}
 
+        {estMatch && peutModifier && !edition && (
+          <Button variant="secondary" className="w-full" onClick={() => setEdition(true)}>
+            Modifier ou reprogrammer
+          </Button>
+        )}
+
+        {estMatch && edition && (
+          <div className="flex flex-col gap-3 rounded-xl border border-border p-3.5">
+            <span className="text-[12.5px] font-extrabold text-text">Modifier le match</span>
+            <div className="grid grid-cols-2 gap-2.5">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11.5px] font-bold text-text-soft">Date</span>
+                <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className={champEdition} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11.5px] font-bold text-text-soft">Heure</span>
+                <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className={champEdition} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11.5px] font-bold text-text-soft">Adversaire</span>
+              <input value={form.opponent} onChange={(e) => setForm({ ...form, opponent: e.target.value })} className={champEdition} />
+            </label>
+            <div className="grid grid-cols-2 gap-2.5">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11.5px] font-bold text-text-soft">Compétition</span>
+                <input value={form.competition} onChange={(e) => setForm({ ...form, competition: e.target.value })} placeholder="Amical" className={champEdition} />
+              </label>
+              <div className="flex flex-col gap-1">
+                <span className="text-[11.5px] font-bold text-text-soft">Terrain</span>
+                <div className="inline-flex rounded-lg bg-surface-sunken p-0.5">
+                  {[
+                    { v: true, lb: "Domicile" },
+                    { v: false, lb: "Extérieur" },
+                  ].map((o) => (
+                    <button
+                      key={o.lb}
+                      type="button"
+                      aria-pressed={form.isHome === o.v}
+                      onClick={() => setForm({ ...form, isHome: o.v })}
+                      className={`h-8 flex-1 rounded-md px-2.5 text-[12.5px] font-bold ${form.isHome === o.v ? "bg-surface text-text shadow-sv-card" : "text-text-soft"}`}
+                    >
+                      {o.lb}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11.5px] font-bold text-text-soft">Lieu</span>
+              <input value={form.lieu} onChange={(e) => setForm({ ...form, lieu: e.target.value })} className={champEdition} />
+            </label>
+            {erreurEdition && <span className="text-[12px] font-bold text-danger-fg">{erreurEdition}</span>}
+            <div className="flex gap-2">
+              <Button className="flex-1" loading={enregistre} disabled={!form.date || !form.opponent.trim()} onClick={() => void enregistrerMatch()}>
+                Enregistrer
+              </Button>
+              <Button variant="secondary" onClick={() => setEdition(false)}>
+                Annuler
+              </Button>
+            </div>
+          </div>
+        )}
+
         {event.sourceHref && (
           <div className="mt-auto">
             <Link href={event.sourceHref}>
@@ -272,3 +375,6 @@ export function EventDetailPanel({ event, onClose, onChanged }: EventDetailPanel
     </div>
   );
 }
+
+const champEdition =
+  "h-9 w-full rounded-lg border border-border-strong bg-input-bg px-2.5 text-[13px] text-text outline-none focus-visible:border-brand-blue";
