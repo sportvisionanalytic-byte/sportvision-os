@@ -1898,7 +1898,7 @@ const VIEWS={
   // v149 (11/09/2026) : la Finance du Responsable Production.
   'prod.mesfinances':()=>`
     <div class="sh"><div><div class="sh-t">Finance Production</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Calculée par le système, validée par l'Admin ou la comptabilité, réglée par la comptabilité ou le secrétariat.</div></div>
-      <input type="month" class="l-inp" id="mf-mois" style="height:36px" onchange="loadMesFinances()"></div>
+      <input type="month" class="l-inp" id="mf-mois" style="height:36px;width:auto;flex:0 0 auto" onchange="loadMesFinances()"></div>
     <div id="mf-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
   'admin.finprod':()=>_finProdView(),
   'compta.finprod':()=>_finProdView(),
@@ -33195,7 +33195,8 @@ async function loadFinProd(){
   const listeProds=Array.isArray(prods)?prods:[];
   const exceptions=(Array.isArray(exc)?exc:[]).filter(x=>x.prestations?.pole_id===poleId);
   const estAdmin=S.role==='admin';
-  const nomDe=id=>{const p=listeProds.find(x=>x.id===id);return p?[p.prenom,p.nom].filter(Boolean).join(' '):'—';};
+  // Le profil peut ne pas être lisible (hors de son pôle) : on dit alors « désigné », jamais « aucun ».
+  const nomDe=id=>{const p=listeProds.find(x=>x.id===id);return p?[p.prenom,p.nom].filter(Boolean).join(' '):'';};
   const c=_fpCfg||{};
   const dis=estAdmin?'':'disabled';
   const champ=(id,lb,val,suffixe,aide)=>`<label style="display:grid;gap:4px"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">${lb}</span>
@@ -33204,7 +33205,7 @@ async function loadFinProd(){
     <div style="padding:14px 16px;display:grid;gap:14px">
       <label style="display:grid;gap:4px"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Responsable Production</span>
         <select id="fp-resp" class="l-inp" style="height:36px;max-width:320px" ${dis}>
-          <option value="">Automatique${!c.responsable_production_id&&_fpResp?' : '+esc(nomDe(_fpResp)):' (aucune Production unique)'}</option>
+          <option value="">${c.responsable_production_id&&!estAdmin?'Désigné par l\'Admin'+(nomDe(c.responsable_production_id)?' : '+esc(nomDe(c.responsable_production_id)):''):c.responsable_production_id?'Automatique (l\'unique Production du pôle)':'Automatique'+(_fpResp?(nomDe(_fpResp)?' : '+esc(nomDe(_fpResp)):' : la Production du pôle'):' (aucune Production unique)')}</option>
           ${listeProds.map(p=>`<option value="${p.id}"${c.responsable_production_id===p.id?' selected':''}>${esc([p.prenom,p.nom].filter(Boolean).join(' '))}</option>`).join('')}
         </select></label>
       <div style="display:flex;flex-wrap:wrap;gap:18px">
@@ -33231,7 +33232,7 @@ async function loadFinProd(){
     ['valide','transmis_compta'].includes(k.statut)&&['admin','compta','sec'].includes(S.role)?`<button class="btn bp bs" onclick="reglerFinProd('payer')">Marquer payé</button>`:'',
     ['valide','transmis_compta'].includes(k.statut)&&estAdmin?`<button class="btn bg2 bs" onclick="reglerFinProd('rouvrir')">Rouvrir</button>`:'',
   ].join(''):'';
-  const calcul=`<div class="cd" style="margin-bottom:14px"><div class="cd-h"><div class="cd-t">Calcul du mois${_fpResp?' · '+esc(nomDe(_fpResp)):''}</div>
+  const calcul=`<div class="cd" style="margin-bottom:14px"><div class="cd-h"><div class="cd-t">Calcul du mois${_fpResp&&nomDe(_fpResp)?' · '+esc(nomDe(_fpResp)):''}</div>
       ${k?`<span class="bd ${k.statut==='a_valider'?'bw':'ba'}"><span class="bd-d"></span>${stLb[k.statut]||k.statut}</span>`:''}</div>
     <div style="padding:14px 16px">
       ${!_fpResp?'<div style="font-size:12.5px;color:var(--wa)">Aucun Responsable Production pour ce pôle : désignez-le dans les règles.</div>':
