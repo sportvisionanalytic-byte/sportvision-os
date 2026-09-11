@@ -19,6 +19,10 @@
 -- une reconstruction depuis les migrations produirait sinon une base différente de la réalité.
 -- Test : tests/matchcenter-roles-club.test.sql
 
+-- Corps repris TEL QUEL de la production : c'est la version PL/pgSQL posée par
+-- migration-blocages-review-3-rls-evaluation-unique.sql (autre session, même jour), qui évite la
+-- re-planification par ligne dans les policies. On ne la remplace pas, on l'inscrit ici pour que ce
+-- fichier soit rejouable seul sans faire regresser la performance.
 create or replace function public.peut_lire_calendrier_equipe(p_team_id uuid)
 returns boolean language plpgsql stable security definer set search_path = public, pg_temp as $$
 begin
