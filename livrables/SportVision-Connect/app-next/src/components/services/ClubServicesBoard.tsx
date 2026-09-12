@@ -247,7 +247,7 @@ export function ClubServicesBoard({
           </div>
         ) : offers.length === 0 ? (
           <Card>
-            <EmptyState title="Catalogue en cours de préparation par SportVision" />
+            <EmptyState title="Catalogue en cours de préparation par SportVision" description="Votre conseiller SportVision active vos offres sous 24 heures." />
           </Card>
         ) : (
           <div className="flex flex-col gap-7">
@@ -275,7 +275,7 @@ export function ClubServicesBoard({
         </div>
       ) : visibleBookings.length === 0 ? (
         <Card>
-          <EmptyState title="Aucune réservation pour le moment" />
+          <EmptyState title="Aucune réservation pour le moment" description="Choisissez une prestation ci-dessus pour faire votre première demande." />
         </Card>
       ) : (
         <div className="flex flex-col gap-2">

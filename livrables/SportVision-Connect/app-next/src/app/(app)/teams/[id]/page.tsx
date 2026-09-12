@@ -228,7 +228,7 @@ function RosterTab({ players }: { players: ReturnType<typeof playersForTeam> }) 
   if (players.length === 0) {
     return (
       <Card>
-        <EmptyState icon={Users} title="Aucun joueur enregistré" />
+        <EmptyState icon={Users} title="Aucun joueur enregistré" description="Ajoutez vos joueurs un par un, ou importez un fichier depuis l’onboarding." />
       </Card>
     );
   }
@@ -285,7 +285,7 @@ function CalendarTab({ teamId }: { teamId: string }) {
   if (entries.length === 0) {
     return (
       <Card>
-        <EmptyState icon={CalendarDays} title="Aucun événement à venir" />
+        <EmptyState icon={CalendarDays} title="Aucun événement à venir" description="Ajoutez vos matchs et vos entraînements depuis le Calendrier." />
       </Card>
     );
   }
@@ -320,7 +320,7 @@ function ContentTab({ teamId }: { teamId: string }) {
   if (items.length === 0) {
     return (
       <Card>
-        <EmptyState icon={Images} title="Aucun contenu pour cette équipe" />
+        <EmptyState icon={Images} title="Aucun contenu pour cette équipe" description="Les contenus produits pour cette équipe apparaîtront ici." />
       </Card>
     );
   }
@@ -365,7 +365,7 @@ function RequestsTab({ teamId }: { teamId: string }) {
   if (items.length === 0) {
     return (
       <Card>
-        <EmptyState icon={Inbox} title="Aucune demande en cours pour cette équipe" />
+        <EmptyState icon={Inbox} title="Aucune demande en cours pour cette équipe" description="Les demandes d’adhésion des joueurs et des parents arrivent ici." />
       </Card>
     );
   }
@@ -400,7 +400,7 @@ function DocumentsTab({ teamId }: { teamId: string }) {
   if (items.length === 0) {
     return (
       <Card>
-        <EmptyState icon={FileText} title="Aucun document pour cette équipe" />
+        <EmptyState icon={FileText} title="Aucun document pour cette équipe" description="Déposez les autorisations et les documents de l’équipe depuis Documents." />
       </Card>
     );
   }
@@ -768,7 +768,7 @@ function RealRosterTab({ roster }: { roster: TeamRosterPlayer[] }) {
   if (roster.length === 0) {
     return (
       <Card>
-        <EmptyState icon={Users} title="Aucun joueur enregistré" />
+        <EmptyState icon={Users} title="Aucun joueur enregistré" description="Ajoutez vos joueurs un par un, ou importez un fichier depuis l’onboarding." />
       </Card>
     );
   }
@@ -828,7 +828,7 @@ function RealCalendarTab({ organizationId, teamId }: { organizationId: string; t
   if (events.length === 0) {
     return (
       <Card>
-        <EmptyState icon={CalendarDays} title="Aucun événement à venir" />
+        <EmptyState icon={CalendarDays} title="Aucun événement à venir" description="Ajoutez vos matchs et vos entraînements depuis le Calendrier." />
       </Card>
     );
   }
@@ -886,7 +886,7 @@ function RealContentTab({ organizationId, teamName }: { organizationId: string; 
   if (items.length === 0) {
     return (
       <Card>
-        <EmptyState icon={Images} title="Aucun contenu pour cette équipe" />
+        <EmptyState icon={Images} title="Aucun contenu pour cette équipe" description="Les contenus produits pour cette équipe apparaîtront ici." />
       </Card>
     );
   }
@@ -938,7 +938,7 @@ function RealRequestsTab({ organizationId, teamName }: { organizationId: string;
   if (items.length === 0) {
     return (
       <Card>
-        <EmptyState icon={Inbox} title="Aucune demande en cours pour cette équipe" />
+        <EmptyState icon={Inbox} title="Aucune demande en cours pour cette équipe" description="Les demandes d’adhésion des joueurs et des parents arrivent ici." />
       </Card>
     );
   }

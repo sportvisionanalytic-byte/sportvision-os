@@ -122,7 +122,7 @@ function FinanceRows({ summary, onOpenBilling }: { summary: FinanceSummary; onOp
   }
 
   if (rows.length === 0) {
-    return <EmptyState icon={CheckCircle2} title="Rien à régler pour le moment" />;
+    return <EmptyState icon={CheckCircle2} title="Rien à régler pour le moment" description="Vos prochaines factures apparaîtront ici dès leur émission." />;
   }
 
   return (

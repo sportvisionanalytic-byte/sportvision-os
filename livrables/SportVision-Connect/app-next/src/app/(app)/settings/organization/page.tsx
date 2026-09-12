@@ -363,7 +363,7 @@ function OrganizationForm() {
               ))}
             </div>
           ) : members.filter((m) => m.status !== "disabled").length === 0 ? (
-            <EmptyState title="Aucun membre pour le moment" />
+            <EmptyState title="Aucun membre pour le moment" description="Invitez vos coachs et vos dirigeants depuis « Coachs & dirigeants »." />
           ) : (
             <div className="flex flex-col divide-y divide-divider">
               {members

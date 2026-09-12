@@ -433,7 +433,7 @@ export function ClubPlusDashboard() {
               ))}
             </div>
           ) : upcomingEvents.length === 0 ? (
-            <EmptyState icon={Calendar} title="Aucun événement à venir pour le moment" />
+            <EmptyState icon={Calendar} title="Aucun événement à venir pour le moment" description="Ajoutez vos matchs depuis le Calendrier pour les voir apparaître ici." />
           ) : (
             upcomingEvents.map((event) => (
               <button
@@ -487,7 +487,7 @@ export function ClubPlusDashboard() {
               ))}
             </div>
           ) : todo.length === 0 ? (
-            <EmptyState icon={CheckCircle2} title="Rien à traiter pour le moment" />
+            <EmptyState icon={CheckCircle2} title="Rien à traiter pour le moment" description="Les demandes de vos équipes et les contenus à valider arrivent ici." />
           ) : (
             todo.map((t, i) => (
               <div

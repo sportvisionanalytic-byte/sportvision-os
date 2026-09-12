@@ -57,7 +57,9 @@ export const EXPLICATION_FILE: Record<FileMatch, string> = {
   cette_semaine: "Les sept prochains jours.",
   a_venir: "Le reste de la saison.",
   joues: "Résultat confirmé par le club.",
-  reportes: "Reprogrammés à une date ultérieure.",
+  // « Reprogrammés » promettait une date que rien ne pose : la modale de report n'en demande
+  // aucune (12/09/2026).
+  reportes: "Reportés : la nouvelle date reste à fixer.",
   annules: "Ne seront pas joués.",
 };
 

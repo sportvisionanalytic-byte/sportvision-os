@@ -388,7 +388,7 @@ function DashboardBody({ clientId }: { clientId: string }) {
             </button>
           </div>
           {upcoming.length === 0 ? (
-            <EmptyState title="Rien de programmé pour le moment" />
+            <EmptyState title="Rien de programmé pour le moment" description="Votre CM publie le planning éditorial de la semaine chaque lundi." />
           ) : (
             upcoming.map((c) => {
               const date = c.datePrevue ?? c.datePublication;

@@ -333,18 +333,45 @@ export default function CalendarPage() {
     }).then((created) => setEvents((prev) => (prev ? [...prev, created] : prev)));
   }
 
+  // Échappement iCalendar : une virgule, un point-virgule ou un saut de ligne non échappés dans
+  // un titre ou un lieu cassent l'événement chez le destinataire (RFC 5545).
+  function icalTexte(v: string): string {
+    return v.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  }
+
   function exportIcal() {
     const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SportVision Club+//FR"];
-    for (const e of sortedEvents) {
+    // On exporte ce qui est À L'ÉCRAN, filtres compris : demander l'agenda de son équipe et
+    // recevoir les 1 500 événements du club n'est pas un export, c'est un déversement
+    // (12/09/2026).
+    for (const e of filteredEvents) {
       // Journée entière : DTSTART;VALUE=DATE (pas d'heure ni de fuseau à convertir, donc aucun
       // risque de décalage de jour) — un événement horodaté garde DTSTART en UTC classique.
       if (e.allDay) {
         const ymd = e.startsAt.slice(0, 10).replace(/-/g, "");
-        lines.push("BEGIN:VEVENT", `UID:${e.id}`, `DTSTART;VALUE=DATE:${ymd}`, `SUMMARY:${e.title}`, "END:VEVENT");
+        lines.push(
+          "BEGIN:VEVENT",
+          `UID:${e.id}`,
+          `DTSTART;VALUE=DATE:${ymd}`,
+          `SUMMARY:${icalTexte(e.title)}`,
+          ...(e.location ? [`LOCATION:${icalTexte(e.location)}`] : []),
+          "END:VEVENT",
+        );
         continue;
       }
       const dt = `${new Date(e.startsAt).toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
-      lines.push("BEGIN:VEVENT", `UID:${e.id}`, `DTSTART:${dt}`, `SUMMARY:${e.title}`, "END:VEVENT");
+      const fin = e.endsAt ? `${new Date(e.endsAt).toISOString().slice(0, 19).replace(/[-:]/g, "")}Z` : null;
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:${e.id}`,
+        `DTSTART:${dt}`,
+        // Sans DTEND, l'agenda destinataire invente une durée : l'heure de fin existe, autant la
+        // donner.
+        ...(fin ? [`DTEND:${fin}`] : []),
+        `SUMMARY:${icalTexte(e.title)}`,
+        ...(e.location ? [`LOCATION:${icalTexte(e.location)}`] : []),
+        "END:VEVENT",
+      );
     }
     lines.push("END:VCALENDAR");
     const blob = new Blob([lines.join("\r\n")], { type: "text/calendar" });

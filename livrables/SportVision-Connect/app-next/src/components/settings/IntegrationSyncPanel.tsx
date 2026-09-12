@@ -100,7 +100,7 @@ export function IntegrationSyncPanel({ integration, onClose, onDisconnect, onSyn
           <div className="text-[12.5px] font-extrabold">Historique</div>
           <div className="mt-2 flex flex-col gap-1.5">
             {integration.syncLog.length === 0 && (
-              <EmptyState variant="compact" title="Aucune synchronisation pour le moment" className="border-none px-0 py-1 text-left" />
+              <EmptyState variant="compact" title="Aucune synchronisation pour le moment" description="Lancez une première synchronisation, ou vérifiez que la source est bien connectée." className="border-none px-0 py-1 text-left" />
             )}
             {integration.syncLog.map((entry) => (
               <div key={entry.id} className="flex items-center justify-between text-[12px]">

@@ -209,7 +209,7 @@ function SeasonTransitionFlow({ clubId }: { clubId: string }) {
 
         {candidates.length === 0 ? (
           <Card>
-            <EmptyState icon={CheckCircle2} title="Aucun joueur actif sur la saison actuelle" />
+            <EmptyState icon={CheckCircle2} title="Aucun joueur actif sur la saison actuelle" description="Importez ou créez votre effectif avant de lancer la transition de saison." />
           </Card>
         ) : (
           <Card className="overflow-hidden">

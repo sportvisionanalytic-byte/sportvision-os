@@ -120,7 +120,7 @@ export default function PlayerDetailPage({ params }: { params: { id: string } })
         <Card className="p-4.5 lg:col-span-2">
           <div className="text-[14px] font-extrabold tracking-tight">Contenus</div>
           {previewCount === 0 ? (
-            <EmptyState icon={Images} title="Aucun contenu pour ce joueur pour le moment" className="mt-3 p-8" />
+            <EmptyState icon={Images} title="Aucun contenu pour ce joueur pour le moment" description="Ses photos et vidéos apparaîtront ici après les prochaines prestations." className="mt-3 p-8" />
           ) : (
             <div className="mt-3.5 grid grid-cols-3 gap-2.5 sm:grid-cols-4">
               {Array.from({ length: previewCount }).map((_, i) => (

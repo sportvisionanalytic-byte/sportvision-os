@@ -313,7 +313,7 @@ export default function UsersPage() {
             ))}
           </div>
         ) : users.length === 0 ? (
-          <EmptyState title="Aucun membre pour le moment" />
+          <EmptyState title="Aucun membre pour le moment" description="Cliquez sur « Inviter » pour ajouter un coach, un dirigeant ou un membre du bureau." />
         ) : (
           users.map((user) => {
             const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase() || "?";

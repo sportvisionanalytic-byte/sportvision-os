@@ -71,7 +71,7 @@ export default function IntegrationsSettingsPage() {
     // fonctionnel derrière (aucune intégration n'est réellement branchée à ce jour).
     return (
       <Card>
-        <EmptyState title="Aucune intégration disponible pour le moment" />
+        <EmptyState title="Aucune intégration disponible pour le moment" description="Les intégrations sont activées par SportVision selon votre formule." />
       </Card>
     );
   }

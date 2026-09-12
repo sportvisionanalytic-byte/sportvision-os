@@ -124,8 +124,21 @@ export default function TeamsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="text-[12px] font-bold text-text-soft">{isAcademy ? "Groupes" : "Équipes"}</div>
+          {/* Un coach borné à ses équipes lisait « 43 équipes pour SF Villemomble » alors qu'il
+              n'en encadre qu'une : le titre comptait tout le club. Il compte ce qui le concerne
+              (12/09/2026). */}
           <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">
-            {teams.length} {isAcademy ? "groupe" : "équipe"}{teams.length > 1 ? "s" : ""} pour {ctx.organization.name}
+            {myTeams.length > 0 ? (
+              <>
+                {myTeams.length} {isAcademy ? "groupe" : "équipe"}
+                {myTeams.length > 1 ? "s" : ""} que vous encadrez
+              </>
+            ) : (
+              <>
+                {teams.length} {isAcademy ? "groupe" : "équipe"}
+                {teams.length > 1 ? "s" : ""} pour {ctx.organization.name}
+              </>
+            )}
           </h1>
         </div>
         {/* academie_groups n'a pas encore d'équivalent createClubTeam — bouton réservé au club
@@ -362,7 +375,7 @@ function CoachPlayersView({ organizationId }: { organizationId: string }) {
 
       {players.length === 0 ? (
         <Card>
-          <EmptyState icon={Users} title="Aucun joueur suivi pour le moment" />
+          <EmptyState icon={Users} title="Aucun joueur suivi pour le moment" description="Les joueurs suivis apparaissent ici dès que le club vous en confie." />
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
