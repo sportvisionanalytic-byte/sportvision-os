@@ -155,8 +155,11 @@ export function ClubPlusDashboard() {
       const membershipItems: TodoItem[] = joinRequests
         .filter((req) => {
           const stage = deriveStage(req);
-          if (isCoachRole) return stage === "attente_educateur";
-          if (isAdminRole) return stage === "attente_dirigeant";
+          // « attente_validation » est le mode standard, le plus courant : le coach comme le
+          // dirigeant peuvent valider, et la demande doit donc apparaître chez les deux
+          // (12/09/2026 : elle n'apparaissait chez aucun des deux).
+          if (isCoachRole) return stage === "attente_educateur" || stage === "attente_validation";
+          if (isAdminRole) return stage === "attente_dirigeant" || stage === "attente_validation";
           return false;
         })
         .map((req) => ({

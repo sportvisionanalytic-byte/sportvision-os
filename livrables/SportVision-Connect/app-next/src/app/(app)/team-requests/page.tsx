@@ -204,8 +204,8 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
             const busy = busyId === req.id;
             const canConfirm = isEducateur && stage === "attente_educateur";
             const canValidate =
-              (isAdmin && (stage === "attente_dirigeant" || req.validationMode !== "double")) ||
-              (isEducateur && req.validationMode === "standard");
+              (isAdmin && stage !== "attente_educateur") ||
+              (isEducateur && stage === "attente_validation");
             const canReject = isAdmin || isEducateur;
 
             return (

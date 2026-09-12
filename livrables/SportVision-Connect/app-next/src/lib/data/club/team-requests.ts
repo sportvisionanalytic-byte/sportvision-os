@@ -150,7 +150,7 @@ export async function requestMembershipInfo(supabase: SupabaseClient, requestId:
   if (error) throw error;
 }
 
-export type RequestStage = "attente_educateur" | "attente_dirigeant" | "validee" | "refusee";
+export type RequestStage = "attente_educateur" | "attente_validation" | "attente_dirigeant" | "validee" | "refusee";
 
 /**
  * Reproduit côté client la logique d'autorisation exacte de validate_team_membership
@@ -162,11 +162,16 @@ export function deriveStage(req: TeamJoinRequest): RequestStage {
   if (req.statut === "validee") return "validee";
   if (req.statut === "refusee") return "refusee";
   if (req.validationMode === "double" && !req.educateurConfirmeAt) return "attente_educateur";
+  // Mode standard : le coach de l'équipe valide aussi bien qu'un dirigeant (c'est ce que fait
+  // validate_team_membership). Dire « en attente du dirigeant » était donc faux, et le coach
+  // n'allait pas voir une demande qu'il était le premier concerné à traiter (12/09/2026).
+  if (req.validationMode === "standard") return "attente_validation";
   return "attente_dirigeant";
 }
 
 export const STAGE_LABEL: Record<RequestStage, string> = {
   attente_educateur: "En attente de l'éducateur",
+  attente_validation: "À valider par le coach ou un dirigeant",
   attente_dirigeant: "En attente du dirigeant",
   validee: "Validée",
   refusee: "Refusée",
@@ -174,6 +179,7 @@ export const STAGE_LABEL: Record<RequestStage, string> = {
 
 export const STAGE_TONE: Record<RequestStage, "info" | "warning" | "success" | "danger"> = {
   attente_educateur: "warning",
+  attente_validation: "warning",
   attente_dirigeant: "info",
   validee: "success",
   refusee: "danger",
