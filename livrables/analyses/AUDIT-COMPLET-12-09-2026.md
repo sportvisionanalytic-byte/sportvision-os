@@ -94,10 +94,9 @@ La chaîne « photos de mon enfant », de bout en bout :
 
 ## 5. Ce qui reste, et qui t'appartient
 
-1. **Prix du Montage & compilation : 39,90 € HT ou TTC ?** C'est la seule ligne affichée hors taxes
-   dans une grille grand public entièrement TTC. Un parent qui lit 39,90 € paiera 47,88 €. Deux
-   options : afficher 39,90 € TTC (et ramener le prix hors taxes à 33,25 €), ou afficher clairement
-   « 47,88 € TTC ». À trancher, je l'applique ensuite partout d'un coup.
+1. ~~**Prix du Montage & compilation.**~~ Tranché le 12/09 : le prix client ne bouge pas, c'est
+   l'unité affichée qui devient TTC. Trente-sept mentions corrigées sur la vitrine, et le prix hors
+   taxes du catalogue ramené à 33,25 €, ce qui redonne exactement 39,90 € TTC.
 2. **Forme juridique : SAS ou SASU ?** L'OS imprime « SAS », le site public écrit « SASU ». Les
    deux documents partent chez le même client. Dis-moi lequel fait foi.
 3. **Le serveur de reconnaissance** attend ta commande de VPS (OVH, France, ~15 à 20 € par mois).
