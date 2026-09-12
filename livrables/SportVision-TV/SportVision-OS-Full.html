@@ -20780,14 +20780,23 @@ function _devisFacturable(devisList){
 async function getOrCreateFacture(prestationId){
   const existing=await sbFetch('factures?select=*&prestation_id=eq.'+prestationId+'&order=created_at.desc&limit=1').catch(()=>[]);
   if(Array.isArray(existing)&&existing[0])return existing[0];
-  const pArr=await sbFetch(`prestations?id=eq.${prestationId}&select=id,client_id,montant_ht,montant_ttc,tva_pct,devis(id,numero,statut,total_ht,total_ttc,tva_pct,lignes)`);
+  const pArr=await sbFetch(`prestations?id=eq.${prestationId}&select=id,client_id,montant_ht,montant_ttc,tva_pct,devis(id,numero,statut,total_ht,total_ttc,tva_pct,lignes,remise_pct,remise_montant)`);
   const p=pArr?.[0];
   if(!p)return null;
   const dv=_devisFacturable(p.devis);
   const montant_ht=dv?.total_ht||p.montant_ht||0;
   const montant_ttc=dv?.total_ttc||p.montant_ttc||0;
   const tva_pct=dv?.tva_pct||p.tva_pct||20;
-  const lignes=Array.isArray(dv?.lignes)?dv.lignes:[];
+  // La remise devient une VRAIE ligne (audit 12/09/2026). Les lignes du devis sont brutes, et
+  // seul `total_ht` porte la remise : la facture partait donc avec un detail qui totalisait plus
+  // que son propre montant. Le client recevait un tableau a 1 000 EUR sous un « Total HT 900 EUR »
+  // sans rien pour l'expliquer, et Pennylane, qui ne lit que les lignes, facturait 1 000 EUR —
+  // c'est-a-dire la remise qu'on venait de lui accorder, facturee quand meme.
+  const lignes=Array.isArray(dv?.lignes)?dv.lignes.slice():[];
+  const remise=Number(dv?.remise_montant||0);
+  if(remise>0){
+    lignes.push({libelle:`Remise commerciale${dv?.remise_pct?` (${dv.remise_pct} %)`:''}`,quantite:1,prix_unitaire:-Math.round(remise*100)/100});
+  }
   const dateEmission=ymdLocal();
   const dateEcheance=ymdLocal(new Date(Date.now()+30*86400000));
   const created=await sbFetch('factures',{method:'POST',body:{
@@ -20831,12 +20840,20 @@ async function imprimerFacture(id){
     const fact=Array.isArray(factArr)&&factArr[0]||null;
     const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
-    const ht=dv?.total_ht||p.montant_ht||0;
-    const ttc=dv?.total_ttc||p.montant_ttc||0;
-    const tva=p.tva_pct||20;
-    const lignes=Array.isArray(dv?.lignes)?dv.lignes:[];
+    // Une facture EMISE fait foi (audit 12/09/2026). Les montants venaient du devis et de la
+    // prestation, tous deux modifiables apres emission : rouvrir un devis pour negocier suffisait
+    // a faire sortir deux documents differents sous le meme numero, pendant que la comptabilite,
+    // le FEC, la TVA et Pennylane continuaient de porter les chiffres d'origine. Le devis ne sert
+    // plus que d'apercu, tant qu'aucune facture n'existe.
+    const ht=fact?Number(fact.montant_ht||0):(dv?.total_ht||p.montant_ht||0);
+    const ttc=fact?Number(fact.montant_ttc||0):(dv?.total_ttc||p.montant_ttc||0);
+    const tva=fact?Number(fact.tva_pct||20):(p.tva_pct||20);
+    const lignes=fact&&Array.isArray(fact.lignes)&&fact.lignes.length?fact.lignes:(Array.isArray(dv?.lignes)?dv.lignes:[]);
     const lignesHtml=lignes.length?lignes.map(l=>{
-      const qte=l.quantite||l.qte||1;const pu=l.prix_unitaire||l.pu||0;
+      const qte=l.quantite||l.qte||1;
+      // Les lignes n'ont pas toutes la meme forme : un devis ecrit `pu`, l'OS `prix_unitaire`,
+      // la facturation Full Communication mensuelle `montant_ht` (total de la ligne).
+      const pu=l.prix_unitaire!=null?Number(l.prix_unitaire):(l.pu!=null?Number(l.pu):(l.montant_ht!=null?Number(l.montant_ht)/qte:0));
       return`<tr><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;font-weight:600;font-size:13px">${esc(l.description||l.libelle||'—')}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:center">${qte}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right">${fmt(pu)}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right;font-weight:600">${fmt(qte*pu)}</td></tr>`;
     }).join(''):`<tr><td colspan="4" style="padding:16px 14px;color:#555E73;font-size:12.5px"><div style="font-weight:600">${esc(p.description_besoin||'Prestation sportive')}</div>${p.livrables_demandes?`<div style="margin-top:3px;color:#8891A8">${esc(p.livrables_demandes)}</div>`:''}</td></tr>`;
     const sfLbl={payée:'Payée',facturée:'Facturée',partiellement_payée:'Part. payée',en_retard:'En retard',non_facturée:'Non facturée'};
@@ -20892,7 +20909,7 @@ ${apercuBanner}
     <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:#555E73;border-bottom:1px solid #E8EBF4"><span>Total HT</span><span>${fmt(ht)}</span></div>
     <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:#555E73;border-bottom:1px solid #E8EBF4"><span>TVA (${tva}%)</span><span>${fmt(ttc-ht)}</span></div>
     <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:17px;font-weight:800;color:#1a1a2e;border-top:2px solid #1a1a2e;margin-top:4px"><span>TOTAL TTC</span><span style="color:#2ECC8A">${fmt(ttc)}</span></div>
-    ${p.acompte_montant?`<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:#555E73;border-top:1px solid #E8EBF4;margin-top:4px"><span>Acompte versé</span><span>- ${fmt(p.acompte_montant)}</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:700;color:#1a1a2e"><span>Reste à régler</span><span style="color:#F0445E">${fmt(ttc-(p.acompte_montant||0))}</span></div>`:''}
+    ${(p.acompte_montant&&p.acompte_recu)?`<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:#555E73;border-top:1px solid #E8EBF4;margin-top:4px"><span>Acompte versé${p.acompte_date?' le '+fd(p.acompte_date):''}</span><span>- ${fmt(p.acompte_montant)}</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:700;color:#1a1a2e"><span>Reste à régler</span><span style="color:#F0445E">${fmt(ttc-(p.acompte_montant||0))}</span></div>`:''}
   </div>
 </div>
 <div style="border-top:1px solid #E8EBF4;padding-top:20px;font-size:11px;color:#8891A8;line-height:1.6">

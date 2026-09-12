@@ -10,18 +10,33 @@ import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 // Modale "Ajouter un sponsor" (19/08/2026, retour utilisateur : aucune UI ne le permettait).
 // Même pattern que AddEventModal.tsx / CreateTeamModal.tsx. Niveau limité à Or/Argent/Bronze
 // (club_sponsors_niveau_check) — voir data/club/sponsors.ts.
-interface CreateSponsorModalProps {
-  onClose: () => void;
-  onCreate: (input: { name: string; niveau: "Or" | "Argent" | "Bronze"; secteur?: string; montant?: number }) => Promise<unknown>;
+export interface SponsorFormInput {
+  name: string;
+  niveau: "Or" | "Argent" | "Bronze";
+  secteur?: string;
+  montant?: number;
+  dateDebut?: string;
+  dateFin?: string;
 }
 
-export function CreateSponsorModal({ onClose, onCreate }: CreateSponsorModalProps) {
+interface CreateSponsorModalProps {
+  onClose: () => void;
+  onCreate: (input: SponsorFormInput) => Promise<unknown>;
+  // Modification (12/09/2026, audit) : la même fenêtre sert à corriger un sponsor existant. On
+  // savait créer, jamais modifier — une faute sur le nom ou le montant était définitive.
+  initial?: SponsorFormInput;
+}
+
+export function CreateSponsorModal({ onClose, onCreate, initial }: CreateSponsorModalProps) {
   // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
   useFermetureEchap(true, onClose);
-  const [name, setName] = useState("");
-  const [niveau, setNiveau] = useState<"Or" | "Argent" | "Bronze">("Bronze");
-  const [secteur, setSecteur] = useState("");
-  const [montant, setMontant] = useState("");
+  const modification = initial !== undefined;
+  const [name, setName] = useState(initial?.name ?? "");
+  const [niveau, setNiveau] = useState<"Or" | "Argent" | "Bronze">(initial?.niveau ?? "Bronze");
+  const [secteur, setSecteur] = useState(initial?.secteur ?? "");
+  const [montant, setMontant] = useState(initial?.montant != null ? String(initial.montant) : "");
+  const [dateDebut, setDateDebut] = useState(initial?.dateDebut ?? "");
+  const [dateFin, setDateFin] = useState(initial?.dateFin ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -33,16 +48,23 @@ export function CreateSponsorModal({ onClose, onCreate }: CreateSponsorModalProp
     setSubmitting(true);
     setError(null);
     const parsedMontant = montant.trim() ? Number(montant.replace(",", ".")) : undefined;
-    onCreate({ name: name.trim(), niveau, secteur: secteur.trim() || undefined, montant: parsedMontant })
+    onCreate({
+      name: name.trim(),
+      niveau,
+      secteur: secteur.trim() || undefined,
+      montant: parsedMontant,
+      dateDebut: dateDebut || undefined,
+      dateFin: dateFin || undefined,
+    })
       .then(() => onClose())
-      .catch(() => {
+      .catch((e: unknown) => {
         setSubmitting(false);
-        setError("Impossible d'ajouter le sponsor. Réessayez.");
+        setError(e instanceof Error ? e.message : "Impossible d'enregistrer le sponsor. Réessayez.");
       });
   }
 
   return (
-    <div ref={containerRef} role="dialog" aria-modal="true" aria-label="Ajouter un sponsor" className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
+    <div ref={containerRef} role="dialog" aria-modal="true" aria-label={modification ? "Modifier le sponsor" : "Ajouter un sponsor"} className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
       <Card className="animate-svfade relative flex w-full max-w-[440px] flex-col gap-4 rounded-sv-modal p-6 shadow-sv-modal">
         <button
           aria-label="Fermer"
@@ -52,7 +74,7 @@ export function CreateSponsorModal({ onClose, onCreate }: CreateSponsorModalProp
           <X className="h-4 w-4" aria-hidden />
         </button>
 
-        <h2 className="text-[19px] font-extrabold tracking-tight">Ajouter un sponsor</h2>
+        <h2 className="text-[19px] font-extrabold tracking-tight">{modification ? "Modifier le sponsor" : "Ajouter un sponsor"}</h2>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[12.5px] font-bold text-text-soft">Nom du sponsor</span>
@@ -85,11 +107,24 @@ export function CreateSponsorModal({ onClose, onCreate }: CreateSponsorModalProp
           </label>
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Début du contrat</span>
+            <input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} className={fieldClass} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            {/* Sans date de fin, le sponsor reste « Actif » à vie et « À renouveler » vaut
+                toujours 0 : c'est cette date qui fait vivre le suivi. */}
+            <span className="text-[12.5px] font-bold text-text-soft">Fin du contrat</span>
+            <input type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} className={fieldClass} />
+          </label>
+        </div>
+
         {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
 
         <div className="mt-1 flex justify-end">
           <Button disabled={!canSubmit || submitting} loading={submitting} onClick={handleSubmit}>
-            Ajouter le sponsor
+            {modification ? "Enregistrer" : "Ajouter le sponsor"}
           </Button>
         </div>
       </Card>

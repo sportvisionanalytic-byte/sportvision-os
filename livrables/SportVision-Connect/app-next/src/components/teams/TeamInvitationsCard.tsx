@@ -40,11 +40,14 @@ const STATUT_DEMANDE: Record<string, string> = {
 export function TeamInvitationsCard({
   clubId,
   team,
+  joueurs,
   inscriptions,
   imageManquantes,
 }: {
   clubId: string;
   team: Team;
+  /** L'effectif, pour désigner l'enfant d'une invitation « parent » — voir InviteFamilyModal. */
+  joueurs?: { id: string; nom: string }[];
   /** Le suivi, depuis equipe_apercu (v121). Absent pour un rôle qui ne lit pas la fiche. */
   inscriptions?: ApercuEquipe["inscriptions"];
   imageManquantes?: number;
@@ -112,6 +115,7 @@ export function TeamInvitationsCard({
         <InviteFamilyModal
           targetType={cible}
           teams={[team]}
+          joueurs={joueurs}
           onClose={() => setCible(null)}
           onInvite={(input) =>
             inviteFamilyMember(createClient(), {
@@ -122,6 +126,7 @@ export function TeamInvitationsCard({
               clubId,
               teamId: input.teamId ?? team.id,
               dateNaissance: input.dateNaissance,
+              playerId: input.playerId,
             })
           }
         />

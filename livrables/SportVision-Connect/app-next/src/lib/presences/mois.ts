@@ -29,7 +29,7 @@ export interface DecompteMois {
   aVenir: number;
 }
 
-function memeMois(date: string, reference: Date): boolean {
+export function memeMois(date: string, reference: Date): boolean {
   const m = /^(\d{4})-(\d{2})/.exec(date);
   if (!m) return false;
   return Number(m[1]) === reference.getFullYear() && Number(m[2]) === reference.getMonth() + 1;

@@ -170,6 +170,19 @@ serve(async (req) => {
 
     const token = crypto.randomUUID().replace(/-/g, "");
 
+    // Un lien regenere annule le precedent (audit 12/09/2026). Sans cela, chaque regeneration
+    // ("l'e-mail n'est pas arrive") laissait un lien vivant 30 jours de plus : le 11/09, deux
+    // liens coexistaient pour RCP Fontainbleau, dont un non consomme. Or clubplus-activate
+    // RATTACHE au club existant et y insere un club_members role 'admin' : qui ouvrait ce lien
+    // oublie dans une boite mail devenait administrateur d'un club deja actif, avec ses factures.
+    const { data: revoques } = await admin
+      .from("clubplus_activation_tokens")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("client_id", client.id)
+      .is("used_at", null)
+      .is("revoked_at", null)
+      .select("id");
+
     const { data: created, error: insErr } = await admin
       .from("clubplus_activation_tokens")
       .insert({
@@ -212,6 +225,7 @@ serve(async (req) => {
       club_nom_prefill: clubNomFinal,
       email_sent: emailSent,
       email: client.email || null,
+      liens_precedents_revoques: revoques?.length ?? 0,
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);

@@ -680,6 +680,7 @@ function RealOverviewTab({
             <TeamInvitationsCard
               clubId={clubId}
               team={team}
+              joueurs={roster.map((j) => ({ id: j.id, nom: `${j.firstName} ${j.lastName}`.trim() }))}
               inscriptions={apercu.inscriptions}
               imageManquantes={apercu.droit_image.total - apercu.droit_image.valides}
             />

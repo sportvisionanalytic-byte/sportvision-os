@@ -85,6 +85,11 @@ const ACTIONS = new Set(["valider", "demander_infos", "refuser"]);
 // au lieu du pipeline clients / clubplus_activation_tokens (réservé au club).
 const NON_CLUB_ORG_TYPES = new Set(["academie", "coach", "structure_coaching", "tournoi", "stage", "projet"]);
 
+// Une adresse venue d'un formulaire ne doit jamais servir de motif LIKE (audit 12/09/2026) :
+// `%@%.%` rattacherait la demande a la PREMIERE fiche client venue, avec ses devis et ses factures.
+// PostgREST traduit aussi `*` en `%`, d'ou les quatre caracteres neutralises.
+const sansJokers = (v: string | null | undefined) => String(v ?? "").replace(/[%_*\\]/g, " ").trim();
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -192,7 +197,7 @@ serve(async (req) => {
       const { data: matchedClient } = await admin
         .from("clients")
         .select("id")
-        .ilike("email", reqRow.contact_email)
+        .ilike("email", sansJokers(reqRow.contact_email))
         .limit(1)
         .maybeSingle();
       if (matchedClient) {
@@ -278,7 +283,7 @@ serve(async (req) => {
     const { data: matchedClient } = await admin
       .from("clients")
       .select("id")
-      .ilike("email", reqRow.contact_email)
+      .ilike("email", sansJokers(reqRow.contact_email))
       .limit(1)
       .maybeSingle();
     if (matchedClient) {

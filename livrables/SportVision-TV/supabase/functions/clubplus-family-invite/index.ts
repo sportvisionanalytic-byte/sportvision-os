@@ -212,6 +212,22 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
+    // L'enfant et l'equipe designes doivent appartenir au club de l'invitation (audit 12/09/2026).
+    // Sans ce controle, seul le club de l'APPELANT etait verifie : un admin de son propre Club+
+    // Gratuit pouvait s'inviter comme parent de l'enfant de n'importe quel club en passant son
+    // player_id, et `accept_parent_invitation` ne verifiait que l'adresse e-mail, qu'il choisit
+    // lui-meme. Meme controle pose en base (v188), les deux se doublent volontairement.
+    if (playerId) {
+      const { data: fiche } = await admin
+        .from("player_profiles").select("id").eq("id", playerId).eq("club_id", clubId).maybeSingle();
+      if (!fiche) return json({ error: "Ce joueur n'appartient pas à ce club." }, 403);
+    }
+    if (teamId) {
+      const { data: equipe } = await admin
+        .from("club_teams").select("id").eq("id", teamId).eq("club_id", clubId).maybeSingle();
+      if (!equipe) return json({ error: "Cette équipe n'appartient pas à ce club." }, 403);
+    }
+
     const rateOk = await checkRateLimit(admin, `clubplus-family-invite:${caller.id}`);
     if (!rateOk) {
       return json({ error: "Trop de tentatives. Réessayez dans une heure." }, 429);

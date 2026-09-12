@@ -148,15 +148,52 @@ serve(async (req) => {
       // Pennylane la supporte (retry réseau identique ne recrée pas la
       // facture) — sans garantie documentée, la réservation atomique
       // ci-dessus reste la protection principale côté SportVision.
+      // Le prix d'une ligne (audit 12/09/2026). Les lignes de facture n'ont PAS toutes la meme
+      // forme selon leur origine : un devis ecrit `pu`, l'OS ecrit `prix_unitaire`, et la
+      // facturation Full Communication mensuelle ecrit `montant_ht`. Le code ne lisait que les
+      // deux premieres et retombait sur `?? 0` : la seule facture reelle de production,
+      // FAC-2026-0023 (890 EUR HT, ligne « Full Communication — September 2026 »), serait partie
+      // a Pennylane en facture electronique LEGALE a 0,00 EUR, irrevocable.
       const lignes = Array.isArray(facture.lignes) ? facture.lignes : [];
-      const invoiceLines = (lignes.length ? lignes : [{ description: facture.type_facture || "Prestation SportVision", quantite: 1, prix_unitaire: facture.montant_ht }])
+      const prixUnitaire = (l: any): number | null => {
+        const q = Number(l.quantite ?? l.qte ?? 1) || 1;
+        for (const champ of ["prix_unitaire", "pu"]) {
+          if (l[champ] !== undefined && l[champ] !== null) return Number(l[champ]);
+        }
+        for (const champ of ["montant_ht", "montant", "total_ht"]) {
+          if (l[champ] !== undefined && l[champ] !== null) return Number(l[champ]) / q;
+        }
+        return null;
+      };
+
+      const invoiceLines = (lignes.length ? lignes : [{ libelle: facture.type_facture || "Prestation SportVision", quantite: 1, prix_unitaire: facture.montant_ht }])
         .map((l: any) => ({
           label: l.description || l.libelle || "Prestation SportVision",
-          quantity: l.quantite ?? l.qte ?? 1,
+          quantity: Number(l.quantite ?? l.qte ?? 1) || 1,
           unit: "unit",
-          raw_currency_unit_price: String(l.prix_unitaire ?? l.pu ?? 0),
+          raw_currency_unit_price: prixUnitaire(l),
           vat_rate: vatRateCode(facture.tva_pct),
         }));
+
+      // Rien ne part tant que la somme des lignes ne redit pas le montant enregistre. C'est le
+      // seul garde-fou honnete : une facture electronique est irrevocable, et une remise de devis
+      // n'est aujourd'hui materialisee par aucune ligne (la somme des lignes vaut alors le
+      // sous-total AVANT remise, donc le client serait surfacture du montant de sa remise).
+      const manquante = invoiceLines.find((l: { raw_currency_unit_price: number | null }) => l.raw_currency_unit_price === null);
+      if (manquante) {
+        await releaseClaim();
+        return json({ error: `Ligne sans prix lisible (« ${manquante.label} »). Corrigez la facture avant de l'envoyer.` }, 400);
+      }
+      const sommeLignes = Math.round(invoiceLines.reduce((s: number, l: { raw_currency_unit_price: number | null; quantity: number }) => s + (l.raw_currency_unit_price as number) * l.quantity, 0) * 100) / 100;
+      const montantHt = Math.round(Number(facture.montant_ht ?? 0) * 100) / 100;
+      if (Math.abs(sommeLignes - montantHt) > 0.01) {
+        await releaseClaim();
+        return json({
+          error: `Le détail de la facture (${sommeLignes.toFixed(2)} € HT) ne correspond pas à son montant (${montantHt.toFixed(2)} € HT). Rien n'a été envoyé à Pennylane.`,
+        }, 400);
+      }
+
+      const invoiceLinesEnvoi = invoiceLines.map((l: { raw_currency_unit_price: number | null }) => ({ ...l, raw_currency_unit_price: String(l.raw_currency_unit_price) }));
 
       const invRes = await fetch(`${PENNYLANE_BASE}/customer_invoices`, {
         method: "POST",
@@ -165,7 +202,7 @@ serve(async (req) => {
           customer_id: Number(pennylaneCustomerId),
           date: facture.date_emission || new Date().toISOString().slice(0, 10),
           deadline: facture.date_echeance || new Date().toISOString().slice(0, 10),
-          invoice_lines: invoiceLines,
+          invoice_lines: invoiceLinesEnvoi,
         }),
       });
       if (!invRes.ok) {

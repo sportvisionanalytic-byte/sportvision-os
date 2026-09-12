@@ -13,11 +13,17 @@ import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 interface InviteFamilyModalProps {
   targetType: FamilyInviteTargetType;
   teams: Team[];
+  /** L'effectif de l'équipe, pour désigner l'enfant d'une invitation « parent » (12/09/2026).
+   *  Sans lui, `parent_invitations.player_id` restait nul : le parent acceptait, son compte se
+   *  créait, et AUCUN lien parent/enfant n'était posé. `is_confirmed_parent_of()` restait faux,
+   *  donc il ne voyait ni son enfant, ni son calendrier, ni ses photos, et ne pouvait signer
+   *  aucune autorisation — alors que l'écran Connect lui annonce le contraire. */
+  joueurs?: { id: string; nom: string }[];
   onClose: () => void;
-  onInvite: (input: { email: string; firstName: string; lastName: string; teamId?: string; dateNaissance?: string }) => Promise<{ alreadyInvited: boolean }>;
+  onInvite: (input: { email: string; firstName: string; lastName: string; teamId?: string; dateNaissance?: string; playerId?: string }) => Promise<{ alreadyInvited: boolean }>;
 }
 
-export function InviteFamilyModal({ targetType, teams, onClose, onInvite }: InviteFamilyModalProps) {
+export function InviteFamilyModal({ targetType, teams, joueurs, onClose, onInvite }: InviteFamilyModalProps) {
   // Echap ferme la fenetre (audit du 10/09/2026 : aucune modale ne le faisait).
   useFermetureEchap(true, onClose);
   const isJoueur = targetType === "joueur";
@@ -26,17 +32,30 @@ export function InviteFamilyModal({ targetType, teams, onClose, onInvite }: Invi
   const [lastName, setLastName] = useState("");
   const [teamId, setTeamId] = useState(teams[0]?.id ?? "");
   const [dateNaissance, setDateNaissance] = useState("");
+  const [playerId, setPlayerId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<{ email: string; alreadyInvited: boolean } | null>(null);
 
+  const listeJoueurs = joueurs ?? [];
   const canSubmit =
-    /\S+@\S+\.\S+/.test(email) && firstName.trim().length > 0 && (!isJoueur || (teamId.length > 0 && dateNaissance.length > 0));
+    /\S+@\S+\.\S+/.test(email) &&
+    firstName.trim().length > 0 &&
+    (isJoueur
+      ? teamId.length > 0 && dateNaissance.length > 0
+      : listeJoueurs.length === 0 || playerId.length > 0);
 
   function handleSubmit() {
     setSubmitting(true);
     setError(null);
-    onInvite({ email, firstName, lastName, teamId: isJoueur ? teamId : undefined, dateNaissance: isJoueur ? dateNaissance : undefined })
+    onInvite({
+      email,
+      firstName,
+      lastName,
+      teamId: isJoueur ? teamId : undefined,
+      dateNaissance: isJoueur ? dateNaissance : undefined,
+      playerId: !isJoueur && playerId ? playerId : undefined,
+    })
       .then(({ alreadyInvited }) => setSent({ email, alreadyInvited }))
       .catch((err) => setError(err instanceof Error ? err.message : "Envoi de l'invitation impossible, réessayez."))
       .finally(() => setSubmitting(false));
@@ -134,6 +153,31 @@ export function InviteFamilyModal({ targetType, teams, onClose, onInvite }: Invi
                   />
                 </label>
               </div>
+            )}
+
+            {!isJoueur && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[12.5px] font-bold text-text-soft">Enfant concerné</span>
+                {listeJoueurs.length > 0 ? (
+                  <select
+                    value={playerId}
+                    onChange={(e) => setPlayerId(e.target.value)}
+                    className="h-11 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[14px] outline-none focus-visible:border-brand-blue"
+                  >
+                    <option value="">Choisir…</option>
+                    {listeJoueurs.map((j) => (
+                      <option key={j.id} value={j.id}>
+                        {j.nom}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-[12px] text-text-faint">
+                    Aucun joueur dans cette équipe : le parent sera invité sans rattachement, et devra déclarer son
+                    enfant lui-même.
+                  </span>
+                )}
+              </label>
             )}
 
             {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}

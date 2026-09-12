@@ -30,6 +30,13 @@ export interface Contenu {
   datePublication: string | null;
   createdAt: string;
   requestId: string | null;
+  // Le texte réellement publié au nom du club. Sans lui, l'écran « À valider » demandait au
+  // président d'approuver une publication dont il ne voyait que le titre (audit 12/09/2026).
+  hook: string | null;
+  legende: string | null;
+  cta: string | null;
+  hashtags: string | null;
+  commentaireValidation: string | null;
 }
 
 interface ContenuRow {
@@ -44,10 +51,15 @@ interface ContenuRow {
   date_publication: string | null;
   created_at: string;
   request_id: string | null;
+  hook: string | null;
+  legende: string | null;
+  cta: string | null;
+  hashtags: string | null;
+  commentaire_validation: string | null;
 }
 
 const SELECT =
-  "id, titre, description, plateforme, type_contenu, statut, sponsor, date_prevue, date_publication, created_at, request_id";
+  "id, titre, description, plateforme, type_contenu, statut, sponsor, date_prevue, date_publication, created_at, request_id, hook, legende, cta, hashtags, commentaire_validation";
 
 function toContenu(row: ContenuRow): Contenu {
   return {
@@ -58,6 +70,11 @@ function toContenu(row: ContenuRow): Contenu {
     typeContenu: row.type_contenu,
     statut: row.statut as ContenuStatut,
     sponsor: row.sponsor,
+    hook: row.hook,
+    legende: row.legende,
+    cta: row.cta,
+    hashtags: row.hashtags,
+    commentaireValidation: row.commentaire_validation,
     datePrevue: row.date_prevue,
     datePublication: row.date_publication,
     createdAt: row.created_at,

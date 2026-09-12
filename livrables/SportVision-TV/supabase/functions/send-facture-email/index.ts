@@ -65,13 +65,17 @@ serve(async (req) => {
 
     // Seul un membre du staff (ligne dans `profiles`, distinct des comptes Portail
     // client dans `client_users`) peut envoyer une facture par e-mail.
+    // Reserve au staff financier, compte ACTIF (audit 12/09/2026). Le controle precedent se
+    // contentait d'une ligne dans `profiles` : n'importe quel collaborateur — un operateur
+    // terrain, un monteur, un compte desactive dont le jeton court encore — pouvait envoyer
+    // n'importe quel facture a l'adresse de son choix. Meme regle que send-facture-pennylane.
     const { data: staffProfile } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, role, actif")
       .eq("id", userData.user.id)
       .maybeSingle();
-    if (!staffProfile) {
-      return new Response(JSON.stringify({ error: "Non autorisé" }), {
+    if (!staffProfile || staffProfile.actif === false || !["admin", "sec", "compta"].includes(staffProfile.role)) {
+      return new Response(JSON.stringify({ error: "Réservé au staff (admin, secrétariat, comptabilité)." }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -127,9 +131,11 @@ serve(async (req) => {
           ${f.prestation?.livrables_demandes ? `<div style="margin-top:4px;color:#8891A8">${f.prestation.livrables_demandes}</div>` : ""}
         </td></tr>`;
 
+    // Le message vient d'un champ libre : il est injecte dans du HTML, donc echappe.
+    const echapper = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     const msgHtml = (message || "")
       .split("\n")
-      .map((l: string) => `<p style="margin:0 0 8px 0">${l || "&nbsp;"}</p>`)
+      .map((l: string) => `<p style="margin:0 0 8px 0">${l ? echapper(l) : "&nbsp;"}</p>`)
       .join("");
 
     const htmlEmail = `<!DOCTYPE html>

@@ -71,6 +71,30 @@ export default function SponsorsPage() {
   const gauges = sponsorsList.map((s) => visibilityGauge(s.id)).filter((g): g is number => g !== null);
   const avgGauge = gauges.length ? Math.round(gauges.reduce((sum, g) => sum + g, 0) / gauges.length) : null;
 
+  // Le bouton n'avait aucun gestionnaire (audit 12/09/2026) : le président préparait son
+  // assemblée générale, cliquait, et rien ne se passait, sans même un message.
+  function exporterBilan() {
+    const colonnes = ["Sponsor", "Niveau", "Secteur", "Montant annuel", "Début", "Fin", "Statut"];
+    const lignes = sponsorsList.map((s) => [
+      s.name,
+      SPONSOR_LEVEL_LABEL[s.level],
+      s.sector ?? "",
+      String(s.annualAmount ?? 0),
+      s.startsAt ? s.startsAt.slice(0, 10) : "",
+      s.endsAt ? s.endsAt.slice(0, 10) : "",
+      SPONSOR_STATUS_LABEL[s.status],
+    ]);
+    const csv = [colonnes, ...lignes]
+      .map((ligne) => ligne.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+    const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sponsors.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const stats = [
     { label: "Sponsors actifs", value: String(active), icon: Award },
     { label: "Visibilité moyenne", value: avgGauge === null ? "Non suivi" : `${avgGauge} %`, icon: Gauge },
@@ -88,7 +112,7 @@ export default function SponsorsPage() {
           </h1>
         </div>
         <div className="flex items-center gap-2.5">
-          <Button variant="secondary">
+          <Button variant="secondary" onClick={exporterBilan} disabled={sponsorsList.length === 0}>
             <Download className="h-3.5 w-3.5" aria-hidden />
             Exporter le bilan
           </Button>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Check, FileText, Inbox, Images, Plus, Trash2 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
@@ -11,7 +12,9 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { SPONSOR_LEVEL_LABEL, SPONSOR_LEVEL_TONE, SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/components/sponsors/format";
 import { deliverablesForSponsor, visibilityGauge } from "@/lib/mock/sponsors";
-import { fetchClubSponsors, fetchSponsorPublications, updateSponsorCommitments, updateSponsorContentTypeObligations } from "@/lib/data/club/sponsors";
+import { deleteClubSponsor, fetchClubSponsors, fetchSponsorPublications, updateClubSponsor, updateSponsorCommitments, updateSponsorContentTypeObligations } from "@/lib/data/club/sponsors";
+import { CreateSponsorModal } from "@/components/sponsors/CreateSponsorModal";
+import { administreLeClub } from "@/lib/permissions";
 import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
 import { createClient } from "@/lib/supabase/client";
 import type { Sponsor, SponsorCommitment, SponsorPublication, SponsorPublicationStatus } from "@/lib/types/sponsors";
@@ -42,6 +45,10 @@ export default function SponsorDetailPage({ params }: { params: { id: string } }
   const { ctx } = useSession();
   const [tab, setTab] = useState<TabKey>("livrables");
   const [clubSponsors, setClubSponsors] = useState<Sponsor[] | null>(null);
+  const [enEdition, setEnEdition] = useState(false);
+  const [suppression, setSuppression] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const router = useRouter();
 
   const isPartner = ctx.organization.type === "sponsor";
 
@@ -85,6 +92,22 @@ export default function SponsorDetailPage({ params }: { params: { id: string } }
   // isPartner : RLS csp_sponsor_org_select est lecture seule (voir data/sponsor/sponsorships.ts)
   // — le partenaire consulte les contreparties, jamais ne les modifie.
   const sponsorId = sponsor.id;
+
+  function handleSupprimer() {
+    if (!window.confirm(`Retirer ${sponsor!.name} de vos partenaires ? Cette action est définitive.`)) return;
+    setSuppression(true);
+    setErreur(null);
+    deleteClubSponsor(createClient(), sponsorId)
+      .then(() => router.push("/sponsors"))
+      .catch((e: unknown) => {
+        setSuppression(false);
+        setErreur(e instanceof Error ? e.message : "Suppression impossible pour le moment.");
+      });
+  }
+
+  // Corriger et retirer un sponsor (12/09/2026, audit) : on savait créer, jamais modifier ni
+  // supprimer. Une faute de frappe sur le nom ou le montant était définitive, et sans date de fin
+  // tout sponsor restait « Actif » à vie. La base autorisait déjà les deux gestes.
   function handleCommitmentsChange(next: SponsorCommitment[]) {
     setClubSponsors((prev) => (prev ? prev.map((s) => (s.id === sponsorId ? { ...s, commitments: next } : s)) : prev));
   }
@@ -105,11 +128,46 @@ export default function SponsorDetailPage({ params }: { params: { id: string } }
             <Badge tone={SPONSOR_STATUS_TONE[sponsor.status]}>{SPONSOR_STATUS_LABEL[sponsor.status]}</Badge>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-[11px] font-bold uppercase tracking-[.04em] text-text-faint">Visibilité livrée</div>
-          <div className="text-[24px] font-extrabold tracking-tight">{gauge === null ? "Non suivi" : `${gauge} %`}</div>
+        <div className="flex items-end gap-4">
+          {!isPartner && (
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setEnEdition(true)}>Modifier</Button>
+              {administreLeClub(ctx) && (
+                <Button variant="secondary" loading={suppression} disabled={suppression} onClick={handleSupprimer}>
+                  Supprimer
+                </Button>
+              )}
+            </div>
+          )}
+          <div className="text-right">
+            <div className="text-[11px] font-bold uppercase tracking-[.04em] text-text-faint">Visibilité livrée</div>
+            <div className="text-[24px] font-extrabold tracking-tight">{gauge === null ? "Non suivi" : `${gauge} %`}</div>
+          </div>
         </div>
       </div>
+
+      {erreur && <p className="text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
+
+      {enEdition && (
+        <CreateSponsorModal
+          onClose={() => setEnEdition(false)}
+          initial={{
+            name: sponsor.name,
+            // "platine" existe dans les libellés mais pas en base (club_sponsors_niveau_check) :
+            // il retombe sur Bronze plutôt que de faire échouer l'enregistrement.
+            niveau: sponsor.level === "or" ? "Or" : sponsor.level === "argent" ? "Argent" : "Bronze",
+            secteur: sponsor.sector,
+            montant: sponsor.annualAmount,
+            dateDebut: sponsor.startsAt ? sponsor.startsAt.slice(0, 10) : undefined,
+            dateFin: sponsor.endsAt ? sponsor.endsAt.slice(0, 10) : undefined,
+          }}
+          onCreate={(input) =>
+            updateClubSponsor(createClient(), sponsorId, input).then(() =>
+              fetchClubSponsors(createClient(), ctx.organization.id).then(setClubSponsors),
+            )
+          }
+        />
+      )}
 
       <div className="flex flex-wrap gap-1.5 border-b border-divider pb-0.5">
         {TABS.map((key) => (

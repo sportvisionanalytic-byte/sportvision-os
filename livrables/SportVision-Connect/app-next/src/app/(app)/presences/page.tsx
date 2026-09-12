@@ -13,7 +13,7 @@ import { presenceStatusTone, PRESENCE_STATUS_LABELS } from "@/components/communi
 import { PRESENCE_KIND_LABELS } from "@/lib/types/communication";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClubPresences, type ClubPresence } from "@/lib/data/club/presences";
-import { decompterLeMois, libelleMois } from "@/lib/presences/mois";
+import { decompterLeMois, libelleMois, memeMois } from "@/lib/presences/mois";
 import {
   fetchCoverageWishes,
   cancelCoverageWish,
@@ -109,8 +109,13 @@ function PresencesScreen() {
       const supabase = createClient();
       await cancelCoverageWish(supabase, id);
       await reloadWishes();
-    } catch {
-      setWishesError(true);
+    } catch (e: unknown) {
+      // 12/09/2026 — Ce catch posait `wishesError`, qui affiche « Impossible de charger vos
+      // souhaits » : un refus d'annulation ressemblait à une panne de chargement, et le vrai
+      // message de la RPC (« Ce souhait ne peut plus être annulé. ») n'atteignait jamais l'écran.
+      setReponseErreur(
+        (e as { message?: string } | null)?.message || "Annulation impossible pour le moment.",
+      );
     } finally {
       setCancellingId(null);
     }
@@ -128,6 +133,13 @@ function PresencesScreen() {
   const now = new Date();
   const decompte = decompterLeMois(presences ?? [], now);
   const currentMonthLabel = libelleMois(now);
+  // 12/09/2026 — L'en-tête annonçait « Septembre 2026 » puis la table listait TOUTES les
+  // présences, tous mois confondus. Et le décompte regroupe par mission (4 matchs au même stade
+  // = 1 déplacement) quand la table montre une ligne par événement : « 3 programmées » au-dessus
+  // de 9 lignes, sans un mot d'explication. La liste suit désormais le mois affiché, et l'écart
+  // entre déplacements et événements est dit.
+  const presencesDuMois = (presences ?? []).filter((p) => memeMois(p.date, now));
+  const evenementsDuMois = presencesDuMois.filter((p) => p.status !== "cancelled").length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -144,6 +156,12 @@ function PresencesScreen() {
             <Compte valeur={decompte.realisees} mot="réalisée" />
             <Compte valeur={decompte.aVenir} mot="à venir" invariable />
           </div>
+          {evenementsDuMois > decompte.programmees && (
+            <p className="basis-full text-[12px] text-white/70">
+              {evenementsDuMois} événements couverts, regroupés en {decompte.programmees} déplacement
+              {decompte.programmees > 1 ? "s" : ""}.
+            </p>
+          )}
           {canRequest && (
             <Button
               variant="secondary"
@@ -169,7 +187,7 @@ function PresencesScreen() {
       <Card className="overflow-hidden p-0">
         {presences === null ? (
           <div className="p-9 text-center text-[13.5px] text-text-soft">Chargement…</div>
-        ) : presences.length === 0 ? (
+        ) : presencesDuMois.length === 0 ? (
           <div className="p-6">
             <EmptyState icon={CalendarClock} title="Aucune présence programmée" subtitle="Vos prochaines présences terrain apparaîtront ici." />
           </div>
@@ -186,7 +204,7 @@ function PresencesScreen() {
                 </tr>
               </thead>
               <tbody>
-                {presences.map((p) => (
+                {presencesDuMois.map((p) => (
                   <tr key={p.id} className="border-b border-divider last:border-0 hover:bg-row-hover">
                     <td className="px-5 py-3.5 text-[13px] font-semibold text-text-soft">
                       {formatDate(p.date)}

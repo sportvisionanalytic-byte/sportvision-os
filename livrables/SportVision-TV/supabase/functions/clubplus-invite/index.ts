@@ -134,7 +134,11 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision-an.fr";
+    // 12/09/2026 — CLUBPLUS_URL, pas CONNECT_URL. Cette fonction invite un COACH, une secrétaire,
+    // un trésorier : des gens dont le compte vit dans Club+. Le lien d'invitation les renvoyait
+    // sur Connect, l'espace personnel du joueur et de la famille, où ils n'ont rien à faire —
+    // exactement le défaut déjà corrigé le 17/08 sur l'activation et le 09/09 sur les recrues.
+    const clubplusUrl = (Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision-an.fr").replace(/\/+$/, "");
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -248,6 +252,28 @@ serve(async (req) => {
     let accountAlreadyExisted = false;
 
     if (mode === "direct") {
+      // Le mode direct declare l'adresse CONFIRMEE sans que personne ne l'ait prouvee, et rend
+      // le mot de passe a celui qui invite. C'est voulu (un club a attendu dix minutes devant
+      // nous un e-mail qui n'arrivait pas), mais cela ouvrait une prise de controle : inviter
+      // `president@club-voisin.fr` dans SON PROPRE club, recevoir le mot de passe, se connecter,
+      // puis appeler portal-onboarding — qui rattache la fiche `clients` de cette adresse des
+      // lors que l'e-mail est « confirme », avec ses devis, ses factures et ses contrats.
+      //
+      // On refuse donc le mode direct sur une adresse qui porte deja une fiche client, sauf
+      // quand c'est la fiche du club qui invite. L'invitation par e-mail, elle, reste ouverte :
+      // c'est le destinataire lui-meme qui ouvre le lien (audit 12/09/2026).
+      const { data: clientExistant } = await admin
+        .from("clients")
+        .select("id")
+        .ilike("email", String(email).replace(/[%_*\\]/g, " ").trim())
+        .limit(1)
+        .maybeSingle();
+      if (clientExistant && clientExistant.id !== portailClientId) {
+        return json({
+          error: "Cette adresse est déjà connue de SportVision. Envoyez-lui une invitation par e-mail : c'est elle qui doit ouvrir le lien.",
+        }, 403);
+      }
+
       tempPassword = generateTempPassword();
       const { data: createdUser, error: createErr } = await admin.auth.admin.createUser({
         email,
@@ -267,7 +293,7 @@ serve(async (req) => {
       }
     } else {
       const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${connectUrl}/`,
+        redirectTo: `${clubplusUrl}/clubplus/`,
         data: { prenom, nom, telephone },
       });
       invitedUserId = invited?.user?.id ?? null;

@@ -132,6 +132,30 @@ function ValidationQueue({ clientId }: { clientId: string }) {
                 </div>
                 {c.description && <p className="mt-2 text-[13px] text-text-soft">{c.description}</p>}
               </div>
+              {/* Ce qui partira vraiment sur le compte du club (audit 12/09/2026) : on ne peut pas
+                  demander de valider une publication sans en montrer le texte. */}
+              {(c.hook || c.legende || c.cta || c.hashtags) && (
+                <div className="flex flex-col gap-2 rounded-sv bg-surface-sunken px-4 py-3">
+                  {c.hook && (
+                    <p className="text-[13px] font-bold leading-snug">{c.hook}</p>
+                  )}
+                  {c.legende && (
+                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-text-soft">{c.legende}</p>
+                  )}
+                  {c.cta && (
+                    <p className="text-[12.5px] font-semibold text-text-soft">{c.cta}</p>
+                  )}
+                  {c.hashtags && (
+                    <p className="text-[12px] text-brand-blue">{c.hashtags}</p>
+                  )}
+                </div>
+              )}
+              {c.commentaireValidation && (
+                <p className="text-[12.5px] text-text-soft">
+                  <span className="font-bold">Correction précédente : </span>
+                  {c.commentaireValidation}
+                </p>
+              )}
               <textarea
                 value={correctionDraft[c.id] ?? ""}
                 onChange={(e) => setCorrectionDraft((prev) => ({ ...prev, [c.id]: e.target.value }))}

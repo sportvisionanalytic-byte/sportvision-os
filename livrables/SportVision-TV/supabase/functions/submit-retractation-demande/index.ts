@@ -190,6 +190,18 @@ serve(async (req) => {
     // le formulaire agit sur un compte désigné par un simple e-mail non prouvé,
     // donc une IP seule ne suffit pas à empêcher le harcèlement d'un e-mail
     // précis depuis des IP différentes.
+    // Les jokers de LIKE ne sont pas des caracteres d'adresse (audit 12/09/2026). La valeur
+    // saisie part telle quelle dans un `ilike` : `%@%.%` tombait sur la PREMIERE fiche client
+    // venue, `%` sur sa premiere prestation, et la reponse rendait a un inconnu la reference
+    // reelle d'une commande d'un vrai client — en ecrivant au passage une retractation forgee
+    // sur son compte. Le ciblage marchait aussi : `contact@villemomble.f_` passait la regex.
+    if (/[%_\\]/.test(String(email))) {
+      return json({ error: "Adresse e-mail invalide." }, 400);
+    }
+    if (reference && /[%_\\]/.test(String(reference))) {
+      return json({ error: "Référence invalide." }, 400);
+    }
+
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("cf-connecting-ip") || "inconnu";
     const okIp = await checkRateLimit(admin, "retract:ip:" + ip);
     const okEmail = await checkRateLimit(admin, "retract:email:" + String(email).toLowerCase());

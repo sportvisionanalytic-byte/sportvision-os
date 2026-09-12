@@ -56,13 +56,18 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // Seul un membre du staff (ligne dans `profiles`) peut envoyer un contrat par e-mail.
+    // Reserve au staff qui redige les contrats, compte ACTIF (audit 12/09/2026). Le controle
+    // precedent se contentait d'une ligne dans `profiles` : comme cette fonction accepte a la
+    // fois le destinataire ET le HTML complet, n'importe quel collaborateur disposait d'un relais
+    // d'envoi signe SPF/DKIM au nom de SportVision, vers l'adresse de son choix.
     const { data: staffProfile } = await admin
       .from("profiles")
-      .select("id")
+      .select("id, role, actif")
       .eq("id", userData.user.id)
       .maybeSingle();
-    if (!staffProfile) return json({ error: "Non autorisé" }, 403);
+    if (!staffProfile || staffProfile.actif === false || !["admin", "sec", "compta"].includes(staffProfile.role)) {
+      return json({ error: "Réservé au staff (admin, secrétariat, comptabilité)." }, 403);
+    }
 
     const { contrat_id: contratId, to, subject, html } = await req.json();
     if (!contratId || !to || !html) {

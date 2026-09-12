@@ -63,6 +63,12 @@ const NAV_CLUB_FULLCOM: NavEntry[] = [
   item("communication", "Planning éditorial", "communication"),
   item("validations", "À valider", "validations"),
   item("publications", "Publications", "publications"),
+  // Actualités et Demandes (12/09/2026, audit) : les trois clubs Full Communication ont les
+  // modules "newsroom" et "demandes_visuels" ACTIFS en base, les deux pages fonctionnent et
+  // canAccess les autorise — mais aucune entrée de menu n'y menait. Le président ne pouvait
+  // y arriver qu'en tapant l'URL, alors que son coach et sa secrétaire, eux, avaient l'entrée.
+  item("newsroom", "Actualités", "newsroom"),
+  item("visual_requests" as ModuleKey, "Demandes", "requests"),
   section("Production"),
   item("services", "Prestations", "services"),
   item("presences", "Présences", "presences"),

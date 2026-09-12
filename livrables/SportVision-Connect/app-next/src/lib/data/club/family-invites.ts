@@ -22,6 +22,10 @@ interface InviteFamilyMemberInput {
   clubId: string;
   teamId?: string;
   dateNaissance?: string;
+  /** L'enfant désigné pour une invitation « parent » (12/09/2026). L'edge function l'attend
+   *  depuis toujours ; Club+ ne l'envoyait jamais, donc `parent_invitations.player_id` restait
+   *  nul et `accept_parent_invitation` ne créait aucun lien parent/enfant. */
+  playerId?: string;
 }
 
 export async function inviteFamilyMember(
@@ -37,6 +41,7 @@ export async function inviteFamilyMember(
       club_id: input.clubId,
       team_id: input.targetType === "joueur" ? input.teamId : null,
       date_naissance: input.targetType === "joueur" ? input.dateNaissance : null,
+      player_id: input.targetType === "parent" ? (input.playerId ?? null) : null,
     },
   });
   if (error) throw error;

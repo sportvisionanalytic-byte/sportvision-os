@@ -228,8 +228,13 @@ serve(async (req) => {
     // encore "vivantes" (a_traiter/infos_demandees) ou déjà validées (valide, ce qui veut dire
     // qu'un lien d'activation existe déjà) — une demande refusée (refuse) n'empêche pas un nouvel
     // essai, une structure peut légitimement retenter après correction.
-    const normalizedNom = String(club_nom).trim();
-    const normalizedEmail = emailCanonique;
+    // Les jokers de LIKE (%, _, et * que PostgREST traduit en %) n'ont rien a faire dans un nom
+    // de club ni dans une adresse (audit 12/09/2026) : sans ce nettoyage, une valeur comme `%`
+    // tombait sur la premiere demande en cours venue et bloquait toute nouvelle inscription,
+    // en disant au passage qu'une demande existe.
+    const sansJokers = (v: string) => v.replace(/[%_*\\]/g, " ").trim();
+    const normalizedNom = sansJokers(String(club_nom));
+    const normalizedEmail = sansJokers(emailCanonique);
     const LIVE_STATUTS = ["a_traiter", "infos_demandees", "valide"];
     const [byNom, byEmail] = await Promise.all([
       admin

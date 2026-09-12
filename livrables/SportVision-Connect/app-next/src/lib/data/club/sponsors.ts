@@ -134,6 +134,41 @@ export async function createClubSponsor(
   return data as { id: string };
 }
 
+/** Modification et suppression d'un sponsor (12/09/2026, audit). On savait créer, jamais
+ * corriger : une faute de frappe sur le nom ou le montant était définitive, et l'onboarding
+ * promettait pourtant « modifiables plus en détail depuis Sponsors ». Sans date de fin, tout
+ * sponsor créé depuis Club+ restait « Actif » à vie et la statistique « À renouveler » valait
+ * structurellement 0. La base autorisait déjà les deux gestes (csp_member_update, csp_admin_delete).
+ *
+ * PostgREST rend un tableau vide, sans erreur, quand la RLS refuse : on teste ce tableau plutôt
+ * que d'afficher un faux succès (leçon du 10/09). */
+export async function updateClubSponsor(
+  supabase: SupabaseClient,
+  sponsorId: string,
+  input: { name: string; niveau: "Or" | "Argent" | "Bronze"; secteur?: string; montant?: number; dateDebut?: string; dateFin?: string },
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("club_sponsors")
+    .update({
+      name: input.name,
+      niveau: input.niveau,
+      secteur: input.secteur || null,
+      montant: input.montant ?? 0,
+      date_debut: input.dateDebut || null,
+      date_fin: input.dateFin || null,
+    })
+    .eq("id", sponsorId)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Modification refusée : vous n'avez pas les droits sur ce sponsor.");
+}
+
+export async function deleteClubSponsor(supabase: SupabaseClient, sponsorId: string): Promise<void> {
+  const { data, error } = await supabase.from("club_sponsors").delete().eq("id", sponsorId).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Suppression refusée : seul un administrateur du club peut supprimer un sponsor.");
+}
+
 const MAX_SPONSOR_LOGO_BYTES = 2 * 1024 * 1024;
 const ACCEPTED_SPONSOR_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 

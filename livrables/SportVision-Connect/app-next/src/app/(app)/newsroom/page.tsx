@@ -61,6 +61,16 @@ function inferTemplateCode(item: NewsroomItemDetails): string {
   return "communique";
 }
 
+// « Réessayez » n'aide personne quand c'est un refus de droits : la RLS répond 42501, et
+// réessayer donnera exactement le même refus (audit 12/09/2026).
+function messageAction(e: unknown): string {
+  const code = (e as { code?: string } | null)?.code;
+  if (code === "42501" || code === "PGRST301") {
+    return "Vous n'avez pas les droits pour cette action sur cette remontée.";
+  }
+  return "Action impossible, réessayez.";
+}
+
 export default function NewsroomPage() {
   const { ctx } = useSession();
   const router = useRouter();
@@ -76,6 +86,13 @@ export default function NewsroomPage() {
   // 12/09/2026 — Le Président supprime aussi : il administre le club au même titre que l'Owner
   // Club+ (administreLeClub, miroir de is_club_admin en base).
   const canDelete = canWrite && (administreLeClub(ctx) || ctx.membership.role === "external_cm");
+  // 12/09/2026 — Miroir exact du WITH CHECK de `cni_member_update` : un membre ordinaire n'écrit
+  // que les statuts 'recu' et 'infos_manquantes'. Transformer et Archiver changent le statut pour
+  // autre chose : la base les refusait au coach et à la secrétaire, à qui l'écran montrait
+  // pourtant les boutons. Ils cliquaient, lisaient « Action impossible, réessayez », et
+  // réessayaient.
+  const peutChangerLeStatut =
+    canWrite && (administreLeClub(ctx) || ctx.membership.role === "communication_manager" || ctx.membership.role === "external_cm");
 
   const [items, setItems] = useState<NewsroomItemDetails[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -119,19 +136,19 @@ export default function NewsroomPage() {
           );
         }
       })
-      .catch(() => showToast("Action impossible, réessayez.", "error"));
+      .catch((e: unknown) => showToast(messageAction(e), "error"));
   }
 
   function handleRequestInfo(item: NewsroomItemDetails) {
     applyStatus(item, "info_requested")
       .then(() => showToast(`Complément demandé à ${item.submittedByName}.`))
-      .catch(() => showToast("Action impossible, réessayez."));
+      .catch((e: unknown) => showToast(messageAction(e), "error"));
   }
 
   function handleArchive(item: NewsroomItemDetails) {
     applyStatus(item, "archived")
       .then(() => showToast("Remontée archivée."))
-      .catch(() => showToast("Action impossible, réessayez."));
+      .catch((e: unknown) => showToast(messageAction(e), "error"));
   }
 
   function handleCreate(input: NewsroomItemInput) {
@@ -280,7 +297,7 @@ export default function NewsroomPage() {
                   <Button
                     variant="primary"
                     className="h-9 px-3.5 text-[12.5px]"
-                    disabled={!canWrite}
+                    disabled={!peutChangerLeStatut}
                     onClick={() => handleTransform(item, "publication")}
                   >
                     <Sparkles className="mr-1.5 h-3.5 w-3.5" aria-hidden />
@@ -289,7 +306,7 @@ export default function NewsroomPage() {
                   <Button
                     variant="secondary"
                     className="h-9 px-3.5 text-[12.5px]"
-                    disabled={!canWrite}
+                    disabled={!peutChangerLeStatut}
                     onClick={() => handleTransform(item, "visual_request")}
                   >
                     Créer une demande
@@ -303,13 +320,15 @@ export default function NewsroomPage() {
                       Demander un complément
                     </button>
                   )}
-                  <button
-                    onClick={() => handleArchive(item)}
-                    className="inline-flex h-9 items-center gap-1.5 px-2 text-[12.5px] font-bold text-text-soft hover:text-danger-fg"
-                  >
-                    <Archive className="h-3.5 w-3.5" aria-hidden />
-                    Archiver
-                  </button>
+                  {peutChangerLeStatut && (
+                    <button
+                      onClick={() => handleArchive(item)}
+                      className="inline-flex h-9 items-center gap-1.5 px-2 text-[12.5px] font-bold text-text-soft hover:text-danger-fg"
+                    >
+                      <Archive className="h-3.5 w-3.5" aria-hidden />
+                      Archiver
+                    </button>
+                  )}
                 </div>
               )}
             </Card>

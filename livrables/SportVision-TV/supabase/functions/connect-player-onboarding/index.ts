@@ -441,7 +441,9 @@ serve(async (req) => {
           .from("club_teams")
           .select("id")
           .eq("club_id", org.id)
-          .ilike("name", teamName)
+          // Sans neutralisation, un `%` saisi ici designerait n'importe quelle equipe du club
+          // (PostgREST traduit aussi `*` en `%`) — audit 12/09/2026.
+          .ilike("name", String(teamName).replace(/[%_*\\]/g, " ").trim())
           .maybeSingle();
         if (teamLookupErr) return json({ error: teamLookupErr.message }, 500);
         if (existingTeam) {
