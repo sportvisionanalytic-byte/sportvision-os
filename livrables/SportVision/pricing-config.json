@@ -90,8 +90,8 @@
     "label": "Montage & compilation",
     "price": null,
     "priceFrom": 39.9,
-    "unit": "HT",
-    "note": "À partir de 39,90 € HT — grille par volume de matière à monter",
+    "unit": "TTC",
+    "note": "À partir de 39,90 € TTC — grille par volume de matière à monter",
     "tiers": [
       {
         "value": "Rushs prédécoupés (≤6 min)",

@@ -143,8 +143,12 @@ const PRICING_CONFIG = {
     label: 'Montage & compilation',
     price: null,
     priceFrom: 39.90,
-    unit: 'HT',
-    note: 'À partir de 39,90 € HT — grille par volume de matière à monter',
+    // 12/09/2026, décision de Fouka : le montage était le SEUL prix affiché hors taxes dans une
+    // grille grand public entièrement TTC — un parent lisait 39,90 € et aurait payé 47,88 €. Le
+    // prix client ne bouge pas, c'est l'unité affichée qui devient TTC, et le prix hors taxes en
+    // base descend à 33,25 € (catalogue_offres, migration v177).
+    unit: 'TTC',
+    note: 'À partir de 39,90 € TTC — grille par volume de matière à monter',
     tiers: [
       { value: 'Rushs prédécoupés (≤6 min)', price: 39.90 },
       { value: '1 match complet', price: 40 },
