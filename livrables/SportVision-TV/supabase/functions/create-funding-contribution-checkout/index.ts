@@ -125,12 +125,14 @@ serve(async (req) => {
       .select("montant")
       .eq("funding_id", funding_id)
       .eq("statut", "en_attente")
-      .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      // Même fenêtre que la durée de vie de la session ci-dessous : au-delà, Stripe l'a expirée
+      // et la contribution est repassée à « échoué », elle ne retient plus rien.
+      .gte("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString());
     const montantEnAttente = (enAttente || []).reduce((sum, c) => sum + Number(c.montant), 0);
 
     const montantRestant = Math.round((Number(funding.montant_cible) - Number(funding.montant_collecte || 0) - montantEnAttente) * 100) / 100;
     if (montantRestant <= 0) {
-      return json({ error: "L'objectif de cette cotisation est déjà atteint ou en cours de règlement par d'autres contributeurs — réessayez dans quelques minutes." }, 400);
+      return json({ error: "Il ne reste rien à payer pour le moment : l'objectif est atteint, ou un autre participant est en train de régler le solde. S'il ne va pas au bout, le montant se libère automatiquement au bout de trente minutes." }, 400);
     }
     if (Number(montant) > montantRestant) {
       return json({ error: `Le montant dépasse ce qu'il reste à collecter (${montantRestant.toFixed(2)} €).` }, 400);
@@ -169,6 +171,15 @@ serve(async (req) => {
       success_url: `${connectUrl}/cotisations/${funding_id}?paiement=succes&contribution_id=${contribution.id}`,
       cancel_url: `${connectUrl}/cotisations/${funding_id}?paiement=annule&contribution_id=${contribution.id}`,
       client_reference_id: contribution.id,
+      // TRENTE MINUTES, PAS VINGT-QUATRE HEURES (12/09/2026).
+      //
+      // Tant qu'une session est ouverte, le montant qu'elle vise est retenu sur le solde de la
+      // cotisation, pour éviter que deux personnes paient le même reste. C'est juste. Mais la
+      // durée par défaut de Stripe est de 24 heures : quelqu'un qui ouvrait le paiement puis
+      // fermait l'onglet bloquait donc le solde pour une journée entière, et les autres lisaient
+      // « réessayez dans quelques minutes », ce qui était faux. Trente minutes est le minimum
+      // autorisé par Stripe, et c'est très au-delà du temps qu'il faut pour payer.
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
       metadata: { funding_contribution_id: contribution.id },
       customer_email: user.email ?? undefined,
     });

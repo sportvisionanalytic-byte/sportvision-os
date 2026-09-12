@@ -311,6 +311,21 @@ serve(async (req) => {
       return json({ error: "Tarif non disponible pour le moment, contactez SportVision." }, 400);
     }
 
+    // CHIFFRER LA MISSION (12/09/2026).
+    //
+    // Une demande créée depuis Connect naît sans montant : c'est voulu, le prix se calcule ici,
+    // depuis le catalogue. Mais il n'était jamais REÉCRIT sur la prestation : dans l'OS, une
+    // mission payée par une famille continuait d'afficher « — » et pesait zéro euro dans toutes
+    // les vues de production et de rentabilité. On pose donc le total au moment où le client
+    // engage le paiement, sans jamais écraser un montant déjà fixé par le staff.
+    if (!prestation.montant_ttc) {
+      await admin
+        .from("prestations")
+        .update({ montant_ttc: totalTtc })
+        .eq("id", prestation.id)
+        .is("montant_ttc", null);
+    }
+
     let montant: number;
     // Déclaré ici, et pas dans la branche « solde » : le bloc qui suit le calcul en a besoin pour
     // distinguer « rien à payer parce que la cotisation a tout couvert » de « rien à payer parce
