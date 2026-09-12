@@ -23,6 +23,12 @@ FAIL=0
 ok(){ echo "OK   $1${2:+  ($2)}"; }
 ko(){ echo "KO   $1  -> $2"; FAIL=$((FAIL+1)); }
 
+# L'argent reel ne doit pas bouger. On releve l'historique AVANT de commencer, au lieu d'un nombre
+# ecrit en dur : celui-ci valait 4 le 10/09, un essai reel de 1,50 EUR s'est ajoute le meme jour, et
+# le test signalait un echec la ou rien n'etait casse. Ce qui compte n'est pas « combien », c'est
+# « autant qu'avant ».
+HISTO_AVANT=$(sql "select count(*)::text as v from media_orders where status in ('paid','refunded') and album_id not in (select id from media_albums where title like 'ZZ TEST%')" | jqv v)
+
 # ── Galerie reelle : 6 photos, 4 produits ────────────────────────────────
 ALBUM=$(sql "insert into media_albums (club_id, team_id, saison_id, title, event_date, status)
  values ('$CLUB','$TEAM',(select id from saisons where label='2026-2027'),'ZZ TEST checkout','2026-09-06','published') returning id;" | jqv id)
@@ -207,7 +213,7 @@ echo "$R" | grep -q '"a":0,"b":0,"c":0,"d":0,"e":0' && ok "aucun residu de ce te
 # 4 EUR du test du 07/09 est remboursee et passe en « refunded ». Elle reste en base — c'est tout
 # l'objet de la decision de Fouka — et doit donc toujours etre comptee.
 HISTO=$(sql "select count(*)::text as v from media_orders where status in ('paid','refunded') and album_id not in (select id from media_albums where title like 'ZZ TEST%')" | jqv v)
-[ "$HISTO" = "4" ] && ok "les 4 commandes historiques sont intactes (payees ou remboursees)" || ko "historique des commandes" "$HISTO au lieu de 4"
+[ "$HISTO" = "$HISTO_AVANT" ] && ok "les commandes historiques sont intactes" "$HISTO payees ou remboursees" || ko "historique des commandes" "$HISTO au lieu de $HISTO_AVANT"
 
 echo
 [ "$FAIL" = "0" ] && echo "Tout est vert." || echo "$FAIL echec(s)."

@@ -46,7 +46,20 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 
-const RATE_LIMIT_MAX = 10;
+// Limitation de débit (revue le 12/09/2026, avant les premières ventes de galeries de tournoi).
+//
+// La règle était : 10 tentatives par heure et par adresse IP. Elle protège d'un robot, mais elle
+// refuse aussi de VRAIES ventes : sur un tournoi, les familles achètent depuis le wifi du gymnase
+// ou depuis un réseau mobile, où des dizaines d'abonnés partagent la même adresse IP publique
+// (CGNAT). À partir du onzième essai de l'heure, tout le monde lisait « Trop de tentatives »,
+// y compris des gens qui n'avaient jamais essayé.
+//
+// Deux compteurs valent mieux qu'un seul mal réglé :
+//   • par adresse IP, large (40/h) : arrête un robot sans punir un lieu partagé ;
+//   • par adresse e-mail, serré (8/h) : c'est là que se voit l'acharnement d'une même personne.
+// Un acheteur normal fait un ou deux essais : il ne touche ni l'un ni l'autre.
+const RATE_LIMIT_MAX = 40;
+const RATE_LIMIT_EMAIL_MAX = 8;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 /** Une galerie de 1 000 photos reste achetable, mais une requête qui en réclame davantage est du
  * bruit ou une tentative d'épuisement : on la refuse avant de faire travailler la base. */
@@ -69,10 +82,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Même RPC que create-guest-media-checkout et les autres fonctions publiques du projet : la
 // limitation de débit est un mécanisme déjà en place, il n'y en a pas deux.
 // deno-lint-ignore no-explicit-any
-async function checkRateLimit(admin: any, identifiant: string): Promise<boolean> {
+async function checkRateLimit(admin: any, identifiant: string, max: number = RATE_LIMIT_MAX): Promise<boolean> {
   const { data, error } = await admin.rpc("check_and_record_rate_limit", {
     p_identifiant: identifiant,
-    p_max: RATE_LIMIT_MAX,
+    p_max: max,
     p_window_seconds: RATE_LIMIT_WINDOW_MS / 1000,
   });
   if (error) return false;
@@ -142,8 +155,11 @@ serve(async (req) => {
     }
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnu";
-    if (!(await checkRateLimit(admin, `gallery_checkout:${ip}`))) {
-      return json({ error: "Trop de tentatives. Réessayez dans une heure." }, 429);
+    if (!(await checkRateLimit(admin, `gallery_checkout:${ip}`, RATE_LIMIT_MAX))) {
+      return json({ error: "Trop de tentatives depuis ce réseau. Réessayez dans une heure." }, 429);
+    }
+    if (email && !(await checkRateLimit(admin, `gallery_checkout_mail:${email}`, RATE_LIMIT_EMAIL_MAX))) {
+      return json({ error: "Trop de tentatives avec cette adresse e-mail. Réessayez dans une heure." }, 429);
     }
 
     // ── LE prix, calculé en base et nulle part ailleurs ────────────────────────────────────
