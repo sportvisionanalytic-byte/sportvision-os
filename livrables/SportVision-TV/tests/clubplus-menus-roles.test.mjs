@@ -285,7 +285,10 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
 // La navigation attendue après la décision du 10/09/2026. Ce qui n'est pas listé ici ne doit PAS
 // apparaître : le test compare l'ensemble exact, pas seulement quelques absences.
 const MENUS = {
-  resp_equipe: ["Accueil", "Prestations", "Mes demandes", "Mes contenus", "Calendrier", "Messages", "Affiliations", "Matchs & résultats", "Mon profil"],
+  // 12/09 : « Galeries » (bornées à ses équipes, commit 081e32a1) et « Notifications » ont été
+  // ajoutées au menu des rôles d'équipe par d'autres chantiers. Rien à y redire : ce sont ses
+  // équipes et ses propres notifications. L'attendu suit.
+  resp_equipe: ["Accueil", "Prestations", "Mes demandes", "Mes contenus", "Galeries", "Calendrier", "Messages", "Affiliations", "Matchs & résultats", "Notifications", "Mon profil"],
   lecture_seule: ["Accueil", "Calendrier", "Équipes", "Mon profil"],
   membre_bureau: ["Accueil", "Calendrier", "Équipes", "Factures", "Contrats", "Documents", "Mon profil"],
   sponsor_mgr: ["Accueil", "Calendrier", "Sponsors", "Mon profil"],
