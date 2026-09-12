@@ -361,11 +361,21 @@ export default function RequestsPage() {
       </div>
 
       {selected.size > 0 && (
-        <div className="flex items-center justify-between rounded-sv border border-brand-blue-electric/50 bg-info-bg px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-sv border border-brand-blue-electric/50 bg-info-bg px-4 py-2.5">
           <span className="text-[12.5px] font-bold text-info-fg">{selected.size} sélectionnée{selected.size > 1 ? "s" : ""}</span>
-          <Button variant="primary" className="h-8 px-3 text-[12px]" onClick={handleValidateSelection}>
-            Annuler la sélection
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* 12/09/2026 — Le seul bouton s'appelait « Annuler la sélection », ce qui se lit
+                « vider ma sélection », et envoyait en réalité autant d'annulations de demandes en
+                base. Le dirigeant qui cochait dix demandes pour comparer, puis se ravisait,
+                annulait ses dix demandes. Le bouton dit maintenant ce qu'il fait, et le geste
+                inoffensif existe à côté. */}
+            <Button variant="secondary" className="h-8 px-3 text-[12px]" onClick={() => setSelected(new Set())}>
+              Vider la sélection
+            </Button>
+            <Button variant="danger" className="h-8 px-3 text-[12px]" onClick={handleValidateSelection}>
+              Annuler ces {selected.size} demande{selected.size > 1 ? "s" : ""}
+            </Button>
+          </div>
         </div>
       )}
 

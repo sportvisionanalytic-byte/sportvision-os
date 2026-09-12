@@ -110,10 +110,39 @@ export async function commitSeasonTransition(
   // vaut une transition incomplète mais visible (résumé avec échecs) qu'un club basculé sur une
   // nouvelle saison sans aucun rattachement dessus.
   if (result.succeeded > 0) {
+    const { data: avant } = await supabase.from("clubs").select("saison_id").eq("id", clubId).maybeSingle();
+
     const { data, error } = await supabase.from("clubs").update({ saison: toSaison }).eq("id", clubId).select("id");
     if (error) throw error;
     if (!data || data.length === 0) {
       throw new Error("Transition refusée : droits insuffisants sur ce club.");
+    }
+
+    // 12/09/2026 — Le modèle photo suit la saison. Toute la commercialisation est par saison
+    // (media_club_policy est unique par club+saison, media_products.saison_id est NOT NULL), et
+    // la bascule ne créait rien : le club basculait en juillet, la première galerie d'août
+    // n'était ouvrable par personne et rien n'était vendable, jusqu'à ce qu'un humain recrée le
+    // modèle à la main. On recopie ce qui était en vigueur ; la fonction ne réécrit jamais une
+    // politique déjà posée sur la saison cible.
+    const { data: apres } = await supabase.from("clubs").select("saison_id").eq("id", clubId).maybeSingle();
+    if (avant?.saison_id && apres?.saison_id && avant.saison_id !== apres.saison_id) {
+      await supabase
+        .rpc("copier_modele_photo_vers_saison", {
+          p_club_id: clubId,
+          p_saison_source: avant.saison_id,
+          p_saison_cible: apres.saison_id,
+        })
+        // Un échec ici ne doit pas annuler une transition d'effectif déjà faite : il est signalé
+        // dans le résumé plutôt que de faire échouer le tout.
+        .then(({ error: copieErr }) => {
+          if (copieErr) {
+            result.failed.push({
+              membershipId: "modele-photo",
+              message:
+                "Effectifs transférés, mais le modèle photo n'a pas pu être recopié sur la nouvelle saison. Prévenez SportVision avant la première galerie.",
+            });
+          }
+        });
     }
   }
 

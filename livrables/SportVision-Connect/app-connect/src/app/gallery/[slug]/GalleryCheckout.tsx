@@ -90,6 +90,12 @@ export function GalleryCheckout({
   const [email, setEmail] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
+  // 12/09/2026 — Une vente à un consommateur, avec livraison immédiate d'un contenu numérique :
+  // le vendeur doit être identifié, les conditions acceptées, et le droit de rétractation de
+  // quatorze jours expressément abandonné, faute de quoi l'acheteur peut le réclamer APRÈS avoir
+  // téléchargé ses photos. Le tunnel n'en disait pas un mot.
+  const [cgvAcceptees, setCgvAcceptees] = useState(false);
+  const [renonceRetractation, setRenonceRetractation] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
@@ -100,7 +106,7 @@ export function GalleryCheckout({
     (confirmation.trim().length >= email.trim().length || confirmation.includes("@") && confirmation.includes("."))
     && !identiques;
   const suggestion = emailValide ? suggestionAdresse(email) : null;
-  const pret = nom.trim().length >= 2 && emailValide && identiques;
+  const pret = nom.trim().length >= 2 && emailValide && identiques && cgvAcceptees && renonceRetractation;
 
   // Clavier et lecteur d'ecran (mesure axe + tabulation du 10/09/2026). La fenetre n'etait annoncee
   // comme telle a personne, le focus restait sur la page derriere le voile, Tab en ressortait vers
@@ -277,6 +283,41 @@ export function GalleryCheckout({
           </span>
         </div>
 
+        <label className="mt-4 flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={cgvAcceptees}
+            onChange={(e) => setCgvAcceptees(e.target.checked)}
+            className="mt-0.5 h-4 w-4 flex-none accent-[#2454FF]"
+          />
+          <span className="text-[12.5px] leading-relaxed text-text-soft">
+            J&apos;accepte les{" "}
+            <a
+              href="https://sportvision-an.fr/cgv.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              conditions générales de vente
+            </a>{" "}
+            de SportVision.
+          </span>
+        </label>
+
+        <label className="mt-2.5 flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={renonceRetractation}
+            onChange={(e) => setRenonceRetractation(e.target.checked)}
+            className="mt-0.5 h-4 w-4 flex-none accent-[#2454FF]"
+          />
+          <span className="text-[12.5px] leading-relaxed text-text-soft">
+            Je demande que mes photos soient disponibles immédiatement après le paiement et je
+            renonce, de ce fait, à mon droit de rétractation de quatorze jours sur ce contenu
+            numérique.
+          </span>
+        </label>
+
         <button
           type="submit"
           disabled={!pret || busy}
@@ -286,6 +327,11 @@ export function GalleryCheckout({
         </button>
         <p className="mt-2 text-center text-[11px] leading-relaxed text-text-faint">
           Paiement sécurisé par Stripe. Téléchargement immédiat après paiement, disponible 30 jours.
+        </p>
+        <p className="mt-2 text-center text-[11px] leading-relaxed text-text-faint">
+          Vendeur : Elkana Group (SportVision), SAS — 4 Place Pierre Semard, 77130
+          Montereau-Fault-Yonne. SIRET 105 173 124 00014 · TVA FR15 105 173 124 · RCS Melun.
+          contact@sportvision-an.fr
         </p>
       </form>
     </div>
