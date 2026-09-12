@@ -15554,10 +15554,10 @@ function modalDeclarerFrais(prestationId){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${lbl}">Kilométrage (km)</label>
-          <input id="frais-km" type="number" class="l-inp" placeholder="0" style="height:38px" oninput="const m=document.getElementById('frais-montant');if(m&&!m.value)m.value=Math.round(Number(this.value)*0.325*100)/100">
+          <input id="frais-km" type="number" class="l-inp" placeholder="0" style="height:38px" oninput="fraisRecalculerMontant()">
         </div>
-        <div><label style="${lbl}">Montant (€) <span style="opacity:.5;font-size:9px">0,325€/km auto</span></label>
-          <input id="frais-montant" type="number" class="l-inp" placeholder="0.00" step="0.01" style="height:38px">
+        <div><label style="${lbl}">Montant (€) <span id="frais-taux-lb" style="opacity:.5;font-size:9px">${fmtTauxKm()}/km auto</span></label>
+          <input id="frais-montant" type="number" class="l-inp" placeholder="0.00" step="0.01" style="height:38px" oninput="this.dataset.manuel='1'">
         </div>
       </div>
       <div><label style="${lbl}">Description</label>
@@ -15569,6 +15569,28 @@ function modalDeclarerFrais(prestationId){
         <button class="btn bp" onclick="soumettrefrais('${prestationId||''}')">Envoyer</button>
       </div>
     </div>`);
+}
+
+// ── Barème kilométrique ───────────────────────────────────────────────────────
+// 12/09/2026 — Deux défauts ici, signalés par Fouka.
+//
+// 1. Le montant ne se calculait QUE s'il était vide (`if(m&&!m.value)`). Dès qu'une valeur y
+//    figurait — y compris celle que le champ venait lui-même de poser — corriger le kilométrage ne
+//    changeait plus rien : on saisissait 80 km après avoir tapé 20, et le montant restait celui de
+//    20 km. Le montant suit désormais les kilomètres, SAUF si la personne l'a saisi à la main :
+//    dans ce cas c'est sa valeur qui fait foi, et on cesse de la réécrire par-dessus.
+// 2. Le taux était écrit en dur dans l'attribut HTML, à deux endroits, dont un simple libellé.
+//    Il est ici, une seule fois. Pour le changer, cette ligne suffit.
+const TAUX_KM = 0.325;
+const fmtTauxKm = () => TAUX_KM.toLocaleString('fr-FR', { minimumFractionDigits: 3 }) + ' €';
+
+function fraisRecalculerMontant(){
+  const k=document.getElementById('frais-km');
+  const m=document.getElementById('frais-montant');
+  if(!k||!m)return;
+  if(m.dataset.manuel==='1')return;
+  const km=Number(k.value);
+  m.value=km>0?Math.round(km*TAUX_KM*100)/100:'';
 }
 
 async function soumettrefrais(prestationId){
