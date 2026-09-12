@@ -123,6 +123,19 @@ async function upsertJoiningPlayerProfile(
   prenom: string,
   nom: string,
   dateNaissance: string,
+  // 12/09/2026 — LE RATTACHEMENT A UNE FICHE EXISTANTE EXIGE UN CODE.
+  //
+  // Le « claim » ci-dessous prend une fiche que le club a créée (souvent celle d'un mineur) et la
+  // rattache au compte qui vient de s'inscrire, sur la seule correspondance prénom + nom + date de
+  // naissance. Ces trois informations circulent : une feuille de match, une photo d'équipe, une
+  // conversation de parents. Sur le parcours « je rejoins un club » (aucun code demandé), cela
+  // suffisait à devenir le titulaire de la fiche d'un enfant, et donc à voir ses photos
+  // identifiées, ses autorisations et l'identité de ses parents. Même famille de faille que
+  // l'incident parent-enfant du 10/09, par une autre porte.
+  //
+  // Le claim reste ouvert au parcours « code d'invitation d'équipe » : là, le code prouve que le
+  // club a voulu cette personne. Sans code, on ne touche pas à la fiche et on dit quoi faire.
+  autoriserClaim: boolean,
 ): Promise<{ playerId: string } | { error: string }> {
   // Multi-club (04/09/2026, décision produit Fouka) — résolution par (user_id, club_id), jamais
   // user_id seul : un compte peut désormais avoir plusieurs fiches player_profiles, une par club
@@ -160,6 +173,14 @@ async function upsertJoiningPlayerProfile(
     p_nom: nom,
     p_date_naissance: dateNaissance,
   });
+
+  if (unclaimedId && !autoriserClaim) {
+    return {
+      error:
+        "Votre club a déjà une fiche à ce nom. Pour la rattacher à votre compte, demandez le code " +
+        "d'invitation de votre équipe à votre coach ou au club, puis utilisez « J'ai un code ».",
+    };
+  }
 
   if (unclaimedId) {
     const { error: claimErr } = await admin
@@ -443,7 +464,7 @@ serve(async (req) => {
       // club_id/date_naissance — d'où upsertJoiningPlayerProfile qui repasse par userClient (JWT
       // de l'appelant forwardé) pour l'UPDATE. Voir migration-connect-v81 (exception self-service
       // du trigger) et sa fonction jumelle utilisée par "join_code" ci-dessous.
-      const profileResult = await upsertJoiningPlayerProfile(admin, userClient, user.id, org.id, prenom, nom, dateNaissance);
+      const profileResult = await upsertJoiningPlayerProfile(admin, userClient, user.id, org.id, prenom, nom, dateNaissance, false);
       if ("error" in profileResult) return json({ error: profileResult.error }, 500);
 
       const { error: mrErr } = await admin.from("membership_requests").insert({
@@ -494,7 +515,7 @@ serve(async (req) => {
       if (orgLookupErr) return json({ error: orgLookupErr.message }, 500);
       if (!org) return json({ error: "Club introuvable" }, 404);
 
-      const profileResult = await upsertJoiningPlayerProfile(admin, userClient, user.id, org.id, prenom, nom, dateNaissance);
+      const profileResult = await upsertJoiningPlayerProfile(admin, userClient, user.id, org.id, prenom, nom, dateNaissance, true);
       if ("error" in profileResult) return json({ error: profileResult.error }, 500);
 
       const { error: mrErr } = await admin.from("membership_requests").insert({
