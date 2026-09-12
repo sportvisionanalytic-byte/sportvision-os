@@ -25,6 +25,12 @@ sql() { curl -s -X POST "https://api.supabase.com/v1/projects/$PROJ/database/que
   -d "$(python3 -c 'import json,sys;print(json.dumps({"query":sys.argv[1]}))' "$1")"; }
 jqv() { python3 -c "import json,sys;d=json.load(sys.stdin);print(d[0]['$1'] if isinstance(d,list) and d else '')"; }
 
+# Une adresse differente a chaque execution : depuis le 12/09/2026 le paiement limite aussi les
+# tentatives PAR ADRESSE E-MAIL (huit par heure), ce qui est voulu contre l'acharnement mais rendait
+# ce script auto-bloquant des la deuxieme execution de l'heure.
+MAIL="galerie+$(date +%s)@exemple.fr"
+MAIL2="galerie2+$(date +%s)@exemple.fr"
+
 FAIL=0
 ok(){ echo "OK   $1${2:+  ($2)}"; }
 ko(){ echo "KO   $1  -> $2"; FAIL=$((FAIL+1)); }
@@ -82,31 +88,31 @@ echo
 
 # ── 1. Paiement : 3 photos sur la formule a 5 ───────────────────────────
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"visiteur@exemple.fr\",\"nom\":\"Camille Martin\"}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"$MAIL\",\"nom\":\"Camille Martin\"}")
 echo "$RESP" | grep -q 'checkout.stripe.com' && ok "session de paiement creee pour une galerie sans club" || ko "session Stripe" "$(echo "$RESP" | head -c 250)"
 MONTANT=$(sql "select amount_cents::text as v from media_orders where album_id='$ALBUM' order by created_at desc limit 1" | jqv v)
 [ "$MONTANT" = "1500" ] && ok "prix calcule en base : 15 EUR" "$MONTANT c" || ko "prix serveur" "$MONTANT"
-GUEST=$(sql "select (purchased_by_user_id is null and guest_email='visiteur@exemple.fr')::text as v from media_orders where album_id='$ALBUM' order by created_at desc limit 1" | jqv v)
+GUEST=$(sql "select (purchased_by_user_id is null and guest_email='$MAIL')::text as v from media_orders where album_id='$ALBUM' order by created_at desc limit 1" | jqv v)
 [ "$GUEST" = "true" ] && ok "commande invitee : aucun compte cree" || ko "commande invitee" "$GUEST"
 
 # ── 2. Le prix ne se force pas depuis le navigateur ─────────────────────
 sql "delete from media_orders where album_id='$ALBUM';" > /dev/null
 curl -s -o /dev/null -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"visiteur@exemple.fr\",\"nom\":\"Camille Martin\",\"amount_cents\":1,\"total\":1}"
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"$MAIL\",\"nom\":\"Camille Martin\",\"amount_cents\":1,\"total\":1}"
 MONTANT=$(sql "select amount_cents::text as v from media_orders where album_id='$ALBUM' order by created_at desc limit 1" | jqv v)
 [ "$MONTANT" = "1500" ] && ok "montant force par le client : ignore" "$MONTANT c au lieu de 1" || ko "FUITE prix force" "$MONTANT"
 
 # ── 3. La galerie complete ──────────────────────────────────────────────
 sql "delete from media_order_items where order_id in (select id from media_orders where album_id='$ALBUM'); delete from media_orders where album_id='$ALBUM';" > /dev/null
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"offerId\":\"$OFFRE_TOUT\",\"email\":\"visiteur@exemple.fr\",\"nom\":\"Camille Martin\"}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"offerId\":\"$OFFRE_TOUT\",\"email\":\"$MAIL\",\"nom\":\"Camille Martin\"}")
 MONTANT=$(sql "select amount_cents::text as v from media_orders where album_id='$ALBUM' order by created_at desc limit 1" | jqv v)
 [ "$MONTANT" = "3500" ] && ok "formule « toutes les photos » : 35 EUR" || ko "prix galerie complete" "$MONTANT — $(echo "$RESP" | head -c 150)"
 
 # ── 4. Livraison, comme apres le webhook ────────────────────────────────
 ORDER=$(sql "select id from media_orders where album_id='$ALBUM' order by created_at desc limit 1" | jqv id)
 GTOKEN=$(sql "update media_orders set status='paid', paid_at=now() where id='$ORDER';
- insert into media_download_grants (order_id, email) values ('$ORDER','visiteur@exemple.fr') returning token;" | jqv token)
+ insert into media_download_grants (order_id, email) values ('$ORDER','$MAIL') returning token;" | jqv token)
 SUM=$(sql "select (photos)::text as v from media_gallery_order_summary('$(printf '%s' "$GTOKEN" | sed "s/'/''/g")')" | python3 -c "import json,sys;d=json.load(sys.stdin);print(len(json.loads(d[0]['v'])) if d and d[0].get('v') else 0)")
 [ "$SUM" = "4" ] && ok "la galerie complete livre les 4 photos" || ko "recapitulatif" "$SUM"
 ASSET1=$(sql "select id from media_assets where album_id='$ALBUM' limit 1" | jqv id)
@@ -141,11 +147,11 @@ SK=$(grep '^STRIPE_SECRET_KEY=rk_live' .env 2>/dev/null | cut -d= -f2-)
 if [ -n "$SK" ]; then
   EXP=0
   for S in $(curl -s "https://api.stripe.com/v1/checkout/sessions?limit=20&status=open" -u "$SK:" \
-      | python3 -c "import json,sys;[print(s['id']) for s in json.load(sys.stdin).get('data',[]) if (s.get('customer_email') or (s.get('customer_details') or {}).get('email') or '')=='visiteur@exemple.fr']"); do
+      | python3 -c "import json,sys;[print(s['id']) for s in json.load(sys.stdin).get('data',[]) if (s.get('customer_email') or (s.get('customer_details') or {}).get('email') or '')=='$MAIL']"); do
     curl -s -o /dev/null -X POST "https://api.stripe.com/v1/checkout/sessions/$S/expire" -u "$SK:"; EXP=$((EXP+1))
   done
   RESTE=$(curl -s "https://api.stripe.com/v1/checkout/sessions?limit=20&status=open" -u "$SK:" \
-      | python3 -c "import json,sys;print(sum(1 for s in json.load(sys.stdin).get('data',[]) if (s.get('customer_email') or (s.get('customer_details') or {}).get('email') or '')=='visiteur@exemple.fr'))")
+      | python3 -c "import json,sys;print(sum(1 for s in json.load(sys.stdin).get('data',[]) if (s.get('customer_email') or (s.get('customer_details') or {}).get('email') or '')=='$MAIL'))")
   [ "$RESTE" = "0" ] && ok "sessions Stripe de test expirees" "$EXP" || ko "sessions Stripe encore ouvertes" "$RESTE"
 fi
 

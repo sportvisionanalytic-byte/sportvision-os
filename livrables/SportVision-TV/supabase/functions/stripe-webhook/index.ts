@@ -318,8 +318,32 @@ serve(async (req) => {
   }
 
   try {
-    if (event.type === "checkout.session.completed") {
+    // Le même traitement sert aux deux événements : « completed » quand l'argent est là tout de
+    // suite (carte), « async_payment_succeeded » quand il arrive plus tard (virement SEPA et
+    // consorts). Sans le second, une commande payée par un moyen différé serait restée en attente
+    // pour toujours, maintenant que la livraison exige l'encaissement.
+    if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      // LIVRER APRÈS L'ENCAISSEMENT, PAS APRÈS LE CLIC (12/09/2026).
+      //
+      // « checkout.session.completed » veut dire « le client est allé au bout du formulaire », pas
+      // « l'argent est arrivé ». Avec une carte, les deux coïncident : payment_status vaut 'paid'
+      // tout de suite. Avec un moyen de paiement différé (virement SEPA, Klarna, Bancontact…),
+      // l'événement arrive avec payment_status = 'unpaid' et l'encaissement survient plus tard,
+      // via checkout.session.async_payment_succeeded. Rien ici ne le distinguait : il aurait suffi
+      // d'activer un de ces moyens dans le tableau de bord Stripe pour livrer des photos, des
+      // droits d'accès et des abonnements sans avoir été payé.
+      //
+      // 'no_payment_required' est le cas normal d'une commande à 0 euro (galerie offerte) : elle
+      // se livre, il n'y a rien à encaisser.
+      if (session.payment_status && !["paid", "no_payment_required"].includes(session.payment_status)) {
+        console.log(`[webhook] session ${session.id} ignoree : payment_status=${session.payment_status}`);
+        return new Response(JSON.stringify({ received: true, ignore: "paiement non encaisse" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
       // Un projet collectif (team_project_contributions, migration-clubplus-v21.sql)
       // utilise aussi client_reference_id (même convention que paiement_id ci-dessous),
       // d'où le branchement explicite sur contribution_id AVANT le repli sur

@@ -19,6 +19,12 @@ sql() { curl -s -X POST "https://api.supabase.com/v1/projects/$PROJ/database/que
   -d "$(python3 -c 'import json,sys;print(json.dumps({"query":sys.argv[1]}))' "$1")"; }
 jqv() { python3 -c "import json,sys;d=json.load(sys.stdin);print(d[0]['$1'] if isinstance(d,list) and d else '')"; }
 
+# Une adresse differente a chaque execution : depuis le 12/09/2026 le paiement limite aussi les
+# tentatives PAR ADRESSE E-MAIL (huit par heure), ce qui est voulu contre l'acharnement mais rendait
+# ce script auto-bloquant des la deuxieme execution de l'heure.
+MAIL="galerie+$(date +%s)@exemple.fr"
+MAIL2="galerie2+$(date +%s)@exemple.fr"
+
 FAIL=0
 ok(){ echo "OK   $1${2:+  ($2)}"; }
 ko(){ echo "KO   $1  -> $2"; FAIL=$((FAIL+1)); }
@@ -85,30 +91,30 @@ echo
 
 # ── 1. Checkout : 4 photos -> le pack 5 doit s'appliquer (15 EUR) ────────
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"parent@exemple.fr\",\"nom\":\"Camille Martin\"}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"$MAIL\",\"nom\":\"Camille Martin\"}")
 echo "$RESP" | grep -q 'checkout.stripe.com' && ok "session de paiement Stripe creee" || ko "session Stripe" "$(echo "$RESP" | head -c 200)"
 
 MONTANT=$(sql "select amount_cents::text as v from media_orders order by created_at desc limit 1" | jqv v)
 [ "$MONTANT" = "1500" ] && ok "prix calcule EN BASE : 4 photos = pack 5 (15 EUR)" "$MONTANT c" || ko "prix serveur" "$MONTANT"
 NBITEMS=$(sql "select count(*)::text as v from media_order_items oi join media_orders o on o.id=oi.order_id where o.album_id='$ALBUM'" | jqv v)
 [ "$NBITEMS" = "4" ] && ok "4 lignes de commande, une par photo" || ko "lignes de commande" "$NBITEMS"
-GUEST=$(sql "select (purchased_by_user_id is null and guest_email='parent@exemple.fr')::text as v from media_orders order by created_at desc limit 1" | jqv v)
+GUEST=$(sql "select (purchased_by_user_id is null and guest_email='$MAIL')::text as v from media_orders order by created_at desc limit 1" | jqv v)
 [ "$GUEST" = "true" ] && ok "commande INVITEE : aucun compte cree, aucun beneficiaire invente" || ko "commande invitee" "$GUEST"
 
 # ── 2. Le client ne peut pas choisir son prix ───────────────────────────
 sql "delete from media_orders where album_id='$ALBUM';" > /dev/null
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"parent@exemple.fr\",\"nom\":\"Camille Martin\",\"amount_cents\":1,\"total\":1,\"price\":1}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"$MAIL\",\"nom\":\"Camille Martin\",\"amount_cents\":1,\"total\":1,\"price\":1}")
 MONTANT=$(sql "select amount_cents::text as v from media_orders order by created_at desc limit 1" | jqv v)
 [ "$MONTANT" = "1500" ] && ok "montant force par le client : ignore" "$MONTANT c au lieu de 1" || ko "FUITE prix force" "$MONTANT"
 
 # ── 3. Jeton invalide, photos d'une autre galerie ───────────────────────
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"faux\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"a@b.fr\",\"nom\":\"Test Test\"}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"faux\",\"assetIds\":$IDS,\"offerId\":\"$OFFRE_PACK\",\"email\":\"$MAIL2\",\"nom\":\"Test Test\"}")
 echo "$RESP" | grep -q "plus disponible" && ok "mauvais jeton : aucun paiement possible" || ko "mauvais jeton" "$(echo "$RESP" | head -c 120)"
 
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":[\"00000000-0000-0000-0000-000000000123\"],\"offerId\":\"$OFFRE_UNITE\",\"email\":\"a@b.fr\",\"nom\":\"Test Test\"}")
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":[\"00000000-0000-0000-0000-000000000123\"],\"offerId\":\"$OFFRE_UNITE\",\"email\":\"$MAIL2\",\"nom\":\"Test Test\"}")
 echo "$RESP" | grep -q "plus disponible" && ok "photo etrangere a la galerie : refusee" || ko "photo etrangere" "$(echo "$RESP" | head -c 120)"
 
 RESP=$(curl -s -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
@@ -118,14 +124,14 @@ echo "$RESP" | grep -q "e-mail invalide" && ok "adresse e-mail invalide : refuse
 # ── 4. Livraison : on place la commande dans l'etat que produit le webhook ──
 sql "delete from media_orders where album_id='$ALBUM';" > /dev/null
 curl -s -o /dev/null -X POST "$SB/functions/v1/create-gallery-checkout" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
-  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS2,\"offerId\":\"$OFFRE_PACK\",\"email\":\"parent@exemple.fr\",\"nom\":\"Camille Martin\"}"
+  -d "{\"slug\":\"$SLUG\",\"token\":\"$TOKEN\",\"assetIds\":$IDS2,\"offerId\":\"$OFFRE_PACK\",\"email\":\"$MAIL\",\"nom\":\"Camille Martin\"}"
 # La formule PACK, pas celle a l'unite : la livraison porte sur DEUX photos, et une formule a
 # l'unite en couvre une seule — « Vous avez choisi 2 photos, cette formule en couvre 1 ». La
 # commande n'etait alors jamais creee, et toute la moitie « livraison » de ce script echouait avec
 # « Requete incomplete » sans que rien n'explique pourquoi.
 ORDER=$(sql "select id from media_orders where album_id='$ALBUM' order by created_at desc limit 1" | jqv id)
 GTOKEN=$(sql "update media_orders set status='paid', paid_at=now() where id='$ORDER';
- insert into media_download_grants (order_id, email) values ('$ORDER','parent@exemple.fr') returning token;" | jqv token)
+ insert into media_download_grants (order_id, email) values ('$ORDER','$MAIL') returning token;" | jqv token)
 
 SUM=$(sql "select (photos)::text as v from media_gallery_order_summary('$(printf '%s' "$GTOKEN" | sed "s/'/''/g")')" | python3 -c "import json,sys;d=json.load(sys.stdin);print(len(json.loads(d[0]['v'])) if d else 0)")
 [ "$SUM" = "2" ] && ok "recapitulatif de commande : 2 photos" || ko "recapitulatif" "$SUM"
@@ -189,11 +195,11 @@ SK=$(grep '^STRIPE_SECRET_KEY=rk_live' .env 2>/dev/null | cut -d= -f2-)
 if [ -n "$SK" ]; then
   EXP=0
   for ID in $(curl -sS "https://api.stripe.com/v1/checkout/sessions?limit=100&status=open" -u "$SK:" \
-      | python3 -c "import json,sys;[print(s['id']) for s in json.load(sys.stdin).get('data',[]) if (s.get('customer_email') or (s.get('customer_details') or {}).get('email') or '') in ('parent@exemple.fr','a@b.fr')]"); do
+      | python3 -c "import json,sys;[print(s['id']) for s in json.load(sys.stdin).get('data',[]) if (s.get('customer_email') or (s.get('customer_details') or {}).get('email') or '') in ('$MAIL','$MAIL2')]"); do
     curl -sS -o /dev/null -X POST "https://api.stripe.com/v1/checkout/sessions/$ID/expire" -u "$SK:" && EXP=$((EXP+1))
   done
   RESTE=$(curl -sS "https://api.stripe.com/v1/checkout/sessions?limit=100&status=open" -u "$SK:" \
-      | python3 -c "import json,sys;print(sum(1 for s in json.load(sys.stdin).get('data',[]) if (s.get('customer_email') or (s.get('customer_details') or {}).get('email') or '') in ('parent@exemple.fr','a@b.fr')))")
+      | python3 -c "import json,sys;print(sum(1 for s in json.load(sys.stdin).get('data',[]) if (s.get('customer_email') or (s.get('customer_details') or {}).get('email') or '') in ('$MAIL','$MAIL2')))")
   [ "$RESTE" = "0" ] && ok "sessions Stripe de test expirees" "$EXP" || ko "sessions Stripe encore ouvertes" "$RESTE"
 fi
 
