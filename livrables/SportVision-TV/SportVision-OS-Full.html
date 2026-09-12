@@ -12850,6 +12850,10 @@ async function _galTraiterFichier(entry){
     // trois fichiers existent réellement (§7).
     const fin=await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{
       thumb_path:thumbPath,preview_path:previewPath,status:'ready',processing_error:null,
+      // On garde la trace du reglage REELLEMENT applique a cet apercu (v181) : le filigrane se
+      // pose a la fabrication, donc l'activer plus tard ne protege pas ce qui est deja depose.
+      // Sans cette trace, rien ne permettait de le savoir avant de mettre la galerie en vente.
+      preview_watermarked:filigrane,
     }});
     if(sbErr(fin)){setEtat('erreur','Finalisation : '+(msgErreur(fin,'échec')));return;}
     setEtat('termine','');
@@ -13296,6 +13300,20 @@ async function galMettreEnLigne(){
   // erreur ne se rattrape donc pas. Depublier et archiver demandaient deja confirmation ; celle-ci
   // manquait, alors que c'est la seule qui sort de SportVision. (12/09/2026)
   const nbPretes=(_galAssets||[]).filter(a=>a.status==='ready').length;
+
+  // GALERIE PAYANTE : des apercus sans filigrane partiraient en clair, en 1600 px (12/09/2026).
+  // Le filigrane se pose a la fabrication de l'apercu, donc l'activer apres un depot ne protege
+  // rien de ce qui est deja la. On le dit ici, une fois, au seul moment ou ca compte.
+  if(!gratuit&&_galAlbum.watermark_previews!==false&&_galAlbum.status!=='published'){
+    const nus=(_galAssets||[]).filter(a=>a.status==='ready'&&a.preview_watermarked!==true).length;
+    if(nus){
+      const regenerer=await demanderConfirmation(
+        nus+' photo'+(nus>1?'s ont':' a')+' un apercu SANS filigrane, alors que cette galerie est payante.\n\nLe filigrane est appose au moment du depot : l\'activer ensuite ne protege pas les photos deja versees. Mises en ligne telles quelles, elles sont visibles en grand et telechargeables sans payer.\n\nRegenerer les apercus prend quelques secondes par photo.',
+        {titre:'Des apercus ne sont pas proteges',action:'Regenerer maintenant',danger:false});
+      if(regenerer){ await galRegenererApercus(); return; }
+    }
+  }
+
   if(_galAlbum.status!=='published'){
     if(!nbPretes){
       const sansPhoto=await demanderConfirmation(
@@ -13432,6 +13450,8 @@ async function galRegenererApercus(){
       const u1=await sbUpload('galerie-previews',a.thumb_path,thumb);
       const u2=await sbUpload('galerie-previews',a.preview_path,preview);
       if(!u1||!u2)throw new Error('envoi impossible');
+      // La trace suit le fichier : c'est elle que le controle avant mise en ligne regarde (v181).
+      await sbFetch('media_assets?id=eq.'+a.id,{method:'PATCH',body:{preview_watermarked:filigrane}});
       bitmap.close&&bitmap.close();
       faits++;
     }catch(e){
