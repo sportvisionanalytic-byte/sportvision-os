@@ -229,18 +229,39 @@ serve(async (req) => {
           // On compare (date, adversaire, competition) et NON le libelle d'equipe : deux
           // ecritures peuvent nommer la meme equipe differemment (« SENIORS 3 » cote pages de
           // saison, « Seniors 3 » cote API), et un doublon est deja passe par cette faille.
-          // Deux equipes d'un meme club peuvent affronter le meme adversaire le meme jour, mais
-          // jamais dans la meme competition.
+          // 12/09/2026 — La regle « deux equipes d'un meme club ne s'affrontent jamais dans la
+          // meme competition le meme jour » est FAUSSE, et la production le montre : chez SF
+          // Villemomble, le 05/09 contre « Interne » en « Amical », HUIT lignes (U11 x4, U12 x4) ;
+          // le 12/09 contre « My Events » en « Tournoi », quatre. Un plateau de jeunes viole la
+          // regle systematiquement. Consequence : le premier match cree faisait passer tous les
+          // suivants pour des doublons, et les matchs federaux des autres equipes n'etaient jamais
+          // crees — sans erreur, sans trace, sans rien a comprendre.
+          //
+          // On garde la tolerance sur le LIBELLE d'equipe, qui etait la vraie raison de l'exclure
+          // (« SENIORS 3 » vs « Seniors 3 »), mais on compare desormais ce libelle NORMALISE.
+          const normEquipe = (v: unknown) =>
+            String(v ?? "")
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9]/g, "");
+
           let requete = admin
             .from("club_matches")
-            .select("id")
+            .select("id, team")
             .eq("club_id", s.club_id)
             .eq("opponent", ligne.opponent)
             .eq("match_date", ligne.match_date!);
           requete = ligne.competition
             ? requete.eq("competition", ligne.competition)
             : requete.is("competition", null);
-          const { data: jumeau } = await requete.limit(1).maybeSingle();
+          const { data: candidats } = await requete.limit(50);
+          const cible = normEquipe(ligne.team);
+          const jumeau = (candidats ?? []).find((c: { team?: string | null }) =>
+            // Une ligne sans equipe nommee reste traitee comme un jumeau possible : c'est le cas
+            // historique d'avant la resolution d'equipe, et on ne veut pas la dupliquer.
+            cible === "" || normEquipe(c.team) === "" || normEquipe(c.team) === cible,
+          ) ?? null;
           if (jumeau) {
             inchanges++;
           } else {

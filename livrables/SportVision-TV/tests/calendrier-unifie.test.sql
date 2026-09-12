@@ -207,8 +207,12 @@ begin
   declare v_saison uuid;
   begin
     perform set_config('role','postgres',true);
+    -- 12/09/2026 — La saison du decor n'a pas besoin d'etre ACTIVE : ce qui borne les seances,
+    -- c'est la saison rattachee a l'equipe, pas la saison active du moment. Et depuis la v203, la
+    -- base n'accepte qu'une seule saison active — deux ont coexiste en production, ce qui faisait
+    -- naitre des galeries sur la mauvaise saison.
     insert into saisons (label, date_debut, date_fin, active)
-    values ('ZZ 2026-2027', date '2026-09-01', date '2026-12-20', true) returning id into v_saison;
+    values ('ZZ 2026-2027', date '2026-09-01', date '2026-12-20', false) returning id into v_saison;
     update club_teams set saison_id = v_saison where id = v_equipe;
     perform pg_temp.incarner(v_cm);
 
