@@ -46,6 +46,7 @@ const LIVRABLE_TYPE_MAP: Record<string, MediaAssetKind> = {
 
 interface ClubLivrableRow {
   id: string;
+  club_id: string | null;
   prestation_id: string;
   nom: string;
   type_livrable: string | null;
@@ -133,9 +134,17 @@ export async function fetchClubMediaAssets(supabase: SupabaseClient, organizatio
     // club_media ci-dessus (tableau libre-service du club, sans validation SportVision). La vue
     // elle-même filtre déjà sur statut livré/consulté + is_club_member(club_id) : tout ce qui en
     // sort est par construction final et déjà validé, jamais un brouillon.
+    // 12/09/2026 — Le filtre par club manquait ici, seul des cinq sources de cette fonction : il
+    // était entièrement délégué à la vue, dont la clause est `is_club_member(cl.id)`. Or
+    // `is_club_member` est vraie pour TOUS les clubs où l'on a un membership, et pour TOUS les
+    // clubs de la plateforme dès qu'une agence CM porte `cm_super_access`. Une personne membre de
+    // deux clubs voyait donc dans la bibliothèque du club A les livrables du club B, avec leur
+    // lien réel et cliquable. Aucune fuite constatée aujourd'hui (aucun compte multi-clubs, aucun
+    // super-accès), mais le défaut s'activait au premier des deux.
     supabase
       .from("club_media_livrables")
-      .select("id, prestation_id, nom, type_livrable, date_validation, created_at, lien_url")
+      .select("id, club_id, prestation_id, nom, type_livrable, date_validation, created_at, lien_url")
+      .eq("club_id", organizationId)
       .order("created_at", { ascending: false }),
     // Galeries de production (media_albums, page dédiée galeries/page.tsx) : mêmes photos, pas de
     // copie de table — media_club_galleries() est déjà la lecture RLS-correcte (membre du club OU
@@ -200,7 +209,9 @@ export async function fetchClubMediaAssets(supabase: SupabaseClient, organizatio
 
   const fromLivrables: MediaAsset[] = ((livrablesRes.data ?? []) as ClubLivrableRow[]).map((row) => ({
     id: `livrable-${row.id}`,
-    organizationId,
+    // Le club REEL du livrable, pas celui du contexte : sinon le garde-fou de la fiche détail
+    // (`asset.organizationId !== clubId`) compare une valeur à elle-même et ne contrôle rien.
+    organizationId: row.club_id ?? organizationId,
     name: row.nom,
     kind: LIVRABLE_TYPE_MAP[row.type_livrable ?? ""] ?? "document",
     mimeType: "",
@@ -334,12 +345,35 @@ export async function setMediaVisibility(
   if (!ref) throw new Error("Contenu invalide.");
 
   if (next.mode === "organization") {
-    const { error } = await supabase
+    // 12/09/2026 — Sans `.select()`, PostgREST répond 204 sans erreur quand la RLS ne laisse
+    // passer aucune ligne. `mar_manager_delete` exige is_club_admin ou éducateur de l'équipe :
+    // pour un trésorier, un secrétaire, un membre du bureau ou un coach hors de son équipe, le
+    // retrait ne touchait rien, ne levait rien, et l'écran affichait « Privé Club+ ».
+    //
+    // C'est précisément le geste du droit à l'image : un parent demande le retrait d'une photo de
+    // son enfant, la secrétaire coche « Privé Club+ », l'écran confirme, et la photo reste
+    // visible de toutes les familles. Le seul mode qui mentait était celui du retrait.
+    const { data, error } = await supabase
       .from("media_access_rules")
       .delete()
       .eq("media_ref_type", ref.refType)
-      .eq("media_ref_id", ref.refId);
+      .eq("media_ref_id", ref.refId)
+      .select("id");
     if (error) throw error;
+    if (!data || data.length === 0) {
+      // Aucune ligne supprimée : soit il n'y avait aucune règle (le média était déjà privé, rien
+      // à faire), soit la RLS a refusé. On distingue les deux avant de parler.
+      const { data: restantes } = await supabase
+        .from("media_access_rules")
+        .select("id")
+        .eq("media_ref_type", ref.refType)
+        .eq("media_ref_id", ref.refId);
+      if (restantes && restantes.length > 0) {
+        throw new Error(
+          "Rien n'a été enregistré : seul un administrateur du club, ou l'éducateur de l'équipe concernée, peut retirer un contenu des familles.",
+        );
+      }
+    }
     return;
   }
 

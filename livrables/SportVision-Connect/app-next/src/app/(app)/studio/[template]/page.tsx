@@ -160,7 +160,7 @@ function StudioTemplateContent() {
   function composeBodyText(): string {
     const parts = [values.comment];
     for (const field of template!.formFields) {
-      if (field === "team" || field === "comment" || field === "photo") continue;
+      if (field === "team" || field === "comment") continue;
       if (values[field]) parts.push(`${STUDIO_FIELD_LABELS[field]} : ${values[field]}`);
     }
     return parts.filter(Boolean).join("\n");
@@ -345,18 +345,30 @@ function FormField({
   teamNames: string[];
 }) {
   if (field === "photo") {
+    // 12/09/2026 — C'était une zone de dépôt inerte : le fichier n'était jamais lu ni téléversé
+    // (aucun appel storage nulle part dans le chemin Studio), et `composeBodyText` sautait même
+    // le champ. Le club envoyait sa demande, l'écran confirmait « 1 crédit réservé », et le CM
+    // recevait un brief sans photo ni la moindre trace qu'une photo avait été jointe.
+    //
+    // Tant qu'aucun dépôt de fichier n'existe côté Club+, on demande ce qui marche réellement
+    // aujourd'hui : un lien. Et on le dit, au lieu de promettre un téléversement qui n'a pas lieu.
     return (
-      <label className="col-span-full flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong bg-surface-alt px-4 py-6 text-center transition-colors duration-sv hover:border-brand-blue-electric">
-        <UploadCloud className="h-5 w-5 text-text-faint" aria-hidden />
-        <span className="text-[12.5px] font-bold text-text-soft">
-          {value ? value : "Glissez une photo ou cliquez pour en choisir une"}
+      <label className="col-span-full flex flex-col gap-1.5">
+        <span className="text-[12.5px] font-bold text-text-soft">Photo à utiliser</span>
+        <div className="flex items-center gap-2 rounded-xl border border-border-strong bg-surface-alt px-3">
+          <UploadCloud className="h-4 w-4 flex-none text-text-faint" aria-hidden />
+          <input
+            type="url"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Lien vers la photo (Drive, WeTransfer, iCloud…)"
+            className="h-11 flex-1 bg-transparent text-[14px] outline-none"
+          />
+        </div>
+        <span className="text-[12px] text-text-soft">
+          Collez un lien de partage, ou envoyez la photo à votre CM par la messagerie : elle sera rattachée à
+          cette demande.
         </span>
-        <input
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          onChange={(e) => onChange(e.target.files?.[0]?.name ?? "")}
-        />
       </label>
     );
   }

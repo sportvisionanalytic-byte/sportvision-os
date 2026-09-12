@@ -60,7 +60,7 @@ export const STUDIO_FIELD_LABELS: Record<StudioFieldKey, string> = {
   sponsor: "Sponsor",
   player: "Joueur",
   title: "Titre / objet",
-  photo: "Photo",
+  photo: "Photo (lien)",
   comment: "Commentaire",
 };
 

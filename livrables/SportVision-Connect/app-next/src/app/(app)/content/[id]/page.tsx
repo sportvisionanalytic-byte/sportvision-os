@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/session-context";
-import { canAccess } from "@/lib/permissions";
+import { administreLeClub, canAccess } from "@/lib/permissions";
 import { fetchClubMediaAssets } from "@/lib/data/club/content";
 import { fetchClientLivrables } from "@/lib/data/projet/livrables";
 import { createClient } from "@/lib/supabase/client";
@@ -89,7 +89,15 @@ export default function MediaDetailPage({ params }: { params: { id: string } }) 
       // Joueur (contenus déjà filtrés par la RLS famille) ni l'espace Projet (livrables, pas de
       // media_access_rules). Le backend (is_club_admin/is_team_educateur) reste la vraie barrière
       // si un membre sans droit ouvrait quand même cette action.
-      canEditVisibility={!isPlayer && !isProjet}
+      // 12/09/2026 — Le bouton était proposé à TOUS les rôles de club, alors que le commentaire
+      // ci-dessus annonce « Admin/CM du club uniquement » et que la base ne laisse passer que
+      // is_club_admin ou l'éducateur de l'équipe. Un trésorier ou une secrétaire cochait « Privé
+      // Club+ », l'écran confirmait, et rien n'était retiré. On aligne l'écran sur la base ;
+      // l'éducateur d'équipe, lui, continue de passer par le refus explicite renvoyé au clic,
+      // faute de connaître ici l'équipe portée par la règle.
+      canEditVisibility={
+        !isPlayer && !isProjet && (administreLeClub(ctx) || ctx.membership.role === "external_cm")
+      }
     />
   );
 }

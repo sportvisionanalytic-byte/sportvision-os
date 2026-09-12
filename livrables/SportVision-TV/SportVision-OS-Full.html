@@ -9950,11 +9950,18 @@ async function nommerResponsablePole(poleId,userId){
     for(const r of oldResponsables){
       await sbFetch('pole_affectations?pole_id=eq.'+poleId+'&user_id=eq.'+r.user_id,{method:'PATCH',body:{role_pole:'membre'}});
     }
-    const already=currentList.find(a=>a.user_id===userId);
-    if(already){
-      await sbFetch('pole_affectations?pole_id=eq.'+poleId+'&user_id=eq.'+userId,{method:'PATCH',body:{role_pole:'responsable'}});
-    }else{
-      await sbFetch('pole_affectations',{method:'POST',body:{pole_id:poleId,user_id:userId,role_pole:'responsable'}});
+    // 12/09/2026 — Aucun de ces appels ne testait son resultat : l'ecriture sur
+    // `pole_affectations` est reservee a `admin` en RLS, et un compte sans ce droit voyait
+    // « Responsable mis a jour » alors que rien n'avait bouge. C'est le faux succes ferme le
+    // 10/09, qui avait survecu ici parce que le filtre porte sur DEUX colonnes : `Prefer:
+    // return=representation` rend alors un tableau, vide quand la RLS refuse, sans erreur.
+    const _ecrit=already
+      ? await sbFetch('pole_affectations?pole_id=eq.'+poleId+'&user_id=eq.'+userId,{method:'PATCH',body:{role_pole:'responsable'},headers:{Prefer:'return=representation'}})
+      : await sbFetch('pole_affectations',{method:'POST',body:{pole_id:poleId,user_id:userId,role_pole:'responsable'},headers:{Prefer:'return=representation'}});
+    if(sbErr(_ecrit)){toast('Erreur : '+msgErreur(_ecrit,'nomination impossible.'),'er');return;}
+    if(Array.isArray(_ecrit)&&_ecrit.length===0){
+      toast('Nomination refusée : seul un administrateur peut nommer un responsable de pôle.','er');
+      return;
     }
     closeModal();
     toast('Responsable mis à jour.','ok');
@@ -34825,14 +34832,30 @@ async function sauverPolesCollaborateur(id){
     // le rôle pôle demandé diffère de l'actuel — UPDATE, jamais géré par le add/remove ci-dessus
     // (qui ne gère que la présence/absence de la ligne, pas sa valeur role_pole).
     const toUpdateRole=currentList.filter(c=>wanted.includes(c.pole_id)&&((wantedResponsable.has(c.pole_id)?'responsable':'membre')!==c.role_pole));
+    // 12/09/2026 — Aucune de ces trois boucles ne testait son resultat. L'ecriture sur
+    // `pole_affectations` est reservee a `admin` : un responsable de production voyait
+    // « Pole(s) mis a jour » alors que rien n'avait bouge. Meme faux succes que le 10/09, qui a
+    // survecu ici parce qu'un filtre a deux colonnes rend un tableau VIDE, sans erreur, quand la
+    // RLS refuse. On demande la representation et on compte ce qui est revenu.
+    const _repr={Prefer:'return=representation'};
+    let _refus=false;
+    const _verifier=r=>{
+      if(sbErr(r)){err.textContent='Erreur : '+msgErreur(r,'enregistrement impossible.');_refus=true;return false;}
+      if(Array.isArray(r)&&r.length===0){_refus=true;return false;}
+      return true;
+    };
     for(const poleId of toAdd){
-      await sbFetch('pole_affectations',{method:'POST',body:{pole_id:poleId,user_id:id,role_pole:wantedResponsable.has(poleId)?'responsable':'membre'}});
+      if(!_verifier(await sbFetch('pole_affectations',{method:'POST',body:{pole_id:poleId,user_id:id,role_pole:wantedResponsable.has(poleId)?'responsable':'membre'},headers:_repr})))break;
     }
-    for(const poleId of toRemove){
-      await sbFetch('pole_affectations?pole_id=eq.'+poleId+'&user_id=eq.'+id,{method:'DELETE'});
+    if(!_refus)for(const poleId of toRemove){
+      if(!_verifier(await sbFetch('pole_affectations?pole_id=eq.'+poleId+'&user_id=eq.'+id,{method:'DELETE',headers:_repr})))break;
     }
-    for(const c of toUpdateRole){
-      await sbFetch('pole_affectations?pole_id=eq.'+c.pole_id+'&user_id=eq.'+id,{method:'PATCH',body:{role_pole:wantedResponsable.has(c.pole_id)?'responsable':'membre'}});
+    if(!_refus)for(const c of toUpdateRole){
+      if(!_verifier(await sbFetch('pole_affectations?pole_id=eq.'+c.pole_id+'&user_id=eq.'+id,{method:'PATCH',body:{role_pole:wantedResponsable.has(c.pole_id)?'responsable':'membre'},headers:_repr})))break;
+    }
+    if(_refus){
+      if(!err.textContent||err.textContent==='Enregistrement…')err.textContent='Modification refusée : seul un administrateur peut changer les pôles d\'un collaborateur.';
+      return;
     }
     closeModal();
     toast('Pôle(s) mis à jour.','ok');
@@ -35882,13 +35905,21 @@ async function openNotifPanel(){
       </div>`:'')
       +data.map(n=>{
         const p=NOTIF_PRIORITY_CFG[n.priorite]||NOTIF_PRIORITY_CFG.normale;
-        const action=n.lien_prestation_id
+        // 12/09/2026 — Ouvrir une notification la marque lue. Seule la branche « aucun lien »
+        // appelait `marquerNotifLu` : toutes les autres naviguaient sans rien ecrire, et la
+        // notification restait non lue pour toujours. Mesure en base : 392 notifications, ZERO
+        // lue. La pastille rouge etait permanente pour tout le monde, donc plus informative du
+        // tout — on finit par ne plus la regarder, et c'est la notification utile qu'on rate.
+        const _cible=n.lien_prestation_id
           ?actionNotification(n)
           :n.lien_client_id
             ?`closeModal();modalModifierClientById('${n.lien_client_id}')`
             :n.lien_clubplus_signup_request_id
               ?`closeModal();modalDemandesClubConnect()`
-              :`marquerNotifLu('${n.id}')`;
+              :null;
+        const action=_cible
+          ?`marquerNotifLuSansRouvrir('${n.id}');${_cible}`
+          :`marquerNotifLu('${n.id}')`;
         return`<div onclick="${action}" style="display:flex;gap:12px;padding:11px 12px;border-radius:8px;margin-bottom:3px;background:${!n.lue?p.bg:'transparent'};border:1px solid ${!n.lue?p.border:'transparent'};cursor:pointer;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='${!n.lue?p.bg:'transparent'}'">
           <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;padding-top:2px">
             <div style="width:8px;height:8px;border-radius:50%;background:${!n.lue?p.dot:'var(--b2)'};flex-shrink:0"></div>
@@ -35908,6 +35939,13 @@ async function openNotifPanel(){
 }
 async function marquerNotifLu(id){
   try{await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:true}});openNotifPanel();}catch(e){}
+}
+// Meme geste, sans rouvrir le panneau : la notification ouvre un ecran, rouvrir le panneau
+// par-dessus le refermerait aussitot (12/09/2026).
+function marquerNotifLuSansRouvrir(id){
+  try{sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:true}}).then(()=>{
+    if(typeof updateNavBadges==='function'&&S&&S.role)updateNavBadges(S.role);
+  }).catch(()=>{});}catch(e){}
 }
 async function marquerToutLu(uid){
   try{await sbFetch('notifications?destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)',{method:'PATCH',body:{lue:true}});openNotifPanel();}catch(e){}
