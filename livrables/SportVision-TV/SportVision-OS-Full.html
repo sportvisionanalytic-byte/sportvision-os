@@ -19209,6 +19209,9 @@ async function kitsControleOuvrirDepuisResa(resaId){
 
 // ── Centre Documentaire ───────────────────────────────────────────────────────
 let _docsTab='tous',_docsCache={devis:[],contrats:[],factures:[],avoirs:[],retractations:[]};
+// Les sources qui n'ont pas repondu au dernier chargement : l'ecran le dit plutot que d'afficher
+// zero facture comme si c'etait la realite (12/09/2026).
+const _docsEchecs=[];
 
 const DEVIS_STATUTS={
   brouillon:{lb:'Brouillon',cl:'#8891A8',bc:'rgba(136,145,168,.12)'},
@@ -19274,6 +19277,7 @@ function _documentsView(role){
     ${canCreateAvoir?`<button class="btn bp bs" onclick="docsModalNouvelAvoir()">+ Avoir</button>`:''}
   </div>
 </div>
+<div id="doc-echecs" style="display:none;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:var(--er)"></div>
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
   <div class="fs"><div class="fs-l">Devis en attente</div><div class="fs-v" id="doc-kpi-devis" style="color:var(--acc)">—</div></div>
   <div class="fs"><div class="fs-l">Contrats actifs</div><div class="fs-v" id="doc-kpi-contrats" style="color:var(--ok)">—</div></div>
@@ -19323,16 +19327,33 @@ async function docsLoadAll(){
       sbFetch('avoirs?select=*,clients(nom),prestation:prestations(reference,date_prestation)&order=created_at.desc&limit=200').catch(()=>[]),
       sbFetch('retractation_demandes?select=*,clients(nom),prestations(reference),devis(numero)&order=demandee_at.desc&limit=200').catch(()=>[]),
     ]);
-    _docsCache.devis=devisData||[];
-    _docsCache.contrats=contratsData||[];
-    _docsCache.factures=facturesData||[];
-    _docsCache.avoirs=avoirsData||[];
-    _docsCache.retractations=retractationsData||[];
+    // 12/09/2026 — `|| []` ne protege de rien : sbFetch RETOURNE l'objet d'erreur PostgREST sur
+    // un 500 (timeout 57014, par exemple), et un objet est « truthy ». `_docsCache.factures`
+    // devenait donc {code:'57014',...}, et l'ecran Centre SportVision plantait sur
+    // « _docsCache.factures.filter is not a function » — vu en test sur le role compta.
+    // Une source qui echoue doit rendre une liste vide ET se dire, pas casser l'ecran ni faire
+    // croire qu'il n'y a aucune facture.
+    const _liste=(x,nom)=>{ if(Array.isArray(x))return x; _docsEchecs.push(nom); return []; };
+    _docsEchecs.length=0;
+    _docsCache.devis=_liste(devisData,'devis');
+    _docsCache.contrats=_liste(contratsData,'contrats');
+    _docsCache.factures=_liste(facturesData,'factures');
+    _docsCache.avoirs=_liste(avoirsData,'avoirs');
+    _docsCache.retractations=_liste(retractationsData,'rétractations');
     _devisCache=_docsCache.devis;
   }catch(e){console.error('docsLoadAll',e);}
 }
 
 function docsUpdateKPIs(){
+  // Une source qui n'a pas repondu ne doit pas s'afficher comme un zero : un compteur a 0 EUR
+  // « a encaisser » se lit comme « tout est encaisse » (12/09/2026).
+  const banniere=document.getElementById('doc-echecs');
+  if(banniere){
+    banniere.style.display=_docsEchecs.length?'':'none';
+    banniere.textContent=_docsEchecs.length
+      ?'Chargement incomplet : '+_docsEchecs.join(', ')+'. Les compteurs ci-dessous ne comptent pas ces documents. Rechargez la page.'
+      :'';
+  }
   const devisEnAttente=_docsCache.devis.filter(d=>['envoyé','en_attente'].includes(d.statut)).length;
   const contratsActifs=_docsCache.contrats.filter(c=>c.statut==='actif').length;
   const factEncaisser=_docsCache.factures.filter(f=>['facturée','partiellement_payée','en_retard'].includes(f.statut_financier));
@@ -36945,15 +36966,20 @@ async function loadContrats(){
   // Filtre par pôle actif (audit v21, 31/08/2026) : écran admin, bypass RLS.
   const _ctrPoleEmbed=S.activePoleId?'!inner':'';
   const _ctrPoleQS=S.activePoleId?'&clients.pole_id=eq.'+S.activePoleId:'';
-  const r=await sbFetch('contrats?select=*,clients'+_ctrPoleEmbed+'(nom)&order=created_at.desc'+_ctrPoleQS);
+  // Borne ajoutee le 12/09/2026 : cet ecran chargeait TOUS les contrats sans limite.
+  const r=await sbFetch('contrats?select=*,clients'+_ctrPoleEmbed+'(nom)&order=created_at.desc&limit=500'+_ctrPoleQS);
   if(sbErr(r)){
     const setZ=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     setZ('ct-kpi-act',0);setZ('ct-kpi-exp',0);setZ('ct-kpi-quo',0);setZ('ct-kpi-ca','0 €');
     d.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:60px 20px;text-align:center">
       <div style="width:48px;height:48px;border-radius:50%;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);display:flex;align-items:center;justify-content:center;color:var(--wa);font-size:22px;font-weight:700">!</div>
-      <div><div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">Table "contrats" manquante</div>
-      <div style="font-size:13px;color:var(--t3);max-width:420px">Exécutez <code style="background:var(--s1);padding:1px 6px;border-radius:4px">migration-contrats.sql</code> dans Supabase pour activer cette fonctionnalité.</div></div>
-      <button class="btn bp bs" onclick="window.open('https://supabase.com/dashboard/project/lulgezzpvrlbftbykzrc/sql/new','_blank')">Ouvrir SQL Editor →</button>
+      <div><div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">${r?.code==='42P01'?'Table &quot;contrats&quot; manquante':'Les contrats n\'ont pas pu être chargés'}</div>
+      <div style="font-size:13px;color:var(--t3);max-width:420px">${r?.code==='42P01'
+        ?'Exécutez <code style="background:var(--s1);padding:1px 6px;border-radius:4px">migration-contrats.sql</code> dans Supabase pour activer cette fonctionnalité.'
+        :(r?.code==='57014'?'La requête a dépassé le temps imparti. Réessayez dans un instant.':esc(msgErreur(r,'Erreur inattendue.')))}</div></div>
+      ${r?.code==='42P01'
+        ?`<button class="btn bp bs" onclick="window.open('https://supabase.com/dashboard/project/lulgezzpvrlbftbykzrc/sql/new','_blank')">Ouvrir SQL Editor →</button>`
+        :`<button class="btn bp bs" onclick="loadContrats()">Réessayer</button>`}
     </div>`;
     return;
   }
