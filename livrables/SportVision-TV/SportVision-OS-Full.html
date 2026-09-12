@@ -30982,12 +30982,34 @@ function fournisseurLien(url){
   }catch(e){return 'Lien';}
 }
 
+// Les livrables declares « sans objet » par l'operateur, tels que la Production doit les lire
+// avant de valider : quoi, par qui, et pourquoi (v206, 13/09/2026).
+const _SANS_OBJET_LB={photo:'Photos traitées',montage:'Montage final',rushs:'Rushs vidéo'};
+function _sansObjetHtml(suivis){
+  const lignes=[];
+  (Array.isArray(suivis)?suivis:[]).forEach(sv=>{
+    const qui=[sv.profiles?.prenom,sv.profiles?.nom].filter(Boolean).join(' ')||'L\'opérateur';
+    Object.entries(sv.livrables_non_fournis||{}).forEach(([cle,v])=>{
+      lignes.push(`<div style="font-size:12.5px;color:var(--t2);line-height:1.5"><b style="color:var(--t1)">${esc(_SANS_OBJET_LB[cle]||cle)}</b> — déclaré sans objet par ${esc(qui)} : ${esc(v?.motif||'motif non précisé')}</div>`);
+    });
+  });
+  if(!lignes.length)return '';
+  return `<div style="background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.3);border-radius:10px;padding:12px;margin-bottom:14px">
+    <div style="font-size:12px;font-weight:700;color:var(--wa);margin-bottom:6px">Livrables déclarés sans objet</div>
+    ${lignes.join('')}
+    <div style="font-size:11.5px;color:var(--t3);margin-top:7px">Si ce n'est pas justifié, demandez une correction plutôt que de valider.</div>
+  </div>`;
+}
+
 async function modalVerifierLivraison(prestationId){
   openModal(`<div class="mh"><div class="mt">Vérifier la livraison</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="padding:20px" id="verif-corps"><div style="text-align:center;color:var(--t3);font-size:13px;padding:28px">Chargement…</div></div>`);
-  const [mr,lr]=await Promise.all([
+  const [mr,lr,sr]=await Promise.all([
     sbFetch('v_production_missions?select=*&prestation_id=eq.'+prestationId),
     sbFetch('media_liens?select=id,nom,url,categorie,type_media,statut,nombre_fichiers,transfert_confirme,commentaire&prestation_id=eq.'+prestationId),
+    // Ce que l'operateur a declare SANS OBJET (v206, 13/09/2026). C'est la Production qui valide
+    // au final : elle doit voir, au moment de valider, ce qui manque volontairement et pourquoi.
+    sbFetch('mission_suivi_operateur?select=collaborateur_id,livrables_non_fournis,profiles:collaborateur_id(prenom,nom)&prestation_id=eq.'+prestationId).catch(()=>[]),
   ]);
   const m=Array.isArray(mr)&&mr[0];
   const L=Array.isArray(lr)?lr:[];
@@ -31007,6 +31029,8 @@ async function modalVerifierLivraison(prestationId){
       ${m.livraison_en_retard?'<span style="color:var(--er);font-weight:700">🔴 En retard</span>':''}
       <span style="color:${m.transfert_confirme?'var(--ok)':'var(--wa)'}">${m.transfert_confirme?'Transfert confirmé':'Transfert non confirmé'}</span>
     </div>
+
+    ${_sansObjetHtml(sr)}
 
     ${L.length?L.map(l=>`<div style="border:1px solid var(--b1);border-radius:10px;padding:11px 13px;margin-bottom:9px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px">
@@ -31314,7 +31338,19 @@ async function modalSauvegarde(prestationId){
     attendus.push({k:'rushs',lb:'Rushs vidéo',cat:'rushs',tm:'video'});
   }
   const trouve=a=>L.find(l=>l.categorie===a.cat&&l.type_media===a.tm);
-  const tousFournis=attendus.length>0&&attendus.every(a=>trouve(a));
+  // 13/09/2026 — « Photo + vidéo » exigeait les trois livrables avant d'autoriser l'envoi à
+  // Production. Sur une mission enregistrée en photo_video où seule la photo a été faite —
+  // SV-2026-0268, le 12/09 — l'opérateur ne pouvait RIEN valider, et aucun écran ne lui permettait
+  // de dire qu'il n'y avait pas de vidéo. Sa seule sortie était d'attendre qu'on corrige la
+  // couverture en base.
+  //
+  // Il peut désormais déclarer un livrable SANS OBJET, avec un motif. Ce n'est pas un oubli
+  // silencieux : c'est une déclaration tracée, relue par la Production dans sa notification.
+  // Une mission reste livrable seulement si au moins un livrable est réellement fourni.
+  const sansObjet=suivi?.livrables_non_fournis||{};
+  const estSansObjet=a=>!!sansObjet[a.k];
+  const nbFournis=attendus.filter(a=>trouve(a)).length;
+  const tousFournis=attendus.length>0&&nbFournis>0&&attendus.every(a=>trouve(a)||estSansObjet(a));
   const transfertOk=L.some(l=>l.transfert_confirme);
   const secures=!!suivi?.fichiers_securises_at;
   const cartesOk=!!suivi?.cartes_liberees_at;
@@ -31364,13 +31400,19 @@ async function modalSauvegarde(prestationId){
     <div style="margin-bottom:16px">
       ${attendus.length?attendus.map(a=>{
         const l=trouve(a);
-        return `<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-          <span style="font-size:14px;color:${l?'var(--ok)':'var(--t3)'}">${l?'✓':'○'}</span>
-          <span style="flex:1;font-size:13px;color:var(--t1)">${esc(a.lb)}</span>
+        const so=sansObjet[a.k];
+        return `<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
+          <span style="font-size:14px;color:${l?'var(--ok)':(so?'var(--t3)':'var(--t3)')}">${l?'✓':(so?'—':'○')}</span>
+          <span style="flex:1;min-width:120px;font-size:13px;color:${so?'var(--t3)':'var(--t1)'}">${esc(a.lb)}</span>
           ${l?`<span style="font-size:11px;color:var(--t3);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.nom||l.url)}</span>`
-             :`<button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}')">+ Lien</button>`}
+             :so?`<span style="font-size:11px;color:var(--t3)">Sans objet</span>
+                  <button class="btn bg2 bs" onclick="annulerLivrableSansObjet('${escJs(prestationId)}','${escJs(a.k)}')">Rétablir</button>`
+             :`<button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}')">+ Lien</button>
+               <button class="btn bg2 bs" onclick="modalLivrableSansObjet('${escJs(prestationId)}','${escJs(a.k)}','${escJs(a.lb)}')">Sans objet</button>`}
+          ${so?`<div style="flex-basis:100%;font-size:11.5px;color:var(--t3);padding-left:23px">${esc(so.motif||'Motif non précisé')}</div>`:''}
         </div>`;
       }).join(''):'<div style="font-size:12.5px;color:var(--wa)">Couverture non renseignée : Production doit la préciser avant que les livrables puissent être exigés.</div>'}
+      ${(attendus.length&&!tousFournis&&nbFournis===0)?`<div style="font-size:11.5px;color:var(--t3);margin-top:8px;line-height:1.45">Déposez au moins un lien : une mission ne se valide pas avec tous ses livrables déclarés sans objet.</div>`:''}
     </div>
 
     <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Sécurisation</div>
@@ -31394,8 +31436,50 @@ async function modalSauvegarde(prestationId){
 
     <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn bg2 bs" onclick="modalIncidentFichiers('${escJs(prestationId)}')">⚠ Problème avec les fichiers</button>
-      ${tousFournis&&['médias_complets','à_monter','montage_en_cours'].includes(p.statut)?`<button class="btn bp bs" onclick="envoyerAProduction('${escJs(prestationId)}','${escJs(p.statut)}')">📤 Envoyer à Production</button>`:''}
+      ${tousFournis&&['médias_complets','à_monter','montage_en_cours'].includes(p.statut)?`<button class="btn bp bs" onclick="envoyerAProduction('${escJs(prestationId)}','${escJs(p.statut)}')">📤 Envoyer à Production pour validation</button>`:''}
     </div>`;
+}
+
+// « Sans objet » : l'operateur declare qu'un livrable attendu par la couverture n'existe pas sur
+// cette mission. Le motif est obligatoire — c'est ce que lira le responsable production, et c'est
+// lui qui valide au final (13/09/2026, precision de Fouka).
+function modalLivrableSansObjet(prestationId,cle,libelle){
+  openModal(`<div class="mh"><div class="mt">${esc(libelle)} — sans objet</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+  <div class="mb" style="padding:20px;display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:13px;color:var(--t2);line-height:1.5">
+      Vous declarez qu'il n'y a pas de « ${esc(libelle)} » sur cette mission. Dites pourquoi :
+      la Production le lira avant de valider votre livraison.
+    </div>
+    <input id="lso-motif" type="text" class="l-inp" style="height:38px" placeholder="Ex : pas de captation video sur cette mission">
+    <div id="lso-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="enregistrerLivrableSansObjet('${escJs(prestationId)}','${escJs(cle)}')">Declarer sans objet</button>
+    </div>
+  </div>`);
+}
+
+async function enregistrerLivrableSansObjet(prestationId,cle){
+  const err=document.getElementById('lso-err');if(err)err.textContent='';
+  const motif=(document.getElementById('lso-motif')?.value||'').trim();
+  if(motif.length<4){if(err)err.textContent='Precisez pourquoi ce livrable n\'existe pas.';return;}
+  const suivi=await chargerSuivi(prestationId);
+  const courant=Object.assign({},suivi?.livrables_non_fournis||{});
+  courant[cle]={motif,at:new Date().toISOString()};
+  const res=await majSuivi(prestationId,{livrables_non_fournis:courant});
+  if(!res.ok){if(err)err.textContent=res.msg;return;}
+  closeModal();
+  toast('Declare sans objet.','ok');
+  modalSauvegarde(prestationId);
+}
+
+async function annulerLivrableSansObjet(prestationId,cle){
+  const suivi=await chargerSuivi(prestationId);
+  const courant=Object.assign({},suivi?.livrables_non_fournis||{});
+  delete courant[cle];
+  const res=await majSuivi(prestationId,{livrables_non_fournis:courant});
+  if(!res.ok){toast(res.msg,'er');return;}
+  modalSauvegarde(prestationId);
 }
 
 async function marquerFichiersSecurises(prestationId){
@@ -31519,7 +31603,7 @@ async function envoyerAProduction(prestationId,statutActuel){
     if(sbErr(r)){toast(msgErreur(r,'Envoi impossible.'),'er');rafraichirParcours(prestationId);return;}
   }
   await majSuivi(prestationId,{livre_at:new Date().toISOString(),postproduction_terminee_at:new Date().toISOString()});
-  toast('Livraison envoyée à Production.','ok');
+  toast('Livraison envoyée. La Production est prévenue et valide.','ok');
   closeModal();
   rafraichirParcours(prestationId);
 }
