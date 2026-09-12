@@ -1,0 +1,298 @@
+{
+ "migration-coverage-wishes-e24-e25.sql": {
+  "code": "SAUTEE",
+  "erreur": "table coverage_wishes deja existante : migration deja appliquee lors du rejeu initial ; le seul ecart (cm_select_coverage_wish a 2 arguments) vient de v132, rejouee plus loin"
+ },
+ "migration-operateur-v1-cloisonnement-livraisons.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-federation-v20-exclusions-synchro.sql": {
+  "code": "PORTEE-A-LA-MAIN",
+  "erreur": "insert/delete sur un club de production absent de Review (FK 23503) ; structure seule portee via migrations-rattrapage/01-federation-v20-structure-seule.sql"
+ },
+ "migration-clubplus-v124-couverture-cm-adjoint.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v125-parcours-communication.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v126-mission-depuis-presence.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v127-remuneration-mission.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v128-rentabilite-clubs.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-comptes-clubplus-v1-acceptation-membre-existant.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v129-frontiere-production.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v130-recrutement-cloisonne.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-comptes-os-v1-email-invitation.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-comptes-os-v2-desactivation-coupe-sessions.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v131-paiement-mission.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v132-presences-cm-decide.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v133-regroupement-missions.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v134-production-voit-son-pole.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v135-kit-suit-la-mission.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-decisions-os-v1-compte-desactive.sql": {
+  "code": "PORTEE-A-LA-MAIN",
+  "erreur": "garde-fou md5 adapte a Review (45/50 empreintes identiques, 5 ecarts expliques) ; migrations-rattrapage/02 ; v148 et v150 rejouees apres pour restaurer leur version finale"
+ },
+ "migration-decisions-connect-v1-suppression-compte-client.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-securite-handle-new-user-role-explicite.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v136-proposition-apres-validation.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-decisions-clubplus-01-ecritures-par-role.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v137-lien-grade-vers-os.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v138-supprimer-mission.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v139-recrutement-sans-production.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v140-presences-club.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v141-planning-editorial.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v142-presences-comptees-par-mission.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v143-coequipiers-mission.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v144-activite-finance-cloisonnee.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v145-nb-presences-club.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v146-cm-prestations-a-venir.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v147-resultats-a-renseigner.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-club-donnees-restreintes-1-lectures.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-club-donnees-restreintes-2-colonnes.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v148-auto-affectation-production.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v149-finance-production.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v150-circuits-remuneration-distincts.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v151-operateur-kit-pret.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v152-operateur-envoi-livraison.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v153-affectation-cm-date-paris.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-os-cm-perimetre-clients.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-os-cm-siret-client-1-lecture.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-os-cm-siret-client-2-colonne.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-galeries-v154-fix-staff-access-media-club-galleries.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-blocages-review-1-cm-externe-annuaire-sponsors.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-blocages-review-3-rls-evaluation-unique.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-blocages-review-4-client-joueur.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v154-galeries-mission.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v155-galeries-coach-equipe.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v156-galerie-publication-notification.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v157-galerie-video-montage.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v158-espace-coach-cloisonne.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v159-reconnaissance-enfant.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-blocages-review-5-coach-parent-calendrier.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v160-photos-de-mon-enfant.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v161-consentement-connect.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v162-rattacher-joueurs-photos.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v163-consentement-reserve-au-majeur.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v164-escalades-fermees.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v165-match-statut-deux-sens.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-blocages-review-6-cm-externe-sponsors-ecriture.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v166-calendrier-parent-enfant-club.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v167-contenus-famille-bornes.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v168-notification-galerie-bonne-porte.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v169-reattribution-ligne-financiere.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v170-matchcenter-roles-club.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v171-contenus-club-cloisonnes.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v172-liens-parents-a-decider.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v173-parent-invite-espace-particulier.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v174-finance-production-noms-et-paris.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v175-droits-execution-restitues.sql": {
+  "code": "201",
+  "erreur": null
+ },
+ "migration-clubplus-v176-signer-autorisations-famille.sql": {
+  "code": "201",
+  "erreur": null
+ }
+}
