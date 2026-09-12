@@ -17369,19 +17369,26 @@ async function chargerKitsPrestation(prestationId,ref){
   const selKit=document.getElementById('eq-kit-id');
   if(!el)return;
   try{
-    const [presRaw,resaRaw,equipeRaw,kitsRaw]=await Promise.all([
+    const [presRaw,resaRaw,kitsJour,kitsRaw]=await Promise.all([
       // Pôle de CETTE prestation (audit v21, 31/08/2026 — Fouka a explicitement signalé ce
       // picker : un kit dédié à un autre pôle que la prestation ouverte n'a pas à apparaître ici,
       // même mécanique que le picker d'opérateurs juste au-dessus dans la même modale).
-      sbFetch('prestations?id=eq.'+prestationId+'&select=pole_id').catch(()=>[]),
+      sbFetch('prestations?id=eq.'+prestationId+'&select=pole_id,date_prestation').catch(()=>[]),
       // FK explicite obligatoire : kit_reservations a 3 colonnes vers profiles
       // (collaborateur_id/created_by/responsable_id), PostgREST refuse l'embed ambigu sinon
       // (PGRST201, trouvé en testant en RLS réelle avant de considérer ce code fini).
       sbFetch('kit_reservations?select=id,statut,kits(nom,type_kit),collaborateur:profiles!kit_reservations_collaborateur_id_fkey(prenom,nom)&prestation_id=eq.'+prestationId+'&statut=not.in.(retourné)'),
-      Promise.resolve([]),
-      sbFetch('kits?select=id,nom,type_kit,pole_id,pole_exclusif&statut=eq.disponible&order=nom.asc'),
+      // 12/09/2026 — La disponibilite se lit sur les RESERVATIONS, plus sur un drapeau global.
+      // `attribuerKitPrestation` basculait `kits.statut` en « reserve » sans aucune date de fin,
+      // et le menu ne proposait que les kits « disponible » : les deux kits de production sont
+      // sortis le 12/09 et n'ont plus JAMAIS ete proposes — la mission du 13/09, deux operateurs
+      // acceptes, n'avait aucun kit selectionnable, sans un mot d'explication. Un kit est pris
+      // pour une DATE, pas pour toujours.
+      sbFetch('kit_reservations?select=kit_id,date_sortie,date_retour_prevue,date_retour_effective,prestation_id&statut=not.in.(retourné,annulé)').catch(()=>[]),
+      sbFetch('kits?select=id,nom,type_kit,pole_id,pole_exclusif,statut&order=nom.asc'),
     ]);
     const presPoleId=Array.isArray(presRaw)&&presRaw[0]?presRaw[0].pole_id:null;
+    const presDate=(Array.isArray(presRaw)&&presRaw[0]?presRaw[0].date_prestation:null)||null;
     const resa=Array.isArray(resaRaw)?resaRaw:[];
     if(!resa.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:4px 0">Aucun kit attribué.</div>';}
     else{
@@ -17395,9 +17402,27 @@ async function chargerKitsPrestation(prestationId,ref){
       }).join('');
     }
     if(selKit){
+      // Un kit est pris a une date donnee, et libre le reste du temps. Sans date de retour prevue,
+      // on considere qu'il est rendu le jour meme : c'est le cas de toutes les missions d'une
+      // journee, et c'est le seul repli honnete tant que la date de retour n'est pas saisie.
+      const jour=d=>d?String(d).slice(0,10):null;
+      const prisCeJour=new Set((Array.isArray(kitsJour)?kitsJour:[])
+        .filter(r=>{
+          if(r.prestation_id===prestationId)return false;   // deja attribue a CETTE mission
+          if(r.date_retour_effective)return false;          // rendu
+          if(!presDate||!r.date_sortie)return true;         // dates inconnues : on ne prend pas le risque
+          const debut=jour(r.date_sortie);
+          const fin=jour(r.date_retour_prevue)||debut;
+          const d=jour(presDate);
+          return d>=debut&&d<=fin;
+        })
+        .map(r=>r.kit_id));
       // Commun (pole_id null) ou Priorité (pole_exclusif=false) : toujours proposé. Dédié
       // (pole_exclusif=true) : uniquement s'il appartient au même pôle que la prestation ouverte.
-      const kitsOk=(Array.isArray(kitsRaw)?kitsRaw:[]).filter(k=>!presPoleId||!k.pole_id||k.pole_exclusif===false||k.pole_id===presPoleId);
+      const kitsOk=(Array.isArray(kitsRaw)?kitsRaw:[])
+        .filter(k=>k.statut!=='hors_service'&&k.statut!=='maintenance'&&k.statut!=='perdu')
+        .filter(k=>!prisCeJour.has(k.id))
+        .filter(k=>!presPoleId||!k.pole_id||k.pole_exclusif===false||k.pole_id===presPoleId);
       selKit.innerHTML='<option value="">— Kit disponible —</option>'+kitsOk.map(k=>
         `<option value="${k.id}">${esc(k.nom)}${k.type_kit?' ('+esc(k.type_kit)+')':''}</option>`).join('');
     }
@@ -17422,7 +17447,9 @@ async function attribuerKitPrestation(prestationId,ref){
       date_sortie:date?.[0]?.date_prestation||null,responsable_id:S.uid,created_by:S.uid,
     }});
     if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'attribution impossible.'));return;}
-    await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'réservé'}}).catch(()=>{});
+    // On ne bascule plus `kits.statut` en « réservé » (12/09/2026) : c'etait un drapeau sans date
+    // de fin, qui retirait le kit du parc pour toujours. La reservation, elle, porte ses dates.
+    // `kits.statut` reste reserve aux etats REELS du materiel : maintenance, hors service, perdu.
     err.textContent='';
     toast('Kit attribué.','ok');
     chargerKitsPrestation(prestationId,ref);
@@ -31152,6 +31179,11 @@ async function avancerParcours(prestationId,statutActuel){
   if(!act)return;
   const r=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:act.ns}});
   if(sbErr(r)){toast(msgErreur(r,'Impossible d’avancer la mission.'),'er');return;}
+  // Memes effets de bord que le chemin Production (12/09/2026) : facture, controle de retour du
+  // kit, tache automatique. Voir le commentaire detaille dans avanJourJ().
+  if(typeof appliquerEffetsStatutPrestation==='function'){
+    await appliquerEffetsStatutPrestation(prestationId,act.ns).catch(()=>{});
+  }
   if(act.suivi){
     const res=await majSuivi(prestationId,{[act.suivi]:new Date().toISOString()});
     if(!res.ok)toast(res.msg,'warn');
@@ -31840,6 +31872,17 @@ async function avanJourJ(id,newStatut){
     // 2. La bascule d'apres-match : sur `production_terminée`, l'ecran doit dire que la
     //    couverture est finie mais que la mission reste ouverte, sinon l'operateur repart en
     //    pensant avoir termine. C'est tout l'objet du module.
+    // 12/09/2026 — Les effets de bord du statut, qui manquaient sur TOUT le chemin operateur.
+    // `appliquerEffetsStatutPrestation` est le seul endroit qui, sur `production_terminée`, cree
+    // la facture, cree le controle de retour du kit et emet `prestation.completed`. Le chemin
+    // Production l'appelait, le chemin operateur non — et c'est l'operateur qui termine sa
+    // mission. Resultat mesure : ZERO ligne dans kit_controles depuis la creation du module,
+    // alors que deux kits sont sortis, et l'ecran Materiel affichait eternellement « le controle
+    // de retour sera disponible une fois la prestation terminee ». L'operateur ne pouvait pas
+    // rendre son kit, et aucune facture n'etait creee. La fonction est idempotente.
+    if(typeof appliquerEffetsStatutPrestation==='function'){
+      await appliquerEffetsStatutPrestation(id,newStatut).catch(()=>{});
+    }
     const _mapSuivi={'prête':'kit_prepare_at','équipe_en_route':'parti_at','arrivée_sur_place':'arrive_at','production_terminée':'prestation_terminee_at','médias_à_transférer':'fichiers_securises_at'};
     if(typeof majSuivi==='function'&&_mapSuivi[newStatut]){
       const res=await majSuivi(id,{[_mapSuivi[newStatut]]:new Date().toISOString()});
