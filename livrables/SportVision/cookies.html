@@ -327,7 +327,9 @@ section{position:relative}
 
 <p>Le blocage de certains traceurs nécessaires directement depuis le navigateur peut empêcher une partie du site, de Connect ou du paiement de fonctionner normalement.</p>
 
-<p><strong>4.2 Mesure d'audience.</strong> SportVision peut utiliser une solution de mesure d'audience pour comprendre de manière agrégée la fréquentation, les pages consultées, les performances techniques et les parcours généraux.</p>
+<p><strong>4.2 Mesure d'audience.</strong> SportVision utilise <strong>Google Analytics 4</strong>, fourni par Google Ireland Limited, pour comprendre de manière agrégée la fréquentation, les pages consultées, les performances techniques et les parcours généraux.</p>
+
+<p>Ce traceur n'est chargé qu'après acceptation de la catégorie « Mesure d'audience » du bandeau cookies : aucune requête n'est envoyée à Google tant que ce consentement n'a pas été donné, et refuser suffit à ce qu'il ne se charge jamais. Les cookies concernés sont <code>_ga</code> et <code>_ga_&lt;identifiant de propriété&gt;</code>, d'une durée de vie de treize mois au maximum. Les données peuvent être transférées hors de l'Union européenne dans le cadre du Data Privacy Framework auquel Google adhère.</p>
 
 <p>Lorsque la solution remplit les conditions d'exemption prévues par la CNIL, elle peut fonctionner sans consentement préalable. Dans les autres cas, elle reste désactivée jusqu'au consentement de l'utilisateur.</p>
 
@@ -353,7 +355,7 @@ section{position:relative}
 <tr><td>Supabase</td><td>Authentification et session Connect</td><td>Nécessaire</td><td>Lorsqu'un compte/session Connect est utilisé</td></tr>
 <tr><td>Stripe</td><td>Paiement et prévention de la fraude</td><td>Nécessaire à la transaction ou selon le traceur</td><td>Lorsqu'un paiement est lancé</td></tr>
 <tr><td>YouSign / Youtrust</td><td>Signature électronique</td><td>Service externe / nécessaire à la signature</td><td>Lorsqu'une signature est lancée</td></tr>
-<tr><td>Outil de mesure d'audience</td><td>Statistiques et amélioration du site</td><td>Audience</td><td>Exempté uniquement si conditions CNIL remplies, sinon consentement</td></tr>
+<tr><td>Google Analytics 4 (Google Ireland Limited)</td><td>Statistiques et amélioration du site</td><td>Audience</td><td>Uniquement après consentement explicite (cookies <code>_ga</code>, <code>_ga_*</code>, 13 mois)</td></tr>
 <tr><td>Meta / réseaux sociaux</td><td>Contenus sociaux, mesure de campagne, publicité</td><td>Fonctionnel / Marketing</td><td>Uniquement après consentement lorsque requis</td></tr>
 </tbody></table></div>
 

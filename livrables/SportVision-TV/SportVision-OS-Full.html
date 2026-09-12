@@ -7486,9 +7486,16 @@ async function loadClientCommunication(clientId){
   if(!el)return;
   el.innerHTML=_cmSkel(3,28);
   try{
-    const [plannings,contenus]=await Promise.all([
+    // Les comptes que le club nous a confiés (12/09/2026, audit). `club_social_accounts` est
+    // remplie a l'onboarding Club+ et n'etait lue NULLE PART dans l'OS : deux clubs reels avaient
+    // coche « SportVision peut publier sur ce compte », et le CM qui prepare leurs contenus ne
+    // voyait sur aucun ecran sur quels comptes publier.
+    const clubRows=await sbFetch('clubs?select=id&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>[]);
+    const clubId=Array.isArray(clubRows)&&clubRows[0]?clubRows[0].id:null;
+    const [plannings,contenus,comptes]=await Promise.all([
       sbFetch('plannings_hebdo?select=id,semaine_debut,statut,cm_id&client_id=eq.'+clientId+'&order=semaine_debut.desc&limit=8'),
       sbFetch('contenus?select=id,titre,statut,plateforme,date_prevue&client_id=eq.'+clientId+'&order=date_prevue.desc.nullslast&limit=15').catch(()=>[]),
+      clubId?sbFetch('club_social_accounts?select=plateforme,handle_ou_url,acces_sportvision,notes&club_id=eq.'+clubId+'&order=plateforme.asc').catch(()=>[]):Promise.resolve([]),
     ]);
     const plans=Array.isArray(plannings)?plannings:[];
     const cmIds=[...new Set(plans.map(p=>p.cm_id).filter(Boolean))];
@@ -7517,7 +7524,17 @@ async function loadClientCommunication(clientId){
         <span class="bd ${cls}"><span class="bd-d"></span>${stLb}</span>
       </div>`;
     }).join(''):'<div style="font-size:12px;color:var(--t3)">Aucun contenu pour ce club.</div>';
-    el.innerHTML=`<div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Plannings hebdomadaires</div>${plansHtml}
+    const cpts=Array.isArray(comptes)?comptes:[];
+    const comptesHtml=cpts.length?cpts.map(c=>{
+      const ouvert=c.acces_sportvision===true;
+      return`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;font-size:12px;margin-bottom:4px">
+        <span style="color:var(--t3);text-transform:capitalize;min-width:74px">${esc(c.plateforme||'—')}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.handle_ou_url||'—')}</span>
+        <span class="bd ${ouvert?'ba':'bn'}"><span class="bd-d"></span>${ouvert?'Nous pouvons publier':'Lecture seule'}</span>
+      </div>${c.notes?`<div style="font-size:11.5px;color:var(--t3);margin:-2px 0 6px 8px">${esc(c.notes)}</div>`:''}`;
+    }).join(''):'<div style="font-size:12px;color:var(--t3)">Aucun compte renseigné par ce club.</div>';
+    el.innerHTML=`<div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Comptes du club</div>${comptesHtml}
+      <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Plannings hebdomadaires</div>${plansHtml}
       <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Contenus récents</div>${contenusHtml}`;
   }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
 }

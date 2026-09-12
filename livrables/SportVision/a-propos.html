@@ -245,6 +245,9 @@ section{position:relative}
 .sv-field{margin-top:16px}
 .sv-field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:#374151}
 .sv-field input,.sv-field select,.sv-field textarea{width:100%;padding:11px 12px;border:1px solid #e4e7ef;border-radius:10px;font-size:14.5px;font-family:inherit;box-sizing:border-box}
+/* 12/09/2026 — iOS zoome sur tout champ sous 16px des qu'on le touche, et ne dezoome jamais
+   seul : le visiteur remplissait le tunnel de reservation sur une page agrandie de force. */
+@media (max-width:640px){.sv-field input,.sv-field select,.sv-field textarea{font-size:16px}}
 .sv-field input:focus,.sv-field select:focus,.sv-field textarea:focus{outline:2px solid var(--blue);outline-offset:1px}
 .sv-honeypot{position:absolute;left:-9999px;opacity:0}
 .sv-err{color:#e14b4b;font-size:13px;margin-top:10px;min-height:16px}

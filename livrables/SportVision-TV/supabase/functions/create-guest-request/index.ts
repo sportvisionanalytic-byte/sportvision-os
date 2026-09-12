@@ -224,6 +224,7 @@ serve(async (req) => {
       prenom, nom, email, telephone, profil, origine,
       offre_slug, options, date, heure, lieu, ville, adresse, cp, commentaire, sport, equipes,
       retractation_renoncee, site_web, mode_paiement_choisi,
+      mode_livraison_montage, nombre_matchs_lien,
       cgv_acceptee, cgv_acceptee_le,
       // distance_km / frais_deplacement_ht ne sont plus lus depuis le body :
       // recalculés côté serveur plus bas, jamais depuis une valeur visiteur.
@@ -320,6 +321,17 @@ serve(async (req) => {
         distance_km: distance_km ?? null,
         frais_deplacement_ht: frais_deplacement_ht ?? null,
         mode_paiement_choisi: ["carte", "especes"].includes(mode_paiement_choisi) ? mode_paiement_choisi : null,
+        // Montage : le palier choisi sur le site doit arriver ICI (audit 12/09/2026). Il ne
+        // partait que dans le commentaire libre ; `create-checkout-session` lit
+        // `mode_livraison_montage` et `nombre_matchs_lien` pour choisir le tarif, ne les trouvait
+        // pas, et retombait sur le prix de base : un montage de 4 matchs annonce a 80 EUR se
+        // facturait 39,90 EUR.
+        mode_livraison_montage: ["lien_match", "rushs_decoupes"].includes(mode_livraison_montage)
+          ? mode_livraison_montage
+          : null,
+        nombre_matchs_lien: Number.isInteger(Number(nombre_matchs_lien)) && Number(nombre_matchs_lien) > 0
+          ? Number(nombre_matchs_lien)
+          : null,
       })
       .select("id, reference")
       .single();

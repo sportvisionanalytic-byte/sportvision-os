@@ -154,6 +154,9 @@ section{position:relative}
 .sv-field{margin-top:16px}
 .sv-field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:#374151}
 .sv-field input,.sv-field select,.sv-field textarea{width:100%;padding:11px 12px;border:1px solid #e4e7ef;border-radius:10px;font-size:14.5px;font-family:inherit;box-sizing:border-box}
+/* 12/09/2026 — iOS zoome sur tout champ sous 16px des qu'on le touche, et ne dezoome jamais
+   seul : le visiteur remplissait le tunnel de reservation sur une page agrandie de force. */
+@media (max-width:640px){.sv-field input,.sv-field select,.sv-field textarea{font-size:16px}}
 .sv-field input:focus,.sv-field select:focus,.sv-field textarea:focus{outline:2px solid var(--blue);outline-offset:1px}
 .sv-field-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .sv-honeypot{position:absolute;left:-9999px;opacity:0}
@@ -700,7 +703,8 @@ const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
 // LIT PRICING_CONFIG. Si le fichier ne charge pas pour une raison ou une
 // autre, on retombe sur un objet vide et le HTML statique (déjà à jour)
 // continue de s'afficher sans erreur — voir applyPricingConfig() plus bas.
-// Cf. livrables/SportVision/audit/PRICING_CENTRALISATION.md.
+// Cf. livrables/analyses/vitrine-interne/audit/PRICING_CENTRALISATION.md (sorti du
+// dossier publie le 12/09/2026 : tout ce qui vit dans livrables/SportVision/ est servi en ligne).
 const PRICING = (typeof PRICING_CONFIG !== 'undefined') ? PRICING_CONFIG : {};
 
 // Prix publics connus (les prestations à tarif fixe, calculé depuis PRICING
@@ -1100,7 +1104,13 @@ function maybeCheckDispo(){
       const data = await res.json();
       state.dispoChecked = true;
       state.dispoResult = data;
-      if (data.disponible === true){
+      // 12/09/2026 — La fonction renvoie zone_couverte, et la page l'ignorait : un code postal
+      // hors zone d'intervention s'entendait répondre « une équipe est disponible à cette date ».
+      // Une disponibilité d'agenda n'est pas une promesse de déplacement.
+      if (data.zone_couverte === false){
+        badge.className = 'dispo-badge tight';
+        text.textContent = 'Ce secteur est hors de notre zone habituelle. Nous étudions le déplacement au cas par cas : envoyez votre demande, nous revenons vers vous avec une réponse et, s\'il y a lieu, les frais de déplacement.';
+      } else if (data.disponible === true){
         badge.className = 'dispo-badge ok';
         text.textContent = '✓ Une équipe est disponible à cette date.';
       } else if (data.disponible === false){
@@ -1403,6 +1413,19 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     cgv_acceptee: document.getElementById('bk-cgv').checked,
     cgv_acceptee_le: new Date().toISOString(),
   };
+
+  // Montage : le palier choisi doit voyager en clair, pas seulement dans le commentaire
+  // (12/09/2026). Sans ces deux champs, le paiement retombait sur le prix de base : un montage
+  // de 4 matchs annoncé 80 € se facturait 39,90 €.
+  if (state.slug === 'montage-compilation' && c.montageVolume){
+    var mMatchs = /^([1-4]) match/.exec(c.montageVolume);
+    if (mMatchs){
+      body.mode_livraison_montage = 'lien_match';
+      body.nombre_matchs_lien = parseInt(mMatchs[1], 10);
+    } else if (/rushs/i.test(c.montageVolume)){
+      body.mode_livraison_montage = 'rushs_decoupes';
+    }
+  }
 
   btn.disabled = true; btn.textContent = 'Envoi…';
   try{

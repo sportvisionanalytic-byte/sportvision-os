@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page introuvable — SportVision</title>
+<meta name="robots" content="noindex, follow">
+<meta name="description" content="Cette page n'existe pas ou a été déplacée. Retrouvez les prestations, la réservation et le contact SportVision.">
+<style>
+/* Page 404 (12/09/2026) : le site servait la page par defaut de Netlify, en anglais, sans aucun
+   lien de retour. Un visiteur qui suivait un vieux lien de prestation quittait le site. */
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url('assets/fonts/inter-variable-latin.woff2') format('woff2')}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:500 800;font-display:swap;src:url('assets/fonts/manrope-variable-latin.woff2') format('woff2')}
+:root{
+  --navy-900:#070A17; --blue:#2454FF; --cyan:#00C7FF; --violet-bright:#C337FF;
+  --white:#FFFFFF; --text-secondary:#98A2B3;
+  --font-head:'Manrope',-apple-system,sans-serif;
+  --font-body:'Inter',-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 20px;
+  font-family:var(--font-body);color:var(--white);line-height:1.6;
+  background:var(--navy-900);
+  background-image:radial-gradient(circle at 20% 20%, rgba(36,84,255,.35), transparent 55%),
+                   radial-gradient(circle at 80% 0%, rgba(131,45,255,.30), transparent 50%);}
+main{max-width:560px;text-align:center}
+.code{font-family:var(--font-head);font-weight:800;font-size:15px;letter-spacing:.14em;text-transform:uppercase;
+  background:linear-gradient(135deg,var(--blue),var(--cyan),var(--violet-bright));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+h1{font-family:var(--font-head);font-weight:800;font-size:clamp(28px,6vw,40px);line-height:1.15;margin:12px 0 0;letter-spacing:-.01em}
+p{color:var(--text-secondary);font-size:15.5px;margin:14px 0 0}
+.actions{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:28px}
+a.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 22px;border-radius:14px;
+  font-family:var(--font-head);font-weight:800;font-size:14.5px;text-decoration:none}
+a.primary{background:linear-gradient(135deg,var(--blue),var(--violet-bright));color:#fff}
+a.ghost{border:1px solid rgba(255,255,255,.22);color:#fff}
+a.btn:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+nav{margin-top:26px;font-size:14px}
+nav a{color:var(--text-secondary);text-decoration:none;padding:8px 10px;display:inline-block;min-height:44px;line-height:28px}
+nav a:hover,nav a:focus-visible{color:#fff}
+</style>
+</head>
+<body>
+<main>
+  <div class="code">Erreur 404</div>
+  <h1>Cette page n'existe pas.</h1>
+  <p>Le lien que vous avez suivi est peut-être ancien, ou l'adresse comporte une erreur. Voici par où continuer.</p>
+  <div class="actions">
+    <a class="btn primary" href="/">Retour à l'accueil</a>
+    <a class="btn ghost" href="/prestations.html">Voir les prestations</a>
+  </div>
+  <nav>
+    <a href="/reserver.html">Réserver</a>
+    <a href="/faq.html">Questions fréquentes</a>
+    <a href="/demande-de-devis.html">Nous écrire</a>
+  </nav>
+</main>
+</body>
+</html>
