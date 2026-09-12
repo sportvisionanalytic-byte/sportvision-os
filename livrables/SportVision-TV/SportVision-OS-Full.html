@@ -30230,7 +30230,10 @@ async function modalCotisationDetail(id){
     <div class="mb" id="cot-detail-body"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement des participations…</div></div>`);
   const pct=f.montant_cible?Math.min(100,Math.round((f.montant_collecte/f.montant_cible)*100)):0;
   const benefRaw=f.beneficiary_label||(f.group_id?'Groupe « '+(f.user_groups?.name||'—')+' »':'Le créateur, pour lui-même');
-  const contribs=await sbFetch('funding_contributions?select=id,contributor_user_id,guest_prenom,guest_email,montant,statut,created_at&funding_id=eq.'+id+'&order=created_at.desc').catch(()=>[]);
+  // Passe par une fonction reservee au staff (v182) : la table ne rend plus l'adresse des
+  // participants invites, qui etait lisible par tout membre du groupe alors que l'ecran des
+  // familles prend soin de ne pas l'afficher.
+  const contribs=await sbFetch('rpc/funding_participants',{method:'POST',body:{p_funding_id:id}}).catch(()=>[]);
   const body=document.getElementById('cot-detail-body');
   if(!body)return;
   const list=Array.isArray(contribs)?contribs:[];

@@ -312,6 +312,10 @@ serve(async (req) => {
     }
 
     let montant: number;
+    // Déclaré ici, et pas dans la branche « solde » : le bloc qui suit le calcul en a besoin pour
+    // distinguer « rien à payer parce que la cotisation a tout couvert » de « rien à payer parce
+    // qu'il n'y a rien à facturer ».
+    let dejaCollecte = 0;
 
     if (type_paiement === "acompte") {
       montant = prestation.acompte_montant != null ? Number(prestation.acompte_montant) : Math.round(totalTtc * 0.3 * 100) / 100;
@@ -335,7 +339,6 @@ serve(async (req) => {
         .from("group_fundings")
         .select("id")
         .eq("prestation_id", prestation.id);
-      let dejaCollecte = 0;
       if (fundingRows && fundingRows.length > 0) {
         const { data: contribRows } = await admin
           .from("funding_contributions")
@@ -349,7 +352,39 @@ serve(async (req) => {
       montant = Math.max(0, Math.round((totalTtc - dejaRegle - dejaCollecte) * 100) / 100);
     }
 
-    if (!montant || montant <= 0) return json({ error: "Montant à payer nul" }, 400);
+    if (!montant || montant <= 0) {
+      // ENTIÈREMENT FINANCÉ PAR LA COTISATION (12/09/2026).
+      //
+      // Le solde tombe à zéro quand la cagnotte a couvert la totalité : c'est un SUCCÈS, pas une
+      // erreur. Le client lisait pourtant « Montant à payer nul » après avoir cliqué « Payer », et
+      // la prestation restait marquée impayée côté SportVision alors que l'argent était bien
+      // encaissé, contribution par contribution. On enregistre donc ce qui est vrai, et on le dit.
+      if (dejaCollecte > 0) {
+        await admin
+          .from("prestations")
+          .update({ statut_financier: "payée" })
+          .eq("id", prestation.id)
+          .neq("statut_financier", "payée");
+        try {
+          await admin.rpc("notify_staff_by_role", {
+            p_roles: ["sec", "compta"],
+            p_titre: "Prestation financée par une cotisation",
+            p_message: `La prestation ${prestation.reference ?? prestation.id} est entièrement couverte par la cotisation collective (${dejaCollecte} € encaissés). Elle est passée en « payée ».`,
+            p_priorite: "normale",
+            p_prestation_id: prestation.id,
+            p_client_id: resolvedClientId,
+            p_clubplus_signup_request_id: null,
+          });
+        } catch (_e) {
+          console.error("[create-checkout-session] notification cotisation complete impossible :", _e);
+        }
+        return json({
+          deja_finance: true,
+          message: "Cette prestation est entièrement financée par la cotisation collective. Il n'y a plus rien à payer.",
+        });
+      }
+      return json({ error: "Montant à payer nul" }, 400);
+    }
 
     const { data: paiement, error: paiementErr } = await admin
       .from("paiements")
