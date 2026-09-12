@@ -36,7 +36,11 @@ const RAISON_TITRE: Record<GalleryDenial, string> = {
 };
 
 const RAISON_TEXTE: Record<GalleryDenial, string> = {
-  introuvable: "Le lien que vous avez reçu n'est plus valide. Demandez-en un nouveau à votre club.",
+  // Le cas le plus frequent n'est pas un lien perime, c'est un lien COUPE : recopie d'un message,
+  // d'un QR mal cadre, d'un partage qui a tronque la fin. Et « demandez-en un nouveau a votre
+  // club » ne veut rien dire pour la galerie d'un tournoi, ou il n'y a pas de club (12/09/2026).
+  introuvable:
+    "Ce lien est incomplet ou n'est plus valide. Vérifiez que vous l'avez copié en entier, jusqu'à la suite de lettres et de chiffres qui le termine, puis redemandez-le à la personne qui vous l'a envoyé.",
   desactive: "Le partage de cette galerie a été arrêté par SportVision ou par le club.",
   expire: "Ce lien avait une durée limitée et n'est plus actif. Votre club peut en générer un nouveau.",
   non_publie: "Les photos sont en cours de préparation. Revenez avec ce même lien dans quelques jours.",
@@ -62,7 +66,7 @@ export async function generateMetadata({
   if (!result.ok) return { title: "Galerie SportVision", robots: { index: false, follow: false } };
 
   const { header } = result;
-  const description = [header.clubNom, header.equipe, `${header.photoCount} photos`]
+  const description = [header.clubNom ?? header.structure, header.equipe, `${header.photoCount} photos`]
     .filter(Boolean)
     .join(" · ");
   return {

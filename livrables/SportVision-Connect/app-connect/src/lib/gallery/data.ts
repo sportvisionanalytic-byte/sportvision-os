@@ -14,6 +14,9 @@ export interface GalleryHeader {
   eventDate: string | null;
   clubNom: string | null;
   equipe: string | null;
+  /** Nom de la structure quand la galerie n'appartient à aucun club client : un tournoi, un
+   *  plateau, un club adverse (v180). Sans elle, la page d'un tournoi n'affichait rien du tout. */
+  structure: string | null;
   coverUrl: string | null;
   photoCount: number;
   /** Ancien mode de livraison : album sans photo en base, livré par lien privé. On sait qu'il
@@ -86,6 +89,7 @@ export async function openGallery(
       eventDate: (row.event_date as string) ?? null,
       clubNom: (row.club_nom as string) ?? null,
       equipe: (row.equipe as string) ?? null,
+      structure: (row.structure as string) ?? null,
       coverUrl: (row.cover_url as string) ?? null,
       photoCount: (row.photo_count as number) ?? 0,
       livraisonExterne: row.livraison_externe === true,

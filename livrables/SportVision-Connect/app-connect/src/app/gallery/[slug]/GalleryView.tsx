@@ -289,7 +289,7 @@ export function GalleryView({
               {header.titre}
             </h1>
             <p className="mt-1 text-[12.5px] leading-snug text-text-tertiary">
-              {[header.clubNom, header.equipe, dateLabel, `${header.photoCount} photos`].filter(Boolean).join(" · ")}
+              {[header.clubNom ?? header.structure, header.equipe, dateLabel, `${header.photoCount} photos`].filter(Boolean).join(" · ")}
             </p>
             {vendable && selected.length === 0 && (
               <p className="mt-0.5 text-[12px] text-text-faint">
@@ -374,7 +374,10 @@ export function GalleryView({
 
         <footer className="mt-8 border-t border-border pb-6 pt-5 text-center">
           <p className="text-[11.5px] text-text-faint">
-            Photographies réalisées par SportVision · {header.clubNom ?? ""}
+            {/* Sur une galerie de tournoi il n'y a pas de club : la ligne se terminait par un
+                point médian orphelin (12/09/2026). */}
+            Photographies réalisées par SportVision
+            {header.clubNom || header.structure ? ` · ${header.clubNom ?? header.structure}` : ""}
           </p>
         </footer>
       </main>
