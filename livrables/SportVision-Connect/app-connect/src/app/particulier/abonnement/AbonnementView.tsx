@@ -53,7 +53,16 @@ export function AbonnementView({
   }, [returnStatus, router]);
 
   const usagePct = info.limit > 0 ? Math.min(100, Math.round((info.athletesCount / info.limit) * 100)) : 0;
-  const isSubscribed = info.tier !== "gratuit" && (info.status === "active" || info.status === "past_due");
+  // 12/09/2026 — `info.tier` vient de `connect_agent_effective_tier`, qui ne lit que les lignes
+  // `active` : en impayé, le palier retombe à « gratuit », donc cette condition était fausse et
+  // l'écran réaffichait « Souscrire ». Le client se croyait résilié, recliquait, et un SECOND
+  // abonnement Stripe se créait — le premier devenant introuvable dans l'application tout en
+  // continuant de prélever. L'abonnement existe dès qu'un statut vivant est là, quel que soit le
+  // palier effectif.
+  // Le webhook ne stocke que quatre statuts (agentSubscriptionStatus) : trialing et unpaid sont
+  // ramenés à active et past_due avant l'écriture. On raisonne donc sur ces quatre-là.
+  const isSubscribed = info.status === "active" || info.status === "past_due" || info.status === "incomplete";
+  const enImpaye = info.status === "past_due";
 
   async function refresh() {
     const supabase = createClient();
@@ -187,6 +196,13 @@ export function AbonnementView({
               </span>
             )}
           </div>
+
+          {enImpaye && (
+            <p className="border-t border-border pt-4 text-[14px] leading-relaxed text-attente lg:text-[12.5px]">
+              Votre abonnement est en attente de paiement. Mettez votre carte à jour depuis « Gérer ma facturation » :
+              n&apos;en souscrivez pas un second, vous seriez prélevé deux fois.
+            </p>
+          )}
 
           {isSubscribed && (
             <div className="flex flex-wrap gap-2.5 border-t border-border pt-4">

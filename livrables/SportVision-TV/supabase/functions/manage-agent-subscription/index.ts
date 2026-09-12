@@ -120,6 +120,23 @@ serve(async (req) => {
         return json({ error: `${TIER_ENV_KEY[tier]} non configurée — créez d'abord le Price côté Stripe.` }, 500);
       }
 
+      // 12/09/2026 — Une descente de palier n'etait soumise a aucune verification : un agent Pro
+      // suivant 20 sportifs passait a Starter (5), payait 9,90 EUR au lieu de 24,90 EUR, et
+      // gardait ses 20 acces, aucune lecture ne filtrant par palier. On refuse la descente tant
+      // que le nombre de sportifs suivis depasse la limite du palier vise, en disant combien il
+      // faut en retirer.
+      const [{ data: suivis }, { data: limite }] = await Promise.all([
+        admin.rpc("connect_agent_relationship_count", { p_user_id: user.id }),
+        admin.rpc("connect_agent_tier_limit", { p_tier: tier }),
+      ]);
+      const nbSuivis = Number(suivis ?? 0);
+      const nbMax = Number(limite ?? 0);
+      if (nbMax > 0 && nbSuivis > nbMax) {
+        return json({
+          error: `Vous suivez ${nbSuivis} sportif${nbSuivis > 1 ? "s" : ""} et cette formule en permet ${nbMax}. Retirez-en ${nbSuivis - nbMax} avant de changer de palier.`,
+        }, 400);
+      }
+
       const current = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
       const itemId = current.items.data[0]?.id;
       if (!itemId) return json({ error: "Ligne d'abonnement Stripe introuvable." }, 500);

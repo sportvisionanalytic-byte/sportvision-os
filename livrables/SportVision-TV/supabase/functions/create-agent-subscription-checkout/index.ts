@@ -107,8 +107,21 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (existing?.status === "active") {
-      return json({ error: "Vous avez déjà un abonnement Agent actif — utilisez « Changer de palier » depuis Mon abonnement." }, 400);
+    // 12/09/2026 — Ce garde-fou ne connaissait que `active`. Un abonnement en impayé
+    // (`past_due`) ou en periode d'essai retombait donc sur l'ecran « Souscrire », et un second
+    // abonnement Stripe se creait : le premier devenait introuvable dans l'application et
+    // continuait de prelever. On refuse desormais toute reprise sur un abonnement encore vivant,
+    // en disant quoi faire.
+    // Le webhook normalise les statuts Stripe avant de les ecrire : la table ne connait que
+    // incomplete, active, past_due et canceled (agentSubscriptionStatus).
+    const VIVANTS = ["active", "past_due", "incomplete"];
+    if (existing?.status && VIVANTS.includes(existing.status)) {
+      const message = existing.status === "past_due"
+        ? "Votre abonnement Agent est en attente de paiement. Mettez votre carte à jour depuis « Gérer ma facturation » plutôt que d'en souscrire un second."
+        : existing.status === "incomplete"
+          ? "Un paiement d'abonnement est déjà en cours. Terminez-le ou attendez quelques minutes avant de recommencer."
+          : "Vous avez déjà un abonnement Agent actif — utilisez « Changer de palier » depuis Mon abonnement.";
+      return json({ error: message }, 400);
     }
 
     const stripe = new Stripe(stripeSecretKey, {

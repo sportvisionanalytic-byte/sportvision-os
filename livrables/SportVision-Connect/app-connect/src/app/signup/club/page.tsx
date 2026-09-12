@@ -18,10 +18,13 @@ import { useSignup } from "../signup-context";
 import type { SignupProfile } from "../signup-context";
 
 // Choix précis du profil particulier (migration-connect-v67-distinction-parent-agent.sql §1) —
-// dérivé de l'étape Profil du tunnel (signup-context.tsx). Seuls "agent"/"parent"/"autre" (avec
-// détection "tuteur" en texte libre) ont une valeur dans le CHECK de la colonne
-// profil_particulier ; le choix générique "particulier" n'a pas d'équivalent (undefined), la
-// colonne reste alors NULL — voir le commentaire de PendingPlayerOnboarding.profilParticulier.
+// dérivé de l'étape Profil du tunnel (signup-context.tsx).
+//
+// 12/09/2026 — Le choix générique « Particulier » ne renvoyait rien, donc la colonne restait
+// NULL, et `connect_particulier_limit` traitait une colonne vide comme un compte antérieur à la
+// v67 : plafond 999, c'est-à-dire aucun plafond. Un agent qui cliquait « Particulier » plutôt que
+// « Agent / représentant » suivait 30 sportifs gratuitement. La base a été refermée (v197), et
+// ici on écrit enfin une valeur : « autre », qui porte le même plafond de 3 qu'un parent.
 function resolveProfilParticulier(
   profile: SignupProfile | null,
   otherProfile: string,
@@ -31,6 +34,7 @@ function resolveProfilParticulier(
   if (profile === "autre") {
     return otherProfile.toLowerCase().includes("tuteur") ? "tuteur" : "autre";
   }
+  if (profile === "particulier") return "autre";
   return undefined;
 }
 
