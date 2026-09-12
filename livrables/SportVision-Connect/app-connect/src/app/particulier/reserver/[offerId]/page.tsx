@@ -39,20 +39,18 @@ export default async function ReservationParticulierPage({
   ]);
   if (!offer) notFound();
 
-  const kind: "self" | "linked" | "managed" = benefKind === "linked" || benefKind === "managed" ? benefKind : "self";
-  // 'club' (migration-connect-v79) exclu explicitement : reserver=false pour ce kind (aucun
-  // support backend pour la réservation d'une prestation au nom d'un enfant affilié à un vrai
-  // club, voir la migration) — la garde de type ci-dessous documente cette exclusion, en plus du
-  // filtre runtime déjà assuré par !found.rights.reserver.
+  const kind: "self" | "linked" | "managed" | "club" =
+    benefKind === "linked" || benefKind === "managed" || benefKind === "club" ? benefKind : "self";
+  // 'club' était exclu depuis la v79, faute de support serveur pour réserver au nom d'un enfant
+  // affilié à un vrai club. Ce support existe depuis la v183 (12/09/2026) : le client facturé est
+  // la famille, avec les coordonnées du parent, et la base vérifie le lien parent confirmé. Le
+  // filtre qui reste, `found.rights.reserver`, suffit donc — c'est la base qui décide.
   const beneficiary: Beneficiary | null =
     kind === "self"
       ? { kind: "self", id: null, label: `${identity.firstName} ${identity.lastName}`.trim() || "Vous", club: null, categorie: null }
       : (() => {
-          const found = athletes.find((a) => a.kind !== "club" && a.kind === kind && a.refId === benefId);
-          // rights.reserver est déjà false par construction pour kind='club' (migration-connect-
-          // v79) — le filtre ci-dessus l'exclut aussi explicitement au niveau des types, jamais les
-          // deux vérifications désynchronisées.
-          if (!found || found.kind === "club" || !found.rights.reserver) return null;
+          const found = athletes.find((a) => a.kind === kind && a.refId === benefId);
+          if (!found || !found.rights.reserver) return null;
           const result: Beneficiary = { kind: found.kind, id: found.refId, label: `${found.firstName} ${found.lastName}`.trim(), club: found.clubNom, categorie: found.categorie };
           return result;
         })();
@@ -66,8 +64,14 @@ export default async function ReservationParticulierPage({
     beneficiary && offer.slug === MONTAGE_COMPILATION_SLUG
       ? await fetchAthleteProfile(supabase, {
           kind: beneficiary.kind,
-          userId: beneficiary.kind === "managed" ? null : beneficiary.kind === "self" ? user.id : beneficiary.id,
+          userId:
+            beneficiary.kind === "managed" || beneficiary.kind === "club"
+              ? null
+              : beneficiary.kind === "self"
+                ? user.id
+                : beneficiary.id,
           managedId: beneficiary.kind === "managed" ? beneficiary.id : null,
+          playerId: beneficiary.kind === "club" ? beneficiary.id : null,
         })
       : null;
 

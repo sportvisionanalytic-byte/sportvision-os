@@ -161,7 +161,10 @@ function needsRetractationWaiver(dateIso: string): boolean {
 // deno-lint-ignore no-explicit-any
 async function resolveBeneficiaryClientId(userClient: any, callerId: string, beneficiary: { kind?: string; refId?: string }) {
   const kind = beneficiary?.kind;
-  if (kind !== "self" && kind !== "linked" && kind !== "managed") {
+  // « club » ajouté le 12/09/2026 : l'enfant réellement affilié à un club partenaire, le cas le
+  // plus courant du produit, était le seul que la réservation refusait. La vérification du lien
+  // parent confirmé est faite EN BASE (connect_resolve_beneficiary_client_id), jamais ici.
+  if (kind !== "self" && kind !== "linked" && kind !== "managed" && kind !== "club") {
     return { error: "Bénéficiaire invalide." as const };
   }
   const refId = kind === "self" ? null : beneficiary.refId || null;

@@ -22,12 +22,16 @@ export interface AthleteProfileInfo {
 }
 
 interface AthleteProfileTarget {
-  kind: "self" | "linked" | "managed";
+  // « club » (12/09/2026) : l'enfant affilié à un club partenaire. Sa fiche se lit par son
+  // IDENTIFIANT (player_profiles.id), pas par un compte : un enfant n'en a pas forcément.
+  kind: "self" | "linked" | "managed" | "club";
   // player_profiles.user_id à lire pour "self"/"linked" (userId du compte joueur ciblé — celui
   // de l'appelant pour "self", celui du sportif lié pour "linked").
   userId: string | null;
   // managed_athlete_profiles.id à lire pour "managed".
   managedId: string | null;
+  // player_profiles.id à lire pour "club".
+  playerId?: string | null;
 }
 
 export async function fetchAthleteProfile(
@@ -47,6 +51,22 @@ export async function fetchAthleteProfile(
       poidsKg: data.poids_kg ?? null,
       poste: data.poste ?? null,
       numeroMaillot: data.numero_maillot ?? null,
+    };
+  }
+
+  if (target.kind === "club") {
+    if (!target.playerId) return null;
+    const { data: fiche } = await supabase
+      .from("player_profiles")
+      .select("taille_cm, poids_kg, poste, numero_maillot")
+      .eq("id", target.playerId)
+      .maybeSingle();
+    if (!fiche) return null;
+    return {
+      tailleCm: fiche.taille_cm ?? null,
+      poidsKg: fiche.poids_kg ?? null,
+      poste: fiche.poste ?? null,
+      numeroMaillot: fiche.numero_maillot ?? null,
     };
   }
 

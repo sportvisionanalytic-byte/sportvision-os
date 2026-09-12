@@ -38,7 +38,10 @@ const COULEURS_MAILLOT_COURANTES = [
 ];
 
 export interface Beneficiary {
-  kind: "self" | "linked" | "managed";
+  // « club » depuis le 12/09/2026 : l'enfant réellement affilié à un club partenaire. La
+  // résolution du client facturé et la vérification du lien parent confirmé se font en base
+  // (connect_resolve_beneficiary_client_id, v183).
+  kind: "self" | "linked" | "managed" | "club";
   id: string | null;
   label: string;
   club: string | null;
