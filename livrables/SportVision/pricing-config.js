@@ -232,14 +232,15 @@ const PRICING_CONFIG = {
   },
 
   // ── Mentions légales (pas une "prestation", mais un montant en € affiché) ──
-  // Capital social de la SASU — inclus ici uniquement pour que le script de
-  // vérification sache reconnaître ce montant et ne pas le signaler à tort
-  // comme un tarif de prestation non reconnu.
+  // Capital social de la SAS. Il n'est PLUS affiché nulle part sur le site : retiré des CGV et des
+  // mentions légales le 12/09/2026 (consigne de Fouka, il ne doit pas apparaître). L'entrée reste
+  // pour que le script de vérification reconnaisse ce montant s'il réapparaissait quelque part,
+  // au lieu de le signaler comme un tarif de prestation inconnu.
   'capital-social': {
-    label: 'Capital social SASU ELKANA GROUP',
+    label: 'Capital social SAS ELKANA GROUP',
     price: 1.00,
     unit: 'TTC',
-    note: 'Mentions légales / CGV uniquement — pas un tarif commercial.',
+    note: 'Ne doit plus apparaître sur le site. Pas un tarif commercial.',
     sources: ['mentions-legales.html', 'cgv.html'],
   },
 };

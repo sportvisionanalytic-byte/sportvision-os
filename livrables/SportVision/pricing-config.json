@@ -250,13 +250,10 @@
     ]
   },
   "capital-social": {
-    "label": "Capital social SASU ELKANA GROUP",
+    "label": "Capital social SAS ELKANA GROUP",
     "price": 1,
     "unit": "TTC",
-    "note": "Mentions légales / CGV uniquement — pas un tarif commercial.",
-    "sources": [
-      "mentions-legales.html",
-      "cgv.html"
-    ]
+    "note": "Ne doit plus apparaître sur le site (retiré le 12/09/2026). Pas un tarif commercial.",
+    "sources": []
   }
 }
