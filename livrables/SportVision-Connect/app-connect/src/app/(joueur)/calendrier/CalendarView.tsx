@@ -244,10 +244,12 @@ function WeekView({ events, onSelect }: { events: CalendarEventData[]; onSelect:
         <div className="ml-auto flex gap-2">
           <NavButton
             icon="chevron_left"
+            label="Semaine précédente"
             onClick={() => setCursor((c) => { const n = new Date(c); n.setDate(n.getDate() - 7); return n; })}
           />
           <NavButton
             icon="chevron_right"
+            label="Semaine suivante"
             onClick={() => setCursor((c) => { const n = new Date(c); n.setDate(n.getDate() + 7); return n; })}
           />
         </div>
@@ -317,8 +319,8 @@ function MonthView({
           {cursor.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
         </span>
         <div className="ml-auto flex gap-2">
-          <NavButton icon="chevron_left" onClick={() => onCursorChange(new Date(year, month - 1, 1))} />
-          <NavButton icon="chevron_right" onClick={() => onCursorChange(new Date(year, month + 1, 1))} />
+          <NavButton icon="chevron_left" label="Mois précédent" onClick={() => onCursorChange(new Date(year, month - 1, 1))} />
+          <NavButton icon="chevron_right" label="Mois suivant" onClick={() => onCursorChange(new Date(year, month + 1, 1))} />
         </div>
       </div>
       <div className="rounded-sv-card border border-border bg-surface p-4">
@@ -373,10 +375,13 @@ function MonthView({
   );
 }
 
-function NavButton({ icon, onClick }: { icon: string; onClick: () => void }) {
+// Un bouton qui ne porte qu'une icone doit se nommer : un lecteur d'ecran annoncait « bouton »,
+// quatre fois de suite (12/09/2026).
+function NavButton({ icon, onClick, label }: { icon: string; onClick: () => void; label: string }) {
   return (
     <button
       type="button"
+      aria-label={label}
       onClick={onClick}
       className="flex h-[38px] w-[38px] items-center justify-center rounded-sv border border-border bg-surface text-text-secondary hover:bg-surface-hover"
     >
@@ -405,7 +410,7 @@ function EventDetail({ event, onClose }: { event: CalendarEventData; onClose: ()
           <span className="rounded-sv-pill px-2.5 py-1 text-[11px] font-medium" style={{ color: badge.color, background: badge.bg }}>
             {badge.label}
           </span>
-          <button type="button" onClick={onClose} className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv bg-white/[.06] hover:bg-white/[.12]">
+          <button type="button" aria-label="Fermer" onClick={onClose} className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv bg-white/[.06] hover:bg-white/[.12]">
             <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">close</span>
           </button>
         </div>

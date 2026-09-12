@@ -204,7 +204,7 @@ function EventDetail({ event, onClose }: { event: ParticulierEvent; onClose: () 
           <span className="rounded-sv-pill px-2.5 py-1 text-[11px] font-medium" style={{ color: meta.color, background: meta.bg }}>
             {meta.label}
           </span>
-          <button type="button" onClick={onClose} className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv bg-white/[.06] hover:bg-white/[.12]">
+          <button type="button" aria-label="Fermer" onClick={onClose} className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv bg-white/[.06] hover:bg-white/[.12]">
             <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">close</span>
           </button>
         </div>

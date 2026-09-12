@@ -30,7 +30,7 @@
  * charge ce fichier via <script src="pricing-config.js"></script> puis lit
  * PRICING_CONFIG au chargement pour peupler ses cartes de besoins, la liste
  * déroulante des paliers Montage & compilation, et l'option tarifée « Plans
- * drone ou Véo complémentaires », au lieu de dupliquer ces nombres dans son
+ * drone ou Veo complémentaires », au lieu de dupliquer ces nombres dans son
  * propre <script>. Voir la fonction applyPricingConfig() dans reserver.html.
  * Si ce fichier ne charge pas (erreur réseau, etc.), reserver.html retombe
  * silencieusement sur les valeurs déjà présentes dans son HTML statique
@@ -119,14 +119,14 @@ const PRICING_CONFIG = {
     sources: ['prestations.html', 'reserver.html'],
   },
   'match-camera-veo': {
-    label: 'Match filmé caméra Véo',
+    label: 'Match filmé caméra Veo',
     price: 120,
     unit: 'TTC',
     note: null,
     sources: ['prestations.html', 'reserver.html'],
   },
   'combo-veo-photo': {
-    label: 'Combo Véo + Photo',
+    label: 'Combo Veo + Photo',
     price: 180,
     unit: 'TTC',
     note: null,
@@ -170,7 +170,7 @@ const PRICING_CONFIG = {
 
   // ── Options tarifées (s'ajoutent à une prestation à l'unité) ──
   'option-drone-veo': {
-    label: 'Plans drone ou Véo complémentaires',
+    label: 'Plans drone ou Veo complémentaires',
     price: 40,
     unit: 'TTC',
     note: 'Complément sur une prestation existante (match photo/vidéo, Pack Match, tournoi, stage)',

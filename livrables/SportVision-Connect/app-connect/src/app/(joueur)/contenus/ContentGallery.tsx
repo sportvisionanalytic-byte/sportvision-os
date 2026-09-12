@@ -395,6 +395,7 @@ function Lightbox({
       <div className="flex flex-none items-center gap-3 p-4">
         <button
           type="button"
+          aria-label="Fermer"
           onClick={onClose}
           className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-white/[.08] hover:bg-white/[.16]"
         >

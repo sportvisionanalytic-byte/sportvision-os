@@ -123,6 +123,7 @@ export function ParticipateButton({
                   <span className="font-sora text-[19px] font-semibold tracking-tight">Participation enregistrée</span>
                   <button
                     type="button"
+                    aria-label="Fermer"
                     onClick={closeModal}
                     className="ml-auto flex h-10 w-10 flex-none items-center justify-center rounded-sv bg-white/[.06] text-text-secondary hover:bg-white/[.12]"
                   >
@@ -155,6 +156,7 @@ export function ParticipateButton({
                   </div>
                   <button
                     type="button"
+                    aria-label="Fermer"
                     onClick={closeModal}
                     disabled={busy}
                     className="ml-auto flex h-10 w-10 flex-none items-center justify-center rounded-sv bg-white/[.06] text-text-secondary hover:bg-white/[.12]"

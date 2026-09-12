@@ -67,7 +67,7 @@
     ]
   },
   "match-camera-veo": {
-    "label": "Match filmé caméra Véo",
+    "label": "Match filmé caméra Veo",
     "price": 120,
     "unit": "TTC",
     "note": null,
@@ -77,7 +77,7 @@
     ]
   },
   "combo-veo-photo": {
-    "label": "Combo Véo + Photo",
+    "label": "Combo Veo + Photo",
     "price": 180,
     "unit": "TTC",
     "note": null,
@@ -182,7 +182,7 @@
     ]
   },
   "option-drone-veo": {
-    "label": "Plans drone ou Véo complémentaires",
+    "label": "Plans drone ou Veo complémentaires",
     "price": 40,
     "unit": "TTC",
     "note": "Complément sur une prestation existante (match photo/vidéo, Pack Match, tournoi, stage)",

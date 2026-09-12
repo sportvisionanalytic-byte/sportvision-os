@@ -70,6 +70,7 @@ export function InviteGroupButton({ groupId, groupName }: { groupId: string; gro
               </div>
               <button
                 type="button"
+                aria-label="Fermer"
                 onClick={() => setOpen(false)}
                 className="ml-auto flex h-10 w-10 flex-none items-center justify-center rounded-sv bg-white/[.06] text-text-secondary hover:bg-white/[.12]"
               >
