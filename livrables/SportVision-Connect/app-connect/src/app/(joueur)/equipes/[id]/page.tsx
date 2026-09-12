@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireJoueurAccount } from "@/lib/supabase/session";
+import { BoutonQuitter, BoutonRetirerMembre } from "./GestionMembres";
 import { gradientFor } from "@/lib/avatarGradients";
 import { InviteGroupButton } from "./InviteGroupButton";
 
@@ -42,7 +43,7 @@ function euros(n: number) {
 export default async function EquipeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  await requireJoueurAccount(supabase);
+  const { user } = await requireJoueurAccount(supabase);
 
   const { data } = await supabase.rpc("get_group_detail", { p_group_id: id });
   const group = data as GroupDetail | null;
@@ -110,6 +111,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
                 {group.member_count}
               </span>
             </div>
+            {group.created_by !== user.id && <BoutonQuitter groupId={group.id} />}
             <div className="flex flex-col gap-2.5">
               {group.members.map((m) => (
                 <div
@@ -126,10 +128,14 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
                     <span className="text-[14px] font-medium">{m.name}</span>
                     <span className="text-[12px] text-text-tertiary">{m.role === "createur" ? "Créateur" : "Membre"}</span>
                   </div>
-                  {m.role === "createur" && (
+                  {m.role === "createur" ? (
                     <span className="ml-auto flex-none rounded-sv-pill bg-affiliations-bg px-2.5 py-1 text-[11px] font-medium text-affiliations">
                       Créateur
                     </span>
+                  ) : (
+                    group.created_by === user.id && (
+                      <BoutonRetirerMembre groupId={group.id} userId={m.user_id} nom={m.name} />
+                    )
                   )}
                 </div>
               ))}

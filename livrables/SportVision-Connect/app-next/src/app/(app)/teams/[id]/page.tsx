@@ -35,6 +35,7 @@ import {
 import type { LicenseStatus, Team } from "@/lib/types/teams";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
+import { retirerJoueurEquipe } from "@/lib/data/club/team-detail";
 import { fetchLiensParentsADecider, deciderLienParent, type LienParentADecider } from "@/lib/data/club/parentLinks";
 import { fetchClubTeams } from "@/lib/data/club/teams";
 import { ACCOUNT_STATUS_LABEL, fetchTeamRoster, type TeamRosterPlayer } from "@/lib/data/club/team-detail";
@@ -600,7 +601,12 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
       {tab === "effectif" && (
         <>
           <RattachementsParents clubId={organizationId} equipe={team.name} />
-          <RealRosterTab roster={roster} />
+          <RealRosterTab
+            roster={roster}
+            teamId={teamId}
+            peutRetirer={canManageMembers}
+            onRetire={() => setRechargement((n) => n + 1)}
+          />
         </>
       )}
       {tab === "calendrier" && <RealCalendarTab organizationId={organizationId} teamId={teamId} />}
@@ -764,7 +770,42 @@ function RealInfo({ label, value }: { label: string; value: string }) {
   );
 }
 
-function RealRosterTab({ roster }: { roster: TeamRosterPlayer[] }) {
+function RealRosterTab({
+  roster,
+  teamId,
+  peutRetirer,
+  onRetire,
+}: {
+  roster: TeamRosterPlayer[];
+  teamId: string;
+  peutRetirer: boolean;
+  onRetire: () => void;
+}) {
+  // Retirer un joueur de l'équipe (12/09/2026) : aucun écran ne le permettait, et l'effectif
+  // affichait « Retiré » sur une ligne que la base comptait toujours comme active. La base
+  // verifie qui demande ; un refus s'affiche tel quel.
+  const [enCours, setEnCours] = useState<string | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  async function retirer(p: TeamRosterPlayer) {
+    if (
+      !confirm(
+        `Retirer ${p.firstName} ${p.lastName} de cette équipe ?\n\nSa fiche et son historique sont conservés, et il pourra être rattaché à une autre équipe.`,
+      )
+    )
+      return;
+    setEnCours(p.id);
+    setErreur(null);
+    try {
+      await retirerJoueurEquipe(createClient(), p.id, teamId);
+      onRetire();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Le retrait n'a pas abouti.");
+    } finally {
+      setEnCours(null);
+    }
+  }
+
   if (roster.length === 0) {
     return (
       <Card>
@@ -793,10 +834,20 @@ function RealRosterTab({ roster }: { roster: TeamRosterPlayer[] }) {
           </span>
           <span className="text-[12.5px] text-text-soft">{p.licenseNumber ?? "—"}</span>
           <span className="text-[12.5px] text-text-soft">{ACCOUNT_STATUS_LABEL[p.accountStatus] ?? p.accountStatus}</span>
-          <span>
+          <span className="flex items-center justify-between gap-2">
             <Badge tone={AUTHORIZATION_STATUS_TONE[p.imageRightStatus] ?? "neutral"}>
               {AUTHORIZATION_STATUS_LABELS[p.imageRightStatus] ?? p.imageRightStatus}
             </Badge>
+            {peutRetirer && (
+              <button
+                type="button"
+                disabled={enCours === p.id}
+                onClick={() => void retirer(p)}
+                className="text-[12px] font-bold text-text-faint hover:text-danger-fg disabled:opacity-50"
+              >
+                Retirer
+              </button>
+            )}
           </span>
         </div>
       ))}

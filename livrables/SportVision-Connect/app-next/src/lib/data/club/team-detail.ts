@@ -85,3 +85,25 @@ export const ACCOUNT_STATUS_LABEL: Record<string, string> = {
   suspendu: "Suspendu",
   retire: "Retiré",
 };
+
+/** Retirer un joueur d'une équipe (migration v184, 12/09/2026).
+ *
+ * Aucun écran ne le permettait : l'effectif affichait « Retiré » sur une ligne que la base
+ * comptait toujours comme active, et le joueur restait dans l'équipe pour toutes les fonctions.
+ * La base vérifie qui demande (dirigeant du club, opérateur SportVision, éducateur de l'équipe) ;
+ * un refus remonte tel quel. */
+export async function retirerJoueurEquipe(
+  supabase: SupabaseClient,
+  playerId: string,
+  teamId: string,
+): Promise<void> {
+  const { data, error } = await supabase.rpc("retirer_joueur_equipe", {
+    p_player_id: playerId,
+    p_team_id: teamId,
+  });
+  if (error) throw error;
+  const retires = Number((data as { retires?: number } | null)?.retires ?? 0);
+  // Pas de faux succès : zéro ligne touchée veut dire que le joueur n'était déjà plus dans cette
+  // équipe, ou que la base a refusé sans erreur.
+  if (!retires) throw new Error("Rien n'a changé : ce joueur n'est plus dans cette équipe.");
+}
