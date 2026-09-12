@@ -31718,7 +31718,26 @@ async function loadJourJ(){
     const raw=await sbFetch('prestations_equipe_display?select=id,statut,fonction,heure_rdv,remuneration,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
     if(!Array.isArray(raw))throw new Error(raw?.message||'Erreur API');
     const valid=raw.filter(r=>r.prestations&&!['annulée','refusée','clôturée','payée'].includes(r.prestations.statut));
-    const todayMissions=valid.filter(r=>r.prestations.date_prestation===today);
+    // 13/09/2026 — Une mission ne s'arrete pas a minuit. Ce filtre ne gardait que les missions
+    // dont la date est EXACTEMENT aujourd'hui : un operateur qui finit un match a 23 h et ouvre
+    // son telephone apres minuit pour deposer ses photos et cloturer sa mission ne la trouvait
+    // plus. Elle restait atteignable par « Mes missions » / onglet Livraison, mais pas la ou il
+    // la cherche. Signale par Fouka le 13/09 : Michael bloque sur ce cas.
+    //
+    // Une mission reste donc dans le Jour J tant que son parcours n'est PAS termine, jusqu'a sept
+    // jours apres sa date. Au-dela, elle releve du suivi de livraison, pas du terrain.
+    // « Fini » veut dire LIVRE, pas « l'operateur a coche la derniere case ». Cas reel du 12/09 :
+    // Mikael est alle jusqu'a « fichiers securises » a 22 h 31, statut « medias_complets », et
+    // AUCUN lien media n'etait depose. Sortir la mission du Jour J a ce stade l'aurait laisse
+    // exactement aussi bloque. `valid` ecarte deja annulee, refusee, cloturee et payee.
+    const FINI_POUR_L_OPERATEUR=['livrée'];
+    const ilYA7Jours=ymdLocal(new Date(now.getTime()-7*86400000));
+    const todayMissions=valid.filter(r=>{
+      const d=r.prestations.date_prestation;
+      if(!d)return false;
+      if(d===today)return true;
+      return d<today&&d>=ilYA7Jours&&!FINI_POUR_L_OPERATEUR.includes(r.prestations.statut);
+    }).sort((a,b)=>(a.prestations.date_prestation||'').localeCompare(b.prestations.date_prestation||''));
     const upcoming=valid.filter(r=>r.prestations.date_prestation>today&&r.prestations.date_prestation<=in7s)
       .sort((a,b)=>a.prestations.date_prestation.localeCompare(b.prestations.date_prestation));
     // Kits des missions du jour
@@ -31751,6 +31770,14 @@ async function loadJourJ(){
       'production_terminée':{lb:'📤 Médias transférés',ns:'médias_à_transférer',clr:'#7C4DFF',tc:'#fff'},
       'médias_à_transférer':{lb:'✓ Médias complets',ns:'médias_complets',clr:'var(--ok)',tc:'#fff'},
     };
+    // « Aujourd'hui », « Hier », sinon la date : l'operateur doit voir tout de suite qu'il termine
+    // la mission de la veille, pas en commencer une nouvelle.
+    function _libelleJour(dateStr,todayStr){
+      if(!dateStr||dateStr===todayStr)return "AUJOURD'HUI";
+      const hier=ymdLocal(new Date(new Date(todayStr+'T12:00:00').getTime()-86400000));
+      if(dateStr===hier)return 'HIER · À TERMINER';
+      return new Date(dateStr+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'}).toUpperCase()+' · À TERMINER';
+    }
     function calcCountdown(rdvStr,dateStr){
       if(!rdvStr||!dateStr)return null;
       const rdvDt=new Date(dateStr+'T'+rdvStr.slice(0,5)+':00');
@@ -31769,7 +31796,8 @@ async function loadJourJ(){
       </div>`;
     }else{
       if(todayMissions.length){
-        html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--er);text-transform:uppercase;margin-bottom:10px">Aujourd'hui</div>`;
+        const _enRetard=todayMissions.some(r=>r.prestations.date_prestation<today);
+        html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--er);text-transform:uppercase;margin-bottom:10px">${_enRetard?'À terminer':'Aujourd\'hui'}</div>`;
         todayMissions.forEach(row=>{
           const p=row.prestations;
           const rdv=(row.heure_rdv||p.heure_rdv||p.heure_debut||'').slice(0,5);
@@ -31788,7 +31816,7 @@ async function loadJourJ(){
           html+=`<div style="background:linear-gradient(135deg,rgba(240,68,94,.15),rgba(124,77,255,.12));border:1px solid rgba(240,68,94,.35);border-radius:16px;padding:20px;margin-bottom:12px">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
               <div style="flex:1;min-width:0">
-                <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--er);margin-bottom:5px">AUJOURD'HUI · ${p.reference||'—'}</div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--er);margin-bottom:5px">${_libelleJour(p.date_prestation,today)} · ${p.reference||'—'}</div>
                 <div style="font-size:20px;font-weight:800;color:var(--t1);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.clients?.nom||'—')}</div>
                 <div style="font-size:13px;color:var(--t2);margin-top:3px">${p.type_prestation||'Mission'}</div>
               </div>
