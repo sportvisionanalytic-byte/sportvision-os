@@ -11712,7 +11712,7 @@ async function loadProdJourJ(){
   el.innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">Chargement…</div>';
   try{
     const [preRaw,incRaw]=await Promise.all([
-      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(id,prenom,nom,telephone,role))&date_prestation=eq.'+today+'&statut=not.in.(annulée,refusée,livrée,clôturée)&order=heure_debut.asc'),
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,arrivee_sur_place_at,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(id,prenom,nom,telephone,role))&date_prestation=eq.'+today+'&statut=not.in.(annulée,refusée,livrée,clôturée)&order=heure_debut.asc'),
       sbFetch('incidents?select=id,type_incident,niveau,cloture&cloture=eq.false'),
     ]);
     const pre=Array.isArray(preRaw)?preRaw:[];
@@ -11739,12 +11739,30 @@ async function loadProdJourJ(){
       const accepted=equipe.filter(e=>e.statut==='acceptée');
       const brd=ST_BRD[p.statut]||'var(--b1)';
       const isLive=p.statut==='production_démarrée';
+      // « Je suis arrive » (v187) : l'heure reelle, et le retard sur le rendez-vous quand il y en
+      // a un. C'est la seule chose que la Production cherche a savoir en ouvrant cet ecran ; le
+      // reste de la carte ne bouge pas.
+      let arrivee='';
+      if(p.arrivee_sur_place_at){
+        const a=new Date(p.arrivee_sur_place_at);
+        const hhmm=a.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+        let retard='';
+        if(p.heure_rdv&&p.date_prestation){
+          const rdv=new Date(p.date_prestation+'T'+String(p.heure_rdv).slice(0,5)+':00');
+          const min=Math.round((a-rdv)/60000);
+          if(min>10)retard=' · '+min+' min de retard';
+          else if(min<-10)retard=' · '+Math.abs(min)+' min d\'avance';
+          else retard=' · à l\'heure';
+        }
+        arrivee=`<div style="font-size:12px;color:var(--ok);font-weight:600;margin-top:3px">📍 Arrivée sur place à ${hhmm}${esc(retard)}</div>`;
+      }
       return`<div class="cd" style="padding:0;overflow:hidden;border-left:3px solid ${brd};margin-bottom:13px">
         <div style="padding:16px 18px;border-bottom:1px solid var(--b1)">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
             <div>
               <div style="font-size:15px;font-weight:800;color:var(--t1)">${esc(p.clients?.nom||'—')}</div>
               <div style="font-size:12px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'} · ${esc(p.lieu||'—')} · ${heures}</div>
+              ${arrivee}
             </div>
             <span style="font-size:11px;font-weight:700;padding:4px 10px;background:${brd}22;border:1px solid ${brd}55;border-radius:20px;color:${brd};flex-shrink:0;${isLive?'animation:prodPulse 2s ease-in-out infinite':''}">${ST_LB[p.statut]||SL[p.statut]||p.statut}</span>
           </div>
@@ -31799,7 +31817,13 @@ async function avanJourJ(id,newStatut){
       modalBasculeSauvegarde(id);
       return;
     }
-    toast(SL[newStatut]||newStatut,'ok');
+    // Dire ce que le geste a declenche, pas seulement le nouveau statut : l'operateur qui declare
+    // son arrivee doit savoir que la Production est prevenue, sinon il appelle quand meme
+    // (12/09/2026, demande de Fouka).
+    const _MSG={'arrivée_sur_place':'Arrivée enregistrée. La Production est prévenue.',
+                'prête':'Kit prêt. Vous pouvez partir.',
+                'équipe_en_route':'En route. Bonne mission.'};
+    toast(_MSG[newStatut]||SL[newStatut]||newStatut,'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
   }catch(e){toast('Erreur de mise à jour du statut.');}
