@@ -6635,7 +6635,7 @@ async function modalFicheClubPlus(clubId){
   openModal(`<div class="mh">
     <div style="display:flex;align-items:center;gap:12px">
       <div style="width:48px;height:48px;border-radius:10px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
-        ${logo?`<img src="${esc(logo)}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:20px;color:var(--t3)">🛡️</span>`}
+        ${logo?`<img alt="" src="${esc(logo)}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:20px;color:var(--t3)">🛡️</span>`}
       </div>
       <div><div class="mt">${esc(club.nom)}</div>
         <div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(planLb[club.plan]||club.plan||'—')} · ${esc(srcLb[club.club_plus_source]||club.club_plus_source||'—')}${club.subscription_status?' · '+esc(stLb[club.subscription_status]||club.subscription_status):''}${club.saison?' · Saison '+esc(club.saison):''}</div>
@@ -6967,7 +6967,7 @@ function modalModifierClient(idx){
     <div style="display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;align-items:center;gap:14px">
         <div id="fce-logo-preview" style="width:64px;height:64px;border-radius:12px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
-          ${c.logo_url?`<img src="${esc(c.logo_url)}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:22px;color:var(--t3)">🛡️</span>`}
+          ${c.logo_url?`<img alt="" src="${esc(c.logo_url)}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:22px;color:var(--t3)">🛡️</span>`}
         </div>
         <div>
           <label style="${lbl}">Logo du club</label>
@@ -7243,7 +7243,7 @@ async function loadClientClubIdentite(clientId){
     el.innerHTML=`
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
         <div style="width:48px;height:48px;border-radius:10px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
-          ${club.logo_url||club.ecusson_url?`<img src="${esc(club.logo_url||club.ecusson_url)}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:20px;color:var(--t3)">🛡️</span>`}
+          ${club.logo_url||club.ecusson_url?`<img alt="" src="${esc(club.logo_url||club.ecusson_url)}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:20px;color:var(--t3)">🛡️</span>`}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px">
           <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(club.nom)}${club.saison?' · Saison '+esc(club.saison):''}</div>
@@ -7911,7 +7911,7 @@ async function ouvrirFicheFederale(clientId,slug){
     if(c.adresse&&!(document.getElementById('fce-adresse')?.value||'').trim())vides.push('adresse');
     zone.innerHTML=`
       <div style="display:flex;gap:12px;align-items:flex-start;background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px">
-        ${c.logo_url?`<img src="${esc(c.logo_url)}" style="width:52px;height:52px;object-fit:contain;border-radius:8px;background:#fff;flex-shrink:0">`:''}
+        ${c.logo_url?`<img alt="" src="${esc(c.logo_url)}" style="width:52px;height:52px;object-fit:contain;border-radius:8px;background:#fff;flex-shrink:0">`:''}
         <div style="min-width:0;flex:1">
           <div style="font-weight:600;font-size:13px">${esc(c.nom||slug)}</div>
           <div style="font-size:11px;color:var(--t3);margin-top:2px">
@@ -8010,7 +8010,7 @@ async function uploaderLogoClient(clientId){
     const idx=_clientsCache.findIndex(c=>c.id===clientId);
     if(idx>=0)_clientsCache[idx].logo_url=url;
     const preview=document.getElementById('fce-logo-preview');
-    if(preview)preview.innerHTML=`<img src="${esc(url)}" style="width:100%;height:100%;object-fit:cover">`;
+    if(preview)preview.innerHTML=`<img alt="" src="${esc(url)}" style="width:100%;height:100%;object-fit:cover">`;
     if(statusEl)statusEl.textContent='Logo mis à jour.';
     toast('Logo mis à jour.','ok');
   }catch(e){if(statusEl)statusEl.textContent='Erreur lors de l\'envoi.';}
@@ -21715,7 +21715,7 @@ function _renderMsgContacts(myUid){
       const isActive=_msgConv===id;
       const clr=ROLE_COLORS[p.role]||'var(--acc)';
       const unread=(_msgUnread||{})[id]||0;
-      const av=p.av?`<img src="${esc(imageSure(p.av)||'')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid ${clr}44">`:`<div style="width:36px;height:36px;border-radius:50%;background:${clr}22;border:1.5px solid ${clr}44;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${clr}">${p.ini}</div>`;
+      const av=p.av?`<img alt="" src="${esc(imageSure(p.av)||'')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid ${clr}44">`:`<div style="width:36px;height:36px;border-radius:50%;background:${clr}22;border:1.5px solid ${clr}44;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${clr}">${p.ini}</div>`;
       return`<div onclick="msgOpenConv('${id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;border-radius:8px;margin:0 6px;background:${isActive?'rgba(54,107,255,.12)':'transparent'};border:1px solid ${isActive?'rgba(54,107,255,.25)':'transparent'}">
         <div style="position:relative;flex-shrink:0">
           ${av}
@@ -21759,7 +21759,7 @@ async function _renderMsgConv(myUid){
     else{
       const p=_msgProfiles[_msgConv];
       const hClr=ROLE_COLORS[p?.role]||'var(--acc)';
-      const hAv=p?.av?`<img src="${esc(imageSure(p.av)||'')}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0">`:`<div style="width:26px;height:26px;border-radius:50%;background:${hClr}22;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${hClr};flex-shrink:0">${p?.ini||'?'}</div>`;
+      const hAv=p?.av?`<img alt="" src="${esc(imageSure(p.av)||'')}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0">`:`<div style="width:26px;height:26px;border-radius:50%;background:${hClr}22;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${hClr};flex-shrink:0">${p?.ini||'?'}</div>`;
       const canViewFiche=['admin','sec','prod'].includes(S.role);
       hdr.innerHTML=`<div style="display:flex;align-items:center;gap:9px${canViewFiche?';cursor:pointer':''}"${canViewFiche?` onclick="modalFicheCollaborateur('${_msgConv}')" title="Voir la fiche collaborateur"`:''}>${hAv}<span>${p?.n||'Conversation'}</span></div>`;
     }
@@ -21792,7 +21792,7 @@ async function _renderMsgConv(myUid){
       const sep=dayKey!==lastDay?`<div style="text-align:center;margin:12px 0"><span style="font-size:10px;color:var(--t3);background:var(--s2);padding:3px 12px;border-radius:20px;border:1px solid var(--b1)">${dayKey}</span></div>`:'';
       lastDay=dayKey;
       const msgTxt=escJs(m.contenu||'');
-      const rowAv=who?.av&&!isMe?`<img src="${esc(imageSure(who.av)||'')}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-bottom:2px">`:`<div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':clr+'22'};border:${isMe?'none':'1px solid '+clr+'44'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px;color:${isMe?'#fff':clr}">${ini}</div>`;
+      const rowAv=who?.av&&!isMe?`<img alt="" src="${esc(imageSure(who.av)||'')}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-bottom:2px">`:`<div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':clr+'22'};border:${isMe?'none':'1px solid '+clr+'44'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px;color:${isMe?'#fff':clr}">${ini}</div>`;
       return sep+`<div class="msg-row" style="display:flex;gap:9px;padding:4px 16px;align-items:flex-end;${isMe?'flex-direction:row-reverse':''}" onmouseenter="this.querySelector('.msg-acts')?.style.setProperty('opacity','1')" onmouseleave="this.querySelector('.msg-acts')?.style.setProperty('opacity','0')">
         ${rowAv}
         <div style="max-width:68%;display:flex;flex-direction:column;gap:2px;align-items:${isMe?'flex-end':'flex-start'}">
@@ -36172,7 +36172,7 @@ function modalCatalogueOffreById(id){
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description courte</label>
         <textarea id="cof-desc" rows="2" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box">${esc(o.description||'')}</textarea></div>
       ${S.role==='admin' ? `<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Image (vignette catalogue et page prestation)</label>
-        <div id="cof-image-preview">${o.image_url?`<img src="${esc(o.image_url)}" style="max-width:200px;max-height:140px;border-radius:8px;margin-bottom:8px;display:block;object-fit:cover">`:''}</div>
+        <div id="cof-image-preview">${o.image_url?`<img alt="" src="${esc(o.image_url)}" style="max-width:200px;max-height:140px;border-radius:8px;margin-bottom:8px;display:block;object-fit:cover">`:''}</div>
         <input id="cof-image-file" type="file" accept="image/*" style="width:100%;color:var(--t1)" onchange="realPreviewFile(this,'cof-image-preview')">
         <div style="font-size:11px;color:var(--t3);margin-top:6px">JPG/PNG, format paysage recommandé (16:9), 5 Mo max pour un chargement rapide sur Connect.</div>
         <input type="hidden" id="cof-image-url" value="${(o.image_url||'').replace(/"/g,'&quot;')}"></div>` : ''}
@@ -36238,7 +36238,7 @@ function renderRealisationsAdmin(){
   el.innerHTML='<div style="padding:14px 18px;display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="modalRealisationById(null)">+ Ajouter une réalisation</button></div>'+
   (_realisationsCache.length?('<div class="tw"><table><thead><tr><th>Aperçu</th><th>Titre</th><th>Type</th><th>Catégorie</th><th>Actif</th><th></th></tr></thead><tbody>'+
     _realisationsCache.map(r=>`<tr>
-      <td>${r.type==='photo'?`<img src="${esc(r.media_url)}" style="width:60px;height:40px;object-fit:cover;border-radius:6px">`:'🎬 Vidéo'}</td>
+      <td>${r.type==='photo'?`<img alt="" src="${esc(r.media_url)}" style="width:60px;height:40px;object-fit:cover;border-radius:6px">`:'🎬 Vidéo'}</td>
       <td class="tp">${esc(r.titre)}</td>
       <td>${r.type==='photo'?'Photo':'Vidéo'}</td>
       <td>${catLabel(r.categorie)}</td>
@@ -36272,7 +36272,7 @@ function modalRealisationById(id){
           </select></div>
       </div>
       <div><label style="${lbl}">Fichier</label>
-        <div id="real-preview">${r.media_url?(r.type==='video'?`<a href="${esc(r.media_url)}" target="_blank" style="display:block;margin-bottom:8px;color:var(--acc);font-size:12.5px">▶ Voir le fichier actuel</a>`:`<img src="${esc(r.media_url)}" style="max-width:200px;max-height:140px;border-radius:8px;margin-bottom:8px;display:block;object-fit:cover">`):''}</div>
+        <div id="real-preview">${r.media_url?(r.type==='video'?`<a href="${esc(r.media_url)}" target="_blank" style="display:block;margin-bottom:8px;color:var(--acc);font-size:12.5px">▶ Voir le fichier actuel</a>`:`<img alt="" src="${esc(r.media_url)}" style="max-width:200px;max-height:140px;border-radius:8px;margin-bottom:8px;display:block;object-fit:cover">`):''}</div>
         <input id="real-file" type="file" accept="image/*,video/*" style="width:100%;color:var(--t1)" onchange="realPreviewFile(this)">
         <div id="real-type-hint" style="font-size:11px;color:var(--t3);margin-top:6px">Photo : JPG/PNG, format paysage recommandé, 5 Mo max pour un affichage rapide. Vidéo : MP4, quelques dizaines de Mo max — préférez un extrait court (highlight) plutôt que le match complet.</div>
         <input type="hidden" id="real-media-url" value="${(r.media_url||'').replace(/"/g,'&quot;')}"></div>
@@ -36288,7 +36288,7 @@ function realPreviewFile(input,targetId){
   const url=URL.createObjectURL(f);
   el.innerHTML=f.type.startsWith('video/')
     ? `<video src="${url}" controls style="max-width:240px;max-height:160px;border-radius:8px;margin-bottom:8px;display:block"></video>`
-    : `<img src="${url}" style="max-width:200px;max-height:140px;border-radius:8px;margin-bottom:8px;display:block;object-fit:cover">`;
+    : `<img alt="" src="${url}" style="max-width:200px;max-height:140px;border-radius:8px;margin-bottom:8px;display:block;object-fit:cover">`;
 }
 async function saveRealisation(id){
   const titre=document.getElementById('real-titre').value.trim();
@@ -38879,7 +38879,7 @@ function annuaireCard(p){
     <div style="padding:18px 18px 14px">
       <div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:14px">
         <div style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,${color},${color}88);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;position:relative">
-          ${p.avatar_url?`<img src="${esc(imageSure(p.avatar_url)||'')}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;position:absolute;inset:0">`:`<span>${initials||'?'}</span>`}
+          ${p.avatar_url?`<img alt="" src="${esc(imageSure(p.avatar_url)||'')}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;position:absolute;inset:0">`:`<span>${initials||'?'}</span>`}
           <div style="position:absolute;bottom:0;right:0;width:14px;height:14px;border-radius:50%;background:${dispoColor};border:2px solid var(--s1)"></div>
         </div>
         <div style="flex:1;min-width:0">
@@ -39013,7 +39013,7 @@ async function loadEquipeEnDirect(){
     const tel=c.telephone||'';
     return`<div class="cd" style="padding:14px 16px;border-left:3px solid ${statusColor}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        ${c.avatar_url?`<img src="${esc(imageSure(c.avatar_url)||'')}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+        ${c.avatar_url?`<img alt="" src="${esc(imageSure(c.avatar_url)||'')}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">`
           :`<div style="width:38px;height:38px;border-radius:50%;background:${rclr}22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${rclr};flex-shrink:0">${ini.toUpperCase()}</div>`}
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:13px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nom}</div>
@@ -39538,7 +39538,7 @@ const MOB_MORE_ITEMS={
   // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
   // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
   // (jourj/planning/brief/incidents/media/rem/frais) qui n'ont plus de case dans NAV.prod.
-  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
+  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Galeries photo',ic:'🎬',sub:'Photos, offres et ventes'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   // 29/08 (refonte CM) : aligné sur NAV.cm refondue — demandes/briefs sortent (déjà

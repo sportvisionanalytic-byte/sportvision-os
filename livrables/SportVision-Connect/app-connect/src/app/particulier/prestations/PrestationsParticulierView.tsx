@@ -42,9 +42,15 @@ export function PrestationsParticulierView({
   }
 
   const selectedAthlete = benefKind === "self" ? null : athletes.find((a) => a.kind === benefKind && a.refId === benefId) || null;
+  // « Demandez-lui d'activer cette autorisation » n'a de sens que pour un sportif qui a SON propre
+  // compte Connect et vous a partagé des accès. Pour un enfant affilié à un club, il n'y a personne
+  // à qui demander : c'est SportVision qui ouvre la réservation. On ne renvoie plus une famille
+  // vers un enfant de dix ans (12/09/2026).
   const blockedReason =
     selectedAthlete && !selectedAthlete.rights.reserver
-      ? `Vous n'êtes pas autorisé à réserver pour ${selectedAthlete.firstName}. Demandez-lui d'activer cette autorisation.`
+      ? selectedAthlete.kind === "linked"
+        ? `Vous n'êtes pas autorisé à réserver pour ${selectedAthlete.firstName}. Il peut vous accorder ce droit depuis son espace, dans « Accès partagés ».`
+        : `La réservation pour ${selectedAthlete.firstName} n'est pas ouverte sur votre compte. Écrivez-nous à contact@sportvision-an.fr et nous l'activons.`
       : null;
 
   function goToOffer(offerId: string) {
