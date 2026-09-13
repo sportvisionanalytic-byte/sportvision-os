@@ -32579,6 +32579,31 @@ async function validerProduction(prestationId){
   // Le bouton echouait donc sur « seule "livrée" peut être validée », et personne ne comprenait.
   // La validation est UN geste pour le responsable production : on pose le jalon manquant, puis
   // on valide. La base garde le dernier mot sur les deux transitions.
+  // 13/09/2026 — « Valider la prestation » EST le geste de validation du responsable production.
+  // Lui demander de valider chaque lien un par un, puis de valider une seconde fois la prestation,
+  // c'etait le meme accord demande deux fois : il appuyait sur Valider et rien ne passait, sans
+  // comprendre pourquoi. Les liens encore « a verifier » sont donc valides par ce clic.
+  //
+  // Un lien en correction demandee n'est PAS emporte : demander une correction est un refus, et un
+  // refus ne se valide pas par megarde.
+  const liens=await sbFetch('media_liens?select=id,nom,statut&prestation_id=eq.'+prestationId).catch(()=>[]);
+  const aValider=(Array.isArray(liens)?liens:[]).filter(l=>l.statut==='a_verifier');
+  const enCorrection=(Array.isArray(liens)?liens:[]).filter(l=>l.statut==='correction_demandee');
+  if(enCorrection.length){
+    if(btn){btn.disabled=false;btn.textContent='✓ Valider la production';}
+    toast('Une correction est demandée sur « '+(enCorrection[0].nom||'un lien')+' ». Levez-la avant de valider.','er');
+    return;
+  }
+  for(const l of aValider){
+    const rl=await sbFetch('media_liens?id=eq.'+l.id,{method:'PATCH',body:{statut:'valide',updated_at:new Date().toISOString()}});
+    if(sbErr(rl)){
+      toast('Erreur : '+(msgErreur(rl,'Validation des liens impossible.')),'er');
+      if(btn){btn.disabled=false;btn.textContent='✓ Valider la production';}
+      return;
+    }
+    await logMediaHistory(prestationId,S.uid,'Livraison validée','lien',l.id,'a_verifier','valide').catch(()=>{});
+  }
+
   // Dire AVANT ce qui manque, plutot que de tenter et d'echouer (13/09/2026). La base tient la
   // liste (`mission_cloture_manquant`, exposee par la vue) : on la lit et on la montre telle
   // quelle, avec le geste qui debloque.
