@@ -4560,6 +4560,13 @@ function msgErreur(r,repli){
   if(!r||typeof r!=='object')return defaut;
   const code=String(r.code||'');
   if(code==='P0001'&&r.message)return String(r.message);
+  // 13/09/2026 — Un 42501 leve par une FONCTION metier porte un vrai message (« Mission non
+  // clôturable : Kit non restitué ; … »). Le traduire en « vous n'avez pas les droits » cachait
+  // la seule information utile et envoyait chercher un probleme de permission qui n'existait pas.
+  // On ne garde le libelle generique que pour les refus bruts de la RLS, illisibles pour un humain.
+  if(code==='42501'&&r.message&&!/row-level security|permission denied|policy/i.test(String(r.message))){
+    return String(r.message);
+  }
   if(code==='SV_AUCUNE_LIGNE')return String(r.message);   // sbFetch : PATCH sans effet
   if(_ERREURS_SQL[code])return _ERREURS_SQL[code];
   // Une erreur reseau remonte comme une exception, sans code : elle se reconnait au texte.
@@ -32572,6 +32579,28 @@ async function validerProduction(prestationId){
   // Le bouton echouait donc sur « seule "livrée" peut être validée », et personne ne comprenait.
   // La validation est UN geste pour le responsable production : on pose le jalon manquant, puis
   // on valide. La base garde le dernier mot sur les deux transitions.
+  // Dire AVANT ce qui manque, plutot que de tenter et d'echouer (13/09/2026). La base tient la
+  // liste (`mission_cloture_manquant`, exposee par la vue) : on la lit et on la montre telle
+  // quelle, avec le geste qui debloque.
+  const vm=await sbFetch('v_production_missions?select=cloture_manquant&prestation_id=eq.'+prestationId).catch(()=>[]);
+  const manque=Array.isArray(vm)&&vm[0]&&Array.isArray(vm[0].cloture_manquant)?vm[0].cloture_manquant:[];
+  if(manque.length){
+    if(btn){btn.disabled=false;btn.textContent='✓ Valider la production';}
+    openModal(`<div class="mh"><div class="mt">Pas encore validable</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+      <div class="mb" style="padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:13px;color:var(--t2);line-height:1.55">Ce n'est pas une question de droits : il manque ceci avant de pouvoir valider.</div>
+        <div style="background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.3);border-radius:10px;padding:12px 14px">
+          ${manque.map(x=>`<div style="font-size:13px;color:var(--t1);line-height:1.6">• ${esc(x)}</div>`).join('')}
+        </div>
+        <div style="font-size:12.5px;color:var(--t3);line-height:1.5">Les liens se valident un par un depuis « Vérifier ». Un livrable qui n'existe pas sur cette mission doit être déclaré sans objet par l'opérateur.</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn bg2" onclick="closeModal()">Fermer</button>
+          <button class="btn bp" onclick="closeModal();modalVerifierLivraison('${escJs(prestationId)}')">Ouvrir la vérification</button>
+        </div>
+      </div>`);
+    return;
+  }
+
   const pr=await sbFetch('prestations?select=statut&id=eq.'+prestationId).catch(()=>[]);
   const st=Array.isArray(pr)&&pr[0]?pr[0].statut:null;
   if(['prêt_validation','à_valider_client','prête_à_livrer'].includes(st)){
