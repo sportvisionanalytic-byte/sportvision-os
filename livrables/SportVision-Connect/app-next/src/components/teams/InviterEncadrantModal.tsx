@@ -22,7 +22,7 @@ import { Check, Copy, Mail, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useModalA11y } from "@/lib/useModalA11y";
-import { TeamSelector } from "@/components/ui/TeamSelector";
+import { TeamMultiSelector } from "@/components/ui/TeamMultiSelector";
 import { createClient } from "@/lib/supabase/client";
 import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 import {
@@ -105,7 +105,10 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
   const [email, setEmail] = useState("");
   const [telephone, setTelephone] = useState("");
   const [role, setRole] = useState<string>(roles[0]?.value ?? "coach");
-  const [equipe, setEquipe] = useState(teamName ?? "");
+  // 13/09/2026 — Plusieurs équipes, pas une. Un coach qui prend les U15 A et les U15 B, un
+  // dirigeant qui suit trois catégories : c'est la règle et non l'exception. `club_members.teams`
+  // est un tableau depuis toujours, l'écran n'en proposait qu'une case.
+  const [equipesChoisies, setEquipesChoisies] = useState<string[]>(teamName ? [teamName] : []);
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<InvitationClub | null>(null);
@@ -128,7 +131,7 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
       prenom: prenom.trim(),
       nom: nom.trim(),
       telephone: telephone.trim() || undefined,
-      teams: equipe ? [equipe] : [],
+      teams: equipesChoisies,
     })
       .then(async (inv) => {
         if (adjoint) await definirFonctionInvitation(supabase, inv.id, "adjoint");
@@ -253,22 +256,26 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
         </select>
       </label>
 
-      {sansEquipe ? null : teamName ? (
-        <div className="rounded-xl bg-surface-sunken px-3.5 py-2.5 text-[12.5px]">
-          <span className="font-bold text-text-soft">Équipe : </span>
-          <span className="font-extrabold">{teamName}</span>
-        </div>
-      ) : (
+      {sansEquipe ? null : (
         <div className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-bold text-text-soft">Équipe</span>
-          <TeamSelector
-            equipes={(equipes ?? []).map((e) => ({ name: e.name, categorie: e.categorie ?? null }))}
-            valeur={equipe}
-            onChange={setEquipe}
-            libelleToutes="Aucune équipe (dirigeant)"
-          />
+          <span className="text-[12.5px] font-bold text-text-soft">Équipes encadrées</span>
+          {teamName && equipes === undefined ? (
+            <div className="rounded-xl bg-surface-sunken px-3.5 py-2.5 text-[12.5px]">
+              <span className="font-bold text-text-soft">Équipe : </span>
+              <span className="font-extrabold">{teamName}</span>
+            </div>
+          ) : (
+            <TeamMultiSelector
+              equipes={(equipes ?? []).map((e) => ({ name: e.name, categorie: e.categorie ?? null }))}
+              valeurs={equipesChoisies}
+              onChange={setEquipesChoisies}
+            />
+          )}
           <span className="text-[11.5px] text-text-faint">
-            Détermine ce que cette personne verra. Un dirigeant sans équipe garde une vue club.
+            Cochez-en autant que nécessaire : un coach de deux équipes, un dirigeant qui en suit
+            quatre. Sans équipe, la personne garde une vue club. Un dirigeant responsable d&apos;équipe
+            a les mêmes droits qu&apos;un coach sur les équipes cochées, inutile de lui faire un second
+            compte.
           </span>
         </div>
       )}

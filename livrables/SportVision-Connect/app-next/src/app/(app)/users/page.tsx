@@ -21,6 +21,7 @@ import {
   type InvitationClub,
 } from "@/lib/data/club/invitations";
 import { InviterEncadrantModal, ROLES_CLUB_COMPLET } from "@/components/teams/InviterEncadrantModal";
+import { PerimetreEquipesModal } from "@/components/teams/PerimetreEquipesModal";
 import { fetchClubTeams } from "@/lib/data/club/teams";
 import { mapClubRole } from "@/lib/supabase/mappers";
 import type { Team } from "@/lib/types/teams";
@@ -82,6 +83,7 @@ export default function UsersPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invitations, setInvitations] = useState<InvitationClub[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [perimetre, setPerimetre] = useState<OrgUser | null>(null);
   // `null` tant que la base n'a pas répondu : ni actions, ni message d'interdiction entre-temps.
   const [peutGerer, setPeutGerer] = useState<boolean | null>(null);
   const [proprietaire, setProprietaire] = useState(false);
@@ -357,6 +359,17 @@ export default function UsersPage() {
                   {user.teamScope.length > 0 && ` · ${user.teamScope.join(", ")}`}
                 </span>
                 <Badge tone={STATUS_TONE[user.status]}>{STATUS_LABEL[user.status]}</Badge>
+                {/* 13/09/2026 — Le périmètre s'affichait sans pouvoir se corriger. Un coach qui
+                    prend une deuxième équipe en cours de saison demandait du SQL. */}
+                {isClub && isAdmin && (
+                  <Button
+                    variant="secondary"
+                    className="h-8 flex-none px-3 text-[12px]"
+                    onClick={() => setPerimetre(user)}
+                  >
+                    Équipes
+                  </Button>
+                )}
                 {isSelf ? (
                   <span className="w-[92px] flex-none text-center text-[11.5px] font-semibold text-text-faint">Vous</span>
                 ) : (
@@ -379,6 +392,17 @@ export default function UsersPage() {
       {/* Un club passe par le modèle « préparer une personne » (aucun compte créé, la personne
           active le sien depuis le lien). Les autres types d'organisation gardent le chemin
           historique : leur edge function crée bien un compte, et rien n'a été porté pour eux. */}
+      {perimetre && (
+        <PerimetreEquipesModal
+          membershipId={perimetre.membershipId}
+          nom={`${perimetre.firstName} ${perimetre.lastName}`.trim() || "cette personne"}
+          perimetreActuel={perimetre.teamScope}
+          equipes={teams.map((t) => ({ name: t.name, categorie: t.category }))}
+          onClose={() => setPerimetre(null)}
+          onEnregistre={loadUsers}
+        />
+      )}
+
       {inviteOpen && isClub && (
         <InviterEncadrantModal
           clubId={ctx.organization.id}
