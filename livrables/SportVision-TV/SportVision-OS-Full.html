@@ -13352,13 +13352,25 @@ async function galMettreEnLigne(){
 
   // GALERIE PAYANTE : des apercus sans filigrane partiraient en clair, en 1600 px (12/09/2026).
   // Le filigrane se pose a la fabrication de l'apercu, donc l'activer apres un depot ne protege
-  // rien de ce qui est deja la. On le dit ici, une fois, au seul moment ou ca compte.
-  if(!gratuit&&_galAlbum.watermark_previews!==false&&_galAlbum.status!=='published'){
+  // rien de ce qui est deja la. On le dit ici, au seul moment ou ca compte.
+  //
+  // 13/09/2026 — Deux trous trouves a l'audit, tous deux dans le sens qui coute de l'argent :
+  //   • `status!=='published'` : l'alerte ne sortait qu'a la PREMIERE mise en ligne. Publier une
+  //     galerie gratuite puis lui ajouter une offre payante ne declenchait rien, alors que c'est
+  //     le chemin le plus naturel (« finalement, on la vend »).
+  //   • `watermark_previews!==false` : filigrane decoche ET galerie payante, silence complet.
+  //     C'etait pourtant le cas le plus grave, pas une exception a ignorer.
+  if(!gratuit){
+    const filigraneCoupe=_galAlbum.watermark_previews===false;
     const nus=(_galAssets||[]).filter(a=>a.status==='ready'&&a.preview_watermarked!==true).length;
     if(nus){
+      const deja=_galAlbum.status==='published';
       const regenerer=await demanderConfirmation(
-        nus+' photo'+(nus>1?'s ont':' a')+' un apercu SANS filigrane, alors que cette galerie est payante.\n\nLe filigrane est appose au moment du depot : l\'activer ensuite ne protege pas les photos deja versees. Mises en ligne telles quelles, elles sont visibles en grand et telechargeables sans payer.\n\nRegenerer les apercus prend quelques secondes par photo.',
-        {titre:'Des apercus ne sont pas proteges',action:'Regenerer maintenant',danger:false});
+        nus+' photo'+(nus>1?'s ont':' a')+' un apercu SANS filigrane, alors que cette galerie est payante.'
+        +(deja?'\n\nCette galerie est deja en ligne : ces apercus sont visibles en ce moment meme.':'')
+        +(filigraneCoupe?'\n\nLe filigrane est decoche pour cette galerie. Recochez-le avant de regenerer, sinon les nouveaux apercus repartiront en clair.':'')
+        +'\n\nLe filigrane est appose au moment du depot : l\'activer ensuite ne protege pas les photos deja versees. Telles quelles, elles sont visibles en grand et telechargeables sans payer.\n\nRegenerer les apercus prend quelques secondes par photo.',
+        {titre:'Des apercus ne sont pas proteges',action:filigraneCoupe?'Regenerer quand meme':'Regenerer maintenant',danger:deja});
       if(regenerer){ await galRegenererApercus(); return; }
     }
   }
