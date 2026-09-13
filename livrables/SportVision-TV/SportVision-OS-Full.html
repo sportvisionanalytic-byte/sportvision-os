@@ -31465,10 +31465,16 @@ async function modalSauvegarde(prestationId){
       <input type="checkbox" ${secures?'checked disabled':''} onchange="marquerFichiersSecurises('${escJs(prestationId)}')" style="width:16px;height:16px;margin-top:1px;accent-color:var(--ok)">
       <span style="font-size:13px;color:var(--t1)">Fichiers copiés sur le disque et vérifiés (je les ai ouverts)</span>
     </label>
-    <div style="display:flex;align-items:flex-start;gap:9px;padding:9px 0">
-      <span style="font-size:14px;color:${transfertOk?'var(--ok)':'var(--t3)'};width:16px;text-align:center">${transfertOk?'✓':'○'}</span>
-      <span style="font-size:13px;color:var(--t2)">Seconde copie sécurisée (au moins une livraison au transfert confirmé)</span>
-    </div>
+    <!-- 13/09/2026 — Cette ligne n'etait qu'un VOYANT : l'operateur lisait « seconde copie
+         securisee » sans aucune case a cocher, et la seule facon de confirmer le transfert etait
+         de le faire au moment ou l'on colle le lien. Celui qui avait oublie de cocher a ce
+         moment-la n'avait plus aucun moyen d'y revenir, et sa mission restait bloquee. Signale
+         par Fouka : « ils cochent et ca ne leur met rien ». -->
+    <label style="display:flex;align-items:flex-start;gap:9px;padding:9px 0;cursor:${(transfertOk||!L.length)?'default':'pointer'}">
+      <input type="checkbox" ${transfertOk?'checked disabled':''} ${L.length?'':'disabled'} onchange="confirmerTransfertMission('${escJs(prestationId)}')" style="width:16px;height:16px;margin-top:1px;accent-color:var(--ok)">
+      <span style="font-size:13px;color:var(--t1)">Mes fichiers sont bien arrivés à destination (seconde copie en sécurité)</span>
+    </label>
+    ${L.length?'':`<div style="font-size:11.5px;color:var(--t3);padding-left:25px;margin-top:-4px">Déposez d'abord un lien de livraison : c'est lui qu'on déclare arrivé.</div>`}
 
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--b1)">
       ${cartesOk
@@ -31524,6 +31530,23 @@ async function annulerLivrableSansObjet(prestationId,cle){
   delete courant[cle];
   const res=await majSuivi(prestationId,{livrables_non_fournis:courant});
   if(!res.ok){toast(res.msg,'er');return;}
+  modalSauvegarde(prestationId);
+}
+
+// Confirme l'arrivee des fichiers sur TOUS les liens de livraison de la mission. C'est la meme
+// confirmation que la case du formulaire de depot, rendue accessible apres coup — un oubli au
+// moment de coller le lien ne doit pas bloquer la mission pour toujours (13/09/2026).
+async function confirmerTransfertMission(prestationId){
+  const liens=await sbFetch('media_liens?select=id,categorie,transfert_confirme&prestation_id=eq.'+prestationId).catch(()=>[]);
+  const aConfirmer=(Array.isArray(liens)?liens:[]).filter(l=>!l.transfert_confirme&&!['travail','depot'].includes(l.categorie));
+  if(!aConfirmer.length){toast('Déposez d\'abord un lien de livraison.','er');modalSauvegarde(prestationId);return;}
+  const maintenant=new Date().toISOString();
+  for(const l of aConfirmer){
+    const r=await sbFetch('media_liens?id=eq.'+l.id,{method:'PATCH',body:{transfert_confirme:true,transfert_confirme_at:maintenant,updated_at:maintenant},headers:{Prefer:'return=representation'}});
+    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Confirmation impossible.')),'er');modalSauvegarde(prestationId);return;}
+    if(Array.isArray(r)&&r.length===0){toast('Refusé : cette mission n\'est pas la vôtre.','er');modalSauvegarde(prestationId);return;}
+  }
+  toast('Arrivée des fichiers confirmée.','ok');
   modalSauvegarde(prestationId);
 }
 
