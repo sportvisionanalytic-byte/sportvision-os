@@ -31353,7 +31353,10 @@ async function modalSauvegarde(prestationId){
     // 13/09/2026 — La galerie manquait a la liste : c'est pourtant ce qui arrive chez la famille,
     // et ce qui se vend. Attendue des qu'il y a de la photo, declarable sans objet comme le reste
     // (livraison par lien direct, par exemple).
-    attendus.push({k:'galerie',lb:'Galerie',cat:'livraison',tm:'photo'});
+    // `optionnel` : proposee, jamais exigee — exactement comme en base (v207). Sans ce drapeau,
+    // l'ajouter a la liste bloquait « Envoyer a Production » pour tous ceux qui ne deposent pas de
+    // galerie, c'est-a-dire l'inverse de ce qu'on cherche.
+    attendus.push({k:'galerie',lb:'Galerie',cat:'livraison',tm:'photo',optionnel:true});
   }
   if(cov==='video'||cov==='photo_video'){
     attendus.push({k:'montage',lb:'Montage final',cat:'final',tm:'video'});
@@ -31372,7 +31375,8 @@ async function modalSauvegarde(prestationId){
   const sansObjet=suivi?.livrables_non_fournis||{};
   const estSansObjet=a=>!!sansObjet[a.k];
   const nbFournis=attendus.filter(a=>trouve(a)).length;
-  const tousFournis=attendus.length>0&&nbFournis>0&&attendus.every(a=>trouve(a)||estSansObjet(a));
+  const tousFournis=attendus.length>0&&nbFournis>0
+    &&attendus.filter(a=>!a.optionnel).every(a=>trouve(a)||estSansObjet(a));
   const transfertOk=L.some(l=>l.transfert_confirme);
   const secures=!!suivi?.fichiers_securises_at;
   const cartesOk=!!suivi?.cartes_liberees_at;
@@ -31425,7 +31429,7 @@ async function modalSauvegarde(prestationId){
         const so=sansObjet[a.k];
         return `<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
           <span style="font-size:14px;color:${l?'var(--ok)':(so?'var(--t3)':'var(--t3)')}">${l?'✓':(so?'—':'○')}</span>
-          <span style="flex:1;min-width:120px;font-size:13px;color:${so?'var(--t3)':'var(--t1)'}">${esc(a.lb)}</span>
+          <span style="flex:1;min-width:120px;font-size:13px;color:${so?'var(--t3)':'var(--t1)'}">${esc(a.lb)}${a.optionnel?' <span style="font-size:11px;color:var(--t3)">(facultatif)</span>':''}</span>
           ${l?`<span style="font-size:11px;color:var(--t3);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.nom||l.url)}</span>
                <button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}','${escJs(l.id)}')">Modifier</button>
                <button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}')">+ Autre lien</button>`
