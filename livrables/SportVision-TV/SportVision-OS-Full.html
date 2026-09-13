@@ -15057,6 +15057,9 @@ function renderProdLivrMissionList(){
     el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:40px;gap:8px;color:var(--t3)"><div style="font-size:32px;opacity:.2">📦</div><div style="font-size:13px">Aucune mission dans cet onglet.</div></div>';
     return;
   }
+  // 13/09/2026 — Les actions de la carte etaient conditionnees au seul statut « livrée ». Une
+  // mission envoyee par l'operateur est en « prêt_validation » : le responsable production voyait
+  // la carte et AUCUN bouton — ni ouvrir, ni corriger, ni valider. Meme condition que la liste.
   const CAT_LB={depot:'Dépôt',rushs:'Rushs',travail:'Travail',previsualisation:'Prévisu',final:'Final',livraison:'Livraison',bibliotheque:'Bibliothèque'};
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:10px">'+list.map(p=>{
     const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').map(e=>[e.collaborateur?.prenom,e.collaborateur?.nom].filter(Boolean).join(' ')).filter(Boolean);
@@ -15075,10 +15078,11 @@ function renderProdLivrMissionList(){
           <span style="flex:1;min-width:0;font-size:12px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.nom)} <span style="color:var(--t3)">· ${CAT_LB[l.categorie]||l.categorie||'—'}</span></span>
           ${l.statut==='correction_demandee'?`<span style="font-size:10px;color:var(--er);font-weight:600;white-space:nowrap">Correction demandée</span>`:''}
           ${l.url?`<button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:6px;color:var(--acc);font-size:10.5px;font-weight:600;cursor:pointer;white-space:nowrap">Ouvrir</button>`:''}
-          ${p.statut==='livrée'&&l.statut!=='correction_demandee'?`<button onclick="modalDemanderCorrection('${l.id}')" style="padding:4px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:10.5px;cursor:pointer;white-space:nowrap">Corriger</button>`:''}
+          ${A_VERIFIER.includes(p.statut)&&l.statut!=='correction_demandee'?`<button onclick="modalDemanderCorrection('${l.id}')" style="padding:4px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:10.5px;cursor:pointer;white-space:nowrap">Corriger</button>`:''}
         </div>`).join('')}</div>`:`<div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">Aucun lien média rattaché.</div>`}
-      ${p.statut==='livrée'?`<div style="display:flex;gap:8px">
-        <button onclick="validerProduction('${p.id}')" style="flex:1;padding:8px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;cursor:pointer">✓ Valider la production</button>
+      ${A_VERIFIER.includes(p.statut)?`<div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="modalVerifierLivraison('${p.id}')" style="flex:1;min-width:130px;padding:8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:700;cursor:pointer">🔍 Vérifier</button>
+        <button onclick="validerProduction('${p.id}')" style="flex:1;min-width:130px;padding:8px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;cursor:pointer">✓ Valider la prestation</button>
       </div>`:''}
     </div>`;
   }).join('')+'</div>';
