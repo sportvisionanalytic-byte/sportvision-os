@@ -25,6 +25,9 @@ interface Props {
   onChange: (noms: string[]) => void;
   /** Texte affiché quand rien n'est coché. Un dirigeant sans équipe est un cas normal. */
   libelleVide?: string;
+  /** Ouvre la liste DANS le flux plutôt qu'en surimpression. À utiliser dans une fenêtre étroite,
+   *  où un panneau flottant recouvre le bouton d'enregistrement placé juste en dessous. */
+  dansLeFlux?: boolean;
   className?: string;
 }
 
@@ -33,6 +36,7 @@ export function TeamMultiSelector({
   valeurs,
   onChange,
   libelleVide = "Aucune équipe (dirigeant du club)",
+  dansLeFlux = false,
   className,
 }: Props) {
   const [ouvert, setOuvert] = useState(false);
@@ -100,7 +104,12 @@ export function TeamMultiSelector({
       )}
 
       {ouvert && (
-        <div className="absolute z-30 mt-1.5 max-h-[320px] w-full overflow-y-auto rounded-xl border border-divider bg-surface shadow-lg">
+        <div
+          className={cn(
+            "mt-1.5 max-h-[320px] w-full overflow-y-auto rounded-xl border border-divider bg-surface",
+            dansLeFlux ? "relative" : "absolute z-30 shadow-lg",
+          )}
+        >
           <div className="sticky top-0 flex items-center gap-2 border-b border-divider bg-surface px-3 py-2">
             <Search className="h-3.5 w-3.5 flex-none text-text-soft" aria-hidden />
             <input

@@ -93,6 +93,11 @@ async function main() {
       const ligne = page.locator("button", { hasText: new RegExp(`^${eq.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) }).first();
       if (await ligne.count()) { await ligne.click(); await page.waitForTimeout(300); }
     }
+    // Le panneau ouvert recouvre le bouton principal : on le referme par sa propre sortie, celle
+    // qu'un utilisateur a sous les yeux.
+    const termine = page.locator("button", { hasText: /^Terminé$/ }).first();
+    if (await termine.count()) await termine.click();
+    await page.waitForTimeout(500);
     const texteEcran = (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, " ");
     const deuxCochees = equipes.slice(0, 2).every((e) => texteEcran.includes(e.name));
     t("les deux équipes sont retenues à l'écran", deuxCochees, texteEcran.slice(0, 200));

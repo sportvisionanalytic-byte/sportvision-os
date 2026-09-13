@@ -79,7 +79,7 @@ export function PerimetreEquipesModal({
           </button>
         </div>
 
-        <TeamMultiSelector equipes={equipes} valeurs={choix} onChange={setChoix} />
+        <TeamMultiSelector equipes={equipes} valeurs={choix} onChange={setChoix} dansLeFlux />
 
         {erreur && <p className="text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
 
