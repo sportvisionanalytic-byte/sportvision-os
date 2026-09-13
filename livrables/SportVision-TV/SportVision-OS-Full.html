@@ -31426,7 +31426,9 @@ async function modalSauvegarde(prestationId){
         return `<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
           <span style="font-size:14px;color:${l?'var(--ok)':(so?'var(--t3)':'var(--t3)')}">${l?'✓':(so?'—':'○')}</span>
           <span style="flex:1;min-width:120px;font-size:13px;color:${so?'var(--t3)':'var(--t1)'}">${esc(a.lb)}</span>
-          ${l?`<span style="font-size:11px;color:var(--t3);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.nom||l.url)}</span>`
+          ${l?`<span style="font-size:11px;color:var(--t3);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.nom||l.url)}</span>
+               <button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}','${escJs(l.id)}')">Modifier</button>
+               <button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}')">+ Autre lien</button>`
              :so?`<span style="font-size:11px;color:var(--t3)">Sans objet</span>
                   <button class="btn bg2 bs" onclick="annulerLivrableSansObjet('${escJs(prestationId)}','${escJs(a.k)}')">Rétablir</button>`
              :`<button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}')">+ Lien</button>
@@ -31521,37 +31523,76 @@ async function libererCartes(prestationId){
 
 // §28 et §31 : l'opérateur colle un lien externe, l'OS pilote et trace. Pas d'upload de RAW ni
 // de rushs dans l'OS (décision Fouka, V1) — il ne devient pas un NAS vidéo.
-function modalAjouterLivrable(prestationId,categorie,typeMedia,libelle){
-  openModal(`<div class="mh"><div class="mt">${esc(libelle)}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+// 13/09/2026 — Un lien depose ne pouvait plus etre ni corrige ni complete : la ligne n'affichait
+// que son nom. Antoine s'est retrouve avec un mauvais lien et aucun moyen d'y revenir, alors que
+// la base l'autorise depuis toujours (`operateur_affecte_prestation`). La modale sert desormais
+// aussi a modifier un lien existant, et un second lien peut etre ajoute au meme livrable — deux
+// galeries, un transfert en plusieurs parties, cela arrive.
+async function modalAjouterLivrable(prestationId,categorie,typeMedia,libelle,lienId){
+  let existant=null;
+  if(lienId){
+    const r=await sbFetch('media_liens?select=id,nom,url,nombre_fichiers,transfert_confirme,statut&id=eq.'+lienId).catch(()=>[]);
+    existant=Array.isArray(r)&&r[0]||null;
+  }
+  const dejaValide=existant&&existant.statut==='valide';
+  openModal(`<div class="mh"><div class="mt">${esc(libelle)}${existant?' — modifier':''}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
   <div class="mb" style="padding:20px">
     <div style="font-size:12.5px;color:var(--t2);margin-bottom:14px">Collez le lien de livraison (Drive, WeTransfer, SwissTransfer…).</div>
+    ${dejaValide?`<div style="background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.3);border-radius:10px;padding:11px 13px;margin-bottom:13px;font-size:12.5px;color:var(--t1);line-height:1.5">Ce lien a déjà été validé par la Production. Le modifier le remet à vérifier : elle devra le revalider.</div>`:''}
     <label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Lien</label>
-    <input id="liv-url" type="url" placeholder="https://…" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:13px">
+    <input id="liv-url" type="url" placeholder="https://…" value="${existant?esc(existant.url||''):''}" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:13px">
     <label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Nombre de fichiers (facultatif)</label>
-    <input id="liv-nb" type="number" min="0" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:13px">
+    <input id="liv-nb" type="number" min="0" value="${existant&&existant.nombre_fichiers!=null?existant.nombre_fichiers:''}" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:13px">
     <label style="display:flex;align-items:flex-start;gap:9px;margin-bottom:16px;cursor:pointer">
-      <input id="liv-transfert" type="checkbox" style="width:16px;height:16px;margin-top:2px;accent-color:var(--ok)">
+      <input id="liv-transfert" type="checkbox" ${existant&&existant.transfert_confirme?'checked':''} style="width:16px;height:16px;margin-top:2px;accent-color:var(--ok)">
       <span style="font-size:12.5px;color:var(--t1)">Transfert terminé et vérifié. <span style="color:var(--t3)">C’est cette confirmation qui autorisera la préparation des cartes.</span></span>
     </label>
     <div id="liv-err" style="font-size:12px;color:var(--er);margin-bottom:10px"></div>
-    <button class="btn bp" style="width:100%;min-height:44px" onclick="enregistrerLivrable('${escJs(prestationId)}','${escJs(categorie)}','${escJs(typeMedia)}','${escJs(libelle)}')">Enregistrer le lien</button>
+    <button class="btn bp" style="width:100%;min-height:44px" onclick="enregistrerLivrable('${escJs(prestationId)}','${escJs(categorie)}','${escJs(typeMedia)}','${escJs(libelle)}','${escJs(lienId||'')}')">${existant?'Enregistrer les modifications':'Enregistrer le lien'}</button>
+    ${existant?`<button class="btn bg2" style="width:100%;min-height:44px;margin-top:9px" onclick="supprimerLivrable('${escJs(prestationId)}','${escJs(lienId)}','${escJs(libelle)}')">Retirer ce lien</button>`:''}
   </div>`);
 }
 
-async function enregistrerLivrable(prestationId,categorie,typeMedia,libelle){
+async function enregistrerLivrable(prestationId,categorie,typeMedia,libelle,lienId){
   const url=(document.getElementById('liv-url')?.value||'').trim();
   const nb=document.getElementById('liv-nb')?.value;
   const transfert=!!document.getElementById('liv-transfert')?.checked;
   const err=document.getElementById('liv-err');
   if(!url){if(err)err.textContent='Le lien est obligatoire.';return;}
   const uid=localStorage.getItem('sv_uid');
-  const body={prestation_id:prestationId,nom:libelle,url,categorie,type_media:typeMedia,statut:'a_verifier',ajouteur_id:uid};
-  if(nb)body.nombre_fichiers=Number(nb);
-  if(transfert){body.transfert_confirme=true;body.transfert_confirme_at=new Date().toISOString();}
-  const r=await sbFetch('media_liens',{method:'POST',body});
+  const body={prestation_id:prestationId,nom:libelle,url,categorie,type_media:typeMedia,ajouteur_id:uid};
+  body.nombre_fichiers=nb?Number(nb):null;
+  body.transfert_confirme=transfert;
+  body.transfert_confirme_at=transfert?new Date().toISOString():null;
+  let r;
+  if(lienId){
+    // Un lien corrige repart a verifier : la Production a valide un contenu qui n'est plus celui-la.
+    body.statut='a_verifier';
+    body.updated_at=new Date().toISOString();
+    r=await sbFetch('media_liens?id=eq.'+lienId,{method:'PATCH',body,headers:{Prefer:'return=representation'}});
+    if(!sbErr(r)&&Array.isArray(r)&&r.length===0){
+      if(err)err.textContent='Modification refusée : ce lien ne fait pas partie de vos missions.';
+      return;
+    }
+  }else{
+    body.statut='a_verifier';
+    r=await sbFetch('media_liens',{method:'POST',body});
+  }
   if(sbErr(r)){if(err)err.textContent=msgErreur(r,'Enregistrement impossible.');return;}
+  if(lienId)await logMediaHistory(prestationId,uid,'Lien modifié par l\'opérateur','lien',lienId,null,url).catch(()=>{});
   closeModal();
-  toast('Lien enregistré.','ok');
+  toast(lienId?'Lien modifié. La Production doit le revalider.':'Lien enregistré.','ok');
+  modalSauvegarde(prestationId);
+}
+
+async function supprimerLivrable(prestationId,lienId,libelle){
+  if(!window.confirm('Retirer le lien « '+libelle+' » ? La Production ne le verra plus.'))return;
+  const r=await sbFetch('media_liens?id=eq.'+lienId,{method:'DELETE',headers:{Prefer:'return=representation'}});
+  if(sbErr(r)){toast(msgErreur(r,'Suppression impossible.'),'er');return;}
+  if(Array.isArray(r)&&r.length===0){toast('Suppression refusée : ce lien ne fait pas partie de vos missions.','er');return;}
+  await logMediaHistory(prestationId,localStorage.getItem('sv_uid'),'Lien retiré par l\'opérateur','lien',lienId,null,null).catch(()=>{});
+  closeModal();
+  toast('Lien retiré.','ok');
   modalSauvegarde(prestationId);
 }
 

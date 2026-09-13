@@ -105,7 +105,8 @@ begin
   returning id into v_lien;
   select count(*) into n from notifications where type='livraison_recue' and lien_prestation_id=v_m1 and destinataire_id=v_prod;
   if n <> 1 then e := e || format('livraison recue : %s notification Production au lieu de 1', n); end if;
-  select count(*) into n from notifications where type='livraison_recue' and destinataire_id=v_opA;
+  select count(*) into n from notifications
+   where type='livraison_recue' and destinataire_id=v_opA and lien_prestation_id=v_m1;
   if n <> 0 then e := e || 'l operateur est notifie de sa propre livraison'::text; end if;
 
   -- Un second lien le même jour ne redouble pas l'alerte.
@@ -118,7 +119,12 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub',v_prod::text,'role','authenticated')::text, true);
   update media_liens set statut='correction_demandee', commentaire='Il manque les rushs vidéo.' where id=v_lien;
   perform set_config('role','postgres',true);
-  select count(*) into n from notifications where type='correction_demandee' and destinataire_id=v_opA;
+  -- 13/09/2026 — Ce comptage ignorait la mission : il additionnait les notifications REELLES de
+  -- l'operateur choisi comme decor (le plus ancien compte photo actif, donc un vrai collegue).
+  -- Antoine ayant recu trois demandes de correction en production ce matin-la, le test a vire au
+  -- rouge sans qu'aucune regle n'ait bouge. On compte ce que CETTE mission a produit.
+  select count(*) into n from notifications
+   where type='correction_demandee' and destinataire_id=v_opA and lien_prestation_id=v_m1;
   if n <> 1 then e := e || format('correction : %s notification a l operateur au lieu de 1', n); end if;
   select count(*) into n from notifications where type='correction_demandee' and destinataire_id=v_opB;
   if n <> 0 then e := e || 'un autre operateur recoit la correction d un collegue'::text; end if;
