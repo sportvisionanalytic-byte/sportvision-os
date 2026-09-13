@@ -77,6 +77,49 @@ export async function createClubTeam(
  * create_team_invite_code (migration-connect-v26.sql), déjà utilisé côté joueur
  * (requestTeamMembershipAsPlayer, lib/data/player/team-requests.ts) mais jamais exposé côté club
  * pour le générer. SECURITY DEFINER, vérifie lui-même is_team_educateur/is_club_admin. */
+/** Renommer une équipe (13/09/2026). La base sait tout faire depuis longtemps — un déclencheur
+ *  propage le nouveau nom sur onze tables qui gardent le libellé en texte (matchs, calendrier,
+ *  contenus, actualités, périmètres d'encadrants…). Il ne manquait que le bouton : renommer une
+ *  équipe n'existait sur AUCUN écran de Club+.
+ *
+ *  PostgREST rend un tableau vide, sans erreur, quand la RLS refuse : on le teste plutôt que
+ *  d'afficher un faux succès. */
+export async function renameClubTeam(
+  supabase: SupabaseClient,
+  teamId: string,
+  nom: string,
+  categorie?: string | null,
+): Promise<void> {
+  const propre = nom.trim();
+  if (propre.length < 2) throw new Error("Le nom de l'équipe est trop court.");
+  const patch: Record<string, unknown> = { name: propre };
+  if (categorie !== undefined) patch.categorie = categorie?.trim() || null;
+
+  const { data, error } = await supabase.from("club_teams").update(patch).eq("id", teamId).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Renommage refusé : vous n'avez pas les droits sur cette équipe.");
+  }
+}
+
+/** Archiver une équipe, ou la remettre en service. Archivée, elle disparaît des écrans sans que
+ *  rien de son histoire ne soit perdu : ses matchs, ses contenus et ses galeries restent. */
+export async function setClubTeamArchived(
+  supabase: SupabaseClient,
+  teamId: string,
+  archivee: boolean,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("club_teams")
+    .update({ archivee, archivee_at: archivee ? new Date().toISOString() : null })
+    .eq("id", teamId)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Action refusée : vous n'avez pas les droits sur cette équipe.");
+  }
+}
+
 export async function createTeamInviteCode(supabase: SupabaseClient, teamId: string): Promise<string> {
   const { data, error } = await supabase.rpc("create_team_invite_code", { p_team_id: teamId });
   if (error) throw error;

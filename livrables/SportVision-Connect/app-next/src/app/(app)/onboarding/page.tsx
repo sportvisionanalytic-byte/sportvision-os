@@ -967,7 +967,10 @@ function ResponsablesCard({
         <InviterEncadrantModal
           clubId={clubId}
           titre="Préparer l'invitation d'un responsable"
-          roles={estCm ? ROLES_DIRIGEANTS : [ROLE_PRESIDENT, ...ROLES_DIRIGEANTS]}
+          // 13/09/2026 — Le CM pouvait préparer tous les dirigeants SAUF le président, alors que la
+          // base le lui permet. Or c'est SportVision qui installe les clubs : il lui faut créer le
+          // compte du président, pas seulement ceux de son bureau. Demande de Fouka.
+          roles={[ROLE_PRESIDENT, ...ROLES_DIRIGEANTS]}
           sansEquipe
           enPreparation={enPreparation}
           onClose={() => setModaleOuverte(false)}

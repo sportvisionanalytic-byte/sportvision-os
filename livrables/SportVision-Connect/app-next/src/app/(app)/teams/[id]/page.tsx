@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, canCreate } from "@/lib/permissions";
+import { administreLeClub, canAccess, canCreate } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -37,13 +37,14 @@ import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { retirerJoueurEquipe } from "@/lib/data/club/team-detail";
 import { fetchLiensParentsADecider, deciderLienParent, type LienParentADecider } from "@/lib/data/club/parentLinks";
-import { fetchClubTeams } from "@/lib/data/club/teams";
+import { fetchClubTeams, renameClubTeam, setClubTeamArchived } from "@/lib/data/club/teams";
 import { ACCOUNT_STATUS_LABEL, fetchTeamRoster, type TeamRosterPlayer } from "@/lib/data/club/team-detail";
 import { fetchClubMembers } from "@/lib/data/club/users";
 import { peutOpererClub } from "@/lib/data/club/invitations";
 import type { OrgUser } from "@/lib/types/settings";
 import { TeamStaffCard } from "@/components/teams/TeamStaffCard";
 import { TeamInvitationsCard } from "@/components/teams/TeamInvitationsCard";
+import { RenommerEquipeModal } from "@/components/teams/RenommerEquipeModal";
 import { InviterEncadrantModal } from "@/components/teams/InviterEncadrantModal";
 import { EncadrementInvitations, EquipeAlertes, EquipeApercuKpis, EquipeDroitImage } from "@/components/teams/EquipeApercu";
 import { fetchApercuEquipe, fetchStatutLancement, type AlerteEquipe, type ApercuEquipe } from "@/lib/data/club/cockpit";
@@ -451,6 +452,34 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
   // Incrémenté après chaque écriture sur l'encadrement : on relit la base plutôt que de recopier
   // localement ce qu'on croit avoir écrit, les périmètres étant modifiables ailleurs en parallèle.
   const [rechargement, setRechargement] = useState(0);
+  // 13/09/2026 — Renommer et archiver vivent ici, pas dans TeamDetailPage : c'est RealTeamDetail
+  // qui rend l'en-tête de la fiche club. Posés un cran trop haut, les boutons compilaient contre
+  // un état qui n'existait pas dans leur portée.
+  const [renommage, setRenommage] = useState<string | null>(null);
+  const [archivage, setArchivage] = useState(false);
+  const [actionErreur, setActionErreur] = useState<string | null>(null);
+  const routeurEquipe = useRouter();
+
+  function handleArchiver() {
+    if (!window.confirm("Archiver cette équipe ? Elle disparaîtra des écrans, sans rien perdre de son histoire : ses matchs, ses contenus et ses galeries restent.")) return;
+    setArchivage(true);
+    setActionErreur(null);
+    setClubTeamArchived(createClient(), teamId, true)
+      .then(() => routeurEquipe.push("/teams"))
+      .catch((e: unknown) => {
+        setArchivage(false);
+        setActionErreur(e instanceof Error ? e.message : "Archivage impossible pour le moment.");
+      });
+  }
+
+  function handleRenommer(nouveau: string) {
+    return renameClubTeam(createClient(), teamId, nouveau).then(() => {
+      setRenommage(null);
+      routeurEquipe.refresh();
+      window.location.reload();
+    });
+  }
+
   // La fiche en un appel (v121). `undefined` : en cours ; `null` : pas lisible pour ce rôle — on
   // retombe alors sur l'affichage d'avant, sans rien casser.
   const [apercu, setApercu] = useState<ApercuEquipe | null | undefined>(undefined);
@@ -561,12 +590,39 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
             {team.category} · Saison {team.season} · {roster.length} joueur{roster.length > 1 ? "s" : ""}
           </div>
         </div>
-        {/* 10/09/2026 — Ce bouton n'avait aucune action. Il produit désormais un vrai fichier. */}
-        <Button variant="secondary" onClick={() => exporterEffectif(team.name, roster)} disabled={roster.length === 0}>
-          <Download className="h-3.5 w-3.5" aria-hidden />
-          Exporter l&apos;effectif
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 13/09/2026 — Renommer et archiver une équipe n'existaient sur AUCUN écran, alors que
+              la base sait tout faire : un déclencheur propage le renommage sur onze tables. Il ne
+              manquait que le bouton. Réservé à qui administre le club, comme la RLS l'impose. */}
+          {administreLeClub(sessionCtx!) && (
+            <>
+              <Button variant="secondary" onClick={() => setRenommage(team.name)}>Renommer</Button>
+              <Button variant="secondary" loading={archivage} disabled={archivage} onClick={handleArchiver}>
+                Archiver
+              </Button>
+            </>
+          )}
+          {/* 10/09/2026 — Ce bouton n'avait aucune action. Il produit désormais un vrai fichier. */}
+          <Button variant="secondary" onClick={() => exporterEffectif(team.name, roster)} disabled={roster.length === 0}>
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Exporter l&apos;effectif
+          </Button>
+        </div>
       </div>
+
+      {actionErreur && (
+        <Card className="border-status-danger/40 bg-status-danger/5 px-4 py-3 text-[12.5px] font-semibold text-status-danger">
+          {actionErreur}
+        </Card>
+      )}
+
+      {renommage !== null && (
+        <RenommerEquipeModal
+          valeur={renommage}
+          onClose={() => setRenommage(null)}
+          onValider={handleRenommer}
+        />
+      )}
 
       <div className="flex flex-wrap gap-1.5 border-b border-divider pb-0.5">
         {REAL_TABS.map((key) => (

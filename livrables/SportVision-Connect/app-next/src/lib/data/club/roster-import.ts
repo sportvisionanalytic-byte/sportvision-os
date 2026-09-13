@@ -59,7 +59,16 @@ export function parseRosterCsv(text: string): { rows: RosterImportRow[]; errors:
     return out;
   }
 
-  const header = splitLine(lines[0] ?? "").map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ""));
+  // 13/09/2026 — Les accents étaient supprimés AVEC la lettre : « Prénom » devenait `prnom`, et un
+  // export réel se voyait répondre « colonnes obligatoires manquantes ». On décompose d'abord
+  // (NFD) pour retirer l'accent et garder la lettre.
+  const header = splitLine(lines[0] ?? "").map((h) =>
+    h
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]/g, ""),
+  );
   const idx = {
     prenom: header.findIndex((h) => h === "prenom" || h === "firstname"),
     nom: header.findIndex((h) => h === "nom" || h === "lastname"),

@@ -60,7 +60,10 @@ begin
   v_photo := pg_temp.mission('photo', v_op, v_admin, v_client);
 
   m := mission_cloture_manquant(v_photo);
-  if not (m @> array['Aucun transfert confirmé']) then e := e || 'photo : le transfert non confirmé n''est pas signalé'::text; end if;
+  -- 13/09/2026 — Libellé repris côté fonction : « Aucun transfert confirmé » ne disait ni ce qui
+  -- manquait ni qui devait agir. Le test suit le nouveau texte, sinon il protège une phrase morte.
+  if not (m @> array['Sauvegarde non confirmée par l''opérateur (il doit cocher « fichiers copiés et vérifiés »)'])
+    then e := e || 'photo : la sauvegarde non confirmée n''est pas signalée'::text; end if;
   if not (m @> array['Photos traitées non livrées']) then e := e || 'photo : les photos manquantes ne sont pas signalées'::text; end if;
   if m @> array['Montage final non livré'] then e := e || 'photo : un montage est exigé sur une mission PHOTO'::text; end if;
   if m @> array['Rushs vidéo non transmis'] then e := e || 'photo : des rushs sont exigés sur une mission PHOTO'::text; end if;
@@ -116,7 +119,11 @@ begin
   m := mission_cloture_manquant(v_deux);
   if array_length(m,1) is not null then e := e || format('photo+vidéo : tout est validé mais il reste %s', array_to_string(m,' / ')); end if;
 
-  -- ══ 4. KIT À RENDRE : bloque ══════════════════════════════════════════════
+  -- ══ 4. KIT À RENDRE : ne bloque PLUS (décision Fouka, 13/09/2026) ═════════
+  --
+  -- Un kit sorti et non rendu bloquait la clôture. En vrai : on court après le matériel, on ne
+  -- retient pas la livraison du client ni la paie de l'opérateur pour ça. La relance existe
+  -- ailleurs, toutes les heures (kit_a_restituer, kit_retour_attendu, kit_non_restitue).
   select id into v_kit from kits limit 1;
   if v_kit is not null then
     v_kitmiss := pg_temp.mission('photo', v_op, v_admin, v_client);
@@ -126,9 +133,12 @@ begin
     insert into kit_reservations (kit_id, prestation_id, collaborateur_id, statut, date_retour_prevue)
     values (v_kit, v_kitmiss, v_op, 'sorti', now() - interval '1 hour');
     m := mission_cloture_manquant(v_kitmiss);
-    if not (m @> array['Kit non restitué']) then e := e || 'kit : un kit sorti et non rendu ne bloque pas la clôture'::text; end if;
+    if m @> array['Kit non restitué'] then e := e || 'kit : un kit non rendu bloque encore la clôture'::text; end if;
+    if array_length(m,1) is not null then
+      e := e || format('kit : mission complète bloquée par %s', array_to_string(m,' / '));
+    end if;
 
-    -- ══ 5. KIT CONSERVÉ : ne bloque pas, pas de faux retour demandé ═════════
+    -- ══ 5. KIT CONSERVÉ : ne bloque pas non plus ═══════════════════════════
     update kit_reservations set date_retour_prevue = now() + interval '3 days' where prestation_id = v_kitmiss;
     m := mission_cloture_manquant(v_kitmiss);
     if m @> array['Kit non restitué'] then e := e || 'kit conservé : la mission reste bloquée alors que le retour est prévu plus tard'::text; end if;
@@ -168,6 +178,6 @@ begin
   end if;
 end $$;
 
-select 'OK — clôture adaptée à la couverture ; photo+vidéo exige les deux ; une correction vidéo ne défait pas la photo ; kit à rendre bloque, kit conservé non ; refus valable en appel direct.' as verdict;
+select 'OK — clôture adaptée à la couverture ; photo+vidéo exige les deux ; une correction vidéo ne défait pas la photo ; le kit ne bloque plus (relance seule) ; refus valable en appel direct.' as verdict;
 
 rollback;

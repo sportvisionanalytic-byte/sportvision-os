@@ -20,7 +20,7 @@ import {
   STATUT_INVITATION_TONE,
   type InvitationClub,
 } from "@/lib/data/club/invitations";
-import { InviterEncadrantModal } from "@/components/teams/InviterEncadrantModal";
+import { InviterEncadrantModal, ROLES_CLUB_COMPLET } from "@/components/teams/InviterEncadrantModal";
 import { fetchClubTeams } from "@/lib/data/club/teams";
 import { mapClubRole } from "@/lib/supabase/mappers";
 import type { Team } from "@/lib/types/teams";
@@ -382,6 +382,11 @@ export default function UsersPage() {
       {inviteOpen && isClub && (
         <InviterEncadrantModal
           clubId={ctx.organization.id}
+          // Cet écran s'appelle « Coachs & dirigeants » : il propose donc TOUS les rôles du club,
+          // président compris. Il n'en offrait que quatre, tous liés à une équipe, alors que la
+          // base acceptait déjà le reste (13/09/2026, demande de Fouka).
+          roles={ROLES_CLUB_COMPLET}
+          titre="Inviter un coach ou un dirigeant"
           equipes={teams.map((t) => ({ name: t.name, categorie: t.category }))}
           onClose={() => setInviteOpen(false)}
           onInvited={rechargerInvitations}

@@ -126,16 +126,18 @@ begin
   select count(*) into n from notifications
    where type='correction_demandee' and destinataire_id=v_opA and lien_prestation_id=v_m1;
   if n <> 1 then e := e || format('correction : %s notification a l operateur au lieu de 1', n); end if;
-  select count(*) into n from notifications where type='correction_demandee' and destinataire_id=v_opB;
+  select count(*) into n from notifications where type='correction_demandee' and destinataire_id=v_opB and lien_prestation_id=v_m1;
   if n <> 0 then e := e || 'un autre operateur recoit la correction d un collegue'::text; end if;
-  select count(*) into n from notifications where type='correction_demandee' and destinataire_id=v_opA and message like '%rushs vidéo%';
+  select count(*) into n from notifications where type='correction_demandee' and destinataire_id=v_opA and lien_prestation_id=v_m1 and message like '%rushs vidéo%';
   if n <> 1 then e := e || 'le motif de la correction n est pas dans le message'::text; end if;
 
   -- ══ 9. VALIDATION → L'OPÉRATEUR, AVEC CE QUI RESTE ═══════════════════════
   perform set_config('request.jwt.claims', json_build_object('sub',v_prod::text,'role','authenticated')::text, true);
   update media_liens set statut='valide' where id=v_lien;
   perform set_config('role','postgres',true);
-  select count(*) into n from notifications where type='livraison_validee' and destinataire_id=v_opA;
+  -- 13/09/2026 — Meme correction qu'au point 8 : borner a CETTE mission. Le decor emprunte un vrai
+  -- compte d'operateur, dont les notifications reelles s'additionnaient ici (6 au lieu de 1).
+  select count(*) into n from notifications where type='livraison_validee' and destinataire_id=v_opA and lien_prestation_id=v_m1;
   if n <> 1 then e := e || format('validation : %s notification au lieu de 1', n); end if;
 
   -- ══ 10. MISSION REFUSÉE → PRODUCTION IMMÉDIATEMENT ═══════════════════════
@@ -167,9 +169,9 @@ begin
       update kit_reservations set date_retour_prevue = now() - interval '3 hours' where prestation_id=v_m1;
       perform send_prestation_reminders();
       perform send_prestation_reminders();
-      select count(*) into n from notifications where type='kit_retour_attendu' and destinataire_id=v_opA;
+      select count(*) into n from notifications where type='kit_retour_attendu' and destinataire_id=v_opA and lien_prestation_id=v_m1;
       if n <> 1 then e := e || format('retour de kit : %s alertes operateur au lieu de 1', n); end if;
-      select count(*) into n from notifications where type='kit_non_restitue' and destinataire_id=v_prod;
+      select count(*) into n from notifications where type='kit_non_restitue' and destinataire_id=v_prod and lien_prestation_id=v_m1;
       if n <> 1 then e := e || format('kit non restitue : %s alertes Production au lieu de 1', n); end if;
 
       -- ══ 14. KIT RENDU → LA RELANCE S'ARRÊTE ══════════════════════════════

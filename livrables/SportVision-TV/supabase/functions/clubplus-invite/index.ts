@@ -293,7 +293,11 @@ serve(async (req) => {
       }
     } else {
       const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${clubplusUrl}/clubplus/`,
+        // 13/09/2026 — La racine renvoie au tableau de bord, et AUCUN écran n'y lit le fragment
+        // `#access_token` : l'invité arrivait sur un formulaire de connexion sans mot de passe.
+        // `/clubplus/auth/reset` est le seul écran qui consomme ce jeton et fait choisir un mot de
+        // passe — c'est déjà la cible de la fonction soeur `org-invite`.
+        redirectTo: `${clubplusUrl}/clubplus/auth/reset`,
         data: { prenom, nom, telephone },
       });
       invitedUserId = invited?.user?.id ?? null;

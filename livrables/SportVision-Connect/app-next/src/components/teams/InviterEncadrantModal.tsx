@@ -47,6 +47,30 @@ const ROLES = [
   { value: "directeur_sportif", label: "Directeur sportif" },
 ] as const;
 
+/** Tous les rôles qu'un club peut accorder par ce chemin, encadrement ET direction.
+ *
+ *  13/09/2026, demande de Fouka : il doit pouvoir créer, depuis Club+, les comptes des présidents
+ *  et des directeurs techniques — « des comptes qui peuvent tout voir ». La base l'autorisait déjà
+ *  (`preparer_invitation_club` ne demande que `peut_operer_club`, et la contrainte de
+ *  `club_invitations.role` accepte `president`) : seule la liste proposée à l'écran était courte.
+ *
+ *  Le rôle qui donne l'accès complet à Club+ est `president` : `administreLeClub` le traite comme
+ *  l'administrateur du club, décision du 10/09. `admin` n'est volontairement pas ici — la
+ *  contrainte de la table le refuse, la propriété du club ne se distribue pas par invitation. */
+export const ROLES_CLUB_COMPLET = [
+  { value: "president", label: "Président — accès complet" },
+  { value: "directeur_sportif", label: "Directeur sportif / technique" },
+  { value: "comm", label: "Responsable communication" },
+  { value: "secretaire", label: "Secrétaire" },
+  { value: "tresorier", label: "Trésorier" },
+  { value: "membre_bureau", label: "Membre du bureau" },
+  { value: "administratif", label: "Administratif" },
+  { value: "coach", label: "Coach" },
+  { value: "coach_adjoint", label: "Coach adjoint" },
+  { value: "resp_equipe", label: "Dirigeant (responsable d'équipe)" },
+  { value: "lecture_seule", label: "Lecture seule" },
+] as const;
+
 export interface RoleInvitable {
   value: string;
   label: string;

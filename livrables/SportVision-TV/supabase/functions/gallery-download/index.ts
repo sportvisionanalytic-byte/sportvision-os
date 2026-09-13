@@ -46,8 +46,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const admin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } },
     );
@@ -102,7 +104,32 @@ serve(async (req) => {
         .eq("media_orders.status", "paid")
         .limit(1)
         .maybeSingle();
-      if (!possede) return json({ error: "Cette photo ne fait pas partie de vos achats." }, 403);
+
+      // 13/09/2026 — Le Pass Photo se vendait sans jamais livrer. Cette fonction ne connaissait que
+      // deux preuves d'achat : un jeton de telechargement, ou une ligne de commande photo par
+      // photo. Un abonnement de saison n'en produit AUCUNE des deux : il pose un
+      // `media_entitlements`. Une famille pouvait donc payer son Pass et se voir repondre « cette
+      // photo ne fait pas partie de vos achats » sur chacune de ses photos.
+      //
+      // On ne reecrit pas la regle ici : `can_access_media` la porte deja, et c'est elle qui garde
+      // la lecture du bucket prive. On la demande AVEC LA SESSION DE L'APPELANT, jamais avec la
+      // cle de service — sinon elle repondrait pour le serveur et n'autoriserait plus rien.
+      let parAbonnement = false;
+      if (!possede) {
+        const { data: asset } = await admin
+          .from("media_assets").select("album_id").eq("id", assetId).maybeSingle();
+        if (asset?.album_id) {
+          const appelant = createClient(supabaseUrl, anonKey, {
+            global: { headers: { Authorization: `Bearer ${jwt}` } },
+          });
+          const { data: droit } = await appelant.rpc("can_access_media", { p_album_id: asset.album_id });
+          parAbonnement = droit === true;
+        }
+      }
+
+      if (!possede && !parAbonnement) {
+        return json({ error: "Cette photo ne fait pas partie de vos achats." }, 403);
+      }
 
       const { data: a } = await admin
         .from("media_assets")
