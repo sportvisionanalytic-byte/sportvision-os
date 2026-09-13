@@ -1,4 +1,5 @@
 import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
+import { dateDuJourParis } from "@/lib/date-only";
 import type { ActiveContext, User } from "@/lib/types";
 import { mapClubPlan, mapClubRole, mapOrgRole, mapOrgType, mapProjetRole, SPACE_TYPE_LABELS } from "./mappers";
 import { fetchClubDonneesRestreintes } from "@/lib/data/club/organization";
@@ -454,8 +455,8 @@ export async function buildDelegatedClubActiveContext(
     .eq("club_id", space.id)
     .eq("cm_id", authUser.id)
     .eq("actif", true)
-    .lte("date_debut", new Date().toISOString().slice(0, 10))
-    .or(`date_fin.is.null,date_fin.gte.${new Date().toISOString().slice(0, 10)}`)
+    .lte("date_debut", dateDuJourParis())
+    .or(`date_fin.is.null,date_fin.gte.${dateDuJourParis()}`)
     .maybeSingle();
 
   if (myOrgIds.length === 0 && !affectation) return null;
@@ -479,7 +480,7 @@ export async function buildDelegatedClubActiveContext(
       .in("cm_agency_org_id", myOrgIds)
       .maybeSingle();
     if (!delegation) return null;
-    if (delegation.expires_at && delegation.expires_at < new Date().toISOString().slice(0, 10)) return null;
+    if (delegation.expires_at && delegation.expires_at < dateDuJourParis()) return null;
     delegationMembershipId = delegation.id;
   }
 

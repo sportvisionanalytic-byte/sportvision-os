@@ -103,7 +103,12 @@ try {
 
   // ── 2. Le président demande la séance du mardi ──
   await P.page.goto(`${CP}/clubplus/calendar?vue=liste&date=${iso(mardi)}`, { waitUntil: "domcontentloaded" }); await attendre(8000);
-  const bS = await bouton(P.page, "ZZ Seniors R2", "Demander une présence SportVision");
+  // 14/09/2026 — Sans le jour, on prenait le PREMIER « ZZ Seniors R2 » de la liste, c'est-à-dire la
+  // séance du mardi précédent : la demande partait sur la bonne équipe mais la mauvaise date, et
+  // tout le reste du parcours échouait sans que la cause soit visible. Le créneau se répète chaque
+  // semaine ; il faut donc désigner l'occurrence, comme le fait déjà l'étape « À couvrir ».
+  const jour1 = mardi.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }).toLowerCase();
+  const bS = await bouton(P.page, "ZZ Seniors R2", "Demander une présence SportVision", jour1);
   t("président : bouton sur la séance d'entraînement", (await bS.count()) > 0);
   if (await bS.count()) {
     await bS.click(); await attendre(1200);
@@ -112,19 +117,41 @@ try {
     await P.page.locator('[role="dialog"] button', { hasText: "Fermer" }).last().click(); await attendre(2000);
   }
   b = (await sql(`select (select count(*) from coverage_wishes where occurrence_ref='${occ1}' and source='club_request') s1,
-                  (select count(*) from coverage_wishes where occurrence_ref like 'entrainement:${slot.id}:%') tous`))[0];
-  t("base : le souhait vise CETTE séance, pas le créneau", b.s1 === 1 && b.tous === 1, JSON.stringify(b));
+                  (select count(*) from coverage_wishes where occurrence_ref like 'entrainement:${slot.id}:%') tous,
+                  (select string_agg(occurrence_ref, ' | ') from coverage_wishes where occurrence_ref like 'entrainement:${slot.id}:%') refs`))[0];
+  // 14/09/2026 — Quand ce contrôle échoue, savoir QUELLE séance a été visée vaut tout le reste :
+  // une date décalée d'un jour et une demande enregistrée sur le créneau entier ne se corrigent pas
+  // au même endroit. Le message porte donc la référence réelle, pas seulement un compte.
+  t("base : le souhait vise CETTE séance, pas le créneau", b.s1 === 1 && b.tous === 1,
+    `${JSON.stringify(b)} · attendu ${occ1}`);
   t("président : aucune erreur JavaScript", vraiesErreursCP(P.erreurs).length === 0, vraiesErreursCP(P.erreurs).slice(0, 2).join(" | "));
 
   // ── 3. Le CM accepte le match A, depuis Présences ──
   const C = await ouvrirClubPlus(nav, cm.email);
   await ecarterAssistant(C.page);
-  const carte = C.page.locator("main").locator(`text=${NOM}`).first();
-  if (await carte.count()) { await carte.click({ timeout: 8000 }).catch(() => {}); await attendre(6000); await ecarterAssistant(C.page); }
+  // 14/09/2026 — Le clic sur la carte du club était enveloppé dans un `catch` silencieux : quand il
+  // ne passait pas, le CM restait sur « Mes clubs », et l'écran Présences le renvoyait là. Le
+  // contrôle qui suivait cherchait le NOM du club — présent sur cette liste aussi — et se déclarait
+  // satisfait. Tout le parcours échouait ensuite sans qu'on sache que le CM n'était jamais entré.
+  await ouvrirLeClub(C.page, NOM);
+  await ecarterAssistant(C.page);
+  console.log("    [diag] apres ouvrirLeClub, url =", C.page.url());
+  console.log("    [diag] cookies =", JSON.stringify((await C.page.context().cookies()).map((c) => ({n:c.name,d:c.domain,p:c.path,v:c.name==="sv_active_space"?c.value:"(jeton)"}))));
+  for (const chemin of ["/clubplus/dashboard", "/clubplus/calendar", "/clubplus/presences"]) {
+    await C.page.goto(`${CP}${chemin}`, { waitUntil: "domcontentloaded" }); await attendre(6000);
+    const txt = (await C.page.evaluate(() => document.body.innerText).catch(() => "")).replace(/\s+/g, " ");
+    console.log(`    [diag] ${chemin} -> ${C.page.url().replace(CP, "")} | ${/Mes clubs SportVision/.test(txt) ? "LISTE DES CLUBS" : txt.slice(0, 70)}`);
+  }
   await C.page.goto(`${CP}/clubplus/presences`, { waitUntil: "domcontentloaded" }); await attendre(8000); await ecarterAssistant(C.page);
-  t("CM : dans l'espace du club fictif", (await C.page.locator(`text=${NOM}`).count()) > 0);
+  const surLaListeDesClubs = /Mes clubs SportVision/.test(await C.page.evaluate(() => document.body.innerText).catch(() => ""));
+  t("CM : dans l'espace du club fictif, pas sur la liste des clubs",
+    !surLaListeDesClubs && (await C.page.locator(`text=${NOM}`).count()) > 0,
+    surLaListeDesClubs ? "reste sur « Mes clubs »" : "");
   const accepter = await bouton(C.page, "ZZ Adversaire A", "Accepter");
-  t("CM : la demande du club est dans Présences, avec l'événement", (await accepter.count()) > 0);
+  // Quand ce contrôle échoue, ce qu'on veut savoir c'est ce que le CM a REELLEMENT sous les yeux :
+  // un écran vide et un bouton renommé ne se corrigent pas au même endroit.
+  const vuParLeCm = (await C.page.evaluate(() => document.body.innerText).catch(() => "(illisible)")).replace(/\s+/g, " ").slice(0, 400);
+  t("CM : la demande du club est dans Présences, avec l'événement", (await accepter.count()) > 0, vuParLeCm);
   if (await accepter.count()) { await accepter.click(); await attendre(5000); }
   b = (await sql(`select (select pp.source||'/'||pp.type_couverture||'/'||pp.statut from planned_presences pp where pp.match_id='${mA.id}' and pp.statut<>'annule') p,
                   (select case when p.responsable_prod_id='${prod.id}' then 'prod-du-pole' else coalesce(p.responsable_prod_id::text,'aucun') end

@@ -23,3 +23,21 @@ export function parseDateOnly(value: string): Date {
   const [, y, m, d] = match;
   return new Date(Number(y), Number(m) - 1, Number(d));
 }
+
+/**
+ * La date du jour telle que l'entend SportVision : celle d'Europe/Paris, jamais celle d'UTC.
+ *
+ * POURQUOI (14/09/2026, bug réel trouvé à 00h50). Le contexte d'un CM vérifiait son affectation
+ * avec `new Date().toISOString().slice(0, 10)`, c'est-à-dire la date UTC. Entre minuit et 2 h du
+ * matin heure de Paris (1 h en hiver), cette date est celle de la VEILLE. Une affectation qui
+ * commence « aujourd'hui » n'existait donc pas encore, et le CM était renvoyé sur la liste de ses
+ * clubs, sans explication, alors que la liste lui proposait ce club — parce que la base, elle,
+ * compare en `(now() at time zone 'Europe/Paris')::date`.
+ *
+ * Deux règles pour la même donnée, c'est un écran qui propose ce qu'un autre refuse. Le serveur
+ * Netlify tourne en UTC : ce n'était donc pas un cas de bord, mais deux heures par nuit.
+ */
+export function dateDuJourParis(): string {
+  // `en-CA` rend « YYYY-MM-DD », le format d'une colonne DATE Postgres.
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
+}
