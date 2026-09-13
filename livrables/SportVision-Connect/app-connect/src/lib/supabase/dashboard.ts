@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dateDuJourParis } from "@/lib/dates";
 import { coverFor, groupContentsByTeam } from "@/lib/contenus/groups";
 
 // Données de l'Accueil (cartes optionnelles) — voir design-connect-personnel-12-08/README.md §
@@ -33,7 +34,7 @@ export async function getNextClubEvent(
   supabase: SupabaseClient,
   clubId: string,
 ): Promise<NextClubEvent | null> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateDuJourParis();
   const { data, error } = await supabase
     .from("club_calendar_events")
     .select("id, title, event_date, event_time, location, team, type")
@@ -109,7 +110,7 @@ export async function getNextPrestation(
   supabase: SupabaseClient,
   clientId: string,
 ): Promise<NextPrestation | null> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateDuJourParis();
   const { data, error } = await supabase
     .from("prestations")
     .select("id, reference, type_prestation, date_prestation, heure_debut, statut")

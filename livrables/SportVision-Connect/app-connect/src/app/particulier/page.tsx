@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { dateDuJourParis } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
 import {
@@ -59,7 +60,7 @@ export default async function ParticulierHomePage() {
   const nextPresta = orders
     .filter((o) => o.datePrestation)
     .sort((a, b) => (a.datePrestation! < b.datePrestation! ? -1 : 1))
-    .find((o) => new Date(o.datePrestation!) >= new Date(new Date().toISOString().slice(0, 10)));
+    .find((o) => new Date(o.datePrestation!) >= new Date(dateDuJourParis()));
 
   const fundings = (fundingsRes.data || []) as Array<{
     id: string;
@@ -82,7 +83,7 @@ export default async function ParticulierHomePage() {
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
     .slice(0, 2);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateDuJourParis();
   const nextEvent = ((eventsRes.data || []) as Array<{
     id: string;
     title: string;

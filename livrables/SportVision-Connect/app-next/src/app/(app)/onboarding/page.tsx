@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { dateDuJourParis } from "@/lib/date-only";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
@@ -1795,7 +1796,7 @@ function CalendrierCard({ clubId, canEdit, onSaved }: { clubId: string; canEdit:
     }
   }
 
-  const upcoming = (events ?? []).filter((e) => e.startsAt >= new Date().toISOString().slice(0, 10)).slice(0, 8);
+  const upcoming = (events ?? []).filter((e) => e.startsAt >= dateDuJourParis()).slice(0, 8);
 
   return (
     <Card className="flex flex-col gap-4 p-5">
