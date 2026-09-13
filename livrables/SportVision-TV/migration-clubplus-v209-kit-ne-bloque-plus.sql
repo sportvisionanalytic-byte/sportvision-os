@@ -51,7 +51,11 @@ begin
 
   if not exists (select 1 from media_liens
                   where prestation_id = p_prestation_id and transfert_confirme is true) then
-    v_manque := v_manque || 'Aucun transfert confirmé'::text;
+    -- 13/09/2026 — Libelle repris : « Aucun transfert confirme » ne disait ni ce qui manquait ni
+    -- qui devait agir. Fouka l'a lu sans comprendre. Ce qui manque, c'est la confirmation par
+    -- l'operateur que ses fichiers sont copies et verifies — la regle qui interdit de formater une
+    -- carte avant d'avoir une seconde copie.
+    v_manque := v_manque || 'Sauvegarde non confirmée par l''opérateur (il doit cocher « fichiers copiés et vérifiés »)'::text;
   end if;
 
   if v_cov is null then
