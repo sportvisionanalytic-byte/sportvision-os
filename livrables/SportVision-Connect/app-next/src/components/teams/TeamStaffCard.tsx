@@ -48,10 +48,13 @@ interface Props {
   members: OrgUser[];
   /** Seul un admin de club peut écrire sur `club_members` (RLS `cm_admin_update`). */
   canManage: boolean;
+  /** Toutes les équipes du club : on invite depuis la fiche d'UNE équipe, mais un coach en
+   *  encadre souvent plusieurs (13/09/2026). */
+  equipesClub?: { name: string; categorie?: string | null }[];
   onChanged: () => void;
 }
 
-export function TeamStaffCard({ clubId, teamName, headCoachName, members, canManage, onChanged }: Props) {
+export function TeamStaffCard({ clubId, teamName, headCoachName, members, canManage, equipesClub, onChanged }: Props) {
   const [inviteOuvert, setInviteOuvert] = useState(false);
   const [rattachement, setRattachement] = useState<string>("");
   const [enCours, setEnCours] = useState(false);
@@ -227,6 +230,7 @@ export function TeamStaffCard({ clubId, teamName, headCoachName, members, canMan
         <InviterEncadrantModal
           clubId={clubId}
           teamName={teamName}
+          equipes={equipesClub}
           onClose={() => setInviteOuvert(false)}
           onInvited={onChanged}
         />

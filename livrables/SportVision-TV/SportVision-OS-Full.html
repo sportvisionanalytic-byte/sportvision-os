@@ -34630,6 +34630,7 @@ async function modalModifierCollaborateur(idx){
           </div>
           <div style="margin-top:10px">
             ${isInactif?`<button class="btn bg2 bs" onclick="reactiverUser('${t.id}')">↺ Réactiver l'accès</button>`:`<button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerDesactiverUser('${t.id}','${escJs(t.prenom||'')}','${escJs(t.nom||'')}')">⛔ Désactiver l'accès</button>`}
+            ${S.role==='admin'?`<button class="btn bg2 bs" style="color:var(--er);margin-left:8px" onclick="confirmerSupprimerCompte('${t.id}','${escJs(((t.prenom||'')+' '+(t.nom||'')).trim())}')">🗑 Supprimer définitivement</button>`:''}
           </div>
         </div>`;
       })():'<div style="font-size:11px;color:var(--t3);font-style:italic">Votre compte — rôle et accès non modifiables ici.</div>'}
@@ -37726,6 +37727,61 @@ async function desactiverUser(id){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{actif:false}});
   if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'désactivation impossible.')),'er');return;}
   closeModal();toast('Utilisateur désactivé.','ok');
+  if(document.getElementById('col-real'))await loadCollaborateurs();
+}
+
+// ── Supprimer définitivement un collaborateur (13/09/2026, demande de Fouka) ──
+//
+// Désactiver coupe l'accès mais garde la ligne : c'est ce qu'il faut pour quelqu'un qui a
+// travaillé. Après trois mois d'essais, la liste portait aussi des comptes qui n'avaient jamais
+// existé ailleurs que dans un test, et rien ne permettait de les faire disparaître.
+//
+// La règle vit en base (v214), pas ici : 124 colonnes pointent vers `profiles`, certaines en
+// CASCADE (les coûts employeur disparaîtraient), d'autres en SET NULL (une facture resterait sans
+// son émetteur). L'écran DEMANDE d'abord à la base ce qui bloque, pour ne jamais proposer un
+// bouton qui échouera, et la base rejoue ce contrôle au moment de supprimer.
+async function confirmerSupprimerCompte(id,nom){
+  const bl=await sbFetch('rpc/compte_blocages_suppression',{method:'POST',body:{p_user_id:id}});
+  if(sbErr(bl)){toast('Vérification impossible : '+(msgErreur(bl,'réessayez.')),'er');return;}
+  const liste=Array.isArray(bl)?bl:[];
+  if(liste.length){
+    openModal(`<div style="padding:4px 0">
+      <div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:10px">Ce compte ne peut pas être supprimé</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:12px">
+        ${esc(nom)} porte des éléments que l'entreprise doit conserver :
+      </div>
+      <ul style="font-size:12.5px;color:var(--t2);line-height:1.8;margin:0 0 14px 18px">
+        ${liste.map(x=>`<li>${esc(x.objet)} <span style="color:var(--t3)">(${x.nb})</span></li>`).join('')}
+      </ul>
+      <div style="font-size:12.5px;color:var(--t3);line-height:1.6;margin-bottom:18px">
+        Désactivez-le plutôt : son accès est coupé immédiatement, et son historique reste lisible.
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Fermer</button>
+      </div>
+    </div>`);
+    return;
+  }
+  openModal(`<div style="text-align:center;padding:8px 0 4px">
+    <div style="font-size:22px;margin-bottom:12px">🗑</div>
+    <div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:8px">Supprimer ${esc(nom)} définitivement ?</div>
+    <div style="font-size:13px;color:var(--t3);margin-bottom:24px;max-width:360px;margin-left:auto;margin-right:auto">
+      Ce compte ne porte aucune mission, aucune paie, aucune pièce comptable. Sa suppression est
+      irréversible : le compte, son profil et ses accès disparaissent. Il n'y a rien à réactiver
+      ensuite.
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn" style="background:var(--er)" onclick="supprimerCompteDefinitivement('${id}')">Supprimer définitivement</button>
+    </div>
+  </div>`);
+}
+
+async function supprimerCompteDefinitivement(id){
+  const r=await sbFetch('rpc/supprimer_compte_definitivement',{method:'POST',body:{p_user_id:id}});
+  if(sbErr(r)){toast(msgErreur(r,'Suppression impossible.'),'er');return;}
+  closeModal();
+  toast('Compte supprimé définitivement.','ok');
   if(document.getElementById('col-real'))await loadCollaborateurs();
 }
 

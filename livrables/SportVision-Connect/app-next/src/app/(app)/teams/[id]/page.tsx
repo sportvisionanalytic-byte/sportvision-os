@@ -652,6 +652,7 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
           onStaffChanged={() => setRechargement((n) => n + 1)}
           apercu={apercu ?? null}
           enPreparation={enPreparation}
+          equipesClub={(teams ?? []).map((t) => ({ name: t.name, categorie: t.category }))}
         />
       )}
       {tab === "effectif" && (
@@ -683,6 +684,7 @@ function RealOverviewTab({
   onStaffChanged,
   apercu,
   enPreparation,
+  equipesClub,
 }: {
   team: Team;
   roster: TeamRosterPlayer[];
@@ -693,6 +695,9 @@ function RealOverviewTab({
   onStaffChanged: () => void;
   apercu: ApercuEquipe | null;
   enPreparation: boolean;
+  /** Toutes les équipes du club : on invite depuis UNE fiche, mais un coach en encadre souvent
+   *  plusieurs (13/09/2026). Sans cette liste, la fenêtre ne proposait que l'équipe courante. */
+  equipesClub: { name: string; categorie?: string | null }[];
 }) {
   const [inviterEncadrant, setInviterEncadrant] = useState(false);
   const router = useRouter();
@@ -717,6 +722,7 @@ function RealOverviewTab({
             <TeamStaffCard
               clubId={clubId}
               teamName={team.name}
+              equipesClub={equipesClub}
               headCoachName={team.headCoachName}
               members={members}
               canManage={canManageMembers}
@@ -746,6 +752,7 @@ function RealOverviewTab({
           <InviterEncadrantModal
             clubId={clubId}
             teamName={team.name}
+            equipes={equipesClub}
             enPreparation={enPreparation}
             onClose={() => setInviterEncadrant(false)}
             onInvited={onStaffChanged}
