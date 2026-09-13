@@ -106,7 +106,13 @@ export function GalleryCheckout({
     (confirmation.trim().length >= email.trim().length || confirmation.includes("@") && confirmation.includes("."))
     && !identiques;
   const suggestion = emailValide ? suggestionAdresse(email) : null;
-  const pret = nom.trim().length >= 2 && emailValide && identiques && cgvAcceptees && renonceRetractation;
+  // 13/09/2026 — Une commande à 0 EUR n'est pas une vente : pas de Stripe, pas de paiement, et
+  // surtout pas de droit de rétractation à abandonner. Ce droit ne naît que d'un contrat à titre
+  // onéreux ; faire renoncer quelqu'un à un droit qu'il n'a pas, pour une chose offerte, est faux
+  // et inutilement inquiétant au moment précis où on veut lui faire découvrir le service.
+  // Trouvé en jouant le parcours de l'offre gratuite : le bouton disait « Payer ».
+  const offert = totalCents === 0;
+  const pret = nom.trim().length >= 2 && emailValide && identiques && cgvAcceptees && (offert || renonceRetractation);
 
   // Clavier et lecteur d'ecran (mesure axe + tabulation du 10/09/2026). La fenetre n'etait annoncee
   // comme telle a personne, le focus restait sur la page derriere le voile, Tab en ressortait vers
@@ -304,6 +310,7 @@ export function GalleryCheckout({
           </span>
         </label>
 
+        {!offert && (
         <label className="mt-2.5 flex cursor-pointer items-start gap-2.5">
           <input
             type="checkbox"
@@ -317,16 +324,25 @@ export function GalleryCheckout({
             numérique.
           </span>
         </label>
+        )}
 
         <button
           type="submit"
           disabled={!pret || busy}
           className="mt-4 w-full rounded-sv-pill bg-sv-gradient py-3.5 text-[14.5px] font-bold text-white disabled:opacity-50"
         >
-          {busy ? "Redirection vers le paiement…" : "Payer"}
+          {busy
+            ? offert
+              ? "Préparation de vos photos…"
+              : "Redirection vers le paiement…"
+            : offert
+              ? "Recevoir mes photos"
+              : "Payer"}
         </button>
         <p className="mt-2 text-center text-[11px] leading-relaxed text-text-faint">
-          Paiement sécurisé par Stripe. Téléchargement immédiat après paiement, disponible 30 jours.
+          {offert
+            ? "Aucun paiement. Vos photos sont disponibles tout de suite, pendant 30 jours."
+            : "Paiement sécurisé par Stripe. Téléchargement immédiat après paiement, disponible 30 jours."}
         </p>
         <p className="mt-2 text-center text-[11px] leading-relaxed text-text-faint">
           Vendeur : Elkana Group (SportVision), SAS — 4 Place Pierre Semard, 77130

@@ -3,23 +3,37 @@
 //
 // C'est la validation qui manquait : l'offre gratuite n'avait été essayée que par appel direct à
 // la fonction, jamais depuis un navigateur.
-import { chromium } from "/Users/fouka/Downloads/jarvis-starter-kit/livrables/SportVision-Connect/app-next/node_modules/playwright/index.mjs";
+import { chromium } from "../../SportVision-Connect/app-next/node_modules/playwright/index.mjs";
 import { createHash } from "node:crypto";
+import { creerGalerieTemoin } from "./_galerie-temoin.mjs";
+import { SB, enTeteAdmin } from "./_session-os.mjs";
 
-const URL = "https://connect.sportvision-an.fr/gallery/test-paiement-u18?k=z8Dk6uTkSSSlFRkvo42j2Ejv";
-const MAIL = process.env.SV_MAIL_GRATUIT || "zz-gratuit@sportvision-an.fr";
+// 13/09/2026 — Ce test visait en dur l'album « Test paiement — U18 » et son lien public. Cet album
+// a été archivé avec le reste du décor : le lien ne s'ouvrait plus, le test échouait sur le premier
+// clic, et ne surveillait donc plus RIEN. Même piège que le test du filigrane le 10/09. Il
+// construit désormais sa propre galerie, comme galerie-formules-ui, et la supprime après lui.
+const MAIL = process.env.SV_MAIL_GRATUIT || `zz-gratuit-${Date.now()}@example.invalid`;
 const norm = (s) => s.replace(/[   ]/g, " ");
+const api = (c, o = {}) => fetch(`${SB}/rest/v1/${c}`, { ...o, headers: { ...enTeteAdmin, "Content-Type": "application/json", ...(o.headers || {}) } });
 
 const b = await chromium.launch();
 let ko = 0;
 const dit = (nom, ok, det = "") => { if (!ok) ko++; console.log((ok ? "OK   " : "KO   ") + nom + (det ? "  (" + det + ")" : "")); };
+
+const temoin = await creerGalerieTemoin(b, { nom: "ZZ Galerie gratuite" });
+// Le témoin arrive avec une formule payante « 2 photos » : on ajoute l'offre GRATUITE, qui est le
+// sujet de ce test, et on la met en tête.
+await api("media_album_link_offers", { method: "POST", body: JSON.stringify([
+  { link_id: temoin.lienId, label: "1 photo offerte", price_override_cents: 0, photos_allowance: 1, offer_type: "pack", display_order: 0 },
+]) });
+const URL = temoin.url;
 
 // Contexte neuf : ni session, ni stockage. C'est bien un visiteur qui découvre le lien.
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 const p = await ctx.newPage();
 await p.goto(URL, { waitUntil: "networkidle" });
 
-dit("la galerie s'ouvre sans compte", /Test paiement/.test(await p.locator("body").innerText()));
+dit("la galerie s'ouvre sans compte", /ZZ Galerie gratuite/.test(await p.locator("body").innerText()));
 
 await p.locator("button", { hasText: "Voir les formules" }).click();
 await p.waitForTimeout(600);
@@ -47,6 +61,22 @@ dit("le recapitulatif dit « Offert »", /Offert/.test(form), form.split("\n").f
 
 await p.locator('input#co-nom').fill("Parent Test Gratuit");
 await p.locator('input#co-email').fill(MAIL);
+const confirmation = p.locator('input#co-email-confirmation');
+if (await confirmation.count()) await confirmation.fill(MAIL);
+
+// 13/09/2026 — Une commande offerte n'est pas une vente : ni Stripe, ni renonciation au droit de
+// rétractation, qui ne naît que d'un contrat à titre onéreux. Seules les CGV restent à accepter.
+const cases = p.locator('form input[type="checkbox"]');
+dit("aucune renonciation au droit de retractation sur une offre gratuite", (await cases.count()) === 1,
+    `${await cases.count()} case(s) a cocher`);
+for (let i = 0; i < (await cases.count()); i++) await cases.nth(i).check();
+
+const libelleBouton = norm(await p.locator('button[type="submit"]').innerText());
+dit("le bouton ne parle pas de payer", !/payer/i.test(libelleBouton), libelleBouton);
+const bas = norm(await p.locator("form").innerText());
+dit("et l'ecran ne promet pas un paiement Stripe", !/Stripe/.test(bas));
+dit("le vendeur reste identifie", /Elkana Group/.test(bas));
+
 await p.locator('button[type="submit"]').click();
 
 // Aucune redirection vers Stripe : on doit atterrir directement sur la commande.
@@ -74,6 +104,9 @@ dit("et c'est un vrai ZIP", buf[0] === 0x50 && buf[1] === 0x4b, `signature ${buf
 dit("empreinte enregistree", true, createHash("sha256").update(buf).digest("hex").slice(0, 16) + "…");
 
 await ctx.close();
+const menage = await temoin.nettoyer();
+dit("la galerie temoin est supprimee, fichiers compris", menage.reste === 0 && !menage.fichierEncoreServi,
+    `${menage.reste} ligne(s)`);
 await b.close();
 console.log(ko === 0 ? "\ntout conforme" : `\n${ko} ecart(s)`);
 process.exit(ko ? 1 : 0);

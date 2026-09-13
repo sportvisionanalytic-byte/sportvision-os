@@ -28,6 +28,30 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ── Où envoyer quelqu'un dont le compte vient de bouger ──────────────────────
+//
+// BUG RÉEL (13/09/2026). Ces deux e-mails partaient avec `security_url` et `dispute_url` valant
+// `supabaseUrl`, c'est-à-dire l'adresse de l'API : https://<projet>.supabase.co. Le bouton
+// « Sécuriser mon compte » d'un e-mail de sécurité menait donc sur une réponse d'API, illisible et
+// inquiétante. Vingt-huit e-mails partis ainsi en trente jours, dont un ce soir.
+//
+// Quelqu'un qui reçoit « votre mot de passe a été modifié » sans l'avoir demandé a un seul geste à
+// faire : reprendre la main sur son compte. On l'envoie donc sur « mot de passe oublié » de SON
+// application, déduite de l'origine de l'appel, et à défaut du type de compte.
+const OS_URL = Deno.env.get("OS_URL") ?? "https://bc6m3cgdz.sportvision-an.fr/";
+const CONNECT_URL = (Deno.env.get("CONNECT_URL") ?? "https://connect.sportvision-an.fr").replace(/\/+$/, "");
+const CLUBPLUS_URL = (Deno.env.get("CLUBPLUS_URL") ?? "https://clubplus.sportvision-an.fr").replace(/\/+$/, "");
+
+function reprendreLaMain(origine: string | null, estCollaborateur: boolean): string {
+  try {
+    const o = new URL(String(origine ?? "")).origin;
+    if (o === new URL(OS_URL).origin) return OS_URL;
+    if (o === new URL(CLUBPLUS_URL).origin) return CLUBPLUS_URL + "/clubplus/auth/forgot";
+    if (o === new URL(CONNECT_URL).origin) return CONNECT_URL + "/auth/forgot";
+  } catch { /* en-tête absent ou illisible : on décide par le compte */ }
+  return estCollaborateur ? OS_URL : CONNECT_URL + "/auth/forgot";
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -63,6 +87,11 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey);
     const { type, new_email } = await req.json();
 
+    // Collaborateur de l'OS ? Une ligne dans `profiles` fait foi ; c'est aussi ce qui distingue un
+    // compte interne d'un compte client partout ailleurs.
+    const { data: profilOs } = await admin.from("profiles").select("id").eq("id", user.id).maybeSingle();
+    const urlReprise = reprendreLaMain(req.headers.get("origin"), !!profilOs);
+
     // Même défaut que request-password-reset (10/09/2026) : Connect et Club+ enregistrent le
     // prénom sous `first_name`, l'OS sous `prenom`. On lit l'un puis l'autre, sinon rien
     // (dispatch-notifications rend alors « Bonjour, » et non « Bonjour , »).
@@ -77,7 +106,7 @@ serve(async (req) => {
         p_idempotency_key: "auth.password_changed:v1:" + user.id + ":" + new Date().toISOString().slice(0, 13),
         p_recipient_email: user.email,
         p_recipient_user_id: user.id,
-        p_payload: { first_name: firstName, changed_at_local: changedAt, security_url: supabaseUrl },
+        p_payload: { first_name: firstName, changed_at_local: changedAt, security_url: urlReprise },
       });
       return json({ success: true });
     }
@@ -94,7 +123,7 @@ serve(async (req) => {
         p_idempotency_key: "auth.email_changed:v1:" + user.id + ":" + new Date().toISOString().slice(0, 13),
         p_recipient_email: user.email,
         p_recipient_user_id: user.id,
-        p_payload: { masked_new_email: maskEmail(new_email || ""), changed_at_local: changedAt, dispute_url: supabaseUrl },
+        p_payload: { masked_new_email: maskEmail(new_email || ""), changed_at_local: changedAt, dispute_url: urlReprise },
       });
       return json({ success: true });
     }
