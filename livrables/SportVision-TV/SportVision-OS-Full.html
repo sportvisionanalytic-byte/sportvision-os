@@ -30984,7 +30984,7 @@ function fournisseurLien(url){
 
 // Les livrables declares « sans objet » par l'operateur, tels que la Production doit les lire
 // avant de valider : quoi, par qui, et pourquoi (v206, 13/09/2026).
-const _SANS_OBJET_LB={photo:'Photos traitées',montage:'Montage final',rushs:'Rushs vidéo'};
+const _SANS_OBJET_LB={photo:'Photos traitées',galerie:'Galerie',montage:'Montage final',rushs:'Rushs vidéo'};
 function _sansObjetHtml(suivis){
   const lignes=[];
   (Array.isArray(suivis)?suivis:[]).forEach(sv=>{
@@ -31052,7 +31052,8 @@ async function modalVerifierLivraison(prestationId){
            <div style="font-size:12px;font-weight:700;color:var(--wa);margin-bottom:5px">Mission pas encore clôturable</div>
            <div style="font-size:12.5px;color:var(--t2);line-height:1.5">${esc(m.cloture_manquant.join(' · '))}</div>
          </div>`
-      : `<button class="btn bp" style="width:100%;min-height:44px;margin-top:14px" onclick="cloturerMission('${escJs(prestationId)}')">✅ Clôturer la mission</button>`}`;
+      : `<button class="btn bp" style="width:100%;min-height:44px;margin-top:14px" onclick="validerProduction('${escJs(prestationId)}')">✅ Valider la prestation</button>
+         <div style="font-size:11.5px;color:var(--t3);margin-top:7px;line-height:1.45">Valider distribue les livrables au client, débloque la rémunération de l'opérateur et lui attribue ses XP.</div>`}`;
 }
 
 async function validerLienLivraison(lienId,prestationId){
@@ -31065,6 +31066,9 @@ async function validerLienLivraison(lienId,prestationId){
   if(document.getElementById('cockpit-real'))loadCockpitProduction();
 }
 
+// 13/09/2026 — Plus aucun appelant : la fiche de vérification appelle desormais validerProduction,
+// qui fait le meme travail ET la distribution (livrables au client, remuneration, XP). Conservee
+// comme sortie de secours manuelle sur une mission deja passee en « livrée » par ailleurs.
 async function cloturerMission(prestationId){
   // Le verrou est en base (proteger_cloture_mission) : si une condition manque, c'est lui qui
   // refuse, et son message dit précisément laquelle. On ne redouble pas la règle ici.
@@ -31114,6 +31118,18 @@ const OPERATEUR_ETAPES=[
 // Les seules transitions que l'opérateur déclenche lui-même. Elles suivent exactement
 // validate_prestation_statut_transition : proposer un bouton que la base refuserait serait pire
 // que ne pas le proposer du tout.
+// 13/09/2026 — Ce que l'operateur doit lire une fois son envoi fait. « Pret validation » est du
+// vocabulaire d'atelier : de son point de vue, son travail est termine et quelqu'un verifie. Tant
+// qu'il ne sait pas qu'il n'a plus rien a faire, il rappelle la Production pour en etre sur.
+const OPERATEUR_LB={
+  'prêt_validation':'En cours de vérification',
+  'à_valider_client':'En cours de vérification',
+  'prête_à_livrer':'Vérifiée, livraison en cours',
+  'livrée':'Livrée au client',
+  'clôturée':'Prestation validée',
+};
+const libelleOperateur=st=>OPERATEUR_LB[st]||SL[st]||st;
+
 const OPERATEUR_ACTIONS={
   'équipe_affectée':   {lb:'✓ Kit prêt, je peux partir', ns:'prête',                suivi:'kit_prepare_at',         clr:'var(--ok)'},
   'prête':             {lb:'🚗 Je suis en route',        ns:'équipe_en_route',       suivi:'parti_at',               clr:'var(--acc)'},
@@ -31149,7 +31165,7 @@ function badgesParcours(p){
     const et=OPERATEUR_ETAPES[i];
     h+=`<span class="bd bw" style="display:inline-flex"><span class="bd-d"></span>🟠 ${esc(et.lb)}</span>`;
   }else{
-    h+=`<span class="bd ${SC[p.statut]||'bw'}" style="display:inline-flex"><span class="bd-d"></span>${esc(SL[p.statut]||p.statut)}</span>`;
+    h+=`<span class="bd ${SC[p.statut]||'bw'}" style="display:inline-flex"><span class="bd-d"></span>${esc(libelleOperateur(p.statut))}</span>`;
   }
   return h;
 }
@@ -31332,7 +31348,13 @@ async function modalSauvegarde(prestationId){
   // §32 : la mission ne peut pas être « livrée » si seule la photo est faite alors que la vidéo
   // était demandée. Chaque livrable attendu est déduit de la couverture, jamais supposé.
   const attendus=[];
-  if(cov==='photo'||cov==='photo_video')attendus.push({k:'photo',lb:'Photos traitées',cat:'final',tm:'photo'});
+  if(cov==='photo'||cov==='photo_video'){
+    attendus.push({k:'photo',lb:'Photos traitées',cat:'final',tm:'photo'});
+    // 13/09/2026 — La galerie manquait a la liste : c'est pourtant ce qui arrive chez la famille,
+    // et ce qui se vend. Attendue des qu'il y a de la photo, declarable sans objet comme le reste
+    // (livraison par lien direct, par exemple).
+    attendus.push({k:'galerie',lb:'Galerie',cat:'livraison',tm:'photo'});
+  }
   if(cov==='video'||cov==='photo_video'){
     attendus.push({k:'montage',lb:'Montage final',cat:'final',tm:'video'});
     attendus.push({k:'rushs',lb:'Rushs vidéo',cat:'rushs',tm:'video'});
@@ -31904,7 +31926,7 @@ async function loadJourJ(){
                 <div style="font-size:20px;font-weight:800;color:var(--t1);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.clients?.nom||'—')}</div>
                 <div style="font-size:13px;color:var(--t2);margin-top:3px">${p.type_prestation||'Mission'}</div>
               </div>
-              <span class="bd ${SC[p.statut]||'bw'}" style="font-size:10px;white-space:nowrap;flex-shrink:0;margin-left:12px"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+              <span class="bd ${SC[p.statut]||'bw'}" style="font-size:10px;white-space:nowrap;flex-shrink:0;margin-left:12px"><span class="bd-d"></span>${libelleOperateur(p.statut)}</span>
             </div>
             ${rdv?`<div style="background:rgba(255,255,255,.05);border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
               <div>
@@ -32490,6 +32512,21 @@ function modalProdFiche(p){
 async function validerProduction(prestationId){
   const btn=document.getElementById('btn-valider-production');
   if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='Validation…';}
+  // 13/09/2026 — `validate_production` n'accepte que le statut « livrée » : c'est elle qui fait
+  // livrée → clôturée. Or l'opérateur laisse la mission en « prêt_validation » quand il envoie.
+  // Le bouton echouait donc sur « seule "livrée" peut être validée », et personne ne comprenait.
+  // La validation est UN geste pour le responsable production : on pose le jalon manquant, puis
+  // on valide. La base garde le dernier mot sur les deux transitions.
+  const pr=await sbFetch('prestations?select=statut&id=eq.'+prestationId).catch(()=>[]);
+  const st=Array.isArray(pr)&&pr[0]?pr[0].statut:null;
+  if(['prêt_validation','à_valider_client','prête_à_livrer'].includes(st)){
+    const av=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:'livrée'}});
+    if(sbErr(av)){
+      toast('Erreur : '+(msgErreur(av,'Validation impossible.')),'er');
+      if(btn){btn.disabled=false;btn.textContent='✓ Valider la production';}
+      return;
+    }
+  }
   const r=await sbFetch('rpc/validate_production',{method:'POST',body:{p_prestation_id:prestationId}});
   if(sbErr(r)){
     toast('Erreur : '+(msgErreur(r,'Validation impossible.')),'er');
@@ -32500,7 +32537,8 @@ async function validerProduction(prestationId){
   if(r.media_livrables_marques_livres)parts.push(r.media_livrables_marques_livres+' livrable(s) marqué(s) livré(s)');
   if(r.brouillon_cm_cree)parts.push('brouillon créé pour le CM');
   if(r.payables_operateur_valides)parts.push(r.payables_operateur_valides+' rémunération(s) validée(s)');
-  toast('Production validée.'+(parts.length?' '+parts.join(', ')+'.':''),'ok');
+  parts.push('XP attribués aux opérateurs');
+  toast('Prestation validée.'+(parts.length?' '+parts.join(', ')+'.':''),'ok');
   closeModal();
   loadViewData(S.role,S.view);
   updateNavBadges(S.role);

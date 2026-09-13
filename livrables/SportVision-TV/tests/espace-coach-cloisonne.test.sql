@@ -81,7 +81,10 @@ insert into attendu values
   ('club_calendar_events (table)', 1, 0),
   ('club_team_training_slots (table)', 1, 0),
   ('club_calendrier (RPC, matchs)', 1, 0),
-  ('club_calendrier (RPC, entrainements)', 4, 0),
+  -- 13/09/2026 — Un creneau hebdomadaire du mardi donne 4 OU 5 occurrences sur une fenetre de
+  -- 30 jours, selon le jour ou le test tourne. Ce nombre exact ne disait rien du cloisonnement,
+  -- qui est le sujet de ce test : on verifie que le coach voit les siens et zero des autres.
+  ('club_calendrier (RPC, entrainements)', -1, 0),
   ('team_memberships (effectif)', 1, 0),
   ('player_profiles (joueurs)', 1, 0),
   ('media_club_galleries (RPC)', 1, 0),
@@ -89,9 +92,11 @@ insert into attendu values
   ('club_teams (liste des équipes)', 1, 1),
   ('club_newsroom_items (actualités)', 1, 1);
 
-select case when r.mienne = a.mienne and r.autre = a.autre then '✅' else '❌' end as ok,
+-- `mienne = -1` signifie « au moins un, le nombre exact depend du calendrier ».
+select case when (case when a.mienne = -1 then r.mienne > 0 else r.mienne = a.mienne end)
+             and r.autre = a.autre then '✅' else '❌' end as ok,
        r.source as controle,
-       'sienne ' || a.mienne || ' / autre ' || a.autre as attendu,
+       'sienne ' || (case when a.mienne = -1 then 'au moins 1' else a.mienne::text end) || ' / autre ' || a.autre as attendu,
        'sienne ' || r.mienne || ' / autre ' || r.autre as obtenu
   from res r join attendu a on a.source = r.source
  order by r.source;
