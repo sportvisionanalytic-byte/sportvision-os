@@ -133,15 +133,11 @@ try {
   // ne passait pas, le CM restait sur « Mes clubs », et l'écran Présences le renvoyait là. Le
   // contrôle qui suivait cherchait le NOM du club — présent sur cette liste aussi — et se déclarait
   // satisfait. Tout le parcours échouait ensuite sans qu'on sache que le CM n'était jamais entré.
-  await ouvrirLeClub(C.page, NOM);
+  // L'assistant d'onboarding s'ouvre par-dessus et intercepte TOUS les clics : l'écarter d'abord,
+  // sinon le clic sur la carte du club expire sans qu'on sache pourquoi.
   await ecarterAssistant(C.page);
-  console.log("    [diag] apres ouvrirLeClub, url =", C.page.url());
-  console.log("    [diag] cookies =", JSON.stringify((await C.page.context().cookies()).map((c) => ({n:c.name,d:c.domain,p:c.path,v:c.name==="sv_active_space"?c.value:"(jeton)"}))));
-  for (const chemin of ["/clubplus/dashboard", "/clubplus/calendar", "/clubplus/presences"]) {
-    await C.page.goto(`${CP}${chemin}`, { waitUntil: "domcontentloaded" }); await attendre(6000);
-    const txt = (await C.page.evaluate(() => document.body.innerText).catch(() => "")).replace(/\s+/g, " ");
-    console.log(`    [diag] ${chemin} -> ${C.page.url().replace(CP, "")} | ${/Mes clubs SportVision/.test(txt) ? "LISTE DES CLUBS" : txt.slice(0, 70)}`);
-  }
+  const surLaListe = /Mes clubs SportVision/.test(await C.page.evaluate(() => document.body.innerText).catch(() => ""));
+  if (surLaListe) { await ouvrirLeClub(C.page, NOM); await ecarterAssistant(C.page); }
   await C.page.goto(`${CP}/clubplus/presences`, { waitUntil: "domcontentloaded" }); await attendre(8000); await ecarterAssistant(C.page);
   const surLaListeDesClubs = /Mes clubs SportVision/.test(await C.page.evaluate(() => document.body.innerText).catch(() => ""));
   t("CM : dans l'espace du club fictif, pas sur la liste des clubs",
