@@ -308,7 +308,11 @@ try {
       attendu: { action: "declare", accountType: "joueur", sport: "Escalade", name: "ZZ Club déclaré", city: "Nemours" } },
     { nom: "particulier", libelle: "Particulier",
       etape3: async (p) => { await p.locator("button", { hasText: "Réserver une prestation" }).click(); },
-      etape4: creerSansClub, attendu: { action: "skip", accountType: "particulier" }, sansProfilParticulier: true },
+      // 12/09/2026 — « Particulier » n'écrivait rien, la colonne restait NULL, et
+      // `connect_particulier_limit` traitait une colonne vide comme un compte d'avant la v67 :
+      // plafond 999, donc aucun plafond. Un agent qui cliquait « Particulier » suivait 30 sportifs
+      // gratuitement. Le tunnel écrit désormais « autre », qui porte le plafond de 3 d'un parent.
+      etape4: creerSansClub, attendu: { action: "skip", accountType: "particulier", profilParticulier: "autre" } },
     { nom: "parent", libelle: "Parent / Responsable légal", etape4: creerSansClub, attendu: { action: "skip", accountType: "particulier", profilParticulier: "parent" } },
     { nom: "agent", libelle: "Agent / représentant", etape4: creerSansClub, attendu: { action: "skip", accountType: "particulier", profilParticulier: "agent" } },
     { nom: "autre (tuteur)", libelle: "Autre", precision: "Tuteur de mon neveu", etape4: creerSansClub, attendu: { action: "skip", accountType: "particulier", profilParticulier: "tuteur" } },
