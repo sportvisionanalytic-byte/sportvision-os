@@ -24,6 +24,30 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ── Où atterrit la personne qui clique son lien ──────────────────────────────
+//
+// INCIDENT DU 13/09/2026 (voir invite-collaborateur). Supabase n'honore une redirection que si
+// elle figure dans la liste blanche du projet ; sinon il la remplace SILENCIEUSEMENT par le Site
+// URL — `https://connect.sportvision-an.fr`. Un collaborateur qui réinitialise son mot de passe
+// depuis l'OS atterrissait donc sur Connect, où son compte n'a rien à faire.
+//
+// Cette fonction-ci sert les trois applications : on ne peut pas imposer une destination. On
+// valide donc ce qui est proposé contre les origines connues, et à défaut on choisit selon le
+// compte lui-même : un collaborateur SportVision (il a une ligne dans `profiles`) va sur l'OS,
+// tout le monde sinon va sur Connect.
+const OS_URL = Deno.env.get("OS_URL") ?? "https://bc6m3cgdz.sportvision-an.fr/";
+const CLUBPLUS_URL = Deno.env.get("CLUBPLUS_URL") ?? "https://clubplus.sportvision-an.fr";
+const CONNECT_URL = "https://connect.sportvision-an.fr";
+function origineConnue(propose: unknown): string | null {
+  try {
+    const u = new URL(String(propose ?? ""));
+    for (const connue of [OS_URL, CLUBPLUS_URL, CONNECT_URL]) {
+      if (u.origin === new URL(connue).origin) return u.origin + u.pathname;
+    }
+  } catch { /* URL absente ou illisible */ }
+  return null;
+}
+
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
@@ -75,10 +99,18 @@ serve(async (req) => {
     const okIp = await checkRateLimit(admin, "pwreset:ip:" + ip);
     if (!okEmail || !okIp) return json(genericResponse, 200);
 
+    // La destination se décide AVANT de générer le lien : après, il est trop tard, Supabase a
+    // déjà substitué le Site URL sans le dire.
+    let destination = origineConnue(redirect_url);
+    if (!destination) {
+      const { data: collaborateur } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+      destination = collaborateur ? OS_URL : CONNECT_URL;
+    }
+
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "recovery",
       email,
-      options: { redirectTo: redirect_url },
+      options: { redirectTo: destination },
     });
     // Compte inconnu ou erreur : même réponse générique, rien de plus.
     if (linkErr || !linkData?.user) return json(genericResponse, 200);

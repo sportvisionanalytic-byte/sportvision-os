@@ -36,6 +36,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ── Où atterrit la recrue quand elle clique son lien ─────────────────────────
+//
+// INCIDENT DU 13/09/2026. Une recrue a reçu son invitation, cliqué, et s'est retrouvée sur un
+// écran de CONNEXION Connect au lieu de l'écran « choisissez votre mot de passe » de l'OS. Elle
+// n'avait donc aucun moyen d'entrer.
+//
+// La cause : l'OS envoyait `window.location.origin + window.location.pathname` comme redirection.
+// Supabase n'accepte une redirection que si elle figure dans la liste blanche du projet ; sinon il
+// la remplace SILENCIEUSEMENT par le Site URL, qui est `https://connect.sportvision-an.fr`. Une URL
+// d'OS légèrement différente de celles déclarées (un domaine Netlify, un sous-chemin, un « ?x= »)
+// suffit donc à expédier toutes les recrues chez Connect, sans le moindre message d'erreur.
+//
+// Cette fonction n'invite que des collaborateurs SportVision : leur destination est connue, elle
+// n'a aucune raison de dépendre de l'URL qu'avait sous les yeux celui qui invite. On accepte ce
+// que le client propose UNIQUEMENT s'il est sur le domaine de l'OS, sinon on impose l'adresse
+// canonique. Le résultat est le même pour la recrue, mais il ne peut plus dépendre d'un détail.
+const OS_URL = Deno.env.get("OS_URL") ?? "https://bc6m3cgdz.sportvision-an.fr/";
+function redirectionOS(propose: unknown): string {
+  try {
+    const u = new URL(String(propose ?? ""));
+    if (u.origin === new URL(OS_URL).origin) return u.origin + u.pathname;
+  } catch { /* URL absente ou illisible : on prend la canonique */ }
+  return OS_URL;
+}
+
 const ROLE_LABELS: Record<string, string> = {
   sec: "Secrétaire", prod: "Resp. Production", photo: "Photographe / Vidéaste",
   cm: "Community Manager", compta: "Comptable", com: "Commercial", admin: "Administrateur",
@@ -207,7 +232,7 @@ serve(async (req) => {
       if (emisIlYa < 60_000) {
         return json({ user_id: existing.id, success: true, already_existed: true, envoi_recent: true });
       }
-      const { data: re, error: reErr } = await admin.auth.admin.generateLink({ type: "invite", email, options: { redirectTo: redirect_url } });
+      const { data: re, error: reErr } = await admin.auth.admin.generateLink({ type: "invite", email, options: { redirectTo: redirectionOS(redirect_url) } });
       if (reErr || !re?.properties?.action_link) {
         console.error("invite-collaborateur renvoi :", reErr?.message);
         return json({ error: "Impossible de générer un nouveau lien pour cette adresse. Réessayez dans un instant." }, 500);
@@ -240,7 +265,7 @@ serve(async (req) => {
           ...(poleIds.length > 0 ? { pole_ids: poleIds } : {}),
           ...(responsablePoleIds.length > 0 ? { responsable_pole_ids: responsablePoleIds } : {}),
         },
-        redirectTo: redirect_url,
+        redirectTo: redirectionOS(redirect_url),
       },
     });
     if (linkErr) {
