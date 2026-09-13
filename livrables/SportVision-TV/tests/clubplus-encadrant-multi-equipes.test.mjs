@@ -146,6 +146,8 @@ async function main() {
       await page.waitForTimeout(600);
       const ajout = page.locator("button", { hasText: new RegExp(`^${equipes[1].name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) }).first();
       if (await ajout.count()) { await ajout.click(); await page.waitForTimeout(400); }
+      const fin = page.locator("button", { hasText: /^Terminé$/ }).first();
+      if (await fin.count()) { await fin.click(); await page.waitForTimeout(400); }
       await page.locator("button", { hasText: /^Enregistrer$/ }).first().click();
       await page.waitForTimeout(3500);
 
