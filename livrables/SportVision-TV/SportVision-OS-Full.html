@@ -15027,7 +15027,7 @@ async function loadProdLivrMissions(){
   if(!el)return;
   try{
     const _lmPoleQS=S.activePoleId?'&pole_id=eq.'+S.activePoleId:'';
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(prenom,nom)),media_liens(id,nom,url,type_media,categorie,statut,commentaire,ajouteur_id)&statut=in.(livrée,clôturée)'+_lmPoleQS+'&order=date_prestation.desc&limit=100');
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom),prestations_equipe:prestations_equipe_display(statut,collaborateur:profiles(prenom,nom)),media_liens(id,nom,url,type_media,categorie,statut,commentaire,ajouteur_id)&statut=in.(prêt_validation,à_valider_client,prête_à_livrer,livrée,clôturée)'+_lmPoleQS+'&order=date_prestation.desc&limit=100');
     _livrMissionData=Array.isArray(raw)?raw:[];
     renderProdLivrMissionList();
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
@@ -15045,9 +15045,14 @@ function renderProdLivrMissionList(){
   if(!el)return;
   const hasCorrection=p=>(p.media_liens||[]).some(l=>l.statut==='correction_demandee');
   let list=_livrMissionData;
+  // 13/09/2026 — Cet ecran ne montrait que « livrée » et « clôturée ». Or l'operateur qui envoie
+  // sa livraison laisse la mission en « prêt_validation » : le responsable production ouvrait
+  // « Livraisons » et n'y voyait RIEN, alors que deux missions l'attendaient. Elles n'existaient
+  // que dans le Cockpit, onglet « À vérifier ». Signale par Fouka le 13/09.
+  const A_VERIFIER=['prêt_validation','à_valider_client','prête_à_livrer','livrée'];
   if(_livrMissionFilter==='validees') list=list.filter(p=>p.statut==='clôturée');
-  else if(_livrMissionFilter==='a_corriger') list=list.filter(p=>p.statut==='livrée'&&hasCorrection(p));
-  else list=list.filter(p=>p.statut==='livrée'&&!hasCorrection(p));
+  else if(_livrMissionFilter==='a_corriger') list=list.filter(p=>A_VERIFIER.includes(p.statut)&&hasCorrection(p));
+  else list=list.filter(p=>A_VERIFIER.includes(p.statut)&&!hasCorrection(p));
   if(!list.length){
     el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:40px;gap:8px;color:var(--t3)"><div style="font-size:32px;opacity:.2">📦</div><div style="font-size:13px">Aucune mission dans cet onglet.</div></div>';
     return;
@@ -15119,6 +15124,7 @@ function renderLivrables(){
     el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)">
       <div style="font-size:36px;opacity:.2">✅</div>
       <div style="font-size:13px">Aucun livrable dans ce filtre.</div>
+      <div style="font-size:12px;max-width:360px;text-align:center;line-height:1.5">Les liens déposés par les opérateurs se trouvent au-dessus, dans « Livraisons des missions ». Un livrable, lui, est le document que vous préparez pour le client.</div>
       <button onclick="modalCreerLivrable()" style="margin-top:8px;padding:8px 18px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer">+ Créer un livrable</button>
     </div>`;
     return;
