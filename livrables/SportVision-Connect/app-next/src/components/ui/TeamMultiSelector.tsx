@@ -111,6 +111,24 @@ export function TeamMultiSelector({
               className="w-full bg-transparent text-[13px] outline-none"
             />
           </div>
+          {/* 13/09/2026 — Le panneau est en position absolue : ouvert, il recouvre le bouton
+              principal du formulaire qui le contient (« Créer l'invitation », « Enregistrer »).
+              Un clic à côté le referme, mais rien ne le disait : on offre une sortie visible,
+              avec le compte de ce qui est retenu. */}
+          <div className="sticky top-[41px] z-10 flex items-center justify-between gap-2 border-b border-divider bg-surface px-3.5 py-1.5">
+            <span className="text-[11.5px] font-bold text-text-soft">
+              {valeurs.length === 0
+                ? "Aucune équipe cochée"
+                : `${valeurs.length} équipe${valeurs.length > 1 ? "s" : ""} cochée${valeurs.length > 1 ? "s" : ""}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setOuvert(false)}
+              className="rounded-lg bg-surface-sunken px-2.5 py-1 text-[11.5px] font-bold hover:brightness-95"
+            >
+              Terminé
+            </button>
+          </div>
           {visibles.length === 0 ? (
             <p className="px-3.5 py-3 text-[12.5px] text-text-soft">Aucune équipe ne correspond.</p>
           ) : (

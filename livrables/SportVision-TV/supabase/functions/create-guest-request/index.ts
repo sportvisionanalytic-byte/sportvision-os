@@ -34,7 +34,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const RATE_LIMIT_MAX = 5;
+// 13/09/2026 — Ce plafond compte les demandes PAR ADRESSE IP, et il était réglé au niveau d'une
+// seule personne. Or une IP, ce n'est pas quelqu'un : c'est un foyer, le wifi d'un club house, une
+// mairie, ou le NAT d'un opérateur mobile derrière lequel se trouvent des milliers d'abonnés. Un
+// jour de tournoi, les familles sont toutes sur le même réseau — à partir de la sixième, tout le
+// monde était refusé. Ici, cela veut dire une demande perdue sans que personne ne sache pourquoi.
+// Le garde-fou reste : 20 par heure et par IP arrête toujours une automatisation.
+const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 // deno-lint-ignore no-explicit-any

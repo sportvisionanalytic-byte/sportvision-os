@@ -48,7 +48,22 @@ function origineConnue(propose: unknown): string | null {
   return null;
 }
 
-const RATE_LIMIT_MAX = 5;
+// Deux plafonds, parce qu'ils protègent de deux choses différentes (13/09/2026).
+//
+// PAR ADRESSE E-MAIL : empêche de harceler une personne de messages. Cinq par heure suffit
+// largement, et le sixième n'apporte rien à qui a vraiment perdu son mot de passe.
+//
+// PAR ADRESSE IP : empêche l'énumération massive. Il était réglé à 5 lui aussi — c'est-à-dire au
+// niveau d'UNE personne, alors qu'une IP, c'est un foyer, un club house, une mairie, ou le NAT d'un
+// opérateur mobile derrière lequel se trouvent des milliers d'abonnés. Cinq familles d'un même club
+// qui font leurs démarches le même soir, et la sixième recevait « un e-mail vient d'être envoyé »
+// sans qu'aucun e-mail ne parte. Trouvé pendant l'audit du 13/09 : la limite a sauté en une heure
+// d'usage normal, sur une seule connexion.
+//
+// Le message générique reste le même dans tous les cas — c'est ce qui protège de l'énumération —
+// mais il ne doit pas devenir un mensonge dès la sixième demande d'un quartier.
+const RATE_LIMIT_MAX_EMAIL = 5;
+const RATE_LIMIT_MAX_IP = 40;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 const corsHeaders = {
@@ -61,14 +76,14 @@ function json(body: unknown, status = 200) {
 }
 
 // deno-lint-ignore no-explicit-any
-async function checkRateLimit(admin: any, identifiant: string) {
+async function checkRateLimit(admin: any, identifiant: string, max: number) {
   // Fonction atomique (migration-audit-25-08-corrections-batch1.sql, 25/08/2026) : l'ancien
   // motif COUNT puis INSERT séparés laissait une fenêtre de course entre deux appels concurrents
   // (répété tel quel dans ~20 edge functions) — verrou transactionnel scopé à l'identifiant côté
   // Postgres, plus de race condition possible.
   const { data, error } = await admin.rpc("check_and_record_rate_limit", {
     p_identifiant: identifiant,
-    p_max: RATE_LIMIT_MAX,
+    p_max: max,
     p_window_seconds: RATE_LIMIT_WINDOW_MS / 1000,
   });
   if (error) return false;
@@ -95,8 +110,8 @@ serve(async (req) => {
     if (!email) return json(genericResponse, 200);
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("cf-connecting-ip") || "inconnu";
-    const okEmail = await checkRateLimit(admin, "pwreset:email:" + email.toLowerCase());
-    const okIp = await checkRateLimit(admin, "pwreset:ip:" + ip);
+    const okEmail = await checkRateLimit(admin, "pwreset:email:" + email.toLowerCase(), RATE_LIMIT_MAX_EMAIL);
+    const okIp = await checkRateLimit(admin, "pwreset:ip:" + ip, RATE_LIMIT_MAX_IP);
     if (!okEmail || !okIp) return json(genericResponse, 200);
 
     // La destination se décide AVANT de générer le lien : après, il est trop tard, Supabase a
