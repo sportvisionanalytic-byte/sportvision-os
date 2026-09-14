@@ -194,6 +194,36 @@ t("une galerie complete n'a pas de champ « nombre de photos »",
 t("« Mettre en avant » est devenu « ★ Recommandée »", offresTxt.includes("★ Recommandée") && !offresTxt.includes("Mettre en avant"));
 t("« Active » est devenu « Proposée au client »", offresTxt.includes("Proposée au client"));
 
+// ── 9. Une galerie gratuite se met en ligne, meme avec une offre commencee ──
+// Defaut signale par Fouka le 14/09/2026 : « j'essaie de mettre une galerie en ligne gratuite, ca
+// me dit de mettre un nom a l'offre 1 ». Cocher « Galerie gratuite » MASQUE le bloc des offres et
+// annonce « aucune offre requise » — mais la validation tournait avant de regarder si la galerie
+// etait gratuite. Une ligne d'offre commencee puis masquee bloquait la publication en reclamant le
+// nom d'une offre devenue invisible : ni comprehensible, ni corrigeable sans decocher « gratuite ».
+console.log("\n9. Galerie gratuite : une offre commencee ne bloque plus la mise en ligne");
+await page.evaluate(() => {
+  window.__appels.length = 0;
+  window.__toasts = [];
+  const vraiToast = window.toast;
+  window.toast = (m, t) => { window.__toasts.push(String(m)); if (vraiToast) vraiToast(m, t); };
+  _galAlbum.access_mode = "free_members";
+  _galAlbum.status = "draft";
+  _galOffres = []; galAjouterOffre("pack");   // commencee, sans nom ni prix : le cas de Fouka
+});
+await page.evaluate(() => galMettreEnLigne());
+await page.waitForTimeout(500);
+const toastsGratuit = await page.evaluate(() => window.__toasts);
+const appelsGratuit = await page.evaluate(() => window.__appels.map((a) => a.path));
+t("aucun message ne reclame le nom d'une offre invisible",
+  !toastsGratuit.some((m) => /donnez-lui un nom/i.test(m)), toastsGratuit.join(" | ").slice(0, 120));
+t("la galerie gratuite part quand meme en ligne",
+  appelsGratuit.some((p) => p.includes("media_link_save")) && appelsGratuit.some((p) => p.startsWith("media_albums?id=eq.")));
+t("et elle ne vend rien : aucune offre enregistree",
+  await page.evaluate(() => {
+    const a = window.__appels.find((x) => x.path.includes("media_link_save"));
+    return !!a && Array.isArray(a.body?.p_offers) && a.body.p_offers.length === 0;
+  }));
+
 t("aucune erreur JavaScript sur tout le parcours", erreursJs.length === 0, erreursJs.join(" | "));
 
 console.log(`\n${ok}/${ok + ko} verifications passees.`);

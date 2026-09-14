@@ -13549,9 +13549,33 @@ async function galEnregistrerOffresPrincipales(){
 // au passage la notion de lien commercial.
 async function galMettreEnLigne(){
   const gratuit=_galAlbum.access_mode==='free_members';
-  const offres=_galOffresPourEnregistrement();
-  if(!offres)return;
-  if(!offres.length&&!gratuit){toast('Ajoutez au moins une offre avant de mettre en ligne, ou cochez « Galerie gratuite ».','er');return;}
+  // 14/09/2026, defaut signale par Fouka : « j'essaie de mettre une galerie en ligne gratuite, ca
+  // me dit de mettre un nom a l'offre 1 ».
+  //
+  // Cocher « Galerie gratuite » MASQUE le bloc des offres (galBasculerGratuit) et annonce meme
+  // « aucune offre requise pour la mettre en ligne ». Mais la validation, elle, tournait avant de
+  // regarder si la galerie etait gratuite : une ligne d'offre commencee puis masquee bloquait la
+  // publication, en reclamant le nom d'une offre devenue invisible a l'ecran. Impossible a
+  // comprendre, et impossible a corriger sans decocher « gratuite ».
+  //
+  // Une galerie gratuite ne vend rien : on ne valide plus ce qu'elle ne vendra pas, et on
+  // n'enregistre aucune offre. Si des offres etaient deja enregistrees, on le dit avant, plutot
+  // que de les faire disparaitre en silence.
+  let offres;
+  if(gratuit){
+    const dejaVendues=(_galOffres||[]).filter(o=>(o.name||'').trim()).length;
+    if(dejaVendues){
+      const ok=await demanderConfirmation(
+        'Cette galerie est gratuite : '+dejaVendues+' offre'+(dejaVendues>1?'s ne seront plus proposees':' ne sera plus proposee')+' a l\'achat.\n\nDecochez « Galerie gratuite » si vous vouliez la vendre.',
+        {titre:'Mettre en ligne gratuitement ?',action:'Mettre en ligne'});
+      if(!ok)return;
+    }
+    offres=[];
+  }else{
+    offres=_galOffresPourEnregistrement();
+    if(!offres)return;
+    if(!offres.length){toast('Ajoutez au moins une offre avant de mettre en ligne, ou cochez « Galerie gratuite ».','er');return;}
+  }
 
   // Mettre en ligne previent le coach, les joueurs et les parents de l'equipe, UNE SEULE FOIS et
   // pour toujours (v156/v168) : republier ne les previendra plus. Une galerie vide envoyee par
