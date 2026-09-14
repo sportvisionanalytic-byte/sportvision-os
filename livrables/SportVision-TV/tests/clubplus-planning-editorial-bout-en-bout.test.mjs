@@ -64,8 +64,10 @@ try {
   const r2 = (await sql(`select id from club_teams where club_id='${vm.id}' and name='Séniors R2'`))[0];
   if (!r2) throw new Error("équipe Séniors R2 introuvable");
   const cm = await personne("cm", "cm"), coach = await personne("coach", null), autre = await personne("autrecm", "cm");
+  const president = await personne("president", null);
   await svc("POST", "club_cm_affectations", { club_id: vm.id, cm_id: cm.id, role: "secondaire", date_debut: hier, actif: true });
   await svc("POST", "club_members", { user_id: coach.id, club_id: vm.id, role: "coach", status: "actif", teams: ["Séniors R2"] });
+  await svc("POST", "club_members", { user_id: president.id, club_id: vm.id, role: "president", status: "actif", teams: [] });
   const zzClient = (await svc("POST", "clients", { nom: `ZZ Club planning ${stamp}`, statut_relation: "partenaire" }))[0]; ids.zzClient = zzClient.id;
   const zzClub = (await svc("POST", "clubs", { nom: `ZZ Club planning ${stamp}`, portail_client_id: zzClient.id }))[0]; ids.zzClub = zzClub.id;
   await svc("POST", "club_cm_affectations", { club_id: zzClub.id, cm_id: autre.id, role: "secondaire", date_debut: hier, actif: true });
@@ -185,6 +187,31 @@ try {
   await ouvrirLeClub(K.page, "zz-aucun-club");
   t("coach : pas de bouton « Ajouter au planning »", (await K.page.locator("button", { hasText: "Ajouter au planning" }).count()) === 0);
   await K.ctx.close();
+
+  // ── 9. Le président du club devant son planning (demande de Fouka, 14/09/2026) ──
+  // Le planning du CM fait passer un contenu de « brouillon » à « prêt » : écrit, relu, daté. La
+  // policy de lecture du club masquait « prêt » comme un brouillon, si bien qu'un président
+  // ouvrait un écran vide pendant que le travail était fait — le cas des neuf contenus de
+  // Villemomble. La v229 ouvre « prêt » au club ; le travail en cours reste chez SportVision.
+  const PRET = `${TITRE} pret`;
+  await svc("POST", "contenus", { client_id: ids.client, cm_id: cm.id, titre: PRET, type_contenu: "publication",
+    statut: "pret", date_prevue: VEN, plateforme: "instagram" });
+  const P = await ouvrirClubPlus(nav, president.email, { chemin: "/clubplus/communication" });
+  await ouvrirLeClub(P.page, "zz-aucun-club");
+  await attendre(2000);
+  const vuPresident = await P.page.locator("main").innerText();
+  t("président : « Planning éditorial » dans son menu", (await P.page.locator("nav", { hasText: "Planning éditorial" }).count()) > 0);
+  t("président : il lit le contenu prêt que le CM lui a préparé", vuPresident.includes(PRET),
+    vuPresident.replace(/\s+/g, " ").slice(0, 140));
+  // Le brouillon créé plus haut porte TITRE ; le contenu prêt porte « TITRE pret ». Compter les
+  // occurrences évite de confondre les deux, l'un étant le préfixe de l'autre.
+  const occTitre = vuPresident.split(TITRE).length - 1, occPret = vuPresident.split(PRET).length - 1;
+  t("président : le brouillon du CM ne lui est pas montré", occTitre === occPret, `${occTitre} mention(s) du titre, ${occPret} du contenu prêt`);
+  t("président : aucun bouton d'écriture sur le planning",
+    (await P.page.locator("button", { hasText: "Ajouter au planning" }).count()) === 0);
+  const boumP = vraiesErreursCP(P.erreurs);
+  t("président : aucune erreur JavaScript", boumP.length === 0, boumP.slice(0, 2).join(" | "));
+  await P.ctx.close();
 
   const notifs = (await sql(`select count(*) n from notifications where created_at > now() - interval '30 minutes'
     and (lien_client_id='${ids.client}' or message ilike '%${TITRE}%' or titre ilike '%${TITRE}%')`))[0];
