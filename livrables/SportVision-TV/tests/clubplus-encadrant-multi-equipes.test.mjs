@@ -42,7 +42,7 @@ async function fermerAssistant(page) {
 
 async function main() {
   const navigateur = await chromium.launch();
-  let membreId = null, compteId = null, invitId = null;
+  let membreId = null, compteId = null, invitId = null, compteCoach = null;
   let clubId = null, equipes = [];
 
   try {
@@ -174,7 +174,43 @@ async function main() {
       t("il a les droits sur la SECONDE, celle qu'on vient d'ajouter", (await droit(equipes[1].id)) === true);
       if (equipes[2]) t("et aucun droit sur une équipe non cochée", (await droit(equipes[2].id)) === false);
     }
+    // ── 5. Le coach ouvre SON lien et retrouve SES deux équipes ─────────────
+    // « Les relations se font bien » (Fouka) : jusqu'ici on vérifiait ce que l'écran envoie et ce
+    // que la base accorde. Reste le plus important pour la personne : ce qu'elle voit en arrivant.
+    console.log("\n3. Le coach ouvre son lien d'invitation");
+    const inv = await lire(`club_invitations?select=token&id=eq.${invitId}`);
+    const jeton = inv?.[0]?.token;
+    t("l'invitation porte un lien personnel", !!jeton);
+    if (jeton) {
+      const cpt = await (await fetch(`${SB}/auth/v1/admin/users`, {
+        method: "POST", headers: { ...enTeteAdmin, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: mailInvite, password: `ZzCoach!${T0}`, email_confirm: true }),
+      })).json();
+      compteCoach = cpt.id;
+      t("le coach crée son compte avec l'adresse invitée", !!compteCoach, JSON.stringify(cpt).slice(0, 140));
+
+      const ctx2 = await navigateur.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const p2 = await ctx2.newPage();
+      const err2 = [];
+      p2.on("pageerror", (e) => err2.push(String(e)));
+      // Il arrive par le lien, non connecté : c'est le cas réel.
+      await p2.goto(`https://clubplus.sportvision-an.fr/clubplus/rejoindre?token=${encodeURIComponent(jeton)}`, { waitUntil: "domcontentloaded" });
+      await p2.waitForTimeout(7000);
+      const vu = (await p2.evaluate(() => document.body.innerText)).replace(/\s+/g, " ");
+      t("le lien s'ouvre et nomme le club", vu.includes(CLUB), vu.slice(0, 200));
+      t(
+        "les deux équipes lui sont annoncées",
+        equipes.slice(0, 2).every((e) => vu.includes(e.name)),
+        vu.slice(0, 260),
+      );
+      t("aucune erreur JavaScript sur le lien", err2.length === 0, err2[0] || "");
+      await ctx2.close();
+    }
   } finally {
+    if (compteCoach) {
+      await api(`club_members?user_id=eq.${compteCoach}`, { method: "DELETE" });
+      await fetch(`${SB}/auth/v1/admin/users/${compteCoach}`, { method: "DELETE", headers: enTeteAdmin });
+    }
     if (invitId) await api(`club_invitations?id=eq.${invitId}`, { method: "DELETE" });
     if (membreId) await api(`club_members?id=eq.${membreId}`, { method: "DELETE" });
     if (compteId) await fetch(`${SB}/auth/v1/admin/users/${compteId}`, { method: "DELETE", headers: enTeteAdmin });
