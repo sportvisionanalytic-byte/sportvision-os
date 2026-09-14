@@ -17785,7 +17785,13 @@ async function chargerKitsPrestation(prestationId,ref){
       // sortis le 12/09 et n'ont plus JAMAIS ete proposes — la mission du 13/09, deux operateurs
       // acceptes, n'avait aucun kit selectionnable, sans un mot d'explication. Un kit est pris
       // pour une DATE, pas pour toujours.
-      sbFetch('kit_reservations?select=kit_id,date_sortie,date_retour_prevue,date_retour_effective,prestation_id&statut=not.in.(retourné,annulé)').catch(()=>[]),
+      // 14/09/2026 — « annulé » N'EXISTE PAS dans l'enum statut_kit : PostgREST repondait 400
+      // (22P02), le .catch rendait un tableau vide, et AUCUN kit n'etait donc considere comme
+      // pris ce jour-la. Le menu proposait tous les kits, y compris ceux deja sortis sur une
+      // autre mission le meme jour — exactement le probleme inverse de celui corrige le 12/09,
+      // et tout aussi invisible puisque l'echec etait avale. Un catch qui masque une requete
+      // fausse est pire qu'une erreur : il rend le defaut silencieux.
+      sbFetch('kit_reservations?select=kit_id,date_sortie,date_retour_prevue,date_retour_effective,prestation_id&statut=not.in.(retourné)').catch(()=>[]),
       sbFetch('kits?select=id,nom,type_kit,pole_id,pole_exclusif,statut&order=nom.asc'),
     ]);
     const presPoleId=Array.isArray(presRaw)&&presRaw[0]?presRaw[0].pole_id:null;
