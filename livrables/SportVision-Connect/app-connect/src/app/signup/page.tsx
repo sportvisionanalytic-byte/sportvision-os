@@ -41,6 +41,21 @@ export default function SignupIdentityPage() {
         <p className="text-[15px] text-text-tertiary">Quelques informations suffisent pour commencer.</p>
       </div>
 
+      {/* 14/09/2026 — Une famille arrivée par l'e-mail de son club ne voyait rien qui le rappelle :
+          ni l'invitation, ni le fait que l'adresse saisie ici DOIT être celle qui a reçu le
+          message, faute de quoi l'invitation ne sera pas retrouvée (elle est portée par l'adresse,
+          pas par un jeton dans le lien). */}
+      {state.suite === "/mes-invitations" && (
+        <div role="status" className="flex items-start gap-2.5 rounded-sv border border-affiliations/30 bg-affiliations-bg px-4 py-3.5">
+          <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">mail</span>
+          <span className="text-[13px] leading-relaxed text-text-secondary">
+            Une invitation de votre club vous attend. Créez votre compte avec
+            <strong className="text-text-primary"> l&apos;adresse qui a reçu l&apos;e-mail</strong> :
+            c&apos;est elle qui porte l&apos;invitation.
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4">
         <div className="flex gap-3">
           <div className="flex-1">

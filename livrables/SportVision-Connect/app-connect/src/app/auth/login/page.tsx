@@ -213,6 +213,22 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {/* 14/09/2026 — Une famille qui clique « Rejoindre mon équipe » dans l'e-mail de son
+                club atterrit ici, sur « Bienvenue sur Connect. Connectez-vous. » Rien ne lui dit
+                que c'est le bon endroit, ni qu'une invitation l'attend, ni avec quelle adresse.
+                Sans compte, elle peut croire s'être trompée et refermer. C'est le premier écran
+                que verront les joueurs et les parents des clubs. */}
+            {nextPath === "/mes-invitations" && (
+              <div role="status" className="flex items-start gap-2.5 rounded-sv border border-affiliations/30 bg-affiliations-bg px-4 py-3.5">
+                <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">mail</span>
+                <span className="text-[13px] leading-relaxed text-text-secondary">
+                  Une invitation de votre club vous attend. Connectez-vous, ou créez votre compte,
+                  <strong className="text-text-primary"> avec l&apos;adresse qui a reçu l&apos;e-mail</strong> :
+                  c&apos;est elle qui porte l&apos;invitation.
+                </span>
+              </div>
+            )}
+
             {confirmationOk && !authFailed && !autreErreur && (
               <div role="status" className="flex items-start gap-2.5 rounded-sv border border-affiliations/30 bg-affiliations-bg px-4 py-3.5">
                 <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">check_circle</span>

@@ -144,11 +144,17 @@ async function envoyerEmailFamille(
         <a href="${url}" style="display:inline-block;background:#32D8E6;color:#06111F;font-weight:800;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px">${cta}</a>
       </div>
       <p style="font-size:12.5px;line-height:1.6;color:#6C7E93">
-        Créez votre compte ou connectez-vous avec cette adresse e-mail : votre invitation vous y
-        attend.<br>
+        Créez votre compte ou connectez-vous <strong style="color:#9DAEC3">avec cette adresse
+        e-mail</strong> : c'est elle qui porte votre invitation.<br>
         Si le bouton ne fonctionne pas, copiez ce lien :<br>
         <span style="word-break:break-all">${url}</span>
       </p>
+    </div>
+    <!-- 14/09/2026 — Identité de l'expéditeur, comme sur les six e-mails d'authentification : un
+         message transactionnel sans raison sociale ni adresse postale est moins bien noté par les
+         filtres, et n'inspire rien à une famille qui ne connaît pas encore SportVision. -->
+    <div style="padding:18px 32px;border-top:1px solid #1D3555;background:#0B1B33">
+      <p style="font-size:11.5px;line-height:1.6;color:#6F819A;margin:0">SportVision — Elkana Group, 4 Place Pierre Semard, 77130 Montereau-Fault-Yonne.<br>Vous recevez ce message parce que ${clubNom} vous a invité sur SportVision Connect. Il ne contient aucune publicité.</p>
     </div>
   </div>
 </body></html>`;
@@ -159,7 +165,11 @@ async function envoyerEmailFamille(
     body: JSON.stringify({
       from: fromEmail,
       to: [info.to],
-      subject: estJoueur ? `${clubNom} vous invite sur SportVision Connect` : `${clubNom} vous invite sur SportVision Connect`,
+      // Le sujet disait la même chose dans les deux cas. Un parent et un joueur ne viennent pas
+      // pour la même raison, et c'est le sujet qui décide si l'e-mail est ouvert.
+      subject: estJoueur
+        ? `${clubNom} vous invite à rejoindre ${equipe ?? "votre équipe"} sur SportVision`
+        : `${clubNom} vous invite à suivre votre enfant sur SportVision`,
       html,
     }),
   });
