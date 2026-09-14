@@ -71,7 +71,15 @@ try {
 
   await page.fill("#co-email-confirmation", "SportVisionAnalytic@gmail.com ");
   await page.waitForTimeout(400);
-  t("les majuscules et espaces ne comptent pas comme une difference", await actif());
+  // 14/09/2026 — « Payer » ne depend pas que des deux adresses : depuis le 13/09 il faut aussi les
+  // CGV et, pour une galerie payante, la renonciation au delai de retractation. Ce controle
+  // mesurait donc un bouton qui ne pouvait PAS s'activer, et accusait a tort la comparaison des
+  // adresses. On coche ce que l'acheteur coche, puis on mesure.
+  const cases = page.locator("form input[type=checkbox]");
+  const nbCases = await cases.count();
+  for (let i = 0; i < nbCases; i++) await cases.nth(i).check();
+  await page.waitForTimeout(400);
+  t("les majuscules et espaces ne comptent pas comme une difference", await actif(), `${nbCases} case(s) cochee(s)`);
   t("le message d'erreur disparait", !(await page.locator("#co-email-difference").isVisible().catch(() => false)));
 
   // Pas de reproche des la premiere lettre.

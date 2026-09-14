@@ -86,12 +86,15 @@ curl -s -o /dev/null -X DELETE "$SB/storage/v1/object/galerie-previews/$THUMB" -
 curl -s -o /dev/null -X DELETE "$SB/storage/v1/object/galerie-previews/$PREV" -H "apikey: $SECRET" -H "Authorization: Bearer $SECRET"
 sql "delete from media_albums where id='$ALBUM';" > /dev/null
 
-R=$(sql "select (select count(*) from media_assets) a, (select count(*) from media_albums) b;" | python3 -c "import json,sys;d=json.load(sys.stdin)[0];print(str(d['a'])+'/'+str(d['b']))")
+# 14/09/2026 — Ce controle comptait TOUTE la base (« 0 asset, 0 album ») : ecrit quand elle etait
+# vide, il virait au rouge des la premiere vraie galerie et aurait masque un vrai residu au milieu
+# du bruit. On ne mesure plus que CE decor : l'album de ce test et ses fichiers.
+R=$(sql "select (select count(*) from media_assets where album_id='$ALBUM') a, (select count(*) from media_albums where id='$ALBUM') b;" | python3 -c "import json,sys;d=json.load(sys.stdin)[0];print(str(d['a'])+'/'+str(d['b']))")
 # On interroge storage.objects et pas l'URL publique : apres une suppression, le CDN Supabase
 # continue de servir le fichier depuis son cache pendant un moment. La table fait foi, pas le CDN.
-OBJ=$(sql "select count(*) n from storage.objects where bucket_id='galerie-previews' or (bucket_id='sportvision-media-prive' and name like 'media/%');" | python3 -c "import json,sys;print(json.load(sys.stdin)[0]['n'])")
-[ "$R" = "0/0" ] && ok "base nettoyee (0 asset, 0 album)" || ko "residu en base" "$R"
-[ "$OBJ" = "0" ] && ok "fichiers de test supprimes du stockage" || ko "residu stockage" "$OBJ objet(s)"
+OBJ=$(sql "select count(*) n from storage.objects where name in ('$ORIG','$THUMB','$PREV');" | python3 -c "import json,sys;print(json.load(sys.stdin)[0]['n'])")
+[ "$R" = "0/0" ] && ok "base nettoyee (l'album de ce test et ses photos)" || ko "residu en base" "$R"
+[ "$OBJ" = "0" ] && ok "les 3 fichiers de ce test sont supprimes du stockage" || ko "residu stockage" "$OBJ objet(s)"
 
 echo
 [ "$FAIL" = "0" ] && echo "Tout conforme." || echo "$FAIL echec(s)."

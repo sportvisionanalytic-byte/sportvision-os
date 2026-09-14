@@ -1,9 +1,29 @@
-// Parcours réel de la galerie publique, dans Chromium, sur la vraie base et les vraies photos.
+// VÉRIFICATION DATÉE — parcours réel de la galerie publique, dans Chromium.
+//
+// 14/09/2026 : ce fichier n'est pas un test autonome. Il est écrit pour UNE galerie précise, celle
+// de la « Villneuve Cup U18 » de septembre 2026 : 20 photos, 2 non publiables, 4 € l'unité, un pack
+// de 5 à 15 €. Il vérifie ces chiffres-là, nommément. La galerie ayant été supprimée, ses contrôles
+// de contenu (titre, club, nombre de photos, prix) échouent forcément sur toute autre galerie —
+// seuls restent valables ses contrôles STRUCTURELS : aucun original dans la page, vignettes
+// servies par le bucket public, place réservée par le ratio.
+//
+// D'où le suffixe .verif : le dossier réserve .test aux fichiers qui passent sur n'importe quelle
+// base. Pour vérifier une galerie d'aujourd'hui, les suites qui font foi sont
+// galerie-filigrane-public.test.mjs (page publique, dérivés, aucun original) et
+// galerie-tournoi-sans-club.test.sh (achat et livraison de bout en bout).
 import { chromium, devices } from "../../SportVision-Connect/app-connect/node_modules/playwright/index.mjs";
 
-const BASE = "http://127.0.0.1:3311";
+// 14/09/2026 — BASE etait code en dur sur un serveur local : sans lui, le test partait sur
+// « /gallery/undefined » et mourait sur une connexion refusee, sans dire ce qui manquait. Il vise
+// desormais le Connect deploye par defaut, et accepte un serveur local par BASE.
+const BASE = (process.env.BASE || "https://connect.sportvision-an.fr").replace(/\/+$/, "");
 const SLUG = process.env.SLUG;
 const TOKEN = process.env.TOKEN;
+if (!SLUG || !TOKEN) {
+  console.log("KO   ce test a besoin d'une galerie : SLUG=… TOKEN=… node tests/galerie-publique.test.mjs");
+  console.log("     (en creer une avec tests/_galerie-temoin.mjs, ou reprendre le lien d'une galerie publiee)");
+  process.exit(1);
+}
 const SHOTS = process.env.SHOTS ?? "/tmp";
 
 let ko = 0;
