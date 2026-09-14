@@ -139,15 +139,25 @@ begin
       values (orgA, teamA, 'zz-jeune@example.invalid','ZZ','TropJeune',(current_date - interval '11 years')::date, patron,'envoyee')
       returning id into invTropJeune;
 
+    -- 14/09/2026 — Ce bloc verifiait le REFUS d'un compte personnel avant 14 ans. Fouka a leve
+    -- cette regle (v217) : « le mineur peut creer son compte comme il veut, comme si c'etait un
+    -- majeur, sans autorisation ». On mesure donc l'inverse — l'enfant PEUT accepter son
+    -- invitation — car c'est desormais la regle, et une regle sans test se defait toute seule.
     perform pg_temp.incarner(compteJeune);
     begin
       perform accept_player_invitation(invTropJeune);
       perform set_config('role','postgres',true); perform set_config('request.jwt.claims','{"role":"service_role"}',true);
       select count(*) into n from player_invitations where id = invTropJeune and statut in ('acceptee','accepted');
-      if n > 0 then
-        e := e || 'Un enfant de 11 ans a ouvert un compte personnel'::text;
+      if n = 0 then
+        e := e || 'un enfant de 11 ans ne peut pas accepter son invitation (v217)'::text;
       end if;
-    exception when others then null; end;
+      select count(*) into n from player_profiles where user_id = compteJeune;
+      if n <> 1 then
+        e := e || format('enfant de 11 ans : %s profil joueur au lieu de 1', n);
+      end if;
+    exception when others then
+      e := e || ('un enfant de 11 ans est refuse — '||left(sqlerrm,80))::text;
+    end;
   end;
 
   -- ══ 2. INVITATION PARENT ═════════════════════════════════════════════════
