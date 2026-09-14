@@ -13571,6 +13571,18 @@ async function galMettreEnLigne(){
       if(!ok)return;
     }
     offres=[];
+    // Meme garde a la mise en ligne : une galerie offerte ne part pas avec des photos barrees
+    // sans qu'on l'ait dit. Fouka a justement mis en ligne avant de cocher « gratuite ».
+    // « Annuler » arrete la mise en ligne, il ne publie pas en douce des photos barrees : un
+    // bouton nomme « Annuler » qui poursuit l'action est un piege.
+    const marquees=(_galAssets||[]).filter(a=>a.status==='ready'&&a.preview_watermarked===true).length;
+    if(marquees){
+      const regenerer=await demanderConfirmation(
+        marquees+' photo'+(marquees>1?'s portent':' porte')+' encore le filigrane, alors que cette galerie est gratuite.\n\nLe filigrane est appose au depot : il faut regenerer les apercus pour le retirer. Sans cela, les familles ouvriront des photos barrees.',
+        {titre:'Des photos offertes sont filigranees',action:'Regenerer sans filigrane',danger:false});
+      if(regenerer)await galRegenererApercus();
+      return;
+    }
   }else{
     offres=_galOffresPourEnregistrement();
     if(!offres)return;
@@ -14190,6 +14202,23 @@ async function galBasculerGratuit(actif){
 
   toast(actif?'Galerie gratuite : aucune offre requise pour la mettre en ligne.':'Galerie payante : au moins une offre est requise.','ok');
   _galRendreFinal();
+
+  // 14/09/2026, defaut signale par Fouka : « j'ai cree des galeries gratuites mais il y a le
+  // filigrane ». Decocher le filigrane ne vaut que pour les PROCHAINS depots : il est appose a la
+  // fabrication de l'apercu, pas a l'affichage. Les photos deja versees restent donc marquees, et
+  // rien ne le disait — la galerie s'annoncait gratuite en affichant des photos barrees.
+  //
+  // C'est le symetrique exact de l'alerte deja en place a la mise en ligne d'une galerie PAYANTE
+  // dont les apercus sont nus. Le meme oubli, dans l'autre sens ; il manquait de ce cote.
+  if(actif){
+    const marquees=(_galAssets||[]).filter(a=>a.status==='ready'&&a.preview_watermarked===true).length;
+    if(marquees){
+      const regenerer=await demanderConfirmation(
+        marquees+' photo'+(marquees>1?'s portent':' porte')+' encore le filigrane.\n\nIl est appose au moment du depot : le decocher maintenant ne retire rien de ce qui est deja la. Cette galerie est offerte, elle afficherait des photos barrees.\n\nRegenerer les apercus prend quelques secondes par photo.',
+        {titre:'Retirer le filigrane des photos deja versees ?',action:'Regenerer sans filigrane'});
+      if(regenerer)await galRegenererApercus();
+    }
+  }
 }
 
 async function galDefinirCouverture(assetId){
