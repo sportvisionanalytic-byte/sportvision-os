@@ -101,7 +101,12 @@ const accepte = (r) => r.status < 300 && r.lignes > 0;
 // ── Décor ────────────────────────────────────────────────────────────────────
 // Rôles mesurés, et l'Owner Club+ de test comme contrôle positif. Le responsable d'équipe reçoit
 // une équipe : c'est ainsi qu'il existe en production (club_members.teams pilote is_team_educateur).
-const ROLES = ["resp_equipe", "lecture_seule", "membre_bureau", "sponsor_mgr"];
+// L'ORDRE COMPTE. `membre_bureau` administre le club depuis le 14/09 : il révoque des invitations,
+// crée et supprime des sponsors. Tant qu'il passait avant les autres, il modifiait le décor sous
+// leurs pieds — `sponsor_mgr` cherchait ensuite un sponsor supprimé et une invitation déjà
+// révoquée, et échouait pour une raison qui n'avait rien à voir avec ses droits. Il passe donc en
+// dernier.
+const ROLES = ["resp_equipe", "lecture_seule", "sponsor_mgr", "membre_bureau"];
 
 async function preparer() {
   const club = (await lire(`clubs?select=id,nom,portail_client_id,instagram_handle&nom=eq.${encodeURIComponent(CLUB_NOM)}`))[0];
@@ -158,6 +163,11 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
     const j = personnes[role].jeton;
     const r = (releve[role] = {});
     const bureau = role === "membre_bureau";
+    // 14/09/2026 — Le membre du bureau administre le club (v227, decision de Fouka : « dirigeant
+    // acces complet, pas que president »). Les refus verifies ci-dessous ne valent donc plus pour
+    // lui : on les saute, et un bloc dedie plus bas verifie qu'il administre VRAIMENT. Sans cette
+    // distinction, ce test continuerait a exiger l'ancienne regle et la ferait revenir.
+    const administre = bureau;
 
     // Documents financiers : ouverts au bureau (club_member_has_financial_view_access, règle v41),
     // jamais aux trois autres.
@@ -169,23 +179,23 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
 
     // Invitations : réservées à qui opère le club (peut_operer_club = Owner, Président, CM).
     r.invitations = await commeRole(j, `club_invitations?select=id,token&club_id=eq.${club.id}`);
-    t(`[${role}] ne lit aucune invitation (ni leurs jetons)`, r.invitations.lignes === 0, JSON.stringify(r.invitations).slice(0, 140));
+    if (!administre) t(`[${role}] ne lit aucune invitation (ni leurs jetons)`, r.invitations.lignes === 0, JSON.stringify(r.invitations).slice(0, 140));
     r.suivi = await rpc(j, "suivi_invitations_club", { p_club_id: club.id });
-    t(`[${role}] le suivi des invitations lui est refusé`, r.suivi.status >= 400 || r.suivi.lignes === 0, JSON.stringify(r.suivi).slice(0, 140));
+    if (!administre) t(`[${role}] le suivi des invitations lui est refusé`, r.suivi.status >= 400 || r.suivi.lignes === 0, JSON.stringify(r.suivi).slice(0, 140));
     r.preparer = await rpc(j, "preparer_invitation_club", {
       p_club_id: club.id, p_email: adresse(`invit-par-${role.replace(/_/g, "")}`), p_role: "coach", p_prenom: "ZZ", p_nom: "Refus", p_telephone: null, p_teams: [],
     });
     if (r.preparer.status < 300 && r.preparer.data?.id) traces.invitations.add(r.preparer.data.id);
-    t(`[${role}] ne peut préparer aucune invitation`, r.preparer.status >= 400, JSON.stringify(r.preparer).slice(0, 140));
+    if (!administre) t(`[${role}] ne peut préparer aucune invitation`, r.preparer.status >= 400, JSON.stringify(r.preparer).slice(0, 140));
     r.insererInvit = await commeRole(j, "club_invitations", { method: "POST", body: { club_id: club.id, email: adresse(`invit-direct-${role.replace(/_/g, "")}`), role: "coach" } });
-    t(`[${role}] ne peut écrire aucune invitation`, r.insererInvit.status >= 400, JSON.stringify(r.insererInvit).slice(0, 140));
+    if (!administre) t(`[${role}] ne peut écrire aucune invitation`, r.insererInvit.status >= 400, JSON.stringify(r.insererInvit).slice(0, 140));
     r.revoquer = await rpc(j, "revoquer_invitation_club", { p_id: invitation.id });
     const invApres = (await lire(`club_invitations?select=statut&id=eq.${invitation.id}`))[0];
-    t(`[${role}] ne peut révoquer l'invitation d'un autre`, r.revoquer.status >= 400 && invApres?.statut !== "revoquee", `${r.revoquer.status} — statut ${invApres?.statut}`);
+    if (!administre) t(`[${role}] ne peut révoquer l'invitation d'un autre`, r.revoquer.status >= 400 && invApres?.statut !== "revoquee", `${r.revoquer.status} — statut ${invApres?.statut}`);
 
     // Fiche du club (Paramètres > Organisation) : écriture réservée à is_club_admin.
     r.majClub = await commeRole(j, `clubs?id=eq.${club.id}`, { method: "PATCH", body: { instagram_handle: club.instagram_handle } });
-    t(`[${role}] ne peut pas modifier la fiche du club`, refuse(r.majClub), JSON.stringify(r.majClub).slice(0, 140));
+    if (!administre) t(`[${role}] ne peut pas modifier la fiche du club`, refuse(r.majClub), JSON.stringify(r.majClub).slice(0, 140));
 
     // Abonnement : lu dans `clubs` (formule, statut) ; souscription et portail Stripe côté serveur.
     // 11/09/2026 (décisions de Fouka) : les identifiants Stripe ne se lisent plus dans `clubs`
@@ -214,10 +224,10 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
 
     // Équipes et droits du club (entitlements) : jamais écrits par ces rôles.
     r.creerEquipe = await commeRole(j, "club_teams", { method: "POST", body: { club_id: club.id, name: `ZZ Equipe ${role} ${T0}` } });
-    t(`[${role}] ne peut pas créer d'équipe`, r.creerEquipe.status >= 400, JSON.stringify(r.creerEquipe).slice(0, 140));
+    if (!administre) t(`[${role}] ne peut pas créer d'équipe`, r.creerEquipe.status >= 400, JSON.stringify(r.creerEquipe).slice(0, 140));
     if (equipes[0]) {
       r.majEquipe = await commeRole(j, `club_teams?id=eq.${equipes[0].id}`, { method: "PATCH", body: { couleur: equipes[0].couleur } });
-      t(`[${role}] ne peut pas modifier une équipe`, refuse(r.majEquipe), JSON.stringify(r.majEquipe).slice(0, 140));
+      if (!administre) t(`[${role}] ne peut pas modifier une équipe`, refuse(r.majEquipe), JSON.stringify(r.majEquipe).slice(0, 140));
     }
     r.majDroits = await commeRole(j, `organization_entitlements?organization_id=eq.${club.id}&module_key=eq.sponsors`, { method: "PATCH", body: { actif: true } });
     t(`[${role}] ne peut pas modifier les modules du club`, refuse(r.majDroits), JSON.stringify(r.majDroits).slice(0, 140));
@@ -229,7 +239,9 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
     // modifiée : jusqu'ici le relevé montrait les sponsors lus par les quatre, sans l'affirmer.
     r.sponsors = await commeRole(j, `club_sponsors?select=id&club_id=eq.${club.id}`);
     const voitSponsor = Array.isArray(r.sponsors.data) && r.sponsors.data.some((x) => x.id === sponsor.id);
-    t(`[${role}] ${role === "sponsor_mgr" ? "lit" : "ne lit pas"} les sponsors du club`, voitSponsor === (role === "sponsor_mgr"), JSON.stringify(r.sponsors).slice(0, 140));
+    // Le responsable sponsors les gère ; celui qui administre le club les voit aussi.
+    const doitVoirSponsors = role === "sponsor_mgr" || administre;
+    t(`[${role}] ${doitVoirSponsors ? "lit" : "ne lit pas"} les sponsors du club`, voitSponsor === doitVoirSponsors, JSON.stringify(r.sponsors).slice(0, 140));
     r.ajoutSponsor = await commeRole(j, "club_sponsors", { method: "POST", body: { club_id: club.id, name: `ZZ Sponsor ${role} ${T0}` } });
     if (r.ajoutSponsor.lignes) traces.sponsors.add(r.ajoutSponsor.data[0].id);
     r.majSponsor = await commeRole(j, `club_sponsors?id=eq.${sponsor.id}`, { method: "PATCH", body: { secteur: `zz ${role}` } });
@@ -238,9 +250,9 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
     if (role === "sponsor_mgr") {
       t(`[${role}] gère les sponsors : ajoute et modifie`, accepte(r.ajoutSponsor) && accepte(r.majSponsor), `${r.ajoutSponsor.status} / ${r.majSponsor.status}`);
     } else {
-      t(`[${role}] ne peut ni ajouter ni modifier un sponsor`, r.ajoutSponsor.status >= 400 && refuse(r.majSponsor), `${r.ajoutSponsor.status} / ${JSON.stringify(r.majSponsor).slice(0, 100)}`);
+      if (!administre) t(`[${role}] ne peut ni ajouter ni modifier un sponsor`, r.ajoutSponsor.status >= 400 && refuse(r.majSponsor), `${r.ajoutSponsor.status} / ${JSON.stringify(r.majSponsor).slice(0, 100)}`);
     }
-    t(`[${role}] ne peut pas supprimer un sponsor`, sponsorEncore, JSON.stringify(r.supprSponsor).slice(0, 120));
+    if (!administre) t(`[${role}] ne peut pas supprimer un sponsor`, sponsorEncore, JSON.stringify(r.supprSponsor).slice(0, 120));
 
     // Codes d'invitation d'équipe : un code fait entrer un joueur dans une équipe.
     r.codes = await commeRole(j, `team_invite_codes?select=id,code&club_id=eq.${club.id}`);
@@ -252,13 +264,13 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
     // ROUGE tant que la migration n'est pas exécutée en production : c'est la preuve par le chemin
     // réel qu'elle a bien pris, à rejouer juste après son exécution.
     r.creation = await commeRole(j, "club_creations", { method: "POST", body: { club_id: club.id, title: `ZZ Création ${role} ${T0}`, type: "visuel", status: "brouillon" } });
-    if (role !== "resp_equipe") t(`[${role}] n'écrit aucune demande de création`, r.creation.status >= 400, JSON.stringify(r.creation).slice(0, 140));
+    if (role !== "resp_equipe" && !administre) t(`[${role}] n'écrit aucune demande de création`, r.creation.status >= 400, JSON.stringify(r.creation).slice(0, 140));
     if (r.creation.lignes) await api(`club_creations?id=eq.${r.creation.data[0].id}`, { method: "DELETE" });
 
     // Paramètres du club (partie B) : lieux et créneaux d'une équipe qu'il n'encadre pas.
     r.lieu = await commeRole(j, "club_venues", { method: "POST", body: { club_id: club.id, nom: `ZZ Stade ${role} ${T0}` } });
     if (r.lieu.lignes) await api(`club_venues?id=eq.${r.lieu.data[0].id}`, { method: "DELETE" });
-    t(`[${role}] n'ajoute aucun lieu au club`, r.lieu.status >= 400, JSON.stringify(r.lieu).slice(0, 140));
+    if (!administre) t(`[${role}] n'ajoute aucun lieu au club`, r.lieu.status >= 400, JSON.stringify(r.lieu).slice(0, 140));
     const autreEquipe = equipes.find((e) => !(role === "resp_equipe" && e.name === equipes[0]?.name));
     if (autreEquipe) {
       r.creneau = await commeRole(j, "club_team_training_slots", { method: "POST", body: { team_id: autreEquipe.id, jour: "dimanche", heure_debut: "07:07", notes: `ZZ ${T0}` } });
@@ -266,7 +278,7 @@ async function mesurerDonnees({ club, equipes, personnes, invitation, sponsor })
         traces.creneauxCrees = true;
         await api(`club_team_training_slots?id=eq.${r.creneau.data[0].id}`, { method: "DELETE" });
       }
-      t(`[${role}] n'ajoute aucun créneau à une équipe qu'il n'encadre pas`, r.creneau.status >= 400, JSON.stringify(r.creneau).slice(0, 140));
+      if (!administre) t(`[${role}] n'ajoute aucun créneau à une équipe qu'il n'encadre pas`, r.creneau.status >= 400, JSON.stringify(r.creneau).slice(0, 140));
     }
   }
 
@@ -290,7 +302,10 @@ const MENUS = {
   // équipes et ses propres notifications. L'attendu suit.
   resp_equipe: ["Accueil", "Prestations", "Mes demandes", "Mes contenus", "Galeries", "Calendrier", "Messages", "Affiliations", "Matchs & résultats", "Notifications", "Mon profil"],
   lecture_seule: ["Accueil", "Calendrier", "Équipes", "Mon profil"],
-  membre_bureau: ["Accueil", "Calendrier", "Équipes", "Factures", "Contrats", "Documents", "Mon profil"],
+  // 14/09/2026 — Le membre du bureau administre le club : son menu est celui du president, et il
+  // n'est donc plus verifie ligne a ligne ici. Ce que l'on verifie a la place, c'est qu'il porte
+  // les entrees d'administration (voir MENU_ADMINISTRE ci-dessous).
+  membre_bureau: null,
   sponsor_mgr: ["Accueil", "Calendrier", "Sponsors", "Mon profil"],
 };
 // Le libellé de l'équipe du responsable d'équipe dépend de la base : « Mon équipe U18 D2 ».
@@ -348,6 +363,16 @@ async function mesurerMenus({ equipes, personnes }, nav) {
         // Contrôle positif : l'Owner garde son menu complet. Sans lui, un sélecteur cassé
         // ferait passer toutes les absences ci-dessous pour un succès.
         t("contrôle : l'Owner Club+ voit Factures, Paramètres et Invitations", ["Factures", "Paramètres", "Invitations"].every((e) => entrees.includes(e)), entrees.join(" | "));
+        continue;
+      }
+      // 14/09/2026 — Les rôles qui administrent le club (v227) ont le menu du président. On ne le
+      // décrit pas ligne à ligne : on vérifie qu'ils portent bien les entrées d'administration,
+      // celles-là mêmes qui sont interdites aux autres.
+      if (MENUS[role] === null) {
+        const attenduesAdmin = ["Factures", "Paramètres", "Invitations", "Coachs & dirigeants"];
+        const absentes = attenduesAdmin.filter((e) => !entrees.includes(e));
+        t(`[${role}] administre le club : ${attenduesAdmin.join(", ")}`, absentes.length === 0, `manquantes : ${absentes.join(", ") || "—"}`);
+        t(`[${role}] aucune erreur JavaScript`, vraiesErreursCP(erreurs).length === 0, vraiesErreursCP(erreurs).slice(0, 3).join(" · "));
         continue;
       }
       const attendu = [...MENUS[role]];

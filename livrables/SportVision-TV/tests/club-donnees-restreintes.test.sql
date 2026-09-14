@@ -196,25 +196,36 @@ end $$;
 insert into verdicts (controle, attendu, obtenu)
 select format('[%s] %s', m.qui, m.donnee),
        case when m.qui = any (case m.donnee
+              -- 14/09/2026 — Stripe et le SIRET ne suivent PAS l'elargissement de la v227 : leurs
+              -- fonctions listent les roles en dur, sans passer par is_club_admin. Un directeur
+              -- sportif administre le club mais ne lit pas ses identifiants de paiement. C'est un
+              -- choix a confirmer, pas un oubli : il est verifie ici.
               when 'stripe'   then array['admin', 'president', 'os_admin', 'os_compta']
               when 'siret'    then array['admin', 'president', 'secretaire', 'tresorier', 'os_admin', 'os_compta']
               -- cm_externe : decision de Fouka du 11/09/2026, memes droits d'annuaire que le CM
               -- SportVision (voir peut_lire_annuaire_club).
-              when 'annuaire' then array['admin', 'president', 'secretaire', 'tresorier', 'cm_externe', 'os_cm', 'os_admin', 'os_com', 'os_sec']
+              -- 14/09/2026 (v227) : directeur_sportif et membre_bureau administrent le club, donc
+              -- `peut_operer_club` les inclut, et l'annuaire suit. Decision de Fouka : « dirigeant
+              -- acces complet, pas que president ».
+              when 'annuaire' then array['admin', 'president', 'secretaire', 'tresorier', 'cm_externe',
+                                         'directeur_sportif', 'membre_bureau', 'os_cm', 'os_admin', 'os_com', 'os_sec']
               when 'sa fiche' then array(select role from roles_club)
               -- La fiche d'équipe ne s'ouvre qu'à qui opère le club et au coach de l'équipe : parmi
               -- eux, l'e-mail ne va qu'à l'annuaire (le coach, le responsable d'équipe et le
               -- directeur sportif lisent le nom et le statut, pas l'adresse). Le CM externe, dans
               -- l'annuaire depuis blocages-review-1, n'ouvre pas la fiche d'équipe : il ne lit rien.
-              when 'e-mail invité' then array['admin', 'president', 'os_cm', 'os_admin', 'os_com', 'os_sec']
+              when 'e-mail invité' then array['admin', 'president', 'directeur_sportif', 'membre_bureau', 'secretaire',
+                                              'os_cm', 'os_admin', 'os_com', 'os_sec']
               -- Les opérations (libellé, date : aucun montant) restent lisibles par tout le staff de
               -- l'OS (sop_staff_all, is_staff) — « + staff SportVision de l'OS » dans la décision —,
               -- mais plus par un CM hors de son club (policy restrictive cm_perim_sponsor_operations).
-              when 'opérations sponsor' then array['admin', 'president', 'secretaire', 'tresorier', 'sponsor_mgr', 'cm_externe', 'os_cm',
+              when 'opérations sponsor' then array['admin', 'president', 'secretaire', 'tresorier', 'sponsor_mgr', 'cm_externe',
+                                                   'directeur_sportif', 'membre_bureau', 'os_cm',
                                                    'os_admin', 'os_com', 'os_sec', 'os_compta', 'os_prod', 'os_photo']
               -- cm_externe lit les sponsors et leurs montants comme le CM SportVision : meme
               -- decision du 11/09/2026, portee par peut_lire_sponsors_club.
-              else array['admin', 'president', 'secretaire', 'tresorier', 'sponsor_mgr', 'cm_externe', 'os_cm', 'os_admin', 'os_com', 'os_sec']
+              else array['admin', 'president', 'secretaire', 'tresorier', 'sponsor_mgr', 'cm_externe',
+                         'directeur_sportif', 'membre_bureau', 'os_cm', 'os_admin', 'os_com', 'os_sec']
             end) then 'lit' else 'ne lit pas' end,
        case when m.lit then 'lit' else 'ne lit pas' end || '  — ' || m.detail
   from mesures m

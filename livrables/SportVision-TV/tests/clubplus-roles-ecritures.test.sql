@@ -127,7 +127,11 @@ declare
   qui record;
 begin
   -- ── B. Paramètres du club ──
-  for qui in select * from (values ('lecture seule', lecture), ('membre du bureau', bureau),
+  -- 14/09/2026 (v227) — Le membre du bureau ADMINISTRE désormais le club : il n'a plus sa place
+  -- parmi les rôles à qui l'on vérifie un refus. Il est traité à part, plus bas, où l'on vérifie
+  -- qu'il écrit vraiment. Le retirer sans le remplacer aurait laissé son nouveau droit sans
+  -- surveillance.
+  for qui in select * from (values ('lecture seule', lecture),
                                    ('responsable sponsors', sponsors), ('responsable d''équipe', resp)) v(nom, uid) loop
     perform pg_temp.essai('créneau d''une équipe qu''il n''encadre pas, ajout — ' || qui.nom, qui.uid,
       format('insert into club_team_training_slots (team_id, jour, heure_debut) values (%L, ''mardi'', ''19:00'')', eb), 'refusé');
@@ -144,7 +148,7 @@ begin
     format('insert into club_team_training_slots (team_id, jour, heure_debut) values (%L, ''mercredi'', ''18:30'')', ea), 'autorisé');
 
   -- ── A. Données d'exploitation : lecture seule, membre du bureau, responsable sponsors ──
-  for qui in select * from (values ('lecture seule', lecture), ('membre du bureau', bureau), ('responsable sponsors', sponsors)) v(nom, uid) loop
+  for qui in select * from (values ('lecture seule', lecture), ('responsable sponsors', sponsors)) v(nom, uid) loop
     perform pg_temp.essai('demande de visuel — ' || qui.nom, qui.uid,
       format('insert into club_creations (club_id, title, type, status) values (%L, ''ZZ essai'', ''visuel'', ''brouillon'')', c), 'refusé');
     perform pg_temp.essai('réservation d''une prestation au nom du club — ' || qui.nom, qui.uid,
@@ -186,6 +190,22 @@ begin
     format('insert into club_team_training_slots (team_id, jour, heure_debut) values (%L, ''jeudi'', ''20:00'')', eb), 'autorisé');
   perform pg_temp.essai('demande de visuel — CM SportVision affecté', cm,
     format('insert into club_creations (club_id, title, type, status) values (%L, ''ZZ essai'', ''visuel'', ''brouillon'')', c), 'autorisé');
+
+  -- ── D. Le membre du bureau administre le club (v227, 14/09/2026) ──
+  -- « Sur Club+ il faut aussi dirigeant accès complet, pas que président » (Fouka). Ce qui lui
+  -- était refusé la veille est désormais son travail. On le vérifie explicitement, sinon son
+  -- nouveau droit ne serait surveillé nulle part et le premier refactor le reprendrait.
+  perform pg_temp.essai('lieu du club, ajout — membre du bureau', bureau,
+    format('insert into club_venues (club_id, nom) values (%L, ''ZZ Stade bureau'')', c), 'autorisé');
+  perform pg_temp.essai('créneau d''une équipe, ajout — membre du bureau', bureau,
+    format('insert into club_team_training_slots (team_id, jour, heure_debut) values (%L, ''vendredi'', ''19:30'')', eb), 'autorisé');
+  perform pg_temp.essai('événement au calendrier — membre du bureau', bureau,
+    format('insert into club_calendar_events (club_id, title, event_date, type) values (%L, ''ZZ essai bureau'', current_date, ''tournoi'')', c), 'autorisé');
+  perform pg_temp.essai('demande de visuel — membre du bureau', bureau,
+    format('insert into club_creations (club_id, title, type, status) values (%L, ''ZZ essai bureau'', ''visuel'', ''brouillon'')', c), 'autorisé');
+  -- Ce qui ne change PAS : la propriété du club reste au rôle `admin` strict.
+  perform pg_temp.essai('se donner le rôle admin — membre du bureau', bureau,
+    format('update club_members set role = ''admin'' where club_id = %L and user_id = %L', c, bureau), 'refusé');
 end $$;
 
 select case when attendu = obtenu then '✅' else '❌' end as ok, controle, attendu, obtenu from verdicts order by n;
