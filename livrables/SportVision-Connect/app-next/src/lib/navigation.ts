@@ -77,6 +77,13 @@ const NAV_CLUB_FULLCOM: NavEntry[] = [
   item("analytics", "Statistiques", "analytics"),
   item("reports", "Rapports", "reports"),
   section("Club"),
+  // "Calendrier" (14/09/2026, retour Fouka : « le président ne voit pas calendrier ») : troisième
+  // entrée du même trou que "Actualités"/"Demandes" (12/09) et "Membres & accès" (23/08). La page
+  // /calendar existe, "calendar" est un module core (aucun entitlement à provisionner) et
+  // NAV_CLUB_PLUS la propose depuis toujours — mais aucune entrée n'y menait pour un club Full
+  // Communication. SF Villemomble a 426 matchs en base : son président avait un calendrier plein
+  // et aucun moyen de l'ouvrir autrement qu'en tapant l'URL.
+  item("calendar", "Calendrier", "calendar"),
   item("teams", "Équipes", "teams"),
   item("teams", "Affiliations", "team-requests"),
   item("sponsors", "Sponsors", "sponsors"),

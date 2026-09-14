@@ -189,13 +189,14 @@ try {
   await K.ctx.close();
 
   // ── 9. Le président du club devant son planning (demande de Fouka, 14/09/2026) ──
-  // Le planning du CM fait passer un contenu de « brouillon » à « prêt » : écrit, relu, daté. La
-  // policy de lecture du club masquait « prêt » comme un brouillon, si bien qu'un président
-  // ouvrait un écran vide pendant que le travail était fait — le cas des neuf contenus de
-  // Villemomble. La v229 ouvre « prêt » au club ; le travail en cours reste chez SportVision.
-  const PRET = `${TITRE} pret`;
+  // Le planning est un outil PARTAGÉ avec le club, pas une vitrine de ce qui est fini : le
+  // président lit tout, brouillons compris (v229 puis v230). Seule une relecture en cours reste
+  // chez SportVision — ici celle du tuteur d'un CM Junior.
+  const PRET = `${TITRE} pret`, RELECTURE = `${TITRE} relecture`;
   await svc("POST", "contenus", { client_id: ids.client, cm_id: cm.id, titre: PRET, type_contenu: "publication",
     statut: "pret", date_prevue: VEN, plateforme: "instagram" });
+  await svc("POST", "contenus", { client_id: ids.client, cm_id: cm.id, titre: RELECTURE, type_contenu: "publication",
+    statut: "a_valider_tuteur", date_prevue: VEN, plateforme: "instagram" });
   const P = await ouvrirClubPlus(nav, president.email, { chemin: "/clubplus/communication" });
   await ouvrirLeClub(P.page, "zz-aucun-club");
   await attendre(2000);
@@ -203,10 +204,15 @@ try {
   t("président : « Planning éditorial » dans son menu", (await P.page.locator("nav", { hasText: "Planning éditorial" }).count()) > 0);
   t("président : il lit le contenu prêt que le CM lui a préparé", vuPresident.includes(PRET),
     vuPresident.replace(/\s+/g, " ").slice(0, 140));
-  // Le brouillon créé plus haut porte TITRE ; le contenu prêt porte « TITRE pret ». Compter les
-  // occurrences évite de confondre les deux, l'un étant le préfixe de l'autre.
-  const occTitre = vuPresident.split(TITRE).length - 1, occPret = vuPresident.split(PRET).length - 1;
-  t("président : le brouillon du CM ne lui est pas montré", occTitre === occPret, `${occTitre} mention(s) du titre, ${occPret} du contenu prêt`);
+  // Le brouillon créé à la main plus haut porte TITRE tout court ; les deux autres contenus en
+  // sont des préfixes. Compter les occurrences distingue les trois sans ambiguïté. Un contenu
+  // peut figurer à plusieurs endroits du même écran (la semaine ET « À préparer ») : on mesure
+  // sa présence, pas son nombre d'apparitions.
+  const occTitre = vuPresident.split(TITRE).length - 1;
+  const occPret = vuPresident.split(PRET).length - 1, occRel = vuPresident.split(RELECTURE).length - 1;
+  t("président : il lit aussi le brouillon du planning", occTitre - occPret - occRel >= 1,
+    `${occTitre} mention(s) du titre, ${occPret} prêt, ${occRel} relecture`);
+  t("président : une relecture de tuteur ne lui est pas montrée", occRel === 0);
   t("président : aucun bouton d'écriture sur le planning",
     (await P.page.locator("button", { hasText: "Ajouter au planning" }).count()) === 0);
   const boumP = vraiesErreursCP(P.erreurs);

@@ -9,12 +9,19 @@
 -- l'attendaient — c'était exactement le cas de SF Villemomble, dont les neuf contenus étaient
 -- tous en `pret`.
 --
--- LA LIMITE QUI RESTE, et c'est voulu : le travail en cours ne se montre pas. Un brouillon, une
--- relecture interne SportVision et une relecture de tuteur restent invisibles au club.
+-- PUIS FOUKA EST ALLÉ PLUS LOIN le même jour : « je veux qu'il voie les brouillons du planning
+-- éditorial » (v230). Le planning est un outil partagé avec le club, pas une vitrine de ce qui
+-- est fini : voir qu'une publication est PRÉVUE pour samedi, même à l'état de titre posé dans la
+-- grille, c'est ce qui permet au club de dire « ajoutez plutôt les féminines » avant que le
+-- travail soit fait.
+--
+-- LA LIMITE QUI RESTE, et c'est voulu : les RELECTURES en cours ne se montrent pas. SportVision
+-- qui se relit (a_valider_interne) et un CM Junior corrigé par son tuteur (a_valider_tuteur)
+-- restent invisibles au club — ce n'est pas du travail en cours, c'est une correction en cours.
 --
 -- CE QU'ON MESURE, avec les yeux d'un président de club :
---   1. Il lit les contenus prêts, programmés, publiés, et ceux qui attendent sa validation.
---   2. Il ne lit ni brouillon, ni relecture interne, ni relecture de tuteur.
+--   1. Il lit tout son planning : brouillon, prêt, à valider, programmé, publié.
+--   2. Il ne lit ni la relecture interne SportVision, ni la relecture d'un tuteur.
 --   3. Le calendrier du club (club_contenus_calendrier) reste cohérent avec cette lecture.
 --   4. Un membre d'un AUTRE club ne lit rien de tout cela.
 --   5. Lire ne donne pas le droit d'écrire : le président ne change pas un statut à la main.
@@ -73,14 +80,18 @@ begin
   perform pg_temp.incarner(v_president);
   select count(*) into n from contenus where client_id = v_client and statut = 'pret';
   if n <> 1 then e := e || 'le president ne lit pas les contenus prets (le cas SF Villemomble)'::text; end if;
+  select count(*) into n from contenus where client_id = v_client and statut = 'brouillon';
+  if n <> 1 then e := e || 'le president ne lit pas les brouillons du planning (v230)'::text; end if;
   select count(*) into n from contenus where client_id = v_client
     and statut in ('a_valider_client','programme','publie');
   if n <> 3 then e := e || format('le president lit %s contenus valides/programmes/publies sur 3', n); end if;
 
   -- ══ 2. CE QU'IL NE DOIT PAS LIRE ═════════════════════════════════════════
+  -- Une relecture en cours n'est pas un brouillon : ni SportVision se corrigeant elle-même, ni
+  -- un CM Junior corrige par son tuteur.
   select count(*) into n from contenus where client_id = v_client
-    and statut in ('brouillon','a_valider_interne','a_valider_tuteur');
-  if n <> 0 then e := e || format('le travail en cours de SportVision fuite au club : %s ligne(s)', n); end if;
+    and statut in ('a_valider_interne','a_valider_tuteur');
+  if n <> 0 then e := e || format('une relecture en cours fuite au club : %s ligne(s)', n); end if;
 
   -- ══ 3. LE CALENDRIER DU CLUB DIT LA MÊME CHOSE ═══════════════════════════
   begin
@@ -112,6 +123,6 @@ begin
   end if;
 end $$;
 
-select 'OK — le président lit le planning que SportVision prépare pour son club (prêt, à valider, programmé, publié), jamais le travail en cours, et ne pilote pas les statuts.' as verdict;
+select 'OK — le président lit tout le planning de son club, brouillons compris, jamais une relecture en cours, et ne pilote pas les statuts.' as verdict;
 
 rollback;
