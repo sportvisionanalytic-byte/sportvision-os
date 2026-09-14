@@ -119,9 +119,24 @@ export function canAccess(ctx: ActiveContext, module: ModuleKey): boolean {
  * NE couvre PAS la propriété du club (attribuer un rôle privilégié, hard delete d'un membre) :
  * celle-ci reste à `role === "admin"` strict, comme `is_real_club_admin` en base.
  */
+/** 14/09/2026, décision de Fouka : « sur Club+ il faut aussi dirigeant accès complet, pas que
+ *  président ». Le directeur sportif, le membre du bureau et le secrétaire administrent désormais
+ *  le club au même titre. Dans un club réel, le président signe, et ce sont ces trois-là qui font
+ *  tourner la maison.
+ *
+ *  `team_manager` n'est PAS ici, et c'est délibéré : son libellé à l'écran est « Dirigeant
+ *  (responsable d'équipe) », d'où la confusion, mais c'est un rôle d'ÉQUIPE. Lui donner l'accès
+ *  complet ouvrirait les factures et les paramètres du club à chaque responsable d'équipe.
+ *
+ *  Miroir exact de `is_club_admin` en base (v227) : c'est elle qui décide, ceci ne fait qu'éviter
+ *  d'afficher des boutons qu'elle refuserait. */
+const CLUB_ROLES_ADMINISTRATION: ReadonlySet<MembershipRole> = new Set([
+  "admin", "president", "sports_director", "board_member", "secretary",
+]);
+
 export function administreLeClub(ctx: ActiveContext): boolean {
   if (ctx.organization.type !== "club") return false;
-  return ctx.membership.role === "admin" || ctx.membership.role === "president";
+  return CLUB_ROLES_ADMINISTRATION.has(ctx.membership.role);
 }
 
 /** Décision de Fouka du 11/09/2026 (annuaire du club) : les coordonnées des autres membres sont
@@ -138,7 +153,8 @@ export function litAnnuaireDuClub(ctx: ActiveContext): boolean {
 /** Rôles de club sans droit d'exploitation (décisions Club+ du 10/09/2026, n° 1) : miroir exact de
  * `club_role_sans_exploitation` en base (migration-decisions-clubplus-01). Ils consultent le club ;
  * ils n'y créent ni demande, ni événement, ni match, ni actualité, ni réservation. */
-const CLUB_ROLES_SANS_EXPLOITATION: ReadonlySet<MembershipRole> = new Set(["viewer", "board_member", "sponsor_manager"]);
+// `board_member` retiré le 14/09/2026 : il administre le club, il peut donc y créer.
+const CLUB_ROLES_SANS_EXPLOITATION: ReadonlySet<MembershipRole> = new Set(["viewer", "sponsor_manager"]);
 
 export function canCreate(ctx: ActiveContext, resource: ResourceKey): boolean {
   if (ctx.membership.status !== "active") return false;
@@ -196,7 +212,9 @@ export function lockedModuleMessage(ctx: ActiveContext): string {
 
 /** Mêmes 4 rôles que club_member_has_financial_access() (migration-connect-v41-decisions-
  * produit-11-08.sql : admin/president/tresorier/membre_bureau), traduits via mapClubRole. */
-const CLUB_BUREAU_ROLES: ReadonlySet<MembershipRole> = new Set(["admin", "president", "treasurer", "board_member"]);
+// Le directeur sportif et le secrétaire ajoutés le 14/09/2026 : « accès complet » inclut les
+// factures et l'abonnement, sinon ce n'est pas un accès complet.
+const CLUB_BUREAU_ROLES: ReadonlySet<MembershipRole> = new Set(["admin", "president", "treasurer", "board_member", "sports_director", "secretary"]);
 
 /** Un membre de club voit-il les devis/factures/contrats du club ? Toujours vrai hors club (les
  * autres types d'organisation n'ont pas cette distinction de rôle). Conservée telle quelle
@@ -279,12 +297,12 @@ export function isClubCommunicationOrEducateur(ctx: ActiveContext): boolean {
  * settings/layout.tsx, settings/organization/page.tsx, settings/integrations/page.tsx et le filtre
  * de catégorie "users" de notifications/page.tsx — PAS par users/page.tsx (hors périmètre de ce
  * chantier), qui continue d'utiliser isClubCommunicationOrEducateur telle quelle. */
+// 14/09/2026 — `secretary` et `sports_director` retirés : ils administrent le club, donc ils ont
+// les onglets Organisation et Intégrations comme le président.
 const CLUB_NON_BUREAU_ROLES: ReadonlySet<MembershipRole> = new Set([
   ...CLUB_COMM_EDUCATEUR_ROLES,
-  "secretary",
   "treasurer",
   "admin_staff",
-  "sports_director",
 ]);
 
 export function isClubNonBureauRole(ctx: ActiveContext): boolean {
@@ -297,7 +315,8 @@ export function isClubNonBureauRole(ctx: ActiveContext): boolean {
  * opère) : ils voyaient une fiche de club qu'ils ne pouvaient pas modifier, liste des membres
  * comprise. Fonction distincte d'isClubNonBureauRole, dont le nom mentirait pour le membre du
  * bureau, et qui pilote aussi le filtre des notifications, hors de cette décision. */
-const CLUB_ROLES_SANS_REGLAGES: ReadonlySet<MembershipRole> = new Set(["team_manager", "viewer", "board_member", "sponsor_manager"]);
+// `board_member` retiré le 14/09/2026, même raison : il administre le club.
+const CLUB_ROLES_SANS_REGLAGES: ReadonlySet<MembershipRole> = new Set(["team_manager", "viewer", "sponsor_manager"]);
 
 export function sansReglagesDuClub(ctx: ActiveContext): boolean {
   return isClubNonBureauRole(ctx) || (ctx.organization.type === "club" && CLUB_ROLES_SANS_REGLAGES.has(ctx.membership.role));

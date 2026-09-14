@@ -704,9 +704,10 @@ const CLUB_ROLE_NAV: Partial<Record<MembershipRole, NavEntry[]>> = {
   // menu, donc, avec le même libellé « Mon équipe {Nom} » (voir filterClubRoleNav).
   team_manager: NAV_CLUB_COACH,
   viewer: NAV_CLUB_LECTURE_SEULE,
-  board_member: NAV_CLUB_MEMBRE_BUREAU,
+  // 14/09/2026 — board_member, sports_director et secretary ne sont plus listés ici : sans entrée,
+  // le menu retombe sur NAV_CLUB_PLUS, celui du président. C'est ce que « accès complet » veut
+  // dire. Les menus réduits restent définis au-dessus, prêts à resservir si la décision change.
   sponsor_manager: NAV_CLUB_RESPONSABLE_SPONSORS,
-  sports_director: NAV_CLUB_DIRECTEUR_SPORTIF,
   communication_manager: NAV_CLUB_COMMUNICATION,
   // external_cm (Bible §9 "CM externe") : "il ne devient jamais administrateur" — avant ce
   // chantier (17/08/2026), ce rôle était absent de CLUB_ROLE_NAV et retombait donc sur `entries`
@@ -721,7 +722,6 @@ const CLUB_ROLE_NAV: Partial<Record<MembershipRole, NavEntry[]>> = {
   // affilie est devenu le referent operationnel du club : il le configure, prepare son
   // onboarding, ses equipes et son encadrement. Trois entrees ne suffisaient plus.
   external_cm: NAV_CLUB_CM_SPORTVISION,
-  secretary: NAV_CLUB_SECRETAIRE,
   treasurer: NAV_CLUB_TRESORIER,
   admin_staff: NAV_CLUB_ADMINISTRATIF,
 };
