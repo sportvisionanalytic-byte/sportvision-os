@@ -93,7 +93,12 @@ insert into verdicts (controle, attendu, obtenu) values
  ('CM d''un autre club : créer pour ce club', 'refusé', pg_temp.fait('f2f2f2f2-0000-0000-0000-000000000003', $q$insert into contenus (client_id, cm_id, titre, statut) select client_id, 'f2f2f2f2-0000-0000-0000-000000000003', 'intrus', 'brouillon' from ctx$q$)),
  ('coach : créer', 'refusé', pg_temp.fait('f2f2f2f2-0000-0000-0000-000000000004', $q$insert into contenus (client_id, cm_id, titre, statut) select client_id, 'f2f2f2f2-0000-0000-0000-000000000004', 'coach', 'brouillon' from ctx$q$)),
  ('coach : modifier', 'sans effet', pg_temp.fait('f2f2f2f2-0000-0000-0000-000000000004', 'update contenus set titre = ''x'' where id = ''' || pg_temp.c('c1') || '''')),
- ('président : ne voit pas un brouillon', '0', pg_temp.lu('f2f2f2f2-0000-0000-0000-000000000005', 'select count(*)::text from contenus where id = ''' || pg_temp.c('c1') || ''''));
+ -- 14/09/2026 — Attendu « 0 » jusqu'a la v230. Demande de Fouka le meme jour : « je veux qu'il
+ -- voie les brouillons du planning editorial ». Le planning est un outil PARTAGE avec le club, pas
+ -- une vitrine de ce qui est fini : voir qu'une publication est prevue, meme a l'etat de titre,
+ -- c'est ce qui permet au club de reagir avant que le travail soit fait. Ce qui reste ferme, ce
+ -- sont les RELECTURES en cours (a_valider_interne, a_valider_tuteur), verifiees plus bas.
+ ('président : voit le brouillon de son planning (v230)', '1', pg_temp.lu('f2f2f2f2-0000-0000-0000-000000000005', 'select count(*)::text from contenus where id = ''' || pg_temp.c('c1') || ''''));
 -- Le workflow éditorial existant : brouillon → à valider en interne → à valider par le club.
 update contenus set statut = 'a_valider_interne' where id = pg_temp.c('c1')::uuid;
 update contenus set statut = 'a_valider_client' where id = pg_temp.c('c1')::uuid;
