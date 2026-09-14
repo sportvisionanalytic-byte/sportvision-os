@@ -106,7 +106,12 @@ t("aucune mention de « lien » dans le parcours principal", await page.evaluate
 }));
 
 await page.evaluate(() => {
-  window.__assets = [{ id: "p1", status: "ready" }, { id: "p2", status: "ready" }];
+  // 14/09/2026 — `preview_watermarked` ajoute au decor : l'alerte « des apercus ne sont pas
+  // proteges » sort desormais aussi sur une galerie deja publiee et quand le filigrane est decoche
+  // (deux trous fermes le 13/09). Sans cette marque, le decor simulait deux photos nues sur une
+  // galerie payante, la fenetre s'ouvrait, et la mise en ligne ne partait jamais.
+  window.__assets = [{ id: "p1", status: "ready", preview_watermarked: true },
+                     { id: "p2", status: "ready", preview_watermarked: true }];
   _galAssets = window.__assets;
   galAjouterOffre("pack");
   _galOffres[0].name = "15 photos"; _galOffres[0].quota = "15"; _galOffres[0].prix = "10";
