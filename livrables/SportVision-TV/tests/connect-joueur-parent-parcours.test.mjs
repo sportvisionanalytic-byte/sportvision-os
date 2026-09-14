@@ -170,6 +170,15 @@ try {
 
     const ctx = await navigateur.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
+    // 14/09/2026 — Quand l'acceptation echoue, l'ecran n'affiche qu'un message generique : on
+    // garde la reponse REELLE de la base, sans quoi il faut rejouer tout le parcours a la main
+    // pour savoir ce qui a ete refuse.
+    const reponsesRpc = [];
+    page.on("response", async (r) => {
+      if (/rpc\/(accept_parent_invitation|accepter_invitation_joueur)/.test(r.url())) {
+        reponsesRpc.push(`${r.status()} ${(await r.text().catch(() => "")).slice(0, 220)}`);
+      }
+    });
     const erreurs = [];
     page.on("pageerror", (e) => erreurs.push(String(e).slice(0, 180)));
 
@@ -193,7 +202,8 @@ try {
       await accepter.click();
       await page.waitForTimeout(9000);
       const apres = await texte(page);
-      t("l'acceptation aboutit sans erreur affichee", !/erreur|impossible|introuvable/i.test(apres), apres.slice(0, 200));
+      t("l'acceptation aboutit sans erreur affichee", !/erreur|impossible|introuvable/i.test(apres),
+        `${apres.slice(0, 200)}${reponsesRpc.length ? " · base : " + reponsesRpc.join(" ; ") : " · aucun appel a la base"}`);
       console.log(`       arrivee : ${page.url().replace(CX, "")}`);      // Le joueur, lui, attend bien une validation du club : le message doit le dire.
       t("le joueur lit que le club doit encore valider son adhesion", /doit encore valider/i.test(apres), apres.slice(0, 200));
     }
@@ -242,6 +252,15 @@ try {
 
     const ctx = await navigateur.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
+    // 14/09/2026 — Quand l'acceptation echoue, l'ecran n'affiche qu'un message generique : on
+    // garde la reponse REELLE de la base, sans quoi il faut rejouer tout le parcours a la main
+    // pour savoir ce qui a ete refuse.
+    const reponsesRpc = [];
+    page.on("response", async (r) => {
+      if (/rpc\/(accept_parent_invitation|accepter_invitation_joueur)/.test(r.url())) {
+        reponsesRpc.push(`${r.status()} ${(await r.text().catch(() => "")).slice(0, 220)}`);
+      }
+    });
     const erreurs = [];
     page.on("pageerror", (e) => erreurs.push(String(e).slice(0, 180)));
 
@@ -266,7 +285,8 @@ try {
       await accepter.click();
       await page.waitForTimeout(9000);
       const apres = await texte(page);
-      t("l'acceptation aboutit sans erreur affichee", !/erreur|impossible|introuvable/i.test(apres), apres.slice(0, 200));
+      t("l'acceptation aboutit sans erreur affichee", !/erreur|impossible|introuvable/i.test(apres),
+        `${apres.slice(0, 200)}${reponsesRpc.length ? " · base : " + reponsesRpc.join(" ; ") : " · aucun appel a la base"}`);
       console.log(`       arrivee : ${page.url().replace(CX, "")}`);      // Jusqu'au 10/09/2026, le parent lisait « Le club doit encore valider votre adhesion » alors que
       // son rattachement est confirme des l'acceptation (statut « confirme » verifie ci-dessous).
       t("le parent lit qu'il est rattache a son enfant", /Vous [êe]tes rattach[ée] [àa]/i.test(apres), apres.slice(0, 200));
