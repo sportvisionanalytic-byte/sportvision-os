@@ -69,7 +69,19 @@ comparaison n'est gardé que pour les enfants inscrits.
 ## 4. La base légale
 
 **Consentement explicite** (articles 6.1.a et 9.2.a), donné par le titulaire de l'autorité
-parentale pour un mineur, ou par le joueur lui-même s'il est majeur.
+parentale pour un joueur de moins de 15 ans, et par le joueur lui-même à partir de 15 ans.
+
+**Le seuil de 15 ans, et pourquoi il a été retenu** (décision du 14/09/2026). Depuis l'ouverture des
+comptes aux mineurs, un joueur inscrit sans parent rattaché ne pouvait rien activer : ses photos
+restaient non identifiées, donc invisibles pour lui. Quinze ans est le seuil fixé par le droit
+français pour qu'un mineur consente seul à un service en ligne (article 8 du RGPD, transposé par
+l'article 45 de la loi Informatique et Libertés).
+
+Ce seuil appelle une réserve, écrite ici pour qu'elle ne se perde pas : l'article 8 vise les
+services de la société de l'information, non les données sensibles de l'article 9. Sur une donnée
+biométrique, un consentement donné seul entre 15 et 17 ans reste plus fragile que celui d'un parent.
+Il est tracé sous une qualité distincte (`joueur_15_17`) : le jour où ce point est contesté, on sait
+exactement quels accords reposent dessus, et lesquels redemander.
 
 Conditions à respecter pour que ce consentement soit valable :
 

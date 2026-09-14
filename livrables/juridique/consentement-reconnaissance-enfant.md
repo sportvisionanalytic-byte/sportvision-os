@@ -62,11 +62,31 @@ Reconnaissance.*
 
 ---
 
-## 2. Variante pour un joueur majeur
+## 2. Variante pour un joueur qui donne son accord lui-même (15 ans et plus)
 
 Même texte, au singulier : « Vous pouvez demander à SportVision de vous reconnaître sur les photos
 des matchs de votre équipe », et une seule case : « J'autorise SportVision à reconnaître mon
 visage ».
+
+**Qui peut accorder, et à partir de quel âge** (décision de Fouka du 14/09/2026) :
+
+| Âge du joueur | Qui donne l'accord | Trace enregistrée |
+|---|---|---|
+| 18 ans et plus | Lui-même | `joueur_majeur` |
+| 15 à 17 ans | Lui-même | `joueur_15_17` |
+| Moins de 15 ans | Le titulaire de l'autorité parentale | `parent` |
+
+Quinze ans est le seuil fixé par le droit français pour qu'un mineur consente seul à un service en
+ligne (article 8 du RGPD, transposé par l'article 45 de la loi Informatique et Libertés). Il a été
+retenu parce qu'un mineur inscrit sans parent rattaché ne pouvait rien activer : ses photos
+restaient invisibles pour lui. Ce n'est pas une garantie absolue sur des données sensibles, mais
+c'est un seuil écrit et défendable, et non un choix arbitraire.
+
+Avant 15 ans, le refus n'est pas une impasse : le message invite le joueur à faire rattacher un
+parent, qui accorde ensuite en un geste.
+
+**Le retrait, lui, n'a pas d'âge.** Un joueur mineur peut retirer son accord lui-même, à tout
+moment : on ne met jamais d'obstacle devant quelqu'un qui veut faire effacer ses données.
 
 ---
 
@@ -91,7 +111,8 @@ empreinte numérique du visage du joueur pour retrouver ses photos dans les gale
 - **Finalité** : permettre à une famille d'accéder aux photos de son enfant plutôt qu'à celles de
   toute l'équipe.
 - **Base légale** : consentement explicite (RGPD, articles 6.1.a et 9.2.a), donné par le titulaire
-  de l'autorité parentale ou par le joueur majeur.
+  de l'autorité parentale pour un joueur de moins de 15 ans, et par le joueur lui-même à partir de
+  15 ans (article 8 du RGPD, article 45 de la loi Informatique et Libertés).
 - **Données** : la photo de référence déposée par la famille et l'empreinte numérique qui en est
   issue.
 - **Durée** : jusqu'au retrait du consentement, et au plus tard à la fin de la saison sportive.
@@ -125,3 +146,4 @@ Le club informe ses adhérents de l'existence de cette option.
 | Version | Date | Modification |
 |---|---|---|
 | v1-2026-09 | 12/09/2026 | Rédaction initiale |
+| v1-2026-09 | 14/09/2026 | Précision de QUI donne l'accord selon l'âge (§ 2). Le texte affiché au parent (§ 1) est inchangé : le numéro de version ne change donc pas, les accords déjà donnés restent valables. |
