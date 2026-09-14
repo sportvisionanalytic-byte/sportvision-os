@@ -17576,12 +17576,17 @@ async function chargerEquipe(prestationId,ref){
   try{
     const voitCouts=['admin','prod','compta','sec'].includes(S.role);
     const [data,rentabRaw]=await Promise.all([
-      sbFetch('prestations_equipe_display?select=id,statut,fonction,notes,remuneration,montant_recommande,motif_ajustement,motif_detail,exception_statut,exception_montant,exception_motif,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId),
+      sbFetch('prestations_equipe_display?select=id,statut,fonction,notes,remuneration,montant_recommande,motif_ajustement,motif_detail,exception_statut,exception_montant,exception_motif,travail_valide,travail_motif,penalites_total,net_a_payer,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId),
       voitCouts?sbFetch('v_rentabilite_missions?select=revenu_ht,cout_remunerations,cout_frais&prestation_id=eq.'+prestationId).catch(()=>[]):Promise.resolve([]),
     ]);
     // Prix vendu et coût terrain, côte à côte : la Production comprend ce qu'elle engage, sans
     // pouvoir changer le prix client (réservé au secrétariat / à l'administration, v127).
     const rt=Array.isArray(rentabRaw)&&rentabRaw[0]?rentabRaw[0]:null;
+    // v231 : les retenues de la mission, par affectation. Une pénalité ne modifie jamais la
+    // rémunération acceptée — elle se lit à côté, et le net est leur différence.
+    const _affIds=(Array.isArray(data)?data:[]).map(x=>x.id);
+    const _pensRaw=_affIds.length?await sbFetch('mission_penalites?select=id,affectation_id,montant,motif,detail,statut,contestation,cree_le&affectation_id=in.('+_affIds.join(',')+')&order=cree_le.desc').catch(()=>[]):[];
+    const _pens={};(Array.isArray(_pensRaw)?_pensRaw:[]).forEach(x=>{(_pens[x.affectation_id]=_pens[x.affectation_id]||[]).push(x);});
     // Coût prévu : les affectations en cours (invitées, en attente, acceptées) et les frais validés.
     // La vue de rentabilité ne compte que les acceptées ; la Production a besoin de voir la marge au
     // moment où elle fixe les montants, pas après les réponses des opérateurs.
@@ -17607,6 +17612,28 @@ async function chargerEquipe(prestationId,ref){
       const exc=m.exception_statut==='a_valider'?`<span style="font-size:11px;color:var(--wa)">${Number(m.exception_montant||0).toLocaleString('fr-FR')} € demandés${m.exception_motif?' ('+esc(MOTIFS_REMU[m.exception_motif]||m.exception_motif)+')':''} · en attente Admin</span>${S.role==='admin'&&t.id!==S.uid?` <button onclick="deciderExceptionRemu('${m.id}',true,'${prestationId}','${ref}')" class="btn bp bs" style="padding:2px 8px;font-size:10.5px">Approuver</button> <button onclick="deciderExceptionRemu('${m.id}',false,'${prestationId}','${ref}')" class="btn bg2 bs" style="padding:2px 8px;font-size:10.5px">Refuser</button>`:''}`:'';
       const remLine=exc+(canSetRem?`<button onclick="modifierRemunerationMembre('${m.id}','${prestationId}','${ref}',${m.remuneration||0},${m.montant_recommande!=null?Number(m.montant_recommande):'null'},'${m.statut}',${t.id===S.uid})" style="font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Rémunération : ${remLbl}</button>`
         :`<span style="font-size:11px;color:var(--t3)">Rémunération : ${remLbl}</span>`)+(voitCouts?ecartLbl:'');
+      // v231 — Verdict sur le travail et retenues. Trois règles se lisent directement ici :
+      // le montant accepté reste affiché tel quel, la retenue est une ligne distincte, et le net
+      // est le seul montant à régler. Rien de tout cela sur sa propre ligne : on ne se valide ni
+      // ne se pénalise soi-même, la base le refuse aussi.
+      const arbitrable=canSetRem&&t.id!==S.uid&&m.statut==='acceptée';
+      const mesPen=(_pens[m.id]||[]).filter(x=>x.statut==='appliquee');
+      const retenu=mesPen.reduce((a,x)=>a+Number(x.montant||0),0);
+      const net=m.net_a_payer!=null?Number(m.net_a_payer):Number(m.remuneration||0)-retenu;
+      const verdict=m.travail_valide===false
+        ?`<span class="bd br" style="font-size:9.5px"><span class="bd-d"></span>Travail non validé</span>${m.travail_motif?` <span style="font-size:11px;color:var(--t3)">${esc(m.travail_motif)}</span>`:''}`
+        :m.travail_valide===true?`<span class="bd ba" style="font-size:9.5px"><span class="bd-d"></span>Travail validé</span>`:'';
+      const lignesPen=mesPen.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--er)">
+          <span>− ${Number(x.montant).toLocaleString('fr-FR')} € · ${esc(x.motif)}</span>
+          ${x.contestation?`<span title="${esc(x.contestation)}" style="color:var(--wa)">⚠ contestée</span>`:''}
+          ${arbitrable?`<button onclick="annulerPenaliteMission('${x.id}','${prestationId}','${ref}')" style="font-size:10.5px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Lever</button>`:''}
+        </div>`).join('');
+      const netLine=(voitCouts||t.id===S.uid)&&retenu>0
+        ?`<div style="font-size:11.5px;color:var(--t2);padding-left:40px">Net à payer <b style="color:var(--ok)">${net.toLocaleString('fr-FR')} €</b> <span style="color:var(--t3)">(${Number(m.remuneration||0).toLocaleString('fr-FR')} € acceptés, ${retenu.toLocaleString('fr-FR')} € retenus)</span></div>`:'';
+      const arbitrage=arbitrable?`<div style="display:flex;align-items:center;gap:10px;padding-left:40px">
+          <button onclick="modalVerdictMission('${m.id}','${prestationId}','${ref}',${m.travail_valide===true})" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer;text-decoration:underline">${m.travail_valide===false?'Revenir sur le refus':'Valider ou refuser le travail'}</button>
+          <button onclick="modalPenaliteMission('${m.id}','${prestationId}','${ref}',${Number(m.remuneration||0)},${retenu})" style="font-size:11px;color:var(--er);background:none;border:none;cursor:pointer;text-decoration:underline">Retenir une pénalité</button>
+        </div>`:'';
       return`<div style="display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
         <div style="display:flex;align-items:center;gap:10px">
           <div class="av" style="background:${rc[t.role]||'#366BFF'};width:30px;height:30px;font-size:11px;flex-shrink:0">${ini}</div>
@@ -17616,11 +17643,118 @@ async function chargerEquipe(prestationId,ref){
         </div>
         <div style="display:flex;align-items:center;gap:14px;padding-left:40px">
           ${remLine}
+          ${verdict}
           ${m.notes?`<span style="font-size:11px;color:var(--t3)">Consignes : ${esc(m.notes)}</span>`:''}
         </div>
+        ${lignesPen?`<div style="padding-left:40px;display:flex;flex-direction:column;gap:2px">${lignesPen}</div>`:''}
+        ${netLine}
+        ${arbitrage}
       </div>`;
     }).join('');
   }catch(e){el.innerHTML='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';}
+}
+
+// ── v231 (14/09/2026) — Refuser un travail, retenir une pénalité ──────────────────────────────
+// Demande de Fouka : « le responsable production pouvoir dire mission pas validée, mettre des
+// pénalités et retirer sur la paye initiale ».
+//
+// DEUX ACTIONS DISTINCTES, et c'est volontaire : refuser un travail n'est pas retenir de l'argent.
+// On peut refuser sans pénaliser (le travail est repris) et pénaliser sans refuser (le travail est
+// livré, mais en retard).
+//
+// La rémunération acceptée n'est JAMAIS réécrite par ces écrans. Une retenue est une ligne à part
+// et le net est leur différence : c'est la base qui l'impose (v231), l'écran ne fait que le dire.
+// Une retenue sur une rémunération acceptée est une sanction pécuniaire : la modale le rappelle à
+// celui qui la pose, parce que c'est lui qui devra la défendre.
+async function modalVerdictMission(affectationId,prestationId,ref,dejaValide){
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const o=_svSurcouche(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Le travail de cet opérateur</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">Un travail refusé bloque la clôture de la mission et l'opérateur en est prévenu.</div>
+    <div><label style="${lbl}">Motif (obligatoire pour un refus)</label>
+      <textarea id="vm-motif" class="l-inp" rows="3" placeholder="Ce qui ne va pas, précisément : ce texte est envoyé à l'opérateur et c'est sur lui qu'il peut corriger."></textarea></div>
+    <div id="vm-err" style="color:var(--er);font-size:12px;margin-top:8px"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn bg2" data-x="annuler">Annuler</button>
+      <button class="btn bg2" id="vm-refus" style="color:var(--er);border-color:rgba(240,68,94,.3)">Ne pas valider</button>
+      <button class="btn bp" id="vm-ok">${dejaValide?'Travail validé':'Valider le travail'}</button>
+    </div>`);
+  const envoyer=async(valide)=>{
+    const err=o.querySelector('#vm-err');
+    const motif=o.querySelector('#vm-motif').value.trim();
+    if(!valide&&!motif){err.textContent='Dites ce qui ne va pas : un refus sans motif n\'est ni corrigeable ni contestable.';return;}
+    const r=await sbFetch('rpc/mission_valider_travail',{method:'POST',body:{p_affectation_id:affectationId,p_valide:valide,p_motif:motif||null}});
+    if(sbErr(r)){err.textContent=msgErreur(r,'Décision impossible.');return;}
+    o.remove();
+    toast(valide?'Travail validé.':'Travail refusé, l\'opérateur est prévenu.',valide?'ok':'warn');
+    chargerEquipe(prestationId,ref);
+  };
+  o.querySelector('[data-x="annuler"]').onclick=()=>o.remove();
+  o.querySelector('#vm-ok').onclick=()=>envoyer(true);
+  o.querySelector('#vm-refus').onclick=()=>envoyer(false);
+}
+
+async function modalPenaliteMission(affectationId,prestationId,ref,remuneration,dejaRetenu){
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const reste=Math.max(Number(remuneration||0)-Number(dejaRetenu||0),0);
+  const o=_svSurcouche(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Retenir une pénalité</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Rémunération acceptée ${Number(remuneration||0).toLocaleString('fr-FR')} €${Number(dejaRetenu||0)>0?', déjà retenus '+Number(dejaRetenu).toLocaleString('fr-FR')+' €':''} · retenable au maximum ${reste.toLocaleString('fr-FR')} €</div>
+    <div style="padding:10px 12px;margin-bottom:14px;background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.25);border-radius:8px;font-size:11.5px;color:var(--t2);line-height:1.5">
+      Une retenue sur une rémunération déjà acceptée est une <b>sanction pécuniaire</b>. Sur un salaire, c'est interdit. Sur une prestation indépendante, elle n'est défendable que si une clause de pénalité a été acceptée avant la mission. L'opérateur est prévenu du montant et du motif, et peut contester par écrit.
+    </div>
+    <div style="display:grid;grid-template-columns:120px 1fr;gap:10px">
+      <div><label style="${lbl}">Montant (€)</label>
+        <input id="pm-montant" type="number" min="0" step="0.01" max="${reste}" class="l-inp" style="height:38px"></div>
+      <div><label style="${lbl}">Motif</label>
+        <input id="pm-motif" class="l-inp" style="height:38px" placeholder="Retard de livraison de 6 jours"></div>
+    </div>
+    <div style="margin-top:10px"><label style="${lbl}">Détail (facultatif)</label>
+      <textarea id="pm-detail" class="l-inp" rows="2" placeholder="Les faits, datés. C'est ce qui rend la retenue défendable si elle est contestée."></textarea></div>
+    <div id="pm-err" style="color:var(--er);font-size:12px;margin-top:8px"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn bg2" data-x="annuler">Annuler</button>
+      <button class="btn bp" id="pm-ok" style="background:var(--er)">Retenir</button>
+    </div>`);
+  o.querySelector('[data-x="annuler"]').onclick=()=>o.remove();
+  o.querySelector('#pm-ok').onclick=async()=>{
+    const err=o.querySelector('#pm-err');
+    const montant=Number(o.querySelector('#pm-montant').value);
+    const motif=o.querySelector('#pm-motif').value.trim();
+    if(!montant||montant<=0){err.textContent='Indiquez un montant.';return;}
+    if(montant>reste){err.textContent='Au maximum '+reste.toLocaleString('fr-FR')+' € : on ne retient pas plus que ce qui est dû.';return;}
+    if(!motif){err.textContent='Une pénalité sans motif écrit n\'est pas défendable : dites ce qui est reproché.';return;}
+    const r=await sbFetch('rpc/mission_penaliser',{method:'POST',body:{p_affectation_id:affectationId,p_montant:montant,p_motif:motif,p_detail:o.querySelector('#pm-detail').value.trim()||null}});
+    if(sbErr(r)){err.textContent=msgErreur(r,'Retenue impossible.');return;}
+    o.remove();
+    toast('Retenue appliquée. Net à payer : '+Number(r?.net_a_payer||0).toLocaleString('fr-FR')+' €. L\'opérateur est prévenu.','warn');
+    chargerEquipe(prestationId,ref);
+  };
+}
+
+async function annulerPenaliteMission(penaliteId,prestationId,ref){
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const o=_svSurcouche(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Lever cette retenue</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">La pénalité n'est pas effacée : elle reste au dossier, marquée annulée, avec votre motif.</div>
+    <div><label style="${lbl}">Pourquoi</label>
+      <textarea id="ap-motif" class="l-inp" rows="3" placeholder="Ce que l'opérateur a fourni, ou ce qui a été reconnu à tort."></textarea></div>
+    <div id="ap-err" style="color:var(--er);font-size:12px;margin-top:8px"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn bg2" data-x="annuler">Annuler</button>
+      <button class="btn bp" id="ap-ok">Lever la retenue</button>
+    </div>`);
+  o.querySelector('[data-x="annuler"]').onclick=()=>o.remove();
+  o.querySelector('#ap-ok').onclick=async()=>{
+    const err=o.querySelector('#ap-err');
+    const motif=o.querySelector('#ap-motif').value.trim();
+    if(!motif){err.textContent='Dites pourquoi cette pénalité est levée.';return;}
+    const r=await sbFetch('rpc/mission_penalite_annuler',{method:'POST',body:{p_penalite_id:penaliteId,p_motif:motif}});
+    if(sbErr(r)){err.textContent=msgErreur(r,'Annulation impossible.');return;}
+    o.remove();
+    toast('Retenue levée. Net à payer : '+Number(r?.net_a_payer||0).toLocaleString('fr-FR')+' €.','ok');
+    chargerEquipe(prestationId,ref);
+  };
 }
 
 // Attribution de kit depuis la fiche mission (spec §20-22, 29/08) : le Responsable

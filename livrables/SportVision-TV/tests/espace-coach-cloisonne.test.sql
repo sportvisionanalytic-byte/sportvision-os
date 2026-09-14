@@ -6,7 +6,7 @@
 -- l'écran) et les SÉANCES D'ENTRAÎNEMENT rendaient toutes les équipes du club.
 --
 -- Volontairement non restreints : la liste des noms d'équipes (nécessaire aux formulaires, aucune
--- donnée sensible) et les actualités du club (espace éditorial commun).
+-- donnée sensible), les actualités du club et le planning éditorial (espaces éditoriaux communs).
 -- Décor fictif : un club, deux équipes, le coach n'en encadre qu'une. Tout est annulé.
 
 begin;
@@ -88,7 +88,13 @@ insert into attendu values
   ('team_memberships (effectif)', 1, 0),
   ('player_profiles (joueurs)', 1, 0),
   ('media_club_galleries (RPC)', 1, 0),
-  ('contenus (planning éditorial)', 0, 0),
+  -- 14/09/2026 — Attendu 0/0 jusqu'ici, non par cloisonnement voulu mais par effet de bord : la
+  -- policy du club masquait les brouillons, et ce test n'insère que des brouillons. La v230 ouvre
+  -- le planning au club sur demande de Fouka (« je veux qu'il voie les brouillons »). Le planning
+  -- éditorial rejoint donc les actualités : un espace ÉDITORIAL COMMUN, que tout le club lit, et
+  -- qui n'a jamais été découpé par équipe. Le cloisonnement du coach porte sur ce qui est propre à
+  -- son équipe (matchs, effectif, joueurs, galeries) et reste vérifié ligne par ligne ci-dessus.
+  ('contenus (planning éditorial)', 1, 1),
   ('club_teams (liste des équipes)', 1, 1),
   ('club_newsroom_items (actualités)', 1, 1);
 
