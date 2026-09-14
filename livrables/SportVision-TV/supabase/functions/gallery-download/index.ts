@@ -114,17 +114,20 @@ serve(async (req) => {
       // On ne reecrit pas la regle ici : `can_access_media` la porte deja, et c'est elle qui garde
       // la lecture du bucket prive. On la demande AVEC LA SESSION DE L'APPELANT, jamais avec la
       // cle de service — sinon elle repondrait pour le serveur et n'autoriserait plus rien.
+      //
+      // 14/09/2026 — La question se pose desormais PAR PHOTO, et non plus par album. Le modele
+      // decide par Fouka est « mes photos, plus les photos de groupe » : un Pass ouvre les photos
+      // ou l'enfant de la famille est marque, et celles d'equipe — jamais celles d'un autre enfant,
+      // ni celles que personne n'a marquees. `can_access_asset` porte cette regle, en s'appuyant
+      // elle-meme sur `can_access_media` pour la porte de l'album (galerie gratuite, borne de
+      // saison, verification du beneficiaire).
       let parAbonnement = false;
       if (!possede) {
-        const { data: asset } = await admin
-          .from("media_assets").select("album_id").eq("id", assetId).maybeSingle();
-        if (asset?.album_id) {
-          const appelant = createClient(supabaseUrl, anonKey, {
-            global: { headers: { Authorization: `Bearer ${jwt}` } },
-          });
-          const { data: droit } = await appelant.rpc("can_access_media", { p_album_id: asset.album_id });
-          parAbonnement = droit === true;
-        }
+        const appelant = createClient(supabaseUrl, anonKey, {
+          global: { headers: { Authorization: `Bearer ${jwt}` } },
+        });
+        const { data: droit } = await appelant.rpc("can_access_asset", { p_asset_id: assetId });
+        parAbonnement = droit === true;
       }
 
       if (!possede && !parAbonnement) {
