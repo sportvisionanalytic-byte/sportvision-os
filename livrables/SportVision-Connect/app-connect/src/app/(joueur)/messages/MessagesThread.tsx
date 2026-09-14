@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 // l'origine réelle de la valeur, donc un ré-export via ce fichier resterait tout aussi cassé côté
 // serveur.
 import type { MessageData } from "./messageAttachments";
+import { heureParis, jourLisibleParis } from "@/lib/dates";
 
 // Mêmes constantes que messageAttachments.ts (bucket privé, TTL de signature) — dupliquées ici
 // car handleAttach ci-dessous appelle directement Storage côté client pour l'upload + la première
@@ -22,20 +23,13 @@ const ATTACHMENT_BUCKET = "sportvision-media-prive";
 const ATTACHMENT_SIGN_TTL_SECONDS = 3600;
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
-function dayLabel(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (isSameDay(d, today)) return "Aujourd'hui";
-  if (isSameDay(d, yesterday)) return "Hier";
-  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-}
-
-function timeLabel(iso: string): string {
-  return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-}
+// 14/09/2026 — Ces deux libellés étaient calculés dans le fuseau local. La page est rendue une
+// première fois par le serveur, qui tourne en UTC, puis reprise par le navigateur en heure de
+// Paris : deux textes différents pour le même message, et React rejette toute la section (erreurs
+// #425 et #422, mesurées sur cet écran) avant de la refaire côté client. Les fonctions partagées
+// imposent Europe/Paris des deux côtés.
+const dayLabel = jourLisibleParis;
+const timeLabel = heureParis;
 
 // Extrait un nom de fichier lisible d'une URL de pièce jointe (le stockage préfixe le nom par un
 // identifiant unique, voir handleAttach ci-dessous). BUG CORRIGÉ (audit repasse du 31/08/2026,
