@@ -128,8 +128,20 @@ begin
     if m_off->>'rentabilite_clubs_mois' = 'passe' then e := e || (v_role || ' désactivé : rentabilite_clubs_mois passe'); end if;
 
     -- Réactivé : exactement ce qu'il voyait actif.
-    if m_react is distinct from m_actif then
+    --
+    -- 14/09/2026 — Sauf les compteurs de tables VIVANTES. Ce test tournait pendant que Fouka
+    -- versait des photos : storage.objects avait gagné un fichier entre la mesure « actif » et la
+    -- mesure « réactivé », et le test accusait une perte d'accès (2095 au lieu de 2094). Il
+    -- mesurait l'activité de la production, pas les droits. On compare donc ces compteurs-là par
+    -- « toujours accessible », et tout le reste à l'identique.
+    if (m_react - 'storage' - 'notifications') is distinct from (m_actif - 'storage' - 'notifications') then
       e := e || (v_role || ' réactivé ne retrouve pas son accès : ' || m_react::text || ' au lieu de ' || m_actif::text);
+    end if;
+    if (m_actif->>'storage')::int > 0 and (m_react->>'storage')::int = 0 then
+      e := e || (v_role || ' réactivé ne lit plus aucun fichier');
+    end if;
+    if (m_actif->>'notifications')::int > 0 and (m_react->>'notifications')::int = 0 then
+      e := e || (v_role || ' réactivé ne lit plus aucune notification');
     end if;
   end loop;
 
