@@ -54,6 +54,11 @@ export function AddClubForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [declaredDone, setDeclaredDone] = useState(false);
+  // 14/09/2026 — Ce que le code désigne, dit à l'écran. La personne vient de lire « Vous rejoignez
+  // <club> · <équipe> » sur la page du lien, puis arrivait ici sous le titre « Ajouter mon club —
+  // Recherchez votre club partenaire », avec un code opaque dans un champ. L'impression est celle
+  // de recommencer, et rien ne confirme qu'on rejoint bien la bonne équipe.
+  const [cibleDuCode, setCibleDuCode] = useState<{ club: string | null; equipe: string | null } | null>(null);
 
   // ?code=... posé par /join/[code] (Smart Link/QR, migration-clubplus-v57) — un utilisateur déjà
   // authentifié qui suit un lien d'équipe atterrit directement sur le formulaire code prérempli,
@@ -63,6 +68,14 @@ export function AddClubForm({
     if (code) {
       setInviteCode(code.toUpperCase());
       setChoice("code");
+      // `preview_invite_code` est la même lecture que la page publique /join : elle ne rend que le
+      // club, l'équipe et la saison, jamais rien de personnel.
+      void createClient()
+        .rpc("preview_invite_code", { p_code: code })
+        .then(({ data }) => {
+          const p = (Array.isArray(data) ? data[0] : data) as { valide?: boolean; club_nom?: string; team_nom?: string } | null;
+          if (p?.valide) setCibleDuCode({ club: p.club_nom ?? null, equipe: p.team_nom ?? null });
+        });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -282,10 +295,21 @@ export function AddClubForm({
     return (
       <div className="flex flex-col gap-5 animate-sv-in">
         <BackLink onClick={() => { setChoice(null); setError(null); }} />
-        <p className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
-          Le code vous a été communiqué par votre club ou votre coach — il vous rattache
-          directement à la bonne équipe.
-        </p>
+        {cibleDuCode ? (
+          <div className="rounded-sv-card border border-affiliations/30 bg-affiliations-bg px-4 py-3.5">
+            <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-text-soft">Vous rejoignez</p>
+            <p className="mt-1 text-[16px] font-extrabold tracking-tight">{cibleDuCode.club}</p>
+            {cibleDuCode.equipe && <p className="text-[13.5px] font-bold text-text-secondary">{cibleDuCode.equipe}</p>}
+            <p className="mt-2 text-[12.5px] leading-relaxed text-text-tertiary">
+              Complétez votre identité pour être rattaché à cette équipe.
+            </p>
+          </div>
+        ) : (
+          <p className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
+            Le code vous a été communiqué par votre club ou votre coach — il vous rattache
+            directement à la bonne équipe.
+          </p>
+        )}
         <div className="flex flex-col gap-4 rounded-sv-card border border-border bg-surface p-4">
           <Field
             id="ac-code-code"
