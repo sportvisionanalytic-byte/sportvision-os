@@ -3677,7 +3677,7 @@ function cfpAvertirPrincipal(){
   const p=window.__cfpPrincipalActuel;
   if(!el)return;
   el.innerHTML=(role==='principal'&&p)
-    ? `<div style="background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.3);border-radius:var(--rp);padding:10px 12px;font-size:12px;color:var(--t2);line-height:1.5">
+    ? `<div style="background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.3);border-radius:var(--rc);padding:10px 12px;font-size:12px;color:var(--t2);line-height:1.5">
          <strong style="color:var(--t1)">${esc((p.prenom||'')+' '+(p.nom||''))}</strong> est aujourd’hui le CM principal de ce club.
          L’affecter à sa place le retirera du club : il perdra l’accès immédiatement, mais restera dans l’historique.
        </div>`
@@ -3828,7 +3828,7 @@ async function cmOuvrirClub(clubId){
     <div style="font-size:11.5px;color:var(--t3);margin-bottom:18px">${c.full_com?'Full Communication':'Club partenaire'}${c.date_debut?' · vous en êtes référent depuis le '+dateFr(c.date_debut):''}</div>
 
     <div style="${L}">Mise en place</div>
-    <div style="border:1px solid var(--b1);border-radius:var(--rp);padding:13px 14px;margin-bottom:16px">
+    <div style="border:1px solid var(--b1);border-radius:var(--rc);padding:13px 14px;margin-bottom:16px">
       <div style="font-size:13px;font-weight:600;color:${CM_ONB_CLR[c.onboarding_statut]||'var(--t1)'}">${st}</div>
       ${c.onboarding_debut?`<div style="font-size:11.5px;color:var(--t3);margin-top:4px">Commencé le ${dateFr(ymdLocal(new Date(c.onboarding_debut)))}</div>`:''}
       ${c.derniere_activite?`<div style="font-size:11.5px;color:var(--t3);margin-top:2px">Dernière activité : ${esc(cmDepuis(c.derniere_activite)||'—')}</div>`:''}
@@ -3837,14 +3837,14 @@ async function cmOuvrirClub(clubId){
     <div style="${L}">Le club aujourd’hui</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px">
       ${[['Équipes',c.equipes],['Coachs',c.coachs],['Membres',c.membres]].map(([lb,v])=>
-        `<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:11px 12px">
+        `<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:11px 12px">
           <div style="font-size:20px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums">${v||0}</div>
           <div style="font-size:10.5px;color:var(--t3);margin-top:2px">${lb}</div>
         </div>`).join('')}
     </div>
 
     <div style="${L}">Référent SportVision</div>
-    <div style="border:1px solid var(--b1);border-radius:var(--rp);padding:13px 14px;margin-bottom:16px;font-size:12.5px;color:var(--t2)">
+    <div style="border:1px solid var(--b1);border-radius:var(--rc);padding:13px 14px;margin-bottom:16px;font-size:12.5px;color:var(--t2)">
       ${equipe.length?equipe.map(a=>`<div>${esc((a.prenom||'')+' '+(a.nom||''))} — CM ${a.role}</div>`).join(''):'<span style="color:var(--t3)">Aucun référent actif.</span>'}
     </div>
 
@@ -11954,12 +11954,12 @@ async function _statsSante(){
   const l=Array.isArray(rows)?rows:[];
   _santeCache=l;
   if(!l.length){
-    return `<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--t3)">
+    return `<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--t3)">
       Aucune anomalie detectee.
     </div>`;
   }
   const critiques=l.filter(x=>x.gravite==='critique');
-  return `<div style="border:1px solid ${critiques.length?'var(--er)':'var(--wa)'};border-radius:var(--rp);padding:11px 12px;margin-bottom:12px">
+  return `<div style="border:1px solid ${critiques.length?'var(--er)':'var(--wa)'};border-radius:var(--rc);padding:11px 12px;margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:${critiques.length?'var(--er)':'var(--wa)'}">
         ${critiques.length?'A traiter en priorite':'A verifier'}
@@ -11988,7 +11988,7 @@ function _statsDetailSante(i){
   openModal(`
     <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:3px">${esc(x.probleme)}</div>
     <div style="font-size:11.5px;color:var(--t3);margin-bottom:12px">${esc(x.domaine)} · ${x.nombre} cas</div>
-    <pre style="max-height:46vh;overflow:auto;background:rgba(255,255,255,.03);border:1px solid var(--b1);border-radius:var(--rp);padding:11px;font-size:11px;line-height:1.55;white-space:pre-wrap;word-break:break-all">${esc(JSON.stringify(x.detail,null,2))}</pre>
+    <pre style="max-height:46vh;overflow:auto;background:rgba(255,255,255,.03);border:1px solid var(--b1);border-radius:var(--rc);padding:11px;font-size:11px;line-height:1.55;white-space:pre-wrap;word-break:break-all">${esc(JSON.stringify(x.detail,null,2))}</pre>
     <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:13px">
       <button class="btn bp" onclick="closeModal()">Fermer</button>
     </div>
@@ -12117,7 +12117,7 @@ function _statsCourbe(evo){
   const yCmd=v=>H-P-((v/maxCmd)*(H-2*P));
   const ligne=(sel,y)=>pts.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(sel(p)).toFixed(1)).join(' ');
   const total=pts.reduce((a,p)=>a+(p.ca_cents||0),0);
-  return `<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px;overflow-x:auto">
+  return `<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:12px 13px;overflow-x:auto">
     <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px">
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Evolution</span>
       <span style="font-size:11px;color:var(--ac)">— chiffre d’affaires</span>
@@ -12137,7 +12137,7 @@ function _statsCourbe(evo){
 
 function _statsTableGaleries(gal){
   const rows=Array.isArray(gal)?gal:[];
-  if(!rows.length)return '<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:22px;text-align:center;font-size:12.5px;color:var(--t3)">Aucune galerie consultée ni vendue sur cette période.</div>';
+  if(!rows.length)return '<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:22px;text-align:center;font-size:12.5px;color:var(--t3)">Aucune galerie consultée ni vendue sur cette période.</div>';
   return `<div style="border:1px solid var(--b1);border-radius:var(--rp);overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:560px">
       <thead><tr style="color:var(--t3);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em">
@@ -12172,7 +12172,7 @@ function _statsAudiences(aud){
   return `<div style="margin-top:16px">
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Par public</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px">
-      ${rows.map(a=>`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:11px 12px">
+      ${rows.map(a=>`<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:11px 12px">
         <div style="font-size:12.5px;font-weight:600;margin-bottom:5px">${esc(GAL_AUDIENCES[a.audience]||a.audience||'Non precise')}</div>
         <div style="font-size:17px;font-weight:700">${_eur(a.ca_cents)}</div>
         <div style="font-size:11px;color:var(--t3);margin-top:3px">${_nb(a.commandes)} commande(s) · ${_nb(a.visites)} visite(s) · ${_pct(a.taux_conversion)}</div>
@@ -12183,7 +12183,7 @@ function _statsAudiences(aud){
 
 function _statsConnect(c){
   if(!c||!c.acheteurs)return '';
-  return `<div style="margin-top:16px;border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px">
+  return `<div style="margin-top:16px;border:1px solid var(--b1);border-radius:var(--rc);padding:12px 13px">
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:7px">Conversion vers Connect</div>
     <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
       <span style="font-size:19px;font-weight:700">${_pct(c.taux_connect)}</span>
@@ -13666,7 +13666,7 @@ function _galRendreFinal(){
 
   if(enLigne&&_galLienPrincipal){
     const url=GAL_CONNECT_URL+'/gallery/'+_galLienPrincipal.slug+'?k='+encodeURIComponent(_galLienPrincipal.token);
-    el.innerHTML=`<div style="border:1px solid rgba(46,204,138,.3);background:rgba(46,204,138,.06);border-radius:var(--rp);padding:14px">
+    el.innerHTML=`<div style="border:1px solid rgba(46,204,138,.3);background:rgba(46,204,138,.06);border-radius:var(--rc);padding:14px">
       <div style="font-size:13px;font-weight:600;color:var(--ok);margin-bottom:4px">✓ Votre galerie est en ligne</div>
       <div style="font-size:11.5px;color:var(--t3);margin-bottom:11px">${nbPhotos} photo${nbPhotos>1?'s':''} · ${gratuit?'Galerie gratuite':offresLisibles.length+' offre'+(offresLisibles.length>1?'s':'')}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -13690,7 +13690,7 @@ function _galRendreFinal(){
     return `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--t2)"><span>${esc(o.name)} — ${quoi}</span><span style="font-weight:600;color:var(--t1);white-space:nowrap">${prix}</span></div>`;
   }).join('');
 
-  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:14px">
+  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:14px">
     <div style="font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:3px">${esc(_galAlbum.title)}</div>
     <div style="font-size:11.5px;color:var(--t3);margin-bottom:${lignes?'11px':'0'}">${nbPhotos} photo${nbPhotos>1?'s':''} prête${nbPhotos>1?'s':''}${_galAlbum.watermark_previews!==false?' · aperçus protégés par filigrane':''}</div>
     ${lignes?`<div style="display:flex;flex-direction:column;gap:5px;padding-top:9px;border-top:1px solid var(--b1)">${lignes}</div>`:''}
@@ -13847,7 +13847,7 @@ async function _galChargerLien(){
   </div>`;
 
   if(!liens.length){
-    el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px">${entete}
+    el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:12px 13px">${entete}
       <div style="font-size:12px;color:var(--t2)">Aucun lien. ${peut
         ?'Creez-en un par public a servir : les parents du club, l’equipe adverse… Chacun peut avoir son tarif, sans dupliquer les photos.'
         :'<span style="color:var(--t3)">Création réservée à la direction, à la production et aux responsables de pôle.</span>'}</div>
@@ -13855,7 +13855,7 @@ async function _galChargerLien(){
     return;
   }
 
-  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:12px 13px">${entete}
+  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:12px 13px">${entete}
     <div style="display:flex;flex-direction:column;gap:9px">
       ${liens.map(l=>{
         const url=GAL_CONNECT_URL+'/gallery/'+l.slug+'?k='+encodeURIComponent(l.token);
@@ -13865,7 +13865,7 @@ async function _galChargerLien(){
         const resume=off.length
           ? off.length+' offre'+(off.length>1?'s':'')+' · a partir de '+_galPrix(Math.min.apply(null,off.map(x=>x.price_cents)),'eur')
           : 'Aucune offre — galerie en consultation';
-        return `<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:10px 11px;${l.is_enabled?'':'opacity:.55'}">
+        return `<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:10px 11px;${l.is_enabled?'':'opacity:.55'}">
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px">
             <span style="font-size:12.5px;font-weight:600">${esc(l.label||'Lien sans nom')}</span>
             ${l.audience?`<span class="bd bw" style="font-size:9.5px"><span class="bd-d"></span>${esc(GAL_AUDIENCES[l.audience]||l.audience)}</span>`:''}
@@ -14075,7 +14075,7 @@ function _galApercuClient(){
   if(!el)return;
   const vis=_galOffres.filter(o=>o.actif);
   if(!vis.length){el.innerHTML='';return;}
-  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rp);padding:11px 12px;background:rgba(255,255,255,.02)">
+  el.innerHTML=`<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:11px 12px;background:rgba(255,255,255,.02)">
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Ce que verra le client</div>
     ${vis.map(o=>{
       const p=Number(String(o.prix).replace(',','.'));
@@ -14158,7 +14158,7 @@ function galCopierLien(url){
 function galQrCode(url){
   openModal(`
     <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:11px">QR Code du lien</div>
-    <div style="text-align:center;background:#fff;padding:16px;border-radius:var(--rp)">
+    <div style="text-align:center;background:#fff;padding:16px;border-radius:var(--rc)">
       <img alt="QR Code" style="width:240px;height:240px" src="https://api.qrserver.com/v1/create-qr-code/?size=480x480&data=${encodeURIComponent(url)}">
     </div>
     <div style="font-size:11.5px;color:var(--t3);margin:11px 0 14px;text-align:center">À afficher au club ou à projeter. Il ouvre exactement le même lien.</div>
@@ -16386,8 +16386,8 @@ async function loadPhotoDash(){
               <div style="font-size:11px;color:var(--t3);margin-top:2px">${p.reference||'—'} · ${d} · ${esc(p.lieu||'Lieu TBD')}</div>
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0">
-              <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;min-height:40px">✓ Accepter</button>
-              <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;min-height:40px">✗ Refuser</button>
+              <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rc);color:var(--ok);cursor:pointer;font-weight:600;min-height:40px">✓ Accepter</button>
+              <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rc);color:var(--er);cursor:pointer;min-height:40px">✗ Refuser</button>
             </div>
           </div>`;
         }).join('');
@@ -16550,9 +16550,9 @@ function renderPhotoPre(){
             </div>
           </div>
           ${row.statut==='invitation_envoyée'?`<div style="display:flex;flex-direction:column;gap:5px" onclick="event.stopPropagation()">
-            <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px">✓ Accepter</button>
-            <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
-          </div>`:(p.date_prestation===today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();switchView('jourj')" style="padding:10px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">🔴 Jour J</button>`:(p.date_prestation<today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();modalSauvegarde('${p.id}')" style="padding:10px 14px;font-size:12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">📦 Livrer</button>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
+            <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rc);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px">✓ Accepter</button>
+            <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rc);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
+          </div>`:(p.date_prestation===today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();switchView('jourj')" style="padding:10px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rc);color:var(--er);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">🔴 Jour J</button>`:(p.date_prestation<today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();modalSauvegarde('${p.id}')" style="padding:10px 14px;font-size:12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rc);color:var(--t2);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">📦 Livrer</button>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
         </div>
       </div>
     </div>`;
@@ -23236,7 +23236,7 @@ async function loadForm(){
         ${isPhotoRole?`<div class="fs" style="${formXp>0?'border-color:rgba(46,204,138,.3)':''}"><div class="fs-l">XP formations</div><div class="fs-v" style="${formXp>0?'color:var(--ok)':''}">+${formXp}</div></div>`:''}
         <div class="fs" style="${nbCerts>0?'border-color:rgba(124,77,255,.3)':''}"><div class="fs-l">Certifications</div><div class="fs-v" style="${nbCerts>0?'color:#9C6FFF':''}">${nbCerts}</div></div>
       </div>
-      ${obligFailed.length?`<div style="margin-top:12px;padding:10px 14px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);display:flex;align-items:center;gap:8px">
+      ${obligFailed.length?`<div style="margin-top:12px;padding:10px 14px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rc);display:flex;align-items:center;gap:8px">
         <span style="color:var(--er);font-size:16px">⚠</span>
         <div style="font-size:12px;color:var(--er);font-weight:500">${obligFailed.length} formation${obligFailed.length>1?'s':''} obligatoire${obligFailed.length>1?'s':''} à compléter</div>
         <button onclick="setFormTab('catalogue');setTimeout(()=>{window._formCatFilter='Obligatoires';renderFormCatalogue(document.getElementById('form-real'),getFormProg(localStorage.getItem('sv_uid')||'x'))},50)" style="margin-left:auto;background:transparent;border:none;color:var(--er);font-size:11px;font-weight:700;cursor:pointer;padding:0;white-space:nowrap">Voir →</button>
@@ -37842,7 +37842,7 @@ function modalNouveauContrat(prefilClientId){
   const today=ymdLocal();
   const fin1an=(()=>{const d=new Date();d.setFullYear(d.getFullYear()+1);return ymdLocal(d);})();
   openModal(`<div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:20px">Nouveau contrat</div>
-    <div id="ncf-err" style="display:none;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);padding:10px;font-size:12px;color:var(--er);margin-bottom:12px"></div>
+    <div id="ncf-err" style="display:none;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rc);padding:10px;font-size:12px;color:var(--er);margin-bottom:12px"></div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">CLIENT *</label>
         <select id="nc-client" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px"><option value="">Chargement...</option></select></div>
@@ -37988,7 +37988,7 @@ async function modalContratFromDevis(devisId){
           <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(cl.nom||'—')}</div>
           <div style="font-size:12px;color:var(--t3)">Montant TTC : <b style="color:var(--ok)">${d.total_ttc?d.total_ttc.toLocaleString('fr-FR')+' €':'—'}</b></div>
         </div>
-        <div id="ncf-err" style="display:none;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);padding:10px;font-size:12px;color:var(--er)"></div>
+        <div id="ncf-err" style="display:none;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rc);padding:10px;font-size:12px;color:var(--er)"></div>
         <input type="hidden" id="nc-client" value="${d.client_id||''}">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">TYPE DE CONTRAT</label>
@@ -38057,7 +38057,7 @@ async function modalEditerContrat(id){
   const c=Array.isArray(r)&&r[0]?r[0]:null;
   if(!c){toast('Contrat introuvable','er');return;}
   openModal(`<div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:20px">Modifier le contrat — ${esc(c.clients?.nom||'—')}</div>
-    <div id="ecf-err" style="display:none;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);padding:10px;font-size:12px;color:var(--er);margin-bottom:12px"></div>
+    <div id="ecf-err" style="display:none;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rc);padding:10px;font-size:12px;color:var(--er);margin-bottom:12px"></div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">TYPE</label>
@@ -38895,7 +38895,7 @@ async function renderCentreReglement(){
             <ul class="cv-ul">${section.b.map(item=>`<li>${item}</li>`).join('')}</ul>
           </div>`).join('')}
         ${!ok?`<div style="text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--b1)">
-          <button onclick="centreAccepterDoc('${ch.id}')" style="padding:10px 24px;border-radius:var(--rp);background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);color:var(--ok);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--ff)">J'ai lu et j'accepte ce chapitre ✓</button>
+          <button onclick="centreAccepterDoc('${ch.id}')" style="padding:10px 24px;border-radius:var(--rc);background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);color:var(--ok);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--ff)">J'ai lu et j'accepte ce chapitre ✓</button>
         </div>`:''}
       </div>
     </div>`;
