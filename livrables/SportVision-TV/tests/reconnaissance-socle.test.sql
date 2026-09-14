@@ -123,13 +123,11 @@ begin
     values (v_ext, v_club, v_saison, v_staff, 'parent', 'texte-v1-14-09-2026', 'accorde', now());
   insert into visages_reference (player_id, empreinte, modele, origine)
     values (v_ext, emp, 'essai-navigateur-v1', 'club');
-  insert into visages_detectes (asset_id, empreinte, modele)
-    values (v_photo, emp, 'essai-navigateur-v1');
-
+  -- v225 — Aucune empreinte de visage de galerie n'est conservee : on compare a la volee.
   perform pg_temp.incarner(v_staff);
-  select count(*) into n from visage_rapprocher(v_photo) where player_id = v_ext;
+  select count(*) into n from visage_rapprocher_direct(v_photo, emp, 'essai-navigateur-v1') where player_id = v_ext;
   if n <> 0 then e := e || 'un joueur d une autre equipe est propose'::text; end if;
-  select count(*) into n from visage_rapprocher(v_photo) where player_id = v_lina and certain;
+  select count(*) into n from visage_rapprocher_direct(v_photo, emp, 'essai-navigateur-v1') where player_id = v_lina;
   if n <> 1 then e := e || format('le joueur de l equipe n est pas reconnu : %s', n); end if;
 
   -- ══ 5. UN CONSENTEMENT RETIRÉ SORT DU RAPPROCHEMENT ══════════════════════
@@ -142,7 +140,7 @@ begin
   v_res := retirer_consentement_biometrie(v_lina);
 
   perform pg_temp.incarner(v_staff);
-  select count(*) into n from visage_rapprocher(v_photo) where player_id = v_lina;
+  select count(*) into n from visage_rapprocher_direct(v_photo, emp, 'essai-navigateur-v1') where player_id = v_lina;
   if n <> 0 then e := e || 'un joueur dont le consentement est retire reste propose'::text; end if;
 
   -- ══ 6. LE RETRAIT EFFACE L'EMPREINTE ET LES MARQUAGES MACHINE ════════════
@@ -153,6 +151,14 @@ begin
   if n <> 0 then e := e || 'les marquages de la machine survivent au retrait'::text; end if;
   select count(*) into n from media_player_tags where player_id = v_sacha and source = 'humain';
   if n <> 1 then e := e || 'un marquage humain a ete efface par le retrait d une AUTRE famille'::text; end if;
+
+  -- ══ 6bis. AUCUNE EMPREINTE DE GALERIE N'EST CONSERVEE (v225) ═════════════
+  -- Le texte de consentement promet aux parents que les visages des autres enfants ne sont jamais
+  -- enregistres. La table qui les gardait ne doit donc plus exister du tout.
+  perform pg_temp.serveur();
+  select count(*) into n from information_schema.tables
+   where table_schema = 'public' and table_name = 'visages_detectes';
+  if n <> 0 then e := e || 'la table des visages de galerie existe encore'::text; end if;
 
   -- ══ 7. PERSONNE NE LIT CES TABLES EN DIRECT ══════════════════════════════
   perform pg_temp.incarner(v_staff);

@@ -13034,20 +13034,25 @@ async function recoCalculerReferences(joueurs,onAvance){
   return faits;
 }
 
-/** Enregistre les visages trouvés sur une photo, puis rapproche et marque. */
+/** Rapproche chaque visage d'une photo, et marque. AUCUNE empreinte de galerie n'est conservée.
+ *
+ *  C'est ce que le texte de consentement promet aux parents : « les visages des autres enfants
+ *  présents sur une photo ne sont jamais enregistrés ». L'empreinte ne quitte ce navigateur que le
+ *  temps d'une comparaison ; il ne reste en base que le résultat. */
 async function recoTraiterPhoto(assetId,visages){
   if(!visages||!visages.length)return 0;
-  for(const v of visages){
-    await sbFetch('rpc/visage_detecte_ajouter',{method:'POST',body:{
-      p_asset_id:assetId,p_empreinte:'['+v.empreinte.join(',')+']',p_modele:RECO_CFG.modele,
-      p_boite:v.boite,p_qualite:v.qualite}});
-  }
-  const props=await sbFetch('rpc/visage_rapprocher',{method:'POST',body:{p_asset_id:assetId,p_seuil:RECO_CFG.seuilPropose}});
-  if(sbErr(props)||!Array.isArray(props))return 0;
   let marques=0;
-  for(const c of props){
+  const dejaVus=new Set();
+  for(const v of visages){
+    const props=await sbFetch('rpc/visage_rapprocher_direct',{method:'POST',body:{
+      p_asset_id:assetId,p_empreinte:'['+v.empreinte.join(',')+']',
+      p_modele:RECO_CFG.modele,p_seuil:RECO_CFG.seuilPropose}});
+    if(sbErr(props)||!Array.isArray(props)||!props.length)continue;
+    // Le plus proche seulement : deux visages d'une même photo ne désignent pas la même personne.
+    const c=props[0];
+    if(dejaVus.has(c.player_id))continue;
+    dejaVus.add(c.player_id);
     const d=Number(c.distance);
-    if(!(d<RECO_CFG.seuilPropose))continue;
     const rep=await sbFetch('rpc/marquer_par_reconnaissance',{method:'POST',body:{
       p_asset_id:assetId,p_player_id:c.player_id,p_distance:d,p_modele:RECO_CFG.modele,
       p_certain:d<RECO_CFG.seuilCertain}});
