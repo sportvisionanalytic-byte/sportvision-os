@@ -12905,6 +12905,17 @@ async function _galTraiterFichier(entry){
       preview_watermarked:filigrane,
     }});
     if(sbErr(fin)){setEtat('erreur','Finalisation : '+(msgErreur(fin,'échec')));return;}
+
+    // L'image est encore décodée en mémoire : c'est le seul moment où l'identification ne coûte
+    // aucun téléchargement. Elle ne doit jamais faire échouer un versement — la photo est livrée
+    // quoi qu'il arrive, quitte à être marquée à la main ensuite.
+    try{
+      if(_galRecoActive){
+        setEtat('traitement','Identification…');
+        await recoTraiterPhoto(assetId,await recoVisagesDe(bitmap));
+      }
+    }catch(e){/* la galerie prime sur la reconnaissance */}
+
     setEtat('termine','');
   }catch(e){
     setEtat('erreur',(e&&e.message)||'Traitement impossible (image illisible ?)');
@@ -12913,8 +12924,196 @@ async function _galTraiterFichier(entry){
   }
 }
 
+
+// ══ RECONNAISSANCE DES VISAGES ══════════════════════════════════════════════
+//
+// POURQUOI ICI, ET PAS SUR UN SERVEUR. Le responsable production verse les photos depuis ce poste :
+// à cet instant précis, l'image est déjà décodée en mémoire pour y poser le filigrane. Calculer
+// l'empreinte des visages au même moment ne coûte AUCUN téléchargement et aucun serveur. C'est le
+// même choix que le filigrane, pour la même raison.
+//
+// CE QUI SORT D'ICI : des empreintes, jamais des images. Une empreinte de 128 nombres ne permet pas
+// de reconstituer un visage ; c'est cette minimisation qui rend le traitement défendable.
+//
+// CE QUI NE SE FAIT PAS SANS ACCORD : un joueur dont le parent n'a pas donné son consentement
+// n'entre jamais dans le rapprochement. La base le vérifie aussi (v222/v224) — ici, on évite
+// surtout de charger 12 Mo de modèle pour rien.
+//
+// EN CAS DE PÉPIN, ON NE BLOQUE RIEN. La reconnaissance est un confort : si le modèle ne se charge
+// pas, si le navigateur est trop lent, si un visage n'est pas trouvé, le versement se termine
+// normalement et les photos sont livrées. Elles seront simplement à marquer à la main.
+const RECO_CFG={
+  lib:'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js',
+  modeles:SB_URL+'/storage/v1/object/public/modeles-reconnaissance/face-api-1.7.15',
+  // Le nom du modèle voyage avec chaque empreinte : deux empreintes de modèles différents ne se
+  // comparent pas, et le jour où l'on changera de moteur il faudra savoir lesquelles recalculer.
+  modele:'face-api-1.7.15-ssd128',
+  // Distance euclidienne entre deux empreintes. 0,6 est le seuil usuel de cette bibliothèque ;
+  // on marque automatiquement bien en dessous, parce qu'un faux positif ici, c'est la photo d'un
+  // enfant envoyée à la famille d'un autre. Entre les deux, la machine propose et un humain tranche.
+  seuilCertain:0.42,
+  seuilPropose:0.55,
+  // Les visages minuscules d'un fond de terrain ne donnent rien de fiable.
+  scoreMin:0.6,
+};
+let _recoModule=null,_recoCharge=null;
+
+/** Charge la bibliothèque et les trois modèles, une seule fois par session. */
+function recoPreparer(){
+  if(_recoCharge)return _recoCharge;
+  _recoCharge=(async()=>{
+    if(!window.faceapi){
+      await new Promise((res,rej)=>{
+        const sc=document.createElement('script');
+        sc.src=RECO_CFG.lib;sc.onload=res;sc.onerror=()=>rej(new Error('bibliothèque indisponible'));
+        document.head.appendChild(sc);
+      });
+    }
+    const fa=window.faceapi;
+    try{await fa.tf.setBackend('webgl');}catch(e){/* le processeur fera l'affaire, plus lentement */}
+    await fa.tf.ready();
+    await fa.nets.ssdMobilenetv1.loadFromUri(RECO_CFG.modeles);
+    await fa.nets.faceLandmark68Net.loadFromUri(RECO_CFG.modeles);
+    await fa.nets.faceRecognitionNet.loadFromUri(RECO_CFG.modeles);
+    _recoModule=fa;
+    return fa;
+  })().catch(e=>{_recoCharge=null;throw e;});
+  return _recoCharge;
+}
+
+/** Les visages d'une image déjà décodée : empreinte, cadre, qualité. */
+async function recoVisagesDe(source){
+  const fa=await recoPreparer();
+  const res=await fa.detectAllFaces(source).withFaceLandmarks().withFaceDescriptors();
+  return (res||[]).filter(d=>(d.detection&&d.detection.score||0)>=RECO_CFG.scoreMin).map(d=>({
+    empreinte:Array.from(d.descriptor),
+    boite:{x:+(d.detection.box.x/source.width).toFixed(4),y:+(d.detection.box.y/source.height).toFixed(4),
+           l:+(d.detection.box.width/source.width).toFixed(4),h:+(d.detection.box.height/source.height).toFixed(4)},
+    qualite:+(d.detection.score.toFixed(3)),
+  }));
+}
+
+/** Y a-t-il quelqu'un à reconnaître dans cette galerie ? Sinon on ne charge rien. */
+async function recoJoueursPrets(albumId){
+  const r=await sbFetch('rpc/reconnaissance_joueurs_prets',{method:'POST',body:{p_album_id:albumId}});
+  return sbErr(r)?[]:(Array.isArray(r)?r:[]);
+}
+
+/** Une URL signée pour lire un fichier du bucket privé (les photos de référence). */
+async function _recoUrlSignee(bucket,chemin){
+  const tok=localStorage.getItem('sv_tok')||'';
+  const r=await fetch(SB_URL+'/storage/v1/object/sign/'+bucket+'/'+encodeURI(chemin),{
+    method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+    body:JSON.stringify({expiresIn:600}),
+  });
+  if(!r.ok)return null;
+  const d=await r.json().catch(()=>null);
+  return d&&d.signedURL?SB_URL+'/storage/v1'+d.signedURL:null;
+}
+
+/** Calcule les empreintes de référence manquantes, à partir des photos déposées par les familles. */
+async function recoCalculerReferences(joueurs,onAvance){
+  let faits=0;
+  for(const j of joueurs){
+    if(j.a_une_empreinte||!j.chemin_photo)continue;
+    try{
+      const url=await _recoUrlSignee('sportvision-media-prive',j.chemin_photo);
+      if(!url)continue;
+      const blob=await (await fetch(url)).blob();
+      const bmp=await createImageBitmap(blob,{imageOrientation:'from-image'});
+      const visages=await recoVisagesDe(bmp);
+      if(bmp.close)bmp.close();
+      // Une photo de référence doit montrer UN visage. Deux, et on ne sait pas lequel est l'enfant.
+      if(visages.length!==1)continue;
+      const rep=await sbFetch('rpc/visage_reference_ajouter',{method:'POST',body:{
+        p_player_id:j.player_id,p_empreinte:'['+visages[0].empreinte.join(',')+']',p_modele:RECO_CFG.modele}});
+      if(!sbErr(rep)){faits++;j.a_une_empreinte=true;}
+    }catch(e){/* une référence illisible ne fait pas échouer les autres */}
+    if(onAvance)onAvance(j,faits);
+  }
+  return faits;
+}
+
+/** Enregistre les visages trouvés sur une photo, puis rapproche et marque. */
+async function recoTraiterPhoto(assetId,visages){
+  if(!visages||!visages.length)return 0;
+  for(const v of visages){
+    await sbFetch('rpc/visage_detecte_ajouter',{method:'POST',body:{
+      p_asset_id:assetId,p_empreinte:'['+v.empreinte.join(',')+']',p_modele:RECO_CFG.modele,
+      p_boite:v.boite,p_qualite:v.qualite}});
+  }
+  const props=await sbFetch('rpc/visage_rapprocher',{method:'POST',body:{p_asset_id:assetId,p_seuil:RECO_CFG.seuilPropose}});
+  if(sbErr(props)||!Array.isArray(props))return 0;
+  let marques=0;
+  for(const c of props){
+    const d=Number(c.distance);
+    if(!(d<RECO_CFG.seuilPropose))continue;
+    const rep=await sbFetch('rpc/marquer_par_reconnaissance',{method:'POST',body:{
+      p_asset_id:assetId,p_player_id:c.player_id,p_distance:d,p_modele:RECO_CFG.modele,
+      p_certain:d<RECO_CFG.seuilCertain}});
+    if(!sbErr(rep))marques++;
+  }
+  return marques;
+}
+
+/** Rattrapage : reprend une galerie déjà versée, en retéléchargeant ses originaux. */
+async function recoReprendreGalerie(albumId){
+  const joueurs=await recoJoueursPrets(albumId);
+  if(!joueurs.length){
+    toast('Aucun sportif de cette équipe n’a autorisé la reconnaissance.','wa');
+    return;
+  }
+  const photos=(await sbFetch('media_assets?select=id,original_path&album_id=eq.'+albumId+'&status=eq.ready&order=position')||[]);
+  if(sbErr(photos)||!photos.length){toast('Aucune photo prête dans cette galerie.','wa');return;}
+
+  openModal('<div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:10px">Identification en cours</div>'+
+    '<div id="reco-avance" style="font-size:13px;color:var(--t2);line-height:1.6">Chargement du modèle…</div>');
+  const dire=(t)=>{const el=document.getElementById('reco-avance');if(el)el.textContent=t;};
+  try{
+    await recoPreparer();
+    dire('Lecture des photos de référence…');
+    await recoCalculerReferences(joueurs);
+    let marques=0;
+    for(let i=0;i<photos.length;i++){
+      dire('Photo '+(i+1)+' sur '+photos.length+'…');
+      try{
+        const url=await _recoUrlSignee('sportvision-media-prive',photos[i].original_path);
+        if(!url)continue;
+        const bmp=await createImageBitmap(await (await fetch(url)).blob(),{imageOrientation:'from-image'});
+        const visages=await recoVisagesDe(bmp);
+        if(bmp.close)bmp.close();
+        marques+=await recoTraiterPhoto(photos[i].id,visages);
+      }catch(e){/* une photo illisible n'arrête pas le lot */}
+    }
+    closeModal();
+    toast(marques+' identification'+(marques>1?'s':'')+' sur '+photos.length+' photo'+(photos.length>1?'s':'')+'.','ok');
+  }catch(e){
+    closeModal();
+    toast('Identification impossible : '+((e&&e.message)||'modèle indisponible')+'. Les photos restent à marquer à la main.','er');
+  }
+}
+
 /** File d'attente à parallélisme borné : `concurrence` fichiers à la fois, pas plus. */
+// Vrai seulement si ce lot peut etre identifie : des sportifs ont donne leur accord, le modele
+// s'est charge, et leurs empreintes de reference sont pretes. Sans cela on ne telecharge rien.
+let _galRecoActive=false;
+
+/** Prepare l'identification avant un lot. Silencieuse : elle n'interrompt jamais un versement. */
+async function _galPreparerReco(){
+  _galRecoActive=false;
+  try{
+    if(!_galAlbum||!_galAlbum.id)return;
+    const joueurs=await recoJoueursPrets(_galAlbum.id);
+    if(!joueurs.length)return;              // personne n'a donne son accord : rien a charger
+    await recoPreparer();
+    await recoCalculerReferences(joueurs);
+    // Au moins une empreinte de reference, sinon il n'y a rien a quoi comparer.
+    _galRecoActive=joueurs.some(j=>j.a_une_empreinte);
+  }catch(e){_galRecoActive=false;}
+}
+
 async function _galLancerQueue(){
+  await _galPreparerReco();
   const pending=()=>_galQueue.filter(e=>e.etat==='attente');
   const workers=[];
   for(let i=0;i<GAL_MEDIA_CFG.concurrence;i++){
@@ -12931,7 +13130,8 @@ async function _galLancerQueue(){
   await _galChargerAssets();
   const ko=_galQueue.filter(e=>e.etat==='erreur').length;
   const ok=_galQueue.filter(e=>e.etat==='termine').length;
-  toast(ok+' photo'+(ok>1?'s':'')+' ajoutée'+(ok>1?'s':'')+(ko?' · '+ko+' en échec':''),ko?'error':'ok');
+  toast(ok+' photo'+(ok>1?'s':'')+' ajoutée'+(ok>1?'s':'')+(ko?' · '+ko+' en échec':'')
+    +(_galRecoActive?' · sportifs identifiés':''),ko?'error':'ok');
 }
 
 function _galAjouterFichiers(fileList){
@@ -13246,6 +13446,10 @@ async function ouvrirGalerie(albumId){
         <div style="display:flex;gap:9px;flex-wrap:wrap">
           <button class="btn bg2 bs" style="min-height:40px" onclick="galTrierParDate()">Trier par date d’ajout</button>
           <button class="btn bg2 bs" style="min-height:40px" onclick="galRegenererApercus()">Régénérer les aperçus protégés</button>
+          <!-- 14/09/2026 — Rattrapage : une galerie versée avant que les familles n'aient donné
+               leur accord, ou versée depuis un poste où le modèle n'a pas pu se charger. Les
+               photos sont reprises une à une, sans rien perdre de ce qui existe. -->
+          <button class="btn bg2 bs" style="min-height:40px" onclick="recoReprendreGalerie(_galAlbum&&_galAlbum.id)">Identifier les sportifs</button>
         </div>
         <div id="gal-lien"></div>
       </div>
