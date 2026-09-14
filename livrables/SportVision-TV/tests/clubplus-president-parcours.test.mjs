@@ -27,8 +27,15 @@ import { rapporteur, SB, ANON, enTeteAdmin, jeton } from "./_session-os.mjs";
 
 const ENVOIS_REELS = process.env.ENVOIS_REELS === "1";
 const CLUB = "Villeneuve 340 SC";
-const EMAIL = `zz-president-${Date.now()}@example.invalid`;
-const MOTDEPASSE = "ZzPresident!2026-Test";
+// 14/09/2026 — Le meme parcours vaut pour un coach : c'est l'autre invitation qu'un club envoie en
+// nombre, et elle n'avait jamais ete cliquee de bout en bout. Plutot que de recopier ce fichier,
+// le role s'indique en variable d'environnement. Un coach recoit en plus une equipe : sans elle,
+// il entre dans un espace ou il n'a rien a voir, ce qui n'est pas le cas qu'on veut mesurer.
+//   ROLE_INVITE=coach node livrables/SportVision-TV/tests/clubplus-president-parcours.test.mjs
+const ROLE = process.env.ROLE_INVITE || "president";
+const ROLE_LIBELLE = { president: /pr[ée]sident/i, coach: /coach|entra[îi]neur/i }[ROLE] || new RegExp(ROLE, "i");
+const EMAIL = `zz-${ROLE}-${Date.now()}@example.invalid`;
+const MOTDEPASSE = "ZzParcours!2026-Test";
 const { t, bilan } = rapporteur();
 
 const api = (chemin, opts = {}) =>
@@ -52,18 +59,24 @@ const invitantEmail = (await (await authApi(`admin/users/${invitant.user_id}`)).
 const jetonInvitant = await jeton(invitantEmail);
 if (!jetonInvitant) { console.log("Jeton du dirigeant indisponible — test ignore."); process.exit(0); }
 
+// Un coach est invite SUR une equipe : c'est elle qui porte ses droits (is_team_educateur).
+const equipeInvitation = ROLE === "coach"
+  ? (await (await api(`club_teams?select=name&club_id=eq.${club.id}&order=name&limit=1`)).json())[0]?.name ?? null
+  : null;
+
 const prepare = await fetch(`${SB}/rest/v1/rpc/preparer_invitation_club`, {
   method: "POST",
   headers: { apikey: ANON, Authorization: `Bearer ${jetonInvitant.acces}`, "Content-Type": "application/json" },
   body: JSON.stringify({
-    p_club_id: club.id, p_email: EMAIL, p_role: "president",
-    p_prenom: "ZZ", p_nom: "President", p_telephone: null, p_teams: [],
+    p_club_id: club.id, p_email: EMAIL, p_role: ROLE,
+    p_prenom: "ZZ", p_nom: ROLE === "coach" ? "Coach" : "President", p_telephone: null,
+    p_teams: equipeInvitation ? [equipeInvitation] : [],
   }),
 });
 t("l'invitation se prepare", prepare.status < 300, `HTTP ${prepare.status} — ${(await prepare.text()).slice(0, 140)}`);
 
 const invit = (await (await api(`club_invitations?select=token,role,statut&email=eq.${encodeURIComponent(EMAIL)}`)).json())[0];
-t("elle porte bien le role president", invit?.role === "president", JSON.stringify(invit || {}));
+t(`elle porte bien le role ${ROLE}`, invit?.role === ROLE, JSON.stringify(invit || {}));
 if (!invit?.token) { console.log("Pas de jeton — arret."); process.exit(bilan() ? 1 : 0); }
 
 const navigateur = await chromium.launch();
@@ -79,8 +92,11 @@ try {
   await page.goto(`${CP}/clubplus/rejoindre?token=${invit.token}`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(7000);
   const accueil = (await page.evaluate(() => document.body.innerText)) || "";
-  t("le lien annonce le club et le role", accueil.includes(CLUB) && /pr[ée]sident/i.test(accueil),
+  t("le lien annonce le club et le role", accueil.includes(CLUB) && ROLE_LIBELLE.test(accueil),
     accueil.slice(0, 160));
+  if (equipeInvitation) {
+    t("et l'equipe sur laquelle il est attendu", accueil.includes(equipeInvitation), accueil.slice(0, 200));
+  }
 
   // ── La creation du compte ─────────────────────────────────────────────────
   // signUp() intercepte (voir en-tete) : la reponse imite celle de Supabase quand l'adresse reste a
@@ -143,7 +159,7 @@ try {
   await page.locator("button", { hasText: /Se connecter et rejoindre/i }).first().click();
   await page.waitForTimeout(13000);
 
-  t("le president arrive dans l'espace du club", /dashboard|clubplus/.test(page.url()) && !/rejoindre/.test(page.url()),
+  t(`le ${ROLE} arrive dans l'espace du club`, /dashboard|clubplus/.test(page.url()) && !/rejoindre/.test(page.url()),
     page.url().replace(CP, ""));
   const bureau = (await page.evaluate(() => document.body.innerText)) || "";
   t("l'espace affiche bien SON club", bureau.includes(CLUB), bureau.slice(0, 160));
@@ -160,7 +176,7 @@ try {
   // ── Chaque entree du menu ─────────────────────────────────────────────────
   const entrees = await page.evaluate(() =>
     [...document.querySelectorAll("nav a, aside a")].map((a) => a.textContent.trim()).filter(Boolean));
-  t("le menu du president est renseigne", entrees.length >= 4, `${entrees.length} entree(s) : ${entrees.join(" | ")}`);
+  t(`le menu du ${ROLE} est renseigne`, entrees.length >= 4, `${entrees.length} entree(s) : ${entrees.join(" | ")}`);
   console.log(`       menu : ${entrees.join(" | ")}`);
 
   const casses = [];
@@ -179,13 +195,13 @@ try {
       casses.push(`${entree}${enErreur ? " (erreur affichee)" : ""}${vide ? " (page vide)" : ""}${deborde ? " (deborde)" : ""}`);
     }
   }
-  t(`les ${entrees.length} ecrans du president s'ouvrent sans erreur`, casses.length === 0, casses.join("\n       "));
+  t(`les ${entrees.length} ecrans du ${ROLE} s'ouvrent sans erreur`, casses.length === 0, casses.join("\n       "));
 
   // ── Son perimetre, mesure en base ─────────────────────────────────────────
   if (compteId) {
     const membre = (await (await api(`club_members?select=club_id,role,status&user_id=eq.${compteId}`)).json());
     t("il est membre du bon club, avec le bon role",
-      membre?.length === 1 && membre[0].club_id === club.id && membre[0].role === "president" && membre[0].status === "actif",
+      membre?.length === 1 && membre[0].club_id === club.id && membre[0].role === ROLE && membre[0].status === "actif",
       JSON.stringify(membre || []));
   }
 
