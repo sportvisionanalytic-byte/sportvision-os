@@ -6260,8 +6260,12 @@ async function chargerLiensMission(prestationId,elId){
   if(!el||!prestationId)return;
   const liens=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,statut,transfert_confirme,commentaire,created_at,ajouteur:profiles!ajouteur_id(prenom,nom)&prestation_id=eq.'+prestationId+'&order=created_at.asc').catch(()=>null);
   if(!Array.isArray(liens)){el.innerHTML='<div style="color:var(--er)">Erreur de chargement.</div>';return;}
+  // Recu par message prive, comme il arrive : la Production le depose elle-meme plutot que de
+  // laisser la mission vide. L'ajouteur enregistre est alors celui qui saisit, pas l'operateur —
+  // le lien reste attribue a qui l'a reellement pose dans l'outil.
+  const ajouter = `<button class="btn bg2 bs" style="align-self:flex-start;margin-top:4px" onclick="modalAutreLien('${escJs(prestationId)}','fiche')">+ Ajouter un lien reçu</button>`;
   if(!liens.length){
-    el.innerHTML='<div style="color:var(--t3)">Aucun lien déposé pour l\'instant. Les opérateurs les déposent depuis leur mission, écran « Livrer ».</div>';
+    el.innerHTML='<div style="color:var(--t3);margin-bottom:8px">Aucun lien déposé pour l\'instant. Les opérateurs les déposent depuis leur mission, écran « Livrer » — ou déposez ici celui qu\'on vous a envoyé.</div>'+ajouter;
     return;
   }
   const aVerifier=liens.filter(l=>(l.statut||'a_verifier')==='a_verifier').length;
@@ -6276,6 +6280,7 @@ async function chargerLiensMission(prestationId,elId){
       ${url?`<a href="${esc(url)}" target="_blank" rel="noopener" class="btn bg2 bs" style="padding:2px 9px;font-size:10.5px">Ouvrir</a>`:''}
     </div>${l.statut==='correction_demandee'&&l.commentaire?`<div style="font-size:11px;color:var(--er);padding-left:2px">${esc(l.commentaire)}</div>`:''}`;
   }).join('')
+  +ajouter
   +(aVerifier?`<button class="btn bp bs" style="align-self:flex-start;margin-top:9px" onclick="closeModal();modalVerifierLivraison('${escJs(prestationId)}')">🔍 Vérifier la livraison (${aVerifier} à contrôler)</button>`:'');
 }
 
@@ -32134,7 +32139,7 @@ async function libererCartes(prestationId){
 //
 // Aucune nouvelle exigence : ces liens n'ajoutent rien a ce qui est demande pour valider la
 // mission. Ils s'ajoutent a ce qu'elle porte, et la Production les relit comme les autres.
-function modalAutreLien(prestationId){
+function modalAutreLien(prestationId,retour){
   const TYPES=[['photo','Photos'],['video','Vidéo'],['drone','Drone'],['veo','Veo'],['audio','Audio'],['graphisme','Graphisme'],['document','Document'],['autre','Autre']];
   openModal(`<div class="mh"><div class="mt">Ajouter un lien</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
   <div class="mb" style="padding:20px">
@@ -32152,11 +32157,11 @@ function modalAutreLien(prestationId){
       <span style="font-size:12.5px;color:var(--t1)">Mes fichiers sont copiés et vérifiés, le transfert est terminé.</span>
     </label>
     <div id="al-err" style="font-size:12px;color:var(--er);margin-bottom:10px"></div>
-    <button class="btn bp" style="width:100%;min-height:44px" onclick="enregistrerAutreLien('${escJs(prestationId)}')">Enregistrer le lien</button>
+    <button class="btn bp" style="width:100%;min-height:44px" onclick="enregistrerAutreLien('${escJs(prestationId)}','${escJs(retour||'')}')">Enregistrer le lien</button>
   </div>`);
 }
 
-async function enregistrerAutreLien(prestationId){
+async function enregistrerAutreLien(prestationId,retour){
   const err=document.getElementById('al-err');
   const nom=(document.getElementById('al-nom')?.value||'').trim();
   const url=(document.getElementById('al-url')?.value||'').trim();
@@ -32173,6 +32178,9 @@ async function enregistrerAutreLien(prestationId){
   if(Array.isArray(r)&&r.length===0){if(err)err.textContent='Refusé : cette mission n\'est pas la vôtre.';return;}
   closeModal();
   toast('Lien ajouté.','ok');
+  // 15/09/2026 — Fouka depose lui-meme les liens que ses operateurs lui ont envoyes « en prive ».
+  // Il part alors de la FICHE de la mission, pas de l'ecran operateur : on le ramene d'ou il vient.
+  if(retour==='fiche'){ if(typeof loadPrestations==='function')loadPrestations(); return; }
   modalSauvegarde(prestationId);
 }
 
