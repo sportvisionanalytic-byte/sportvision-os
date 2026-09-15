@@ -49,7 +49,10 @@ const ROLE_LABELS: Record<string, string> = {
   directeur_sportif: "Directeur sportif",
   president: "Président",
   secretaire: "Secrétaire",
-  comm: "Responsable communication",
+  // 15/09/2026 — Aligne sur le nom porte partout ailleurs : c'est ce role qui fait le travail du
+  // CM SportVision pour son club. L'invite doit lire dans son e-mail le meme intitule que celui
+  // choisi au moment de l'inviter.
+  comm: "Community manager du club",
   tresorier: "Trésorier",
   membre_bureau: "Membre du bureau",
   administratif: "Administratif",
