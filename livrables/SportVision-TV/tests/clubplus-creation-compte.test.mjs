@@ -398,7 +398,7 @@ try {
       const ROLES = [
         ["coach", "Coach"], ["resp_equipe", "Responsable d'équipe"], ["directeur_sportif", "Directeur sportif"],
         ["president", "Président"], ["secretaire", "Secrétaire"], ["tresorier", "Trésorier"],
-        ["comm", "Responsable communication"], ["membre_bureau", "Membre du bureau"], ["administratif", "Administratif"],
+        ["comm", "Community manager du club"], ["membre_bureau", "Membre du bureau"], ["administratif", "Administratif"],
         ["sponsor_mgr", "Responsable sponsors"], ["lecture_seule", "Lecture seule"],
       ];
       for (const [role, libelle] of ROLES) await scenario(`A ${role}`, async () => {

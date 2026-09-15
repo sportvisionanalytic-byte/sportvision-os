@@ -71,7 +71,10 @@ export const ROLE_LABELS: Record<string, string> = {
   owner: "Propriétaire du compte Club+",
   admin: "Administrateur du club",
   president: "Président",
-  communication_manager: "Responsable communication",
+  // 15/09/2026 — Renomme : ce role fait le travail du CM SportVision pour son club (v234/v236),
+  // pas seulement « responsable de la communication ». Le nom doit dire ce qu'il est, sur la page
+  // d'invitation comme dans la liste des membres.
+  communication_manager: "Community manager du club",
   secretary: "Secrétaire",
   coach: "Coach",
   team_manager: "Responsable d'équipe",

@@ -767,7 +767,7 @@ const ROLES_DIRIGEANTS = [
   { value: "secretaire", label: "Secrétaire" },
   { value: "tresorier", label: "Trésorier" },
   { value: "directeur_sportif", label: "Directeur sportif" },
-  { value: "comm", label: "Responsable communication" },
+  { value: "comm", label: "Community manager du club" },
   { value: "membre_bureau", label: "Membre du bureau" },
   { value: "administratif", label: "Administratif" },
 ] as const;
