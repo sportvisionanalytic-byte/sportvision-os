@@ -866,6 +866,12 @@ const NAV={
     {id:'poles',lb:'Pôles',ic:'target'},
     {id:'planning',lb:'Planning',ic:'cal'},
     {id:'pre',lb:'Prestations',ic:'pre'},
+    // 14/09/2026 — Fouka : « dans mission je ne vois pas le truc dans livrables alors que mes
+    // photographes m'ont dit qu'ils ont mis les liens ». L'ecran de controle des livrables
+    // existait, fonctionnait, et n'etait dans AUCUN menu d'administrateur : il n'appartenait
+    // qu'au role Production. Fouka, toujours connecte en admin, ne pouvait pas l'ouvrir.
+    // Meme correction que pour les ecrans compta detailles plus bas dans ce fichier.
+    {id:'livr',lb:'Livraisons',ic:'check'},
     {type:'sep',lb:'Clients & Ventes'},
     // Refonte nav 28/08 : 3 modules distincts (Full Com / Club+ / Connect) au lieu d'une
     // liste unique mélangeant tous les `clients` — cf. spec "Refonte des fiches clients".
@@ -5718,7 +5724,7 @@ async function loadViewData(role,view){
     setMediaTab(onglet);
   }
   if(role==='prod'&&view==='post') await loadProdPostprod();
-  if(role==='prod'&&view==='livr'){await loadProdLivrMissions();await loadProdLivrables();}
+  if((role==='prod'||role==='admin')&&view==='livr'){await loadProdLivrMissions();await loadProdLivrables();}
   if(role==='prod'&&view==='kanban') await loadKanban();
   // prod.form uses loadForm() — see line below
   if(role==='prod'&&view==='rapports') await loadProdRapport('prestations');
@@ -37023,6 +37029,11 @@ VIEWS['expert_comptable.fec']=VIEWS['compta.fec'];
 ['resultat','rentabilite','commissions','budgets','rapprochement','factures','acomptes','impayes','avoirs','encaissements','depenses','frais','paiements','rem','clotures','export','tva','fec','audit','immobilisations'].forEach(v=>{
   if(VIEWS['compta.'+v]) VIEWS['admin.'+v]=VIEWS['compta.'+v];
 });
+
+// L'ecran « Livraisons » (controle des livrables avant diffusion) n'existait que pour le role
+// Production. Un administrateur n'avait aucun moyen d'ouvrir la relecture des liens deposes par
+// ses operateurs — meme raisonnement que pour les ecrans compta juste au-dessus.
+if(VIEWS['prod.livr']) VIEWS['admin.livr']=VIEWS['prod.livr'];
 
 const _svp_origLoadViewData=loadViewData;
 loadViewData=async function(role,view){

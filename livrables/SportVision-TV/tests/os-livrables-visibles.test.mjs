@@ -52,16 +52,17 @@ try {
   // ── 1. La Production voit la mission et son lien ──
   const admin = (await sql(`select id, email, prenom, role from profiles where role='admin' and actif order by created_at limit 1`))[0];
   const P = await ouvrirOS(nav, admin, { largeur: 1440, hauteur: 900 });
-  await P.page.evaluate(() => window.switchView && window.switchView("livraisons"));
-  await attendre(4000);
-  let vu = await P.page.evaluate(() => document.body.innerText);
-  if (!vu.includes(REFP)) {   // l'ecran peut porter un autre nom de vue selon le menu
-    await P.page.evaluate(() => window.loadProdLivrMissions && window.loadProdLivrMissions());
-    await attendre(3500);
-    vu = await P.page.evaluate(() => document.body.innerText);
-  }
+  // « Livraisons » doit d'abord EXISTER dans le menu de l'administrateur : c'est ce qui manquait.
+  const dansLeMenu = await P.page.evaluate(() => {
+    const nav = document.querySelector("nav, .nav, aside");
+    return !!(nav && /Livraisons/.test(nav.innerText));
+  });
+  t("admin : « Livraisons » figure dans son menu", dansLeMenu);
+  await P.page.evaluate(() => window.switchView && window.switchView("livr"));
+  await attendre(5000);
+  const vu = await P.page.evaluate(() => document.body.innerText);
   t("Production : la mission encore en « médias à transférer » est visible", vu.includes(REFP),
-    vu.replace(/\s+/g, " ").slice(0, 120));
+    vu.replace(/\s+/g, " ").slice(0, 140));
   t("Production : le lien déposé y figure", /Photos traitées/.test(vu));
   await P.page.context().close();
 
