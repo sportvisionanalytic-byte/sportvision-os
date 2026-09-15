@@ -5870,6 +5870,21 @@ const SC={'confirmée':'ba','planifiée':'ba','prête':'ba','prête_à_livrer':'
 
 let _prestationsCache=[];
 let _missionPreteMap={};
+// Missions portant des liens que la Production n'a pas encore relus (15/09/2026).
+let _missionAVerifierMap={};
+// Les etapes de post-production : tant que la mission y est ET qu'un lien attend un controle,
+// c'est la Production qui tient la balle, et l'ecran doit le dire.
+const ST_POSTPROD=['production_terminée','médias_à_transférer','médias_complets','à_monter','montage_en_cours','prêt_validation'];
+// Le libelle qui dit qui attend quoi. Le statut REEL de la prestation n'est pas touche : on ne
+// fait pas avancer un dossier a la place de quelqu'un, on cesse d'afficher l'etape d'avant.
+function libelleEtatMission(p){
+  const att=_missionAVerifierMap[p.id];
+  if(att&&ST_POSTPROD.includes(p.statut)){
+    if(att.correction)return['Correction demandée','br'];
+    return['En vérification (Production)','bw'];
+  }
+  return[SL[p.statut]||p.statut, SC[p.statut]||'bw'];
+}
 let _preFiltre='';
 let _preDateFiltre='';
 // Filtre multi-statuts (ex: KPI "Suivi de production" du dashboard, qui
@@ -5910,6 +5925,23 @@ async function loadPrestations(){
     _prestationsCache=data;
     // Badge "PRÊTE" (spec refonte Responsable Production §23) : réservé au
     // rôle prod, évite la charge de requête supplémentaire pour les autres.
+    // 15/09/2026, demande de Fouka : « ne plus mettre post-production, mais en cours de
+    // verification par moi, le responsable production ». Une mission dont un operateur a depose
+    // un lien n'est plus en post-production : elle attend une RELECTURE. Afficher « Medias a
+    // transferer » pendant que le montage dort dans la file du responsable, c'est afficher
+    // l'etape precedente et laisser croire que la balle est encore chez l'operateur.
+    //
+    // Une seule requete pour toute la liste, comme le badge PRETE juste en dessous.
+    _missionAVerifierMap={};
+    {
+      const att=await sbFetch('media_liens?select=prestation_id,statut&statut=in.(a_verifier,correction_demandee)').catch(()=>[]);
+      (Array.isArray(att)?att:[]).forEach(r=>{
+        if(!r.prestation_id)return;
+        const v=_missionAVerifierMap[r.prestation_id]||{a_verifier:0,correction:0};
+        if(r.statut==='a_verifier')v.a_verifier++; else v.correction++;
+        _missionAVerifierMap[r.prestation_id]=v;
+      });
+    }
     _missionPreteMap={};
     if(S.role==='prod'){
       const rdy=await sbFetch('v_mission_prete?select=prestation_id,operateur_confirme,brief_rempli,lieu_horaire_ok,kit_ok,pas_incident_ouvert').catch(()=>[]);
@@ -5975,7 +6007,7 @@ function renderPreTable(){
         <td style="font-size:11px;color:var(--t3)">${SOURCE_PRE_LBL[p.source]||p.source||'—'}</td>
         <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td class="tm">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-        <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>${S.role==='prod'&&_missionPreteMap[p.id]?' <span class="bd ba" title="Opérateur confirmé, brief rempli, lieu/horaire ok, kit ok, aucun incident ouvert" style="font-size:9.5px"><span class="bd-d"></span>✓ PRÊTE</span>':''}</td>
+        <td>${(()=>{const[lb,cls]=libelleEtatMission(p);return `<span class="bd ${cls}" title="${esc(SL[p.statut]||p.statut)}"><span class="bd-d"></span>${esc(lb)}</span>`;})()}${S.role==='prod'&&_missionPreteMap[p.id]?' <span class="bd ba" title="Opérateur confirmé, brief rempli, lieu/horaire ok, kit ok, aucun incident ouvert" style="font-size:9.5px"><span class="bd-d"></span>✓ PRÊTE</span>':''}</td>
         <td><span class="bd ${SF_CLS[p.statut_financier]||'bn'}" style="font-size:10px"><span class="bd-d"></span>${SF_LBL[p.statut_financier]||'—'}</span></td>
         <td style="display:flex;gap:4px;flex-wrap:wrap">
           <button onclick="modalDetailPrestation(${ri})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer;white-space:nowrap">Ouvrir</button>
@@ -6179,6 +6211,13 @@ function modalDetailPrestation(idx){
         <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Équipe affectée</div>
         <div id="pd-equipe-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
       </div>`:''}
+      ${(() => { const att=_missionAVerifierMap[p.id];
+        if(!att||!ST_POSTPROD.includes(p.statut))return '';
+        const n=att.a_verifier+att.correction;
+        return `<div style="background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.3);border-radius:var(--rc);padding:11px 13px;margin-bottom:14px;font-size:12.5px;color:var(--t1);line-height:1.5">
+          <b>${att.correction?'Correction demandée':'En vérification (Production)'}</b> — ${n} lien${n>1?'s':''} déposé${n>1?'s':''} ${att.correction?'dont une correction en attente':'attend'+(n>1?'ent':'')+' votre contrôle'}.
+          <span style="color:var(--t3)">L'étape « ${esc(SL[p.statut]||p.statut)} » reste celle du dossier ; la balle, elle, est de votre côté.</span>
+        </div>`; })()}
       <!-- 15/09/2026 — Fouka : « ils ont poste le lien sur la mission mais ca m'a pas mis en
            livrable ou en verification ». Les liens ETAIENT bien la, en base et dans l'ecran
            Livraisons. Mais la fiche de la mission — l'endroit ou l'on regarde quand on parle
