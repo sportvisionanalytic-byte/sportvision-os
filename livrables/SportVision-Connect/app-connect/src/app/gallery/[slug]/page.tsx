@@ -26,8 +26,19 @@ import { GalleryPasswordGate } from "./GalleryPasswordGate";
 // "/gallery" est déclaré dans PUBLIC_PATHS (src/lib/supabase/middleware.ts), sans quoi le
 // middleware redirigerait chaque visiteur vers /auth/login.
 
+// 15/09/2026 — « Un coach m'a dit que la galerie ne marche pas, la galerie de Creil, le lien
+// n'existe plus » (Fouka). La galerie de Creil marchait : 41 photos, deux formules, lien actif.
+// Ce que le coach avait ouvert, c'est le lien AMPUTÉ de son jeton — recopié sans la fin. Et la
+// page lui répondait « Cette galerie n'existe plus ».
+//
+// Le texte en dessous disait déjà la vérité (« ce lien est incomplet »), mais personne ne lit le
+// second paragraphe quand le titre a déjà tranché. Un titre qui affirme la disparition de ce qui
+// existe envoie le club appeler SportVision, et fait perdre une vente.
+//
+// On sépare donc les deux cas, et sans rien demander à la base : un lien SANS jeton ne peut pas
+// être un lien périmé, c'est forcément un lien tronqué.
 const RAISON_TITRE: Record<GalleryDenial, string> = {
-  introuvable: "Cette galerie n'existe plus",
+  introuvable: "Ce lien ne fonctionne pas",
   desactive: "Cette galerie n'est plus disponible",
   expire: "Cette galerie a expiré",
   non_publie: "Cette galerie n'est pas encore ouverte",
@@ -102,7 +113,7 @@ export default async function GalleryPage({
   }
 
   if (!result.ok) {
-    return <GalleryClosed raison={result.raison} />;
+    return <GalleryClosed raison={result.raison} sansJeton={token.trim() === ""} />;
   }
 
   // Première page rendue côté serveur : le visiteur voit des photos immédiatement, sans attendre
@@ -126,7 +137,13 @@ export default async function GalleryPage({
   );
 }
 
-function GalleryClosed({ raison }: { raison: GalleryDenial }) {
+function GalleryClosed({ raison, sansJeton = false }: { raison: GalleryDenial; sansJeton?: boolean }) {
+  // Lien coupé : on le dit tel quel, et on montre à quoi ressemble la fin qui manque. C'est la
+  // seule chose que le visiteur peut corriger lui-même.
+  const titre = sansJeton && raison === "introuvable" ? "Il manque la fin de ce lien" : RAISON_TITRE[raison];
+  const texte = sansJeton && raison === "introuvable"
+    ? "Le lien d'une galerie se termine par « ?k= » suivi d'une suite de lettres et de chiffres. Sans elle, les photos ne peuvent pas s'ouvrir. Recopiez le lien en entier, ou redemandez-le à la personne qui vous l'a envoyé."
+    : RAISON_TEXTE[raison];
   return (
     <div
       className="flex min-h-screen flex-col items-center justify-center bg-bg px-6 text-center text-text"
@@ -141,8 +158,8 @@ function GalleryClosed({ raison }: { raison: GalleryDenial }) {
           Galerie
         </span>
       </div>
-      <h1 className="mt-6 font-sora text-[22px] font-extrabold tracking-tight">{RAISON_TITRE[raison]}</h1>
-      <p className="mt-3 max-w-[380px] text-[13.5px] leading-relaxed text-text-tertiary">{RAISON_TEXTE[raison]}</p>
+      <h1 className="mt-6 font-sora text-[22px] font-extrabold tracking-tight">{titre}</h1>
+      <p className="mt-3 max-w-[380px] text-[13.5px] leading-relaxed text-text-tertiary">{texte}</p>
     </div>
   );
 }
