@@ -186,7 +186,7 @@ serve(async (req) => {
         }
         const { data: existant } = await admin
           .from("club_matches")
-          .select("id, match_date, kickoff_time, lieu, score, scorers, man_of_match, comment, status")
+          .select("id, match_date, kickoff_time, lieu, score, scorers, man_of_match, comment, status, champs_verrouilles")
           .eq("club_id", s.club_id)
           .eq("provider", PROVIDER)
           .eq("external_event_id", externalId)
@@ -277,13 +277,24 @@ serve(async (req) => {
             }
           }
         } else {
+          // 15/09/2026 (v237) — Un champ corrige a la main ne se fait plus ecraser. Le planning
+          // que le club diffuse porte les ajustements reels : un match deplace d'un stade a
+          // l'autre, un horaire decale. La federation, elle, publie ce qu'elle sait. Sans ce
+          // garde, chaque passage de la synchro effacait la correction, et le club recorrigeait
+          // en boucle sans comprendre pourquoi.
+          const verrous: string[] = Array.isArray(existant.champs_verrouilles) ? existant.champs_verrouilles : [];
+          for (const champ of verrous) {
+            if (champ in ligne) delete (ligne as Record<string, unknown>)[champ];
+          }
+          const verrouille = (champ: string) => verrous.includes(champ);
+
           const calendrierChange =
-            existant.match_date !== ligne.match_date ||
+            (!verrouille("match_date") && existant.match_date !== ligne.match_date) ||
             // Postgres rend une heure en HH:MM:SS, la source la donne en HH:MM. Comparer les deux
             // formes brutes declarait les 17 matchs « modifies » a CHAQUE passage : le journal
             // annoncait du changement la ou il n'y en avait aucun, et on reecrivait pour rien.
-            heure(existant.kickoff_time) !== heure(ligne.kickoff_time) ||
-            (existant.lieu ?? null) !== (ligne.lieu ?? null);
+            (!verrouille("kickoff_time") && heure(existant.kickoff_time) !== heure(ligne.kickoff_time)) ||
+            (!verrouille("lieu") && (existant.lieu ?? null) !== (ligne.lieu ?? null));
 
           // Le score n'est recopie que sur une ligne VIERGE de toute saisie du club. Tester le
           // seul champ `score` ne suffirait pas : un coach peut avoir renseigne les buteurs et le
