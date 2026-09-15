@@ -53,10 +53,9 @@ try {
   const admin = (await sql(`select id, email, prenom, role from profiles where role='admin' and actif order by created_at limit 1`))[0];
   const P = await ouvrirOS(nav, admin, { largeur: 1440, hauteur: 900 });
   // « Livraisons » doit d'abord EXISTER dans le menu de l'administrateur : c'est ce qui manquait.
-  const dansLeMenu = await P.page.evaluate(() => {
-    const nav = document.querySelector("nav, .nav, aside");
-    return !!(nav && /Livraisons/.test(nav.innerText));
-  });
+  const dansLeMenu = await P.page.evaluate(() =>
+    [...document.querySelectorAll("nav a, nav button, nav div, aside a, aside div")]
+      .some((e) => e.textContent.trim() === "Livraisons"));
   t("admin : « Livraisons » figure dans son menu", dansLeMenu);
   await P.page.evaluate(() => window.switchView && window.switchView("livr"));
   await attendre(5000);

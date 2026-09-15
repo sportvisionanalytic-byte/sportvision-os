@@ -15350,7 +15350,12 @@ function renderProdLivrMissionList(){
   // sa livraison laisse la mission en « prêt_validation » : le responsable production ouvrait
   // « Livraisons » et n'y voyait RIEN, alors que deux missions l'attendaient. Elles n'existaient
   // que dans le Cockpit, onglet « À vérifier ». Signale par Fouka le 13/09.
-  const A_VERIFIER=['prêt_validation','à_valider_client','prête_à_livrer','livrée'];
+  // 14/09/2026 — Elargi aux missions ENCORE EN COURS qui portent deja des liens. Le chargement
+  // ne remonte ces missions-la que si elles ont au moins un livrable (loadProdLivrMissions) :
+  // celles qui n'ont rien a relire ne viennent pas encombrer l'ecran. Sans cette ligne, elargir
+  // le chargement ne servait a rien, le rendu les ecartait juste apres.
+  const A_VERIFIER=['prêt_validation','à_valider_client','prête_à_livrer','livrée',
+    'production_terminée','médias_à_transférer','médias_complets','à_monter','montage_en_cours'];
   if(_livrMissionFilter==='validees') list=list.filter(p=>p.statut==='clôturée');
   else if(_livrMissionFilter==='a_corriger') list=list.filter(p=>A_VERIFIER.includes(p.statut)&&hasCorrection(p));
   else list=list.filter(p=>A_VERIFIER.includes(p.statut)&&!hasCorrection(p));
