@@ -530,23 +530,37 @@ const NAV_CLUB_DIRECTEUR_SPORTIF: NavEntry[] = [
   item("settings", "Mon profil", "settings/profile"),
 ];
 
-/** Communication / CM interne (Bible §9, `communication_manager`) : exploite résultats, contenus,
- * visuels ; lecture seule sur les équipes (scope), aucune Finance, aucun Membres. */
+/** Community Manager DU CLUB (`communication_manager`).
+ *
+ * 15/09/2026, demande de Fouka : « rajouter le rôle de Community Manager du club, il aura le même
+ * accès que le Community Manager affilié ». Ce menu est donc calqué sur celui du CM SportVision
+ * (NAV_CLUB_CM_SPORTVISION), à deux exceptions près que Fouka a posées lui-même :
+ *   · L'ARGENT : aucune facture, aucun réglage Stripe — rien de tout cela n'était ici de toute
+ *     façon, et hasClubFinancialAccess() le ferme en plus côté écran.
+ *   · LES ACCÈS : ni « Membres », ni « Invitations », ni l'onboarding du club. Faire entrer
+ *     quelqu'un dans le club et régler l'identité du club restent à sa direction.
+ * Tout le reste du travail éditorial est le même, galeries comprises — qu'il consulte et partage,
+ * sans jamais en fixer le prix (media_pricing_staff_album ne s'ouvre pas à lui). */
 const NAV_CLUB_COMMUNICATION: NavEntry[] = [
   item("dashboard", "Accueil", "dashboard"),
+  section("Le club"),
+  item("calendar", "Calendrier", "calendar"),
+  item("teams", "Équipes", "teams"),
+  item("matchcenter", "Résultats & informations", "matchcenter"),
   section("Communication"),
   item("communication", "Centre communication", "communication"),
-  item("matchcenter", "Résultats & informations", "matchcenter"),
   item("visual_requests" as ModuleKey, "Demandes de visuels", "requests"),
   item("communication", "Crédits", "communication/credits"),
   item("content", "Mes contenus", "content"),
   item("content", "Galeries", "galeries"),
+  item("newsroom", "Actualités", "newsroom"),
+  // Pas de « Sponsors » : la décision du 11/09 range les sponsors et leurs opérations
+  // commerciales parmi les données restreintes d'un club, au même titre que les montants. Le CM
+  // du club ne les lit pas en base (v236) ; une entrée de menu n'ouvrirait qu'un écran vide.
   section("SportVision"),
   item("services", "Prestations", "services"),
-  item("calendar", "Calendrier", "calendar"),
+  item("presences", "Présences", "presences"),
   item("messages", "Messages", "messages"),
-  section("Structure"),
-  item("teams", "Équipes", "teams"),
   section("Compte"),
   item("settings", "Mon profil", "settings/profile"),
 ];

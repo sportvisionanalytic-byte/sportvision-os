@@ -38,7 +38,10 @@ export function PlanningEditorial({ clientId }: { clientId: string }) {
   // Le CM SportVision opère le club : c'est lui qui construit le planning (un coach, non ; le
   // président lit et valide). La base décide aussi (RLS contenus, v141) : ce drapeau ne fait
   // qu'éviter de proposer un geste qu'elle refuserait.
-  const peutModifier = ctx.membership.role === "external_cm";
+  // 15/09/2026 — Le Community Manager DU CLUB construit le planning au même titre que le CM
+  // affilié de SportVision (v234 en base, qui pose l'auteur réel et le CM référent). Deux rôles
+  // distincts, un seul planning : c'est l'outil partagé que Fouka a demandé.
+  const peutModifier = ctx.membership.role === "external_cm" || ctx.membership.role === "communication_manager";
   const [items, setItems] = useState<ContenuCm[] | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [erreur, setErreur] = useState(false);

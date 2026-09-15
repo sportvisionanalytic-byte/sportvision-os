@@ -60,7 +60,7 @@ const ROLES = [
 export const ROLES_CLUB_COMPLET = [
   { value: "president", label: "Président — accès complet" },
   { value: "directeur_sportif", label: "Directeur sportif / technique" },
-  { value: "comm", label: "Responsable communication" },
+  { value: "comm", label: "Community manager du club — communication complète" },
   { value: "secretaire", label: "Secrétaire" },
   { value: "tresorier", label: "Trésorier" },
   { value: "membre_bureau", label: "Membre du bureau" },
