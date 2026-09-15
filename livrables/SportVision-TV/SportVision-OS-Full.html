@@ -6179,6 +6179,16 @@ function modalDetailPrestation(idx){
         <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Équipe affectée</div>
         <div id="pd-equipe-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
       </div>`:''}
+      <!-- 15/09/2026 — Fouka : « ils ont poste le lien sur la mission mais ca m'a pas mis en
+           livrable ou en verification ». Les liens ETAIENT bien la, en base et dans l'ecran
+           Livraisons. Mais la fiche de la mission — l'endroit ou l'on regarde quand on parle
+           d'une mission — montrait l'equipe et les galeries, et pas une ligne sur ce que les
+           operateurs avaient depose. On voyait donc une mission sans livrable, et on en
+           concluait qu'il n'y en avait pas. -->
+      ${['admin','sec','prod'].includes(S.role)?`<div style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
+        <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Médias livrés</div>
+        <div id="pd-liens" style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--t3)">Chargement…</div>
+      </div>`:''}
       ${S.role==='admin'?`<div style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
         <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Photos &amp; galeries</div>
         <div id="pd-galeries" style="display:flex;flex-direction:column;gap:11px;font-size:12px;color:var(--t3)">Chargement…</div>
@@ -6195,7 +6205,39 @@ function modalDetailPrestation(idx){
       </div>
     </div>`);
   if(['admin','sec','prod'].includes(S.role))chargerEquipeModal(p.id);
+  if(['admin','sec','prod'].includes(S.role))chargerLiensMission(p.id,'pd-liens');
   if(S.role==='admin')chargerGaleriesMission(p.id,'pd-galeries');
+}
+
+// Ce que les operateurs ont depose sur cette mission, avec l'etat de chaque lien. Meme lecture que
+// l'ecran Livraisons : on ne cree pas un troisieme endroit ou la meme chose se dirait autrement.
+const PDL_STATUT={a_verifier:['À vérifier','var(--wa)'],valide:['Validé','var(--ok)'],
+  correction_demandee:['Correction demandée','var(--er)'],remplace:['Remplacé','var(--t3)'],
+  expire:['Expiré','var(--er)'],inaccessible:['Inaccessible','var(--er)'],archive:['Archivé','var(--t3)']};
+const PDL_CAT={depot:'Dépôt',rushs:'Rushs',travail:'Travail',previsualisation:'Prévisu',final:'Final',
+  livraison:'Livraison',bibliotheque:'Bibliothèque'};
+async function chargerLiensMission(prestationId,elId){
+  const el=document.getElementById(elId);
+  if(!el||!prestationId)return;
+  const liens=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,statut,transfert_confirme,commentaire,created_at,ajouteur:profiles!ajouteur_id(prenom,nom)&prestation_id=eq.'+prestationId+'&order=created_at.asc').catch(()=>null);
+  if(!Array.isArray(liens)){el.innerHTML='<div style="color:var(--er)">Erreur de chargement.</div>';return;}
+  if(!liens.length){
+    el.innerHTML='<div style="color:var(--t3)">Aucun lien déposé pour l\'instant. Les opérateurs les déposent depuis leur mission, écran « Livrer ».</div>';
+    return;
+  }
+  const aVerifier=liens.filter(l=>(l.statut||'a_verifier')==='a_verifier').length;
+  el.innerHTML=liens.map(l=>{
+    const [lb,clr]=PDL_STATUT[l.statut||'a_verifier']||['À vérifier','var(--wa)'];
+    const qui=[l.ajouteur?.prenom,l.ajouteur?.nom].filter(Boolean).join(' ');
+    const url=/^https?:\/\//i.test(String(l.url||''))?String(l.url):'';
+    return `<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+      <span style="flex:1;min-width:130px;color:var(--t1);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.nom||'Lien')}</span>
+      <span style="color:var(--t3);font-size:11px">${esc(PDL_CAT[l.categorie]||l.categorie||'')}${l.type_media?' · '+esc(l.type_media):''}${qui?' · '+esc(qui):''}</span>
+      <span style="color:${clr};font-size:11px;font-weight:600;white-space:nowrap">${lb}</span>
+      ${url?`<a href="${esc(url)}" target="_blank" rel="noopener" class="btn bg2 bs" style="padding:2px 9px;font-size:10.5px">Ouvrir</a>`:''}
+    </div>${l.statut==='correction_demandee'&&l.commentaire?`<div style="font-size:11px;color:var(--er);padding-left:2px">${esc(l.commentaire)}</div>`:''}`;
+  }).join('')
+  +(aVerifier?`<button class="btn bp bs" style="align-self:flex-start;margin-top:9px" onclick="closeModal();modalVerifierLivraison('${escJs(prestationId)}')">🔍 Vérifier la livraison (${aVerifier} à contrôler)</button>`:'');
 }
 
 async function validerPrestation(id,nouveauStatut){
