@@ -53,11 +53,15 @@ try {
   const admin = (await sql(`select id, email, prenom, role from profiles where role='admin' and actif order by created_at limit 1`))[0];
   const P = await ouvrirOS(nav, admin, { largeur: 1440, hauteur: 900 });
   // « Livraisons » doit d'abord EXISTER dans le menu de l'administrateur : c'est ce qui manquait.
-  const dansLeMenu = await P.page.evaluate(() =>
-    [...document.querySelectorAll("nav a, nav button, nav div, aside a, aside div")]
-      .some((e) => e.textContent.trim() === "Livraisons"));
+  // On CLIQUE l'entree de menu au lieu d'appeler switchView : c'est ce que fait Fouka, et c'est
+  // precisement ce qui manquait — l'ecran existait, aucune entree n'y menait.
+  // La barre laterale n'est pas un <nav> (le <nav> de la page est la barre mobile du bas) : on
+  // cherche l'entree sur toute la page, comme l'oeil le ferait.
+  const entree = P.page.getByText("Livraisons", { exact: true }).first();
+  const dansLeMenu = (await entree.count()) > 0;
   t("admin : « Livraisons » figure dans son menu", dansLeMenu);
-  await P.page.evaluate(() => window.switchView && window.switchView("livr"));
+  if (dansLeMenu) await entree.click().catch(() => {});
+  else await P.page.evaluate(() => window.switchView && window.switchView("livr"));
   await attendre(5000);
   const vu = await P.page.evaluate(() => document.body.innerText);
   t("Production : la mission encore en « médias à transférer » est visible", vu.includes(REFP),
