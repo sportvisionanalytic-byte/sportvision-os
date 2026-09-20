@@ -171,14 +171,28 @@ async function preparer() {
 // soir, décision de Fouka « mêmes droits que le CM SportVision » (migration-blocages-review-1). Il
 // reste hors du SIRET et de Stripe, comme le CM SportVision, et n'ouvre pas la fiche d'équipe
 // (equipe_apercu), d'où « e-mail invité » inchangé.
+// 14/09/2026 (v227) — Decision de Fouka : « sur Club+ il faut aussi dirigeant acces complet, pas
+// que president ». Le DIRECTEUR SPORTIF, le MEMBRE DU BUREAU et le SECRETAIRE administrent
+// desormais le club au meme titre que le president (is_club_admin). Ils lisent donc ce que lit
+// l'administration : annuaire, sponsors, montants, e-mails des invites.
+//
+// Le test SQL du meme nom avait ete mis a jour ce jour-la, pas celui-ci : il attendait encore
+// « ne lit pas » pour ces trois roles et rendait 11 ecarts qui n'en etaient pas. Un test reste sur
+// l'ancienne regle accuse le produit d'un defaut qu'il n'a plus.
+//
+// Ce qui reste ferme a ces trois-la, et c'est voulu : les identifiants Stripe ET le SIRET du club.
+// Ces deux-la ne passent pas par is_club_admin mais par leurs propres fonctions, posees le 11/09
+// avec la liste nominative des roles qui y ont droit. La v227 n'y a pas touche, et c'est bien :
+// le SIRET sert a facturer, pas a faire tourner le club.
+const ADMINISTRATION = ["admin", "president", "secretaire", "tresorier", "directeur_sportif", "membre_bureau"];
 const LISTES = {
   stripe: ["admin", "president"],
   siret: ["admin", "president", "secretaire", "tresorier"],
-  annuaire: ["admin", "president", "secretaire", "tresorier", "cm_sportvision", "cm_externe"],
-  "e-mail invité": ["admin", "president", "cm_sportvision"],
-  sponsors: ["admin", "president", "secretaire", "tresorier", "sponsor_mgr", "cm_sportvision", "cm_externe"],
-  montants: ["admin", "president", "secretaire", "tresorier", "sponsor_mgr", "cm_sportvision", "cm_externe"],
-  "opérations sponsor": ["admin", "president", "secretaire", "tresorier", "sponsor_mgr", "cm_sportvision", "cm_externe"],
+  annuaire: [...ADMINISTRATION, "cm_sportvision", "cm_externe"],
+  "e-mail invité": ["admin", "president", "secretaire", "directeur_sportif", "membre_bureau", "cm_sportvision"],
+  sponsors: [...ADMINISTRATION, "sponsor_mgr", "cm_sportvision", "cm_externe"],
+  montants: [...ADMINISTRATION, "sponsor_mgr", "cm_sportvision", "cm_externe"],
+  "opérations sponsor": [...ADMINISTRATION, "sponsor_mgr", "cm_sportvision", "cm_externe"],
 };
 
 async function mesurerDonnees(d) {
