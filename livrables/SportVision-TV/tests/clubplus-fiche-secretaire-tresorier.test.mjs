@@ -86,12 +86,20 @@ if (!club) { console.log(`Club ${CLUB_NOM} introuvable — test ignoré.`); proc
 const nav = await chromium.launch();
 try {
   console.log(`Club+ testé : ${LOCAL ? `app locale ${LOCAL} sous ${CP}` : CP}`);
+  // 14/09/2026 (v227), decision de Fouka : « sur Club+ il faut aussi dirigeant acces complet, pas
+  // que president ». Le SECRETAIRE administre desormais le club — il recoit la navigation
+  // complete, et « Informations du club » n'est plus une entree a part dans son menu : les
+  // reglages du club sont dans « Parametres ». Il peut aussi les MODIFIER, ce qui etait tout
+  // l'objet de la decision. Le TRESORIER, lui, n'a pas ete promu : il garde la consultation en
+  // lecture seule posee le 11/09, et c'est ce que ce test continue de verifier chez lui.
+  const ADMINISTRE = new Set(["secretaire"]);
   for (const role of ["secretaire", "tresorier"]) {
     console.log(`\n${role}`);
     const p = await creerMembre(club, role);
     const { ctx, page, erreurs } = await ouvrir(nav, p);
     const menu = await page.evaluate(() => [...document.querySelectorAll("aside nav a")].map((a) => a.textContent.trim()));
-    t(`${role} : « Informations du club » dans le menu`, menu.includes("Informations du club"), menu.join(" | "));
+    t(`${role} : la fiche du club est atteignable depuis son menu`,
+      menu.includes("Informations du club") || (ADMINISTRE.has(role) && menu.includes("Paramètres")), menu.join(" | "));
     await page.goto(`${CP}/clubplus/settings/organization`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(5000);
     const tx = await texte(page);
@@ -103,7 +111,11 @@ try {
     if (champsLibres.length) console.log(`       champs non désactivés : ${champsLibres.join(" ; ")}`);
     const saisissables = champsLibres.length;
     const enregistrer = await page.locator("main button", { hasText: /Enregistrer/ }).count();
-    t(`${role} : lecture seule (aucun champ modifiable, aucun « Enregistrer »)`, saisissables === 0 && enregistrer === 0, `champs=${saisissables} boutons=${enregistrer}`);
+    if (ADMINISTRE.has(role)) {
+      t(`${role} : il PEUT modifier la fiche du club (v227)`, saisissables > 0, `champs=${saisissables} boutons=${enregistrer}`);
+    } else {
+      t(`${role} : lecture seule (aucun champ modifiable, aucun « Enregistrer »)`, saisissables === 0 && enregistrer === 0, `champs=${saisissables} boutons=${enregistrer}`);
+    }
     t(`${role} : aucune erreur JavaScript`, erreurs.length === 0, erreurs.slice(0, 2).join(" · "));
     await ctx.close();
   }

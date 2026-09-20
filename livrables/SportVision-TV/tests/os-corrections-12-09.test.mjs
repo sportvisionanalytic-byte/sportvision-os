@@ -7,7 +7,10 @@
 //   3. aucune erreur JavaScript ne sort au chargement.
 // Lecture seule : ce test n'écrit rien, il regarde.
 
-import { chromium } from "playwright";
+// Playwright n'est pas installe a la racine du depot : il vient des node_modules d'une des deux
+// applications, comme dans toutes les autres suites. L'import nu echouait avec ERR_MODULE_NOT_FOUND
+// et la suite ne mesurait plus rien depuis qu'elle a ete ecrite.
+import { chromium } from "../../SportVision-Connect/app-next/node_modules/playwright/index.mjs";
 import { compte, ouvrirOS, vraiesErreurs, rapporteur } from "./_session-os.mjs";
 
 const { t, bilan } = rapporteur();

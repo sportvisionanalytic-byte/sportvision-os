@@ -156,8 +156,15 @@ try {
 
     chris = await compte("role=eq.cm&prenom=eq.chris&nom=eq.fouka");
     christian = await compte("role=eq.prod&prenom=eq.christian&nom=eq.fouka");
-    cfka = await compte("role=eq.photo&prenom=eq.c&nom=eq.fka");
+    // 21/09/2026 — Le compte « c fka » n'existe plus : la suite mourait sur un `null.acces` et ne
+    // mesurait donc PLUS RIEN, y compris les controles de fermeture du SIRET. On prend le premier
+    // operateur terrain reel : ce qu'on verifie ici, c'est qu'un role « photo » ne lit pas le
+    // SIRET, pas l'existence d'une personne en particulier.
+    cfka = await compte("role=eq.photo&actif=is.true&limit=1");
     for (const p of [chris, christian, cfka]) if (p) p.acces = (await jeton(p.email))?.acces;
+    for (const [nom, p] of [["chris fouka (CM)", chris], ["christian fouka (Production)", christian], ["un operateur terrain", cfka]]) {
+      if (!p?.acces) throw new Error(`decor incomplet : aucun jeton pour ${nom}`);
+    }
     cmSansPole = await creerCmSansPole();
   }
 
@@ -193,7 +200,7 @@ try {
     const prodTable = await comme(christian.acces, `clients?select=siret&id=eq.${C}`);
     t("… mais plus par la table : la colonne est fermée à tous les comptes", prodTable.status === 403, resume(prodTable));
     const photo = await comme(cfka.acces, "rpc/client_siret", { method: "POST", body: { p_client_id: C } });
-    t("l'opérateur (c fka) ne lit pas le SIRET", !contientTemoin(photo), resume(photo));
+    t("l'opérateur terrain ne lit pas le SIRET", !contientTemoin(photo), resume(photo));
 
     // Le piège de la fermeture, mesuré sans toucher une ligne (identifiant qui n'existe pas) :
     // un PATCH qui renvoie la ligne sans liste de colonnes échoue, avec select=id il passe.
