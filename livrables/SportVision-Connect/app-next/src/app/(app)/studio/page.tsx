@@ -137,7 +137,7 @@ export default function StudioPage() {
                     <Badge tone="accent">{STUDIO_CATEGORY_LABELS[t.category]}</Badge>
                     <span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-text-soft">
                       <Sparkles className="h-3 w-3 text-brand-cyan" aria-hidden />
-                      {t.creditCost} crédit{t.creditCost > 1 ? "s" : ""}
+                      {t.category}
                     </span>
                   </div>
                   <div className="text-[14.5px] font-extrabold tracking-tight">{t.name}</div>

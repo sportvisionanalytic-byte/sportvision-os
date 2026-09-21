@@ -133,8 +133,7 @@ export function ClubSubscriptionCard({ clubId, lectureSeule = false }: { clubId:
           <div className="text-[12px] font-bold text-text-soft">Mon offre</div>
           <h2 className="mt-1 text-[19px] font-extrabold tracking-tight">{PLAN_LABELS[info.plan] ?? info.plan}</h2>
           <div className="mt-1 text-[12.5px] text-text-soft">
-            {info.engagement ? ENGAGEMENT_LABELS[info.engagement] ?? info.engagement : "Sans engagement"} ·{" "}
-            {info.creditsBalance} / {info.creditsMonthly} crédits restants ce mois-ci
+            {info.engagement ? ENGAGEMENT_LABELS[info.engagement] ?? info.engagement : "Sans engagement"}
           </div>
         </div>
         {info.hasActiveStripeSubscription ? (
@@ -201,7 +200,6 @@ export function ClubSubscriptionCard({ clubId, lectureSeule = false }: { clubId:
                 </div>
 
                 <ul className="flex flex-col gap-1.5 text-[12px] text-text-soft">
-                  <FeatureLine>{tier.credits} crédits inclus / mois</FeatureLine>
                   <FeatureLine>{tier.maxUsers ? `Jusqu'à ${tier.maxUsers} utilisateurs` : "Utilisateurs illimités"}</FeatureLine>
                   <FeatureLine>{tier.maxTeams ? `Jusqu'à ${tier.maxTeams} équipes` : "Équipes illimitées"}</FeatureLine>
                   <FeatureLine>{tier.discountPct}% de remise sur les prestations éligibles</FeatureLine>

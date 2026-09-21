@@ -29,7 +29,7 @@ import {
   type StudioTemplate,
 } from "@/lib/types/studio";
 
-// Fiche modèle du Studio — formulaire préempli, bandeau de coût en crédits. Voir ACTIONS.md § 6.
+// Fiche modèle du Studio — formulaire préempli, délai de livraison annoncé. Voir ACTIONS.md § 6.
 // Le modèle est chargé depuis studio_templates (migration-clubplus-v38-studio-sponsors.sql, voir
 // data/club/studio.ts) au lieu de la constante STUDIO_TEMPLATES — d'où le chargement asynchrone
 // (findTemplate() était synchrone sur le tableau en mémoire, fetchStudioTemplate() ne l'est pas).
@@ -187,12 +187,9 @@ function StudioTemplateContent() {
         });
     submission
       .then((request) => {
-        const creditsSuffix = noCreditSystemOrg
-          ? ""
-          : ` · ${template!.creditCost} crédit${template!.creditCost > 1 ? "s" : ""} réservé${
-              template!.creditCost > 1 ? "s" : ""
-            }`;
-        showToast(`Demande ${request.reference} envoyée${creditsSuffix}.`);
+        // 21/09/2026 : le coût en crédits part toujours au serveur (champ `credits` ci-dessus),
+        // mais il ne s'affiche plus au club. Le message confirme l'envoi, rien d'autre.
+        showToast(`Demande ${request.reference} envoyée.`);
         setTimeout(() => router.push("/requests"), 650);
       })
       .catch(() => {
@@ -279,34 +276,16 @@ function StudioTemplateContent() {
 
         <div className="flex flex-col gap-4">
           <Card className="border-brand-blue-electric/40 p-4">
+            {/* 21/09/2026 : plus de coût en crédits montré au club. Ce qui l'intéresse ici,
+                c'est quand il recevra sa création, pas un solde qu'il ne pilote pas. */}
             <div className="flex items-center gap-2 text-[13px] font-extrabold tracking-tight text-brand-blue-pale">
               <Sparkles className="h-4 w-4" aria-hidden />
-              Coût de la création
+              Votre création
             </div>
             <p className="mt-2 text-[13.5px] leading-relaxed text-text-soft">
-              Cette création utilisera{" "}
-              <strong className="text-text">
-                {template.creditCost} crédit{template.creditCost > 1 ? "s" : ""}
-              </strong>{" "}
-              · livraison sous <strong className="text-text">{template.deliveryDelay}</strong>
-              {remainingAfter !== null ? (
-                <>
-                  {" "}
-                  · il vous restera{" "}
-                  <strong className="text-text">
-                    {Math.max(0, remainingAfter)} crédit{remainingAfter !== 1 ? "s" : ""}
-                  </strong>
-                </>
-              ) : (
-                <> · offre sur mesure, suivi avec votre Community Manager</>
-              )}
-              .
+              Livraison sous <strong className="text-text">{template.deliveryDelay}</strong> · suivi avec
+              votre Community Manager SportVision.
             </p>
-            {!hasEnoughCredits && (
-              <p className="mt-2 text-[12.5px] font-bold text-danger-fg">
-                Crédits insuffisants ce mois-ci. Gérez votre offre pour continuer.
-              </p>
-            )}
             {!canSubmit && (
               <p className="mt-2 text-[12.5px] font-bold text-warning-fg">
                 Votre rôle ne vous permet pas d&apos;effectuer cette action. Contactez l&apos;administrateur du club

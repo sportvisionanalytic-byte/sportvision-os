@@ -220,7 +220,6 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra, extraLoading: bool
             value: extraLoading ? "Chargement…" : `${delegated.length}`,
             pct: extraLoading ? null : delegated.length ? 100 : 0,
           },
-          { label: "Crédits Studio", value: formatPlanCredits(plan), pct: creditsPct },
           { label: "Stockage", value: `${storagePct} %`, pct: storagePct },
         ],
         priorityTitle: "À traiter",

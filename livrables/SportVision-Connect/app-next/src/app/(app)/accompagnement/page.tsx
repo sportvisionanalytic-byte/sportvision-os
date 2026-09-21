@@ -285,7 +285,8 @@ function ClientAccompagnement({ ctx }: { ctx: ActiveContext }) {
 
   const storageFigure: MonthlyFigure = { label: "Stockage utilisé", value: "Non disponible" };
 
-  const figures: MonthlyFigure[] = [creditsFigure, presencesFigure, contentsFigure, storageFigure];
+  // 21/09/2026 : le chiffre des credits ne fait plus partie du suivi montre au club.
+  const figures: MonthlyFigure[] = [presencesFigure, contentsFigure, storageFigure];
 
   return (
     <div className="flex flex-col gap-5">

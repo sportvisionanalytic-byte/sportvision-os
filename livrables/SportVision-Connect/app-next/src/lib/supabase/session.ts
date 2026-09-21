@@ -307,13 +307,15 @@ export async function buildClubActiveContext(
   // jamais ete creee. Le club s'affichait donc « Gratuit » a tout le monde, president compris,
   // alors qu'il est bien accompagne. On regarde les deux signaux : la paperasse ET la maniere
   // dont le club a ete provisionne.
-  let isFullCommunication = club.club_plus_source === "full_com_included";
-  if (!isFullCommunication && club.portail_client_id) {
-    const { data: hasContract } = await supabase.rpc("client_has_active_fullcomm_contract", {
-      p_client_id: club.portail_client_id,
-    });
-    isFullCommunication = hasContract === true;
-  }
+  // 21/09/2026 — Décision de Fouka : « uniquement les clubs qui sont sur Club+ seront des clubs
+  // en Full Communication ». Il n'y a plus de club Club+ sans accompagnement : l'un ne se vend
+  // pas sans l'autre. Chercher un contrat ou un mode de provisionnement pour le deviner n'a donc
+  // plus d'objet, et s'en remettre à cette recherche produisait exactement le défaut qu'il a vu
+  // dans la démonstration : un coach devant des cadenas « module non activé » sur ses propres
+  // équipes, ses matchs et ses contenus, parce qu'aucune ligne n'avait été provisionnée pour son
+  // club. Le jour où une offre Club+ sans accompagnement existera, c'est ICI qu'elle se décidera,
+  // en un seul endroit.
+  const isFullCommunication = true;
 
   const entitlements: NonNullable<ActiveContext["entitlements"]> = {};
   for (const row of (entitlementsRes.data ?? []) as EntitlementRow[]) {
@@ -507,13 +509,8 @@ export async function buildDelegatedClubActiveContext(
   // jamais ete creee. Le club s'affichait donc « Gratuit » a tout le monde, president compris,
   // alors qu'il est bien accompagne. On regarde les deux signaux : la paperasse ET la maniere
   // dont le club a ete provisionne.
-  let isFullCommunication = club.club_plus_source === "full_com_included";
-  if (!isFullCommunication && club.portail_client_id) {
-    const { data: hasContract } = await supabase.rpc("client_has_active_fullcomm_contract", {
-      p_client_id: club.portail_client_id,
-    });
-    isFullCommunication = hasContract === true;
-  }
+  // Même règle que ci-dessus (21/09/2026) : tout club Club+ est en Full Communication.
+  const isFullCommunication = true;
 
   return {
     user: buildUserFromAuth(authUser),

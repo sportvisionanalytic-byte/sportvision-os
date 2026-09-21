@@ -99,15 +99,15 @@ function NewRequestContent() {
 
   if (!allowed) return <LockedModule title="Demandes de visuels" />;
 
-  const plan = PLANS[ctx.subscription.planCode];
+  // 21/09/2026 — Les crédits ne sont plus montrés au club (décision de Fouka : tout club Club+
+  // est accompagné en Full Communication). Le coût reste envoyé au serveur, qui continue de
+  // tenir ses compteurs : c'est l'AFFICHAGE qui disparaît, pas la comptabilité interne. Et plus
+  // aucune demande n'est refusée à l'écran pour un solde — ce qui se discute avec son CM ne se
+  // barre pas d'un bouton grisé.
   const cost = URGENCY_META[urgency].creditCost;
-  const available = ctx.subscription.creditsRemaining;
-  const hasCreditSystem = plan.monthlyCredits !== null && !noCreditSystemOrg;
-  const remainingAfter = hasCreditSystem ? available - cost : null;
-  const hasEnoughCredits = !hasCreditSystem || available >= cost;
 
   function handleSubmit() {
-    if (!canWrite || !hasEnoughCredits) return;
+    if (!canWrite) return;
     setSubmitting(true);
     const supabase = createClient();
     // Pas de colonnes réelles pour eventName/publishDate (club_requests et requests générique) ni
@@ -128,8 +128,7 @@ function NewRequestContent() {
       : submitClubRequest(supabase, ctx.organization.id, { visualType, teamName: teamName || undefined, bodyText: composedBody, urgency, credits: cost });
     submission
       .then((request) => {
-        const creditsSuffix = hasCreditSystem ? ` · ${cost} crédit${cost > 1 ? "s" : ""} réservé${cost > 1 ? "s" : ""}` : "";
-        showToast(`Demande ${request.reference} envoyée${creditsSuffix}.`);
+        showToast(`Demande ${request.reference} envoyée.`);
         setTimeout(() => router.push("/requests"), 650);
       })
       .catch(() => {
@@ -255,9 +254,7 @@ function NewRequestContent() {
                   )}
                 >
                   <div className="text-[13px] font-extrabold tracking-tight">{URGENCY_META[u].label}</div>
-                  <div className="mt-0.5 text-[12px] text-text-soft">
-                    {URGENCY_META[u].creditCost} crédit{URGENCY_META[u].creditCost > 1 ? "s" : ""} · {URGENCY_META[u].delayLabel}
-                  </div>
+                  <div className="mt-0.5 text-[12px] text-text-soft">{URGENCY_META[u].delayLabel}</div>
                 </button>
               ))}
             </div>
@@ -270,19 +267,8 @@ function NewRequestContent() {
             <SummaryRow label="Type" value={VISUAL_TYPE_LABELS[visualType]} />
             <SummaryRow label="Urgence" value={URGENCY_META[urgency].label} />
             <SummaryRow label="Délai" value={URGENCY_META[urgency].delayLabel} />
-            <SummaryRow label="Crédits nécessaires" value={`${cost}`} />
-            <SummaryRow label="Crédits disponibles" value={hasCreditSystem ? `${available}` : "Suivi avec votre CM"} />
-            <SummaryRow
-              label="Solde restant"
-              value={remainingAfter === null ? "Suivi avec votre CM" : `${Math.max(0, remainingAfter)}`}
-              emphasis
-            />
+            <SummaryRow label="Suivi" value="Avec votre CM SportVision" emphasis />
           </dl>
-          {!hasEnoughCredits && (
-            <p className="mt-3 text-[12.5px] font-bold text-danger-fg">
-              Crédits insuffisants ce mois-ci. Gérez votre offre pour continuer.
-            </p>
-          )}
           {!canWrite && (
             <p className="mt-3 text-[12.5px] font-bold text-warning-fg">
               Votre rôle ne vous permet pas d&apos;effectuer cette action. Contactez l&apos;administrateur du club.
@@ -293,7 +279,7 @@ function NewRequestContent() {
               variant="primary"
               className="w-full"
               loading={submitting}
-              disabled={!canWrite || !hasEnoughCredits}
+              disabled={!canWrite}
               onClick={handleSubmit}
             >
               Envoyer la demande

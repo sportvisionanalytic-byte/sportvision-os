@@ -64,7 +64,7 @@ const GENERIC_STEPS: StepContent[] = [
 ];
 
 const CLUB_PLUS_STEPS: StepContent[] = [
-  { icon: Sparkles, title: "Bienvenue dans Club+", body: "Studio, crédits, équipes et demandes avancées : voici comment démarrer avec Club+." },
+  { icon: Sparkles, title: "Bienvenue dans Club+", body: "Studio, équipes, calendrier et demandes : voici comment démarrer avec Club+." },
   { icon: Building2, title: "Votre club", body: "Vérifiez le nom, l'adresse et le nombre d'équipes renseignés à l'inscription." },
   { icon: Palette, title: "Logo et couleurs", body: "Vos couleurs de club habillent automatiquement vos créations Studio." },
   { icon: Users, title: "Vos équipes", body: "Ajoutez vos équipes pour retrouver leurs effectifs, calendriers et contenus au même endroit." },

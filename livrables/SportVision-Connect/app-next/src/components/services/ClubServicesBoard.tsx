@@ -219,9 +219,21 @@ export function ClubServicesBoard({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+        <div className="max-w-[62ch]">
           <div className="text-[12px] font-bold text-text-soft">Prestations</div>
-          <h1 className="mt-1.5 text-[27px] font-extrabold leading-tight tracking-tight">Prestations SportVision</h1>
+          <h1 className="mt-1.5 text-[27px] font-extrabold leading-tight tracking-tight">
+            Besoin de prestations supplémentaires ?
+          </h1>
+          {/* 21/09/2026, formulation demandée par Fouka : « voulez-vous des prestations
+              supplémentaires par rapport à ce qui vous est déjà accordé ». Un club en Full
+              Communication a déjà un volume couvert par son accompagnement ; cet écran n'est pas
+              un magasin, c'est ce qu'on ajoute AU-DESSUS. Sans cette phrase, un président croit
+              qu'il doit payer ce qu'il a déjà. */}
+          <p className="mt-2 text-[13.5px] leading-relaxed text-text-soft">
+            Votre accompagnement SportVision couvre déjà un volume de prestations. Ce catalogue
+            est là pour ce que vous souhaitez <b>en plus</b> : les tarifs ci-dessous s&apos;appliquent
+            aux prestations supplémentaires uniquement.
+          </p>
         </div>
         <Button variant="primary" onClick={() => openWizard(null)}>
           <Plus className="h-3.5 w-3.5" aria-hidden />

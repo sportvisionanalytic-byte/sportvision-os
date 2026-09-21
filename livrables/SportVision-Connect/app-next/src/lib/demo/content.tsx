@@ -710,7 +710,6 @@ const PAGES: Record<string, (p: DemoProfile) => ReactNode> = {
   newsroom: Newsroom,
   matchcenter: MatchCenter,
   communication: Communication,
-  "communication/credits": CommunicationCredits,
   requests: Requests,
   content: Content,
   calendar: Calendar,

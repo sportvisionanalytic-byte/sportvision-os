@@ -389,7 +389,6 @@ export function ClubPlusDashboard() {
             </div>
           </div>
           <div className="relative mt-5 grid grid-cols-3 gap-3.5">
-            <Gauge label="Crédits visuels" value={formatPlanCredits(plan)} pct={creditsPct} />
             <Gauge label="Présences terrain" value="Non suivi" pct={null} />
             <Gauge label="Stockage" value="Non suivi" pct={null} />
           </div>

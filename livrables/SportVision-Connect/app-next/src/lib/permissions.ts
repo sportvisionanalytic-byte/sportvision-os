@@ -1,6 +1,6 @@
 import type { ActiveContext, FeatureKey, MembershipRole, ModuleKey, OrgType, QuotaKey, ResourceKey } from "./types";
 import { PLANS } from "./plans";
-import { MODULE_TO_CONNECT_MODULE, READY_MODULES } from "./supabase/entitlements";
+import { READY_MODULES } from "./supabase/entitlements";
 
 // Permissions centralisées — voir README.md § Logique d'abonnement et DATA_MODEL.md
 // § Fonctions de permission.
@@ -63,12 +63,16 @@ export const SERVICES_BYPASS_TYPES: ReadonlySet<OrgType> = new Set([
  * ce qui verrouillait silencieusement /content pour un espace joueur/parent (Phase 2) faute
  * d'entitlement "bibliotheque_contenus" — jamais détecté faute de compte réel pour tester.
  *
- * Exceptions (audit nuit 09-10/08) : "presences" et "sponsors" ne suivent PAS la règle
- * générique ci-dessus — un module gated par entitlement pour le club ne doit jamais devenir
- * "ouvert par défaut" pour un type d'organisation qui n'a jamais souscrit ce module. La règle
- * générique est correcte pour /content ou /messages (aucun entitlement club-only n'a de sens
- * pour un joueur/parent/projet), mais "presences" et "sponsors" désignent une vraie offre
- * commerciale que seuls certains types d'organisation ont pu signer.
+ * 21/09/2026 — LA RÈGLE A CHANGÉ, décision de Fouka : « uniquement les clubs qui sont sur Club+
+ * seront des clubs en Full Communication ». Un module n'est donc plus gouverné par une ligne
+ * `organization_entitlements` provisionnée à la main pour chaque club : tout ce qui est prêt est
+ * ouvert. Ce qu'il a constaté dans la démonstration était la conséquence exacte de l'ancienne
+ * règle — un coach devant des cadenas « module non activé » sur ses propres équipes, ses matchs
+ * et ses contenus, parce que personne n'avait provisionné son club.
+ *
+ * Ce qui reste, et qui n'a rien à voir : le TYPE d'organisation. "presences" et "sponsors" ne
+ * concernent pas un parent, un joueur ou une agence, et un module absent de READY_MODULES n'est
+ * pas branché sur de vraies données — l'ouvrir montrerait du décor à un vrai club.
  */
 export function canAccess(ctx: ActiveContext, module: ModuleKey): boolean {
   // "services" : géré avant le garde READY_MODULES (il en est délibérément absent) — voir
@@ -81,28 +85,16 @@ export function canAccess(ctx: ActiveContext, module: ModuleKey): boolean {
   // ouvert par défaut pour un coach, une académie, un événement ou un espace Projet, même si
   // aucun d'eux n'a d'entitlements réels. Voir entitlements.ts § "presences" et
   // FullCommunicationDashboard.tsx (canSeePresences) qui appliquait déjà ce garde-fou en aval.
-  if (module === "presences") {
-    if (ctx.organization.type !== "club") return false;
-    const connectModuleKey = MODULE_TO_CONNECT_MODULE.presences;
-    return connectModuleKey ? (ctx.entitlements?.[connectModuleKey]?.actif ?? false) : false;
-  }
+  if (module === "presences") return ctx.organization.type === "club";
 
   // "sponsors" : CRM sponsors du club (gated par entitlement), inclus au contrat Full
   // Communication pour académie/événement, espace propre d'un partenaire (sponsors/page.tsx
   // bypass déjà canAccess pour lui via isPartner/PartnerView — inclus ici pour que le cadenas
   // de la Sidebar reste cohérent), et "Mes sponsors" pour un joueur. Jamais ouvert pour un
   // coach, un parent, une agence CM ou un espace Projet — voir SPONSORS_ORG_TYPES ci-dessus.
-  if (module === "sponsors") {
-    if (!SPONSORS_ORG_TYPES.has(ctx.organization.type)) return false;
-    if (ctx.organization.type !== "club") return true;
-    const connectModuleKey = MODULE_TO_CONNECT_MODULE.sponsors;
-    return connectModuleKey ? (ctx.entitlements?.[connectModuleKey]?.actif ?? false) : false;
-  }
+  if (module === "sponsors") return SPONSORS_ORG_TYPES.has(ctx.organization.type);
 
-  if (ctx.organization.type !== "club") return true;
-  const connectModuleKey = MODULE_TO_CONNECT_MODULE[module];
-  if (!connectModuleKey) return true;
-  return ctx.entitlements?.[connectModuleKey]?.actif ?? false;
+  return true;
 }
 
 /**

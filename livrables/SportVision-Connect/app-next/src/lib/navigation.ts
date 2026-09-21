@@ -550,7 +550,6 @@ const NAV_CLUB_COMMUNICATION: NavEntry[] = [
   section("Communication"),
   item("communication", "Centre communication", "communication"),
   item("visual_requests" as ModuleKey, "Demandes de visuels", "requests"),
-  item("communication", "Crédits", "communication/credits"),
   item("content", "Mes contenus", "content"),
   item("content", "Galeries", "galeries"),
   item("newsroom", "Actualités", "newsroom"),
