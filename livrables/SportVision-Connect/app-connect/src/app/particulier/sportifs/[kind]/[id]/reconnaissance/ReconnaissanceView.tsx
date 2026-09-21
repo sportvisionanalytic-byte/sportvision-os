@@ -24,9 +24,18 @@ import type { AthleteDetail } from "../AthleteDetailView";
 export function ReconnaissanceView({
   detail,
   etatInitial,
+  pourMoi = false,
+  retourHref,
 }: {
   detail: AthleteDetail;
   etatInitial: EtatConsentement | null;
+  /** 21/09/2026 — Le joueur MAJEUR donne son accord lui-même (décision de Fouka). Le texte
+   *  juridique est le même, la personne qui parle change : « votre enfant » devient « vous », et
+   *  l'attestation d'autorité parentale n'a plus lieu d'être. Un seul écran pour les deux, parce
+   *  que deux écrans finiraient par dire deux choses différentes du même engagement. */
+  pourMoi?: boolean;
+  /** Où revenir : la fiche de l'enfant, ou l'espace du joueur. */
+  retourHref?: string;
 }) {
   const [etat, setEtat] = useState<EtatConsentement | null>(etatInitial);
   const [autoriteParentale, setAutoriteParentale] = useState(false);
@@ -37,6 +46,10 @@ export function ReconnaissanceView({
   const champPhoto = useRef<HTMLInputElement>(null);
 
   const prenom = detail.first_name;
+  // Le sujet de chaque phrase. Écrit une fois ici plutôt que dispersé en conditions dans le texte.
+  const lui = pourMoi ? "vous" : prenom;
+  const son = pourMoi ? "votre" : "son";
+  const retour = retourHref ?? `/particulier/sportifs/${detail.kind}/${detail.ref_id}`;
   const accorde = etat?.autorise === true;
   const photoDeposee = etat?.photo_deposee === true;
 
@@ -60,7 +73,7 @@ export function ReconnaissanceView({
       return;
     }
     await rafraichir();
-    setMessage("Votre accord est enregistré. Déposez maintenant une photo de " + prenom + ".");
+    setMessage("Votre accord est enregistré. Déposez maintenant une photo de " + lui + ".");
     setEnCours(null);
   }
 
@@ -96,7 +109,9 @@ export function ReconnaissanceView({
       return;
     }
     await rafraichir();
-    setMessage("Photo enregistrée. " + prenom + " sera reconnu sur les prochaines galeries de son club.");
+    setMessage(pourMoi
+      ? "Photo enregistrée. Vous serez reconnu sur les prochaines galeries de votre club."
+      : `Photo enregistrée. ${prenom} sera reconnu sur les prochaines galeries de son club.`);
     if (champPhoto.current) champPhoto.current.value = "";
     setEnCours(null);
   }
@@ -127,14 +142,14 @@ export function ReconnaissanceView({
     <div className="flex flex-col gap-6">
       <div>
         <Link
-          href={`/particulier/sportifs/${detail.kind}/${detail.ref_id}`}
+          href={retour}
           className="inline-flex items-center gap-1.5 text-[14px] font-medium text-text-tertiary hover:text-text"
         >
           <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
-          Retour à la fiche de {prenom}
+          {pourMoi ? "Retour à mes photos" : `Retour à la fiche de ${prenom}`}
         </Link>
         <h1 className="mt-3 font-sora text-[26px] font-semibold leading-tight">
-          Retrouver automatiquement les photos de {prenom}
+          {pourMoi ? "Retrouver automatiquement vos photos" : `Retrouver automatiquement les photos de ${prenom}`}
         </h1>
         <p className="mt-2 max-w-[62ch] text-[15px] leading-relaxed text-text-secondary">
           Cette option est facultative. Si vous ne la prenez pas, rien ne change : vous accédez à la
@@ -180,7 +195,7 @@ export function ReconnaissanceView({
               {photoDeposee ? "Remplacer la photo de référence" : "Déposer la photo de référence"}
             </h3>
             <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
-              Une photo récente de {prenom}, de face, visage bien visible et sans lunettes de soleil.
+              Une photo récente de {lui}, de face, visage bien visible et sans lunettes de soleil.
               Format JPEG, PNG ou HEIC, 8 Mo maximum.
             </p>
             <label
@@ -225,23 +240,25 @@ export function ReconnaissanceView({
         <section className="rounded-sv border border-border bg-white/[.04] p-5">
           <h2 className="font-sora text-[18px] font-semibold">Comment ça marche</h2>
           <p className="mt-2 max-w-[62ch] text-[15px] leading-relaxed text-text-secondary">
-            Vous déposez une photo de {prenom}, bien visible et de face. SportVision en calcule une
-            empreinte numérique et s&apos;en sert pour le retrouver sur les photos des prochaines
-            galeries de son club. Quand la ressemblance est très sûre, la photo lui est attribuée
-            automatiquement ; sinon, une personne de SportVision vérifie avant.
+            Vous déposez une photo de {lui}, bien visible et de face. SportVision en calcule une
+            empreinte numérique et s&apos;en sert pour {pourMoi ? "vous" : "le"} retrouver sur les
+            photos des prochaines galeries de {son} club. Quand la ressemblance est très sûre, la
+            photo {pourMoi ? "vous" : "lui"} est attribuée automatiquement ; sinon, une personne de
+            SportVision vérifie avant.
           </p>
 
           <h3 className="mt-5 font-sora text-[15px] font-semibold">Ce que nous conservons</h3>
           <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
-            La photo que vous déposez et son empreinte numérique, rattachées au compte de {prenom}.
-            Rien d&apos;autre. Elles ne servent qu&apos;à le retrouver dans les galeries de son club.
+            La photo que vous déposez et son empreinte numérique, rattachées {pourMoi ? "à votre compte" : `au compte de ${prenom}`}.
+            Rien d&apos;autre. Elles ne servent qu&apos;à {pourMoi ? "vous" : "le"} retrouver dans les
+            galeries de {son} club.
           </p>
 
           <h3 className="mt-4 font-sora text-[15px] font-semibold">Ce que nous ne faisons pas</h3>
           <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
             Nous ne créons aucun fichier de visages consultable. Nous ne vous identifions nulle part
-            ailleurs. Nous ne transmettons ces données à personne, ni au club, ni à un autre parent.
-            Les visages des autres enfants présents sur une photo ne sont jamais enregistrés.
+            ailleurs. Nous ne transmettons ces données à personne, ni au club, ni à quiconque. Les
+            visages des autres personnes présentes sur une photo ne sont jamais enregistrés.
           </p>
 
           <h3 className="mt-4 font-sora text-[15px] font-semibold">Vous pouvez changer d&apos;avis à tout moment</h3>
@@ -257,18 +274,22 @@ export function ReconnaissanceView({
           </p>
 
           <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5">
-            <label className="flex max-w-[62ch] cursor-pointer items-start gap-3 text-[14px] leading-relaxed text-text-secondary">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-[18px] w-[18px] flex-none accent-[#4F7DFF]"
-                checked={autoriteParentale}
-                onChange={(e) => setAutoriteParentale(e.target.checked)}
-              />
-              <span>
-                J&apos;atteste être titulaire de l&apos;autorité parentale sur {prenom} (ou son
-                représentant légal).
-              </span>
-            </label>
+            {/* Un majeur n'atteste de rien : il consent pour lui-même. Lui faire cocher une
+                autorité parentale sur sa propre personne n'aurait aucun sens juridique. */}
+            {!pourMoi && (
+              <label className="flex max-w-[62ch] cursor-pointer items-start gap-3 text-[14px] leading-relaxed text-text-secondary">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-[18px] w-[18px] flex-none accent-[#4F7DFF]"
+                  checked={autoriteParentale}
+                  onChange={(e) => setAutoriteParentale(e.target.checked)}
+                />
+                <span>
+                  J&apos;atteste être titulaire de l&apos;autorité parentale sur {prenom} (ou son
+                  représentant légal).
+                </span>
+              </label>
+            )}
             <label className="flex max-w-[62ch] cursor-pointer items-start gap-3 text-[14px] leading-relaxed text-text-secondary">
               <input
                 type="checkbox"
@@ -277,8 +298,8 @@ export function ReconnaissanceView({
                 onChange={(e) => setAutorise(e.target.checked)}
               />
               <span>
-                J&apos;autorise SportVision à reconnaître le visage de {prenom} sur les photos des
-                galeries de son club, dans les conditions ci-dessus.
+                J&apos;autorise SportVision à reconnaître {pourMoi ? "mon visage" : `le visage de ${prenom}`} sur
+                les photos des galeries de {son} club, dans les conditions ci-dessus.
               </span>
             </label>
           </div>
@@ -287,13 +308,13 @@ export function ReconnaissanceView({
             <Button
               className="h-12 text-[15px]"
               loading={enCours === "accord"}
-              disabled={!autoriteParentale || !autorise || enCours !== null}
+              disabled={(!pourMoi && !autoriteParentale) || !autorise || enCours !== null}
               onClick={() => void donnerAccord()}
             >
               J&apos;accepte et je dépose la photo
             </Button>
             <Link
-              href={`/particulier/sportifs/${detail.kind}/${detail.ref_id}`}
+              href={retour}
               className="flex h-12 items-center rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[15px] font-semibold hover:bg-white/[.12]"
             >
               Non merci

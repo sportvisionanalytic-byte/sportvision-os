@@ -120,11 +120,24 @@ export function PhotosView({
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Photos</h1>
-        <p className="max-w-[560px] text-[15px] text-text-tertiary">
-          {teamName ? `Les galeries photo de ${teamName}.` : "Les galeries photo de votre équipe."}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-2">
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Photos</h1>
+          <p className="max-w-[560px] text-[15px] text-text-tertiary">
+            {teamName ? `Les galeries photo de ${teamName}.` : "Les galeries photo de votre équipe."}
+          </p>
+        </div>
+        {/* 21/09/2026, Fouka : « pour un joueur majeur, ils donnent leur accord eux-mêmes ». Ici et
+            pas dans le profil : c'est sur cet écran qu'on vient chercher ses photos, donc ici que
+            l'idée de les retrouver automatiquement a un sens. L'écran d'accord dit ensuite tout ce
+            qu'il faut savoir ; ce bouton ne promet rien à sa place. */}
+        <Link
+          href="/reconnaissance"
+          className="flex h-11 flex-none items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
+        >
+          <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">face_retouching_natural</span>
+          Retrouver mes photos
+        </Link>
       </div>
 
       {returnStatus === "succes" && (
