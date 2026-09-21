@@ -10,5 +10,8 @@
       "clubplus.sportvision-an.fr",
       "bc6m3cgdz.sportvision-an.fr"
     ]
+  },
+  "ios": {
+    "contentInset": "always"
   }
 }
