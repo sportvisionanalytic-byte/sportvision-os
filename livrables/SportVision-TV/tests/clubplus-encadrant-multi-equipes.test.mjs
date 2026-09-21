@@ -115,6 +115,16 @@ async function main() {
       Array.isArray(portees) && equipes.slice(0, 2).every((e) => portees.includes(e.name)),
       JSON.stringify(portees),
     );
+    // 21/09/2026, decision de Fouka : l'e-mail part DES LA CREATION, sans second clic. Un invite
+    // a attendu six heures un message qu'on croyait parti ; a l'echelle d'une categorie entiere,
+    // on prepare trente invitations en croyant avoir invite trente personnes.
+    const envoi = await lire(`notification_outbox?select=status,template_key&recipient_email=eq.${mailInvite}`);
+    t("l'e-mail part sans second clic", (envoi || []).length === 1 && envoi[0].template_key === "clubplus.invitation",
+      JSON.stringify(envoi).slice(0, 140));
+    // Adresse en .invalid : le relais ne l'envoie pas pour de vrai, il la marque SUPPRESSED. Les
+    // deux etats prouvent la meme chose — la demande d'envoi a bien ete faite a la creation.
+    t("l'invitation ne reste pas « preparee »", ["SENT", "SUPPRESSED", "PENDING"].includes(envoi?.[0]?.status),
+      envoi?.[0]?.status || "(aucun envoi)");
     t("aucune erreur JavaScript", vraiesErreursCP(erreurs).length === 0, vraiesErreursCP(erreurs)[0] || "");
 
     // ── 3. Changer le périmètre d'un membre déjà en place ───────────────────
