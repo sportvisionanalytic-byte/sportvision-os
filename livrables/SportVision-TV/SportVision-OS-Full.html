@@ -31889,6 +31889,11 @@ async function modalSauvegarde(prestationId){
 
   // §32 : la mission ne peut pas être « livrée » si seule la photo est faite alors que la vidéo
   // était demandée. Chaque livrable attendu est déduit de la couverture, jamais supposé.
+  // 21/09/2026, demande de Fouka : « c'est LUI qui met le nombre de liens a mettre, il ne faut pas
+  // lui imposer un nombre de liens ». Ces lignes restent, mais comme des RACCOURCIS de depot —
+  // elles ne conditionnent plus rien. Un operateur qui a livre autrement (deux liens photo et pas
+  // de rushs, un drone en plus) n'a plus a se declarer « sans objet » pour une case decidee a sa
+  // place. La base a suivi (v240) : ce qui compte, c'est que CHAQUE lien depose soit relu.
   const attendus=[];
   if(cov==='photo'||cov==='photo_video'){
     attendus.push({k:'photo',lb:'Photos traitées',cat:'final',tm:'photo'});
@@ -31975,7 +31980,8 @@ async function modalSauvegarde(prestationId){
       ${echeances}
     </div>
 
-    <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Livrables attendus pour cette couverture</div>
+    <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:3px">Ce que vous livrez</div>
+    <div style="font-size:11.5px;color:var(--t3);margin-bottom:8px;line-height:1.45">Déposez autant de liens que nécessaire. Les lignes ci-dessous sont des raccourcis d'après le type de mission, rien n'est obligatoire : c'est vous qui décidez de ce que vous livrez.</div>
     <div style="margin-bottom:16px">
       ${attendus.length?attendus.map(a=>{
         const l=trouve(a);
@@ -31999,7 +32005,7 @@ async function modalSauvegarde(prestationId){
           </div>`:''}
         </div>`;
       }).join(''):'<div style="font-size:12.5px;color:var(--wa)">Couverture non renseignée : Production doit la préciser avant que les livrables puissent être exigés.</div>'}
-      ${(attendus.length&&!tousFournis&&nbFournis===0)?`<div style="font-size:11.5px;color:var(--t3);margin-top:8px;line-height:1.45">Déposez au moins un lien : une mission ne se valide pas avec tous ses livrables déclarés sans objet.</div>`:''}
+      ${!L.length?`<div style="font-size:11.5px;color:var(--t3);margin-top:8px;line-height:1.45">Déposez au moins un lien : sans lien, la Production n'a rien à vérifier.</div>`:''}
     </div>
 
     <!-- 14/09/2026 — Tout ce qui ne rentre dans aucune ligne ci-dessus : drone, Veo, photos d'un
@@ -32046,7 +32052,7 @@ async function modalSauvegarde(prestationId){
 
     <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn bg2 bs" onclick="modalIncidentFichiers('${escJs(prestationId)}')">⚠ Problème avec les fichiers</button>
-      ${tousFournis&&['production_terminée','médias_à_transférer','médias_complets','à_monter','montage_en_cours'].includes(p.statut)?`<button class="btn bp bs" onclick="envoyerAProduction('${escJs(prestationId)}','${escJs(p.statut)}')">📤 Envoyer à Production pour validation</button>`:''}
+      ${L.length&&['production_terminée','médias_à_transférer','médias_complets','à_monter','montage_en_cours'].includes(p.statut)?`<button class="btn bp bs" onclick="envoyerAProduction('${escJs(prestationId)}','${escJs(p.statut)}')">📤 Envoyer à Production pour validation</button>`:''}
     </div>`;
 }
 

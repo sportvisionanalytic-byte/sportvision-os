@@ -16,8 +16,12 @@
 --   3. Un lien en « correction demandée » bloque, même si un autre est validé.
 --   4. Tous relus : la mission redevient clôturable.
 --   5. Retirer le lien fautif débloque aussi — on n'oblige personne à garder un lien mort.
---   6. Un lien hors livrables attendus (un drone) est accepté sans rien exiger de plus, mais une
---      correction demandée dessus bloque comme sur n'importe quel autre.
+--   6. Un lien hors catégories habituelles (un drone) est accepté comme les autres : il est relu
+--      comme les autres, et une correction demandée dessus bloque comme sur n'importe quel autre.
+--
+-- 21/09/2026 (v240) : la notion de « livrable attendu » a disparu. Plus rien n'est imposé par la
+-- couverture, et en contrepartie AUCUN lien n'échappe à la relecture, qu'il soit « final » ou
+-- annexe. Les points 1 à 5 sont inchangés ; le point 6 est devenu plus strict.
 
 begin;
 
@@ -50,7 +54,7 @@ begin
 
   -- ══ 2. UN LIEN NON VÉRIFIÉ BLOQUE LA CLÔTURE ═════════════════════════════
   m := mission_cloture_manquant(v_pres);
-  if not ('Un livrable final n''a pas encore été vérifié par la Production' = any(m)) then
+  if not ('Un lien n''a pas encore été vérifié par la Production' = any(m)) then
     e := e || format('deux liens non relus ne bloquent pas la cloture : %s', array_to_string(m,' ; '));
   end if;
 
@@ -77,15 +81,20 @@ begin
     e := e || format('apres retrait du lien fautif, la cloture reste bloquee : %s', array_to_string(m,' ; '));
   end if;
 
-  -- ══ 6. UN LIEN HORS LIVRABLES ATTENDUS ═══════════════════════════════════
-  -- Un drone n'est dans aucune ligne deduite de la couverture « photo ». Il doit pouvoir etre
-  -- depose sans rien bloquer : la validation des livraisons annexes n'a jamais ete exigee, et la
-  -- demande de Fouka est d'ACCEPTER plus de liens, pas d'en exiger davantage.
+  -- ══ 6. UN LIEN HORS CATEGORIES HABITUELLES ═══════════════════════════════
+  -- Un drone n'entre dans aucune categorie « attendue » de l'ancien modele. Il se depose sans
+  -- demarche particuliere, et depuis la v240 il est relu comme les autres : il n'y a plus de
+  -- liens de seconde zone que la Production pourrait ignorer.
   insert into media_liens (prestation_id, nom, url, categorie, type_media, statut, ajouteur_id)
     values (v_pres,'Drone — survol','https://ex.invalid/4','livraison','drone','a_verifier',v_admin) returning id into l4;
   m := mission_cloture_manquant(v_pres);
+  if not ('Un lien n''a pas encore été vérifié par la Production' = any(m)) then
+    e := e || format('un lien annexe non relu passe sous le radar : %s', coalesce(array_to_string(m,' ; '),'rien'));
+  end if;
+  update media_liens set statut='valide' where id = l4;
+  m := mission_cloture_manquant(v_pres);
   if array_length(m,1) is not null then
-    e := e || format('un lien annexe non relu bloque la cloture alors qu il ne devrait pas : %s', array_to_string(m,' ; '));
+    e := e || format('le lien annexe relu bloque encore : %s', array_to_string(m,' ; '));
   end if;
   -- En revanche, s'il fait l'objet d'une correction demandee, il bloque comme n'importe quel autre.
   update media_liens set statut='correction_demandee', commentaire='Survol hors cadre' where id = l4;
@@ -99,6 +108,6 @@ begin
   end if;
 end $$;
 
-select 'OK — une mission porte autant de liens que nécessaire, y compris hors livrables attendus ; aucun livrable final ne passe sous le radar et une correction demandée bloque, où qu''elle porte.' as verdict;
+select 'OK — une mission porte autant de liens que nécessaire, de n''importe quelle nature ; aucun lien ne passe sous le radar et une correction demandée bloque, où qu''elle porte.' as verdict;
 
 rollback;

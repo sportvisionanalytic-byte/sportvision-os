@@ -7,8 +7,12 @@
 -- validation, et elle seule, qui débloque la rémunération et les XP de l'opérateur.
 --
 -- Ce que ce test tient pour vrai : une mission photo_video sans vidéo ni galerie se clôture quand
--- c'est déclaré, une mission sans AUCUN livrable réel ne se clôture pas, et la validation donne
+-- c'est déclaré, une mission sans AUCUN lien déposé ne se clôture pas, et la validation donne
 -- la rémunération et les XP, une seule fois. Décor fictif, tout est annulé.
+--
+-- 21/09/2026 (v240) : la couverture n'impose plus aucun livrable nommé. C'est l'opérateur qui
+-- décide combien de liens il dépose. Le seul plancher qui reste : au moins un lien, sinon la
+-- Production n'a rien à vérifier.
 
 begin;
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
@@ -56,13 +60,13 @@ update prestations set statut = 'clôturée' where id = (select prestation from 
 select pg_temp.note('et une seule fois', '1',
   (select count(*)::text from xp_events x, ctx where x.source_id = ctx.prestation));
 
--- Une mission dont TOUT serait declare sans objet ne se cloture pas.
+-- Une mission sans aucun lien depose ne se cloture pas : la Production n'aurait rien a verifier.
 update media_liens set transfert_confirme = false where prestation_id = (select prestation from ctx);
 delete from media_liens where prestation_id = (select prestation from ctx);
 update mission_suivi_operateur set livrables_non_fournis = livrables_non_fournis || '{"photo":{"motif":"rien"}}'::jsonb
  where prestation_id = (select prestation from ctx);
-select pg_temp.note('une mission sans aucun livrable reel reste bloquee', 'oui',
-  (select case when 'Aucun livrable réellement transmis' = any(mission_cloture_manquant((select prestation from ctx)))
+select pg_temp.note('une mission sans aucun lien reste bloquee', 'oui',
+  (select case when 'Aucun lien déposé par l''opérateur' = any(mission_cloture_manquant((select prestation from ctx)))
                then 'oui' else 'NON' end));
 
 select case when attendu = obtenu then '✅' else '❌' end as ok, controle, attendu, obtenu from verdicts order by n;

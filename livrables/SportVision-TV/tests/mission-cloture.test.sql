@@ -1,9 +1,14 @@
--- « Mission terminée » ne s'affiche que quand tout ce qui est applicable est fait (§K, §L).
+-- « Mission terminée » ne s'affiche que quand tout ce qui a été livré a été relu (§K, §L).
 --
--- C'est la règle de fin de parcours, et elle dépend de la couverture : une mission photo
--- n'attend pas de montage, une mission vidéo n'attend pas de photos traitées, une mission
--- photo+vidéo attend les deux. Une mission photo_video clôturée sur la seule validation des
--- photos serait exactement le couac que ce module existe pour empêcher.
+-- 21/09/2026 (v240) — LA RÈGLE A CHANGÉ, sur décision de Fouka : « c'est LUI qui met le nombre de
+-- liens à mettre, il ne faut pas lui imposer un nombre de liens. Le responsable production vérifie
+-- uniquement à partir des liens. Il n'y a pas de lien obligatoire pour valider la prestation. »
+--
+-- Ce test vérifiait l'inverse : que la COUVERTURE imposait ses livrables (photos traitées, montage,
+-- rushs), et qu'il en manquait un suffisait à bloquer. Il est réécrit sur la règle d'aujourd'hui,
+-- qui ne demande plus CE QUI a été livré mais que ce qui a été livré ait été RELU — et qui est,
+-- sur ce point, plus exigeante qu'avant : AUCUN lien ne passe sans vérification, quel que soit son
+-- type, là où seuls les livrables « finaux » comptaient.
 --
 -- Le test attaque la base directement : il ne clique sur aucun bouton.
 --
@@ -64,15 +69,18 @@ begin
   -- manquait ni qui devait agir. Le test suit le nouveau texte, sinon il protège une phrase morte.
   if not (m @> array['Sauvegarde non confirmée par l''opérateur (il doit cocher « fichiers copiés et vérifiés »)'])
     then e := e || 'photo : la sauvegarde non confirmée n''est pas signalée'::text; end if;
-  if not (m @> array['Photos traitées non livrées']) then e := e || 'photo : les photos manquantes ne sont pas signalées'::text; end if;
-  if m @> array['Montage final non livré'] then e := e || 'photo : un montage est exigé sur une mission PHOTO'::text; end if;
-  if m @> array['Rushs vidéo non transmis'] then e := e || 'photo : des rushs sont exigés sur une mission PHOTO'::text; end if;
+  if not (m @> array['Aucun lien déposé par l''opérateur']) then e := e || 'photo : l''absence totale de lien n''est pas signalée'::text; end if;
+  -- Plus aucun livrable nommé n'est exigé : ni photos, ni montage, ni rushs.
+  if array_to_string(m,' ') ilike '%Photos traitées non livrées%' or array_to_string(m,' ') ilike '%Montage final non livré%'
+     or array_to_string(m,' ') ilike '%Rushs vidéo non transmis%' then
+    e := e || 'photo : un livrable impose par la couverture est encore exige'::text;
+  end if;
 
   insert into media_liens (prestation_id, nom, url, categorie, type_media, statut, transfert_confirme)
   values (v_photo,'ZZ photos','https://x.test/p','final','photo','a_verifier',true);
 
   m := mission_cloture_manquant(v_photo);
-  if not (m @> array['Photos non validées par la Production']) then e := e || 'photo : livrée mais non validée, et rien ne le dit'::text; end if;
+  if not (m @> array['Un lien n''a pas encore été vérifié par la Production']) then e := e || 'photo : livrée mais non relue, et rien ne le dit'::text; end if;
 
   update media_liens set statut='valide' where prestation_id=v_photo;
   m := mission_cloture_manquant(v_photo);
@@ -83,23 +91,33 @@ begin
   insert into media_liens (prestation_id, nom, url, categorie, type_media, statut, transfert_confirme)
   values (v_video,'ZZ montage','https://x.test/v','final','video','valide',true);
 
+  -- v240 : un montage seul, relu, suffit. C'est l'operateur qui decide de deposer des rushs ou non.
   m := mission_cloture_manquant(v_video);
-  if not (m @> array['Rushs vidéo non transmis']) then e := e || 'vidéo : le montage seul suffit à clôturer, les rushs ne sont pas exigés'::text; end if;
-  if m @> array['Photos traitées non livrées'] then e := e || 'vidéo : des photos sont exigées sur une mission VIDÉO'::text; end if;
+  if array_length(m,1) is not null then e := e || format('vidéo : un montage relu ne suffit pas, il reste %s', array_to_string(m,' / ')); end if;
 
+  -- Mais s'il depose des rushs, ils sont relus comme le reste.
   insert into media_liens (prestation_id, nom, url, categorie, type_media, statut)
   values (v_video,'ZZ rushs','https://x.test/r','rushs','video','a_verifier');
   m := mission_cloture_manquant(v_video);
-  if array_length(m,1) is not null then e := e || format('vidéo : tout est fait mais il reste %s', array_to_string(m,' / ')); end if;
+  if not (m @> array['Un lien n''a pas encore été vérifié par la Production']) then
+    e := e || 'vidéo : des rushs deposes mais non relus ne bloquent pas'::text;
+  end if;
+  update media_liens set statut='valide' where prestation_id=v_video and categorie='rushs';
+  m := mission_cloture_manquant(v_video);
+  if array_length(m,1) is not null then e := e || format('vidéo : tout est relu mais il reste %s', array_to_string(m,' / ')); end if;
 
   -- ══ 3. PHOTO + VIDÉO : les photos seules ne suffisent pas ═════════════════
   v_deux := pg_temp.mission('photo_video', v_op, v_admin, v_client);
   insert into media_liens (prestation_id, nom, url, categorie, type_media, statut, transfert_confirme)
   values (v_deux,'ZZ photos','https://x.test/p2','final','photo','valide',true);
 
+  -- v240 : la couverture n'exige plus rien. Des photos relues suffisent, meme sur photo_video —
+  -- c'est l'operateur qui sait ce qu'il a produit, et la Production qui juge le contenu (et qui
+  -- peut redresser la remuneration si ce n'est pas ce qui etait attendu).
   m := mission_cloture_manquant(v_deux);
-  if array_length(m,1) is null then e := e || 'photo+vidéo : clôturable alors que seules les photos sont validées'::text; end if;
-  if not (m @> array['Montage final non livré']) then e := e || 'photo+vidéo : le montage manquant n''est pas signalé'::text; end if;
+  if array_length(m,1) is not null then
+    e := e || format('photo+vidéo : des photos relues ne suffisent pas, il reste %s', array_to_string(m,' / '));
+  end if;
 
   -- §M : la partie photo reste acquise pendant que la vidéo est en correction.
   insert into media_liens (prestation_id, nom, url, categorie, type_media, statut)
@@ -108,16 +126,13 @@ begin
   values (v_deux,'ZZ rushs','https://x.test/r2','rushs','video','a_verifier');
 
   m := mission_cloture_manquant(v_deux);
-  if m @> array['Photos traitées non livrées'] or m @> array['Photos non validées par la Production'] then
-    e := e || 'photo+vidéo : une correction vidéo fait repartir la photo à zéro'::text;
-  end if;
-  if not (m @> array['Montage non validé par la Production']) then
-    e := e || 'photo+vidéo : le montage en correction est compté comme validé'::text;
+  if not (m @> array['Un lien attend une correction demandée par la Production']) then
+    e := e || 'photo+vidéo : un montage en correction ne bloque pas la clôture'::text;
   end if;
 
-  update media_liens set statut='valide' where prestation_id=v_deux and type_media='video' and categorie='final';
+  update media_liens set statut='valide' where prestation_id=v_deux and type_media='video';
   m := mission_cloture_manquant(v_deux);
-  if array_length(m,1) is not null then e := e || format('photo+vidéo : tout est validé mais il reste %s', array_to_string(m,' / ')); end if;
+  if array_length(m,1) is not null then e := e || format('photo+vidéo : tout est relu mais il reste %s', array_to_string(m,' / ')); end if;
 
   -- ══ 4. KIT À RENDRE : ne bloque PLUS (décision Fouka, 13/09/2026) ═════════
   --
@@ -164,12 +179,13 @@ begin
     e := e || format('mission complète refusée à la clôture : %s', sqlerrm);
   end;
 
-  -- Celle-ci ne l'est pas : elle doit être refusée, même en appel direct.
+  -- Celle-ci ne l'est pas : un des liens deposes n'a pas encore ete relu par la Production.
+  -- C'est le seul manque qui compte desormais, et il doit bloquer meme en appel direct.
   perform pg_temp.jusqua_livree(v_video);
-  delete from media_liens where prestation_id=v_video and categorie='rushs';
+  update media_liens set statut='a_verifier' where prestation_id=v_video and categorie='rushs';
   begin
     update prestations set statut='clôturée' where id=v_video;
-    e := e || 'une mission vidéo sans rushs a été clôturée'::text;
+    e := e || 'une mission avec un lien non relu a été clôturée'::text;
   exception when others then null; end;
 
   perform set_config('role','postgres',true);
@@ -178,6 +194,6 @@ begin
   end if;
 end $$;
 
-select 'OK — clôture adaptée à la couverture ; photo+vidéo exige les deux ; une correction vidéo ne défait pas la photo ; le kit ne bloque plus (relance seule) ; refus valable en appel direct.' as verdict;
+select 'OK — v240 : aucun livrable imposé par la couverture, mais tout lien déposé doit être relu ; une correction en attente bloque ; le kit ne bloque plus (relance seule) ; refus valable en appel direct.' as verdict;
 
 rollback;
