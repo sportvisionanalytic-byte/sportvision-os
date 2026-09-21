@@ -1822,6 +1822,23 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Commandes payées</div><div class="fs-v" id="finmed-kpi-cmd">—</div></div>
       <div class="fs"><div class="fs-l">Panier moyen</div><div class="fs-v" id="finmed-kpi-panier">—</div></div>
     </div>
+    <!-- 21/09/2026, Fouka : « je ne vois pas bien les galeries les plus performantes, les
+         galeries payées, je n'ai pas un bon visuel dessus ». Le rapport s'arretait au club et a
+         l'operation commerciale : deux niveaux au-dessus de ce qui se decide. On ne vend pas un
+         club, on vend UNE galerie. Ce bloc passe donc en premier. -->
+    <div class="cd" style="margin-bottom:16px">
+      <div class="cd-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div><div class="cd-t">Galerie par galerie</div>
+          <div style="font-size:11.5px;color:var(--t3);margin-top:2px">Classées par ce qu'elles ont rapporté. La conversion dit la part des visiteurs qui achètent.</div>
+        </div>
+        <select id="finmed-periode" class="fi" style="width:auto;font-size:12px;padding:6px 10px" onchange="loadFinMedias()">
+          <option value="30">30 derniers jours</option>
+          <option value="90">3 derniers mois</option>
+          <option value="365" selected>Cette année</option>
+        </select>
+      </div>
+      <div id="finmed-galeries-content">${_finSkelRows(6,40)}</div>
+    </div>
     <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Par club</div></div>
       <div id="finmed-clubs-content">${_finSkelRows(4,40)}</div>
     </div>
@@ -10522,9 +10539,74 @@ async function _medSaveOperation(clubId,saisonId,operationId){
 // ── Rapport CA médias (master prompt §35-36) : media_orders reste volontairement hors du modèle
 // factures/paiements (doctrine déjà établie pour Pass Photo/Agent) — lu ici directement, jamais
 // injecté dans finrevenus pour ne pas fausser ses propres KPI.
+// Le tableau galerie par galerie (21/09/2026).
+//
+// Trois lectures possibles d'une galerie qui ne rapporte rien, et il faut pouvoir les distinguer
+// d'un coup d'oeil, sinon le tableau ne sert a rien :
+//   • personne ne l'a vue : le lien n'a pas circule, c'est un probleme de diffusion ;
+//   • beaucoup l'ont vue sans acheter : le prix, les photos ou l'offre ne vont pas ;
+//   • elle est largement consultee par des familles qui y ont droit (Pass Photo) : ce n'est pas
+//     un echec commercial du tout.
+// D'ou la colonne des acces offerts, et le libelle explicite plutot qu'un « 0 % » muet.
+function _finGalerieLigne(g, caMax){
+  const eur=c=>((c||0)/100).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const ca=g.ca_cents||0;
+  const part=caMax>0?Math.round(ca*100/caMax):0;
+  const conv=g.conversion===null||g.conversion===undefined?null:Number(g.conversion);
+  const vis=g.visiteurs||0;
+  // Le diagnostic, en toutes lettres. C'est la colonne que Fouka lira en premier.
+  let etat, couleur;
+  if(ca>0){ etat=conv!==null&&conv>=10?'Bonne conversion':'Vend'; couleur='var(--ok)'; }
+  else if(g.acces_offerts>0){ etat='Incluse (Pass Photo)'; couleur='var(--t2)'; }
+  else if(vis===0){ etat='Jamais ouverte'; couleur='var(--t3)'; }
+  else if(vis>=20){ etat='Vue, jamais achetée'; couleur='#E8A33D'; }
+  else { etat='Peu vue'; couleur='var(--t3)'; }
+  const date=g.date_evenement?new Date(g.date_evenement+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'—';
+  return `<tr>
+    <td style="max-width:260px">
+      <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.titre||'Galerie')}</div>
+      <div style="font-size:11px;color:var(--t3)">${esc(g.club||'')} · ${date} · ${g.photos||0} photo${(g.photos||0)>1?'s':''}</div>
+    </td>
+    <td style="min-width:120px">
+      <div style="font-weight:700;color:${ca>0?'var(--ok)':'var(--t3)'}">${eur(ca)}</div>
+      <div style="height:4px;border-radius:999px;background:var(--s2);margin-top:4px;overflow:hidden">
+        <div style="height:100%;width:${part}%;background:var(--ok);border-radius:999px"></div>
+      </div>
+    </td>
+    <td style="text-align:right">${g.commandes||0}</td>
+    <td style="text-align:right">${vis}</td>
+    <td style="text-align:right">${conv===null?'<span style="color:var(--t3)">—</span>':conv.toFixed(1).replace('.',',')+' %'}</td>
+    <td style="text-align:right">${g.acces_offerts||0}</td>
+    <td><span style="font-size:11px;font-weight:600;color:${couleur}">${etat}</span></td>
+  </tr>`;
+}
+
 async function loadFinMedias(){
   const elClubs=document.getElementById('finmed-clubs-content'), elOps=document.getElementById('finmed-ops-content');
+  const elGal=document.getElementById('finmed-galeries-content');
   if(!elClubs||!elOps)return;
+
+  // Le tableau des galeries se charge a part : une erreur ici ne doit pas priver Fouka du CA.
+  if(elGal){
+    const jours=Number(document.getElementById('finmed-periode')?.value||365);
+    const gals=await sbFetch('rpc/media_performance_galeries',{method:'POST',body:{p_jours:jours}}).catch(()=>[]);
+    const rows=Array.isArray(gals)?gals:[];
+    const caMax=rows.reduce((m,g)=>Math.max(m,g.ca_cents||0),0);
+    const vendues=rows.filter(g=>(g.ca_cents||0)>0).length;
+    const vuesSansAchat=rows.filter(g=>(g.ca_cents||0)===0&&(g.visiteurs||0)>=20&&!(g.acces_offerts>0)).length;
+    elGal.innerHTML=rows.length?
+      `<div style="display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--bd);font-size:12px">
+         <span><b>${rows.length}</b> galerie${rows.length>1?'s':''}</span>
+         <span style="color:var(--ok)"><b>${vendues}</b> ont vendu</span>
+         ${vuesSansAchat?`<span style="color:#E8A33D"><b>${vuesSansAchat}</b> très vue${vuesSansAchat>1?'s':''} sans aucun achat</span>`:''}
+       </div>
+       <div class="tw"><table><thead><tr>
+         <th>Galerie</th><th>CA</th><th style="text-align:right">Achats</th><th style="text-align:right">Visiteurs</th>
+         <th style="text-align:right">Conversion</th><th style="text-align:right">Offerts</th><th>Lecture</th>
+       </tr></thead><tbody>`+rows.map(g=>_finGalerieLigne(g,caMax)).join('')+'</tbody></table></div>'
+      :'<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucune galerie publiée sur cette période.</div>';
+  }
+
   try{
     const [orders,operations]=await Promise.all([
       sbFetch('media_orders?select=id,club_id,product_id,amount_cents,status,paid_at,clubs(nom),media_products(name)&status=eq.paid&order=paid_at.desc&limit=1000').catch(()=>[]),
