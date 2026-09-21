@@ -1,10 +1,13 @@
 {
   "appId": "fr.sportvision.connect",
-  "appName": "SportVision Connect",
+  "appName": "SportVision",
   "webDir": "www",
   "backgroundColor": "#0b1330",
   "server": {
-    "url": "https://connect.sportvision-an.fr",
-    "cleartext": false
+    "androidScheme": "https",
+    "allowNavigation": [
+      "connect.sportvision-an.fr",
+      "clubplus.sportvision-an.fr"
+    ]
   }
 }
