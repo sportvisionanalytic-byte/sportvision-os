@@ -16,6 +16,8 @@ export interface AthleteDetail {
   sport: string | null;
   categorie: string | null;
   club_nom: string | null;
+  /** Écusson du club, résolu en base (v249) : un écusson remplacé met à jour toutes les fiches. */
+  club_logo_url?: string | null;
   club_id: string | null;
   relation_label: string;
   status: "actif" | "gere";
@@ -324,7 +326,27 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
               <div className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-5">
                 <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Affiliation principale</span>
                 <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/5 font-mono text-[7px] text-text-faint">logo</span>
+                  {/* 21/09/2026 — Un carré gris portant le mot « logo » écrit dedans tenait cette
+                      place : un décor de maquette resté en production. Le vrai écusson quand le
+                      club en a un, ses initiales sinon — jamais le mot « logo ». */}
+                  {detail.club_logo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={detail.club_logo_url}
+                      alt=""
+                      className="h-11 w-11 flex-none rounded-sv bg-white/5 object-contain"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/5 font-sora text-[13px] font-bold text-text-tertiary">
+                      {(detail.club_nom || "?")
+                        .split(/\s+/)
+                        .filter((m) => /[a-zA-ZÀ-ÿ0-9]/.test(m))
+                        .slice(0, 2)
+                        .map((m) => m[0]!.toUpperCase())
+                        .join("")}
+                    </span>
+                  )}
                   <div className="flex flex-col gap-0.5">
                     <span className="font-sora text-[15px] font-semibold">{detail.club_nom}</span>
                     <span className="text-[12px] text-text-tertiary">{detail.categorie || ""}</span>
