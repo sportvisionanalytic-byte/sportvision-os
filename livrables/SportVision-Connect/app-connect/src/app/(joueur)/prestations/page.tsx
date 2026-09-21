@@ -22,8 +22,16 @@ export default async function PrestationsPage() {
     <div className="flex flex-col gap-6 animate-sv-in">
       <div className="flex flex-col gap-2">
         <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Prestations</h1>
-        <p className="max-w-[560px] text-[15px] text-text-tertiary">
-          Réservez une couverture photo, vidéo ou une captation pour votre prochain match.
+        {/* 21/09/2026, formulation dictée par Fouka : « il faut dire qu'il y a des prestations
+            qui sont déjà là pour votre équipe, mais vous pouvez prendre des prestations en
+            individuel pour vous si vous voulez plus, pour vous personnellement ». Sans cette
+            phrase, un joueur croit qu'il doit payer la couverture de son match, que son club a
+            déjà commandée. */}
+        <p className="max-w-[620px] text-[15px] leading-relaxed text-text-tertiary">
+          Votre club a déjà prévu une couverture pour votre équipe. Ce catalogue, c&apos;est pour
+          vous personnellement : un shooting, un montage à votre nom, une prestation en plus de
+          ce qui est déjà couvert. Vous pouvez la régler seul, ou la partager avec vos
+          coéquipiers en paiement collectif.
         </p>
       </div>
 

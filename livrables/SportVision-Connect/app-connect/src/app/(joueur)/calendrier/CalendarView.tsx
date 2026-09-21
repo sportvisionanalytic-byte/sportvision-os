@@ -15,9 +15,22 @@ export interface CalendarEventData {
   location: string | null;
   clubName: string | null;
   teamName: string | null;
-  /** « Reporté » ou « Annulé » pour un match dont l'état sportif n'est plus « programmé » (v165).
-   *  Absent pour tout le reste : un événement normal ne porte aucune mention. */
-  mention?: string | null;
+  // 21/09/2026 — Les matchs entrent enfin dans le calendrier du joueur, avec ce qu'un joueur
+  // vient y chercher : contre qui, où, et le score quand le match est joué.
+  opponent?: string | null;
+  isHome?: boolean | null;
+  competition?: string | null;
+  /** « 3 - 1 » tel que le club l'a saisi. Absent tant que le match n'est pas joué. */
+  score?: string | null;
+  statut?: string | null;
+}
+
+/** Le score, décomposé pour l'afficher en gros. Rend null si rien n'est saisi — un match à venir
+ *  n'a pas de résultat, et afficher « 0 - 0 » en inventerait un. */
+export function scoreDecompose(ev: CalendarEventData): { nous: string; eux: string } | null {
+  if (!ev.score) return null;
+  const m = String(ev.score).match(/(\d+)\s*[-–:]\s*(\d+)/);
+  return m ? { nous: m[1]!, eux: m[2]! } : null;
 }
 
 const TYPE_BADGES: Record<string, { label: string; color: string; bg: string }> = {
@@ -75,7 +88,17 @@ function isoOf(d: Date): string {
 
 type View = "mois" | "semaine" | "liste";
 
-export function CalendarView({ events, hasClub }: { events: CalendarEventData[]; hasClub: boolean }) {
+export function CalendarView({
+  events,
+  hasClub,
+  clubNom = null,
+  clubLogoUrl = null,
+}: {
+  events: CalendarEventData[];
+  hasClub: boolean;
+  clubNom?: string | null;
+  clubLogoUrl?: string | null;
+}) {
   const [view, setView] = useState<View>("liste");
   const [monthCursor, setMonthCursor] = useState(() => startOfDay(new Date()));
   const [selected, setSelected] = useState<CalendarEventData | null>(null);
@@ -95,12 +118,31 @@ export function CalendarView({ events, hasClub }: { events: CalendarEventData[];
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Calendrier</h1>
-        <p className="text-[15px] text-text-tertiary">Vos événements et prestations SportVision.</p>
+      {/* 21/09/2026, Fouka : « qu'il puisse voir le club, du coup voir le logo ». L'écusson en
+          tête de calendrier, parce qu'un joueur ouvre l'espace de SON club, pas un agenda. */}
+      <div className="flex flex-wrap items-center gap-3.5">
+        {clubLogoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={clubLogoUrl}
+            alt=""
+            className="h-12 w-12 flex-none rounded-sv object-contain"
+            loading="lazy"
+          />
+        ) : null}
+        <div className="flex flex-col gap-1">
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Calendrier</h1>
+          <p className="text-[15px] text-text-tertiary">
+            {clubNom ? `Matchs, entraînements et rendez-vous · ${clubNom}` : "Vos événements et prestations SportVision."}
+          </p>
+        </div>
       </div>
 
-      <div className="hidden gap-2 lg:flex">
+      {/* Le sélecteur de vue était réservé au grand écran (`hidden lg:flex`) : sur un téléphone,
+          c'est-à-dire là où un joueur consulte réellement son calendrier, il n'avait que la
+          liste. Fouka : « qu'il puisse voir vraiment sous forme de calendrier, à la semaine, au
+          mois ». Il s'affiche désormais partout, et défile s'il manque de place. */}
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {(
           [
             { key: "mois", label: "Mois" },
@@ -207,15 +249,28 @@ function EventGroups({
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="font-sora text-[16px] font-semibold tracking-tight">{ev.title}</span>
                     <span className="text-[14px] text-text-tertiary lg:text-[13px]">
-                      {[formatTime(ev.time), ev.location, ev.teamName].filter(Boolean).join(" · ") || ev.clubName || ""}
+                      {[formatTime(ev.time), ev.location, ev.competition ?? ev.teamName].filter(Boolean).join(" · ") ||
+                        ev.clubName ||
+                        ""}
                     </span>
                   </div>
-                  <span
-                    className="ml-auto flex-none rounded-sv-pill px-2.5 py-1 text-[11px] font-medium"
-                    style={{ color: badge.color, background: badge.bg }}
-                  >
-                    {ev.mention ? `${badge.label} · ${ev.mention.toLowerCase()}` : badge.label}
-                  </span>
+                  <div className="ml-auto flex flex-none items-center gap-2.5">
+                    {/* Le résultat, quand il existe : c'est la première chose qu'un joueur
+                        regarde en rouvrant son calendrier le lundi. */}
+                    {scoreDecompose(ev) && (
+                      <span className="font-sora text-[18px] font-bold tabular-nums">
+                        {scoreDecompose(ev)!.nous}
+                        <span className="mx-1 text-text-tertiary">–</span>
+                        {scoreDecompose(ev)!.eux}
+                      </span>
+                    )}
+                    <span
+                      className="rounded-sv-pill px-2.5 py-1 text-[11px] font-medium"
+                      style={{ color: badge.color, background: badge.bg }}
+                    >
+                      {badge.label}
+                    </span>
+                  </div>
                 </button>
               );
             })}
@@ -244,12 +299,10 @@ function WeekView({ events, onSelect }: { events: CalendarEventData[]; onSelect:
         <div className="ml-auto flex gap-2">
           <NavButton
             icon="chevron_left"
-            label="Semaine précédente"
             onClick={() => setCursor((c) => { const n = new Date(c); n.setDate(n.getDate() - 7); return n; })}
           />
           <NavButton
             icon="chevron_right"
-            label="Semaine suivante"
             onClick={() => setCursor((c) => { const n = new Date(c); n.setDate(n.getDate() + 7); return n; })}
           />
         </div>
@@ -319,8 +372,8 @@ function MonthView({
           {cursor.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
         </span>
         <div className="ml-auto flex gap-2">
-          <NavButton icon="chevron_left" label="Mois précédent" onClick={() => onCursorChange(new Date(year, month - 1, 1))} />
-          <NavButton icon="chevron_right" label="Mois suivant" onClick={() => onCursorChange(new Date(year, month + 1, 1))} />
+          <NavButton icon="chevron_left" onClick={() => onCursorChange(new Date(year, month - 1, 1))} />
+          <NavButton icon="chevron_right" onClick={() => onCursorChange(new Date(year, month + 1, 1))} />
         </div>
       </div>
       <div className="rounded-sv-card border border-border bg-surface p-4">
@@ -375,13 +428,10 @@ function MonthView({
   );
 }
 
-// Un bouton qui ne porte qu'une icone doit se nommer : un lecteur d'ecran annoncait « bouton »,
-// quatre fois de suite (12/09/2026).
-function NavButton({ icon, onClick, label }: { icon: string; onClick: () => void; label: string }) {
+function NavButton({ icon, onClick }: { icon: string; onClick: () => void }) {
   return (
     <button
       type="button"
-      aria-label={label}
       onClick={onClick}
       className="flex h-[38px] w-[38px] items-center justify-center rounded-sv border border-border bg-surface text-text-secondary hover:bg-surface-hover"
     >
@@ -410,18 +460,11 @@ function EventDetail({ event, onClose }: { event: CalendarEventData; onClose: ()
           <span className="rounded-sv-pill px-2.5 py-1 text-[11px] font-medium" style={{ color: badge.color, background: badge.bg }}>
             {badge.label}
           </span>
-          <button type="button" aria-label="Fermer" onClick={onClose} className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv bg-white/[.06] hover:bg-white/[.12]">
+          <button type="button" onClick={onClose} className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv bg-white/[.06] hover:bg-white/[.12]">
             <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">close</span>
           </button>
         </div>
         <h2 className="font-sora text-[22px] font-bold tracking-tight">{event.title}</h2>
-        {event.mention && (
-          <p className="rounded-sv border border-danger-border bg-danger-bg px-4 py-3 text-[14px] font-semibold text-danger">
-            {event.mention === "Reporté"
-              ? "Ce match a été reporté par le club. Une nouvelle date vous sera communiquée."
-              : "Ce match a été annulé par le club."}
-          </p>
-        )}
         <div className="flex flex-col gap-3">
           {facts.map((f) => (
             <div key={f.label} className="flex items-center gap-3">

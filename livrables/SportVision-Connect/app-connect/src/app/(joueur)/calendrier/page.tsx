@@ -52,32 +52,38 @@ export default async function CalendrierPage() {
     }
   }
 
-  // Les MATCHS de l'équipe (12/09/2026). Ils vivent dans `club_matches`, pas dans
-  // `club_calendar_events` : depuis le 04/09 tout match saisi dans Club+ y est routé, et ce
-  // calendrier n'en lisait aucun — 677 matchs réels invisibles pour les familles. La policy
-  // `cma_family_select` (is_family_of_team) borne déjà la lecture à l'équipe de l'enfant : on ne
-  // filtre pas une seconde fois côté application, on lit ce que la base accepte de rendre.
+  // ── Les matchs de son équipe (21/09/2026) ──────────────────────────────────
+  // Fouka : « qu'ils voient leur entraînement et leur match, qu'ils voient vraiment les résultats
+  // des matchs ». Le calendrier du joueur ne lisait que club_calendar_events — les entraînements
+  // et les événements du club — et ignorait club_matches, c'est-à-dire précisément ce qu'un
+  // joueur vient y chercher. Ses matchs étaient donc invisibles depuis son espace, alors que la
+  // policy cma_family_select les lui ouvre depuis toujours.
   if (player?.club) {
     const { data: matchRows } = await supabase
       .from("club_matches")
-      .select("id, match_date, kickoff_time, team, opponent, lieu, is_home, sport_status")
+      .select("id, team, opponent, match_date, kickoff_time, lieu, score, is_home, competition, sport_status, status")
       .eq("club_id", player.club.id)
-      .not("match_date", "is", null)
       .order("match_date", { ascending: true });
 
     for (const row of matchRows ?? []) {
-      const adversaire = (row.opponent as string | null) || "adversaire à confirmer";
-      const etat = (row.sport_status as string | null) ?? "scheduled";
+      if (!row.match_date) continue;
+      const domicile = row.is_home !== false;
       events.push({
         id: `match-${row.id}`,
         kind: "match",
-        title: row.is_home === false ? `Déplacement à ${adversaire}` : `Match contre ${adversaire}`,
+        title: `${row.team ?? "Notre équipe"} ${domicile ? "vs" : "@"} ${row.opponent ?? "adversaire"}`,
         date: row.match_date as string,
         time: (row.kickoff_time as string | null) ?? null,
         location: (row.lieu as string | null) ?? null,
         clubName: player.club.nom,
         teamName: (row.team as string | null) ?? null,
-        mention: etat === "postponed" ? "Reporté" : etat === "cancelled" ? "Annulé" : null,
+        opponent: (row.opponent as string | null) ?? null,
+        isHome: domicile,
+        competition: (row.competition as string | null) ?? null,
+        // Le score n'est affiché que lorsqu'il existe : un « 0 - 0 » sur un match à venir serait
+        // un résultat inventé.
+        score: (row.score as string | null) ?? null,
+        statut: (row.sport_status as string | null) ?? (row.status as string | null) ?? null,
       });
     }
   }
@@ -113,5 +119,12 @@ export default async function CalendrierPage() {
     }
   }
 
-  return <CalendarView events={events} hasClub={!!player?.club} />;
+  return (
+    <CalendarView
+      events={events}
+      hasClub={!!player?.club}
+      clubNom={player?.club?.nom ?? null}
+      clubLogoUrl={player?.club?.logoUrl ?? null}
+    />
+  );
 }

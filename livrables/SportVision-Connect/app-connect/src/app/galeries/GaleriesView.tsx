@@ -9,18 +9,32 @@ import type { MyGallery, MyOrder } from "@/lib/gallery/data";
 // Même univers que la galerie publique : mêmes typographies, même dégradé, mêmes arrondis. Le
 // parent ne doit pas avoir l'impression de passer de « la galerie » à « une autre application ».
 
-export function GaleriesView({ galeries, commandes }: { galeries: MyGallery[]; commandes: MyOrder[] }) {
+export function GaleriesView({
+  galeries,
+  commandes,
+  retourHref = "/dashboard",
+}: {
+  galeries: MyGallery[];
+  commandes: MyOrder[];
+  /** Vers quel espace revenir : celui du compte qui regarde, pas toujours celui du joueur. */
+  retourHref?: string;
+}) {
   const date = (d: string | null) =>
     d ? new Date(`${d}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : null;
 
   return (
     <div className="min-h-screen bg-bg pb-16 text-text">
       <header className="mx-auto max-w-[900px] px-5 pt-7 sm:px-6">
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-sora text-[13px] font-bold tracking-tight">SportVision</span>
-          <span className="bg-sv-gradient bg-clip-text text-[9px] font-medium uppercase tracking-[.16em] text-transparent">
-            Connect
-          </span>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-sora text-[13px] font-bold tracking-tight">SportVision</span>
+            <span className="bg-sv-gradient bg-clip-text text-[9px] font-medium uppercase tracking-[.16em] text-transparent">
+              Connect
+            </span>
+          </div>
+          <Link href={retourHref} className="text-[12.5px] text-text-tertiary underline underline-offset-2">
+            Retour à mon espace
+          </Link>
         </div>
         <h1 className="mt-5 font-sora text-[24px] font-extrabold leading-tight tracking-tight sm:text-[30px]">
           Mes galeries

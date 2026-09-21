@@ -28,6 +28,19 @@ export default async function GaleriesPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login?redirect=/galeries");
 
+  // 21/09/2026, retour de Fouka : « quand je vais dans mes galeries, à chaque fois ça me met vers
+  // un lien bizarre ». Cette page vit hors des espaces (un acheteur de photos n'a ni club ni
+  // équipe), et son seul lien de retour renvoyait tout le monde vers /dashboard — l'espace JOUEUR.
+  // Un parent atterrissait donc sur une page sans menu, dont la seule sortie le menait ailleurs
+  // que chez lui. On regarde d'où il vient pour le ramener au bon endroit.
+  const { data: reglages } = await supabase
+    .from("connect_profile_settings")
+    .select("account_type")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const estParticulier = reglages?.account_type === "particulier";
+  const retourHref = estParticulier ? "/particulier" : "/dashboard";
+
   const [galeries, commandes] = await Promise.all([
     fetchMyGalleries(supabase),
     fetchMyOrders(supabase),
@@ -43,16 +56,35 @@ export default async function GaleriesPage() {
           </span>
         </div>
         <h1 className="mt-6 font-sora text-[22px] font-extrabold tracking-tight">Aucune galerie pour l&apos;instant</h1>
-        <p className="mt-3 max-w-[400px] text-[13.5px] leading-relaxed text-text-tertiary">
-          Vos achats de photos apparaîtront ici. Si vous venez d&apos;acheter, confirmez votre
-          adresse e-mail : le rattachement se fait tout seul ensuite.
+        <p className="mt-3 max-w-[420px] text-[13.5px] leading-relaxed text-text-tertiary">
+          {estParticulier ? (
+            <>
+              Vos achats de photos apparaîtront ici. Les photos de vos sportifs, elles, se
+              trouvent sur leur fiche : <b>Mes sportifs</b>, puis <b>Voir les photos</b>.
+            </>
+          ) : (
+            <>
+              Vos achats de photos apparaîtront ici. Si vous venez d&apos;acheter, confirmez votre
+              adresse e-mail : le rattachement se fait tout seul ensuite.
+            </>
+          )}
         </p>
-        <Link href="/dashboard" className="mt-6 text-[13px] text-text-tertiary underline underline-offset-2">
-          Retour à mon espace
-        </Link>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+          {estParticulier && (
+            <Link
+              href="/particulier/sportifs"
+              className="rounded-sv bg-surface px-4 py-2.5 text-[13px] font-semibold text-text ring-1 ring-border"
+            >
+              Voir mes sportifs
+            </Link>
+          )}
+          <Link href={retourHref} className="text-[13px] text-text-tertiary underline underline-offset-2">
+            Retour à mon espace
+          </Link>
+        </div>
       </div>
     );
   }
 
-  return <GaleriesView galeries={galeries} commandes={commandes} />;
+  return <GaleriesView galeries={galeries} commandes={commandes} retourHref={retourHref} />;
 }
