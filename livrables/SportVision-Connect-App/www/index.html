@@ -81,13 +81,28 @@
     </button>
   </div>
 
+  <!-- Volontairement un lien et non une troisieme carte : cet ecran est d'abord celui des
+       familles, et l'equipe interne sait ou elle va. Personne d'autre ne peut entrer de toute
+       facon — l'OS demande un compte du staff. -->
+  <p id="interne" style="text-align:center;margin:20px 0 0;font-size:12.5px">
+    <button type="button" onclick="entrer('equipe', true)"
+      style="appearance:none;background:none;border:0;color:#7e93c4;font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:8px">
+      Je fais partie de l&rsquo;équipe SportVision
+    </button>
+  </p>
+
   <div id="reprise"></div>
   <div id="hors-ligne">Pas de connexion internet. Vérifiez votre réseau, puis réessayez.</div>
 
 <script>
   var DESTINATIONS = {
     famille: "https://connect.sportvision-an.fr",
-    club: "https://clubplus.sportvision-an.fr/clubplus"
+    club: "https://clubplus.sportvision-an.fr/clubplus",
+    // 22/09/2026 — L'equipe SportVision voulait une application, pas un raccourci de navigateur.
+    // Elle passe par la meme, plutot qu'une seconde publication : Apple refuse les applications
+    // reservees aux employes sur l'App Store public, et exposer l'outil interne dans un magasin
+    // n'a aucun interet. Une porte de plus, et un seul passage en revue.
+    equipe: "https://bc6m3cgdz.sportvision-an.fr/SportVision-OS-Full.html"
   };
   var CLE = "sv-espace";
 
@@ -110,7 +125,8 @@
   var memoire = null;
   try { memoire = localStorage.getItem(CLE); } catch (e) {}
   if (memoire && DESTINATIONS[memoire]) {
-    var libelle = memoire === "club" ? "votre espace club" : "votre espace";
+    var libelle = memoire === "club" ? "votre espace club"
+      : memoire === "equipe" ? "SportVision OS" : "votre espace";
     document.getElementById("titre").textContent = "Ouverture de " + libelle + "…";
     document.getElementById("reprise").innerHTML =
       '<button type="button" onclick="oublier()">Ce n\'est pas le bon espace ?</button>';

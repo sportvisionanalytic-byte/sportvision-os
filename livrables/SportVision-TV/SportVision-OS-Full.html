@@ -330,7 +330,12 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 }
 @media(max-width:900px){
   .l-left{display:none}
-  .l-right{width:100%;padding:40px 32px}
+  /* 22/09/2026 — Vu dans l'application iOS : le titre « SportVision OS » passait SOUS l'heure et
+     l'encoche. La page declare viewport-fit=cover et la barre d'etat est translucide (voir le
+     meta apple-mobile-web-app-status-bar-style), donc le contenu commence tout en haut de l'ecran.
+     Il faut lui rendre la hauteur de la barre. Vaut aussi pour l'icone posee sur l'ecran d'accueil,
+     ou le defaut existait deja sans que personne l'ait regarde. */
+  .l-right{width:100%;padding:40px 32px;padding-top:calc(40px + env(safe-area-inset-top,0));padding-bottom:calc(40px + env(safe-area-inset-bottom,0))}
 }
 /* ── BOTTOM NAV (mobile only, hidden by default) ─── */
 #mob-bnav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--s2);border-top:1px solid var(--b1);padding:0 4px;padding-bottom:env(safe-area-inset-bottom,0);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
