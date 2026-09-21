@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import { formatDateLong, formatEUR } from "@/lib/prestations/format";
 import { gradientFor } from "@/lib/avatarGradients";
 import { ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR } from "@/lib/supabase/particulier";
-import { RetrouverSesPhotos } from "@/components/biometrie/RetrouverSesPhotos";
 
 export interface AthleteDetail {
   kind: "linked" | "managed" | "club";
@@ -211,6 +210,28 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
                 Voir les photos
               </Link>
             )}
+            {/* Autorisations parentales (v176) : sans le droit à l'image signé, les médias où
+                l'enfant est identifié restent masqués, y compris pour sa famille. */}
+            {isClub && (
+              <Link
+                href={`/particulier/sportifs/${detail.kind}/${detail.ref_id}/autorisations`}
+                className="flex h-12 items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
+              >
+                <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">assignment_turned_in</span>
+                Ses autorisations
+              </Link>
+            )}
+            {/* Reconnaissance du visage de l'enfant (v159/v161) : option facultative, réservée à un
+                enfant affilié à un club, comme les galeries. Le refus n'enlève rien. */}
+            {isClub && (
+              <Link
+                href={`/particulier/sportifs/${detail.kind}/${detail.ref_id}/reconnaissance`}
+                className="flex h-12 items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
+              >
+                <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">face_retouching_natural</span>
+                Retrouver ses photos automatiquement
+              </Link>
+            )}
             {rights.voir && (
               <Link
                 href={`/particulier/contenus?sportif=${sportifKey}`}
@@ -249,13 +270,6 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
       {tab === "apercu" && (
         <div className="grid grid-cols-1 gap-4.5 lg:grid-cols-[minmax(0,1.62fr)_minmax(0,1fr)] lg:items-start">
           <div className="flex flex-col gap-3.5">
-            {/* 21/09/2026 — L'accord pour retrouver l'enfant sur les photos, et sa photo de
-                référence. Ici et pas ailleurs : c'est la fiche de CET enfant, donc l'endroit où
-                un parent décide pour lui. Réservé à un enfant affilié à un club — un profil géré
-                sans club n'a aucune galerie où être retrouvé. */}
-            {isClub && (
-              <RetrouverSesPhotos playerId={detail.ref_id} prenom={detail.first_name || "votre sportif"} />
-            )}
             {detail.next_prestation && (
               <OverviewCard
                 kind="Prochaine prestation"

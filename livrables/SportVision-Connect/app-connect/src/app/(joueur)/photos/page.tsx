@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
-import { RetrouverSesPhotos } from "@/components/biometrie/RetrouverSesPhotos";
-import { fetchAvailableMediaProducts, fetchPhotoAlbums } from "@/lib/supabase/photoPass";
+import { fetchAlbumsVideos, fetchAvailableMediaProducts, fetchPhotoAlbums } from "@/lib/supabase/photoPass";
+import { fetchComptesPhotosDuJoueur } from "@/lib/supabase/reconnaissance";
 import { PhotosView } from "./PhotosView";
 
 // Moteur média générique (Espace joueur) — 02/09/2026, voir migration-media-v1-moteur-generique.sql
@@ -48,21 +48,20 @@ export default async function PhotosPage({
     saisonId = (membership?.saison_id as string | null) || null;
   }
 
-  const [albums, products] = clubId && teamId && saisonId
+  const [albumsBruts, products] = clubId && teamId && saisonId
     ? await Promise.all([fetchPhotoAlbums(supabase, clubId, teamId, saisonId), fetchAvailableMediaProducts(supabase, clubId, teamId)])
     : [[], []];
+  // La vidéo du match s'ouvre par le lien du montage déposé sur la mission (v157).
+  const albums = await fetchAlbumsVideos(supabase, albumsBruts);
+  // Combien de photos de CE joueur dans chaque galerie (v160/v162) : rien ne s'affiche là où
+  // aucune photo ne lui est rattachée.
+  const comptes = player?.playerId
+    ? await fetchComptesPhotosDuJoueur(supabase, albums.map((a) => a.id), player.playerId)
+    : new Map<string, number>();
 
   return (
-    <>
-      {/* 21/09/2026, Fouka : « pour un joueur majeur, ils donnent leur accord eux-mêmes ». Même
-          composant que côté parent : la base sait qui a le droit de consentir selon l'âge, et un
-          joueur de moins de 15 ans reçoit un refus qui lui explique d'inviter son parent. */}
-      {player?.playerId && clubId && (
-        <div className="mb-4">
-          <RetrouverSesPhotos playerId={player.playerId} prenom={player.firstName || "vous"} cestMoi />
-        </div>
-      )}
     <PhotosView
+      comptesParAlbum={Object.fromEntries(comptes)}
       clubId={clubId}
       teamId={teamId}
       teamName={teamName}
@@ -71,6 +70,5 @@ export default async function PhotosPage({
       products={products}
       returnStatus={paiement === "succes" ? "succes" : paiement === "annule" ? "annule" : null}
     />
-    </>
   );
 }
