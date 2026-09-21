@@ -137,6 +137,23 @@ export function InviterEncadrantModal({ clubId, teamName, equipes, onClose, onIn
         if (adjoint) await definirFonctionInvitation(supabase, inv.id, "adjoint");
         setInvitation(inv);
         onInvited();
+        // 21/09/2026, decision de Fouka : l'e-mail part DES LA CREATION.
+        //
+        // Jusqu'ici, preparer une invitation ne l'envoyait pas : elle restait « preparee » tant
+        // que personne ne cliquait « Envoyer par e-mail ». Un invite a attendu six heures un
+        // message que Fouka croyait parti. A l'echelle d'une categorie entiere, on prepare trente
+        // invitations en croyant avoir invite trente personnes, et personne ne recoit rien.
+        //
+        // L'echec d'envoi n'efface pas l'invitation : le lien reste copiable, le bouton « Envoyer
+        // par e-mail » reste la pour relancer, et l'erreur est dite. Une invitation preparee sans
+        // e-mail vaut mieux que pas d'invitation ; une invitation qu'on CROIT envoyee, non.
+        try {
+          await envoyerInvitationParEmail(supabase, inv.id);
+          setEnvoye(true);
+          onInvited();
+        } catch (e) {
+          setErreur(messageErreurInvitation(e, "Invitation prête, mais l'e-mail n'est pas parti. Copiez le lien ou réessayez l'envoi."));
+        }
       })
       .catch((e) => setErreur(messageErreurInvitation(e, "Impossible de préparer cette invitation.")))
       .finally(() => setOccupe(false));
