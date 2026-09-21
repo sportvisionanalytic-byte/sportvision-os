@@ -1822,22 +1822,13 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Commandes payées</div><div class="fs-v" id="finmed-kpi-cmd">—</div></div>
       <div class="fs"><div class="fs-l">Panier moyen</div><div class="fs-v" id="finmed-kpi-panier">—</div></div>
     </div>
-    <!-- 21/09/2026, Fouka : « je ne vois pas bien les galeries les plus performantes, les
-         galeries payées, je n'ai pas un bon visuel dessus ». Le rapport s'arretait au club et a
-         l'operation commerciale : deux niveaux au-dessus de ce qui se decide. On ne vend pas un
-         club, on vend UNE galerie. Ce bloc passe donc en premier. -->
-    <div class="cd" style="margin-bottom:16px">
-      <div class="cd-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div><div class="cd-t">Galerie par galerie</div>
-          <div style="font-size:11.5px;color:var(--t3);margin-top:2px">Classées par ce qu'elles ont rapporté. La conversion dit la part des visiteurs qui achètent.</div>
-        </div>
-        <select id="finmed-periode" class="fi" style="width:auto;font-size:12px;padding:6px 10px" onchange="loadFinMedias()">
-          <option value="30">30 derniers jours</option>
-          <option value="90">3 derniers mois</option>
-          <option value="365" selected>Cette année</option>
-        </select>
-      </div>
-      <div id="finmed-galeries-content">${_finSkelRows(6,40)}</div>
+    <!-- 21/09/2026 — Le detail galerie par galerie vit dans l'ecran Statistiques du module
+         Galeries photo, avec ses periodes, ses visites et sa liste de ventes. Le dupliquer ici
+         aurait donne deux tableaux aux chiffres legerement differents (periodes distinctes), et
+         c'est exactement ce qui fait perdre confiance en un tableau de bord. -->
+    <div class="cd" style="margin-bottom:16px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="font-size:12.5px;color:var(--t2)">Pour voir <b>galerie par galerie</b> — qui a payé quoi, les visites, la conversion — ouvrez les statistiques du module Galeries photo.</div>
+      <button class="btn bp bs" onclick="switchView('media');setTimeout(()=>setMediaTab('stats'),300)">Ouvrir les statistiques</button>
     </div>
     <div class="cd" style="margin-bottom:16px"><div class="cd-h"><div class="cd-t">Par club</div></div>
       <div id="finmed-clubs-content">${_finSkelRows(4,40)}</div>
@@ -10539,73 +10530,9 @@ async function _medSaveOperation(clubId,saisonId,operationId){
 // ── Rapport CA médias (master prompt §35-36) : media_orders reste volontairement hors du modèle
 // factures/paiements (doctrine déjà établie pour Pass Photo/Agent) — lu ici directement, jamais
 // injecté dans finrevenus pour ne pas fausser ses propres KPI.
-// Le tableau galerie par galerie (21/09/2026).
-//
-// Trois lectures possibles d'une galerie qui ne rapporte rien, et il faut pouvoir les distinguer
-// d'un coup d'oeil, sinon le tableau ne sert a rien :
-//   • personne ne l'a vue : le lien n'a pas circule, c'est un probleme de diffusion ;
-//   • beaucoup l'ont vue sans acheter : le prix, les photos ou l'offre ne vont pas ;
-//   • elle est largement consultee par des familles qui y ont droit (Pass Photo) : ce n'est pas
-//     un echec commercial du tout.
-// D'ou la colonne des acces offerts, et le libelle explicite plutot qu'un « 0 % » muet.
-function _finGalerieLigne(g, caMax){
-  const eur=c=>((c||0)/100).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
-  const ca=g.ca_cents||0;
-  const part=caMax>0?Math.round(ca*100/caMax):0;
-  const conv=g.conversion===null||g.conversion===undefined?null:Number(g.conversion);
-  const vis=g.visiteurs||0;
-  // Le diagnostic, en toutes lettres. C'est la colonne que Fouka lira en premier.
-  let etat, couleur;
-  if(ca>0){ etat=conv!==null&&conv>=10?'Bonne conversion':'Vend'; couleur='var(--ok)'; }
-  else if(g.acces_offerts>0){ etat='Incluse (Pass Photo)'; couleur='var(--t2)'; }
-  else if(vis===0){ etat='Jamais ouverte'; couleur='var(--t3)'; }
-  else if(vis>=20){ etat='Vue, jamais achetée'; couleur='#E8A33D'; }
-  else { etat='Peu vue'; couleur='var(--t3)'; }
-  const date=g.date_evenement?new Date(g.date_evenement+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'—';
-  return `<tr>
-    <td style="max-width:260px">
-      <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.titre||'Galerie')}</div>
-      <div style="font-size:11px;color:var(--t3)">${esc(g.club||'')} · ${date} · ${g.photos||0} photo${(g.photos||0)>1?'s':''}</div>
-    </td>
-    <td style="min-width:120px">
-      <div style="font-weight:700;color:${ca>0?'var(--ok)':'var(--t3)'}">${eur(ca)}</div>
-      <div style="height:4px;border-radius:999px;background:var(--s2);margin-top:4px;overflow:hidden">
-        <div style="height:100%;width:${part}%;background:var(--ok);border-radius:999px"></div>
-      </div>
-    </td>
-    <td style="text-align:right">${g.commandes||0}</td>
-    <td style="text-align:right">${vis}</td>
-    <td style="text-align:right">${conv===null?'<span style="color:var(--t3)">—</span>':conv.toFixed(1).replace('.',',')+' %'}</td>
-    <td style="text-align:right">${g.acces_offerts||0}</td>
-    <td><span style="font-size:11px;font-weight:600;color:${couleur}">${etat}</span></td>
-  </tr>`;
-}
-
 async function loadFinMedias(){
   const elClubs=document.getElementById('finmed-clubs-content'), elOps=document.getElementById('finmed-ops-content');
-  const elGal=document.getElementById('finmed-galeries-content');
   if(!elClubs||!elOps)return;
-
-  // Le tableau des galeries se charge a part : une erreur ici ne doit pas priver Fouka du CA.
-  if(elGal){
-    const jours=Number(document.getElementById('finmed-periode')?.value||365);
-    const gals=await sbFetch('rpc/media_performance_galeries',{method:'POST',body:{p_jours:jours}}).catch(()=>[]);
-    const rows=Array.isArray(gals)?gals:[];
-    const caMax=rows.reduce((m,g)=>Math.max(m,g.ca_cents||0),0);
-    const vendues=rows.filter(g=>(g.ca_cents||0)>0).length;
-    const vuesSansAchat=rows.filter(g=>(g.ca_cents||0)===0&&(g.visiteurs||0)>=20&&!(g.acces_offerts>0)).length;
-    elGal.innerHTML=rows.length?
-      `<div style="display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--bd);font-size:12px">
-         <span><b>${rows.length}</b> galerie${rows.length>1?'s':''}</span>
-         <span style="color:var(--ok)"><b>${vendues}</b> ont vendu</span>
-         ${vuesSansAchat?`<span style="color:#E8A33D"><b>${vuesSansAchat}</b> très vue${vuesSansAchat>1?'s':''} sans aucun achat</span>`:''}
-       </div>
-       <div class="tw"><table><thead><tr>
-         <th>Galerie</th><th>CA</th><th style="text-align:right">Achats</th><th style="text-align:right">Visiteurs</th>
-         <th style="text-align:right">Conversion</th><th style="text-align:right">Offerts</th><th>Lecture</th>
-       </tr></thead><tbody>`+rows.map(g=>_finGalerieLigne(g,caMax)).join('')+'</tbody></table></div>'
-      :'<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucune galerie publiée sur cette période.</div>';
-  }
 
   try{
     const [orders,operations]=await Promise.all([
@@ -12216,13 +12143,16 @@ async function renderStatsGaleries(el){
   const {d,f}=_statsPlage();
   const args={p_debut:d,p_fin:f,p_inclure_exclus:_statsAvecTests};
 
-  const [sante,res,evo,gal,aud,con]=await Promise.all([
+  const [sante,res,evo,gal,aud,con,ventes]=await Promise.all([
     _statsSante(),
     sbFetch('rpc/media_stats_resume',{method:'POST',body:args}).catch(()=>null),
     sbFetch('rpc/media_stats_evolution',{method:'POST',body:args}).catch(()=>[]),
     sbFetch('rpc/media_stats_galeries',{method:'POST',body:Object.assign({p_limit:15},args)}).catch(()=>[]),
     sbFetch('rpc/media_stats_audiences',{method:'POST',body:args}).catch(()=>[]),
-    sbFetch('rpc/media_stats_connect',{method:'POST',body:args}).catch(()=>null)
+    sbFetch('rpc/media_stats_connect',{method:'POST',body:args}).catch(()=>null),
+    // 21/09/2026 — La liste des ventes elles-memes. Tout le reste de cet ecran etait un agregat :
+    // juste, mais incapable de repondre a « quelle galerie a ete payee ».
+    sbFetch('rpc/media_stats_ventes',{method:'POST',body:Object.assign({p_limit:60},args)}).catch(()=>[])
   ]);
   const r=Array.isArray(res)?res[0]:res;
   const c=Array.isArray(con)?con[0]:con;
@@ -12242,6 +12172,8 @@ async function renderStatsGaleries(el){
       ${_statsKpi('Conversion', _pct(r.taux_conversion), 'commandes / 100 visites')}
       ${_statsKpi('Visites', _nb(r.visites), 'sessions, pas personnes')}
     </div>
+
+    ${_statsVentes(ventes)}
 
     ${_statsCourbe(evo)}
 
@@ -12309,31 +12241,110 @@ function _statsCourbe(evo){
   </div>`;
 }
 
+// La liste des ventes (21/09/2026).
+//
+// Fouka, devant l'ecran Statistiques : « je ne sais meme pas quelle prestation a ete payee,
+// quelle galerie a ete payee ». Tout etait agrege — chiffre d'affaires, commandes, conversion —
+// et un total de 70 EUR ne dit ni qui a paye, ni quoi, ni quand. C'est pourtant la premiere chose
+// qu'on verifie quand on doute d'un chiffre.
+//
+// Une ligne par vente, la plus recente en haut, avec la galerie en clair : on doit pouvoir
+// pointer une ligne et dire « celle-la, c'est la Cup U10 contre Creteil, pack souvenirs, 5 EUR ».
+function _statsVentes(ventes){
+  const rows=Array.isArray(ventes)?ventes:[];
+  if(!rows.length){
+    return `<div style="margin:16px 0 4px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Ventes</div>
+      <div style="border:1px solid var(--b1);border-radius:var(--rc);padding:20px;text-align:center;font-size:12.5px;color:var(--t3)">Aucune vente sur cette période.</div>
+    </div>`;
+  }
+  const total=rows.reduce((a,v)=>a+(v.rembourse?0:(v.montant_cents||0)),0);
+  const quand=d=>{
+    if(!d)return '—';
+    const x=new Date(d);
+    return x.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' '+x.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  };
+  return `<div style="margin:16px 0 4px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Ventes · qui a payé quoi</span>
+      <span style="font-size:11.5px;color:var(--t3)">${rows.length} vente${rows.length>1?'s':''} · ${_eur(total)}</span>
+    </div>
+    <div style="border:1px solid var(--b1);border-radius:var(--rc);overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:620px">
+        <thead><tr style="color:var(--t3);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em">
+          <th style="text-align:left;padding:9px 11px">Quand</th>
+          <th style="text-align:left;padding:9px 8px">Galerie</th>
+          <th style="text-align:left;padding:9px 8px">Formule</th>
+          <th style="text-align:left;padding:9px 8px">Acheteur</th>
+          <th style="text-align:right;padding:9px 11px">Montant</th>
+        </tr></thead>
+        <tbody>${rows.map(v=>`
+          <tr style="border-top:1px solid var(--b1)${v.album_id?';cursor:pointer':''}"${v.album_id?` onclick="statsOuvrirGalerie('${v.album_id}')"`:''}>
+            <td style="padding:9px 11px;color:var(--t2);white-space:nowrap">${quand(v.paye_le)}</td>
+            <td style="padding:9px 8px">
+              <div style="font-weight:600;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v.galerie||'—')}</div>
+              <div style="font-size:10.5px;color:var(--t3)">${esc(v.club||'')}</div>
+            </td>
+            <td style="padding:9px 8px;color:var(--t2)">${esc(v.formule||'—')}</td>
+            <td style="padding:9px 8px;color:var(--t2);max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v.acheteur||'—')}</td>
+            <td style="text-align:right;padding:9px 11px;font-weight:700;${v.rembourse?'color:var(--t3);text-decoration:line-through':'color:var(--ok)'}">${_eur(v.montant_cents)}${v.rembourse?' <span style="font-size:10px;text-decoration:none">remboursé</span>':''}</td>
+          </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
 function _statsTableGaleries(gal){
   const rows=Array.isArray(gal)?gal:[];
   if(!rows.length)return '<div style="border:1px solid var(--b1);border-radius:var(--rc);padding:22px;text-align:center;font-size:12.5px;color:var(--t3)">Aucune galerie consultée ni vendue sur cette période.</div>';
-  return `<div style="border:1px solid var(--b1);border-radius:var(--rp);overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:560px">
+  // 21/09/2026, Fouka : « le tableau, la galerie la plus performante, je vois mal ». Six colonnes
+  // de chiffres gris de la meme taille : rien ne ressortait, et surtout rien ne distinguait une
+  // galerie qui vend d'une galerie que personne n'ouvre. Trois changements, et un seul but :
+  // pouvoir lire le tableau en diagonale.
+  //   • le chiffre d'affaires porte une barre qui le situe face a la meilleure galerie ;
+  //   • une colonne de lecture en toutes lettres, parce qu'une galerie a 0 EUR peut vouloir dire
+  //     « jamais ouverte », « vue mais trop chere » ou « incluse dans un Pass Photo » — trois
+  //     situations qui n'appellent pas du tout la meme action ;
+  //   • les galeries sans aucune vente s'effacent, celles qui vendent ressortent en vert.
+  const caMax=rows.reduce((m,g)=>Math.max(m,g.ca_cents||0),0);
+  const lecture=g=>{
+    const ca=g.ca_cents||0, vis=g.visites||0, conv=g.taux_conversion;
+    if(ca>0) return {t:(conv!==null&&conv!==undefined&&Number(conv)>=10)?'Forte conversion':'Vend', c:'var(--ok)'};
+    if(vis===0) return {t:'Jamais ouverte', c:'var(--t3)'};
+    if(vis>=20) return {t:'Vue, jamais achetée', c:'#E8A33D'};
+    return {t:'Peu vue', c:'var(--t3)'};
+  };
+  return `<div style="border:1px solid var(--b1);border-radius:var(--rc);overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:660px">
       <thead><tr style="color:var(--t3);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em">
         <th style="text-align:left;padding:9px 11px">Galerie</th>
+        <th style="text-align:left;padding:9px 11px;min-width:130px">Chiffre d’affaires</th>
+        <th style="text-align:right;padding:9px 8px">Achats</th>
         <th style="text-align:right;padding:9px 8px">Visites</th>
-        <th style="text-align:right;padding:9px 8px">Commandes</th>
         <th style="text-align:right;padding:9px 8px">Conversion</th>
         <th style="text-align:right;padding:9px 8px">Panier</th>
-        <th style="text-align:right;padding:9px 11px">CA</th>
+        <th style="text-align:left;padding:9px 11px">Lecture</th>
       </tr></thead>
-      <tbody>${rows.map(g=>`
-        <tr style="border-top:1px solid var(--b1);cursor:pointer" onclick="statsOuvrirGalerie('${g.album_id}')">
+      <tbody>${rows.map(g=>{
+        const ca=g.ca_cents||0, l=lecture(g), part=caMax>0?Math.round(ca*100/caMax):0;
+        return `
+        <tr style="border-top:1px solid var(--b1);cursor:pointer${ca>0?'':';opacity:.72'}" onclick="statsOuvrirGalerie('${g.album_id}')">
           <td style="padding:9px 11px">
-            <div style="font-weight:600">${esc(g.titre||'Galerie')}</div>
+            <div style="font-weight:600;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.titre||'Galerie')}</div>
             <div style="font-size:10.5px;color:var(--t3)">${esc([g.club_nom,g.event_date].filter(Boolean).join(' · '))}</div>
           </td>
-          <td style="text-align:right;padding:9px 8px;color:var(--t2)">${_nb(g.visites)}</td>
+          <td style="padding:9px 11px">
+            <div style="font-weight:700;font-size:13px;color:${ca>0?'var(--ok)':'var(--t3)'}">${_eur(ca)}</div>
+            <div style="height:4px;border-radius:999px;background:var(--s2);margin-top:4px;overflow:hidden">
+              <div style="height:100%;width:${part}%;background:${ca>0?'var(--ok)':'transparent'};border-radius:999px"></div>
+            </div>
+          </td>
           <td style="text-align:right;padding:9px 8px;color:var(--t2)">${_nb(g.commandes)}</td>
+          <td style="text-align:right;padding:9px 8px;color:var(--t2)">${_nb(g.visites)}</td>
           <td style="text-align:right;padding:9px 8px;color:var(--t2)">${_pct(g.taux_conversion)}</td>
           <td style="text-align:right;padding:9px 8px;color:var(--t2)">${_eur(g.panier_moyen_cents)}</td>
-          <td style="text-align:right;padding:9px 11px;font-weight:700">${_eur(g.ca_cents)}</td>
-        </tr>`).join('')}</tbody>
+          <td style="padding:9px 11px"><span style="font-size:11px;font-weight:600;color:${l.c}">${l.t}</span></td>
+        </tr>`;}).join('')}</tbody>
     </table>
   </div>`;
 }
