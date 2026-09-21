@@ -330,12 +330,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 }
 @media(max-width:900px){
   .l-left{display:none}
-  /* 22/09/2026 — Vu dans l'application iOS : le titre « SportVision OS » passait SOUS l'heure et
-     l'encoche. La page declare viewport-fit=cover et la barre d'etat est translucide (voir le
-     meta apple-mobile-web-app-status-bar-style), donc le contenu commence tout en haut de l'ecran.
-     Il faut lui rendre la hauteur de la barre. Vaut aussi pour l'icone posee sur l'ecran d'accueil,
-     ou le defaut existait deja sans que personne l'ait regarde. */
-  .l-right{width:100%;padding:40px 32px;padding-top:calc(40px + env(safe-area-inset-top,0));padding-bottom:calc(40px + env(safe-area-inset-bottom,0))}
+  .l-right{width:100%;padding:40px 32px}
 }
 /* ── BOTTOM NAV (mobile only, hidden by default) ─── */
 #mob-bnav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--s2);border-top:1px solid var(--b1);padding:0 4px;padding-bottom:env(safe-area-inset-bottom,0);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
@@ -390,7 +385,13 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   /* Topbar logout hidden on mobile (accessible via menu) */
   .tb-act .ib:last-child{display:none}
   /* Login */
-  .l-right{padding:32px 20px;align-items:flex-start;padding-top:40px}
+  /* 22/09/2026 — Vu dans l'application iOS : le titre « SportVision OS » passait SOUS l'heure et
+     l'encoche. La page declare viewport-fit=cover avec une barre d'etat translucide, donc le
+     contenu demarre tout en haut de l'ecran physique. On lui rend la hauteur de la barre.
+     ATTENTION : c'est bien ICI qu'il faut le poser. Trois regles `.l-right` se succedent, et
+     seule la derniere s'applique sur un telephone — corriger l'une des deux precedentes ne
+     produit rigoureusement aucun effet, ce que l'ecran du simulateur a montre deux fois. */
+  .l-right{padding:32px 20px;align-items:flex-start;padding-top:calc(40px + env(safe-area-inset-top,0));padding-bottom:calc(32px + env(safe-area-inset-bottom,0))}
   .l-form-wrap{max-width:100%}
   /* Prevent iOS input zoom */
   .l-inp,.fi{font-size:16px!important}
