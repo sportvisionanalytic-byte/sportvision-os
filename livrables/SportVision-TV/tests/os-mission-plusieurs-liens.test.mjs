@@ -63,7 +63,8 @@ try {
   await attendre(3500);
   const vu = await P.page.evaluate(() => document.body.innerText);
 
-  t("l'écran des livrables s'ouvre", /Livrables attendus/.test(vu));
+  // v240 : l'ecran ne s'appelle plus « Livrables attendus », parce qu'il n'attend plus rien.
+  t("l'écran des livrables s'ouvre", /Ce que vous livrez/.test(vu));
   for (const nom of ["1re mi-temps", "2e mi-temps", "podium"])
     t(`le lien « ${nom} » est visible`, vu.includes(nom));
   t("l'écran annonce le nombre de liens", /3 liens/.test(vu), (vu.match(/\d+ liens?/) || [""])[0]);
