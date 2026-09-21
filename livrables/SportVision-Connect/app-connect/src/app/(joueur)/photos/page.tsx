@@ -48,7 +48,12 @@ export default async function PhotosPage({
     saisonId = (membership?.saison_id as string | null) || null;
   }
 
-  const [albumsBruts, products] = clubId && teamId && saisonId
+  // 21/09/2026 — La saison n'est plus une condition. Les trois fonctions de rattachement ne
+  // posaient pas `saison_id` (corrigé par la v248), et un joueur fraîchement validé se voyait donc
+  // répondre « Rejoignez votre club et votre équipe » alors qu'il venait de le faire. La fonction
+  // en base tolère une saison nulle depuis toujours — c'est l'écran qui ajoutait une exigence que
+  // personne ne lui demandait. La source est réparée ET cet écran ne dépend plus d'elle.
+  const [albumsBruts, products] = clubId && teamId
     ? await Promise.all([fetchPhotoAlbums(supabase, clubId, teamId, saisonId), fetchAvailableMediaProducts(supabase, clubId, teamId)])
     : [[], []];
   // La vidéo du match s'ouvre par le lien du montage déposé sur la mission (v157).

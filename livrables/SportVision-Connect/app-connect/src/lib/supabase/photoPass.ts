@@ -41,7 +41,10 @@ export async function fetchPhotoAlbums(
   supabase: SupabaseClient,
   clubId: string,
   teamId: string,
-  saisonId: string,
+  /** 21/09/2026 : la saison peut manquer sans que ce soit une anomalie — media_album_list la
+   *  traite comme « toutes saisons ». Exiger une saison ici privait de galeries tout joueur dont
+   *  le rattachement n'en portait pas (voir v248). */
+  saisonId: string | null,
 ): Promise<PhotoAlbumTeaser[]> {
   const { data, error } = await supabase.rpc("media_album_list", {
     p_club_id: clubId,

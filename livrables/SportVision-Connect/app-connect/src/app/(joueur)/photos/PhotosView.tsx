@@ -73,7 +73,7 @@ export function PhotosView({
   // délai/logique que AbonnementView.tsx : un seul rafraîchissement différé après un retour
   // "succes" suffit à rattraper la quasi-totalité des cas.
   useEffect(() => {
-    if (returnStatus !== "succes" || !clubId || !teamId || !saisonId) return;
+    if (returnStatus !== "succes" || !clubId || !teamId) return;
     const t = setTimeout(async () => {
       const supabase = createClient();
       const fresh = await fetchPhotoAlbums(supabase, clubId, teamId, saisonId);
