@@ -268,7 +268,16 @@ serve(async (req) => {
             const officiel = scoreOfficiel(m, domicile, ligne.match_date);
             // `score` n'appartient pas a `ligne` : il ne doit JAMAIS partir dans une mise a jour
             // de calendrier, ou un `score: null` effacerait la saisie d'un coach.
-            const aInserer: Record<string, unknown> = officiel ? { ...ligne, score: officiel } : ligne;
+            //
+            // 21/09/2026 — Le score arrivait SANS toucher au statut, reste a « scheduled » quelques
+            // lignes plus haut. 23 matchs de Villemomble et Fontainebleau portaient donc un score
+            // tout en etant annonces « a venir » : ranges dans la mauvaise file du Match Center, et
+            // affiches avec un resultat sur un match soi-disant a jouer dans le calendrier des
+            // joueurs. La source publie un statut faux (leçon du 10/09), mais un score officiel
+            // sur un match passe, lui, dit exactement une chose : il a ete joue.
+            const aInserer: Record<string, unknown> = officiel
+              ? { ...ligne, score: officiel, sport_status: "completed", status: "recu" }
+              : ligne;
             const { error } = await admin.from("club_matches").insert(aInserer);
             if (error) erreurs.push(`${externalId} : ${error.message}`);
             else {
@@ -311,7 +320,9 @@ serve(async (req) => {
           if (calendrierChange || scoreAEcrire) {
             // `ligne` ne porte jamais `score` : sans ce choix explicite, une simple mise a jour de
             // lieu effacerait un score deja present.
-            const patch: Record<string, unknown> = scoreAEcrire ? { ...ligne, score: scoreAEcrire } : ligne;
+            const patch: Record<string, unknown> = scoreAEcrire
+              ? { ...ligne, score: scoreAEcrire, sport_status: "completed", status: "recu" }
+              : ligne;
             const { error } = await admin.from("club_matches").update(patch).eq("id", existant.id);
             if (error) erreurs.push(`${externalId} : ${error.message}`);
             else {
