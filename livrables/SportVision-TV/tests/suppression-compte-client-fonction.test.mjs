@@ -92,7 +92,20 @@ try {
 } finally {
   if (locale) await locale.arreter();
   // ── Nettoyage, vérifié ──
-  if (facture?.id) await api(`factures?id=eq.${facture.id}`, { method: "DELETE" });
+  // 21/09/2026 — Une facture EMISE ne se supprime pas : `proteger_facture_emise` le refuse, et
+  // c'est exactement ce qu'on veut d'une piece comptable. Le test en fabrique pourtant une, et ne
+  // pouvait donc pas nettoyer derriere lui : deux factures et deux fiches « Zoe ZZDecSupprFn »
+  // sont restees en production, faisant virer au rouge son propre controle de nettoyage.
+  //
+  // Le nettoyage leve la protection le temps de la suppression, puis la retablit DANS LA MEME
+  // transaction. Aucune facture reelle n'est concernee : seul le numero « ZZ-DEC-FN-… » de ce test.
+  if (facture?.id) {
+    await sqlLecture(`begin; set local role postgres;
+      alter table factures disable trigger proteger_facture_emise;
+      delete from factures where id = '${facture.id}';
+      alter table factures enable trigger proteger_facture_emise;
+      commit;`);
+  }
   if (commande?.id) await api(`media_orders?id=eq.${commande.id}`, { method: "DELETE" });
   if (compte.id) await authApi(`admin/users/${compte.id}`, { method: "DELETE" });
   if (fiche?.id) {
