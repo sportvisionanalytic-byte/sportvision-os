@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate, administreLeClub } from "@/lib/permissions";
@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { MatchResultModal } from "@/components/matchcenter/MatchResultModal";
 import { MatchRow } from "@/components/matchcenter/MatchRow";
+import { CompositionModal } from "@/components/matchcenter/CompositionModal";
+import { fetchComptesConvocations, type CompteConvocations } from "@/lib/data/club/composition";
 import { TeamSelector } from "@/components/ui/TeamSelector";
 import { cn } from "@/lib/cn";
 import {
@@ -114,6 +116,10 @@ export default function MatchCenterPage() {
   // « admin » tout court. Il pouvait donc voir le Match Center sans pouvoir assigner une équipe
   // ni vérifier un résultat.
   const administre = administreLeClub(ctx);
+  // Composition du match (v242) : les comptes de convoques, charges en une fois pour tout le club.
+  const [compos, setCompos] = useState<Map<string, CompteConvocations>>(new Map());
+  const [compoMatchId, setCompoMatchId] = useState<string | null>(null);
+
   const canAssignTeam =
     ctx.organization.type === "club" && (administre || role === "sports_director" || role === "external_cm");
   const canVerifyResults =
@@ -167,6 +173,16 @@ export default function MatchCenterPage() {
     };
   }, [ctx.organization.id]);
 
+  const rechargerCompos = useCallback(() => {
+    fetchComptesConvocations(createClient(), ctx.organization.id)
+      .then(setCompos)
+      // Un club sans aucune composition renvoie une carte vide ; une erreur de lecture ne doit pas
+      // empecher l'ecran des matchs de s'afficher.
+      .catch(() => setCompos(new Map()));
+  }, [ctx.organization.id]);
+
+  useEffect(() => rechargerCompos(), [rechargerCompos]);
+
   useEffect(() => {
     if (!canVerifyResults) return;
     let cancelled = false;
@@ -215,6 +231,7 @@ export default function MatchCenterPage() {
   const groupes = grouperMatchs(visiblesParEquipe, aujourdhui);
   // La file qui commande l'écran. `grouperMatchs` la place en tête quand elle existe.
   const aSaisir = groupes.find((g) => g.file === "a_renseigner")?.matchs ?? [];
+  const matchCompo = compoMatchId ? visiblesParEquipe.find((m) => m.id === compoMatchId) ?? null : null;
 
   const OUTCOME_TO_STATUS: Record<MatchOutcome, MatchStatus> = {
     completed: "result_received",
@@ -431,6 +448,8 @@ export default function MatchCenterPage() {
                         onToggleMenu={() => setOpenMenuId(openMenuId === m.id ? null : m.id)}
                         onAssignTeam={(teamId) => handleAssignTeam(m.id, teamId)}
                         onOpenModal={ouvrirModale}
+                        convoques={compos.get(m.id)?.total}
+                        onOuvrirComposition={() => setCompoMatchId(m.id)}
                       />
                     ))}
                     {g.matchs.length > affiches.length && (
@@ -459,6 +478,17 @@ export default function MatchCenterPage() {
           verifying={modalMode === "verify"}
           onClose={() => setModalMatchId(null)}
           onSubmit={modalMode === "verify" ? handleVerifyResult : handleSaveResult}
+        />
+      )}
+
+      {matchCompo && (
+        <CompositionModal
+          matchId={matchCompo.id}
+          teamId={matchCompo.teamId ?? null}
+          titre={`${matchCompo.teamName} ${matchCompo.isHome ? "vs" : "@"} ${matchCompo.opponent}`}
+          peutComposer={canWrite}
+          onClose={() => setCompoMatchId(null)}
+          onEnregistre={rechargerCompos}
         />
       )}
 

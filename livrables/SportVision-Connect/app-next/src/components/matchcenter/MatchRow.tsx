@@ -7,7 +7,7 @@
 // de rien — quelle file, quelle action possible, quel tri : tout lui arrive en props. Il dessine.
 
 import Link from "next/link";
-import { CalendarClock, MoreVertical, Sparkles } from "lucide-react";
+import { CalendarClock, ClipboardList, MoreVertical, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -80,6 +80,9 @@ interface Props {
   onToggleMenu: () => void;
   onAssignTeam: (teamId: string) => void;
   onOpenModal: (matchId: string, outcome: MatchOutcome, mode: "edit" | "verify") => void;
+  /** Composition du match (v242) : nombre de convoqués déjà enregistrés, et ouverture de l'écran. */
+  convoques?: number;
+  onOuvrirComposition?: () => void;
 }
 
 export function MatchRow({
@@ -98,6 +101,8 @@ export function MatchRow({
   onToggleMenu,
   onAssignTeam,
   onOpenModal,
+  convoques,
+  onOuvrirComposition,
 }: Props) {
   const score = scoreAffiche(m);
   const resultat = issue(m);
@@ -206,6 +211,18 @@ export function MatchRow({
           onClick={() => onOpenModal(m.id, "completed", "verify")}
         >
           Vérifier le résultat
+        </Button>
+      )}
+
+      {/* Composition (v242, 21/09/2026, demande de Fouka : « s'il y a un match à venir, qu'il
+          puisse mettre la composition en avance »). Proposée tant que le match n'est pas joué —
+          composer après coup n'aurait plus d'objet, la feuille de match a pris le relais. Le
+          bouton dit ce qui est déjà enregistré : un coach revient dessus plusieurs fois avant le
+          jour J, il doit voir d'un coup d'œil où il en était. */}
+      {!score && m.status !== "cancelled" && onOuvrirComposition && (
+        <Button variant="secondary" className="h-9 px-3.5 text-[12.5px]" onClick={onOuvrirComposition}>
+          <ClipboardList className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+          {convoques ? `Composition · ${convoques}` : "Composition"}
         </Button>
       )}
 

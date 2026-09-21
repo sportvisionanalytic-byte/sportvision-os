@@ -237,8 +237,11 @@ function RosterTab({ players }: { players: ReturnType<typeof playersForTeam> }) 
 
   return (
     <Card className="overflow-hidden">
-      <div className="hidden grid-cols-[40px_1.6fr_1fr_1fr_1fr] gap-3 border-b border-divider bg-surface-alt px-5 py-3 text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint sm:grid">
-        <span>N°</span>
+      {/* 21/09/2026, Fouka : « dans effectif, il ne faut pas specialement mettre le numero de
+          joueur, mais juste le joueur et potentiellement son poste ». En club amateur le numero
+          change d'un match a l'autre : il occupait la premiere colonne pour la seule donnee que
+          personne ne tient a jour. */}
+      <div className="hidden grid-cols-[1.8fr_1fr_1fr_1fr] gap-3 border-b border-divider bg-surface-alt px-5 py-3 text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint sm:grid">
         <span>Joueur</span>
         <span>Poste</span>
         <span>Licence</span>
@@ -247,12 +250,9 @@ function RosterTab({ players }: { players: ReturnType<typeof playersForTeam> }) 
       {players.map((p) => {
         const right = imageRightForPlayer(p.id);
         const rowClassName =
-          "grid grid-cols-2 gap-2.5 border-b border-divider px-5 py-3.5 last:border-0 sm:grid-cols-[40px_1.6fr_1fr_1fr_1fr] sm:items-center sm:gap-3";
+          "grid grid-cols-2 gap-2.5 border-b border-divider px-5 py-3.5 last:border-0 sm:grid-cols-[1.8fr_1fr_1fr_1fr] sm:items-center sm:gap-3";
         const rowContent = (
           <>
-            <span className="font-mono text-[12.5px] font-bold text-text-soft">
-              {p.shirtNumber ?? "—"}
-            </span>
             <span className="text-[13.5px] font-bold text-text">
               {p.firstName} {p.lastName}
             </span>
@@ -880,8 +880,7 @@ function RealRosterTab({
 
   return (
     <Card className="overflow-hidden">
-      <div className="hidden grid-cols-[40px_1.6fr_1fr_1fr_1fr] gap-3 border-b border-divider bg-surface-alt px-5 py-3 text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint sm:grid">
-        <span>N°</span>
+      <div className="hidden grid-cols-[1.8fr_1fr_1fr_1fr] gap-3 border-b border-divider bg-surface-alt px-5 py-3 text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint sm:grid">
         <span>Joueur</span>
         <span>Licence</span>
         <span>Compte</span>
@@ -890,9 +889,8 @@ function RealRosterTab({
       {roster.map((p) => (
         <div
           key={p.id}
-          className="grid grid-cols-2 gap-2.5 border-b border-divider px-5 py-3.5 last:border-0 sm:grid-cols-[40px_1.6fr_1fr_1fr_1fr] sm:items-center sm:gap-3"
+          className="grid grid-cols-2 gap-2.5 border-b border-divider px-5 py-3.5 last:border-0 sm:grid-cols-[1.8fr_1fr_1fr_1fr] sm:items-center sm:gap-3"
         >
-          <span className="font-mono text-[12.5px] font-bold text-text-soft">{p.shirtNumber ?? "—"}</span>
           <span className="text-[13.5px] font-bold text-text">
             {p.firstName} {p.lastName}
           </span>

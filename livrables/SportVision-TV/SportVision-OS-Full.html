@@ -26763,7 +26763,7 @@ async function loadCmUpcomingMatches(){
     const matches=await sbFetch('club_matches?select=id,team,opponent,match_date,kickoff_time,lieu,competition,is_home,status,horaire_confirme_le,clubs!inner(id,nom,portail_client_id)&clubs.portail_client_id=in.('+clientIds.join(',')+')&match_date=gte.'+today+'&order=match_date.asc&limit=12').catch(()=>[]);
     const rows=Array.isArray(matches)?matches:[];
     if(!rows.length){el.innerHTML='<div class="cd"><div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun match à venir pour vos clubs.</div></div>';return;}
-    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Club</th><th>Match</th><th>Date</th><th>Lieu</th><th>Confirmé</th><th></th></tr></thead><tbody>'+
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Club</th><th>Match</th><th>Date</th><th>Lieu</th><th>Confirmé</th><th>Convoqués</th><th></th></tr></thead><tbody>'+
       rows.map(m=>{
         const titre='Matchday — '+m.team+' vs '+m.opponent;
         const clientId=m.clubs?.portail_client_id||'';
@@ -26775,10 +26775,42 @@ async function loadCmUpcomingMatches(){
           <td>${m.match_date?new Date(m.match_date).toLocaleDateString('fr-FR'):'—'}${m.kickoff_time?` ${String(m.kickoff_time).slice(0,5)}`:''} <span style="color:var(--t3);font-size:11px">${sens}</span></td>
           <td>${esc(m.lieu||'—')}</td>
           <td>${confirmationMatchPastille(m.horaire_confirme_le)}</td>
+          <td><button class="btn bs" style="font-size:11px;padding:4px 9px" onclick="modalCompositionMatch('${m.id}','${esc(m.team)} vs ${esc(m.opponent)}'.replace(/'/g,&quot;\\'&quot;))">Voir la compo</button></td>
           <td><button class="btn bp bs" onclick="creerContenuDepuisMatch('${m.id}','${clientId}','${esc(titre).replace(/'/g,"\\'")}')">+ Créer un contenu</button></td>
         </tr>`;
       }).join('')+'</tbody></table></div></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement des matchs.</div>';console.error(e);}
+}
+
+// La composition d'un match, vue par la Production (v242, 21/09/2026).
+//
+// Fouka : « les joueurs ne doivent pas la voir, mais moi, community manager, je dois pouvoir voir
+// la composition, ou alors les 14 convoqués ». Savoir qui sera sur le terrain, c'est savoir qui
+// photographier : un opérateur qui connaît les onze titulaires ne court pas après le mauvais
+// joueur pendant vingt minutes.
+//
+// Lecture seule, et c'est la base qui le garantit : match_composer refuse un CM. Ici on ne
+// propose donc aucun bouton d'écriture — un bouton qui échoue est pire que pas de bouton.
+async function modalCompositionMatch(matchId, titre){
+  const lignes = await sbFetch('rpc/match_composition', { method:'POST', body:{ p_match_id: matchId } }).catch(()=>[]);
+  const rows = Array.isArray(lignes) ? lignes : [];
+  const groupe = (role, libelle) => {
+    const l = rows.filter(r => r.role === role);
+    if(!l.length) return '';
+    return `<div style="margin-top:12px">
+      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px">${libelle} · ${l.length}</div>
+      ${l.map(r=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--bd)">
+        <span style="font-weight:600">${esc([r.prenom, r.nom].filter(Boolean).join(' ') || '—')}</span>
+        <span style="font-size:11.5px;color:var(--t3)">${esc(r.poste || '')}</span>
+      </div>`).join('')}
+    </div>`;
+  };
+  const corps = rows.length
+    ? groupe('titulaire','Titulaires') + groupe('remplacant','Remplaçants') + groupe('reserve','Non retenus')
+    : '<div style="padding:22px 0;text-align:center;color:var(--t3);font-size:13px">Le coach n\'a pas encore posé sa composition.</div>';
+  openModal(`<div class="mh"><div class="mt">Composition — ${esc(titre)}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb">${corps}</div>
+    <div class="mf"><button class="btn bp" onclick="closeModal()">Fermer</button></div>`);
 }
 
 // Le club a-t-il confirmé l'horaire et le lieu de ce match (v241, 21/09/2026) ?
