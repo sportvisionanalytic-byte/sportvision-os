@@ -14148,9 +14148,10 @@ async function _galOuvrirConstructeur(linkId){
 
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px">
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Offres proposees</span>
-      <div style="display:flex;gap:6px">
-        <button class="btn bg2 bs" onclick="galAjouterOffre('pack')">+ Selection de photos</button>
-        <button class="btn bg2 bs" onclick="galAjouterOffre('album_complet')">+ Galerie complete</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn bg2 bs" onclick="galAjouterOffre('pack')">+ Pack souvenirs</button>
+        <button class="btn bg2 bs" onclick="galAjouterOffre('album_complet')">+ Galerie complète</button>
+        <button class="btn bg2 bs" id="gl-reprendre" style="display:none" onclick="galReprendreFormules()"></button>
       </div>
     </div>
     <div id="gl-offres" style="display:flex;flex-direction:column;gap:8px;margin-bottom:13px"></div>
@@ -14163,13 +14164,61 @@ async function _galOuvrirConstructeur(linkId){
     </div>
   `);
   _galRendreOffres();
+  _galChargerDernieresFormules();
 }
 
+// Les formules standard (21/09/2026, demande de Fouka).
+//
+// L'ancienne version ne suggerait RIEN, et s'en expliquait : « un prix pre-rempli finirait par
+// etre envoye tel quel a des parents parce que personne ne l'aurait relu ». La crainte est juste,
+// mais elle protege d'une erreur qui n'est jamais arrivee, au prix d'une corvee qui, elle, revient
+// a chaque galerie : retaper « pack souvenirs », le prix et le nombre de photos, tournoi apres
+// tournoi. Fouka : « je ne veux plus reecrire pack souvenirs ».
+//
+// Les valeurs ci-dessous sont celles qu'il pratique. Elles restent entierement modifiables, et la
+// reprise de la derniere galerie passe devant des qu'il y en a une : c'est encore plus proche de
+// ce qu'on s'apprete a vendre.
+const GAL_FORMULES_STANDARD={
+  pack:{name:'Pack souvenirs', prix:'10', quota:10},
+  album_complet:{name:'Galerie complète', prix:'40', quota:null},
+};
+
 function galAjouterOffre(type){
-  // Aucune valeur suggeree : un prix ou un quota pre-rempli finirait par etre envoye tel quel a
-  // des parents parce que personne ne l'aurait relu.
-  _galOffres.push({id:null, type:type, name:'', prix:'', quota:type==='pack'?'':null, featured:false, actif:true});
+  const st=GAL_FORMULES_STANDARD[type]||{name:'',prix:'',quota:null};
+  _galOffres.push({id:null, type:type, name:st.name, prix:st.prix,
+                   quota:type==='pack'?(st.quota??''):null, featured:false, actif:true});
   _galRendreOffres();
+}
+
+// Ce qu'on a vendu la derniere fois. Charge une seule fois par ouverture de l'editeur : c'est une
+// suggestion, pas une donnee vivante.
+let _galDernieresFormules=null;
+async function _galChargerDernieresFormules(){
+  const r=await sbFetch('rpc/media_dernieres_formules',{method:'POST',body:{}}).catch(()=>[]);
+  _galDernieresFormules=Array.isArray(r)?r:[];
+  const b=document.getElementById('gl-reprendre');
+  if(b&&_galDernieresFormules.length){
+    b.style.display='';
+    b.textContent='↩ Reprendre « '+(_galDernieresFormules[0].galerie_source||'la dernière galerie')+' »';
+    b.title='Reprend les '+_galDernieresFormules.length+' formule(s) de la galerie précédente. Tout reste modifiable.';
+  }
+  // Une galerie encore vierge part directement avec les formules precedentes : c'est le cas
+  // courant (un tournoi, puis le suivant, au meme tarif), et cela evite un clic de plus.
+  if(!_galOffres.length&&_galDernieresFormules.length) galReprendreFormules(true);
+  _galRendreOffres();
+}
+
+function galReprendreFormules(silencieux){
+  const src=_galDernieresFormules||[];
+  if(!src.length){toast('Aucune galerie précédente à reprendre.','er');return;}
+  _galOffres=src.map(f=>({
+    id:null, type:f.offer_type||'pack', name:f.offer_name||'',
+    prix:f.price_cents===null||f.price_cents===undefined?'':(f.price_cents/100).toString().replace('.',','),
+    quota:(f.offer_type==='pack')?(f.photos_allowance??''):null,
+    featured:!!f.is_featured, actif:true,
+  }));
+  _galRendreOffres();
+  if(!silencieux)toast('Formules reprises de « '+(src[0].galerie_source||'la dernière galerie')+' ». Vérifiez les prix.','ok');
 }
 function galRetirerOffre(i){ _galOffres.splice(i,1); _galRendreOffres(); }
 // La copie n'herite PAS de l'identifiant : ce doit etre une offre neuve, sinon enregistrer

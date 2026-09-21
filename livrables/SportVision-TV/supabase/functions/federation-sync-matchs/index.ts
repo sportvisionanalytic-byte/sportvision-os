@@ -49,6 +49,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Le premier jour qui compte. Avant cette date, la saison n'est que de la préparation : aucune
+// prestation SportVision ne la couvre. Une date plutôt qu'un calcul sur la saison active, parce
+// que la saison démarre au 1er juillet en base et que ce n'est pas la question posée.
+const DEBUT_COMPETITION = "2026-09-01";
+
 function json(corps: unknown, status = 200): Response {
   return new Response(JSON.stringify(corps), {
     status,
@@ -142,7 +147,7 @@ serve(async (req) => {
     const debut = new Date().toISOString();
     // `scores` : combien de scores officiels recopies. C'est la seule ecriture nouvelle de cette
     // fonction, elle merite sa ligne au journal.
-    let creees = 0, majs = 0, inchanges = 0, scores = 0;
+    let creees = 0, majs = 0, inchanges = 0, scores = 0, ignores = 0;
     const erreurs: string[] = [];
     let statut = "success";
 
@@ -182,6 +187,19 @@ serve(async (req) => {
         const externalId = String(m.id);
         if (exclus.has(`${s.club_id}:${externalId}`)) {
           inchanges++;
+          continue;
+        }
+
+        // 21/09/2026, décision de Fouka : « dans les plannings, retire tout ce qui est avant
+        // août, on compte à partir de septembre 2026 ». Les matchs de préparation d'été ne sont
+        // couverts par aucune prestation : ils encombrent le calendrier des clubs et le Match
+        // Center sans qu'on ait jamais rien à en faire.
+        //
+        // Le filtre est ICI et pas seulement en base : une purge SQL seule n'aurait tenu que
+        // jusqu'au prochain passage de la synchronisation, qui aurait tout recréé le lendemain.
+        const dateMatch = versIso(m.planned_date);
+        if (dateMatch && dateMatch < DEBUT_COMPETITION) {
+          ignores++;
           continue;
         }
         const { data: existant } = await admin
@@ -367,7 +385,7 @@ serve(async (req) => {
 
     rapport.push({
       club: s.external_club_name ?? s.external_club_id,
-      statut, creees, majs, inchanges, scores, erreurs: erreurs.length,
+      statut, creees, majs, inchanges, scores, ignores, erreurs: erreurs.length,
     });
   }
 
