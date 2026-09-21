@@ -34,6 +34,7 @@ import {
   type VueRapide,
 } from "@/components/calendar/synthese";
 import { EventDetailPanel } from "@/components/calendar/EventDetailPanel";
+import { RappelMatchsAConfirmer } from "@/components/calendar/RappelMatchsAConfirmer";
 import { AddEventModal } from "@/components/calendar/AddEventModal";
 import { ImportMatchesModal } from "@/components/calendar/ImportMatchesModal";
 import {
@@ -428,6 +429,13 @@ export default function CalendarPage() {
           )}
         </div>
       </div>
+
+      {/* Les matchs à venir que personne n'a encore confirmés (v241). En haut de l'écran et pas
+          dans un onglet : c'est une question posée au club, elle doit se voir sans la chercher.
+          Le composant ne s'affiche pas quand il n'y a rien à confirmer. */}
+      {!isGenericOrg && !isPlayer && calendarOrgId && (
+        <RappelMatchsAConfirmer clubId={calendarOrgId} onConfirme={loadEvents} />
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1 rounded-xl border border-border p-1">

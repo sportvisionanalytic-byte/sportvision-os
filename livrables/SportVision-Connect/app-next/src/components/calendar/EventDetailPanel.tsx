@@ -14,6 +14,8 @@ import { useEffect, useState } from "react";
 import { useSession } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/client";
 import { fetchCouvertureOperateurs, type OperateurAffecte } from "@/lib/data/club/calendar";
+import { ConfirmationMatch } from "./ConfirmationMatch";
+import { idMatchDepuisRef } from "@/lib/data/club/match-confirmation";
 import { updateClubMatch } from "@/lib/data/club/matches";
 import { canCreate } from "@/lib/permissions";
 import { cn } from "@/lib/cn";
@@ -235,6 +237,22 @@ export function EventDetailPanel({ event, onClose, onChanged }: EventDetailPanel
             )}
           </div>
         </Rubrique>
+
+        {/* La confirmation du club (v241). Sous les informations et non en haut de fiche : on lit
+            d'abord l'horaire, on se prononce ensuite. Seuls les matchs se confirment — un
+            entraînement n'a pas d'horaire annoncé par une fédération. onChanged ferme la fiche et
+            recharge le calendrier, on ne l'appelle donc QUE sur une correction : après un simple
+            « c'est exact », rien n'a bougé et le coach doit voir sa confirmation s'afficher. */}
+        {estMatch && idMatchDepuisRef(event.id) && (
+          <ConfirmationMatch
+            matchId={idMatchDepuisRef(event.id)!}
+            date={event.startsAt.slice(0, 10)}
+            heure={event.allDay ? undefined : event.startsAt.slice(11, 16)}
+            lieu={event.location}
+            adversaire={event.opponent}
+            onCorrige={onChanged}
+          />
+        )}
 
         {/* 10/09/2026 — Le geste « À couvrir par SportVision » vit aussi ici : il n'existait que
             dans la vue Liste, alors que le CM travaille surtout en Semaine. Une présence déjà

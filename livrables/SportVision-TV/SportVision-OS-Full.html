@@ -26369,7 +26369,7 @@ async function modalPresenceDepuisMatch(){
     const endDate=pmMonthDate(_pmMonthOffset);endDate.setMonth(endDate.getMonth()+1);
     const end=endDate.getFullYear()+'-'+String(endDate.getMonth()+1).padStart(2,'0')+'-01';
     const already=new Set((_pmPresences||[]).map(p=>p.match_id).filter(Boolean));
-    const matches=await sbFetch('club_matches?select=id,team,opponent,match_date,lieu&club_id=eq.'+clubId+'&match_date=gte.'+start+'&match_date=lt.'+end+'&order=match_date.asc').catch(()=>[]);
+    const matches=await sbFetch('club_matches?select=id,team,opponent,match_date,lieu,horaire_confirme_le&club_id=eq.'+clubId+'&match_date=gte.'+start+'&match_date=lt.'+end+'&order=match_date.asc').catch(()=>[]);
     const rows=(Array.isArray(matches)?matches:[]).filter(m=>!already.has(m.id));
     if(!listEl)return;
     if(!rows.length){listEl.innerHTML='<div style="color:var(--t3);font-size:13px">Aucun match Club+ ce mois-ci (ou déjà tous ajoutés).</div>';return;}
@@ -26379,7 +26379,7 @@ async function modalPresenceDepuisMatch(){
       const oppEsc=esc(m.opponent||'').replace(/'/g,"\\'");
       const lieuEsc=esc(m.lieu||'').replace(/'/g,"\\'");
       return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)">
-        <div><div style="font-weight:600">${esc(m.team)} vs ${esc(m.opponent||'—')}</div><div style="font-size:11.5px;color:var(--t3)">${dt}${m.lieu?' · '+esc(m.lieu):''}</div></div>
+        <div><div style="font-weight:600">${esc(m.team)} vs ${esc(m.opponent||'—')}</div><div style="font-size:11.5px;color:var(--t3)">${dt}${m.lieu?' · '+esc(m.lieu):''}</div><div style="margin-top:2px">${confirmationMatchPastille(m.horaire_confirme_le)}</div></div>
         <button class="btn bp bs" onclick="presenceDepuisMatch('${m.id}','${teamEsc}','${oppEsc}','${m.match_date||''}','${lieuEsc}')">Utiliser</button>
       </div>`;
     }).join('');
@@ -26760,10 +26760,10 @@ async function loadCmUpcomingMatches(){
     const clientIds=clients.map(c=>c.id).filter(Boolean);
     if(!clientIds.length){el.innerHTML='<div class="cd"><div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun club visible.</div></div>';return;}
     const today=ymdLocal();
-    const matches=await sbFetch('club_matches?select=id,team,opponent,match_date,lieu,competition,is_home,status,clubs!inner(id,nom,portail_client_id)&clubs.portail_client_id=in.('+clientIds.join(',')+')&match_date=gte.'+today+'&order=match_date.asc&limit=12').catch(()=>[]);
+    const matches=await sbFetch('club_matches?select=id,team,opponent,match_date,kickoff_time,lieu,competition,is_home,status,horaire_confirme_le,clubs!inner(id,nom,portail_client_id)&clubs.portail_client_id=in.('+clientIds.join(',')+')&match_date=gte.'+today+'&order=match_date.asc&limit=12').catch(()=>[]);
     const rows=Array.isArray(matches)?matches:[];
     if(!rows.length){el.innerHTML='<div class="cd"><div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun match à venir pour vos clubs.</div></div>';return;}
-    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Club</th><th>Match</th><th>Date</th><th>Lieu</th><th></th></tr></thead><tbody>'+
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Club</th><th>Match</th><th>Date</th><th>Lieu</th><th>Confirmé</th><th></th></tr></thead><tbody>'+
       rows.map(m=>{
         const titre='Matchday — '+m.team+' vs '+m.opponent;
         const clientId=m.clubs?.portail_client_id||'';
@@ -26772,12 +26772,30 @@ async function loadCmUpcomingMatches(){
         return`<tr>
           <td class="tp">${clubNom}</td>
           <td>${esc(m.team)} vs ${esc(m.opponent)}${m.competition?` <span style="color:var(--t3);font-size:11px">· ${esc(m.competition)}</span>`:''}</td>
-          <td>${m.match_date?new Date(m.match_date).toLocaleDateString('fr-FR'):'—'} <span style="color:var(--t3);font-size:11px">${sens}</span></td>
+          <td>${m.match_date?new Date(m.match_date).toLocaleDateString('fr-FR'):'—'}${m.kickoff_time?` ${String(m.kickoff_time).slice(0,5)}`:''} <span style="color:var(--t3);font-size:11px">${sens}</span></td>
           <td>${esc(m.lieu||'—')}</td>
+          <td>${confirmationMatchPastille(m.horaire_confirme_le)}</td>
           <td><button class="btn bp bs" onclick="creerContenuDepuisMatch('${m.id}','${clientId}','${esc(titre).replace(/'/g,"\\'")}')">+ Créer un contenu</button></td>
         </tr>`;
       }).join('')+'</tbody></table></div></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement des matchs.</div>';console.error(e);}
+}
+
+// Le club a-t-il confirmé l'horaire et le lieu de ce match (v241, 21/09/2026) ?
+//
+// Fouka, après plusieurs déplacements sur des matchs qui n'avaient pas lieu à l'heure annoncée :
+// « les coachs peuvent confirmer si c'est la bonne horaire, le bon lieu, comme ça moi sur le
+// calendrier je vois le match exact ».
+//
+// « Non confirmé » n'est PAS une alerte rouge : la plupart des matchs seront exacts, et hurler sur
+// chacun d'eux apprendrait à ne plus regarder cette colonne. C'est une information, et elle dit
+// seulement où il reste un doute à lever avant d'envoyer quelqu'un.
+function confirmationMatchPastille(confirmeLe){
+  if(confirmeLe){
+    const d=new Date(confirmeLe).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+    return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--ok)">✓ Confirmé <span style="color:var(--t3);font-weight:500">${d}</span></span>`;
+  }
+  return '<span style="font-size:11px;color:var(--t3)">Pas encore confirmé</span>';
 }
 
 function creerContenuDepuisMatch(matchId,clientId,titre){
