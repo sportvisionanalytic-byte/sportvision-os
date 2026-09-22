@@ -7,6 +7,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
+import { rejouerInscription } from "./inscription";
 
 export type Espace = "joueur" | "parent" | "aucun";
 
@@ -126,6 +127,9 @@ export function FournisseurSession({ children }: { children: React.ReactNode }) 
   async function charger(s: Session | null) {
     setSession(s);
     if (!s?.user) { setProfil(null); setChargement(false); return; }
+    // Une inscription faite dans l'application n'a rien pu ecrire avant la confirmation de
+    // l'e-mail : c'est ici, a la premiere session reelle, que son club est enfin demande.
+    try { await rejouerInscription(); } catch { /* retente a la prochaine ouverture */ }
     try { setProfil(await lireProfil(s.user.id)); }
     // Un profil illisible ne doit pas bloquer l'application sur un ecran gris : on montre l'espace
     // vide, qui saura dire qu'il n'y a rien, plutot qu'une roue qui tourne indefiniment.

@@ -1,13 +1,14 @@
 // L'ecran de connexion (22/09/2026).
 import React, { useEffect, useState } from "react";
 import {
-  KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View,
+  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../src/lib/supabase";
 import { useSession } from "../src/lib/session";
+import { oublierPorte } from "../src/lib/espaces";
 import { Bouton, Champ, Erreur, SousTitre, Titre } from "../src/ui/Base";
 import { C, E, R } from "../src/theme/couleurs";
 
@@ -37,6 +38,12 @@ export default function Connexion() {
   useEffect(() => {
     if (session) router.replace("/accueil");
   }, [session, router]);
+
+  /** Revenir au choix des trois espaces : le choix memorise ne doit jamais enfermer. */
+  async function changerEspace() {
+    await oublierPorte();
+    router.replace("/bienvenue");
+  }
 
   async function connecter() {
     const adresse = email.trim().toLowerCase();
@@ -112,8 +119,14 @@ export default function Connexion() {
 
         <View style={s.pied}>
           <Text style={s.piedTexte}>Pas encore de compte ?</Text>
-          <Pressable onPress={() => Linking.openURL("https://connect.sportvision-an.fr/signup")} hitSlop={8}>
+          <Pressable onPress={() => router.push("/creer-compte")} hitSlop={8}>
             <Text style={s.lienTexte}>Créer mon compte</Text>
+          </Pressable>
+
+          <Pressable onPress={changerEspace} hitSlop={8} style={{ paddingTop: E.m }}>
+            <Text style={s.piedTexte}>
+              Vous êtes d'un club ou de l'équipe SportVision ? <Text style={s.lienTexte}>Changer d'espace</Text>
+            </Text>
           </Pressable>
         </View>
       </ScrollView>
