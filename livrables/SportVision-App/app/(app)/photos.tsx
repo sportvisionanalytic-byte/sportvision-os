@@ -52,7 +52,7 @@ export default function Photos() {
     // Le lien n'existe qu'a cet instant : la base revalide le droit et journalise l'ouverture.
     const lien = await ouvrirGalerie(g.id);
     setOuverture(null);
-    if (!lien) { setErreur("Cette collection n'a pas pu s'ouvrir. Si vous venez de l'acheter, patientez une minute et réessayez."); return; }
+    if (!lien) { setErreur("Cette collection n'a pas pu s'ouvrir. Si votre accès vient d'être ouvert, patientez une minute et réessayez."); return; }
     Linking.openURL(lien);
   }
 
@@ -161,9 +161,9 @@ export default function Photos() {
                       : <Text style={s.actionTexte}>Ouvrir la collection</Text>}
                   </Pressable>
                 ) : (
-                  // Pas de bouton d'achat ici : l'App Store n'autorise pas un paiement hors de son
-                  // systeme depuis l'application. On renvoie vers l'espace web, ou l'achat existe
-                  // deja et ou il est encadre.
+                  // Ni prix, ni bouton d'achat, ni renvoi vers une page de paiement : l'App Store
+                  // l'interdit, même sous forme d'allusion. On explique l'état de l'accès, et
+                  // c'est tout.
                   <View style={{ gap: E.xs }}>
                     <Text style={s.note}>
                       Cette galerie s'ouvre avec le Pass Photo de l'équipe.

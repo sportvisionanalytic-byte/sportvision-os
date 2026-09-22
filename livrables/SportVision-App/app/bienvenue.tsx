@@ -27,18 +27,27 @@ const PORTES: {
     texte: "Mon calendrier, les résultats de mon équipe et mes photos.",
     teinte: C.accent,
   },
+];
+
+// Les deux espaces professionnels, présentés à part (23/09/2026).
+//
+// Pourquoi séparés : ce sont les outils de travail des clubs partenaires et de nos équipes, pas
+// des espaces pour le public. Les mettre sur le même rang que l'espace des familles laissait
+// croire que l'application est d'abord un portail professionnel — et faisait tomber le premier
+// visiteur, relecteur de l'App Store compris, sur une page de connexion qu'il ne peut pas passer.
+const PORTES_PRO: typeof PORTES = [
   {
     cle: "club",
     icone: "shield-half",
     titre: "Espace club",
-    texte: "Coach, président, secrétaire : l'espace de travail du club.",
+    texte: "Réservé aux clubs partenaires : coach, président, secrétaire.",
     teinte: C.cyan,
   },
   {
     cle: "sportvision",
     icone: "videocam",
     titre: "Équipe de production",
-    texte: "Missions, contenus et suivi des clubs.",
+    texte: "Réservé aux équipes SportVision : missions et contenus.",
     teinte: C.violet,
   },
 ];
@@ -47,6 +56,7 @@ export default function Bienvenue() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [choix, setChoix] = useState<Porte | null>(null);
+  const [proVisibles, setProVisibles] = useState(false);
 
   async function ouvrir(p: Porte) {
     setChoix(p);
@@ -80,11 +90,14 @@ export default function Bienvenue() {
       <View style={{ gap: E.s }}>
         <Image source={require("../assets/splash-icon.png")} style={s.logo} contentFit="contain" />
         <Text style={s.titre}>SportVision</Text>
-        <Text style={s.sous}>Qui êtes-vous ? Nous ouvrirons directement le bon espace la prochaine fois.</Text>
+        <Text style={s.sous}>
+          Votre calendrier, les résultats de votre équipe et vos photos de match. Nous ouvrirons
+          directement votre espace la prochaine fois.
+        </Text>
       </View>
 
       <View style={{ gap: E.m }}>
-        {PORTES.map((p) => (
+        {[...PORTES, ...(proVisibles ? PORTES_PRO : [])].map((p) => (
           <Pressable
             key={p.cle}
             onPress={() => ouvrir(p.cle)}
@@ -107,6 +120,12 @@ export default function Bienvenue() {
         ))}
       </View>
 
+      {!proVisibles ? (
+        <Pressable onPress={() => setProVisibles(true)} hitSlop={10} style={s.lienPro}>
+          <Text style={s.lienProTexte}>Vous travaillez avec SportVision ?</Text>
+        </Pressable>
+      ) : null}
+
       <Text style={s.pied}>
         Vous pourrez revenir à cet écran à tout moment depuis « Changer d'espace ».
       </Text>
@@ -128,4 +147,6 @@ const s = StyleSheet.create({
   carteTitre: { color: C.texte, fontFamily: P.titreFort, fontSize: 16.5 },
   carteTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 18 },
   pied: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5, textAlign: "center", lineHeight: 18 },
+  lienPro: { alignSelf: "center", paddingVertical: E.s, paddingHorizontal: E.m, minHeight: 44, justifyContent: "center" },
+  lienProTexte: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 13.5 },
 });

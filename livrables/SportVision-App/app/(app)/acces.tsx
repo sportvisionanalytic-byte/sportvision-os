@@ -28,7 +28,7 @@ const POINTS: { icone: keyof typeof Ionicons.glyphMap; titre: string; texte: str
   {
     icone: "key-outline",
     titre: "Le Pass Photo ouvre la galerie",
-    texte: "Il est proposé par votre club, qui vous en transmet le lien. Une fois actif, toutes les galeries de la saison s'ouvrent ici.",
+    texte: "Il est mis en place par votre club. Une fois actif, toutes les galeries de la saison s'ouvrent ici, sans rien de plus à faire.",
   },
 ];
 
@@ -69,8 +69,8 @@ export default function Acces() {
       <View style={s.note}>
         <Ionicons name="information-circle-outline" size={17} color={C.cyan} />
         <Text style={s.noteTexte}>
-          Votre club ne vous a rien transmis ? Demandez-lui : c'est lui qui décide des galeries
-          couvertes et de la façon dont elles sont proposées aux familles.
+          Une galerie reste fermée ? Rapprochez-vous de votre club : c'est lui qui décide des
+          rencontres couvertes et des accès ouverts aux familles.
         </Text>
       </View>
     </Ecran>

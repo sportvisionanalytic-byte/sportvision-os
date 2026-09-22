@@ -114,12 +114,22 @@ Réponse à toutes les questions de contenu : **Aucun / Jamais**.
 ## 8. Compte de démonstration pour la relecture
 
 ```
-Adresse : demo.u18.villemomble@example.invalid
-Mot de passe : DemoSportVision2026!
+Espace joueur et parent (celui à relire)
+  Adresse : demo.u18.villemomble@example.invalid
+  Mot de passe : DemoSportVision2026!
+
+Espace parent
+  Adresse : demo.parent.villemomble@example.invalid
+  Mot de passe : DemoSportVision2026!
+
+Espace club, si le relecteur souhaite l'ouvrir
+  Adresse : demo.coach.villemomble@example.invalid
+  Mot de passe : DemoSportVision2026!
 ```
 
-> Ce compte ouvre l'espace joueur d'un club réel, avec son calendrier et ses résultats.
-> **À ne pas supprimer** tant que la relecture est en cours.
+> Ces comptes ouvrent les espaces d'un club réel, avec son calendrier et ses résultats.
+> **À ne pas supprimer** tant que la relecture est en cours. Le troisième est fourni pour
+> qu'aucun écran ne reste inaccessible au relecteur, même les espaces professionnels.
 
 ## 9. Notes pour le relecteur (à coller telles quelles)
 
@@ -148,11 +158,14 @@ déposer de photo : il n'y a pas de contenu généré par les utilisateurs. Les 
 joueur ne sont visibles que par lui-même et par son parent dont le lien a été confirmé
 par le club.
 
-4. ESPACES CLUB ET PRODUCTION
-L'écran d'accueil propose trois espaces. L'espace joueur et parent, celui de la
-relecture, est entièrement natif. Les espaces « club » et « équipe de production »
-ouvrent nos outils professionnels internes dans une vue web ; ils sont réservés aux
-salariés des clubs et aux nôtres, et ne concernent pas le grand public.
+4. ESPACES PROFESSIONNELS
+L'application est celle des familles : l'écran d'accueil propose l'espace joueur et
+parent, entièrement natif, qui constitue l'essentiel de l'application.
+
+Un lien discret, « Vous travaillez avec SportVision ? », révèle deux espaces réservés :
+celui des clubs partenaires et celui de nos équipes de production. Ils ouvrent nos outils
+professionnels internes dans une vue web, et ne s'adressent pas au grand public. Des
+identifiants sont fournis ci-dessus si vous souhaitez les ouvrir.
 
 5. SUPPRESSION DE COMPTE
 Elle se fait dans l'application : Profil, puis Mon compte, puis « Supprimer mon compte ».

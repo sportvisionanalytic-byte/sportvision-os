@@ -45,7 +45,7 @@ export default function Galerie() {
     setOuverture(true); setErreur(null);
     const lien = await ouvrirGalerie(id);
     setOuverture(false);
-    if (!lien) { setErreur("Cette collection n'a pas pu s'ouvrir. Si vous venez de l'acheter, patientez une minute et réessayez."); return; }
+    if (!lien) { setErreur("Cette collection n'a pas pu s'ouvrir. Si votre accès vient d'être ouvert, patientez une minute et réessayez."); return; }
     Linking.openURL(lien);
   }
 
