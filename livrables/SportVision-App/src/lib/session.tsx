@@ -81,6 +81,17 @@ async function lireProfil(userId: string): Promise<Profil> {
     ]);
 
     const club = org.data as { id?: string; nom?: string; logo_url?: string } | null;
+    // L'ecusson vit dans `clubs.ecusson_url` : c'est la source que la fiche du parent utilise
+    // deja (v249). `organizations.logo_url` est souvent vide, et un club sans ecusson affichait
+    // ses initiales alors que son ecusson existait.
+    // La table `clubs` est fermee en lecture : on passe par club_identite (v252), qui ne rend
+    // que le nom, la ville et l'ecusson, et seulement a quelqu'un du club.
+    let ecusson: string | null = club?.logo_url ?? null;
+    if (fiche.club_id) {
+      const { data: ident } = await supabase.rpc("club_identite", { p_club_id: fiche.club_id });
+      const ligne = (Array.isArray(ident) ? ident[0] : null) as { ecusson_url?: string | null } | null;
+      ecusson = ligne?.ecusson_url || ecusson;
+    }
     const eq = equipe.data as { team_id?: string; saison_id?: string | null; club_teams?: { name?: string } | null } | null;
     return {
       espace: "joueur",
@@ -88,7 +99,7 @@ async function lireProfil(userId: string): Promise<Profil> {
       playerId: fiche.id,
       clubId: club?.id ?? (fiche.club_id as string | undefined),
       clubNom: club?.nom,
-      clubLogoUrl: club?.logo_url,
+      clubLogoUrl: ecusson ?? undefined,
       equipeNom: (eq?.club_teams as unknown as { name?: string } | null)?.name,
       equipeId: eq?.team_id,
       saisonId: eq?.saison_id ?? null,

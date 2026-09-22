@@ -53,7 +53,8 @@ export function CarteEvenement({ e, onPress }: { e: Evenement; onPress?: () => v
           <Ionicons name={ICONE_GENRE[e.genre]} size={13} color={couleur} />
           <Text style={[s.genre, { color: couleur }]}>
             {e.genre === "match"
-              ? (e.domicile === false ? "Match · extérieur" : "Match · domicile")
+              // Le calendrier de la famille ne dit pas qui recoit : on ne l'invente pas.
+              ? (e.domicile === undefined ? "Match" : e.domicile ? "Match · domicile" : "Match · extérieur")
               : e.genre === "entrainement" ? "Entraînement"
               : e.genre === "rendez_vous" ? "Rendez-vous" : "Événement"}
           </Text>

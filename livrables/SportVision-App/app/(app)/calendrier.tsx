@@ -6,10 +6,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSession } from "../../src/lib/session";
+import { lireCalendrierFamille, useFamille } from "../../src/lib/famille";
 import { lireEvenements, type Evenement } from "../../src/lib/donnees";
 import { dateDuJourParis, versDate } from "../../src/lib/dates";
 import { Ecran, Vide } from "../../src/ui/Ecran";
 import { CarteEvenement } from "../../src/ui/Cartes";
+import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
 import { C, E, R } from "../../src/theme/couleurs";
 
 const MOIS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
@@ -22,6 +24,8 @@ type Filtre = (typeof FILTRES)[number]["cle"];
 
 export default function Calendrier() {
   const { profil } = useSession();
+  const famille = useFamille();
+  const parent = profil?.espace === "parent";
   const [evenements, setEvenements] = useState<Evenement[]>([]);
   const [chargement, setChargement] = useState(true);
   const [filtre, setFiltre] = useState<Filtre>("tout");
@@ -29,11 +33,19 @@ export default function Calendrier() {
   const barre = useRef<ScrollView>(null);
 
   const charger = useCallback(async () => {
-    if (!profil?.clubId) { setEvenements([]); setChargement(false); return; }
     setChargement(true);
-    try { setEvenements(await lireEvenements(profil.clubId)); }
-    finally { setChargement(false); }
-  }, [profil?.clubId]);
+    try {
+      if (parent) {
+        const tout = await lireCalendrierFamille();
+        const ref = famille.choisi?.refId;
+        setEvenements(ref ? tout.filter((e) => e.sportifRef === ref) : tout);
+      } else if (profil?.clubId) {
+        setEvenements(await lireEvenements(profil.clubId));
+      } else {
+        setEvenements([]);
+      }
+    } finally { setChargement(false); }
+  }, [parent, profil?.clubId, famille.choisi?.refId]);
 
   useEffect(() => { charger(); }, [charger]);
 
@@ -63,6 +75,13 @@ export default function Calendrier() {
   return (
     <Ecran enCours={chargement} rafraichir={charger}>
       <Text style={s.titre}>Calendrier</Text>
+
+      {parent ? (
+        <View style={{ gap: E.s }}>
+          <SelecteurEnfant />
+          <BandeauEnfant />
+        </View>
+      ) : null}
 
       <ScrollView
         ref={barre}
@@ -104,11 +123,13 @@ export default function Calendrier() {
         </View>
       ) : (
         <Vide
-          titre={profil?.clubId ? "Rien ce mois-ci" : "Pas encore de club"}
+          titre={evenements.length ? "Rien ce mois-ci" : "Calendrier vide"}
           texte={
-            profil?.clubId
+            evenements.length
               ? "Changez de mois ci-dessus, ou retirez le filtre pour voir tout ce que le club a publié."
-              : "Votre calendrier se remplira dès que votre club aura validé votre affiliation."
+              : parent
+                ? "Le calendrier se remplira dès que le club aura publié les matchs et les entraînements de son équipe."
+                : "Votre calendrier se remplira dès que votre club aura validé votre affiliation."
           }
         />
       )}

@@ -9,12 +9,14 @@ import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View } from "react-native";
 import { FournisseurSession } from "../src/lib/session";
+import { FournisseurFamille } from "../src/lib/famille";
 import { C } from "../src/theme/couleurs";
 
 export default function Racine() {
   return (
     <SafeAreaProvider>
       <FournisseurSession>
+        <FournisseurFamille>
         {/* Le fond est peint ici, sous les ecrans : sans lui, un blanc apparait le temps d'une
             transition, et l'application clignote a chaque changement de page. */}
         <View style={{ flex: 1, backgroundColor: C.fond }}>
@@ -27,6 +29,7 @@ export default function Racine() {
             }}
           />
         </View>
+        </FournisseurFamille>
       </FournisseurSession>
     </SafeAreaProvider>
   );

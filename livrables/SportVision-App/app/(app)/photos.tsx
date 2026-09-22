@@ -7,26 +7,38 @@ import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from "r
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
+import { useFamille } from "../../src/lib/famille";
 import { lireGaleries, ouvrirGalerie, type Galerie } from "../../src/lib/donnees";
 import { dateLongue } from "../../src/lib/dates";
 import { Ecran, Vide } from "../../src/ui/Ecran";
+import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
 import { Erreur } from "../../src/ui/Base";
 import { C, E, R } from "../../src/theme/couleurs";
 
 export default function Photos() {
   const { profil } = useSession();
+  const famille = useFamille();
+  const parent = profil?.espace === "parent";
+  // Pour un parent, l'equipe et la saison viennent du detail de l'enfant : c'est la base qui les
+  // resout, apres avoir verifie que le lien parent-enfant est bien confirme.
+  const clubId = parent ? famille.detail?.clubId : profil?.clubId;
+  const equipeId = parent ? famille.detail?.equipeId : profil?.equipeId;
+  const saisonId = parent ? (famille.detail?.saisonId ?? null) : (profil?.saisonId ?? null);
+  const playerId = parent
+    ? (famille.choisi?.kind === "club" ? famille.choisi.refId : undefined)
+    : profil?.playerId;
+  const equipeNom = parent ? famille.detail?.categorie : profil?.equipeNom;
   const [galeries, setGaleries] = useState<Galerie[]>([]);
   const [chargement, setChargement] = useState(true);
   const [ouverture, setOuverture] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
-    if (!profil?.clubId || !profil?.equipeId) { setGaleries([]); setChargement(false); return; }
+    if (!clubId || !equipeId) { setGaleries([]); setChargement(false); return; }
     setChargement(true);
-    try {
-      setGaleries(await lireGaleries(profil.clubId, profil.equipeId, profil.saisonId ?? null, profil.playerId));
-    } finally { setChargement(false); }
-  }, [profil?.clubId, profil?.equipeId, profil?.saisonId, profil?.playerId]);
+    try { setGaleries(await lireGaleries(clubId, equipeId, saisonId, playerId)); }
+    finally { setChargement(false); }
+  }, [clubId, equipeId, saisonId, playerId]);
 
   useEffect(() => { charger(); }, [charger]);
 
@@ -42,11 +54,18 @@ export default function Photos() {
   return (
     <Ecran enCours={chargement} rafraichir={charger}>
       <View style={{ gap: 3 }}>
-        <Text style={s.titre}>Mes photos</Text>
+        <Text style={s.titre}>{parent ? "Ses photos" : "Mes photos"}</Text>
         <Text style={s.sous}>
-          {profil?.equipeNom ? `Les galeries de ${profil.equipeNom}.` : "Les galeries de votre équipe."}
+          {equipeNom ? `Les galeries de ${equipeNom}.` : "Les galeries de l'équipe."}
         </Text>
       </View>
+
+      {parent ? (
+        <View style={{ gap: E.s }}>
+          <SelecteurEnfant />
+          <BandeauEnfant />
+        </View>
+      ) : null}
 
       <Erreur message={erreur} />
 
@@ -76,7 +95,8 @@ export default function Photos() {
                   <View style={s.mesPhotos}>
                     <Ionicons name="person" size={11} color="#fff" />
                     <Text style={s.mesPhotosTexte}>
-                      {g.mesPhotos} photo{g.mesPhotos > 1 ? "s" : ""} de vous
+                      {g.mesPhotos} photo{g.mesPhotos > 1 ? "s" : ""}
+                      {parent ? ` de ${famille.choisi?.prenom ?? "lui"}` : " de vous"}
                     </Text>
                   </View>
                 ) : null}
@@ -106,7 +126,7 @@ export default function Photos() {
                   // deja et ou il est encadre.
                   <View style={{ gap: E.xs }}>
                     <Text style={s.note}>
-                      Cette galerie s'ouvre avec le Pass Photo de votre équipe.
+                      Cette galerie s'ouvre avec le Pass Photo de l'équipe.
                     </Text>
                     <Pressable
                       onPress={() => Linking.openURL("https://connect.sportvision-an.fr/photos")}
@@ -131,9 +151,9 @@ export default function Photos() {
         <Vide
           titre="Aucune galerie pour le moment"
           texte={
-            profil?.equipeId
+            equipeId
               ? "Les photos prises par SportVision apparaissent ici après chaque match ou événement couvert."
-              : "Votre club doit d'abord vous rattacher à une équipe pour que ses galeries vous soient proposées."
+              : "Le club doit d'abord rattacher le sportif à une équipe pour que ses galeries soient proposées."
           }
         />
       )}

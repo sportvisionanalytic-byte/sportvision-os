@@ -3,28 +3,51 @@
 // Trois choses, dans cet ordre : mon club, ce qui arrive, ce qui vient de se passer. Le site
 // empilait des cartes optionnelles ; sur un telephone, ce qui n'est pas dans le premier ecran
 // n'est pas lu.
+//
+// Le parent voit la meme chose, pour l'enfant qu'il a choisi. Ce n'est pas un second ecran ecrit
+// en parallele : ce sont les memes blocs, nourris par la fonction de la base qui connait ses
+// droits.
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
+import { useFamille, lireCalendrierFamille } from "../../src/lib/famille";
 import { derniersResultats, lireEvenements, prochain, type Evenement } from "../../src/lib/donnees";
 import { Ecran, Section, Vide } from "../../src/ui/Ecran";
 import { CarteEvenement, Ecusson } from "../../src/ui/Cartes";
+import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
 import { C, E, R } from "../../src/theme/couleurs";
 
 export default function Accueil() {
   const { profil, rafraichir } = useSession();
+  const famille = useFamille();
   const router = useRouter();
+  const parent = profil?.espace === "parent";
   const [evenements, setEvenements] = useState<Evenement[]>([]);
   const [chargement, setChargement] = useState(true);
 
+  const clubId = parent ? famille.detail?.clubId : profil?.clubId;
+  const clubNom = parent ? (famille.detail?.clubNom ?? famille.choisi?.clubNom) : profil?.clubNom;
+  const clubLogo = parent ? famille.detail?.clubLogoUrl : profil?.clubLogoUrl;
+  const affilie = parent ? famille.choisi?.enAttente === false : !!profil?.affilie;
+
   const charger = useCallback(async () => {
-    if (!profil?.clubId) { setEvenements([]); setChargement(false); return; }
     setChargement(true);
-    try { setEvenements(await lireEvenements(profil.clubId)); }
-    finally { setChargement(false); }
-  }, [profil?.clubId]);
+    try {
+      if (parent) {
+        // Le calendrier du parent passe par la fonction de la base, qui ne lui rend que les
+        // enfants dont le lien est confirme. On filtre ensuite sur l'enfant regarde.
+        const tout = await lireCalendrierFamille();
+        const ref = famille.choisi?.refId;
+        setEvenements(ref ? tout.filter((e) => e.sportifRef === ref) : tout);
+      } else if (profil?.clubId) {
+        setEvenements(await lireEvenements(profil.clubId));
+      } else {
+        setEvenements([]);
+      }
+    } finally { setChargement(false); }
+  }, [parent, profil?.clubId, famille.choisi?.refId]);
 
   useEffect(() => { charger(); }, [charger]);
 
@@ -32,31 +55,49 @@ export default function Accueil() {
   const resultats = derniersResultats(evenements);
 
   return (
-    <Ecran enCours={chargement} rafraichir={() => { rafraichir(); charger(); }}>
+    <Ecran enCours={chargement} rafraichir={() => { rafraichir(); famille.recharger(); charger(); }}>
       <View style={s.entete}>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={s.bonjour}>Bonjour {profil?.prenom || ""}</Text>
           <Text style={s.sous}>
-            {profil?.equipeNom ? profil.equipeNom : "Votre espace SportVision"}
+            {parent
+              ? (famille.sportifs.length > 1 ? "Vos sportifs" : "Votre espace SportVision")
+              : (profil?.equipeNom ? profil.equipeNom : "Votre espace SportVision")}
           </Text>
         </View>
-        {profil?.clubNom ? <Ecusson url={profil.clubLogoUrl} nom={profil.clubNom} taille={44} /> : null}
+        {clubNom ? <Ecusson url={clubLogo} nom={clubNom} taille={44} /> : null}
       </View>
 
-      {profil?.clubNom ? (
-        <View style={s.carteClub}>
-          <Ecusson url={profil.clubLogoUrl} nom={profil.clubNom} taille={52} />
-          <View style={{ flex: 1, gap: 3 }}>
-            <Text style={s.label}>Mon club</Text>
-            <Text style={s.nomClub} numberOfLines={2}>{profil.clubNom}</Text>
+      {parent ? (
+        famille.chargement && !famille.sportifs.length ? (
+          <View style={s.attente}><ActivityIndicator color={C.accent} /></View>
+        ) : famille.sportifs.length ? (
+          <View style={{ gap: E.s }}>
+            <SelecteurEnfant />
+            <BandeauEnfant />
           </View>
-          <View style={[s.pastille, profil.affilie ? s.pastilleOk : s.pastilleAttente]}>
-            <Text style={[s.pastilleTexte, { color: profil.affilie ? C.succes : C.alerte }]}>
-              {profil.affilie ? "Affilié" : "En attente"}
+        ) : (
+          <Vide
+            titre="Aucun sportif rattaché"
+            texte="Demandez à votre club de vous rattacher à votre enfant, ou ajoutez-le depuis votre espace en ligne."
+          />
+        )
+      ) : null}
+
+      {clubNom ? (
+        <View style={s.carteClub}>
+          <Ecusson url={clubLogo} nom={clubNom} taille={52} />
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={s.label}>{parent ? "Son club" : "Mon club"}</Text>
+            <Text style={s.nomClub} numberOfLines={2}>{clubNom}</Text>
+          </View>
+          <View style={[s.pastille, affilie ? s.pastilleOk : s.pastilleAttente]}>
+            <Text style={[s.pastilleTexte, { color: affilie ? C.succes : C.alerte }]}>
+              {affilie ? "Affilié" : "En attente"}
             </Text>
           </View>
         </View>
-      ) : (
+      ) : parent && famille.sportifs.length ? null : (
         <Vide
           titre="Rejoignez votre club"
           texte="Associez votre profil à votre club pour retrouver votre calendrier, vos résultats et vos photos."
@@ -78,7 +119,11 @@ export default function Accueil() {
         ) : (
           <Vide
             titre="Rien de prévu pour l'instant"
-            texte="Les matchs et les entraînements de votre équipe apparaîtront ici dès que le club les publie."
+            texte={
+              clubId
+                ? "Les matchs et les entraînements apparaîtront ici dès que le club les publie."
+                : "Le calendrier se remplira dès que le club aura validé le rattachement."
+            }
           />
         )}
       </Section>
@@ -99,8 +144,8 @@ export default function Accueil() {
           <Ionicons name="images" size={20} color={C.accentClair} />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={s.raccourciTitre}>Mes photos</Text>
-          <Text style={s.sous}>Les galeries de votre équipe, match par match.</Text>
+          <Text style={s.raccourciTitre}>{parent ? "Ses photos" : "Mes photos"}</Text>
+          <Text style={s.sous}>Les galeries de l'équipe, match par match.</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={C.texteFaible} />
       </Pressable>
