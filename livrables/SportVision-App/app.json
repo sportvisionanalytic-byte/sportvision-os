@@ -10,7 +10,7 @@
     "backgroundColor": "#070B18",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "fr.sportvision.app",
       "buildNumber": "1",
       "infoPlist": {

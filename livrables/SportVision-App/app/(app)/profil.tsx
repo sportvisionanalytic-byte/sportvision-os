@@ -9,6 +9,7 @@ import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
+import { supprimerMonCompte } from "../../src/lib/compte";
 import { useFamille } from "../../src/lib/famille";
 import { oublierPorte } from "../../src/lib/espaces";
 import { MODE_DEMO } from "../../src/lib/demonstration";
@@ -48,6 +49,7 @@ export default function Profil() {
   const famille = useFamille();
   const router = useRouter();
   const [sortie, setSortie] = useState(false);
+  const [suppression, setSuppression] = useState(false);
   const parent = profil?.espace === "parent";
 
   const clubNom = parent ? (famille.detail?.clubNom ?? famille.choisi?.clubNom) : profil?.clubNom;
@@ -74,6 +76,61 @@ export default function Profil() {
         onPress: async () => { setSortie(true); await deconnexion(); },
       },
     ]);
+  }
+
+  /**
+   * Supprimer son compte depuis l'application.
+   *
+   * Apple l'exige de toute application qui permet d'en créer un, et c'est une bonne règle : un
+   * compte qu'on ne peut fermer que par e-mail n'est pas vraiment le sien. Deux confirmations,
+   * parce que c'est sans retour.
+   *
+   * Ce qui part et ce qui reste est décidé en base (supprimer_compte_client) : les factures et les
+   * commandes sont conservées, la loi l'impose, mais elles sont détachées et anonymisées.
+   */
+  function demanderSuppression() {
+    if (MODE_DEMO) {
+      Alert.alert(
+        "Mode démonstration",
+        "La suppression de compte fonctionne dans l'application, mais elle est désactivée ici : ce compte est fictif.",
+      );
+      return;
+    }
+    Alert.alert(
+      "Supprimer mon compte",
+      "Votre compte, votre rattachement au club et vos accès aux galeries seront supprimés. "
+      + "Vos factures éventuelles sont conservées et anonymisées, comme la loi l'impose. "
+      + "Cette action est définitive.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Continuer",
+          style: "destructive",
+          onPress: () => Alert.alert(
+            "Vous êtes sûr ?",
+            "Il n'y a pas de retour en arrière. Vous devrez recréer un compte et redemander votre rattachement au club.",
+            [
+              { text: "Annuler", style: "cancel" },
+              {
+                text: "Supprimer définitivement",
+                style: "destructive",
+                onPress: async () => {
+                  setSuppression(true);
+                  const r = await supprimerMonCompte();
+                  setSuppression(false);
+                  if (r.ok) {
+                    await deconnexion();
+                    router.replace("/connexion");
+                  } else {
+                    Alert.alert("Suppression impossible", r.message);
+                  }
+                },
+              },
+            ],
+          ),
+        },
+      ],
+    );
   }
 
   const version = Constants.expoConfig?.version ?? "1.0.0";
@@ -112,6 +169,13 @@ export default function Profil() {
             icone="person-circle-outline" titre="Mes informations"
             detail="Nom, adresse e-mail, mot de passe"
             onPress={() => Linking.openURL("https://connect.sportvision-an.fr/profil")}
+          />
+          <Ligne
+            icone="trash-outline"
+            titre={suppression ? "Suppression en cours…" : "Supprimer mon compte"}
+            detail="Définitif, sans retour en arrière"
+            danger
+            onPress={suppression ? undefined : demanderSuppression}
           />
         </View>
       </Section>
