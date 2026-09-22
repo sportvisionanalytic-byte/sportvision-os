@@ -2,20 +2,24 @@
 import React from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Lueur } from "./Fond";
 import { C, E, R } from "../theme/couleurs";
 
 export function Ecran({
-  children, rafraichir, enCours, style,
+  children, rafraichir, enCours, style, teinte,
 }: {
   children: React.ReactNode;
   rafraichir?: () => void;
   enCours?: boolean;
   style?: ViewStyle;
+  teinte?: "violet" | "cyan" | "bleu";
 }) {
   const insets = useSafeAreaInsets();
   return (
+    <View style={{ flex: 1, backgroundColor: C.fond }}>
+    <Lueur teinte={teinte} />
     <ScrollView
-      style={{ flex: 1, backgroundColor: C.fond }}
+      style={{ flex: 1, backgroundColor: "transparent" }}
       contentContainerStyle={[
         // L'encoche en haut, la barre d'onglets en bas : sans ces marges, le titre passe sous
         // l'heure du telephone et la derniere ligne sous les onglets — constate sur « Se
@@ -36,6 +40,7 @@ export function Ecran({
     >
       {children}
     </ScrollView>
+    </View>
   );
 }
 

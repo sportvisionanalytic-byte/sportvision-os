@@ -74,7 +74,7 @@ export default function Calendrier() {
   const titreMois = mois ? `${MOIS[Number(mois.slice(5, 7)) - 1]} ${mois.slice(0, 4)}` : "";
 
   return (
-    <Ecran enCours={chargement} rafraichir={charger}>
+    <Ecran enCours={chargement} rafraichir={charger} teinte="cyan">
       <Text style={s.titre}>Calendrier</Text>
 
       {parent ? (

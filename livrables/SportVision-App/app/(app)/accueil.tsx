@@ -56,7 +56,7 @@ export default function Accueil() {
   const resultats = derniersResultats(evenements);
 
   return (
-    <Ecran enCours={chargement} rafraichir={() => { rafraichir(); famille.recharger(); charger(); }}>
+    <Ecran enCours={chargement} teinte="bleu" rafraichir={() => { rafraichir(); famille.recharger(); charger(); }}>
       <View style={s.entete}>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={s.bonjour}>Bonjour {profil?.prenom || ""}</Text>

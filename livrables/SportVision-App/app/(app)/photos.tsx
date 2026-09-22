@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
@@ -54,7 +55,7 @@ export default function Photos() {
   }
 
   return (
-    <Ecran enCours={chargement} rafraichir={charger}>
+    <Ecran enCours={chargement} rafraichir={charger} teinte="violet">
       <View style={{ gap: 3 }}>
         <Text style={s.titre}>{parent ? "Ses photos" : "Mes photos"}</Text>
         <Text style={s.sous}>
@@ -94,6 +95,14 @@ export default function Photos() {
                     <Ionicons name="images-outline" size={26} color={C.texteFaible} />
                   </View>
                 )}
+
+                {/* Le voile : sans lui, un titre blanc sur une photo claire devient illisible. */}
+                <LinearGradient
+                  colors={["rgba(7,11,24,0)", "rgba(7,11,24,.45)", "rgba(7,11,24,.92)"]}
+                  locations={[0, 0.55, 1]}
+                  style={StyleSheet.absoluteFill}
+                />
+
                 {!g.ouverte ? (
                   <View style={s.cadenas}>
                     <Ionicons name="lock-closed" size={12} color={C.texte} />
@@ -109,16 +118,17 @@ export default function Photos() {
                     </Text>
                   </View>
                 ) : null}
-              </View>
 
-              <View style={{ padding: E.m, gap: E.s }}>
-                <View style={{ gap: 3 }}>
+                <View style={s.surVisuel}>
                   <Text style={s.titreGalerie} numberOfLines={2}>{g.titre}</Text>
-                  <Text style={s.sous}>
+                  <Text style={s.sousClair}>
                     {[g.date ? dateLongue(g.date) : null, `${g.nbPhotos} photo${g.nbPhotos > 1 ? "s" : ""}`]
                       .filter(Boolean).join(" · ")}
                   </Text>
                 </View>
+              </View>
+
+              <View style={{ padding: E.m, gap: E.s }}>
 
                 {g.ouverte ? (
                   <Pressable
@@ -174,7 +184,9 @@ const s = StyleSheet.create({
   titre: { color: C.texte, fontSize: 25, fontWeight: "800", letterSpacing: -0.5 },
   sous: { color: C.texteDoux, fontSize: 13.5 },
   carte: { backgroundColor: C.surface, borderRadius: R.l, borderWidth: 1, borderColor: C.bordure, overflow: "hidden" },
-  visuel: { height: 168, backgroundColor: "rgba(255,255,255,.05)" },
+  visuel: { height: 210, backgroundColor: "rgba(255,255,255,.05)", justifyContent: "flex-end" },
+  surVisuel: { padding: E.m, gap: 2 },
+  sousClair: { color: "rgba(255,255,255,.78)", fontSize: 13 },
   visuelVide: { alignItems: "center", justifyContent: "center" },
   cadenas: {
     position: "absolute", top: E.s, right: E.s, flexDirection: "row", alignItems: "center", gap: 5,
@@ -186,7 +198,7 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(79,125,255,.85)", paddingHorizontal: E.s, paddingVertical: 5, borderRadius: R.pill,
   },
   mesPhotosTexte: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  titreGalerie: { color: C.texte, fontSize: 16.5, fontWeight: "700" },
+  titreGalerie: { color: "#fff", fontSize: 17.5, fontWeight: "800", letterSpacing: -0.3 },
   action: { height: 46, borderRadius: R.m, alignItems: "center", justifyContent: "center" },
   actionPleine: { backgroundColor: C.accent },
   actionVide: { borderWidth: 1, borderColor: C.bordureForte, backgroundColor: "rgba(255,255,255,.05)" },
