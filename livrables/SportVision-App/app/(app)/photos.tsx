@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
 import { useFamille } from "../../src/lib/famille";
@@ -18,6 +19,7 @@ import { C, E, R } from "../../src/theme/couleurs";
 export default function Photos() {
   const { profil } = useSession();
   const famille = useFamille();
+  const router = useRouter();
   const parent = profil?.espace === "parent";
   // Pour un parent, l'equipe et la saison viennent du detail de l'enfant : c'est la base qui les
   // resout, apres avoir verifie que le lien parent-enfant est bien confirme.
@@ -76,7 +78,14 @@ export default function Photos() {
       ) : galeries.length ? (
         <View style={{ gap: E.m }}>
           {galeries.map((g) => (
-            <View key={g.id} style={s.carte}>
+            <Pressable
+              key={g.id}
+              onPress={playerId ? () => router.push({
+                pathname: "/galerie/[id]",
+                params: { id: g.id, titre: g.titre, joueur: playerId, ouverte: g.ouverte ? "1" : "0" },
+              }) : undefined}
+              style={({ pressed }) => [s.carte, pressed && playerId ? { opacity: 0.9 } : null]}
+            >
               <View style={s.visuel}>
                 {g.apercuUrl ? (
                   <Image source={{ uri: g.apercuUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={160} />
@@ -144,7 +153,7 @@ export default function Photos() {
                   </Pressable>
                 ) : null}
               </View>
-            </View>
+            </Pressable>
           ))}
         </View>
       ) : (

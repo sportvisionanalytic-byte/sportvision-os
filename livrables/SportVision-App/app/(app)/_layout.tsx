@@ -60,6 +60,9 @@ export default function OngletsEspace() {
           tabBarIcon: ({ color, size }) => <Ionicons name="images" color={color} size={size} />,
         }}
       />
+      {/* La galerie ouverte n'est pas un onglet : elle s'ouvre depuis « Mes photos » et garde la
+          barre en bas, pour qu'on sache toujours ou l'on est. */}
+      <Tabs.Screen name="galerie/[id]" options={{ href: null }} />
       <Tabs.Screen
         name="profil"
         options={{

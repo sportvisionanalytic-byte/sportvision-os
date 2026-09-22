@@ -159,3 +159,31 @@ export async function ouvrirGalerie(albumId: string): Promise<string | null> {
   if (error) return null;
   return (data as string | null) ?? null;
 }
+
+/** Le bucket public des apercus. Les originaux, eux, ne sortent jamais par la. */
+const BUCKET_APERCUS = "galerie-previews";
+
+export function urlApercu(chemin: string): string {
+  const base = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "https://lulgezzpvrlbftbykzrc.supabase.co";
+  return `${base}/storage/v1/object/public/${BUCKET_APERCUS}/${chemin}`;
+}
+
+export interface PhotoDuJoueur {
+  id: string;
+  url: string;
+}
+
+/**
+ * Les photos ou ce joueur a ete reconnu, dans une galerie donnee. La base ne rend que les
+ * rattachements valides par une personne, et seulement au joueur lui-meme ou a son parent
+ * confirme : l'application ne refait pas ce controle, elle s'y fie.
+ */
+export async function lirePhotosDuJoueur(albumId: string, playerId: string): Promise<PhotoDuJoueur[]> {
+  const { data, error } = await supabase.rpc("media_photos_du_joueur", {
+    p_album_id: albumId, p_player_id: playerId,
+  });
+  if (error || !Array.isArray(data)) return [];
+  return (data as { asset_id: string; preview_path: string | null; thumb_path: string | null }[])
+    .map((r) => ({ id: r.asset_id, url: urlApercu((r.preview_path ?? r.thumb_path) ?? "") }))
+    .filter((p) => !!p.url);
+}
