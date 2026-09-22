@@ -194,8 +194,10 @@ const s = StyleSheet.create({
   },
   cadenasTexte: { color: C.texte, fontSize: 11, fontWeight: "600" },
   mesPhotos: {
-    position: "absolute", left: E.s, bottom: E.s, flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: "rgba(79,125,255,.85)", paddingHorizontal: E.s, paddingVertical: 5, borderRadius: R.pill,
+    // En haut a gauche, face au cadenas : en bas, la pastille se superposait au titre et a la
+    // date, qui sont passes sur la photo.
+    position: "absolute", left: E.s, top: E.s, flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "rgba(79,125,255,.92)", paddingHorizontal: E.s, paddingVertical: 5, borderRadius: R.pill,
   },
   mesPhotosTexte: { color: "#fff", fontSize: 11, fontWeight: "700" },
   titreGalerie: { color: "#fff", fontSize: 17.5, fontWeight: "800", letterSpacing: -0.3 },

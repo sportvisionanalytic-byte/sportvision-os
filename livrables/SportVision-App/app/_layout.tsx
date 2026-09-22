@@ -7,12 +7,20 @@ import React from "react";
 import { StatusBar } from "expo-status-bar";
 import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useFonts } from "expo-font";
+import { Ionicons } from "@expo/vector-icons";
 import { View } from "react-native";
 import { FournisseurSession } from "../src/lib/session";
 import { FournisseurFamille } from "../src/lib/famille";
 import { C } from "../src/theme/couleurs";
 
 export default function Racine() {
+  // La police des icônes : sur le web, sans ce chargement, chaque icône s'affiche en carré vide.
+  // On ne bloque PAS l'affichage en l'attendant : sur le web, l'attente ne se terminait jamais et
+  // la page restait noire. Les icônes apparaissent quand la police arrive, le reste s'affiche
+  // tout de suite.
+  useFonts(Ionicons.font);
+
   return (
     <SafeAreaProvider>
       <FournisseurSession>

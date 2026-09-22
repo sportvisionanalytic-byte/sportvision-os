@@ -5,6 +5,7 @@
 // requete directe « equivalente » finirait par diverger d'un cote ou de l'autre.
 import { supabase } from "./supabase";
 import { dateDuJourParis } from "./dates";
+import { EVENEMENTS_DEMO, GALERIES_DEMO, MODE_DEMO, PHOTOS_DEMO } from "./demonstration";
 
 export type GenreEvenement = "match" | "entrainement" | "evenement" | "rendez_vous";
 
@@ -29,6 +30,7 @@ export interface Evenement {
  * ne les distingue pas — il veut son mois, dans l'ordre.
  */
 export async function lireEvenements(clubId: string): Promise<Evenement[]> {
+  if (MODE_DEMO) return EVENEMENTS_DEMO;
   const [cal, matchs] = await Promise.all([
     supabase
       .from("club_calendar_events")
@@ -110,6 +112,7 @@ export interface Galerie {
 export async function lireGaleries(
   clubId: string, teamId: string, saisonId: string | null, playerId?: string,
 ): Promise<Galerie[]> {
+  if (MODE_DEMO) return GALERIES_DEMO;
   const { data, error } = await supabase.rpc("media_album_list", {
     p_club_id: clubId, p_team_id: teamId, p_saison_id: saisonId,
   });
@@ -179,6 +182,7 @@ export interface PhotoDuJoueur {
  * confirme : l'application ne refait pas ce controle, elle s'y fie.
  */
 export async function lirePhotosDuJoueur(albumId: string, playerId: string): Promise<PhotoDuJoueur[]> {
+  if (MODE_DEMO) return PHOTOS_DEMO;
   const { data, error } = await supabase.rpc("media_photos_du_joueur", {
     p_album_id: albumId, p_player_id: playerId,
   });

@@ -3,6 +3,7 @@ import React from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Lueur } from "./Fond";
+import { MODE_DEMO } from "../lib/demonstration";
 import { C, E, R } from "../theme/couleurs";
 
 export function Ecran({
@@ -38,6 +39,12 @@ export function Ecran({
           : undefined
       }
     >
+      {/* Personne ne doit croire que ces chiffres sont les siens. */}
+      {MODE_DEMO ? (
+        <View style={s.demo}>
+          <Text style={s.demoTexte}>Mode démonstration · données fictives</Text>
+        </View>
+      ) : null}
       {children}
     </ScrollView>
     </View>
@@ -67,6 +74,11 @@ export function Vide({ titre, texte }: { titre: string; texte: string }) {
 }
 
 const s = StyleSheet.create({
+  demo: {
+    alignSelf: "flex-start", paddingHorizontal: E.s, paddingVertical: 5, borderRadius: R.pill,
+    backgroundColor: "rgba(232,163,61,.14)", borderWidth: 1, borderColor: "rgba(232,163,61,.3)",
+  },
+  demoTexte: { color: "#F0CE96", fontSize: 11.5, fontWeight: "700" },
   enteteSection: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: E.s },
   titreSection: { color: C.texte, fontSize: 19, fontWeight: "700", letterSpacing: -0.3 },
   vide: {

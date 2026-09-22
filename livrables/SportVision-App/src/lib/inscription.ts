@@ -7,6 +7,7 @@
 // première connexion réelle. Un compte créé dans l'application et confirmé sur un autre appareil
 // retrouve quand même son club.
 import { supabase } from "./supabase";
+import { MODE_DEMO } from "./demonstration";
 
 /** La clé que le site utilise déjà. Ne pas la renommer : les deux mondes doivent se relire. */
 const CLE_META_INSCRIPTION = "sv_inscription";
@@ -39,6 +40,12 @@ export interface Intention {
 export async function chercherClubs(recherche: string): Promise<ClubTrouve[]> {
   const q = recherche.trim();
   if (q.length < 2) return [];
+  if (MODE_DEMO) {
+    return [
+      { id: "demo-1", nom: "AS Démonstration", ville: "Ville-Exemple" },
+      { id: "demo-2", nom: "AS Démonstration Féminines", ville: "Ville-Exemple" },
+    ];
+  }
   const { data, error } = await supabase.functions.invoke("connect-player-onboarding", {
     body: { action: "search", query: q },
   });
@@ -63,6 +70,8 @@ export type ResultatInscription =
   | { ok: false; dejaInscrit?: boolean; message: string };
 
 export async function creerCompte(d: DemandeCompte): Promise<ResultatInscription> {
+  // Démonstration : on montre l'écran d'attente de confirmation, sans rien créer.
+  if (MODE_DEMO) return { ok: true };
   const email = d.email.trim().toLowerCase();
   const prenom = d.prenom.trim();
   const nom = d.nom.trim();
@@ -125,6 +134,7 @@ export async function creerCompte(d: DemandeCompte): Promise<ResultatInscription
  * créerait une deuxième demande d'adhésion au même club.
  */
 export async function rejouerInscription(): Promise<void> {
+  if (MODE_DEMO) return;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 

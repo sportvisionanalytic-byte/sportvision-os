@@ -8,6 +8,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { rejouerInscription } from "./inscription";
+import { MODE_DEMO, PROFIL_DEMO } from "./demonstration";
 
 export type Espace = "joueur" | "parent" | "aucun";
 
@@ -138,6 +139,13 @@ export function FournisseurSession({ children }: { children: React.ReactNode }) 
   }
 
   useEffect(() => {
+    // Démonstration : on n'interroge jamais la base, et on n'ouvre aucune session réelle.
+    if (MODE_DEMO) {
+      setSession({ user: { id: "demo" } } as unknown as Session);
+      setProfil(PROFIL_DEMO);
+      setChargement(false);
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => charger(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => charger(s));
     return () => sub.subscription.unsubscribe();
