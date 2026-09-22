@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../src/lib/supabase";
 import { useSession } from "../src/lib/session";
 import { oublierPorte } from "../src/lib/espaces";
+import { MODE_DEMO } from "../src/lib/demonstration";
 import { Bouton, Champ, Erreur, SousTitre, Titre } from "../src/ui/Base";
 import { C, E, R } from "../src/theme/couleurs";
 
@@ -36,6 +37,9 @@ export default function Connexion() {
   // d'une session restauree au demarrage. Sans cela, on reste sur le formulaire apres avoir
   // saisi le bon mot de passe : le defaut le plus deroutant qui soit.
   useEffect(() => {
+    // En démonstration, une session factice existe en permanence : sans cette exception, cet
+    // écran renverrait aussitôt vers l'accueil et personne ne pourrait le relire.
+    if (MODE_DEMO) return;
     if (session) router.replace("/accueil");
   }, [session, router]);
 
@@ -46,6 +50,7 @@ export default function Connexion() {
   }
 
   async function connecter() {
+    if (MODE_DEMO) { router.replace("/accueil"); return; }
     const adresse = email.trim().toLowerCase();
     if (!adresse || !motDePasse) { setErreur("Renseignez votre adresse e-mail et votre mot de passe."); return; }
     setEnCours(true); setErreur(null);

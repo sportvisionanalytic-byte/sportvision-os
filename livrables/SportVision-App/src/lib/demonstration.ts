@@ -15,9 +15,13 @@ import type { Profil } from "./session";
 
 export const MODE_DEMO = process.env.EXPO_PUBLIC_DEMO === "1";
 
-const PHOTO_1 = "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=900&q=70";
-const PHOTO_2 = "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=900&q=70";
-const PHOTO_3 = "https://images.unsplash.com/photo-1459865264687-595d652de67e?w=900&q=70";
+// Les vraies photographies de SportVision, publiées sur le site vitrine. La démonstration
+// montrait des images d'agence, dont des cyclistes dans une application de football : une
+// relecture extérieure l'a relevé, et elle avait raison. Ce sont désormais vos clichés.
+const PHOTO = (nom: string) => `https://sportvision-an.fr/assets/realisations/${nom}.webp`;
+const PHOTO_1 = PHOTO("foot-action-sportvision");
+const PHOTO_2 = PHOTO("celebration-portee");
+const PHOTO_3 = PHOTO("foot-groupe-01");
 
 /** Des dates relatives au jour de la visite : une démonstration figée au passé fait démonstration. */
 function dans(jours: number): string {
@@ -38,7 +42,7 @@ export const PROFIL_DEMO: Profil = {
   affilie: true,
 };
 
-export const EVENEMENTS_DEMO: Evenement[] = [
+const EVENEMENTS_BRUTS: Evenement[] = [
   { id: "d-1", genre: "match", titre: "U18 A vs FC Riverside", date: dans(4), heure: "14:30",
     lieu: "Stade municipal, terrain 2", equipe: "U18 A", adversaire: "FC Riverside", domicile: true,
     competition: "Championnat départemental", score: null },
@@ -56,6 +60,10 @@ export const EVENEMENTS_DEMO: Evenement[] = [
     competition: "Championnat départemental", score: "1 - 1" },
 ];
 
+/** Toujours triée : une liste de démonstration non triée se voit tout de suite. */
+export const EVENEMENTS_DEMO: Evenement[] = [...EVENEMENTS_BRUTS].sort((a, b) =>
+  a.date === b.date ? (a.heure ?? "").localeCompare(b.heure ?? "") : a.date.localeCompare(b.date));
+
 export const GALERIES_DEMO: Galerie[] = [
   { id: "g-1", titre: "U18 A contre Olympique Nord", date: dans(-3), apercuUrl: PHOTO_1,
     nbPhotos: 148, ouverte: true, mesPhotos: 12, videoUrl: "https://exemple.invalid/video" },
@@ -66,5 +74,10 @@ export const GALERIES_DEMO: Galerie[] = [
 ];
 
 export const PHOTOS_DEMO: PhotoDuJoueur[] = [
-  PHOTO_1, PHOTO_2, PHOTO_3, PHOTO_1, PHOTO_2, PHOTO_3, PHOTO_1, PHOTO_2, PHOTO_3,
-].map((url, i) => ({ id: `p-${i}`, url }));
+  "foot-action-02", "foot-portrait-01", "foot-action-03", "celebration-portee",
+  "foot-action-04", "foot-portrait-02", "foot-groupe-02", "foot-action-05",
+  "foot-portrait-03", "foot-action-06", "foot-groupe-03", "foot-portrait-04",
+].map((nom, i) => ({ id: `p-${i}`, url: PHOTO(nom) }));
+
+/** Le fond photographique de la carte « prochain match ». */
+export const FOND_MATCH_DEMO = PHOTO("foot-action-03");

@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSession } from "../../src/lib/session";
 import { oublierPorte } from "../../src/lib/espaces";
+import { MODE_DEMO } from "../../src/lib/demonstration";
 import { Ecran, Section } from "../../src/ui/Ecran";
 import { Ecusson } from "../../src/ui/Cartes";
 import { C, E, R } from "../../src/theme/couleurs";
@@ -41,6 +42,9 @@ export default function Profil() {
   }
 
   function demanderDeconnexion() {
+    // En démonstration, il n'y a pas de vraie session à fermer : on renvoie simplement vers
+    // l'écran de connexion, sinon le bouton ne menait nulle part.
+    if (MODE_DEMO) { router.replace("/connexion"); return; }
     // Une deconnexion se confirme : sur un telephone, le doigt glisse, et retrouver son mot de
     // passe au bord d'un terrain n'a rien d'evident.
     Alert.alert("Se déconnecter", "Vous devrez saisir à nouveau votre mot de passe.", [
@@ -94,6 +98,23 @@ export default function Profil() {
           />
         </View>
       </Section>
+
+      {MODE_DEMO ? (
+        <Section titre="Démonstration">
+          <View style={s.groupe}>
+            <Ligne
+              icone="log-in-outline" titre="Voir le tunnel de connexion"
+              detail="L'écran que voit une personne non connectée"
+              onPress={() => router.push("/connexion")}
+            />
+            <Ligne
+              icone="person-add-outline" titre="Voir le tunnel d'inscription"
+              detail="Profil, informations, club"
+              onPress={() => router.push("/creer-compte")}
+            />
+          </View>
+        </Section>
+      ) : null}
 
       <Section titre="Aide">
         <View style={s.groupe}>
