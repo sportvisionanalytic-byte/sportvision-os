@@ -12,6 +12,7 @@ import { oublierPorte } from "../src/lib/espaces";
 import { MODE_DEMO } from "../src/lib/demonstration";
 import { Bouton, Champ, Erreur, SousTitre, Titre } from "../src/ui/Base";
 import { C, E, R } from "../src/theme/couleurs";
+import { P } from "../src/theme/polices";
 
 /** Supabase repond en anglais. Personne ne doit lire « Invalid login credentials ». */
 function messageFrancais(brut: string): string {
@@ -144,12 +145,12 @@ const s = StyleSheet.create({
   entete: { gap: E.s, alignItems: "flex-start" },
   logo: { width: 88, height: 88, marginBottom: E.s },
   lien: { alignSelf: "center", paddingVertical: E.s },
-  lienTexte: { color: C.accentClair, fontSize: 14.5, fontWeight: "600" },
+  lienTexte: { color: C.accentClair, fontFamily: P.texteFort, fontSize: 14.5 },
   pied: { alignItems: "center", gap: E.xs },
-  piedTexte: { color: C.texteFaible, fontSize: 13.5 },
+  piedTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, textAlign: "center" },
   info: {
     backgroundColor: "rgba(46,204,138,.10)", borderWidth: 1, borderColor: "rgba(46,204,138,.30)",
     borderRadius: R.m, padding: E.m,
   },
-  infoTexte: { color: "#9FE8C6", fontSize: 13.5, lineHeight: 19 },
+  infoTexte: { color: "#9FE8C6", fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
 });

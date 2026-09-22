@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useSession } from "../../src/lib/session";
 import { C, E } from "../../src/theme/couleurs";
+import { P } from "../../src/theme/polices";
 
 export default function OngletsEspace() {
   const { session, chargement } = useSession();
@@ -29,7 +30,7 @@ export default function OngletsEspace() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: C.accentClair,
-        tabBarInactiveTintColor: C.texteFaible,
+        tabBarInactiveTintColor: C.texteDoux,
         // La barre flotte au-dessus du contenu, comme dans les applications d'iOS : le contenu
         // passe dessous en transparence plutot que de s'arreter net sur un bandeau opaque.
         tabBarStyle: {
@@ -44,7 +45,7 @@ export default function OngletsEspace() {
             <View style={{ flex: 1, backgroundColor: "rgba(7,11,24,.72)" }} />
           </BlurView>
         ),
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginBottom: 2 },
+        tabBarLabelStyle: { fontSize: 11, fontFamily: P.texteFort, marginBottom: 2 },
         tabBarItemStyle: { paddingTop: E.xs },
         sceneStyle: { backgroundColor: C.fond },
       }}
@@ -73,6 +74,8 @@ export default function OngletsEspace() {
       {/* La galerie ouverte n'est pas un onglet : elle s'ouvre depuis « Mes photos » et garde la
           barre en bas, pour qu'on sache toujours ou l'on est. */}
       <Tabs.Screen name="galerie/[id]" options={{ href: null }} />
+      <Tabs.Screen name="match/[id]" options={{ href: null }} />
+      <Tabs.Screen name="acces" options={{ href: null }} />
       <Tabs.Screen
         name="profil"
         options={{

@@ -5,6 +5,7 @@
 // l'écran reste calme.
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { C, DEGRADE_DOUX, E, R } from "../theme/couleurs";
@@ -26,11 +27,13 @@ function distance(iso: string): string {
 }
 
 export function Prochain({
-  e, clubNom, clubLogoUrl, onPress,
+  e, clubNom, clubLogoUrl, fond, onPress,
 }: {
   e: Evenement;
   clubNom?: string | null;
   clubLogoUrl?: string | null;
+  /** Une photographie de fond, quand on en a une pour ce club. Jamais obligatoire. */
+  fond?: string | null;
   onPress?: () => void;
 }) {
   const heure = heureCourte(e.heure);
@@ -47,6 +50,16 @@ export function Prochain({
         style={s.liseret}
       >
         <View style={s.corps}>
+          {fond ? (
+            <>
+              <Image source={{ uri: fond }} style={StyleSheet.absoluteFill} contentFit="cover" transition={180} />
+              {/* Le voile : sans lui, le texte blanc devient illisible sur une photo claire. */}
+              <LinearGradient
+                colors={["rgba(7,10,23,.62)", "rgba(7,10,23,.86)", "rgba(7,10,23,.96)"]}
+                style={StyleSheet.absoluteFill}
+              />
+            </>
+          ) : null}
           <View style={s.haut}>
             <Text style={s.quand}>{distance(e.date)}</Text>
             {e.competition ? <Text style={s.competition} numberOfLines={1}>{e.competition}</Text> : null}
@@ -97,7 +110,7 @@ export function Prochain({
 
 const s = StyleSheet.create({
   liseret: { borderRadius: R.l + 1, padding: 1 },
-  corps: { backgroundColor: C.surfaceHaute, borderRadius: R.l, padding: E.l, gap: E.m },
+  corps: { backgroundColor: C.surfaceHaute, borderRadius: R.l, padding: E.l, gap: E.m, overflow: "hidden" },
   haut: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: E.s },
   quand: { color: C.cyan, fontFamily: P.titre, fontSize: 11.5, textTransform: "uppercase", letterSpacing: 1.1 },
   competition: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: 11.5, flexShrink: 1 },

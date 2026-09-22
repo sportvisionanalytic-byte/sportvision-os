@@ -5,11 +5,13 @@
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { memoriserPorte, type Porte } from "../src/lib/espaces";
 import { C, E, R } from "../src/theme/couleurs";
+import { P } from "../src/theme/polices";
 
 const PORTES: {
   cle: Porte;
@@ -21,22 +23,22 @@ const PORTES: {
   {
     cle: "personnel",
     icone: "football",
-    titre: "Joueur ou parent",
+    titre: "Espace joueur et parent",
     texte: "Mon calendrier, les résultats de mon équipe et mes photos.",
     teinte: C.accent,
   },
   {
     cle: "club",
     icone: "shield-half",
-    titre: "Mon club",
+    titre: "Espace club",
     texte: "Coach, président, secrétaire : l'espace de travail du club.",
     teinte: C.cyan,
   },
   {
     cle: "sportvision",
     icone: "videocam",
-    titre: "Équipe SportVision",
-    texte: "Missions, production et suivi des clubs.",
+    titre: "Équipe de production",
+    texte: "Missions, contenus et suivi des clubs.",
     teinte: C.violet,
   },
 ];
@@ -61,6 +63,20 @@ export default function Bienvenue() {
         { paddingTop: insets.top + E.xl, paddingBottom: insets.bottom + E.xl },
       ]}
     >
+      {/* Un fond de stade très assombri : on sent le terrain sans rien perdre en lisibilité. */}
+      <View pointerEvents="none" style={s.fond}>
+        <Image
+          source={{ uri: "https://sportvision-an.fr/assets/realisations/foot-action-03.webp" }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={300}
+        />
+        <LinearGradient
+          colors={["rgba(7,10,23,.82)", "rgba(7,10,23,.94)", "rgba(7,10,23,1)"]}
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+
       <View style={{ gap: E.s }}>
         <Image source={require("../assets/splash-icon.png")} style={s.logo} contentFit="contain" />
         <Text style={s.titre}>SportVision</Text>
@@ -100,15 +116,16 @@ export default function Bienvenue() {
 
 const s = StyleSheet.create({
   page: { flexGrow: 1, paddingHorizontal: E.l, gap: E.xl, justifyContent: "center" },
+  fond: { position: "absolute", top: 0, left: 0, right: 0, height: 420 },
   logo: { width: 88, height: 88, marginBottom: E.xs },
-  titre: { color: C.texte, fontSize: 28, fontWeight: "800", letterSpacing: -0.6 },
-  sous: { color: C.texteDoux, fontSize: 15, lineHeight: 21 },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: 30, letterSpacing: -0.8 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 15, lineHeight: 21 },
   carte: {
     flexDirection: "row", alignItems: "center", gap: E.m,
     backgroundColor: C.surface, borderRadius: R.l, borderWidth: 1, padding: E.m,
   },
   icone: { width: 46, height: 46, borderRadius: R.m, alignItems: "center", justifyContent: "center" },
-  carteTitre: { color: C.texte, fontSize: 16.5, fontWeight: "700" },
-  carteTexte: { color: C.texteDoux, fontSize: 13.5, lineHeight: 18 },
-  pied: { color: C.texteFaible, fontSize: 12.5, textAlign: "center", lineHeight: 18 },
+  carteTitre: { color: C.texte, fontFamily: P.titreFort, fontSize: 16.5 },
+  carteTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 18 },
+  pied: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5, textAlign: "center", lineHeight: 18 },
 });

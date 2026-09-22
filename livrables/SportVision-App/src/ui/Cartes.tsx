@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { C, E, R } from "../theme/couleurs";
 import { P } from "../theme/polices";
 import { heureCourte, jourNumero, moisCourt, quand } from "../lib/dates";
-import type { Evenement } from "../lib/donnees";
+import { issueDuMatch, MOT_ISSUE, type Evenement } from "../lib/donnees";
 
 const COULEUR_GENRE = {
   match: C.accent,
@@ -57,6 +57,7 @@ export function Ecusson({
 export function CarteEvenement({ e, onPress }: { e: Evenement; onPress?: () => void }) {
   const couleur = COULEUR_GENRE[e.genre];
   const heure = heureCourte(e.heure);
+  const issue = issueDuMatch(e.score);
   return (
     <Pressable
       onPress={onPress}
@@ -90,8 +91,19 @@ export function CarteEvenement({ e, onPress }: { e: Evenement; onPress?: () => v
         {e.genre === "match" && e.equipe ? <Text style={s.equipe}>{e.equipe}</Text> : null}
       </View>
 
-      {/* Le score prend la place de la fleche : c'est ce qu'on vient lire sur un match joue. */}
-      {e.score ? <Text style={s.score}>{e.score}</Text> : null}
+      {/* Le score prend la place de la fleche : c'est ce qu'on vient lire sur un match joue.
+          Le mot « victoire » ou « défaite » l'accompagne, parce qu'une couleur seule n'est pas
+          lisible par tout le monde. */}
+      {e.score ? (
+        <View style={{ alignItems: "flex-end", gap: 2 }}>
+          <Text style={s.score}>{e.score}</Text>
+          {issue ? (
+            <Text style={[s.issue, { color: issue === "gagne" ? C.succes : issue === "perdu" ? C.danger : C.texteFaible }]}>
+              {MOT_ISSUE[issue]}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -113,6 +125,7 @@ const s = StyleSheet.create({
   detail: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
   equipe: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: 12 },
   score: { color: C.texte, fontFamily: P.titre, fontSize: 19, fontVariant: ["tabular-nums"] },
+  issue: { fontFamily: P.texteFort, fontSize: 10.5, textTransform: "uppercase", letterSpacing: 0.6 },
   ecussonVide: {
     backgroundColor: "rgba(255,255,255,.06)", alignItems: "center", justifyContent: "center",
     borderWidth: 1, borderColor: C.bordure,

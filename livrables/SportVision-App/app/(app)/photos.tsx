@@ -15,7 +15,8 @@ import { dateLongue } from "../../src/lib/dates";
 import { Ecran, Vide } from "../../src/ui/Ecran";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
 import { Erreur } from "../../src/ui/Base";
-import { C, E, R } from "../../src/theme/couleurs";
+import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
+import { P } from "../../src/theme/polices";
 
 export default function Photos() {
   const { profil } = useSession();
@@ -34,6 +35,7 @@ export default function Photos() {
   const [galeries, setGaleries] = useState<Galerie[]>([]);
   const [chargement, setChargement] = useState(true);
   const [ouverture, setOuverture] = useState<string | null>(null);
+  const [filtre, setFiltre] = useState<"tout" | "ouvertes" | "verrouillees">("tout");
   const [erreur, setErreur] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
@@ -59,7 +61,7 @@ export default function Photos() {
       <View style={{ gap: 3 }}>
         <Text style={s.titre}>{parent ? "Ses photos" : "Mes photos"}</Text>
         <Text style={s.sous}>
-          {equipeNom ? `Les galeries de ${equipeNom}.` : "Les galeries de l'équipe."}
+          {equipeNom ? `Les galeries de l'équipe ${equipeNom}.` : "Les galeries de votre équipe."}
         </Text>
       </View>
 
@@ -67,6 +69,23 @@ export default function Photos() {
         <View style={{ gap: E.s }}>
           <SelecteurEnfant />
           <BandeauEnfant />
+        </View>
+      ) : null}
+
+      {galeries.length > 1 ? (
+        <View style={s.filtres}>
+          {([
+            ["tout", "Toutes"],
+            ["ouvertes", "Accessibles"],
+            ["verrouillees", "Verrouillées"],
+          ] as const).map(([cle, libelle]) => {
+            const actif = filtre === cle;
+            return (
+              <Pressable key={cle} onPress={() => setFiltre(cle)} style={[s.filtre, actif && s.filtreActif]}>
+                <Text style={[s.filtreTexte, actif && s.filtreTexteActif]} numberOfLines={1}>{libelle}</Text>
+              </Pressable>
+            );
+          })}
         </View>
       ) : null}
 
@@ -78,7 +97,9 @@ export default function Photos() {
         </View>
       ) : galeries.length ? (
         <View style={{ gap: E.m }}>
-          {galeries.map((g) => (
+          {galeries
+            .filter((g) => filtre === "tout" ? true : filtre === "ouvertes" ? g.ouverte : !g.ouverte)
+            .map((g) => (
             <Pressable
               key={g.id}
               onPress={playerId ? () => router.push({
@@ -148,10 +169,10 @@ export default function Photos() {
                       Cette galerie s'ouvre avec le Pass Photo de l'équipe.
                     </Text>
                     <Pressable
-                      onPress={() => Linking.openURL("https://connect.sportvision-an.fr/photos")}
+                      onPress={() => router.push("/acces")}
                       style={({ pressed }) => [s.action, s.actionVide, pressed ? { opacity: 0.85 } : null]}
                     >
-                      <Text style={[s.actionTexte, { color: C.texte }]}>Voir sur mon espace</Text>
+                      <Text style={[s.actionTexte, { color: C.texte }]}>Comprendre mon accès</Text>
                     </Pressable>
                   </View>
                 )}
@@ -181,31 +202,36 @@ export default function Photos() {
 }
 
 const s = StyleSheet.create({
-  titre: { color: C.texte, fontSize: 25, fontWeight: "800", letterSpacing: -0.5 },
-  sous: { color: C.texteDoux, fontSize: 13.5 },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
   carte: { backgroundColor: C.surface, borderRadius: R.l, borderWidth: 1, borderColor: C.bordure, overflow: "hidden" },
   visuel: { height: 210, backgroundColor: "rgba(255,255,255,.05)", justifyContent: "flex-end" },
   surVisuel: { padding: E.m, gap: 2 },
-  sousClair: { color: "rgba(255,255,255,.78)", fontSize: 13 },
+  sousClair: { color: "rgba(255,255,255,.82)", fontFamily: P.texte, fontSize: 13 },
   visuelVide: { alignItems: "center", justifyContent: "center" },
   cadenas: {
     position: "absolute", top: E.s, right: E.s, flexDirection: "row", alignItems: "center", gap: 5,
     backgroundColor: "rgba(0,0,0,.55)", paddingHorizontal: E.s, paddingVertical: 5, borderRadius: R.pill,
   },
-  cadenasTexte: { color: C.texte, fontSize: 11, fontWeight: "600" },
+  cadenasTexte: { color: C.texte, fontFamily: P.texteFort, fontSize: 11 },
   mesPhotos: {
     // En haut a gauche, face au cadenas : en bas, la pastille se superposait au titre et a la
     // date, qui sont passes sur la photo.
     position: "absolute", left: E.s, top: E.s, flexDirection: "row", alignItems: "center", gap: 5,
     backgroundColor: "rgba(79,125,255,.92)", paddingHorizontal: E.s, paddingVertical: 5, borderRadius: R.pill,
   },
-  mesPhotosTexte: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  titreGalerie: { color: "#fff", fontSize: 17.5, fontWeight: "800", letterSpacing: -0.3 },
-  action: { height: 46, borderRadius: R.m, alignItems: "center", justifyContent: "center" },
+  mesPhotosTexte: { color: "#fff", fontFamily: P.texteFort, fontSize: 11 },
+  titreGalerie: { color: "#fff", fontFamily: P.titre, fontSize: 18, letterSpacing: -0.3 },
+  action: { minHeight: TOUCHE + 4, borderRadius: R.l, alignItems: "center", justifyContent: "center" },
+  filtres: { flexDirection: "row", gap: 4, backgroundColor: C.surface, padding: 4, borderRadius: R.pill, borderWidth: 1, borderColor: C.bordure },
+  filtre: { flex: 1, height: 36, borderRadius: R.pill, alignItems: "center", justifyContent: "center" },
+  filtreActif: { backgroundColor: "rgba(255,255,255,.10)" },
+  filtreTexte: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: 12.5 },
+  filtreTexteActif: { color: C.texte, fontFamily: P.texteFort },
   actionPleine: { backgroundColor: C.accent },
   actionVide: { borderWidth: 1, borderColor: C.bordureForte, backgroundColor: "rgba(255,255,255,.05)" },
-  actionTexte: { color: "#fff", fontSize: 14.5, fontWeight: "700" },
-  note: { color: C.texteDoux, fontSize: 13, lineHeight: 18 },
+  actionTexte: { color: "#fff", fontFamily: P.titreFort, fontSize: 15 },
+  note: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
   lienVideo: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingTop: 2 },
-  lienVideoTexte: { color: C.accentClair, fontSize: 13.5, fontWeight: "600" },
+  lienVideoTexte: { color: C.accentClair, fontFamily: P.texteFort, fontSize: 13.5 },
 });

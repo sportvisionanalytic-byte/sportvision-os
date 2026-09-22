@@ -82,6 +82,39 @@ export async function lireEvenements(clubId: string): Promise<Evenement[]> {
     a.date === b.date ? (a.heure ?? "").localeCompare(b.heure ?? "") : a.date.localeCompare(b.date));
 }
 
+export type Issue = "gagne" | "nul" | "perdu";
+
+/**
+ * Gagné, nul ou perdu, lu depuis le score.
+ *
+ * Le score de `club_matches` est écrit « pour - contre », du point de vue du club : c'est la
+ * convention posée par la synchronisation fédérale, qui recopie le score officiel dans cet ordre.
+ * On peut donc annoncer l'issue sans risque de se tromper de camp. En cas de format inattendu, on
+ * ne devine pas : on ne renvoie rien, et l'écran se contente d'afficher le score.
+ */
+export function issueDuMatch(score?: string | null): Issue | null {
+  if (!score) return null;
+  const m = score.match(/(\d+)\s*[-–]\s*(\d+)/);
+  if (!m) return null;
+  const pour = Number(m[1]);
+  const contre = Number(m[2]);
+  if (Number.isNaN(pour) || Number.isNaN(contre)) return null;
+  return pour > contre ? "gagne" : pour < contre ? "perdu" : "nul";
+}
+
+export const MOT_ISSUE: Record<Issue, string> = { gagne: "Victoire", nul: "Nul", perdu: "Défaite" };
+
+/**
+ * Sépare ce qui arrive de ce qui est passé. À venir dans l'ordre croissant, terminés dans l'ordre
+ * décroissant : on regarde vers l'avant, et on revient sur le dernier match d'abord.
+ */
+export function separer(evenements: Evenement[]): { aVenir: Evenement[]; termines: Evenement[] } {
+  const jour = dateDuJourParis();
+  const aVenir = evenements.filter((e) => e.date >= jour);
+  const termines = evenements.filter((e) => e.date < jour).reverse();
+  return { aVenir, termines };
+}
+
 /** Le prochain rendez-vous, aujourd'hui compris : un match du jour interesse plus qu'un match de mars. */
 export function prochain(evenements: Evenement[]): Evenement | null {
   const jour = dateDuJourParis();
@@ -94,6 +127,34 @@ export function derniersResultats(evenements: Evenement[], combien = 3): Eveneme
     .filter((e) => e.genre === "match" && e.score)
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, combien);
+}
+
+/** Un match précis, pour sa fiche. L'identifiant porte le préfixe posé par lireEvenements. */
+export async function lireMatch(id: string): Promise<Evenement | null> {
+  const brut = id.replace(/^match-/, "");
+  if (MODE_DEMO) return EVENEMENTS_DEMO.find((e) => e.id === id || e.id === brut) ?? null;
+
+  const { data, error } = await supabase
+    .from("club_matches")
+    .select("id, team, opponent, match_date, kickoff_time, lieu, score, is_home, competition")
+    .eq("id", brut)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const domicile = data.is_home !== false;
+  return {
+    id: `match-${data.id}`,
+    genre: "match",
+    titre: `${data.team ?? "Notre équipe"} ${domicile ? "vs" : "@"} ${data.opponent ?? "adversaire"}`,
+    date: data.match_date,
+    heure: data.kickoff_time ?? null,
+    lieu: data.lieu ?? null,
+    equipe: data.team ?? null,
+    adversaire: data.opponent ?? null,
+    domicile,
+    competition: data.competition ?? null,
+    score: data.score ?? null,
+  };
 }
 
 export interface Galerie {
