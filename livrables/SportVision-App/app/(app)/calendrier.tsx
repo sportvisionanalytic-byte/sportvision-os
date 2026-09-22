@@ -11,7 +11,7 @@ import { useSession } from "../../src/lib/session";
 import { lireCalendrierFamille, useFamille } from "../../src/lib/famille";
 import { lireEvenements, separer, type Evenement } from "../../src/lib/donnees";
 import { dateDuJourParis, versDate } from "../../src/lib/dates";
-import { Ecran, Vide } from "../../src/ui/Ecran";
+import { Ecran, Probleme, Vide } from "../../src/ui/Ecran";
 import { CarteEvenement } from "../../src/ui/Cartes";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
@@ -41,6 +41,7 @@ export default function Calendrier() {
 
   const [evenements, setEvenements] = useState<Evenement[]>([]);
   const [chargement, setChargement] = useState(true);
+  const [panne, setPanne] = useState(false);
   const [vue, setVue] = useState<"planning" | "mois">("planning");
   const [filtre, setFiltre] = useState<Filtre>(
     FILTRES.some((f) => f.cle === filtreDemande) ? (filtreDemande as Filtre) : "tout",
@@ -50,6 +51,7 @@ export default function Calendrier() {
 
   const charger = useCallback(async () => {
     setChargement(true);
+    setPanne(false);
     try {
       if (parent) {
         const tout = await lireCalendrierFamille();
@@ -60,6 +62,9 @@ export default function Calendrier() {
       } else {
         setEvenements([]);
       }
+    } catch {
+      setPanne(true);
+      setEvenements([]);
     } finally { setChargement(false); }
   }, [parent, profil?.clubId, famille.choisi?.refId]);
 
@@ -155,6 +160,8 @@ export default function Calendrier() {
         <View style={{ paddingVertical: E.xl * 2, alignItems: "center" }}>
           <ActivityIndicator color={C.accent} />
         </View>
+      ) : panne ? (
+        <Probleme surReessayer={charger} />
       ) : vue === "mois" && mois ? (
         <VueMois
           mois={mois}

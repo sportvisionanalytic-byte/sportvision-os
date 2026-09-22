@@ -7,6 +7,21 @@ import { supabase } from "./supabase";
 import { dateDuJourParis } from "./dates";
 import { EVENEMENTS_DEMO, GALERIES_DEMO, MODE_DEMO, PHOTOS_DEMO } from "./demonstration";
 
+/**
+ * Le chargement a échoué : réseau coupé, session expirée, base qui refuse.
+ *
+ * Pourquoi cette distinction existe : jusqu'ici, une erreur était avalée et l'écran affichait son
+ * état vide, c'est-à-dire « votre club n'a rien publié ». Mesuré le 23/09 : sans session valide,
+ * la base répond 401, et l'application racontait au joueur que son club ne publiait rien. Un
+ * mensonge poli reste un mensonge, et celui-là envoie la personne appeler son club.
+ */
+export class ErreurChargement extends Error {
+  constructor(public readonly origine?: unknown) {
+    super("chargement impossible");
+    this.name = "ErreurChargement";
+  }
+}
+
 export type GenreEvenement = "match" | "entrainement" | "evenement" | "rendez_vous";
 
 export interface Evenement {
@@ -43,6 +58,10 @@ export async function lireEvenements(clubId: string): Promise<Evenement[]> {
       .eq("club_id", clubId)
       .order("match_date", { ascending: true }),
   ]);
+
+  // Les deux sources doivent répondre. Si l'une refuse, on ne compose pas un calendrier à moitié
+  // vrai : on le dit.
+  if (cal.error || matchs.error) throw new ErreurChargement(cal.error ?? matchs.error);
 
   const liste: Evenement[] = [];
 
@@ -139,7 +158,8 @@ export async function lireMatch(id: string): Promise<Evenement | null> {
     .select("id, team, opponent, match_date, kickoff_time, lieu, score, is_home, competition")
     .eq("id", brut)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new ErreurChargement(error);
+  if (!data) return null;
 
   const domicile = data.is_home !== false;
   return {
@@ -177,7 +197,8 @@ export async function lireGaleries(
   const { data, error } = await supabase.rpc("media_album_list", {
     p_club_id: clubId, p_team_id: teamId, p_saison_id: saisonId,
   });
-  if (error || !Array.isArray(data)) return [];
+  if (error) throw new ErreurChargement(error);
+  if (!Array.isArray(data)) return [];
 
   const galeries: Galerie[] = data.map((r: Record<string, unknown>) => ({
     id: String(r.id),
@@ -247,7 +268,8 @@ export async function lirePhotosDuJoueur(albumId: string, playerId: string): Pro
   const { data, error } = await supabase.rpc("media_photos_du_joueur", {
     p_album_id: albumId, p_player_id: playerId,
   });
-  if (error || !Array.isArray(data)) return [];
+  if (error) throw new ErreurChargement(error);
+  if (!Array.isArray(data)) return [];
   return (data as { asset_id: string; preview_path: string | null; thumb_path: string | null }[])
     .map((r) => ({ id: r.asset_id, url: urlApercu((r.preview_path ?? r.thumb_path) ?? "") }))
     .filter((p) => !!p.url);

@@ -19,7 +19,7 @@ import {
 } from "../../src/lib/donnees";
 import { dateLongue } from "../../src/lib/dates";
 import { FOND_MATCH_DEMO, MODE_DEMO } from "../../src/lib/demonstration";
-import { Ecran, Section, Vide } from "../../src/ui/Ecran";
+import { Ecran, Probleme, Section, Vide } from "../../src/ui/Ecran";
 import { CarteEvenement, Ecusson } from "../../src/ui/Cartes";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
 import { Prochain } from "../../src/ui/Prochain";
@@ -37,6 +37,7 @@ export default function Accueil() {
   const [evenements, setEvenements] = useState<Evenement[]>([]);
   const [galerie, setGalerie] = useState<Galerie | null>(null);
   const [chargement, setChargement] = useState(true);
+  const [panne, setPanne] = useState(false);
 
   const clubId = parent ? famille.detail?.clubId : profil?.clubId;
   const clubNom = parent ? (famille.detail?.clubNom ?? famille.choisi?.clubNom) : profil?.clubNom;
@@ -50,6 +51,7 @@ export default function Accueil() {
 
   const charger = useCallback(async () => {
     setChargement(true);
+    setPanne(false);
     try {
       if (parent) {
         // Le calendrier du parent passe par la fonction de la base, qui ne lui rend que les
@@ -70,6 +72,11 @@ export default function Accueil() {
       } else {
         setGalerie(null);
       }
+    } catch {
+      // On ne compose pas un écran à moitié vrai : la personne saura que rien n'a pu être chargé.
+      setPanne(true);
+      setEvenements([]);
+      setGalerie(null);
     } finally { setChargement(false); }
   }, [parent, profil?.clubId, famille.choisi?.refId, clubId, equipeId, saisonId, playerId]);
 
@@ -122,6 +129,8 @@ export default function Accueil() {
       >
         {chargement && !evenements.length ? (
           <View style={s.attente}><ActivityIndicator color={C.accent} /></View>
+        ) : panne ? (
+          <Probleme surReessayer={charger} />
         ) : suivant ? (
           <Prochain
             e={suivant}

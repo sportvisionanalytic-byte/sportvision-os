@@ -16,7 +16,7 @@ import { issueDuMatch, lireMatch, MOT_ISSUE, type Evenement } from "../../../src
 import { dateLongue, dateDuJourParis, heureCourte } from "../../../src/lib/dates";
 import { useSession } from "../../../src/lib/session";
 import { FOND_MATCH_DEMO, MODE_DEMO } from "../../../src/lib/demonstration";
-import { Ecran, Vide } from "../../../src/ui/Ecran";
+import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Ecusson } from "../../../src/ui/Cartes";
 import { Bouton } from "../../../src/ui/Base";
 import { C, E, R, TOUCHE } from "../../../src/theme/couleurs";
@@ -28,11 +28,14 @@ export default function FicheMatch() {
   const { profil } = useSession();
   const [match, setMatch] = useState<Evenement | null>(null);
   const [chargement, setChargement] = useState(true);
+  const [panne, setPanne] = useState(false);
 
   const charger = useCallback(async () => {
     if (!id) { setChargement(false); return; }
     setChargement(true);
+    setPanne(false);
     try { setMatch(await lireMatch(id)); }
+    catch { setPanne(true); setMatch(null); }
     finally { setChargement(false); }
   }, [id]);
 
@@ -64,6 +67,8 @@ export default function FicheMatch() {
         <View style={{ paddingVertical: E.xl * 2, alignItems: "center" }}>
           <ActivityIndicator color={C.accent} />
         </View>
+      ) : panne ? (
+        <Probleme surReessayer={charger} />
       ) : !match ? (
         <Vide titre="Match introuvable" texte="Ce match n'existe plus, ou il ne fait pas partie de votre équipe." />
       ) : (

@@ -12,7 +12,7 @@ import { useSession } from "../../src/lib/session";
 import { useFamille } from "../../src/lib/famille";
 import { lireGaleries, ouvrirGalerie, type Galerie } from "../../src/lib/donnees";
 import { dateLongue } from "../../src/lib/dates";
-import { Ecran, Vide } from "../../src/ui/Ecran";
+import { Ecran, Probleme, Vide } from "../../src/ui/Ecran";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
 import { Erreur } from "../../src/ui/Base";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
@@ -36,12 +36,15 @@ export default function Photos() {
   const [chargement, setChargement] = useState(true);
   const [ouverture, setOuverture] = useState<string | null>(null);
   const [filtre, setFiltre] = useState<"tout" | "ouvertes" | "verrouillees">("tout");
+  const [panne, setPanne] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     if (!clubId || !equipeId) { setGaleries([]); setChargement(false); return; }
     setChargement(true);
+    setPanne(false);
     try { setGaleries(await lireGaleries(clubId, equipeId, saisonId, playerId)); }
+    catch { setPanne(true); setGaleries([]); }
     finally { setChargement(false); }
   }, [clubId, equipeId, saisonId, playerId]);
 
@@ -95,6 +98,8 @@ export default function Photos() {
         <View style={{ paddingVertical: E.xl * 2, alignItems: "center" }}>
           <ActivityIndicator color={C.accent} />
         </View>
+      ) : panne ? (
+        <Probleme surReessayer={charger} />
       ) : galeries.length ? (
         <View style={{ gap: E.m }}>
           {galeries

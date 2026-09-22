@@ -12,7 +12,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { lirePhotosDuJoueur, ouvrirGalerie, type PhotoDuJoueur } from "../../../src/lib/donnees";
-import { Ecran, Vide } from "../../../src/ui/Ecran";
+import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
 import { C, E, R } from "../../../src/theme/couleurs";
 
@@ -31,11 +31,14 @@ export default function Galerie() {
   const [agrandie, setAgrandie] = useState<PhotoDuJoueur | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [ouverture, setOuverture] = useState(false);
+  const [panne, setPanne] = useState(false);
 
   const charger = useCallback(async () => {
     if (!id || !joueur) { setChargement(false); return; }
     setChargement(true);
+    setPanne(false);
     try { setPhotos(await lirePhotosDuJoueur(id, joueur)); }
+    catch { setPanne(true); setPhotos([]); }
     finally { setChargement(false); }
   }, [id, joueur]);
 
@@ -77,6 +80,8 @@ export default function Galerie() {
           <View style={{ paddingVertical: E.xl * 2, alignItems: "center" }}>
             <ActivityIndicator color={C.accent} />
           </View>
+        ) : panne ? (
+          <Probleme surReessayer={charger} />
         ) : visibles.length ? (
           <View style={s.grille}>
             {visibles.map((p) => (
