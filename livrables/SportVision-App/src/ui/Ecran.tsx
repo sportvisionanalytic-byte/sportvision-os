@@ -1,0 +1,73 @@
+// Le cadre commun a tous les ecrans : marges du telephone, glisser pour rafraichir, etat vide.
+import React from "react";
+import { RefreshControl, ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { C, E, R } from "../theme/couleurs";
+
+export function Ecran({
+  children, rafraichir, enCours, style,
+}: {
+  children: React.ReactNode;
+  rafraichir?: () => void;
+  enCours?: boolean;
+  style?: ViewStyle;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: C.fond }}
+      contentContainerStyle={[
+        // L'encoche en haut, la barre d'onglets en bas : sans ces marges, le titre passe sous
+        // l'heure du telephone et la derniere ligne sous les onglets — constate sur « Se
+        // deconnecter », coupe en deux par la barre.
+        {
+          paddingTop: insets.top + E.m,
+          paddingBottom: insets.bottom + 72 + E.l,
+          paddingHorizontal: E.l,
+          gap: E.l,
+        },
+        style,
+      ]}
+      refreshControl={
+        rafraichir
+          ? <RefreshControl refreshing={!!enCours} onRefresh={rafraichir} tintColor={C.texteDoux} />
+          : undefined
+      }
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+export function Section({ titre, action, children }: { titre: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <View style={{ gap: E.s }}>
+      <View style={s.enteteSection}>
+        <Text style={s.titreSection}>{titre}</Text>
+        {action}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+/** Un vide explique vaut mieux qu'une page blanche : on dit pourquoi, pas seulement « rien ». */
+export function Vide({ titre, texte }: { titre: string; texte: string }) {
+  return (
+    <View style={s.vide}>
+      <Text style={s.videTitre}>{titre}</Text>
+      <Text style={s.videTexte}>{texte}</Text>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  enteteSection: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: E.s },
+  titreSection: { color: C.texte, fontSize: 19, fontWeight: "700", letterSpacing: -0.3 },
+  vide: {
+    borderWidth: 1, borderColor: C.bordureForte, borderStyle: "dashed", borderRadius: R.l,
+    backgroundColor: "rgba(255,255,255,.035)", padding: E.l, gap: E.xs,
+  },
+  videTitre: { color: C.texte, fontSize: 15.5, fontWeight: "700" },
+  videTexte: { color: C.texteDoux, fontSize: 13.5, lineHeight: 19 },
+});

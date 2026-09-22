@@ -1,0 +1,72 @@
+// Les onglets de l'espace personnel (22/09/2026).
+//
+// Quatre, pas plus : au-dela, sur un telephone, les libelles se coupent et l'onglet actif devient
+// difficile a lire. Les entrees rares (reglages, aide) vivent dans l'onglet Profil.
+import React from "react";
+import { ActivityIndicator, View } from "react-native";
+import { Redirect, Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useSession } from "../../src/lib/session";
+import { C, E } from "../../src/theme/couleurs";
+
+export default function OngletsEspace() {
+  const { session, chargement } = useSession();
+
+  if (chargement) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={C.accent} />
+      </View>
+    );
+  }
+  // Barriere unique : aucun ecran de cet espace n'est atteignable sans session, quelle que soit
+  // la facon dont on y arrive (lien, notification, retour d'arriere-plan).
+  if (!session) return <Redirect href="/connexion" />;
+
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: C.accentClair,
+        tabBarInactiveTintColor: C.texteFaible,
+        tabBarStyle: {
+          backgroundColor: C.surface,
+          borderTopColor: C.bordure,
+          borderTopWidth: 1,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginBottom: 2 },
+        tabBarItemStyle: { paddingTop: E.xs },
+        sceneStyle: { backgroundColor: C.fond },
+      }}
+    >
+      <Tabs.Screen
+        name="accueil"
+        options={{
+          title: "Accueil",
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="calendrier"
+        options={{
+          title: "Calendrier",
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="photos"
+        options={{
+          title: "Mes photos",
+          tabBarIcon: ({ color, size }) => <Ionicons name="images" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profil"
+        options={{
+          title: "Profil",
+          tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
+        }}
+      />
+    </Tabs>
+  );
+}

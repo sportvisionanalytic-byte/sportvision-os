@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "SportVision",
+    "slug": "sportvision",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "sportvision",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#070B18",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "fr.sportvision.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleDisplayName": "SportVision",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "fr.sportvision.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#070B18",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-image",
+      "expo-secure-store",
+      "expo-splash-screen",
+      "expo-system-ui",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#070B18"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
