@@ -8,7 +8,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useSession } from "../../src/lib/session";
 import { lireCalendrierFamille, useFamille } from "../../src/lib/famille";
 import { lireEvenements, type Evenement } from "../../src/lib/donnees";
-import { dateDuJourParis, versDate } from "../../src/lib/dates";
+import { dateDuJourParis } from "../../src/lib/dates";
 import { Ecran, Vide } from "../../src/ui/Ecran";
 import { CarteEvenement } from "../../src/ui/Cartes";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
@@ -70,6 +70,7 @@ export default function Calendrier() {
       .filter((e) => (filtre === "tout" ? true : e.genre === filtre));
   }, [evenements, mois, filtre]);
 
+  const aujourdhui = dateDuJourParis();
   const titreMois = mois ? `${MOIS[Number(mois.slice(5, 7)) - 1]} ${mois.slice(0, 4)}` : "";
 
   return (
@@ -118,8 +119,18 @@ export default function Calendrier() {
         </View>
       ) : liste.length ? (
         <View style={{ gap: E.s }}>
-          <Text style={s.moisCourant}>{titreMois}</Text>
-          {liste.map((e) => <CarteEvenement key={e.id} e={e} />)}
+          <View style={s.enteteMois}>
+            <Text style={s.moisCourant}>{titreMois}</Text>
+            <Text style={s.compte}>
+              {liste.length} {liste.length > 1 ? "rendez-vous" : "rendez-vous"}
+            </Text>
+          </View>
+          {liste.map((e) => (
+            <View key={e.id} style={{ gap: 4 }}>
+              {e.date === aujourdhui ? <Text style={s.marqueur}>Aujourd'hui</Text> : null}
+              <CarteEvenement e={e} />
+            </View>
+          ))}
         </View>
       ) : (
         <Vide
@@ -151,5 +162,8 @@ const s = StyleSheet.create({
   filtreActif: { backgroundColor: "rgba(255,255,255,.09)" },
   filtreTexte: { color: C.texteFaible, fontSize: 12.5, fontWeight: "600" },
   filtreTexteActif: { color: C.texte },
+  enteteMois: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: E.s },
   moisCourant: { color: C.texteFaible, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.8 },
+  compte: { color: C.texteFaible, fontSize: 12 },
+  marqueur: { color: C.cyan, fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.9 },
 });

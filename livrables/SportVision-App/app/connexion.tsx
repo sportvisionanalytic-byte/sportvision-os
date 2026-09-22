@@ -124,7 +124,7 @@ export default function Connexion() {
 const s = StyleSheet.create({
   page: { flexGrow: 1, paddingHorizontal: E.l, gap: E.xl, justifyContent: "center" },
   entete: { gap: E.s, alignItems: "flex-start" },
-  logo: { width: 76, height: 76, marginBottom: E.s, marginLeft: -6 },
+  logo: { width: 88, height: 88, marginBottom: E.s },
   lien: { alignSelf: "center", paddingVertical: E.s },
   lienTexte: { color: C.accentClair, fontSize: 14.5, fontWeight: "600" },
   pied: { alignItems: "center", gap: E.xs },

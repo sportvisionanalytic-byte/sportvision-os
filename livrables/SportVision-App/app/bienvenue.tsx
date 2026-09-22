@@ -100,7 +100,7 @@ export default function Bienvenue() {
 
 const s = StyleSheet.create({
   page: { flexGrow: 1, paddingHorizontal: E.l, gap: E.xl, justifyContent: "center" },
-  logo: { width: 76, height: 76, marginBottom: E.xs, marginLeft: -6 },
+  logo: { width: 88, height: 88, marginBottom: E.xs },
   titre: { color: C.texte, fontSize: 28, fontWeight: "800", letterSpacing: -0.6 },
   sous: { color: C.texteDoux, fontSize: 15, lineHeight: 21 },
   carte: {
