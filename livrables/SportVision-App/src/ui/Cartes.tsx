@@ -22,12 +22,30 @@ const ICONE_GENRE = {
 } as const;
 
 /** L'ecusson du club, ou ses initiales. Jamais le mot « logo » dans un carre gris. */
-export function Ecusson({ url, nom, taille = 46 }: { url?: string | null; nom?: string | null; taille?: number }) {
+export function Ecusson({
+  url, nom, taille = 46, neutre,
+}: { url?: string | null; nom?: string | null; taille?: number; neutre?: boolean }) {
   const style = { width: taille, height: taille, borderRadius: R.m };
   if (url) return <Image source={{ uri: url }} style={[style, { backgroundColor: "rgba(255,255,255,.06)" }]} contentFit="cover" />;
-  // Trois lettres au plus : « SF Villemomble » donne SFV, pas SV, qu'on lirait SportVision.
+
+  // Un club adverse n'a pas d'ecusson chez nous, et ses initiales tirees de « Neuilly O. U18 1 »
+  // donnaient « NOU », qui ne veut rien dire. Un blason neutre est plus honnete qu'un sigle faux.
+  if (neutre) {
+    return (
+      <View style={[style, s.ecussonVide]}>
+        <Ionicons name="shield-outline" size={taille * 0.46} color={C.texteFaible} />
+      </View>
+    );
+  }
+
+  // Deux lettres au plus, et jamais un numero d'equipe : « SF Villemomble » donne SFV, pas SV,
+  // qu'on lirait SportVision.
   const initiales = (nom ?? "")
-    .split(/\s+/).filter(Boolean).slice(0, 3).map((m) => m[0]?.toUpperCase()).join("");
+    .split(/\s+/)
+    .filter((m) => m.length > 1 && !/^[uU]?\d/.test(m))
+    .slice(0, 3)
+    .map((m) => m[0]?.toUpperCase())
+    .join("");
   return (
     <View style={[style, s.ecussonVide]}>
       <Text style={{ color: C.texteDoux, fontWeight: "800", fontSize: taille * 0.34 }}>{initiales || "SV"}</Text>

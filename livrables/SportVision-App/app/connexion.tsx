@@ -67,7 +67,7 @@ export default function Connexion() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={s.entete}>
-          <Image source={require("../assets/icon.png")} style={s.logo} contentFit="contain" />
+          <Image source={require("../assets/splash-icon.png")} style={s.logo} contentFit="contain" />
           <Titre>Bienvenue</Titre>
           <SousTitre>Vos photos, votre calendrier et vos contenus de club, au même endroit.</SousTitre>
         </View>
@@ -124,7 +124,7 @@ export default function Connexion() {
 const s = StyleSheet.create({
   page: { flexGrow: 1, paddingHorizontal: E.l, gap: E.xl, justifyContent: "center" },
   entete: { gap: E.s, alignItems: "flex-start" },
-  logo: { width: 62, height: 62, borderRadius: R.l, marginBottom: E.s },
+  logo: { width: 76, height: 76, marginBottom: E.s, marginLeft: -6 },
   lien: { alignSelf: "center", paddingVertical: E.s },
   lienTexte: { color: C.accentClair, fontSize: 14.5, fontWeight: "600" },
   pied: { alignItems: "center", gap: E.xs },

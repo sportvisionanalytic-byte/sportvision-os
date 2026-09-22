@@ -3,9 +3,10 @@
 // Quatre, pas plus : au-dela, sur un telephone, les libelles se coupent et l'onglet actif devient
 // difficile a lire. Les entrees rares (reglages, aide) vivent dans l'onglet Profil.
 import React from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import { useSession } from "../../src/lib/session";
 import { C, E } from "../../src/theme/couleurs";
 
@@ -29,11 +30,20 @@ export default function OngletsEspace() {
         headerShown: false,
         tabBarActiveTintColor: C.accentClair,
         tabBarInactiveTintColor: C.texteFaible,
+        // La barre flotte au-dessus du contenu, comme dans les applications d'iOS : le contenu
+        // passe dessous en transparence plutot que de s'arreter net sur un bandeau opaque.
         tabBarStyle: {
-          backgroundColor: C.surface,
+          position: "absolute",
+          backgroundColor: "transparent",
           borderTopColor: C.bordure,
-          borderTopWidth: 1,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          elevation: 0,
         },
+        tabBarBackground: () => (
+          <BlurView tint="dark" intensity={34} style={StyleSheet.absoluteFill}>
+            <View style={{ flex: 1, backgroundColor: "rgba(7,11,24,.72)" }} />
+          </BlurView>
+        ),
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginBottom: 2 },
         tabBarItemStyle: { paddingTop: E.xs },
         sceneStyle: { backgroundColor: C.fond },

@@ -62,7 +62,7 @@ export default function Bienvenue() {
       ]}
     >
       <View style={{ gap: E.s }}>
-        <Image source={require("../assets/icon.png")} style={s.logo} contentFit="contain" />
+        <Image source={require("../assets/splash-icon.png")} style={s.logo} contentFit="contain" />
         <Text style={s.titre}>SportVision</Text>
         <Text style={s.sous}>Qui êtes-vous ? Nous ouvrirons directement le bon espace la prochaine fois.</Text>
       </View>
@@ -100,7 +100,7 @@ export default function Bienvenue() {
 
 const s = StyleSheet.create({
   page: { flexGrow: 1, paddingHorizontal: E.l, gap: E.xl, justifyContent: "center" },
-  logo: { width: 58, height: 58, borderRadius: R.l, marginBottom: E.xs },
+  logo: { width: 76, height: 76, marginBottom: E.xs, marginLeft: -6 },
   titre: { color: C.texte, fontSize: 28, fontWeight: "800", letterSpacing: -0.6 },
   sous: { color: C.texteDoux, fontSize: 15, lineHeight: 21 },
   carte: {

@@ -17,6 +17,7 @@ import { derniersResultats, lireEvenements, prochain, type Evenement } from "../
 import { Ecran, Section, Vide } from "../../src/ui/Ecran";
 import { CarteEvenement, Ecusson } from "../../src/ui/Cartes";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
+import { Prochain } from "../../src/ui/Prochain";
 import { C, E, R } from "../../src/theme/couleurs";
 
 export default function Accueil() {
@@ -115,7 +116,12 @@ export default function Accueil() {
         {chargement && !evenements.length ? (
           <View style={s.attente}><ActivityIndicator color={C.accent} /></View>
         ) : suivant ? (
-          <CarteEvenement e={suivant} onPress={() => router.push("/calendrier")} />
+          <Prochain
+            e={suivant}
+            clubNom={clubNom}
+            clubLogoUrl={clubLogo}
+            onPress={() => router.push("/calendrier")}
+          />
         ) : (
           <Vide
             titre="Rien de prévu pour l'instant"
