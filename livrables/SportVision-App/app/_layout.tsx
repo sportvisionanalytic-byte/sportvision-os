@@ -9,17 +9,18 @@ import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
+import { usePolices } from "../src/theme/polices";
 import { View } from "react-native";
 import { FournisseurSession } from "../src/lib/session";
 import { FournisseurFamille } from "../src/lib/famille";
 import { C } from "../src/theme/couleurs";
 
 export default function Racine() {
-  // La police des icônes : sur le web, sans ce chargement, chaque icône s'affiche en carré vide.
-  // On ne bloque PAS l'affichage en l'attendant : sur le web, l'attente ne se terminait jamais et
-  // la page restait noire. Les icônes apparaissent quand la police arrive, le reste s'affiche
-  // tout de suite.
+  // Les polices : celles des icônes, et celles de la marque. On ne bloque JAMAIS l'affichage en
+  // les attendant — sur le web, l'attente ne se terminait pas et la page restait noire (constaté
+  // le 22/09). Le texte s'affiche dans la police système puis bascule.
   useFonts(Ionicons.font);
+  usePolices();
 
   return (
     <SafeAreaProvider>

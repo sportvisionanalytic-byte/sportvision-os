@@ -2,7 +2,8 @@
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFamille } from "../lib/famille";
-import { C, E, R } from "../theme/couleurs";
+import { C, E, R, TOUCHE } from "../theme/couleurs";
+import { P } from "../theme/polices";
 
 export function SelecteurEnfant() {
   const { sportifs, choisi, choisir } = useFamille();
@@ -41,14 +42,14 @@ export function BandeauEnfant() {
 const st = StyleSheet.create({
   puce: {
     flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: E.m, height: 36, borderRadius: R.pill,
+    paddingHorizontal: E.m, height: TOUCHE, borderRadius: R.pill,
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
   },
   puceActive: { backgroundColor: "rgba(79,125,255,.18)", borderColor: "rgba(79,125,255,.5)" },
-  texte: { color: C.texteDoux, fontSize: 13.5, fontWeight: "600" },
+  texte: { color: C.texteDoux, fontFamily: P.texteMoyen, fontSize: 13.5 },
   texteActif: { color: C.texte },
   point: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.alerte },
   bandeau: { gap: 2 },
-  bandeauLabel: { color: C.texteFaible, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.7 },
-  bandeauNom: { color: C.texte, fontSize: 15, fontWeight: "700" },
+  bandeauLabel: { color: C.texteFaible, fontFamily: P.texteFort, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.8 },
+  bandeauNom: { color: C.texte, fontFamily: P.titreFort, fontSize: 15.5 },
 });

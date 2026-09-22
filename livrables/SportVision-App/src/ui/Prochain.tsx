@@ -7,7 +7,8 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { C, E, R } from "../theme/couleurs";
+import { C, DEGRADE_DOUX, E, R } from "../theme/couleurs";
+import { P } from "../theme/polices";
 import { dateLongue, dateDuJourParis, heureCourte, versDate } from "../lib/dates";
 import type { Evenement } from "../lib/donnees";
 import { Ecusson } from "./Cartes";
@@ -40,7 +41,7 @@ export function Prochain({
     <Pressable onPress={onPress} style={({ pressed }) => [pressed && onPress ? { opacity: 0.9 } : null]}>
       {/* Le degrade de marque sert de liseré, jamais de fond : le texte doit rester lisible. */}
       <LinearGradient
-        colors={["rgba(139,92,246,.55)", "rgba(79,125,255,.28)", "rgba(34,211,238,.32)"]}
+        colors={DEGRADE_DOUX as unknown as [string, string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={s.liseret}
@@ -98,16 +99,16 @@ const s = StyleSheet.create({
   liseret: { borderRadius: R.l + 1, padding: 1 },
   corps: { backgroundColor: C.surfaceHaute, borderRadius: R.l, padding: E.l, gap: E.m },
   haut: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: E.s },
-  quand: { color: C.cyan, fontSize: 11.5, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1 },
-  competition: { color: C.texteFaible, fontSize: 11.5, fontWeight: "600", flexShrink: 1 },
+  quand: { color: C.cyan, fontFamily: P.titre, fontSize: 11.5, textTransform: "uppercase", letterSpacing: 1.1 },
+  competition: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: 11.5, flexShrink: 1 },
   affiche: { flexDirection: "row", alignItems: "flex-start", gap: E.s },
   camp: { flex: 1, alignItems: "center", gap: E.s },
-  campNom: { color: C.texte, fontSize: 13.5, fontWeight: "700", textAlign: "center", lineHeight: 18 },
+  campNom: { color: C.texte, fontFamily: P.titreFort, fontSize: 14, textAlign: "center", lineHeight: 18 },
   milieu: { alignItems: "center", gap: 2, paddingTop: 10, minWidth: 72 },
-  versus: { color: C.texte, fontSize: 24, fontWeight: "800", fontVariant: ["tabular-nums"] },
-  lieuType: { color: C.texteFaible, fontSize: 11, fontWeight: "600" },
-  titreSimple: { color: C.texte, fontSize: 19, fontWeight: "700", lineHeight: 25 },
+  versus: { color: C.texte, fontFamily: P.titre, fontSize: 25, fontVariant: ["tabular-nums"] },
+  lieuType: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: 11.5 },
+  titreSimple: { color: C.texte, fontFamily: P.titreFort, fontSize: 19, lineHeight: 25 },
   pied: { gap: 6, borderTopWidth: 1, borderTopColor: C.bordure, paddingTop: E.m },
   info: { flexDirection: "row", alignItems: "center", gap: 7 },
-  infoTexte: { color: C.texteDoux, fontSize: 13.5, flex: 1 },
+  infoTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, flex: 1 },
 });

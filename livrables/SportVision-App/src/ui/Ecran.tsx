@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Lueur } from "./Fond";
 import { MODE_DEMO } from "../lib/demonstration";
 import { C, E, R } from "../theme/couleurs";
+import { P } from "../theme/polices";
 
 export function Ecran({
   children, rafraichir, enCours, style, teinte,
@@ -78,13 +79,13 @@ const s = StyleSheet.create({
     alignSelf: "flex-start", paddingHorizontal: E.s, paddingVertical: 5, borderRadius: R.pill,
     backgroundColor: "rgba(232,163,61,.14)", borderWidth: 1, borderColor: "rgba(232,163,61,.3)",
   },
-  demoTexte: { color: "#F0CE96", fontSize: 11.5, fontWeight: "700" },
+  demoTexte: { color: "#F3D49B", fontFamily: P.texteFort, fontSize: 11.5 },
   enteteSection: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: E.s },
-  titreSection: { color: C.texte, fontSize: 19, fontWeight: "700", letterSpacing: -0.3 },
+  titreSection: { color: C.texte, fontFamily: P.titre, fontSize: 20, letterSpacing: -0.4 },
   vide: {
     borderWidth: 1, borderColor: C.bordureForte, borderStyle: "dashed", borderRadius: R.l,
     backgroundColor: "rgba(255,255,255,.035)", padding: E.l, gap: E.xs,
   },
-  videTitre: { color: C.texte, fontSize: 15.5, fontWeight: "700" },
-  videTexte: { color: C.texteDoux, fontSize: 13.5, lineHeight: 19 },
+  videTitre: { color: C.texte, fontFamily: P.titreFort, fontSize: 16 },
+  videTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 14, lineHeight: 20 },
 });

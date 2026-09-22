@@ -9,9 +9,9 @@ import { C } from "../theme/couleurs";
 
 export function Lueur({ teinte = "violet" }: { teinte?: "violet" | "cyan" | "bleu" }) {
   const couleurs =
-    teinte === "cyan" ? ["rgba(34,211,238,.17)", "rgba(79,125,255,.06)", "rgba(7,11,24,0)"]
-    : teinte === "bleu" ? ["rgba(79,125,255,.18)", "rgba(139,92,246,.06)", "rgba(7,11,24,0)"]
-    : ["rgba(139,92,246,.19)", "rgba(79,125,255,.06)", "rgba(7,11,24,0)"];
+    teinte === "cyan" ? ["rgba(0,199,255,.16)", "rgba(36,84,255,.07)", "rgba(7,10,23,0)"]
+    : teinte === "bleu" ? ["rgba(36,84,255,.22)", "rgba(0,199,255,.06)", "rgba(7,10,23,0)"]
+    : ["rgba(131,45,255,.20)", "rgba(36,84,255,.07)", "rgba(7,10,23,0)"];
   return (
     <View pointerEvents="none" style={s.enveloppe}>
       <LinearGradient

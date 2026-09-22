@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { C, E, R } from "../theme/couleurs";
+import { P } from "../theme/polices";
 import { heureCourte, jourNumero, moisCourt, quand } from "../lib/dates";
 import type { Evenement } from "../lib/donnees";
 
@@ -48,7 +49,7 @@ export function Ecusson({
     .join("");
   return (
     <View style={[style, s.ecussonVide]}>
-      <Text style={{ color: C.texteDoux, fontWeight: "800", fontSize: taille * 0.34 }}>{initiales || "SV"}</Text>
+      <Text style={{ color: C.texteDoux, fontFamily: P.titre, fontSize: taille * 0.34 }}>{initiales || "SV"}</Text>
     </View>
   );
 }
@@ -105,13 +106,13 @@ const s = StyleSheet.create({
     width: 52, height: 56, borderRadius: R.m, borderWidth: 1,
     alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.04)",
   },
-  pastilleJour: { color: C.texte, fontSize: 20, fontWeight: "800", lineHeight: 23 },
-  pastilleMois: { fontSize: 10.5, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
-  genre: { fontSize: 10.5, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.6 },
-  titreCarte: { color: C.texte, fontSize: 15.5, fontWeight: "700" },
-  detail: { color: C.texteDoux, fontSize: 13 },
-  equipe: { color: C.texteFaible, fontSize: 11.5, fontWeight: "600" },
-  score: { color: C.texte, fontSize: 18, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  pastilleJour: { color: C.texte, fontFamily: P.titre, fontSize: 20, lineHeight: 24 },
+  pastilleMois: { fontFamily: P.texteFort, fontSize: 10.5, textTransform: "uppercase", letterSpacing: 0.5 },
+  genre: { fontFamily: P.texteFort, fontSize: 10.5, textTransform: "uppercase", letterSpacing: 0.7 },
+  titreCarte: { color: C.texte, fontFamily: P.titreFort, fontSize: 16 },
+  detail: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
+  equipe: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: 12 },
+  score: { color: C.texte, fontFamily: P.titre, fontSize: 19, fontVariant: ["tabular-nums"] },
   ecussonVide: {
     backgroundColor: "rgba(255,255,255,.06)", alignItems: "center", justifyContent: "center",
     borderWidth: 1, borderColor: C.bordure,
