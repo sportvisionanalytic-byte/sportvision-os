@@ -20,6 +20,7 @@ import {
 import { dateLongue } from "../../src/lib/dates";
 import { FOND_MATCH_DEMO, MODE_DEMO } from "../../src/lib/demonstration";
 import { Ecran, Probleme, Section, Vide } from "../../src/ui/Ecran";
+import { oublierPorte } from "../../src/lib/espaces";
 import { CarteEvenement, Ecusson } from "../../src/ui/Cartes";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
 import { Prochain } from "../../src/ui/Prochain";
@@ -48,6 +49,16 @@ export default function Accueil() {
     ? (famille.choisi?.kind === "club" ? famille.choisi.refId : undefined)
     : profil?.playerId;
   const affilie = parent ? famille.choisi?.enAttente === false : !!profil?.affilie;
+  // Un compte qui n'est ni joueur ni parent : un coach, un membre de club, un opérateur. La
+  // connexion a marché, et l'espace des familles n'a rien à lui montrer. Le pire serait de le
+  // laisser devant des écrans vides — c'est exactement ce qui fait appeler le club (leçon du
+  // 13/09/2026, « trop de mélanges »). On lui dit où aller, et on l'y emmène.
+  const espaceInconnu = !parent && profil?.espace === "aucun";
+
+  async function versLeChoixDEspace() {
+    await oublierPorte();
+    router.replace("/bienvenue");
+  }
 
   const charger = useCallback(async () => {
     setChargement(true);
@@ -105,6 +116,26 @@ export default function Accueil() {
         </View>
       ) : null}
 
+      {espaceInconnu ? (
+        <View style={s.aiguillage}>
+          <Text style={s.aiguillageTitre}>Ce compte n'est rattaché à aucun sportif</Text>
+          <Text style={s.aiguillageTexte}>
+            Cet espace est celui des joueurs et de leurs parents. Si vous êtes coach, président ou
+            secrétaire, votre espace est celui du club. Si vous travaillez pour SportVision, c'est
+            l'espace de production.
+          </Text>
+          <Pressable
+            onPress={versLeChoixDEspace}
+            accessibilityRole="button"
+            accessibilityLabel="Changer d'espace"
+            style={({ pressed }) => [s.aiguillageBouton, pressed ? { opacity: 0.85 } : null]}
+          >
+            <Ionicons name="swap-horizontal" size={16} color={C.texte} />
+            <Text style={s.aiguillageBoutonTexte}>Changer d'espace</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       {parent && !famille.chargement && !famille.sportifs.length ? (
         <Vide
           titre="Aucun sportif rattaché"
@@ -112,7 +143,7 @@ export default function Accueil() {
         />
       ) : null}
 
-      {!clubNom && !parent ? (
+      {!clubNom && !parent && !espaceInconnu ? (
         <Vide
           titre="Rejoignez votre club"
           texte="Associez votre profil à votre club pour retrouver votre calendrier, vos résultats et vos photos."
@@ -249,6 +280,18 @@ const s = StyleSheet.create({
   },
   lien: { color: C.accentClair, fontFamily: P.texteFort, fontSize: 13.5, minHeight: 20 },
   attente: { paddingVertical: E.xl, alignItems: "center" },
+  aiguillage: {
+    gap: E.s, padding: E.l, borderRadius: R.l,
+    backgroundColor: "rgba(232,163,61,.08)", borderWidth: 1, borderColor: "rgba(232,163,61,.3)",
+  },
+  aiguillageTitre: { color: "#F3D49B", fontFamily: P.titreFort, fontSize: 16.5 },
+  aiguillageTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 14, lineHeight: 20 },
+  aiguillageBouton: {
+    flexDirection: "row", alignItems: "center", gap: E.s, alignSelf: "flex-start",
+    minHeight: TOUCHE, paddingHorizontal: E.m, borderRadius: R.pill, marginTop: E.xs,
+    backgroundColor: "rgba(255,255,255,.08)", borderWidth: 1, borderColor: C.bordureForte,
+  },
+  aiguillageBoutonTexte: { color: C.texte, fontFamily: P.texteFort, fontSize: 14 },
   galerie: {
     flexDirection: "row", alignItems: "center", gap: E.m,
     backgroundColor: C.surface, borderRadius: R.l, borderWidth: 1, borderColor: C.bordure, padding: E.s,

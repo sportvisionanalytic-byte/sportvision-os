@@ -102,6 +102,8 @@ export default function Bienvenue() {
             key={p.cle}
             onPress={() => ouvrir(p.cle)}
             disabled={!!choix}
+            accessibilityRole="button"
+            accessibilityLabel={`${p.titre}. ${p.texte}`}
             style={({ pressed }) => [
               s.carte,
               { borderColor: pressed || choix === p.cle ? p.teinte + "88" : C.bordure },
@@ -121,7 +123,13 @@ export default function Bienvenue() {
       </View>
 
       {!proVisibles ? (
-        <Pressable onPress={() => setProVisibles(true)} hitSlop={10} style={s.lienPro}>
+        <Pressable
+          onPress={() => setProVisibles(true)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Afficher les espaces réservés aux clubs et à l'équipe de production"
+          style={s.lienPro}
+        >
           <Text style={s.lienProTexte}>Vous travaillez avec SportVision ?</Text>
         </Pressable>
       ) : null}

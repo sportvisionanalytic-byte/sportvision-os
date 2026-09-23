@@ -61,6 +61,14 @@ export function CarteEvenement({ e, onPress }: { e: Evenement; onPress?: () => v
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={[
+        e.genre === "match" ? "Match" : e.genre === "entrainement" ? "Entraînement" : "Événement",
+        e.genre === "match" && e.adversaire ? `contre ${e.adversaire}` : e.titre,
+        quand(e.date),
+        heure ?? "",
+        e.score ? `score ${e.score}` : "",
+      ].filter(Boolean).join(", ")}
       style={({ pressed }) => [s.carte, s.ligne, pressed && onPress ? { opacity: 0.8 } : null]}
     >
       <View style={[s.pastilleDate, { borderColor: couleur + "55" }]}>

@@ -107,6 +107,13 @@ export default function Photos() {
             .map((g) => (
             <Pressable
               key={g.id}
+              accessibilityRole="button"
+              accessibilityLabel={[
+                g.titre,
+                `${g.nbPhotos} photos`,
+                g.ouverte ? "galerie accessible" : "galerie verrouillée",
+                g.mesPhotos ? `${g.mesPhotos} photos de vous` : "",
+              ].filter(Boolean).join(", ")}
               onPress={playerId ? () => router.push({
                 pathname: "/galerie/[id]",
                 params: { id: g.id, titre: g.titre, joueur: playerId, ouverte: g.ouverte ? "1" : "0" },

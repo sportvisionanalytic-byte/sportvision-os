@@ -14,7 +14,14 @@ export function SelecteurEnfant() {
       {sportifs.map((s) => {
         const actif = choisi?.refId === s.refId && choisi?.kind === s.kind;
         return (
-          <Pressable key={`${s.kind}:${s.refId}`} onPress={() => choisir(s)} style={[st.puce, actif && st.puceActive]}>
+          <Pressable
+            key={`${s.kind}:${s.refId}`}
+            onPress={() => choisir(s)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: actif }}
+            accessibilityLabel={`Voir ${s.prenom}${s.enAttente ? ", rattachement en attente" : ""}`}
+            style={[st.puce, actif && st.puceActive]}
+          >
             <Text style={[st.texte, actif && st.texteActif]}>{s.prenom}</Text>
             {s.enAttente ? <View style={st.point} /> : null}
           </Pressable>

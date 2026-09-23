@@ -22,6 +22,8 @@ export function Raccourcis({ elements }: { elements: Raccourci[] }) {
         <Pressable
           key={r.libelle}
           onPress={r.onPress}
+          accessibilityRole="button"
+          accessibilityLabel={r.libelle}
           style={({ pressed }) => [s.case_, pressed ? { opacity: 0.8, borderColor: r.teinte + "66" } : null]}
         >
           <View style={[s.rond, { backgroundColor: r.teinte + "22" }]}>

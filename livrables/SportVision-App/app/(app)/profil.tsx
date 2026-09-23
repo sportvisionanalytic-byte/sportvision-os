@@ -32,6 +32,8 @@ function Ligne({
     <Pressable
       onPress={onPress}
       disabled={!onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={detail ? `${titre}. ${detail}` : titre}
       style={({ pressed }) => [s.ligne, pressed && onPress ? { backgroundColor: "rgba(255,255,255,.04)" } : null]}
     >
       <Ionicons name={icone} size={18} color={danger ? C.danger : C.texteDoux} />
