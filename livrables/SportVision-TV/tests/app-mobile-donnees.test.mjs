@@ -126,6 +126,20 @@ const detailAutre = await rpc(parent, "connect_get_athlete_detail", { p_kind: "c
 t("il n'obtient rien sur l'enfant d'une autre famille", detailAutre.données == null,
   JSON.stringify(detailAutre.données).slice(0, 80));
 
+console.log("\n── LE COACH DANS L'ESPACE DES FAMILLES ─────────────────────");
+// Un coach qui se connecte à l'espace des familles n'y est rattaché à personne. L'application
+// doit le savoir pour le renvoyer vers l'espace club, au lieu de lui montrer des écrans vides
+// (leçon du 13/09/2026 : une connexion qui aboutit sur du vide fait appeler le club).
+const coach = await session("demo.coach.villemomble@example.invalid");
+const sesFiches = await lire(coach, `player_profiles?select=id&user_id=eq.${(await (await fetch(`${SB}/auth/v1/user`, { headers: coach })).json()).id}`);
+t("le coach n'a pas de fiche joueur à son nom", (sesFiches.données ?? []).length === 0,
+  `fiches : ${sesFiches.données?.length}`);
+const sesSportifs = await rpc(coach, "connect_list_my_athletes");
+t("le coach n'a aucun sportif rattaché", (sesSportifs.données ?? []).length === 0);
+const coachVoitDesJoueurs = await lire(coach, "player_profiles?select=id&limit=5");
+t("en revanche il voit les joueurs de son club", (coachVoitDesJoueurs.données ?? []).length > 0,
+  `fiches visibles : ${coachVoitDesJoueurs.données?.length}`);
+
 console.log("\n── LE VISITEUR NON CONNECTÉ ─────────────────────────────────");
 const anonyme = { apikey: ANON };
 // Sans compte, la base répond soit une liste vide, soit un refus. Les deux conviennent : ce qui
