@@ -32156,38 +32156,11 @@ async function modalSauvegarde(prestationId){
   const cov=p.couverture;
   const dossier=nomDossierMission(p);
 
-  // §32 : la mission ne peut pas être « livrée » si seule la photo est faite alors que la vidéo
-  // était demandée. Chaque livrable attendu est déduit de la couverture, jamais supposé.
-  // 21/09/2026, demande de Fouka : « c'est LUI qui met le nombre de liens a mettre, il ne faut pas
-  // lui imposer un nombre de liens ». Ces lignes restent, mais comme des RACCOURCIS de depot —
-  // elles ne conditionnent plus rien. Un operateur qui a livre autrement (deux liens photo et pas
-  // de rushs, un drone en plus) n'a plus a se declarer « sans objet » pour une case decidee a sa
-  // place. La base a suivi (v240) : ce qui compte, c'est que CHAQUE lien depose soit relu.
-  const attendus=[];
-  if(cov==='photo'||cov==='photo_video'){
-    attendus.push({k:'photo',lb:'Photos traitées',cat:'final',tm:'photo'});
-    // 13/09/2026 — La galerie manquait a la liste : c'est pourtant ce qui arrive chez la famille,
-    // et ce qui se vend. Attendue des qu'il y a de la photo, declarable sans objet comme le reste
-    // (livraison par lien direct, par exemple).
-    // `optionnel` : proposee, jamais exigee — exactement comme en base (v207). Sans ce drapeau,
-    // l'ajouter a la liste bloquait « Envoyer a Production » pour tous ceux qui ne deposent pas de
-    // galerie, c'est-a-dire l'inverse de ce qu'on cherche.
-    attendus.push({k:'galerie',lb:'Galerie',cat:'livraison',tm:'photo',optionnel:true});
-  }
-  if(cov==='video'||cov==='photo_video'){
-    attendus.push({k:'montage',lb:'Montage final',cat:'final',tm:'video'});
-    attendus.push({k:'rushs',lb:'Rushs vidéo',cat:'rushs',tm:'video'});
-  }
-  const trouve=a=>L.find(l=>l.categorie===a.cat&&l.type_media===a.tm);
-  // 14/09/2026, demande de Fouka : « parfois il y a plusieurs liens a mettre ». La base l'acceptait
-  // deja, et le bouton « + Autre lien » existait — mais l'ecran n'affichait QUE LE PREMIER. Les
-  // suivants devenaient invisibles : impossible de les relire, de les corriger ou de les retirer.
-  // On les liste tous.
-  const tous=a=>L.filter(l=>l.categorie===a.cat&&l.type_media===a.tm);
-  // Et les liens qui ne rentrent dans aucune ligne attendue (drone, Veo, second photographe,
-  // document) n'avaient nulle part ou apparaitre. Ils ont desormais leur bloc.
-  const attendusCles=new Set(attendus.map(a=>a.cat+'|'+a.tm));
-  const autresLiens=L.filter(l=>!attendusCles.has((l.categorie||'')+'|'+(l.type_media||'')));
+  // 23/09/2026 — Les livrables déduits de la couverture (photos, galerie, montage, rushs) ont
+  // disparu de cet écran. Ils n'exigeaient plus rien depuis la v240, mais ils continuaient à
+  // se présenter comme des cases à remplir, et l'opérateur qui livrait autrement devait se
+  // déclarer « sans objet » pour une case décidée à sa place. Il dépose maintenant ses liens,
+  // autant qu'il en a, et la Production relit chacun d'eux.
   const STATUT_LIEN={a_verifier:['À vérifier','var(--wa)'],valide:['Validé','var(--ok)'],correction_demandee:['Correction demandée','var(--er)'],remplace:['Remplacé','var(--t3)'],expire:['Expiré','var(--er)'],inaccessible:['Inaccessible','var(--er)'],archive:['Archivé','var(--t3)']};
   const pastilleLien=l=>{const [lb,clr]=STATUT_LIEN[l.statut]||['À vérifier','var(--wa)'];return `<span style="font-size:10.5px;color:${clr};font-weight:600;white-space:nowrap">${lb}</span>`;};
   // 13/09/2026 — « Photo + vidéo » exigeait les trois livrables avant d'autoriser l'envoi à
@@ -32200,10 +32173,6 @@ async function modalSauvegarde(prestationId){
   // silencieux : c'est une déclaration tracée, relue par la Production dans sa notification.
   // Une mission reste livrable seulement si au moins un livrable est réellement fourni.
   const sansObjet=suivi?.livrables_non_fournis||{};
-  const estSansObjet=a=>!!sansObjet[a.k];
-  const nbFournis=attendus.filter(a=>trouve(a)).length;
-  const tousFournis=attendus.length>0&&nbFournis>0
-    &&attendus.filter(a=>!a.optionnel).every(a=>trouve(a)||estSansObjet(a));
   const transfertOk=L.some(l=>l.transfert_confirme);
   const secures=!!suivi?.fichiers_securises_at;
   const cartesOk=!!suivi?.cartes_liberees_at;
@@ -32249,49 +32218,26 @@ async function modalSauvegarde(prestationId){
       ${echeances}
     </div>
 
-    <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:3px">Ce que vous livrez</div>
-    <div style="font-size:11.5px;color:var(--t3);margin-bottom:8px;line-height:1.45">Déposez autant de liens que nécessaire. Les lignes ci-dessous sont des raccourcis d'après le type de mission, rien n'est obligatoire : c'est vous qui décidez de ce que vous livrez.</div>
-    <div style="margin-bottom:16px">
-      ${attendus.length?attendus.map(a=>{
-        const l=trouve(a);
-        const so=sansObjet[a.k];
-        return `<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
-          <span style="font-size:14px;color:${l?'var(--ok)':(so?'var(--t3)':'var(--t3)')}">${l?'✓':(so?'—':'○')}</span>
-          <span style="flex:1;min-width:120px;font-size:13px;color:${so?'var(--t3)':'var(--t1)'}">${esc(a.lb)}${a.optionnel?' <span style="font-size:11px;color:var(--t3)">(facultatif)</span>':''}</span>
-          ${l?`<span style="font-size:11px;color:var(--t3)">${tous(a).length} lien${tous(a).length>1?'s':''}</span>
-               <button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}')">+ Autre lien</button>`
-             :so?`<span style="font-size:11px;color:var(--t3)">Sans objet</span>
-                  <button class="btn bg2 bs" onclick="annulerLivrableSansObjet('${escJs(prestationId)}','${escJs(a.k)}')">Rétablir</button>`
-             :`<button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}')">+ Lien</button>
-               <button class="btn bg2 bs" onclick="modalLivrableSansObjet('${escJs(prestationId)}','${escJs(a.k)}','${escJs(a.lb)}')">Sans objet</button>`}
-          ${so?`<div style="flex-basis:100%;font-size:11.5px;color:var(--t3);padding-left:23px">${esc(so.motif||'Motif non précisé')}</div>`:''}
-          ${tous(a).length?`<div style="flex-basis:100%;display:flex;flex-direction:column;gap:5px;padding-left:23px;margin-top:5px">
-            ${tous(a).map(x=>`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span style="flex:1;min-width:110px;font-size:11.5px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.nom||x.url)}</span>
-              ${pastilleLien(x)}
-              <button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(a.cat)}','${escJs(a.tm)}','${escJs(a.lb)}','${escJs(x.id)}')">Modifier</button>
-            </div>${x.statut==='correction_demandee'&&x.commentaire?`<div style="font-size:11px;color:var(--er);padding-left:2px">${esc(x.commentaire)}</div>`:''}`).join('')}
-          </div>`:''}
-        </div>`;
-      }).join(''):'<div style="font-size:12.5px;color:var(--wa)">Couverture non renseignée : Production doit la préciser avant que les livrables puissent être exigés.</div>'}
-      ${!L.length?`<div style="font-size:11.5px;color:var(--t3);margin-top:8px;line-height:1.45">Déposez au moins un lien : sans lien, la Production n'a rien à vérifier.</div>`:''}
+    <!-- 23/09/2026, demande de Fouka : « il ne faut pas leur imposer un lien par match ; ils
+         vont sur la mission, ils mettent plus, ajouter un lien, plus, ajouter un lien ».
+         L'écran montrait deux listes — des lignes déduites de la couverture, puis un bloc
+         « autres liens » — et une cérémonie « sans objet » pour dire qu'une case décidée
+         ailleurs ne s'appliquait pas. La base ne demande pourtant qu'une chose depuis la v240 :
+         au moins un lien, et que chaque lien déposé soit relu. L'écran dit enfin la même chose. -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <div style="flex:1;font-size:12px;font-weight:700;color:var(--t2)">Ce que vous livrez${L.length?` (${L.length})`:''}</div>
+      <button class="btn bp bs" onclick="modalAutreLien('${escJs(prestationId)}')">+ Ajouter un lien</button>
     </div>
-
-    <!-- 14/09/2026 — Tout ce qui ne rentre dans aucune ligne ci-dessus : drone, Veo, photos d'un
-         second opérateur, document. Ces liens existaient deja en base mais aucun ecran de
-         l'operateur ne les montrait, et il n'avait aucun moyen d'en ajouter un. -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <div style="flex:1;font-size:12px;font-weight:700;color:var(--t2)">Autres liens${autresLiens.length?` (${autresLiens.length})`:''}</div>
-      <button class="btn bg2 bs" onclick="modalAutreLien('${escJs(prestationId)}')">+ Ajouter un lien</button>
-    </div>
+    <div style="font-size:11.5px;color:var(--t3);margin-bottom:9px;line-height:1.45">Autant de liens que nécessaire : un seul pour deux matchs, trois pour un seul, ou un par livrable. C'est vous qui décidez de ce que vous livrez, rien n'est imposé.</div>
     <div style="margin-bottom:16px">
-      ${autresLiens.length?autresLiens.map(x=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
-          <span style="flex:1;min-width:120px;font-size:12.5px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.nom||x.url)}</span>
-          <span style="font-size:11px;color:var(--t3)">${esc(x.type_media||'')}</span>
+      ${L.length?L.map(x=>`<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
+          <span style="flex:1;min-width:120px;font-size:13px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.nom||x.url)}</span>
+          ${x.type_media?`<span style="font-size:11px;color:var(--t3)">${esc(x.type_media)}</span>`:''}
           ${pastilleLien(x)}
           <button class="btn bg2 bs" onclick="modalAjouterLivrable('${escJs(prestationId)}','${escJs(x.categorie||'livraison')}','${escJs(x.type_media||'autre')}','${escJs(x.nom||'Lien')}','${escJs(x.id)}')">Modifier</button>
         </div>${x.statut==='correction_demandee'&&x.commentaire?`<div style="font-size:11px;color:var(--er);padding:0 0 6px 2px">${esc(x.commentaire)}</div>`:''}`).join('')
-        :`<div style="font-size:12px;color:var(--t3)">Rien pour l'instant. Utilisez ce bloc pour un drone, un Veo, les photos d'un collègue, ou tout autre lien de cette mission.</div>`}
+        :`<div style="font-size:12.5px;color:var(--t3);line-height:1.45">Aucun lien pour l'instant. Déposez-en au moins un : sans lien, la Production n'a rien à vérifier.</div>`}
+      ${Object.keys(sansObjet).length?`<div style="margin-top:10px;font-size:11.5px;color:var(--t3);line-height:1.45">Déclarations « sans objet » faites avant le 23/09 : ${esc(Object.keys(sansObjet).map(k=>_SANS_OBJET_LB[k]||k).join(', '))}. Elles n'ont plus d'effet, vos liens suffisent.</div>`:''}
     </div>
 
     <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Sécurisation</div>
@@ -32418,7 +32364,7 @@ function modalAutreLien(prestationId,retour){
   const TYPES=[['photo','Photos'],['video','Vidéo'],['drone','Drone'],['veo','Veo'],['audio','Audio'],['graphisme','Graphisme'],['document','Document'],['autre','Autre']];
   openModal(`<div class="mh"><div class="mt">Ajouter un lien</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
   <div class="mb" style="padding:20px">
-    <div style="font-size:12.5px;color:var(--t2);margin-bottom:14px">Pour tout ce qui ne rentre pas dans les livrables ci-dessus : un drone, un Veo, les photos d'un collègue, un document.</div>
+    <div style="font-size:12.5px;color:var(--t2);margin-bottom:14px">Tout ce que vous avez livré : photos traitées, montage, rushs, drone, Veo, photos d'un collègue, document. Un lien par envoi, autant que nécessaire.</div>
     <label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Ce que c'est</label>
     <input id="al-nom" type="text" placeholder="Drone — survol du terrain" style="width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;margin-bottom:13px">
     <label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Type</label>
