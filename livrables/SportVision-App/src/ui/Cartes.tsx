@@ -79,8 +79,10 @@ export function CarteEvenement({ e, onPress }: { e: Evenement; onPress?: () => v
       <View style={{ flex: 1, gap: 3 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name={ICONE_GENRE[e.genre]} size={13} color={couleur} />
-          <Text style={[s.genre, { color: couleur }]}>
-            {e.genre === "match"
+          <Text style={[s.genre, { color: e.statut ? C.alerte : couleur }]}>
+            {e.statut === "reporte" ? "Match · reporté"
+              : e.statut === "annule" ? "Match · annulé"
+              : e.genre === "match"
               // Le calendrier de la famille ne dit pas qui recoit : on ne l'invente pas.
               ? (e.domicile === undefined ? "Match" : e.domicile ? "Match · domicile" : "Match · extérieur")
               : e.genre === "entrainement" ? "Entraînement"
@@ -89,7 +91,10 @@ export function CarteEvenement({ e, onPress }: { e: Evenement; onPress?: () => v
         </View>
         {/* Sur un match, on nomme l'adversaire. Repeter le nom de sa propre equipe dans le titre
             ne dit rien a celui qui en fait partie, et mange deux lignes sur trois. */}
-        <Text style={s.titreCarte} numberOfLines={2}>
+        <Text
+          style={[s.titreCarte, e.statut === "annule" ? s.barre : null]}
+          numberOfLines={2}
+        >
           {e.genre === "match" && e.adversaire ? e.adversaire : e.titre}
         </Text>
         <Text style={s.detail} numberOfLines={1}>
@@ -130,6 +135,8 @@ const s = StyleSheet.create({
   pastilleMois: { fontFamily: P.texteFort, fontSize: 10.5, textTransform: "uppercase", letterSpacing: 0.5 },
   genre: { fontFamily: P.texteFort, fontSize: 10.5, textTransform: "uppercase", letterSpacing: 0.7 },
   titreCarte: { color: C.texte, fontFamily: P.titreFort, fontSize: 16 },
+  // Un match annulé se lit barré : la couleur seule ne suffit pas, et le titre reste utile.
+  barre: { textDecorationLine: "line-through", color: C.texteDoux },
   detail: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
   equipe: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: 12 },
   score: { color: C.texte, fontFamily: P.titre, fontSize: 19, fontVariant: ["tabular-nums"] },

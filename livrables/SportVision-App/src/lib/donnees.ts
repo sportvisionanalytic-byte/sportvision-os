@@ -37,6 +37,8 @@ export interface Evenement {
   competition?: string | null;
   /** Jamais invente : un match a venir n'a pas de score, et n'en affiche donc aucun. */
   score?: string | null;
+  /** Reporte ou annule : la base le sait, et une famille qui se deplace pour rien ne le pardonne pas. */
+  statut?: "reporte" | "annule";
 }
 
 /**
@@ -54,7 +56,7 @@ export async function lireEvenements(clubId: string): Promise<Evenement[]> {
       .order("event_date", { ascending: true }),
     supabase
       .from("club_matches")
-      .select("id, team, opponent, match_date, kickoff_time, lieu, score, is_home, competition")
+      .select("id, team, opponent, match_date, kickoff_time, lieu, score, is_home, competition, sport_status")
       .eq("club_id", clubId)
       .order("match_date", { ascending: true }),
   ]);
@@ -94,6 +96,8 @@ export async function lireEvenements(clubId: string): Promise<Evenement[]> {
       domicile,
       competition: r.competition ?? null,
       score: r.score ?? null,
+      statut: r.sport_status === "postponed" ? "reporte"
+        : r.sport_status === "cancelled" ? "annule" : undefined,
     });
   }
 

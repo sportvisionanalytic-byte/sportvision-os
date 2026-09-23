@@ -12,7 +12,8 @@ import { C, E } from "../../src/theme/couleurs";
 import { P } from "../../src/theme/polices";
 
 export default function OngletsEspace() {
-  const { session, chargement } = useSession();
+  const { session, profil, chargement } = useSession();
+  const parent = profil?.espace === "parent";
 
   if (chargement) {
     return (
@@ -67,7 +68,7 @@ export default function OngletsEspace() {
       <Tabs.Screen
         name="photos"
         options={{
-          title: "Mes photos",
+          title: parent ? "Ses photos" : "Mes photos",
           tabBarIcon: ({ color, size }) => <Ionicons name="images" color={color} size={size} />,
         }}
       />

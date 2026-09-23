@@ -64,11 +64,25 @@ export async function lireCalendrierFamille(): Promise<(Evenement & { sportif: s
     .filter((r: Record<string, unknown>) => !!r.event_date)
     .map((r: Record<string, unknown>) => {
       const type = String(r.type ?? "");
+      // La base compose le titre : « Déplacement à X » quand l'équipe se déplace, « Match contre
+      // X » quand elle reçoit, avec « (reporté) » ou « (annulé) » en fin. On en ressort
+      // l'adversaire et le lieu de la rencontre, pour que la carte du parent dise la même chose
+      // que celle du joueur au lieu de recopier une phrase entière dans la case « adversaire ».
+      const titreBrut = String(r.title ?? "Événement du club");
+      const titre = titreBrut.replace(/ \((?:reporté|annulé)\)$/, "");
+      const exterieur = titre.startsWith("Déplacement à ");
+      const recoit = titre.startsWith("Match contre ");
+      const adversaire = exterieur ? titre.slice("Déplacement à ".length)
+        : recoit ? titre.slice("Match contre ".length) : null;
+      const match = type === "match" || type === "match_reporte" || type === "match_annule";
       return {
         id: `${String(r.source ?? "ev")}-${String(r.id)}-${String(r.athlete_ref_id)}`,
-        genre: type === "match" ? "match" : type === "entrainement" ? "entrainement"
+        genre: match ? "match" : type === "entrainement" ? "entrainement"
           : type === "rendez_vous" ? "rendez_vous" : "evenement",
-        titre: String(r.title ?? "Événement du club"),
+        titre,
+        adversaire,
+        domicile: exterieur ? false : recoit ? true : undefined,
+        statut: type === "match_reporte" ? "reporte" : type === "match_annule" ? "annule" : undefined,
         date: String(r.event_date),
         heure: (r.event_time as string | null) ?? null,
         lieu: (r.location as string | null) ?? null,
