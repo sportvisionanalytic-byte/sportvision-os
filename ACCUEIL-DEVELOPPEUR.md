@@ -17,7 +17,8 @@ projet d'étude.
 | `livrables/SportVision-Connect/app-connect/` | **Connect** : l'espace personnel des joueurs, parents et particuliers (Next.js) | connect.sportvision-an.fr |
 | `livrables/SportVision-Connect/app-next/` | **Club+** : l'espace de travail des clubs, coachs, présidents (Next.js) | clubplus.sportvision-an.fr |
 | `livrables/SportVision-TV/` | L'**OS** SportVision (un seul fichier HTML), les migrations de base, les fonctions serveur et tous les tests | bc6m3cgdz.sportvision-an.fr |
-| `livrables/SportVision-App/` | L'**application mobile** iOS et Android (Expo / React Native) | en développement |
+| `livrables/SportVision-App/` | L'**application mobile** iOS et Android (Expo / React Native) | en relecture chez Apple |
+| `livrables/SportVision-Connect-App/` | ⛔ **Archivé.** Ancien emballage Capacitor, jamais publié. Une correction faite ici ne sortira sur aucun téléphone. | |
 | `livrables/SportVision-Review-Hub/` | L'environnement de relecture | |
 | `context/` | L'histoire du projet, les décisions prises et pourquoi | |
 

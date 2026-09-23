@@ -37,7 +37,8 @@ pour qu'il tourne sans intervention constante. Le détail est dans `context/CONT
 ├── livrables/                   # Tout ce que Claude produit
 │   ├── SportVision/             # Site vitrine public
 │   ├── SportVision-Connect/     # Connect (espace personnel : joueur, particulier)
-│   ├── SportVision-Connect-App/ # Application Connect
+│   ├── SportVision-App/         # L'APPLICATION MOBILE (Expo/React Native), App Store + Play
+│   ├── SportVision-Connect-App/ # ARCHIVÉ : ancien emballage Capacitor, ne plus modifier
 │   ├── SportVision-TV/          # Plateforme de diffusion (projet ~2028)
 │   ├── strategie/               # Plans stratégiques, roadmaps, décisions
 │   ├── communication/           # Emails, scripts, pitchs, présentations

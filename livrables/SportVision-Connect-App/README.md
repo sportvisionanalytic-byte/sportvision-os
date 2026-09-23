@@ -1,3 +1,19 @@
+> # ⛔ DOSSIER ARCHIVÉ — NE PLUS MODIFIER
+>
+> **Remplacé le 23/09/2026 par `livrables/SportVision-App/`**, la vraie application native
+> (Expo / React Native), celle qui part sur l'App Store et sur Google Play sous l'identifiant
+> `fr.sportvision.app`.
+>
+> Ce dossier-ci est l'ancien emballage Capacitor, identifiant `fr.sportvision.connect`. Il n'a
+> jamais été publié sur un magasin. Il ouvre simplement le site Connect dans une fenêtre de
+> navigateur.
+>
+> **Pourquoi il n'est pas supprimé :** il a servi pendant un mois, et l'historique de ce qu'il
+> réglait (INC-043, le retour arrière, l'icône) vaut d'être gardé sous la main.
+>
+> **Ce qu'il faut en faire :** rien. Toute correction de l'application mobile se fait dans
+> `livrables/SportVision-App/`. Une correction faite ici ne sortira jamais sur un téléphone.
+
 # SportVision Connect — emballage Capacitor (iOS + Android)
 
 Ce dossier ne contient **aucun code applicatif**. C'est uniquement
