@@ -33548,7 +33548,35 @@ async function validerProduction(prestationId){
 
   const pr=await sbFetch('prestations?select=statut&id=eq.'+prestationId).catch(()=>[]);
   const st=Array.isArray(pr)&&pr[0]?pr[0].statut:null;
-  if(['prêt_validation','à_valider_client','prête_à_livrer'].includes(st)){
+
+  // 23/09/2026 — Une prestation encore en post-production ne se valide pas, et le bouton le
+  // promettait quand même. Fouka, sur la mission SV-2026-0274 d'un photographe : « validation
+  // impossible », sans savoir quoi faire. La base répondait pourtant clairement (« seule "livrée"
+  // peut être validée »), mais ce message arrivait en rouge, après coup, comme une panne.
+  //
+  // On le dit AVANT, on montre où en est la prestation, et on propose le geste qui débloque :
+  // l'étape suivante du parcours. Les trois statuts bridgeables plus bas restent traités comme
+  // avant — c'est le geste unique du responsable production, décidé le 13/09.
+  const BRIDGEABLES=['prêt_validation','à_valider_client','prête_à_livrer'];
+  if(st&&st!=='livrée'&&st!=='clôturée'&&!BRIDGEABLES.includes(st)){
+    if(btn){btn.disabled=false;btn.textContent='✓ Valider la production';}
+    const suivant=_NEXT_ST[st];
+    const chemin=[];let cur=st;
+    while(cur&&cur!=='livrée'&&chemin.length<8){cur=_NEXT_ST[cur];if(cur)chemin.push(SL[cur]||cur);}
+    openModal(`<div class="mh"><div class="mt">Pas encore validable</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+      <div class="mb" style="padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:13px;color:var(--t2);line-height:1.55">Cette prestation est au statut <strong style="color:var(--t1)">${esc(SL[st]||st)}</strong>. La validation clôture une prestation déjà livrée : il reste des étapes avant d'y arriver.</div>
+        ${chemin.length?`<div style="background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.3);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--t1);line-height:1.6">Reste à franchir : ${esc(chemin.join(' → '))}</div>`:''}
+        <div style="font-size:12.5px;color:var(--t3);line-height:1.5">Rien n'est bloqué : c'est le parcours normal d'une production. Avancez d'une étape quand elle est réellement faite.</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn bg2" onclick="closeModal()">Fermer</button>
+          ${suivant?`<button class="btn bp" onclick="closeModal();avancerStatutPrestation('${escJs(prestationId)}','${escJs(st)}')">Passer à « ${esc(SL[suivant]||suivant)} »</button>`:''}
+        </div>
+      </div>`);
+    return;
+  }
+
+  if(BRIDGEABLES.includes(st)){
     const av=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:'livrée'}});
     if(sbErr(av)){
       toast('Erreur : '+(msgErreur(av,'Validation impossible.')),'er');
