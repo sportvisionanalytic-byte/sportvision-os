@@ -19,9 +19,9 @@ export const MODE_DEMO = process.env.EXPO_PUBLIC_DEMO === "1";
 // montrait des images d'agence, dont des cyclistes dans une application de football : une
 // relecture extérieure l'a relevé, et elle avait raison. Ce sont désormais vos clichés.
 const PHOTO = (nom: string) => `https://sportvision-an.fr/assets/realisations/${nom}.webp`;
-const PHOTO_1 = PHOTO("foot-action-sportvision");
-const PHOTO_2 = PHOTO("celebration-portee");
-const PHOTO_3 = PHOTO("foot-groupe-01");
+const PHOTO_1 = PHOTO("foot-action-05");
+const PHOTO_2 = PHOTO("foot-action-04");
+const PHOTO_3 = PHOTO("foot-groupe-02");
 
 /** Des dates relatives au jour de la visite : une démonstration figée au passé fait démonstration. */
 function dans(jours: number): string {
@@ -74,10 +74,10 @@ export const GALERIES_DEMO: Galerie[] = [
 ];
 
 export const PHOTOS_DEMO: PhotoDuJoueur[] = [
-  "foot-action-02", "foot-portrait-01", "foot-action-03", "celebration-portee",
+  "foot-action-02", "foot-portrait-01", "foot-action-03", "foot-action-04",
   "foot-action-04", "foot-portrait-02", "foot-groupe-02", "foot-action-05",
   "foot-portrait-03", "foot-action-06", "foot-groupe-03", "foot-portrait-04",
 ].map((nom, i) => ({ id: `p-${i}`, url: PHOTO(nom) }));
 
 /** Le fond photographique de la carte « prochain match ». */
-export const FOND_MATCH_DEMO = PHOTO("foot-action-03");
+export const FOND_MATCH_DEMO = PHOTO("foot-action-02");

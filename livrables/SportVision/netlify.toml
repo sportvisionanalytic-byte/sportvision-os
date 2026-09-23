@@ -52,6 +52,12 @@
   to = "/confidentialite.html"
   status = 200
 
+# Exigée par Google Play : une adresse publique où demander la suppression de son compte.
+[[redirects]]
+  from = "/suppression-compte"
+  to = "/suppression-compte.html"
+  status = 200
+
 [[redirects]]
   from = "/cookies"
   to = "/cookies.html"
