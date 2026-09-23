@@ -9,6 +9,10 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#070B18",
     "newArchEnabled": true,
+    "extra": {
+      "supabaseUrl": "https://lulgezzpvrlbftbykzrc.supabase.co",
+      "supabaseCle": "sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "fr.sportvision.app",
@@ -20,6 +24,7 @@
     },
     "android": {
       "package": "fr.sportvision.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#070B18",
         "foregroundImage": "./assets/android-icon-foreground.png"
@@ -34,7 +39,6 @@
       "expo-status-bar",
       "expo-image",
       "expo-secure-store",
-      "expo-splash-screen",
       "expo-system-ui",
       [
         "expo-splash-screen",

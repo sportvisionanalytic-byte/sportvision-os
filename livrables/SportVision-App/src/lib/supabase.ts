@@ -11,11 +11,9 @@ import "react-native-url-polyfill/auto";
 import { AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
+import { SUPABASE_CLE, SUPABASE_URL } from "./config";
 
-const URL = "https://lulgezzpvrlbftbykzrc.supabase.co";
-const CLE_PUBLIQUE = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
-
-export const supabase = createClient(URL, CLE_PUBLIQUE, {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_CLE, {
   auth: {
     // La session survit a la fermeture de l'application : personne n'accepte de retaper son mot
     // de passe a chaque ouverture, et c'est la premiere chose qu'on reproche a une app.

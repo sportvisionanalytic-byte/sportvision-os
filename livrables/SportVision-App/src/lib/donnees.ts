@@ -4,6 +4,7 @@
 // RPC (media_album_list), on passe par elle aussi — c'est elle qui porte les droits, et une
 // requete directe « equivalente » finirait par diverger d'un cote ou de l'autre.
 import { supabase } from "./supabase";
+import { SUPABASE_URL } from "./config";
 import { dateDuJourParis } from "./dates";
 import { EVENEMENTS_DEMO, GALERIES_DEMO, MODE_DEMO, PHOTOS_DEMO } from "./demonstration";
 
@@ -253,8 +254,7 @@ export async function ouvrirGalerie(albumId: string): Promise<string | null> {
 const BUCKET_APERCUS = "galerie-previews";
 
 export function urlApercu(chemin: string): string {
-  const base = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "https://lulgezzpvrlbftbykzrc.supabase.co";
-  return `${base}/storage/v1/object/public/${BUCKET_APERCUS}/${chemin}`;
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_APERCUS}/${chemin}`;
 }
 
 export interface PhotoDuJoueur {
