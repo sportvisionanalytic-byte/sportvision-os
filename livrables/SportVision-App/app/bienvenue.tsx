@@ -29,12 +29,29 @@ const PORTES: {
   },
 ];
 
-// Les deux espaces professionnels, présentés à part (23/09/2026).
+// L'espace professionnel, présenté à part (23/09/2026).
 //
-// Pourquoi séparés : ce sont les outils de travail des clubs partenaires et de nos équipes, pas
-// des espaces pour le public. Les mettre sur le même rang que l'espace des familles laissait
-// croire que l'application est d'abord un portail professionnel — et faisait tomber le premier
-// visiteur, relecteur de l'App Store compris, sur une page de connexion qu'il ne peut pas passer.
+// Pourquoi séparé : c'est l'outil de travail des clubs partenaires, pas un espace pour le public.
+// Le mettre sur le même rang que l'espace des familles laissait croire que l'application est
+// d'abord un portail professionnel — et faisait tomber le premier visiteur, relecteur de
+// l'App Store compris, sur une page de connexion qu'il ne peut pas passer.
+//
+// ── POURQUOI L'ESPACE DE PRODUCTION N'EST PLUS ICI (25/09/2026) ──
+//
+// Il y en avait deux. Le second, « Équipe de production », ouvrait l'OS : l'outil de travail de
+// NOS salariés. La directive 3.2 d'Apple est explicite — une application destinée aux employés
+// d'une entreprise donnée n'a pas sa place sur l'App Store public, elle relève d'une
+// distribution privée. Le garder, c'était jouer à pile ou face sur un refus, alors qu'Apple
+// examinait déjà l'application de près (demande d'informations du 24/09, directive 2.1).
+//
+// Nos équipes n'y perdent rien : l'OS est un site, il s'ouvre dans Safari et « Sur l'écran
+// d'accueil » lui donne une icône et un affichage plein écran. C'est la même chose, sans
+// l'App Store.
+//
+// L'espace club, lui, reste. Ce n'est pas un outil interne : n'importe quel club amateur qui
+// travaille avec nous y accède, comme tout logiciel professionnel ouvert à ses clients. La
+// distinction qu'Apple fait est entre « réservé à une organisation nommée » et « ouvert à qui
+// devient client » ; nous sommes dans le second cas.
 const PORTES_PRO: typeof PORTES = [
   {
     cle: "club",
@@ -42,13 +59,6 @@ const PORTES_PRO: typeof PORTES = [
     titre: "Espace club",
     texte: "Réservé aux clubs partenaires : coach, président, secrétaire.",
     teinte: C.cyan,
-  },
-  {
-    cle: "sportvision",
-    icone: "videocam",
-    titre: "Équipe de production",
-    texte: "Réservé aux équipes SportVision : missions et contenus.",
-    teinte: C.violet,
   },
 ];
 
@@ -127,7 +137,7 @@ export default function Bienvenue() {
           onPress={() => setProVisibles(true)}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="Afficher les espaces réservés aux clubs et à l'équipe de production"
+          accessibilityLabel="Afficher l'espace réservé aux clubs partenaires"
           style={s.lienPro}
         >
           <Text style={s.lienProTexte}>Vous travaillez avec SportVision ?</Text>
