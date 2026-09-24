@@ -12974,6 +12974,74 @@ let _galQueue=[];        // dépôts en cours, uniquement à l'écran
 
 function _galPublicUrl(path){return SB_URL+'/storage/v1/object/public/galerie-previews/'+path;}
 
+// ── OU VONT LES ORIGINAUX (24/09/2026) ───────────────────────────────────────────────────────
+//
+// Mesure du 23/09 : 19 Mo la photo, 20 Go par semaine avec trois clubs, soit environ 265 Go par
+// club et par saison. Le plan gratuit de Supabase a coupe TOUT l'ecosysteme le 24/09 a minuit,
+// plus une seule connexion nulle part, en pleine relecture Apple. Supabase reste excellent pour
+// la base, les comptes et les droits ; c'est un mauvais disque dur, et il facture chaque
+// telechargement.
+//
+// Les originaux partent donc sur Cloudflare R2 : moitie moins cher au gigaoctet, et AUCUN frais
+// de sortie — ce qui correspond exactement a l'usage, des familles qui telechargent des galeries
+// entieres. Les apercus et les vignettes RESTENT sur Supabase : ils sont legers, publics, et
+// servis par un CDN qui fait deja tres bien son travail.
+//
+// RIEN NE SE DEVINE. Chaque photo porte sa colonne storage_bucket, ecrite au depot et jamais
+// recalculee. Les 2 063 photos d'avant disent 'sportvision-media-prive' et continuent de vivre
+// exactement comme avant ; les nouvelles disent 'r2'. Aucune date, aucun seuil, aucun jour J.
+//
+// POUR REVENIR EN ARRIERE : remettre 'sportvision-media-prive' ci-dessous. Les photos deja
+// deposees sur R2 continueront d'etre servies depuis R2, puisque chacune sait ou elle est.
+const GAL_STOCKAGE_ORIGINAUX='r2';
+
+/** Une adresse signee aupres de r2-fichier. Trois modes, une seule regle d'autorisation cote
+ *  serveur : si la base montre la ligne media_assets a cet appelant, c'est qu'elle l'autorise. */
+async function _r2Fichier(assetId,mode){
+  if(DEMO_MODE)return null;
+  const tok=localStorage.getItem('sv_tok')||'';
+  try{
+    const r=await fetch(SB_URL+'/functions/v1/r2-fichier',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+      body:JSON.stringify({asset_id:assetId,mode:mode}),
+    });
+    const d=await r.json().catch(()=>null);
+    if(!r.ok)return{ok:false,error:(d&&d.error)||('HTTP '+r.status)};
+    return{ok:true,url:(d&&d.url)||null};
+  }catch(e){return{ok:false,error:'Réseau indisponible'};}
+}
+
+/** Depot de l'original, la ou il doit aller. Le navigateur envoie le fichier DIRECTEMENT au
+ *  stockage, dans les deux cas : 19 Mo ne traversent jamais une fonction serveur. */
+async function _galDeposerOriginal(assetId,path,blob,contentType){
+  if(GAL_STOCKAGE_ORIGINAUX!=='r2')return _galUpload('sportvision-media-prive',path,blob,contentType);
+  const a=await _r2Fichier(assetId,'depot');
+  if(!a||!a.ok)return{ok:false,error:(a&&a.error)||'Adresse de dépôt refusée'};
+  try{
+    const res=await fetch(a.url,{method:'PUT',headers:{'Content-Type':contentType||'application/octet-stream'},body:blob});
+    if(res.ok)return{ok:true,error:null};
+    return{ok:false,error:'Cloudflare a refusé le fichier (HTTP '+res.status+')'};
+  }catch(e){return{ok:false,error:'Réseau indisponible'};}
+}
+
+/** Relire un original, ou qu'il soit. `asset` doit porter storage_bucket et original_path. */
+async function _galUrlOriginal(asset,secondes){
+  if(!asset||!asset.original_path)return null;
+  if(asset.storage_bucket==='r2'){
+    const a=await _r2Fichier(asset.id,'lecture');
+    return a&&a.ok?a.url:null;
+  }
+  return sbSignedUrl(asset.storage_bucket||'sportvision-media-prive',asset.original_path,secondes||300);
+}
+
+/** Effacer un original, ou qu'il soit. */
+async function _galSupprimerOriginal(asset){
+  if(!asset||!asset.original_path)return;
+  if(asset.storage_bucket==='r2'){await _r2Fichier(asset.id,'suppression');return;}
+  await _galDeleteObject('sportvision-media-prive',asset.original_path);
+}
+
 /** Dépôt d'un blob. Renvoie le message d'erreur de Supabase plutôt qu'un simple échec : sur un
  * dépôt de 300 fichiers, « échec » sans raison est inexploitable. */
 async function _galUpload(bucket,path,blob,contentType){
@@ -13133,6 +13201,7 @@ async function _galTraiterFichier(entry){
       id:assetId,album_id:_galAlbum.id,club_id:_galAlbum.club_id,
       original_path:originalPath,original_filename:file.name,mime_type:file.type,
       checksum:entry.checksum,width:bitmap.width,height:bitmap.height,bytes:file.size,
+      storage_bucket:GAL_STOCKAGE_ORIGINAUX,
       status:'uploading',position:entry.position,created_by:S.uid,
     }});
     if(sbErr(row)){
@@ -13141,7 +13210,7 @@ async function _galTraiterFichier(entry){
       setEtat('erreur',msg||'Enregistrement refusé.');return;
     }
 
-    const up1=await _galUpload('sportvision-media-prive',originalPath,file,file.type);
+    const up1=await _galDeposerOriginal(assetId,originalPath,file,file.type);
     if(!up1.ok){
       await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{status:'failed',processing_error:up1.error}});
       setEtat('erreur','Original : '+up1.error);return;
@@ -13344,7 +13413,7 @@ async function recoReprendreGalerie(albumId){
     for(let i=0;i<photos.length;i++){
       dire('Photo '+(i+1)+' sur '+photos.length+'…');
       try{
-        const url=await _recoUrlSignee('sportvision-media-prive',photos[i].original_path);
+        const url=await _galUrlOriginal(photos[i],600);
         if(!url)continue;
         const bmp=await createImageBitmap(await (await fetch(url)).blob(),{imageOrientation:'from-image'});
         const visages=await recoVisagesDe(bmp);
@@ -14002,7 +14071,7 @@ async function galRegenererApercus(){
     try{
       // URL signee courte sur le bucket PRIVE : l'original ne transite jamais par une adresse
       // publique, meme pour ce traitement interne.
-      const signed=await sbSignedUrl(a.storage_bucket||'sportvision-media-prive',a.original_path,300);
+      const signed=await _galUrlOriginal(a,300);
       if(!signed)throw new Error('original illisible');
       const blob=await (await fetch(signed)).blob();
       const bitmap=await createImageBitmap(blob);
@@ -14558,7 +14627,9 @@ async function galSupprimerAsset(assetId){
   if(!await demanderConfirmation('Supprimer définitivement « '+(asset.original_filename||'cette photo')+' » ?\n\nL’original, l’aperçu et la vignette seront effacés.',{titre:'Supprimer cette photo',action:'Supprimer definitivement'}))return;
   // Les fichiers d'abord, la ligne ensuite : dans l'autre sens, un échec de suppression en base
   // laisserait une photo affichée dont les fichiers n'existent plus.
-  await _galDeleteObject('sportvision-media-prive',asset.original_path);
+  // L'original part de la ou il est : R2 pour les photos deposees depuis le 24/09, Supabase pour
+  // les precedentes. C'est sa colonne storage_bucket qui le dit, jamais une date.
+  await _galSupprimerOriginal(asset);
   await _galDeleteObject('galerie-previews',asset.preview_path);
   await _galDeleteObject('galerie-previews',asset.thumb_path);
   const r=await sbFetch('media_assets?id=eq.'+assetId,{method:'DELETE'});

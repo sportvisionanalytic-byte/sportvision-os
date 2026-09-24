@@ -30,6 +30,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { urlOriginal } from "../_shared/medias.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -234,16 +235,17 @@ serve(async (req) => {
         vus.add(nom.toLowerCase());
         const nomBin = enc.encode(nom);
 
-        const { data: signe } = await admin.storage
-          .from(a.storage_bucket || "sportvision-media-prive")
-          .createSignedUrl(a.original_path!, TTL_LECTURE);
-        if (!signe?.signedUrl) {
+        // Pas de nom de telechargement impose ici : le nom du fichier est deja celui de
+        // l'entree dans l'archive, et un en-tete Content-Disposition n'aurait aucun effet
+        // puisque c'est cette fonction qui lit le flux, pas un navigateur.
+        const adresse = await urlOriginal(admin, a, TTL_LECTURE);
+        if (!adresse) {
           // Une photo illisible ne doit pas faire perdre les autres : on la saute, l'archive
           // reste valide, et le journal garde la trace.
           console.error("[gallery-download-zip] signature impossible :", a.id);
           continue;
         }
-        const rep = await fetch(signe.signedUrl);
+        const rep = await fetch(adresse);
         if (!rep.ok || !rep.body) {
           console.error("[gallery-download-zip] lecture impossible :", a.id, rep.status);
           continue;
