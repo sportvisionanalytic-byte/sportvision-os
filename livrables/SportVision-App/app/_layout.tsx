@@ -13,7 +13,29 @@ import { usePolices } from "../src/theme/polices";
 import { View } from "react-native";
 import { FournisseurSession } from "../src/lib/session";
 import { FournisseurFamille } from "../src/lib/famille";
+import { FournisseurBiometrie, useBiometrie } from "../src/lib/biometrie";
+import { Verrou } from "../src/ui/Verrou";
 import { C } from "../src/theme/couleurs";
+
+/**
+ * Les écrans, ou le verrou par-dessus.
+ *
+ * Posé ici et nulle part ailleurs : un verrou branché écran par écran finit toujours par en
+ * oublier un, et c'est celui-là qu'on atteindra par une notification ou un lien.
+ */
+function Ecrans() {
+  const { verrouille } = useBiometrie();
+  if (verrouille) return <Verrou />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: C.fond },
+        animation: "fade",
+      }}
+    />
+  );
+}
 
 export default function Racine() {
   // Les polices : celles des icônes, et celles de la marque. On ne bloque JAMAIS l'affichage en
@@ -26,18 +48,14 @@ export default function Racine() {
     <SafeAreaProvider>
       <FournisseurSession>
         <FournisseurFamille>
-        {/* Le fond est peint ici, sous les ecrans : sans lui, un blanc apparait le temps d'une
-            transition, et l'application clignote a chaque changement de page. */}
-        <View style={{ flex: 1, backgroundColor: C.fond }}>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: C.fond },
-              animation: "fade",
-            }}
-          />
-        </View>
+          <FournisseurBiometrie>
+            {/* Le fond est peint ici, sous les ecrans : sans lui, un blanc apparait le temps
+                d'une transition, et l'application clignote a chaque changement de page. */}
+            <View style={{ flex: 1, backgroundColor: C.fond }}>
+              <StatusBar style="light" />
+              <Ecrans />
+            </View>
+          </FournisseurBiometrie>
         </FournisseurFamille>
       </FournisseurSession>
     </SafeAreaProvider>

@@ -77,6 +77,11 @@ export default function OngletsEspace() {
       <Tabs.Screen name="galerie/[id]" options={{ href: null }} />
       <Tabs.Screen name="match/[id]" options={{ href: null }} />
       <Tabs.Screen name="acces" options={{ href: null }} />
+      {/* Les pages de Connect (commandes, factures, cotisations, rattachements,
+          reconnaissance, aide) et la reservation : atteignables depuis le profil et les
+          raccourcis, jamais un onglet. Au-dela de quatre onglets, les libelles se coupent. */}
+      <Tabs.Screen name="connect/[page]" options={{ href: null }} />
+      <Tabs.Screen name="reserver" options={{ href: null }} />
       <Tabs.Screen
         name="profil"
         options={{

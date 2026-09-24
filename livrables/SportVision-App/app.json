@@ -19,7 +19,9 @@
       "buildNumber": "3",
       "infoPlist": {
         "CFBundleDisplayName": "SportVision",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Pour rouvrir SportVision sans retaper votre mot de passe. Votre visage ne quitte jamais votre téléphone et n'est jamais transmis à SportVision.",
+        "NSCameraUsageDescription": "Pour vous reconnaître sur les photos de vos matchs, si vous y avez consenti. La comparaison se fait dans votre téléphone et aucune empreinte n'est conservée."
       }
     },
     "android": {

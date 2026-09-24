@@ -24,6 +24,11 @@ const PUBLIC_PATHS = [
   "/auth/reset",
   "/auth/callback",
   "/auth/confirming",
+  // "/auth/app" doit rester public pour exactement la raison de "/auth/callback" : c'est la
+  // route qui POSE le cookie de session, elle arrive donc forcément sans cookie. La déclarer
+  // protégée la renverrait vers /auth/login avant qu'elle ait pu faire son travail, et
+  // l'application mobile n'ouvrirait jamais une seule page de Connect (24/09/2026).
+  "/auth/app",
   "/signup",
   "/cotisation",
   "/aide",

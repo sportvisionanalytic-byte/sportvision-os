@@ -9,6 +9,7 @@ import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
+import { useBiometrie } from "../../src/lib/biometrie";
 import { supprimerMonCompte } from "../../src/lib/compte";
 import { useFamille } from "../../src/lib/famille";
 import { oublierPorte } from "../../src/lib/espaces";
@@ -48,8 +49,32 @@ function Ligne({
 
 export default function Profil() {
   const { session, profil, deconnexion } = useSession();
+  const biometrie = useBiometrie();
   const famille = useFamille();
   const router = useRouter();
+
+  /** Poser ou retirer le verrou. L'activation vérifie le visage d'abord : activer un verrou
+   *  qu'on n'arrive pas à lever, c'est se fermer la porte au nez. */
+  async function basculerBiometrie() {
+    if (biometrie.active) {
+      Alert.alert(
+        "Ne plus verrouiller",
+        `SportVision s'ouvrira sans demander ${biometrie.nom}. Vous resterez connecté.`,
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Désactiver", style: "destructive", onPress: biometrie.desactiver },
+        ],
+      );
+      return;
+    }
+    const ok = await biometrie.activer();
+    if (!ok) return;
+    Alert.alert(
+      "C'est activé",
+      `SportVision demandera ${biometrie.nom} à chaque ouverture. Vos photos ne s'affichent plus `
+      + `si quelqu'un d'autre prend votre téléphone.`,
+    );
+  }
   const [sortie, setSortie] = useState(false);
   const [suppression, setSuppression] = useState(false);
   const parent = profil?.espace === "parent";
@@ -199,6 +224,53 @@ export default function Profil() {
             icone="key-outline" titre="Comment j'accède aux photos"
             detail="Ce qu'est le Pass Photo et qui le transmet"
             onPress={() => router.push("/acces")}
+          />
+          <Ligne
+            icone="scan-outline" titre="Me reconnaître sur les photos"
+            detail="Votre accord, révocable à tout moment"
+            onPress={() => router.push("/connect/reconnaissance")}
+          />
+          <Ligne
+            icone="finger-print-outline"
+            titre="Ouvrir avec Face ID"
+            detail={
+              biometrie.disponible
+                ? (biometrie.active
+                    ? `Activé, ${biometrie.nom}`
+                    : `Rouvrir l'application sans retaper son mot de passe`)
+                : "Non disponible sur cet appareil"
+            }
+            onPress={biometrie.disponible ? basculerBiometrie : undefined}
+          />
+        </View>
+      </Section>
+
+      <Section titre="Mon argent">
+        <View style={s.groupe}>
+          <Ligne
+            icone="receipt-outline" titre="Mes commandes"
+            detail="Ce que vous avez acheté, et vos reçus"
+            onPress={() => router.push("/connect/commandes")}
+          />
+          <Ligne
+            icone="document-text-outline" titre="Mes factures"
+            detail="À télécharger, à tout moment"
+            onPress={() => router.push("/connect/factures")}
+          />
+          <Ligne
+            icone="people-outline" titre="Cotisations de groupe"
+            detail="Participer à une collecte, ou en lancer une"
+            onPress={() => router.push("/connect/cotisations")}
+          />
+        </View>
+      </Section>
+
+      <Section titre="Mes rattachements">
+        <View style={s.groupe}>
+          <Ligne
+            icone="link-outline" titre={parent ? "Mes enfants et leurs clubs" : "Mes clubs et mes équipes"}
+            detail="Rejoindre un club, suivre une demande en cours"
+            onPress={() => router.push("/connect/affiliations")}
           />
         </View>
       </Section>
