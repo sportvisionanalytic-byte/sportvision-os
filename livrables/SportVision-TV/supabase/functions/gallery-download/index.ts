@@ -20,6 +20,10 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Ou vit la photo : Supabase pour celles d'avant le 24/09, Cloudflare R2 pour les nouvelles.
+// Une seule fonction decide, pour que la question « celle-ci est ou ? » ne se pose qu'a un
+// seul endroit dans tout l'ecosysteme.
+import { urlOriginal } from "../_shared/medias.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -143,16 +147,12 @@ serve(async (req) => {
 
       // Signature de cinq minutes, comme partout ailleurs : un droit permanent n'est PAS une URL
       // permanente, c'est le droit d'en redemander une.
-      const { data: sig, error: sigErr } = await admin.storage
-        .from((a.storage_bucket as string) || "sportvision-media-prive")
-        .createSignedUrl(a.original_path as string, SIGNED_URL_TTL, {
-          download: (a.original_filename as string) || "photo.jpg",
-        });
-      if (sigErr || !sig?.signedUrl) {
-        console.error("[gallery-download] signature Connect impossible :", sigErr);
+      const adresse = await urlOriginal(admin, a, SIGNED_URL_TTL);
+      if (!adresse) {
+        console.error("[gallery-download] signature Connect impossible pour", assetId);
         return json({ error: "Téléchargement momentanément indisponible." }, 500);
       }
-      return json({ url: sig.signedUrl });
+      return json({ url: adresse });
     }
 
     // ── Signature d'un original acheté, par jeton (invité) ─────────────────────────────────
@@ -214,13 +214,9 @@ serve(async (req) => {
       .maybeSingle();
     if (!asset?.original_path) return json({ error: "Fichier introuvable." }, 404);
 
-    const { data: signed, error: signError } = await admin.storage
-      .from((asset.storage_bucket as string) || "sportvision-media-prive")
-      .createSignedUrl(asset.original_path as string, SIGNED_URL_TTL, {
-        download: (asset.original_filename as string) || "photo.jpg",
-      });
-    if (signError || !signed?.signedUrl) {
-      console.error("[gallery-download] signature impossible :", signError);
+    const adresseInvite = await urlOriginal(admin, asset, SIGNED_URL_TTL);
+    if (!adresseInvite) {
+      console.error("[gallery-download] signature impossible pour", assetId);
       return json({ error: "Téléchargement momentanément indisponible." }, 500);
     }
 
@@ -232,7 +228,7 @@ serve(async (req) => {
       .update({ download_count: (grant.download_count as number) + 1 })
       .eq("id", grant.id as string);
 
-    return json({ url: signed.signedUrl });
+    return json({ url: adresseInvite });
   } catch (e) {
     console.error("[gallery-download] erreur inattendue :", e);
     return json({ error: "Une erreur est survenue." }, 500);
