@@ -2163,6 +2163,16 @@ const VIEWS={
          bord de plus. Tous les chiffres viennent de v_production_missions, la source unique du
          classement — les recalculer ici les ferait diverger du cockpit au premier changement
          de regle. Chaque ligne ouvre directement la bonne file. -->
+    <!-- ── SES PROPRES MISSIONS A ACCEPTER (25/09/2026) ─────────────────────────────────────
+         Question de Fouka : « comment il accepte sa prestation ? Parce qu'il n'a pas son espace
+         de photographe videaste ».
+         Le bouton « Accepter » n'existait que sur le tableau de bord du role photo. Le
+         Responsable Production, qui vend et realise aussi ses propres prestations, recevait une
+         invitation qu'il ne pouvait accepter nulle part.
+         On ne lui cree pas un second espace : un espace de plus a maintenir, pour une personne,
+         qui dupliquerait ce qui existe deja. Ses invitations apparaissent ici, sur l'ecran qu'il
+         ouvre de toute facon, et disparaissent des qu'il a repondu. -->
+    <div id="prod-mes-invitations" style="display:none;margin-bottom:18px"></div>
     <div id="prod-resume" class="g3" style="margin-bottom:18px"></div>
     <div class="kpi-g" style="margin-bottom:18px">
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Missions à attribuer</div><div class="kpi-v" id="prod-kpi-attrib" style="color:var(--er)">—</div><span class="kpi-d dnt">aucun opérateur confirmé</span></div>
@@ -11461,8 +11471,42 @@ function _prodSkelCards(n){
   return out+'</div>';
 }
 
+/** Les invitations que le Responsable Production a recues pour LUI-MEME. Il vend et realise
+ *  aussi ses propres prestations : sans ce bloc, il recevait une invitation sans aucun endroit
+ *  pour y repondre — le bouton « Accepter » ne vivait que sur le tableau de bord du role photo. */
+async function loadProdMesInvitations(){
+  const el=document.getElementById('prod-mes-invitations');
+  if(!el)return;
+  try{
+    const rows=await sbFetch('prestations_equipe_display?select=id,statut,fonction,heure_rdv,remuneration,'
+      +'prestations(reference,date_prestation,heure_debut,lieu,clients(nom))'
+      +'&collaborateur_id=eq.'+S.uid+'&statut=in.(invitation_envoyée,en_attente)').catch(()=>[]);
+    const list=Array.isArray(rows)?rows:[];
+    if(!list.length){el.style.display='none';el.innerHTML='';return;}
+    el.style.display='block';
+    el.innerHTML=`<div class="cd" style="border-color:rgba(245,165,36,.35);background:rgba(245,165,36,.05)">
+      <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:3px">Vos missions à accepter</div>
+      <div style="font-size:11.5px;color:var(--t3);margin-bottom:11px">Vous êtes prévu sur ${list.length===1?'cette mission':'ces '+list.length+' missions'}. Répondez pour qu'elle${list.length>1?'s':''} soi${list.length>1?'ent':'t'} confirmée${list.length>1?'s':''}.</div>
+      <div style="display:flex;flex-direction:column;gap:9px">${list.map(r=>{
+        const p=r.prestations||{};
+        const quand=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}):'—';
+        return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:9px;justify-content:space-between;padding:10px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb)">
+          <div style="min-width:0">
+            <div style="font-size:12.5px;font-weight:700;color:var(--t1)">${esc(p.clients?.nom||p.reference||'Mission')}</div>
+            <div style="font-size:11.5px;color:var(--t3)">${quand}${p.heure_debut?' · '+String(p.heure_debut).slice(0,5):''}${p.lieu?' · '+esc(p.lieu):''}${r.fonction?' · '+esc(r.fonction):''}</div>
+          </div>
+          <div style="display:flex;gap:7px;flex-shrink:0">
+            <button onclick="repondreInvitation('${r.id}','acceptée').then(loadProdMesInvitations)" class="btn bp bs" style="min-height:38px">Accepter</button>
+            <button onclick="repondreInvitation('${r.id}','refusée').then(loadProdMesInvitations)" class="btn bg2 bs" style="min-height:38px">Refuser</button>
+          </div>
+        </div>`;}).join('')}</div>
+    </div>`;
+  }catch(e){el.style.display='none';}
+}
+
 async function loadProdDash(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  loadProdMesInvitations();
   const today=ymdLocal();
   const LIVE_ST=['production_démarrée','équipe_en_route','arrivée_sur_place'];
   const MONT_ST=['médias_complets','médias_à_transférer','production_terminée','à_monter','montage_en_cours'];
