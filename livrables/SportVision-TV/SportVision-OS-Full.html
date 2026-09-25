@@ -15885,6 +15885,19 @@ function renderLivrables(){
     const now=new Date();
     const daysLeft=expDate?Math.ceil((expDate-now)/864e5):null;
     const canValidate=['admin','prod'].includes(S.role)&&lv.statut==='a_valider';
+    // ── LE CLUB NE RECOIT PLUS RIEN PAR E-MAIL (25/09/2026) ─────────────────────────────────
+    //
+    // DEMANDE DE FOUKA : « Le club ne recoit rien par e-mail, tout va se passer par galerie. A la
+    // rigueur, s'il me demande les liens, je peux leur envoyer, mais sinon tout va se passer par
+    // la galerie. »
+    //
+    // Envoyer le lien brut du photographe au club etait le geste principal apres validation : un
+    // bouton bleu plein, « 📤 Livrer ». Ce n'est plus le chemin — les familles et le club passent
+    // par la galerie, que la Production monte elle-meme.
+    //
+    // ON NE SUPPRIME PAS L'ENVOI, on le rend exceptionnel : il reste disponible, en bouton
+    // discret, pour le club qui reclame explicitement ses fichiers. Le supprimer obligerait a
+    // ressortir le lien a la main le jour ou ca arrive.
     const canDeliver=['admin','prod','sec'].includes(S.role)&&lv.statut==='pret_a_livrer';
     return`<div class="cd" style="margin-bottom:0">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
@@ -15898,20 +15911,65 @@ function renderLivrables(){
         ${lv.lien?.url?`<button onclick="ouvrirLien('${encodeURIComponent(lv.lien.url)}')" style="padding:5px 10px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗ Ouvrir</button>
         <button onclick="copierLien('${encodeURIComponent(lv.lien.url)}')" aria-label="Copier le lien" style="padding:5px 8px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>`:''}
         ${canValidate?`<button onclick="validerLivrable('${lv.id}')" style="padding:5px 12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:700;cursor:pointer">✓ Valider</button>`:''}
-        ${canDeliver?`<button onclick="modalPrepLivraison('${lv.id}')" style="padding:5px 12px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:11px;font-weight:700;cursor:pointer">📤 Livrer</button>`:''}
+        ${canDeliver?`<button onclick="modalPrepLivraison('${lv.id}')" title="Exceptionnel : le club passe normalement par la galerie. À n'utiliser que s'il réclame ses fichiers." style="padding:5px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t3);font-size:11px;font-weight:600;cursor:pointer">✉ Envoyer le lien au club</button>`:''}
         ${daysLeft!==null?`<span style="font-size:10px;color:${daysLeft<=3?'var(--er)':'var(--t3)'}">Exp: ${expDate.toLocaleDateString('fr-FR')} ${daysLeft<=7?'('+daysLeft+'j)':''}</span>`:''}
       </div>
     </div>`;
   }).join('')+'</div>';
 }
 
+// ── UNE SEULE VALIDATION (25/09/2026) ─────────────────────────────────────────────────────────
+//
+// DEMANDE DE FOUKA : « Le responsable production verifie, il valide. Une fois que c'est valide, le
+// photographe videaste n'a plus rien a faire. Il recoit comme quoi ca a ete valide, il recoit ses
+// XP, sa remuneration. »
+//
+// IL Y AVAIT DEUX VALIDATIONS QUI NE SE PARLAIENT PAS :
+//   · « Valider » sur le livrable — changeait un statut, et rien d'autre. L'operateur n'en savait
+//     rien, ne touchait ni XP ni remuneration.
+//   · « Valider le travail » sur l'affectation — notifie, credite les XP, debloque la paie.
+// La Production devait donc faire les deux, sans que rien ne le dise. Elle en faisait une.
+//
+// DESORMAIS LE MEME BOUTON FAIT LES DEUX : il valide le livrable ET le travail de chaque
+// operateur de la prestation. C'est `mission_valider_travail` qui porte toute la regle metier
+// (autorite, interdiction de valider son propre travail, notification, XP, journal) — on ne la
+// reecrit pas ici, on l'appelle.
+//
+// CE QUI EST VOLONTAIREMENT TOLERANT : un operateur deja valide, ou dont la Production ne peut
+// pas arbitrer la mission, n'interrompt pas les autres. On compte, et on dit ce qui s'est passe.
 async function validerLivrable(id){
   try{
+    const lvData=await sbFetch('media_livrables?select=prestation_id,nom&id=eq.'+id);
+    const lv=lvData?.[0];
+    if(!lv){toast('Livrable introuvable.','er');return;}
+
+    // Les operateurs qui ont accepte cette mission. Ce sont eux dont on valide le travail.
+    const equipe=lv.prestation_id
+      ? await sbFetch('prestations_equipe?select=id,collaborateur_id,travail_valide&prestation_id=eq.'
+          +lv.prestation_id+'&statut=eq.acceptée').catch(()=>[])
+      : [];
+
+    let valides=0, xp=0;
+    const refus=[];
+    for(const aff of (Array.isArray(equipe)?equipe:[])){
+      if(aff.travail_valide===true) continue;                 // deja fait, on n'y revient pas
+      if(aff.collaborateur_id===S.uid){ refus.push('votre propre mission'); continue; }
+      const r=await sbFetch('rpc/mission_valider_travail',{method:'POST',
+        body:{p_affectation_id:aff.id,p_valide:true,p_motif:null}});
+      if(sbErr(r)){ refus.push(msgErreur(r,'refus')); continue; }
+      valides+=1;
+      xp+=Number(r?.xp||0);
+    }
+
     const r=await sbFetch('media_livrables?id=eq.'+id,{method:'PATCH',body:{statut:'pret_a_livrer',date_validation:new Date().toISOString(),validateur_id:S.uid}});
     if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Validation impossible.')),'er');return;}
-    const lvData=await sbFetch('media_livrables?select=prestation_id,nom&id=eq.'+id);
-    if(lvData?.[0]) await logMediaHistory(lvData[0].prestation_id,S.uid,'Livrable validé','livrable',id,'a_valider','pret_a_livrer');
-    toast('Livrable validé — prêt à livrer','ok');
+    await logMediaHistory(lv.prestation_id,S.uid,'Livrable validé','livrable',id,'a_valider','pret_a_livrer');
+
+    const dit = valides
+      ? `Travail validé. ${valides} opérateur${valides>1?'s prévenus':' prévenu'}${xp?', +'+xp+' XP':''}.`
+      : 'Livrable validé.';
+    toast(dit + (refus.length ? ' ('+refus.length+' non traité'+(refus.length>1?'s':'')+' : '+refus[0]+')' : ''),
+          refus.length ? 'warn' : 'ok');
     loadProdLivrables();
   }catch(e){toast('Erreur','er');}
 }
@@ -16028,7 +16086,11 @@ async function modalPrepLivraison(livrableId){
     }
   }catch(e){}
   openModal(`
-    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">📤 Préparer la livraison</div>
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">✉ Envoyer le lien au club</div>
+    <div style="font-size:11.5px;color:var(--wa);line-height:1.5;margin-bottom:14px;padding:9px 11px;background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.22);border-radius:8px">
+      Le club et les familles passent normalement par la <b>galerie</b>, que vous montez depuis
+      « Galeries photo ». N'envoyez ce lien que si le club réclame ses fichiers.
+    </div>
     <div style="display:flex;flex-direction:column;gap:11px">
       ${cmBanner}
       <input type="hidden" id="liv-cmid" value="${cmId||''}">
