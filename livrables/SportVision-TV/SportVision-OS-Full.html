@@ -16359,11 +16359,12 @@ function renderProdRemList(){
       // L'ETAT RESTE LISIBLE POUR L'EXISTANT : une ligne deja marquee « transmis compta » garde
       // son libelle et peut etre passee a « paye ». On retire l'etape du chemin, on n'efface pas
       // le passe — une ligne dont le statut n'a plus d'action serait une impasse.
-      // Sa propre mission : le bouton marque la remuneration a payer, mais ne validera PAS le
-      // travail — la base le refuse, et elle a raison. On le dit au lieu de laisser croire.
+      // Depuis la v270, valider sa propre mission est permis : seul l'ARGENT reste sous decision
+      // de l'Admin. Le bouton fait donc la meme chose pour tout le monde, et l'infobulle rappelle
+      // seulement ce qui, sur sa propre ligne, continue d'attendre quelqu'un d'autre.
       const sienne = (r.collaborateur||{}).id===S.uid;
       const actions=sp==='en_attente'||!sp
-        ?`<button onclick="majStatutPaiement('${r.id}','validé')" title="${sienne?'Votre propre mission : ceci marque la rémunération à payer. La validation du travail revient à un autre responsable, ou à l\'Admin.':'Valide le travail de l\'opérateur — il est prévenu et reçoit ses XP — et marque la rémunération à payer.'}" style="padding:3px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✓ ${sienne?'Bon à payer':'Valider la prestation'}</button>`
+        ?`<button onclick="majStatutPaiement('${r.id}','validé')" title="${sienne?'Votre propre mission : valide le travail et marque la rémunération à payer. Un montant hors grille, lui, attend toujours la décision de l\'Admin.':'Valide le travail de l\'opérateur — il est prévenu et reçoit ses XP — et marque la rémunération à payer.'}" style="padding:3px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✓ Valider la prestation</button>`
         :(sp==='validé'||sp==='transmis_compta')
         ?`<button onclick="majStatutPaiement('${r.id}','payé')" style="padding:3px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">✓ Marquer payé</button>`
         :'—';
@@ -16482,7 +16483,7 @@ async function majStatutPaiement(id,statut){
       try{
         const pe=await sbFetch('prestations_equipe?select=travail_valide,collaborateur_id&id=eq.'+id);
         const aff=pe?.[0];
-        if(aff && aff.travail_valide!==true && aff.collaborateur_id!==S.uid){
+        if(aff && aff.travail_valide!==true){
           await sbFetch('rpc/mission_valider_travail',{method:'POST',
             body:{p_affectation_id:id,p_valide:true,p_motif:null}});
         }
@@ -18392,9 +18393,7 @@ async function chargerEquipe(prestationId,ref){
       const netLine=(voitCouts||t.id===S.uid)&&retenu>0
         ?`<div style="font-size:11.5px;color:var(--t2);padding-left:40px">Net à payer <b style="color:var(--ok)">${net.toLocaleString('fr-FR')} €</b> <span style="color:var(--t3)">(${Number(m.remuneration||0).toLocaleString('fr-FR')} € acceptés, ${retenu.toLocaleString('fr-FR')} € retenus)</span></div>`:'';
       const arbitrage=arbitrable?`<div style="display:flex;align-items:center;gap:10px;padding-left:40px">
-          ${m.collaborateur?.id===S.uid
-            ? `<span title="Vous ne pouvez pas valider votre propre travail : c'est ce qui empêche de fixer sa rémunération et de la valider soi-même. Un autre responsable de production, ou l'Admin, s'en charge." style="font-size:11px;color:var(--t3)">Votre propre mission — un autre responsable, ou l'Admin, valide ce travail</span>`
-            : `<button onclick="modalVerdictMission('${m.id}','${prestationId}','${ref}',${m.travail_valide===true})" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer;text-decoration:underline">${m.travail_valide===false?'Revenir sur le refus':'Valider ou refuser le travail'}</button>`}
+          <button onclick="modalVerdictMission('${m.id}','${prestationId}','${ref}',${m.travail_valide===true})" ${m.collaborateur?.id===S.uid?'title="Votre propre mission : vous pouvez la valider. L\'Admin en est informé, et la rémunération reste à la grille tant qu\'il n\'a pas tranché une éventuelle exception."':''} style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer;text-decoration:underline">${m.travail_valide===false?'Revenir sur le refus':'Valider ou refuser le travail'}${m.collaborateur?.id===S.uid?' (la vôtre)':''}</button>
           <button onclick="modalPenaliteMission('${m.id}','${prestationId}','${ref}',${Number(m.remuneration||0)},${retenu})" style="font-size:11px;color:var(--er);background:none;border:none;cursor:pointer;text-decoration:underline">Retenir une pénalité</button>
         </div>`:'';
       return`<div style="display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
