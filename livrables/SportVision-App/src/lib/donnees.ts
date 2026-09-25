@@ -326,22 +326,28 @@ export async function lireGaleries(
   if (!galeries.length) return galeries;
 
   const ids = galeries.map((g) => g.id);
+  // DEUX REQUETES POUR TOUT L'ECRAN, et non deux plus une par galerie (corrige le 25/09/2026).
+  //
+  // Le comptage « mes photos » appelait la base UNE FOIS PAR GALERIE. Sur une saison qui en
+  // compte trente, cela faisait trente allers-retours pour afficher un ecran — et cet ecran
+  // s'ouvre au bord d'un terrain, en 4G, souvent a la mi-temps quand tout le monde est sur le
+  // reseau en meme temps. La fonction groupee (v259) fait le meme travail en une fois, avec
+  // exactement les memes droits : elle appelle la meme fonction interne.
   const [videos, comptes] = await Promise.all([
     supabase.rpc("media_galeries_video", { p_album_ids: ids }),
     playerId
-      ? Promise.all(ids.map(async (id) => {
-          const { data: n } = await supabase.rpc("media_compte_photos_du_joueur", {
-            p_album_id: id, p_player_id: playerId,
-          });
-          return [id, Number(n ?? 0)] as const;
-        }))
-      : Promise.resolve([] as (readonly [string, number])[]),
+      ? supabase.rpc("media_compte_photos_du_joueur_lot", {
+          p_album_ids: ids, p_player_id: playerId,
+        })
+      : Promise.resolve({ data: [] as { album_id: string; nb: number }[] }),
   ]);
 
   const parVideo = new Map(
     (Array.isArray(videos.data) ? videos.data : [])
       .map((v: { album_id: string; url: string }) => [v.album_id, v.url]));
-  const parCompte = new Map(comptes);
+  const parCompte = new Map(
+    (Array.isArray(comptes.data) ? comptes.data : [])
+      .map((c: { album_id: string; nb: number }) => [c.album_id, Number(c.nb ?? 0)]));
 
   return galeries.map((g) => ({
     ...g,
