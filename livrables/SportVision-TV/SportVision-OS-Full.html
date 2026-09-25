@@ -5901,6 +5901,8 @@ let _prestationsCache=[];
 let _missionPreteMap={};
 // Missions portant des liens que la Production n'a pas encore relus (15/09/2026).
 let _missionAVerifierMap={};
+// Missions dont l'invitation est partie sans reponse : la balle est chez le collaborateur.
+let _missionEnAttenteMap={};
 // Les etapes de post-production : tant que la mission y est ET qu'un lien attend un controle,
 // c'est la Production qui tient la balle, et l'ecran doit le dire.
 const ST_POSTPROD=['production_terminée','médias_à_transférer','médias_complets','à_monter','montage_en_cours','prêt_validation'];
@@ -5911,6 +5913,12 @@ function libelleEtatMission(p){
   if(att&&ST_POSTPROD.includes(p.statut)){
     if(att.correction)return['Correction demandée','br'];
     return['En vérification (Production)','bw'];
+  }
+  // L'invitation est partie, personne n'a encore repondu : le responsable production n'a plus
+  // rien a faire, et la liste doit le dire au lieu de reafficher « Planifiee ».
+  const enAttente=_missionEnAttenteMap[p.id];
+  if(enAttente&&p.statut==='planifiée'){
+    return[enAttente>1?'En attente — '+enAttente+' réponses':'En attente de réponse','bw'];
   }
   return[SL[p.statut]||p.statut, SC[p.statut]||'bw'];
 }
@@ -5969,6 +5977,29 @@ async function loadPrestations(){
         const v=_missionAVerifierMap[r.prestation_id]||{a_verifier:0,correction:0};
         if(r.statut==='a_verifier')v.a_verifier++; else v.correction++;
         _missionAVerifierMap[r.prestation_id]=v;
+      });
+    }
+    // ── EN ATTENTE D'ACCEPTATION (25/09/2026) ──────────────────────────────────────────────
+    //
+    // DEMANDE DE FOUKA : quand le responsable production propose la mission a un collaborateur,
+    // « ca lui enleve et ca lui met en attente d'acceptation du collaborateur ».
+    //
+    // Le statut de la prestation ne bouge qu'a l'ACCEPTATION — le trigger
+    // cascade_prestations_equipe_reponse passe a « equipe_affectee » quand quelqu'un accepte, pas
+    // quand l'invitation part. Entre les deux, la mission affichait « Planifiee », c'est-a-dire
+    // exactement ce qu'elle affichait avant que le responsable fasse son travail. Rien ne disait
+    // que la balle etait passee de l'autre cote.
+    //
+    // On ne touche pas au statut reel : une invitation envoyee n'est pas une equipe affectee, et
+    // faire avancer le dossier a la place du collaborateur serait mentir dans l'autre sens. On
+    // cesse seulement d'afficher l'etape d'avant — meme principe que la verification des liens
+    // juste au-dessus.
+    _missionEnAttenteMap={};
+    {
+      const inv=await sbFetch('prestations_equipe_display?select=prestation_id,statut&statut=in.(invitation_envoyée,en_attente)').catch(()=>[]);
+      (Array.isArray(inv)?inv:[]).forEach(r=>{
+        if(!r.prestation_id)return;
+        _missionEnAttenteMap[r.prestation_id]=(_missionEnAttenteMap[r.prestation_id]||0)+1;
       });
     }
     _missionPreteMap={};
