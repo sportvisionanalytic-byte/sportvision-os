@@ -21,7 +21,9 @@ function estUnePage(v: unknown): v is PageConnect {
 }
 
 export default function EcranConnect() {
-  const { page } = useLocalSearchParams<{ page?: string }>();
+  // `chemin` permet d'ouvrir une page dont l'adresse depend de la personne — la reconnaissance
+  // d'un parent, par exemple, vit sous la fiche de son enfant.
+  const { page, chemin } = useLocalSearchParams<{ page?: string; chemin?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const vue = useRef<PoigneeVueConnect>(null);
@@ -40,11 +42,11 @@ export default function EcranConnect() {
   const preparer = useCallback(async () => {
     setPanne(false);
     setCharge(false);
-    const s = await sourceConnect(cle);
+    const s = await sourceConnect(cle, typeof chemin === "string" && chemin ? chemin : undefined);
     if (!s) { setSansSession(true); return; }
     setSansSession(false);
     setSource(s);
-  }, [cle]);
+  }, [cle, chemin]);
 
   useEffect(() => { preparer(); }, [preparer]);
 

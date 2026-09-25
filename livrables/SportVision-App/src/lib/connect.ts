@@ -83,7 +83,9 @@ function pourAttribut(v: string): string {
  * d'ouvrir une page qui renverrait vers un formulaire de connexion. Une fenêtre web qui demande
  * un mot de passe à quelqu'un qui vient de le saisir, c'est ce qui fait fermer l'application.
  */
-export async function sourceConnect(page: PageConnect): Promise<SourceConnect | null> {
+export async function sourceConnect(
+  page: PageConnect, cheminForce?: string,
+): Promise<SourceConnect | null> {
   const { data } = await supabase.auth.getSession();
   const s = data.session;
   if (!s?.access_token || !s?.refresh_token) return null;
@@ -104,7 +106,7 @@ export async function sourceConnect(page: PageConnect): Promise<SourceConnect | 
   const champs = [
     ["access_token", s.access_token],
     ["refresh_token", s.refresh_token],
-    ["next", PAGES[page].chemin],
+    ["next", cheminForce ?? PAGES[page].chemin],
   ]
     .map(([n, v]) => `<input type="hidden" name="${n}" value="${pourAttribut(String(v))}">`)
     .join("");
@@ -118,6 +120,21 @@ export async function sourceConnect(page: PageConnect): Promise<SourceConnect | 
     + `<script>document.getElementById("f").submit();</script></body></html>`;
 
   return { html, baseUrl: `${CONNECT}/` };
+}
+
+/**
+ * La reconnaissance, vue par un parent.
+ *
+ * Mesuré le 25/09 : pour un compte parent, /reconnaissance répond 307 et renvoie vers
+ * /particulier — cette page-là est celle d'un JOUEUR qui donne son propre accord. Un parent
+ * consent pour un enfant précis, et la page vit donc sous la fiche de cet enfant. Signalé par
+ * Fouka : « me reconnaître, ça bugue un peu ».
+ *
+ * Le même texte d'engagement est servi des deux côtés, avec sa version, et c'est voulu : deux
+ * écrans séparés finiraient par faire accepter deux choses différentes sous le même nom.
+ */
+export function cheminReconnaissanceEnfant(kind: string, refId: string): string {
+  return `/particulier/sportifs/${kind}/${refId}/reconnaissance`;
 }
 
 /** L'adresse simple d'une page, pour les cas où il n'y a rien à transporter (l'aide est publique). */

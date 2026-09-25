@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
 import { useBiometrie } from "../../src/lib/biometrie";
+import { cheminReconnaissanceEnfant } from "../../src/lib/connect";
 import { supprimerMonCompte } from "../../src/lib/compte";
 import { useFamille } from "../../src/lib/famille";
 import { oublierPorte } from "../../src/lib/espaces";
@@ -233,10 +234,25 @@ export default function Profil() {
             detail="Qui peut voir votre profil, et les demandes en attente"
             onPress={() => router.push("/connect/acces")}
           />
+          {/* Un parent ne consent pas pour lui-meme : il consent pour un enfant precis, et la
+              page vit donc sous la fiche de cet enfant. Mesure le 25/09 : /reconnaissance
+              repond 307 a un parent et le renvoie vers un autre espace. */}
           <Ligne
-            icone="scan-outline" titre="Me reconnaître sur les photos"
+            icone="scan-outline"
+            titre={parent ? `Reconnaître ${famille.choisi?.prenom ?? "mon enfant"}` : "Me reconnaître sur les photos"}
             detail="Votre accord, révocable à tout moment"
-            onPress={() => router.push("/connect/reconnaissance")}
+            onPress={() => {
+              if (parent) {
+                const c = famille.choisi;
+                if (!c) return;
+                router.push({
+                  pathname: "/connect/[page]",
+                  params: { page: "reconnaissance", chemin: cheminReconnaissanceEnfant(c.kind, c.refId) },
+                });
+                return;
+              }
+              router.push("/connect/reconnaissance");
+            }}
           />
           <Ligne
             icone="finger-print-outline"
