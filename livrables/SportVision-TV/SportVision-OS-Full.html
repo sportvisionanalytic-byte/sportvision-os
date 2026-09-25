@@ -12670,6 +12670,32 @@ function galMenuLigne(albumId,ev){
     </div>`);
 }
 
+/** Ce club a-t-il un contrat Full Communication actif ? (25/09/2026)
+ *
+ *  DEMANDE DE FOUKA : « Les galeries qu'on cree pour les clubs en Full Communication, ca doit
+ *  etre different des galeries creees pour des tournois ou des clubs adverses. Faut pas mettre
+ *  galerie complete ou les prix. »
+ *
+ *  Il a raison : dans un contrat Full Com, les photos sont DEJA payees. Proposer un tarif au club
+ *  qui nous paie deja revient a lui vendre ce qu'il possede. Et ca fait perdre du temps a chaque
+ *  galerie : il faut penser a cocher « gratuite » soi-meme, ou le club tombe sur une boutique.
+ *
+ *  LA QUESTION SE POSE A LA BASE, PAS A LA TABLE. Une premiere version interrogeait `contrats`
+ *  directement : ca marchait pour un administrateur et rendait toujours « non » pour la
+ *  PRODUCTION — celle qui cree justement les galeries. La policy ne l'autorise pas a lire un
+ *  contrat, et c'est tres bien : un contrat porte des montants et des clauses, dont le
+ *  Responsable Production n'a pas besoin pour savoir s'il doit construire un tarif.
+ *
+ *  `club_est_full_communication` (v265) ne rend qu'un oui ou un non. Le pont interne passe par
+ *  `clubs.portail_client_id` plutot que par le NOM du club, qui casserait au premier renommage. */
+async function _galClubFullCom(clubId){
+  if(!clubId)return false;
+  try{
+    const r=await sbFetch('rpc/club_est_full_communication',{method:'POST',body:{p_club_id:clubId}});
+    return r===true;
+  }catch(e){return false;}
+}
+
 function modalCreerAlbum(albumId){
   // « Galerie », pas « Album » : c'est le mot metier. La table s'appelle toujours media_albums,
   // l'utilisateur n'a pas a le savoir.
@@ -12915,6 +12941,12 @@ async function sauvegarderAlbum(albumId){
       r=await sbFetch('media_albums?id=eq.'+albumId,{method:'PATCH',body});
     }else{
       body.created_by=S.uid;
+      // UN CLUB EN FULL COMMUNICATION NE S'ACHETE PAS SES PROPRES PHOTOS (25/09/2026).
+      // Ses galeries partent donc « gratuites » d'emblee : visibles par le club et ses familles,
+      // sans tarif a construire. Ca reste modifiable d'un clic sur la page de la galerie — on
+      // choisit le bon defaut, on n'interdit rien. Pour un tournoi ou un club adverse, rien ne
+      // change : la galerie part en vente, comme avant.
+      if(clubId && await _galClubFullCom(clubId)) body.access_mode='free_members';
       r=await sbFetch('media_albums',{method:'POST',body});
     }
     if(sbErr(r)){err.textContent='Erreur : '+(msgErreur(r,'Enregistrement impossible.'));return;}
@@ -13698,7 +13730,11 @@ function _galRenderJoueurs(){
         <div style="font-size:12.5px;font-weight:700;color:var(--t1)">Qui est sur les photos</div>
         <div style="font-size:11.5px;color:var(--t3)">${_galTags.filter(t=>t.statut==='valide').length} rattachement(s)${aTrancher?' · '+aTrancher+' a trancher':''}</div>
       </div>
-      <div style="font-size:11.5px;color:var(--t3);margin-bottom:11px">Rattacher un joueur permet a sa famille d'acheter ses photos seules. Ouvrez une photo, puis « Qui est sur cette photo ? ».</div>
+      <!-- 25/09/2026, Fouka : « moi je connais pas tous les joueurs, donc ca va etre complique
+           pour moi de rattacher une personne a chaque fois ». Le texte precedent decrivait un
+           geste comme s'il etait attendu, sans jamais dire qu'il est FACULTATIF ni qui le fait
+           d'habitude. On inverse : on dit d'abord que rien n'est exige, ensuite a quoi ca sert. -->
+      <div style="font-size:11.5px;color:var(--t3);margin-bottom:11px;line-height:1.55"><b style="color:var(--t2)">Rien a faire ici.</b> La reconnaissance rattache les joueurs toute seule, pour les familles qui l'ont acceptee. Sans rattachement, la galerie reste entierement visible et achetable&nbsp;: c'est seulement l'achat des photos d'un joueur SEUL qui a besoin d'un nom. Vous pouvez en ajouter un a la main en ouvrant une photo, quand vous reconnaissez quelqu'un.</div>
       <div style="display:flex;flex-wrap:wrap;gap:7px">
         ${_galJoueurs.map(j=>`<span title="${j.reconnaissance?'Sa famille a accepte la reconnaissance automatique':'Sa famille n\'a pas active la reconnaissance : rattachement a la main'}"
           style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--b1);border-radius:20px;font-size:11.5px;color:var(--t2)">
@@ -13790,6 +13826,8 @@ async function ouvrirGalerie(albumId){
   _galAlbum=album;_galAssets=[];_galQueue=[];_galProduitsCache=null;_galLiensCache=[];
   _galOffres=[];_galLienPrincipal=null;_galVueAlbumId=albumId;
 
+  // Le contrat du club change ce que cette page propose : on le sait avant de la dessiner.
+  const fullCom=await _galClubFullCom(album.club_id);
   const clr=PA_STATUT_CLR[album.status]||'var(--t3)';
   const pole=(S.allPoles||[]).find(x=>x.id===album.pole_id);
   const contexte=[PA_STATUT_LB[album.status]||album.status, pole?pole.nom:null,
@@ -13834,10 +13872,15 @@ async function ouvrirGalerie(albumId){
     </section>
 
     <section style="margin-bottom:34px">
-      <div style="${T}"><span style="${N}">2</span> Ce que vous vendez</div>
+      <div style="${T}"><span style="${N}">2</span> ${fullCom?'Ce que le club reçoit':'Ce que vous vendez'}</div>
+      ${fullCom?`<div style="font-size:11.5px;color:var(--t2);line-height:1.55;padding:10px 12px;margin-bottom:10px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.22);border-radius:8px">
+        <b>${esc(album.clubs?.nom||'Ce club')} est en Full Communication.</b> Ses photos sont déjà payées
+        par son contrat : cette galerie lui est livrée sans achat, et il n'y a pas de tarif à construire.
+        Vous pouvez quand même en vendre si vous le décidez, en décochant ci-dessous.
+      </div>`:''}
       <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2);cursor:pointer;min-height:40px;margin-bottom:8px">
         <input type="checkbox" id="gal-gratuit" ${album.access_mode==='free_members'?'checked':''} onchange="galBasculerGratuit(this.checked)">
-        Galerie gratuite (visible pour le club sans achat, aucune offre requise)
+        ${fullCom?'Incluse dans le contrat du club (aucun tarif à construire)':'Galerie gratuite (visible pour le club sans achat, aucune offre requise)'}
       </label>
       <div id="gl-offres" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;${album.access_mode==='free_members'?'display:none':''}"></div>
       <div id="gal-offres-actions" style="display:flex;gap:9px;flex-wrap:wrap;${album.access_mode==='free_members'?'display:none':''}">
