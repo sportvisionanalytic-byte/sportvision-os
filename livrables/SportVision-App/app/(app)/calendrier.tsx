@@ -112,7 +112,14 @@ export default function Calendrier() {
         <Text style={s.titre}>Calendrier</Text>
         <View style={s.bascule}>
           {(["planning", "mois"] as const).map((v) => (
-            <Pressable key={v} onPress={() => setVue(v)} style={[s.basculeItem, vue === v && s.basculeActive]}>
+            <Pressable
+              key={v}
+              onPress={() => setVue(v)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: vue === v }}
+              accessibilityLabel={v === "planning" ? "Afficher le planning" : "Afficher le calendrier du mois"}
+              style={[s.basculeItem, vue === v && s.basculeActive]}
+            >
               <Text style={[s.basculeTexte, vue === v && s.basculeTexteActif]}>
                 {v === "planning" ? "Planning" : "Mois"}
               </Text>
@@ -132,7 +139,14 @@ export default function Calendrier() {
         {moisDisponibles.map((m) => {
           const actif = m === mois;
           return (
-            <Pressable key={m} onPress={() => { setMois(m); setJourChoisi(null); }} style={[s.puce, actif && s.puceActive]}>
+            <Pressable
+              key={m}
+              onPress={() => { setMois(m); setJourChoisi(null); }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: actif }}
+              accessibilityLabel={`Voir ${MOIS[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`}
+              style={[s.puce, actif && s.puceActive]}
+            >
               <Text style={[s.puceTexte, actif && s.puceTexteActif]}>
                 {MOIS[Number(m.slice(5, 7)) - 1]} {m.slice(0, 4)}
               </Text>
@@ -145,7 +159,14 @@ export default function Calendrier() {
         {FILTRES.map((f) => {
           const actif = f.cle === filtre;
           return (
-            <Pressable key={f.cle} onPress={() => setFiltre(f.cle)} style={[s.filtre, actif && s.filtreActif]}>
+            <Pressable
+              key={f.cle}
+              onPress={() => setFiltre(f.cle)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: actif }}
+              accessibilityLabel={`Filtrer : ${f.libelle}`}
+              style={[s.filtre, actif && s.filtreActif]}
+            >
               <Text
                 style={[s.filtreTexte, actif && s.filtreTexteActif]}
                 numberOfLines={1}
@@ -269,6 +290,15 @@ function VueMois({
           const actif = date === jour;
           return (
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: actif, disabled: dedans.length === 0 }}
+              // Un jour vide se dit « rien de prevu » : sans ca, la lecture vocale annonce
+              // un numero seul et on ne sait pas s'il se passe quelque chose.
+              accessibilityLabel={
+                dedans.length
+                  ? `${Number(date.slice(8, 10))}, ${dedans.length} ${dedans.length > 1 ? "evenements" : "evenement"}`
+                  : `${Number(date.slice(8, 10))}, rien de prevu`
+              }
               key={date}
               onPress={() => surJour(dedans.length ? (actif ? null : date) : null)}
               style={[s.caseJour, actif && s.caseActive, date === aujourdhui && !actif && s.caseAujourdhui]}

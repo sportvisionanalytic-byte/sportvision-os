@@ -122,6 +122,7 @@ export default function CreerCompte() {
           <>
             <View style={s.barre}>
               <Pressable
+                accessibilityRole="button" accessibilityLabel="Étape précédente"
                 onPress={() => {
                   if (etape === "profil") router.back();
                   else if (etape === "identite") setEtape("profil");
@@ -192,7 +193,7 @@ export default function CreerCompte() {
 
                   <Erreur message={erreur} />
                   {dejaInscrit ? (
-                    <Pressable onPress={() => router.replace("/connexion")} hitSlop={8}>
+                    <Pressable onPress={() => router.replace("/connexion")} accessibilityRole="link" accessibilityLabel="J'ai déjà un compte, me connecter" hitSlop={8}>
                       <Text style={s.lien}>Se connecter avec cette adresse</Text>
                     </Pressable>
                   ) : null}
@@ -242,7 +243,7 @@ export default function CreerCompte() {
                     {resultats.map((c) => {
                       const actif = clubChoisi?.id === c.id;
                       return (
-                        <Pressable key={c.id} onPress={() => setClubChoisi(c)} style={[s.club, actif && s.clubActif]}>
+                        <Pressable key={c.id} onPress={() => setClubChoisi(c)} accessibilityRole="button" accessibilityState={{ selected: actif }} accessibilityLabel={`Choisir ${c.nom}`} style={[s.club, actif && s.clubActif]}>
                           <View style={{ flex: 1, gap: 2 }}>
                             <Text style={s.clubNom} numberOfLines={1}>{c.nom}</Text>
                             {c.ville ? <Text style={s.clubVille} numberOfLines={1}>{c.ville}</Text> : null}
@@ -256,7 +257,7 @@ export default function CreerCompte() {
                       <Text style={s.sous}>Aucun club trouvé sous ce nom.</Text>
                     ) : null}
 
-                    <Pressable onPress={() => setDeclare(true)} hitSlop={8}>
+                    <Pressable onPress={() => setDeclare(true)} accessibilityRole="button" accessibilityLabel="Mon club n'est pas dans la liste" hitSlop={8}>
                       <Text style={s.lien}>Mon club n'est pas dans la liste</Text>
                     </Pressable>
                   </View>
@@ -265,7 +266,12 @@ export default function CreerCompte() {
                     <Champ label="Nom du club" value={decNom} onChangeText={setDecNom} placeholder="SF Villemomble" autoCapitalize="words" />
                     <Champ label="Ville" value={decVille} onChangeText={setDecVille} placeholder="Villemomble" autoCapitalize="words" />
                     <Champ label="Équipe (facultatif)" value={decEquipe} onChangeText={setDecEquipe} placeholder="U18" />
-                    <Pressable onPress={() => setDeclare(false)} hitSlop={8}>
+                    <Pressable
+                      onPress={() => setDeclare(false)}
+                      hitSlop={8}
+                      accessibilityRole="link"
+                      accessibilityLabel="Revenir à la recherche de club"
+                    >
                       <Text style={s.lien}>Revenir à la recherche</Text>
                     </Pressable>
                   </View>
@@ -314,6 +320,7 @@ function Choix({
 }: { icone: keyof typeof Ionicons.glyphMap; teinte: string; titre: string; texte: string; onPress: () => void }) {
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [s.carteChoix, { borderColor: pressed ? teinte + "88" : C.bordure }]}
     >

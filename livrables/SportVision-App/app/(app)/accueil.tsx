@@ -168,7 +168,7 @@ export default function Accueil() {
       <Section
         titre="Prochainement"
         action={
-          <Pressable onPress={() => router.push("/calendrier")} hitSlop={10}>
+          <Pressable onPress={() => router.push("/calendrier")} accessibilityRole="link" accessibilityLabel="Voir tout le calendrier" hitSlop={10}>
             <Text style={s.lien}>Calendrier</Text>
           </Pressable>
         }
@@ -213,12 +213,13 @@ export default function Accueil() {
         <Section
           titre="Dernière galerie"
           action={
-            <Pressable onPress={() => router.push("/photos")} hitSlop={10}>
+            <Pressable onPress={() => router.push("/photos")} accessibilityRole="link" accessibilityLabel="Voir toutes les photos" hitSlop={10}>
               <Text style={s.lien}>Tout voir</Text>
             </Pressable>
           }
         >
           <Pressable
+            accessibilityRole="button" accessibilityLabel="Ouvrir la dernière galerie"
             onPress={() => playerId
               ? router.push({ pathname: "/galerie/[id]", params: { id: galerie.id, titre: galerie.titre, joueur: playerId, ouverte: galerie.ouverte ? "1" : "0" } })
               : router.push("/photos")}
@@ -252,7 +253,12 @@ export default function Accueil() {
         <Section
           titre="Derniers résultats"
           action={
-            <Pressable onPress={() => router.push({ pathname: "/calendrier", params: { filtre: "match" } })} hitSlop={10}>
+            <Pressable
+              onPress={() => router.push({ pathname: "/calendrier", params: { filtre: "match" } })}
+              hitSlop={10}
+              accessibilityRole="link"
+              accessibilityLabel="Voir tous les résultats"
+            >
               <Text style={s.lien}>Tout voir</Text>
             </Pressable>
           }

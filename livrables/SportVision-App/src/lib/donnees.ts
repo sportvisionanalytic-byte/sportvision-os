@@ -23,6 +23,41 @@ export class ErreurChargement extends Error {
   }
 }
 
+/**
+ * La session n'est plus valable, et aucun rafraîchissement ne la sauvera.
+ *
+ * À ne pas confondre avec un jeton périmé, que supabase-js renouvelle tout seul. Ici, le jeton de
+ * rafraîchissement lui-même est refusé : mot de passe changé sur un autre appareil, compte
+ * supprimé, session révoquée par un administrateur.
+ *
+ * POURQUOI ÇA COMPTE. Sans ce traitement, toutes les requêtes répondent 401, chaque écran affiche
+ * « chargement impossible », et la personne est enfermée : l'application la croit connectée, donc
+ * elle ne propose jamais de se reconnecter. Le seul moyen d'en sortir était de désinstaller.
+ * Trouvé le 25/09 en auditant les cas d'erreur, pas par un utilisateur — ce qui vaut mieux.
+ */
+function estSessionPerdue(erreur: unknown): boolean {
+  const e = erreur as { code?: string; status?: number; message?: string } | null;
+  if (!e) return false;
+  if (e.status === 401) return true;
+  // PGRST301 : « JWT expired » côté PostgREST. Les deux formulations circulent selon la version.
+  if (e.code === "PGRST301" || e.code === "401") return true;
+  const m = (e.message ?? "").toLowerCase();
+  return m.includes("jwt expired") || m.includes("invalid refresh token")
+    || m.includes("refresh token not found");
+}
+
+/**
+ * Referme la session quand elle est définitivement perdue.
+ *
+ * On ne prévient pas par une alerte : la déconnexion suffit. Le garde de l'espace personnel voit
+ * la session disparaître et renvoie vers l'écran de connexion, ce qui est exactement ce qu'il
+ * faut faire — et c'est la seule chose qui débloque la personne.
+ */
+export async function refermerSiPerdue(erreur: unknown): Promise<void> {
+  if (!estSessionPerdue(erreur)) return;
+  try { await supabase.auth.signOut(); } catch { /* déjà fermée, tant mieux */ }
+}
+
 export type GenreEvenement = "match" | "entrainement" | "evenement" | "rendez_vous";
 
 export interface Evenement {
@@ -66,7 +101,11 @@ export async function lireEvenements(clubId: string): Promise<Evenement[]> {
 
   // Les deux sources doivent répondre. Si l'une refuse, on ne compose pas un calendrier à moitié
   // vrai : on le dit.
-  if (cal.error || matchs.error) throw new ErreurChargement(cal.error ?? matchs.error);
+  if (cal.error || matchs.error) {
+    const e = cal.error ?? matchs.error;
+    await refermerSiPerdue(e);
+    throw new ErreurChargement(e);
+  }
 
   const liste: Evenement[] = [];
 
@@ -224,7 +263,7 @@ export async function lireMatch(id: string): Promise<Evenement | null> {
     .select("id, team, opponent, match_date, kickoff_time, lieu, score, is_home, competition, opponent_club_slug")
     .eq("id", brut)
     .maybeSingle();
-  if (error) throw new ErreurChargement(error);
+  if (error) { await refermerSiPerdue(error); throw new ErreurChargement(error); }
   if (!data) return null;
 
   const domicile = data.is_home !== false;
@@ -273,7 +312,7 @@ export async function lireGaleries(
   const { data, error } = await supabase.rpc("media_album_list", {
     p_club_id: clubId, p_team_id: teamId, p_saison_id: saisonId,
   });
-  if (error) throw new ErreurChargement(error);
+  if (error) { await refermerSiPerdue(error); throw new ErreurChargement(error); }
   if (!Array.isArray(data)) return [];
 
   const galeries: Galerie[] = data.map((r: Record<string, unknown>) => ({
@@ -343,7 +382,7 @@ export async function lirePhotosDuJoueur(albumId: string, playerId: string): Pro
   const { data, error } = await supabase.rpc("media_photos_du_joueur", {
     p_album_id: albumId, p_player_id: playerId,
   });
-  if (error) throw new ErreurChargement(error);
+  if (error) { await refermerSiPerdue(error); throw new ErreurChargement(error); }
   if (!Array.isArray(data)) return [];
   return (data as { asset_id: string; preview_path: string | null; thumb_path: string | null }[])
     .map((r) => ({ id: r.asset_id, url: urlApercu((r.preview_path ?? r.thumb_path) ?? "") }))

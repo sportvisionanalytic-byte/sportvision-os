@@ -58,7 +58,7 @@ export default function FicheMatch() {
 
   return (
     <Ecran enCours={chargement} rafraichir={charger} teinte="bleu">
-      <Pressable onPress={() => router.back()} style={s.retour} hitSlop={10}>
+      <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Retour" style={s.retour} hitSlop={10}>
         <Ionicons name="chevron-back" size={18} color={C.texteDoux} />
         <Text style={s.retourTexte}>Calendrier</Text>
       </Pressable>
@@ -135,7 +135,7 @@ export default function FicheMatch() {
           ) : null}
 
           {passe ? (
-            <Pressable onPress={() => router.push("/photos")} style={({ pressed }) => [s.photos, pressed ? { opacity: 0.85 } : null]}>
+            <Pressable onPress={() => router.push("/photos")} accessibilityRole="button" accessibilityLabel="Voir les photos de ce match" style={({ pressed }) => [s.photos, pressed ? { opacity: 0.85 } : null]}>
               <View style={s.photosIcone}>
                 <Ionicons name="images" size={20} color={C.accentClair} />
               </View>

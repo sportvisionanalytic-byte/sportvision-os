@@ -40,6 +40,7 @@ export default function EspaceWeb() {
     <View style={{ flex: 1, backgroundColor: C.fond }}>
       <View style={[s.barre, { paddingTop: insets.top + 6 }]}>
         <Pressable
+          accessibilityRole="button" accessibilityLabel="Retour"
           onPress={() => vue.current?.reculer()}
           disabled={!peutReculer}
           hitSlop={10}
@@ -50,7 +51,7 @@ export default function EspaceWeb() {
 
         <Text style={s.titre} numberOfLines={1}>{TITRES[cle]}</Text>
 
-        <Pressable onPress={changerEspace} hitSlop={10} style={s.changer}>
+        <Pressable onPress={changerEspace} accessibilityRole="button" accessibilityLabel="Changer d'espace" hitSlop={10} style={s.changer}>
           <Ionicons name="swap-horizontal" size={15} color={C.accentClair} />
           <Text style={s.changerTexte}>Changer</Text>
         </Pressable>

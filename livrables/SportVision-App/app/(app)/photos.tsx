@@ -108,7 +108,7 @@ export default function Photos() {
           ] as const).map(([cle, libelle]) => {
             const actif = filtre === cle;
             return (
-              <Pressable key={cle} onPress={() => setFiltre(cle)} style={[s.filtre, actif && s.filtreActif]}>
+              <Pressable key={cle} onPress={() => setFiltre(cle)} accessibilityRole="button" accessibilityState={{ selected: actif }} accessibilityLabel={`Filtrer : ${libelle}`} style={[s.filtre, actif && s.filtreActif]}>
                 <Text style={[s.filtreTexte, actif && s.filtreTexteActif]} numberOfLines={1}>{libelle}</Text>
               </Pressable>
             );
@@ -189,6 +189,7 @@ export default function Photos() {
 
                 {g.ouverte ? (
                   <Pressable
+                    accessibilityRole="button" accessibilityLabel="Ouvrir la collection complète"
                     onPress={() => ouvrir(g)}
                     style={({ pressed }) => [s.action, s.actionPleine, pressed ? { opacity: 0.85 } : null]}
                   >
@@ -205,6 +206,7 @@ export default function Photos() {
                       L'accès à cette galerie est géré par votre club.
                     </Text>
                     <Pressable
+                      accessibilityRole="button" accessibilityLabel="Comprendre mon accès aux photos"
                       onPress={() => router.push("/aide-photos")}
                       style={({ pressed }) => [s.action, s.actionVide, pressed ? { opacity: 0.85 } : null]}
                     >
@@ -214,7 +216,13 @@ export default function Photos() {
                 )}
 
                 {g.videoUrl ? (
-                  <Pressable onPress={() => Linking.openURL(g.videoUrl!)} style={s.lienVideo} hitSlop={6}>
+                  <Pressable
+                    onPress={() => Linking.openURL(g.videoUrl!)}
+                    style={s.lienVideo}
+                    hitSlop={6}
+                    accessibilityRole="link"
+                    accessibilityLabel="Voir la vidéo du match"
+                  >
                     <Ionicons name="play-circle" size={16} color={C.accentClair} />
                     <Text style={s.lienVideoTexte}>Voir la vidéo du match</Text>
                   </Pressable>

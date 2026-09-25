@@ -70,6 +70,11 @@ export function Bouton({
     return (
       <Pressable
         onPress={inactif ? undefined : onPress}
+        accessibilityRole="button"
+        accessibilityLabel={titre}
+        // « busy » pendant le chargement, « disabled » quand le bouton ne repond pas : sans ca,
+        // la lecture vocale annonce un bouton actif qui ne fait rien, et on appuie dans le vide.
+        accessibilityState={{ disabled: inactif, busy: !!enCours }}
         style={({ pressed }) => [pressed && !inactif ? { opacity: 0.85 } : null, inactif ? { opacity: 0.45 } : null]}
       >
         <LinearGradient
@@ -86,6 +91,9 @@ export function Bouton({
   return (
     <Pressable
       onPress={inactif ? undefined : onPress}
+      accessibilityRole="button"
+      accessibilityLabel={titre}
+      accessibilityState={{ disabled: inactif, busy: !!enCours }}
       style={({ pressed }) => [
         s.bouton,
         discret ? s.boutonDiscret : s.boutonSecondaire,

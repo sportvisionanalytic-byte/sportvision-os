@@ -9,7 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "./supabase";
 import { useSession } from "./session";
 import type { Evenement } from "./donnees";
-import { ErreurChargement } from "./donnees";
+import { ErreurChargement, refermerSiPerdue } from "./donnees";
 import { EVENEMENTS_DEMO, MODE_DEMO } from "./demonstration";
 
 export interface Sportif {
@@ -58,7 +58,7 @@ export async function lireCalendrierFamille(): Promise<(Evenement & { sportif: s
     return EVENEMENTS_DEMO.map((e) => ({ ...e, sportif: "Lucas", sportifRef: "demo-joueur" }));
   }
   const { data, error } = await supabase.rpc("connect_list_calendar_for_athletes");
-  if (error) throw new ErreurChargement(error);
+  if (error) { await refermerSiPerdue(error); throw new ErreurChargement(error); }
   if (!Array.isArray(data)) return [];
   return data
     .filter((r: Record<string, unknown>) => !!r.event_date)

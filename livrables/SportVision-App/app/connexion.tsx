@@ -118,18 +118,18 @@ export default function Connexion() {
 
           <Bouton titre="Se connecter" onPress={connecter} enCours={enCours} />
 
-          <Pressable onPress={motDePasseOublie} style={s.lien} hitSlop={8}>
+          <Pressable onPress={motDePasseOublie} accessibilityRole="link" accessibilityLabel="Mot de passe oublié" style={s.lien} hitSlop={8}>
             <Text style={s.lienTexte}>Mot de passe oublié</Text>
           </Pressable>
         </View>
 
         <View style={s.pied}>
           <Text style={s.piedTexte}>Pas encore de compte ?</Text>
-          <Pressable onPress={() => router.push("/creer-compte")} hitSlop={8}>
+          <Pressable onPress={() => router.push("/creer-compte")} accessibilityRole="link" accessibilityLabel="Créer mon compte" hitSlop={8}>
             <Text style={s.lienTexte}>Créer mon compte</Text>
           </Pressable>
 
-          <Pressable onPress={changerEspace} hitSlop={8} style={{ paddingTop: E.m }}>
+          <Pressable onPress={changerEspace} accessibilityRole="link" accessibilityLabel="Changer d'espace, si vous êtes d'un club ou de l'équipe SportVision" hitSlop={8} style={{ paddingTop: E.m }}>
             <Text style={s.piedTexte}>
               Vous êtes d'un club ou de l'équipe SportVision ? <Text style={s.lienTexte}>Changer d'espace</Text>
             </Text>

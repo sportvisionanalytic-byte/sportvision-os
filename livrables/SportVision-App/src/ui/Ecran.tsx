@@ -77,7 +77,7 @@ export function Probleme({ surReessayer }: { surReessayer?: () => void }) {
         l'application : votre session a peut-être expiré.
       </Text>
       {surReessayer ? (
-        <Pressable onPress={surReessayer} style={s.reessayer} hitSlop={8}>
+        <Pressable onPress={surReessayer} accessibilityRole="button" accessibilityLabel="Réessayer le chargement" style={s.reessayer} hitSlop={8}>
           <Text style={s.reessayerTexte}>Réessayer</Text>
         </Pressable>
       ) : null}

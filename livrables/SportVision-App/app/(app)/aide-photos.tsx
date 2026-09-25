@@ -45,7 +45,7 @@ export default function Acces() {
 
   return (
     <Ecran teinte="violet">
-      <Pressable onPress={() => router.back()} style={s.retour} hitSlop={10}>
+      <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Retour aux photos" style={s.retour} hitSlop={10}>
         <Ionicons name="chevron-back" size={18} color={C.texteDoux} />
         <Text style={s.retourTexte}>Photos</Text>
       </Pressable>

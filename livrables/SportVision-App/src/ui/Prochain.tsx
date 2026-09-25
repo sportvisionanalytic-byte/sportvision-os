@@ -41,7 +41,12 @@ export function Prochain({
   const adversaire = e.adversaire ?? (match ? e.titre : null);
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [pressed && onPress ? { opacity: 0.9 } : null]}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={onPress ? `Voir le match contre ${e.adversaire ?? "l'adversaire"}` : undefined}
+      style={({ pressed }) => [pressed && onPress ? { opacity: 0.9 } : null]}
+    >
       {/* Le degrade de marque sert de liseré, jamais de fond : le texte doit rester lisible. */}
       <LinearGradient
         colors={DEGRADE_DOUX as unknown as [string, string, string]}

@@ -59,7 +59,7 @@ export default function Galerie() {
   return (
     <>
       <Ecran enCours={chargement} rafraichir={charger}>
-        <Pressable onPress={() => router.back()} style={s.retour} hitSlop={8}>
+        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Retour aux photos" style={s.retour} hitSlop={8}>
           <Ionicons name="chevron-back" size={18} color={C.texteDoux} />
           <Text style={s.retourTexte}>Photos</Text>
         </Pressable>
@@ -85,7 +85,7 @@ export default function Galerie() {
         ) : visibles.length ? (
           <View style={s.grille}>
             {visibles.map((p) => (
-              <Pressable key={p.id} onPress={() => setAgrandie(p)}>
+              <Pressable key={p.id} onPress={() => setAgrandie(p)} accessibilityRole="imagebutton" accessibilityLabel="Agrandir cette photo">
                 <Image
                   source={{ uri: p.url }}
                   style={{ width: largeur, height: largeur, borderRadius: R.s, backgroundColor: C.surface }}
@@ -123,6 +123,7 @@ export default function Galerie() {
 
         {deverrouillee ? (
           <Pressable
+            accessibilityRole="button" accessibilityLabel="Ouvrir la collection complète"
             onPress={ouvrirCollection}
             style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
           >
@@ -136,6 +137,7 @@ export default function Galerie() {
       <Modal visible={!!agrandie} transparent animationType="fade" onRequestClose={() => setAgrandie(null)}>
         <View style={s.plein}>
           <Pressable
+            accessibilityRole="button" accessibilityLabel="Fermer la photo"
             onPress={() => setAgrandie(null)}
             style={[s.fermer, { top: insets.top + E.s }]}
             hitSlop={12}
