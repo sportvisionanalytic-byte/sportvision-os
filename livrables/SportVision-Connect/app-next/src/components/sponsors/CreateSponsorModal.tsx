@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X, ImagePlus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useModalA11y } from "@/lib/useModalA11y";
@@ -17,6 +17,11 @@ export interface SponsorFormInput {
   montant?: number;
   dateDebut?: string;
   dateFin?: string;
+  /** L'adresse du logo deja enregistre, pour l'afficher a la modification. */
+  logoUrl?: string | null;
+  /** Le logo choisi, s'il y en a un. Envoye APRES la creation : le fichier est range sous
+   *  {club_id}/sponsor-{sponsor_id}, donc le sponsor doit exister pour porter son image. */
+  logo?: File;
 }
 
 interface CreateSponsorModalProps {
@@ -37,6 +42,8 @@ export function CreateSponsorModal({ onClose, onCreate, initial }: CreateSponsor
   const [montant, setMontant] = useState(initial?.montant != null ? String(initial.montant) : "");
   const [dateDebut, setDateDebut] = useState(initial?.dateDebut ?? "");
   const [dateFin, setDateFin] = useState(initial?.dateFin ?? "");
+  const [logo, setLogo] = useState<File | null>(null);
+  const [apercu, setApercu] = useState<string | null>(initial?.logoUrl ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,6 +62,7 @@ export function CreateSponsorModal({ onClose, onCreate, initial }: CreateSponsor
       montant: parsedMontant,
       dateDebut: dateDebut || undefined,
       dateFin: dateFin || undefined,
+      logo: logo ?? undefined,
     })
       .then(() => onClose())
       .catch((e: unknown) => {
@@ -79,6 +87,47 @@ export function CreateSponsorModal({ onClose, onCreate, initial }: CreateSponsor
         <label className="flex flex-col gap-1.5">
           <span className="text-[12.5px] font-bold text-text-soft">Nom du sponsor</span>
           <input value={name} onChange={(e) => setName(e.target.value)} className={fieldClass} placeholder="Boulangerie Martin" />
+        </label>
+
+        {/* LE LOGO (25/09/2026, demande de Fouka). La fonction de televersement existait depuis le
+            03/09 mais n'etait branchee que dans le parcours d'accueil initial : un club qui
+            ajoutait un sponsor plus tard, depuis cette page, ne pouvait pas mettre son logo. Or
+            c'est precisement ce qu'un sponsor demande a voir, et c'est ce qui apparait sur les
+            visuels du Studio. */}
+        <label className="flex cursor-pointer items-center gap-3 rounded-sv border border-border bg-surface-sunken p-3">
+          {apercu ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={apercu} alt="" className="h-12 w-12 rounded-sv object-contain" />
+          ) : (
+            <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-surface text-text-faint">
+              <ImagePlus className="h-5 w-5" aria-hidden />
+            </span>
+          )}
+          <span className="flex flex-col gap-0.5">
+            <span className="text-[12.5px] font-bold text-text-soft">
+              {apercu ? "Changer le logo" : "Logo du sponsor (optionnel)"}
+            </span>
+            <span className="text-[11.5px] text-text-faint">PNG, JPEG, WebP ou SVG — 2 Mo maximum</span>
+          </span>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            className="sr-only"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              // Les deux memes limites que le serveur, verifiees ici pour le dire tout de suite :
+              // laisser quelqu'un remplir tout le formulaire avant de refuser son fichier, c'est
+              // lui faire perdre son travail.
+              if (f.size > 2 * 1024 * 1024) {
+                setError("Logo trop volumineux : 2 Mo maximum.");
+                return;
+              }
+              setError(null);
+              setLogo(f);
+              setApercu(URL.createObjectURL(f));
+            }}
+          />
         </label>
 
         <label className="flex flex-col gap-1.5">

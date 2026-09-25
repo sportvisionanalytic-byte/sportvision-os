@@ -15,6 +15,7 @@ import { SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/compone
 import { visibilityGauge } from "@/lib/mock/sponsors";
 import {
   createClubSponsor,
+  uploadSponsorLogo,
   fetchClubSponsors,
   fetchSponsorOperationsForPartner,
   fetchSponsorPublicationsForPartner,
@@ -126,7 +127,26 @@ export default function SponsorsPage() {
       {showCreate && (
         <CreateSponsorModal
           onClose={() => setShowCreate(false)}
-          onCreate={(input) => createClubSponsor(createClient(), ctx.organization.id, input).then(() => loadSponsors())}
+          onCreate={async (input) => {
+            const client = createClient();
+            const { id } = await createClubSponsor(client, ctx.organization.id, input);
+            // Le logo part APRES la creation : le fichier est range sous
+            // {club_id}/sponsor-{sponsor_id}, donc le sponsor doit exister pour porter son image.
+            // Un echec ici ne doit PAS annuler le sponsor, qui est deja cree et valide : on le
+            // dit, et le club pourra rattacher le logo plus tard depuis la fiche.
+            if (input.logo) {
+              try {
+                await uploadSponsorLogo(client, ctx.organization.id, id, input.logo);
+              } catch (e) {
+                await loadSponsors();
+                throw new Error(
+                  "Le sponsor est enregistré, mais son logo n'a pas pu être envoyé : "
+                  + (e instanceof Error ? e.message : "réessayez depuis sa fiche."),
+                );
+              }
+            }
+            await loadSponsors();
+          }}
         />
       )}
 
