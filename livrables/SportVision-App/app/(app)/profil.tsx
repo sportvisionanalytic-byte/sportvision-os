@@ -195,7 +195,7 @@ export default function Profil() {
           <Ligne
             icone="person-circle-outline" titre="Mes informations"
             detail="Nom, adresse e-mail, mot de passe"
-            onPress={() => Linking.openURL("https://connect.sportvision-an.fr/profil")}
+            onPress={() => router.push("/connect/profil")}
           />
           <Ligne
             icone="trash-outline"
@@ -245,32 +245,24 @@ export default function Profil() {
         </View>
       </Section>
 
-      <Section titre="Mon argent">
+      {/* « Mon univers », comme dans le menu du site : tout ce qui rattache la personne a un
+          club, a une equipe, et a ceux qui lui ecrivent. */}
+      <Section titre="Mon univers">
         <View style={s.groupe}>
           <Ligne
-            icone="receipt-outline" titre="Mes commandes"
-            detail="Ce que vous avez acheté, et vos reçus"
-            onPress={() => router.push("/connect/commandes")}
-          />
-          <Ligne
-            icone="document-text-outline" titre="Mes factures"
-            detail="À télécharger, à tout moment"
-            onPress={() => router.push("/connect/factures")}
-          />
-          <Ligne
-            icone="people-outline" titre="Cotisations de groupe"
-            detail="Participer à une collecte, ou en lancer une"
-            onPress={() => router.push("/connect/cotisations")}
-          />
-        </View>
-      </Section>
-
-      <Section titre="Mes rattachements">
-        <View style={s.groupe}>
-          <Ligne
-            icone="link-outline" titre={parent ? "Mes enfants et leurs clubs" : "Mes clubs et mes équipes"}
+            icone="link-outline" titre="Mon affiliation"
             detail="Rejoindre un club, suivre une demande en cours"
             onPress={() => router.push("/connect/affiliations")}
+          />
+          <Ligne
+            icone="people-circle-outline" titre="Mes équipes"
+            detail="Les groupes que vous avez rejoints ou créés"
+            onPress={() => router.push("/connect/equipes")}
+          />
+          <Ligne
+            icone="chatbubbles-outline" titre="Messages"
+            detail="Vos échanges avec SportVision et votre club"
+            onPress={() => router.push("/connect/messages")}
           />
         </View>
       </Section>

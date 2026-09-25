@@ -26,14 +26,31 @@ import { supabase } from "./supabase";
 const CONNECT = "https://connect.sportvision-an.fr";
 
 export type PageConnect =
-  | "commandes" | "factures" | "cotisations" | "affiliations" | "reconnaissance" | "aide";
+  | "commandes" | "factures" | "cotisations" | "affiliations" | "reconnaissance" | "aide"
+  | "contenus" | "galeries" | "equipes" | "messages" | "prestations" | "profil";
 
-/** Le chemin réel dans Connect, et le titre affiché dans la barre de l'application. */
+/**
+ * Le chemin réel dans Connect, et le titre affiché dans la barre de l'application.
+ *
+ * Les libellés sont ceux du menu de Connect, mot pour mot. Une famille qui a commencé sur le
+ * site et continue dans l'application doit retrouver les mêmes noms : « Paiement collectif »
+ * dans un endroit et « Cotisations » dans l'autre, c'est déjà deux produits dans sa tête.
+ */
 export const PAGES: Record<PageConnect, { chemin: string; titre: string }> = {
+  // Médias
+  contenus:       { chemin: "/contenus",       titre: "Mes contenus" },
+  galeries:       { chemin: "/galeries",       titre: "Mes galeries" },
+  // Mon univers
+  affiliations:   { chemin: "/affiliations",   titre: "Mon affiliation" },
+  equipes:        { chemin: "/equipes",        titre: "Mes équipes" },
+  messages:       { chemin: "/messages",       titre: "Messages" },
+  // Services
+  prestations:    { chemin: "/prestations",    titre: "Prestations" },
+  cotisations:    { chemin: "/cotisations",    titre: "Paiement collectif" },
   commandes:      { chemin: "/commandes",      titre: "Mes commandes" },
-  factures:       { chemin: "/factures",       titre: "Mes factures" },
-  cotisations:    { chemin: "/cotisations",    titre: "Cotisations" },
-  affiliations:   { chemin: "/affiliations",   titre: "Mes rattachements" },
+  factures:       { chemin: "/factures",       titre: "Factures et paiements" },
+  // Mon compte
+  profil:         { chemin: "/profil",         titre: "Mon profil" },
   reconnaissance: { chemin: "/reconnaissance", titre: "Me reconnaître" },
   aide:           { chemin: "/aide",           titre: "Aide" },
 };

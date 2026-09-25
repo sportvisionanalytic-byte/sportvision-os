@@ -1,7 +1,16 @@
-// Les onglets de l'espace personnel (22/09/2026).
+// Les onglets de l'espace personnel (25/09/2026).
 //
-// Quatre, pas plus : au-dela, sur un telephone, les libelles se coupent et l'onglet actif devient
-// difficile a lire. Les entrees rares (reglages, aide) vivent dans l'onglet Profil.
+// CINQ, ET PAS SIX. Au-dela, sur un telephone, les libelles se coupent et l'onglet actif devient
+// difficile a lire. Les entrees rares vivent dans l'onglet Profil.
+//
+// Pourquoi cinq et non quatre (25/09) : l'application couvrait six ecrans quand le site en a
+// vingt-sept. Une famille qui achetait un Pass Photo ne retrouvait pas son recu, un joueur ne
+// pouvait pas demander une prestation. L'onglet Services repare ca.
+//
+// UN ECART ASSUME AVEC LE SITE. Le menu de Connect range le calendrier sous « Mon univers ».
+// Ici il garde son onglet : c'est ce qu'un parent ouvre chaque semaine, et l'enterrer dans un
+// sous-menu ferait chuter son usage. Affiliation, equipes et messages, eux, rejoignent Profil,
+// qui est deja organise en sections.
 import React from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Redirect, Tabs } from "expo-router";
@@ -70,6 +79,13 @@ export default function OngletsEspace() {
         options={{
           title: parent ? "Ses photos" : "Mes photos",
           tabBarIcon: ({ color, size }) => <Ionicons name="images" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="services"
+        options={{
+          title: "Services",
+          tabBarIcon: ({ color, size }) => <Ionicons name="pricetags" color={color} size={size} />,
         }}
       />
       {/* La galerie ouverte n'est pas un onglet : elle s'ouvre depuis « Mes photos » et garde la
