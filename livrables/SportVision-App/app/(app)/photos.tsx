@@ -140,7 +140,13 @@ export default function Photos() {
               ].filter(Boolean).join(", ")}
               onPress={playerId ? () => router.push({
                 pathname: "/galerie/[id]",
-                params: { id: g.id, titre: g.titre, joueur: playerId, ouverte: g.ouverte ? "1" : "0" },
+                params: {
+                  id: g.id, titre: g.titre, joueur: playerId, ouverte: g.ouverte ? "1" : "0",
+                  // Le club sert a retrouver le Pass vendu par CE club, et `pourEnfant` dit au
+                  // serveur pour qui l'acces s'ouvre : un parent achete au nom de son enfant, et
+                  // cette distinction se decide ici, pas cote serveur, qui la revérifie ensuite.
+                  club: clubId ?? "", pourEnfant: parent ? "1" : "0",
+                },
               }) : undefined}
               style={({ pressed }) => [s.carte, pressed && playerId ? { opacity: 0.9 } : null]}
             >

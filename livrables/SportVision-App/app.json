@@ -55,7 +55,8 @@
           "backgroundColor": "#070B18"
         }
       ],
-      "./plugins/signature-android"
+      "./plugins/signature-android",
+      "expo-iap"
     ],
     "experiments": {
       "typedRoutes": true

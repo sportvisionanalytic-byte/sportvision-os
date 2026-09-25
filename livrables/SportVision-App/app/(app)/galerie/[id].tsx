@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { lirePhotosDuJoueur, ouvrirGalerie, type PhotoDuJoueur } from "../../../src/lib/donnees";
 import { CONNECT } from "../../../src/lib/connect";
+import { acheterPass, passProposable, reprendreAchatsEnAttente, type PassProposable } from "../../../src/lib/achat-pass";
 import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
 import { C, E, R } from "../../../src/theme/couleurs";
@@ -20,8 +21,9 @@ import { C, E, R } from "../../../src/theme/couleurs";
 const APERCU_MAX = 6;
 
 export default function Galerie() {
-  const { id, titre, joueur, ouverte } = useLocalSearchParams<{
+  const { id, titre, joueur, ouverte, club, pourEnfant } = useLocalSearchParams<{
     id: string; titre?: string; joueur?: string; ouverte?: string;
+    club?: string; pourEnfant?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -33,6 +35,9 @@ export default function Galerie() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [ouverture, setOuverture] = useState(false);
   const [panne, setPanne] = useState(false);
+  const [pass, setPass] = useState<PassProposable | null>(null);
+  const [achatEnCours, setAchatEnCours] = useState(false);
+  const [ouvertMaintenant, setOuvertMaintenant] = useState(false);
 
   const charger = useCallback(async () => {
     if (!id || !joueur) { setChargement(false); return; }
@@ -45,6 +50,37 @@ export default function Galerie() {
 
   useEffect(() => { charger(); }, [charger]);
 
+  // Deux choses au chargement, et dans cet ordre : rattraper un achat deja paye dont l'acces ne
+  // s'est jamais ouvert (reseau coupe au mauvais moment), PUIS seulement regarder s'il reste
+  // quelque chose a vendre. L'inverse proposerait d'acheter ce qui est deja paye.
+  const enfant = pourEnfant === "1" ? joueur : undefined;
+  useEffect(() => {
+    let vivant = true;
+    (async () => {
+      if (!club || !joueur) return;
+      if (await reprendreAchatsEnAttente(club, joueur, enfant)) {
+        if (!vivant) return;
+        setOuvertMaintenant(true);
+        charger();
+        return;
+      }
+      const p = await passProposable(club, joueur);
+      if (vivant) setPass(p);
+    })();
+    return () => { vivant = false; };
+  }, [club, joueur, enfant, charger]);
+
+  async function lancerAchat() {
+    if (!pass) return;
+    setAchatEnCours(true); setErreur(null);
+    const r = await acheterPass(pass, enfant);
+    setAchatEnCours(false);
+    if (r.etat === "ouvert") { setPass(null); setOuvertMaintenant(true); charger(); }
+    else if (r.etat === "erreur") setErreur(r.message);
+    // « annule » : la personne a ferme la feuille de paiement d'Apple. Elle sait ce qu'elle a
+    // fait, lui afficher un message serait du bruit.
+  }
+
   async function ouvrirCollection() {
     setOuverture(true); setErreur(null);
     const lien = await ouvrirGalerie(id);
@@ -53,7 +89,7 @@ export default function Galerie() {
     Linking.openURL(lien);
   }
 
-  const visibles = deverrouillee ? photos : photos.slice(0, APERCU_MAX);
+  const visibles = deverrouillee || ouvertMaintenant ? photos : photos.slice(0, APERCU_MAX);
   const restantes = photos.length - visibles.length;
   const largeur = (Dimensions.get("window").width - E.l * 2 - E.s * 2) / 3;
 
@@ -103,34 +139,43 @@ export default function Galerie() {
           />
         )}
 
-        {/* CE QUE CE BLOC DIT, ET CE QU'IL NE DIT PAS (25/09/2026).
-            Il annonce ce qui existe et qui gere l'acces. Il ne nomme aucun produit payant, ne
-            donne aucun prix, et ne propose aucun lien : la regle 3.1.1 d'Apple interdit toute
-            incitation dirigeant vers un achat hors de leur systeme de paiement, et ce qu'ils
-            regardent, c'est l'intention du bouton, pas seulement sa destination.
-            Decrire le fonctionnement du service est permis ; inviter a l'achat ne l'est pas.
-            Une famille qui lit ca appelle son coach, qui lui envoie le lien — exactement comme
-            les ventes se font deja aujourd'hui. Rien n'est perdu, seul le raccourci manque. */}
+        {/* CE QUE CE BLOC DIT (revu le 25/09/2026, decision de Fouka de vendre via Apple).
+            Il annonce ce qui manque et comment l'obtenir. Il ne nomme toujours AUCUN prix :
+            celui qui compte est celui d'Apple, affiche sur le bouton juste en dessous, et deux
+            prix a l'ecran dont un seul sera debite est une reclamation qui arrive.
+            La mention du club reste, parce qu'elle est vraie : beaucoup de familles paieront au
+            club en especes ou par virement, et leur acces s'ouvrira sans passer par ici. */}
         {restantes > 0 ? (
           <View style={s.bloque}>
             <Ionicons name="lock-closed" size={16} color={C.alerte} />
             <Text style={s.bloqueTexte}>
               {restantes === 1 ? "1 autre photo de vous" : `${restantes} autres photos de vous`} dans
-              cette galerie. L'accès complet est géré par votre club : il s'ouvre dès que votre
-              accès est actif.
+              cette galerie. Votre accès s'ouvre ici, ou auprès de votre club si vous préférez
+              régler avec lui.
             </Text>
           </View>
         ) : null}
 
-        {/* LE RACCOURCI VERS CONNECT N'EXISTE QUE SUR ANDROID, ET C'EST UNE CONTRAINTE, PAS UN
-            CHOIX (25/09/2026, demande de Fouka : « le pass doit être verrouillé et ça doit
-            rediriger vers Connect web »).
-            Google autorise un lien de paiement externe. Apple l'interdit — règle 3.1.1 : aucune
-            incitation, dans l'app, à acheter hors de leur système. Ils jugent l'INTENTION du
-            bouton, pas seulement sa destination. L'app est déjà sous le coup d'un refus en
-            examen ; ajouter ce bouton sur iOS, c'est un second refus quasi certain.
-            Sur iPhone, le bloc ci-dessus décrit donc le fonctionnement sans inviter à payer, et
-            la famille passe par son coach ou par le lien reçu — comme les ventes se font déjà. */}
+        {/* DEUX BOUTONS DIFFERENTS, PARCE QUE LES DEUX MAGASINS N'ONT PAS LES MEMES REGLES.
+            iOS : l'achat se fait DANS l'app, par StoreKit. Le prix affiche est celui d'Apple,
+            jamais celui du club — c'est Apple qui debite, et son palier ne tombe pas toujours
+            sur le tarif du club. Le bouton n'apparait que si le Pass est reellement achetable
+            (produit declare en base ET connu du magasin, voir passProposable).
+            Android : Google autorise le lien de paiement externe, et Stripe coute moins cher que
+            les 15 % d'Apple. On garde donc le renvoi vers Connect, inchange. */}
+        {restantes > 0 && Platform.OS === "ios" && pass ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Débloquer le Pass Photo pour ${pass.prixApple}`}
+            disabled={achatEnCours}
+            onPress={lancerAchat}
+            style={({ pressed }) => [s.action, pressed || achatEnCours ? { opacity: 0.85 } : null]}
+          >
+            {achatEnCours ? <ActivityIndicator color="#fff" />
+              : <Text style={s.actionTexte}>Débloquer mon Pass Photo · {pass.prixApple}</Text>}
+          </Pressable>
+        ) : null}
+
         {restantes > 0 && Platform.OS === "android" ? (
           <Pressable
             accessibilityRole="button" accessibilityLabel="Ouvrir cette galerie dans Connect"
@@ -141,7 +186,7 @@ export default function Galerie() {
           </Pressable>
         ) : null}
 
-        {deverrouillee ? (
+        {deverrouillee || ouvertMaintenant ? (
           <Pressable
             accessibilityRole="button" accessibilityLabel="Ouvrir la collection complète"
             onPress={ouvrirCollection}
