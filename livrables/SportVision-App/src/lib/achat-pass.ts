@@ -34,7 +34,6 @@
 // `appAccountToken` pose ci-dessous est ce qui empeche qu'un numero de transaction intercepte
 // ouvre un acces sur un autre compte : Apple nous le rend, le serveur le compare a l'appelant.
 import { Platform } from "react-native";
-import * as IAP from "expo-iap";
 import { supabase } from "./supabase";
 import { SUPABASE_URL } from "./config";
 
@@ -62,13 +61,39 @@ export interface PassProposable {
   skuMagasin: string;
 }
 
+// LA BIBLIOTHEQUE EST CHARGEE A LA DEMANDE, ET C'EST UN GARDE-FOU (26/09/2026).
+//
+// `runtimeVersion` suit la politique `appVersion`, donc les builds 6, 7 et 8 partagent tous le
+// meme runtime « 1.0.0 ». Une mise a jour a distance publiee aujourd'hui atteindrait donc AUSSI le
+// build 6, qui n'embarque pas le module natif d'achat : un import statique de expo-iap y serait
+// evalue au chargement de ce fichier, avant tout garde-fou, et l'ecran des galeries tomberait chez
+// quelqu'un qui n'a rien demande.
+//
+// En chargeant a la demande, un build sans le module natif ne paie rien : l'import echoue, on rend
+// `null`, aucun bouton ne s'affiche, et le reste de l'ecran fonctionne normalement. C'est le
+// comportement qu'on veut de toute facon quand le magasin est injoignable.
+type ModuleIAP = typeof import("expo-iap");
+let _iap: ModuleIAP | null = null;
+
+async function iap(): Promise<ModuleIAP | null> {
+  if (_iap) return _iap;
+  try {
+    _iap = await import("expo-iap");
+    return _iap;
+  } catch {
+    return null;
+  }
+}
+
 let connecte = false;
 
 /** Ouvrir la liaison au magasin, une seule fois. Sans elle, toute requete produit echoue. */
 async function connexion(): Promise<boolean> {
   if (connecte) return true;
+  const m = await iap();
+  if (!m) return false;
   try {
-    await IAP.initConnection();
+    await m.initConnection();
     connecte = true;
     return true;
   } catch {
@@ -107,7 +132,7 @@ export async function passProposable(
   // dans App Store Connect, il ne rend rien, et l'app n'affiche rien.
   let produits: { id?: string; displayPrice?: string; title?: string }[] = [];
   try {
-    produits = (await IAP.fetchProducts({ skus: [sku], type: "in-app" })) ?? [];
+    produits = (await (await iap())!.fetchProducts({ skus: [sku], type: "in-app" })) ?? [];
   } catch {
     return null;
   }
@@ -147,8 +172,16 @@ export async function acheterPass(
   if (!utilisateur || !jeton) return { etat: "erreur", message: "Votre session a expiré. Reconnectez-vous." };
 
   if (!(await connexion())) {
-    return { etat: "erreur", message: "L'App Store est injoignable. Réessayez dans un instant." };
+    return {
+      etat: "erreur",
+      message: pass.plateforme === "apple"
+        ? "L'App Store est injoignable. Réessayez dans un instant."
+        : "Google Play est injoignable. Réessayez dans un instant.",
+    };
   }
+  // `connexion()` a reussi, donc le module est charge : le `!` est sur, et le seul autre chemin
+  // (module absent) est deja sorti juste au-dessus.
+  const IAP = (await iap())!;
 
   return await new Promise<Resultat>((resolve) => {
     let fini = false;
@@ -244,7 +277,8 @@ export async function reprendreAchatsEnAttente(
   if (!m) return false;
   try {
     if (!(await connexion())) return false;
-    const enAttente = (await IAP.getAvailablePurchases()) ?? [];
+    const m2 = (await iap())!;
+    const enAttente = (await m2.getAvailablePurchases()) ?? [];
     if (!enAttente.length) return false;
 
     const { data: session } = await supabase.auth.getSession();
@@ -266,7 +300,7 @@ export async function reprendreAchatsEnAttente(
       if (sku !== attendu || !a.purchaseToken) continue;
       const ok = await livrer(m, a.purchaseToken, p.product_id, beneficiairePlayerId, jeton);
       if (ok.ok) {
-        await IAP.finishTransaction({ purchase: achat, isConsumable: true });
+        await m2.finishTransaction({ purchase: achat, isConsumable: true });
         repris = true;
       }
     }
