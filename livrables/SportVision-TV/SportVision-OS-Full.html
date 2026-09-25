@@ -38323,16 +38323,15 @@ const VIEW_CTA={
   // ligne 63). Le bouton "+ Inviter un collaborateur" échouait donc à 100%
   // pour le rôle prod après avoir fait remplir tout le formulaire.
   'prod.jourj':{t:'⚠ Déclarer incident',fn:'modalSignalerIncident'},
-  // 25/09/2026 — Fouka : « retire les frais remboursables, c'est moi qui dois faire le calcul a
-  // la fin, dans les finances ». Le bouton de declaration disparait donc de l'ecran de la
-  // Production, et son entree du menu mobile avec. L'ECRAN ET LES DONNEES RESTENT : quatre
-  // declarations de kilometrage attendent un reglement (114,73 EUR au 25/09), et les faire
-  // disparaitre de la vue reviendrait a effacer une dette sans la payer.
+  // 25/09/2026 — J'AI RETIRE CE BOUTON PAR ERREUR, ET JE LE REMETS LE MEME JOUR. J'avais lu
+  // « retire les frais remboursables » comme « retire la saisie ». Fouka voulait l'inverse :
+  // « lui il doit juste mettre ce qu'il depense ou les kilometres, c'est moi apres je rajoute ou
+  // non ». L'operateur declare, l'Admin decide ce qu'il rembourse.
   //
-  // Les frais n'entraient deja dans aucun total automatique : mission_net_a_payer ne compte que
-  // la remuneration moins les penalites. Ce qui change, c'est qu'on cesse de DEMANDER a
-  // l'operateur de les saisir.
-  // 'prod.frais' : action de declaration retiree.
+  // Ce qui reste vrai, et qui suffisait deja : les frais n'entrent dans AUCUN total automatique.
+  // mission_net_a_payer ne compte que la remuneration moins les penalites. Rien n'est rembourse
+  // sans une decision humaine — il n'y avait donc rien a retirer.
+  'prod.frais':{t:'+ Déclarer frais',fn:'modalDeclarerFrais'},
   'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.cal':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.planningmensuel':{t:'+ Présence',fn:'modalNouvellePresence'},
@@ -41425,7 +41424,7 @@ const MOB_MORE_ITEMS={
   // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
   // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
   // (jourj/planning/brief/incidents/media/rem/frais) qui n'ont plus de case dans NAV.prod.
-  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Galeries photo',ic:'🎬',sub:'Photos, offres et ventes'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
+  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Galeries photo',ic:'🎬',sub:'Photos, offres et ventes'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   // 29/08 (refonte CM) : aligné sur NAV.cm refondue — demandes/briefs sortent (déjà
