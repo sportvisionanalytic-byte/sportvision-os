@@ -136,3 +136,16 @@ body {
     font-size: 16px !important;
   }
 }
+
+/* ── Ouvert depuis l'application mobile (25/09/2026) ─────────────────────────────────────────
+   Meme mecanique que sur Connect. La marque data-app est posee sur <html> par le layout racine,
+   depuis le cookie sv_app que /auth/app depose quand la session vient de l'application native.
+
+   Sans elle, Club+ arrive dans la fenetre avec sa barre laterale et son en-tete par-dessus la
+   barre d'onglets de l'application : deux navigations empilees. Le contenu, lui, ne bouge pas —
+   seules les marges reservees aux barres disparaissent, sinon la page garderait un vide. */
+html[data-app="1"] .sv-decor { display: none !important; }
+/* Un conteneur en « contents » n'a pas de boite a lui : on masque aussi ses enfants directs,
+   sinon la barre laterale resterait visible a l'interieur. */
+html[data-app="1"] .sv-decor > * { display: none !important; }
+html[data-app="1"] main { padding-top: 0 !important; padding-bottom: 0 !important; }
