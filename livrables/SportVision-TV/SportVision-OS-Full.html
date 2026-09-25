@@ -16310,7 +16310,7 @@ function renderProdRemList(){
       // son libelle et peut etre passee a « paye ». On retire l'etape du chemin, on n'efface pas
       // le passe — une ligne dont le statut n'a plus d'action serait une impasse.
       const actions=sp==='en_attente'||!sp
-        ?`<button onclick="majStatutPaiement('${r.id}','validé')" style="padding:3px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✓ Valider</button>`
+        ?`<button onclick="majStatutPaiement('${r.id}','validé')" title="Valide le travail de l'opérateur — il est prévenu et reçoit ses XP — et marque la rémunération à payer." style="padding:3px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✓ Valider la prestation</button>`
         :(sp==='validé'||sp==='transmis_compta')
         ?`<button onclick="majStatutPaiement('${r.id}','payé')" style="padding:3px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">✓ Marquer payé</button>`
         :'—';
@@ -16412,13 +16412,36 @@ async function rembourserFrais(id){
 
 async function majStatutPaiement(id,statut){
   try{
+    // ── « J'AI VALIDE LA LIVRAISON, MAIS CA N'A RIEN MIS » (Fouka, 25/09/2026) ──────────────
+    //
+    // Il avait cliqué « Valider » ici, sur l'écran Rémunérations. Ce bouton ne changeait qu'un
+    // statut de PAIEMENT. La validation du TRAVAIL — celle qui prévient l'opérateur, crédite ses
+    // XP et trace la décision — vit sur l'écran de la prestation, et personne ne le devine.
+    // Mesuré sur ses trois missions : travail_valide vide, zéro notification envoyée, alors que
+    // pour lui la prestation était validée depuis des jours.
+    //
+    // Deux boutons nommés « Valider » sur deux écrans, pour deux choses différentes : le defaut
+    // n'est pas qu'il se soit trompé, c'est qu'on lui ait demandé de deviner.
+    //
+    // Valider la rémunération vaut donc désormais validation du travail. L'inverse n'est pas
+    // vrai : valider le travail ne déclenche pas le paiement, qui reste une décision à part.
+    if(statut==='validé'){
+      try{
+        const pe=await sbFetch('prestations_equipe?select=travail_valide,collaborateur_id&id=eq.'+id);
+        const aff=pe?.[0];
+        if(aff && aff.travail_valide!==true && aff.collaborateur_id!==S.uid){
+          await sbFetch('rpc/mission_valider_travail',{method:'POST',
+            body:{p_affectation_id:id,p_valide:true,p_motif:null}});
+        }
+      }catch(e){/* le paiement ne doit pas echouer parce que la notification a echoue */}
+    }
     const body={statut_paiement:statut};
     if(statut==='payé')body.date_paiement=ymdLocal();
     const r=await sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body});
     if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
     if(Array.isArray(r)&&!r.length){toast('Rien n\'a été enregistré : cette rémunération n\'est pas modifiable depuis votre compte.','er');return;}
     if(statut==='payé')logFinancialAudit('paiement','prestations_equipe',id,null,r?.[0]?.remuneration,{statut_paiement:statut});
-    const labels={validé:'Rémunération validée — à virer en fin de mois.',
+    const labels={validé:'Prestation validée. L\'opérateur est prévenu, sa rémunération est à virer en fin de mois.',
                   transmis_compta:'Transmis à la comptabilité.',
                   payé:'Paiement enregistré.'};
     toast(labels[statut]||'Statut mis à jour.','ok');
