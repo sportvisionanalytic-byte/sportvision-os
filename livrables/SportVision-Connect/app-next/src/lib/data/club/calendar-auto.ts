@@ -221,7 +221,19 @@ export async function fetchDueCalendarSources(supabase: SupabaseClient): Promise
     .from("club_calendar_sources")
     .select("club_id, saison_id, provider, source_url, clubs(nom)")
     .eq("is_enabled", true)
-    .not("source_url", "is", null);
+    .not("source_url", "is", null)
+    // SPORTCORICO EST TRAITÉ AILLEURS, et il faut le dire ici (25/09/2026).
+    //
+    // Deux sources SPORTCORICO actives synchronisent tous les matins par l'edge function
+    // federation-sync-matchs, qui parle son API et écrit le même journal. Elles remontaient
+    // pourtant ici aussi : jusqu'à présent sans dégât visible, parce que le lecteur d'ICS
+    // appliqué à une réponse JSON ne rendait rien et n'écrivait rien. Un silence, pas une
+    // réussite.
+    //
+    // Depuis que ce moteur route vers le lecteur de chaque source, il aurait dit « aucun
+    // lecteur pour SPORTCORICO » et marqué en échec, chaque nuit, deux sources qui marchent.
+    // Une alerte fausse use plus vite la confiance qu'un silence.
+    .neq("provider", "SPORTCORICO");
   if (error) throw error;
 
   return ((data ?? []) as unknown as {
