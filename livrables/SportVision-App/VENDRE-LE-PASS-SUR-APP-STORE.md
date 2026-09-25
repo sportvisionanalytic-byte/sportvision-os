@@ -16,6 +16,33 @@ donc c'est toi.
 | Lien Stripe ou QR code | toi, via Stripe | ~38,60 € (1,4 % + 0,25 €) | Connect web, Android, QR, WhatsApp du club |
 | Espèces ou virement au club | toi, directement | 39,90 € | Onglet « Accès payés au club » dans l'OS |
 
+### Une nuance sur Google Play que j'avais annoncée trop vite
+
+J'ai écrit plus tôt que « Google autorise un lien de paiement externe ». C'est trop affirmatif.
+
+La politique Google Play exige elle aussi son propre système de facturation pour le contenu
+numérique consommé dans l'app. Ce qui est vrai, c'est que dans l'Espace économique européen — donc
+en France — Google **doit** permettre les systèmes alternatifs et les offres externes depuis le
+DMA. Mais ce n'est pas un droit qu'on exerce en posant un lien : il faut s'inscrire au programme
+correspondant dans la Play Console, et Google prélève alors une commission réduite, pas zéro.
+
+**Ce que ça veut dire concrètement pour toi.** L'app n'est pas encore publiée sur Play, donc rien
+n'est cassé. Mais le bouton Android qui renvoie vers Connect est à vérifier avant de soumettre,
+sinon le refus viendra de Google cette fois. Trois options :
+
+1. **Mettre Google Play Billing sur Android aussi.** Le plus sûr, et `expo-iap` gère déjà les
+   deux plateformes : le travail est de quelques heures, pas de quelques jours. Coût : la
+   commission Google (15 % sous le million de dollars, même programme que chez Apple).
+2. **S'inscrire au programme d'offres externes de l'EEE.** Tu gardes Stripe, avec une commission
+   Google réduite. Plus de paperasse, meilleure marge.
+3. **Retirer le bouton sur Android aussi**, et laisser le QR code et le lien du club faire le
+   travail hors de l'app, comme aujourd'hui sur iOS avant cette décision.
+
+Je n'ai pas tranché à ta place parce que les trois sont défendables et que c'est un arbitrage de
+marge. Dis-moi lequel et je le fais.
+
+---
+
 **Le chemin Apple est le plus cher des trois.** Il n'est pas là pour remplacer les autres, il est
 là pour capter la famille qui ne veut ni chercher un lien ni appeler le coach. Le QR code reste
 ta meilleure marge, et rien n'empêche de le distribuer partout hors de l'app : au bord du terrain,

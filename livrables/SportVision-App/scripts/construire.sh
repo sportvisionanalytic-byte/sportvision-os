@@ -52,7 +52,43 @@ construire_ios() {
     -archivePath "$SORTIE/SportVision.xcarchive" \
     -allowProvisioningUpdates DEVELOPMENT_TEAM="$EQUIPE_APPLE" archive
   echo "  archive : $SORTIE/SportVision.xcarchive"
-  echo "  la deposer avec Xcode › Organizer, ou : xcodebuild -exportArchive"
+
+  # 25/09/2026 — L'EXPORT MANQUAIT, ET CA S'EST VU DE LA PIRE FACON. Le script s'arretait a
+  # l'archive en renvoyant vers Xcode Organizer. Resultat : build/SportVision.ipa restait celui de
+  # la veille, avec le meme nom, la meme taille, au meme endroit. Rien ne distinguait l'ancien du
+  # neuf a part l'horodatage. Deposer le mauvais fichier n'aurait produit aucune erreur : juste une
+  # revue Apple sur du code qui n'est plus le notre.
+  #
+  # L'IPA est donc produit ici, et l'ancien est efface AVANT l'export : mieux vaut pas d'IPA du
+  # tout qu'un IPA perime qui a l'air bon.
+  echo "▸ iOS : export de l'IPA"
+  rm -f "$SORTIE/SportVision.ipa"
+  local opts="$SORTIE/ExportOptions.plist"
+  cat > "$opts" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>method</key><string>app-store-connect</string>
+  <key>teamID</key><string>$EQUIPE_APPLE</string>
+  <key>uploadSymbols</key><true/>
+  <key>destination</key><string>export</string>
+</dict></plist>
+PLIST
+  rm -rf "$SORTIE/export"
+  xcodebuild -exportArchive -archivePath "$SORTIE/SportVision.xcarchive" \
+    -exportOptionsPlist "$opts" -exportPath "$SORTIE/export" -allowProvisioningUpdates
+  mv "$SORTIE/export/SportVision.ipa" "$SORTIE/SportVision.ipa"
+
+  # On relit le numero de build DANS l'IPA, au lieu de faire confiance a app.json : c'est le seul
+  # controle qui distingue un export reussi d'un ancien fichier laisse en place.
+  local attendu depose
+  attendu="$(plutil -extract expo.ios.buildNumber raw app.json)"
+  depose="$(unzip -p "$SORTIE/SportVision.ipa" 'Payload/*.app/Info.plist' | plutil -extract CFBundleVersion raw -)"
+  if [ "$attendu" != "$depose" ]; then
+    echo "  ERREUR : l'IPA porte le build $depose, or app.json annonce $attendu." >&2
+    exit 1
+  fi
+  echo "  IPA : $SORTIE/SportVision.ipa (build $depose)"
 }
 
 construire_android() {
