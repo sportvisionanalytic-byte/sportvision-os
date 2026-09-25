@@ -153,10 +153,34 @@ export function derniersResultats(evenements: Evenement[], combien = 3): Eveneme
     .slice(0, combien);
 }
 
+/**
+ * L'identifiant réel du match, extrait de celui que porte l'écran.
+ *
+ * DEUX FORMES CIRCULENT, et c'est ce qui a cassé la fiche de match pour les parents (25/09/2026).
+ *
+ *   joueur   « match-<uuid du match> »                       posé par lireEvenements
+ *   parent   « match-<uuid du match>-<uuid de l'enfant> »     posé par lireCalendrierFamille
+ *
+ * Le second porte l'enfant parce que deux enfants peuvent jouer le même match : sans lui, les
+ * deux lignes du calendrier auraient la même clé et React n'en afficherait qu'une. C'est une
+ * bonne raison, mais la fiche ne retirait que le préfixe et envoyait le reste à la base, qui
+ * répondait « invalid input syntax for type uuid ». L'écran affichait alors « chargement
+ * impossible » — signalé par Fouka, reproduit, mesuré : HTTP 400 avec l'identifiant composite,
+ * HTTP 200 avec le seul identifiant du match.
+ *
+ * On prend donc le PREMIER UUID rencontré, quelle que soit la forme. Une expression stricte, et
+ * non un découpage sur les tirets : un UUID en contient déjà quatre.
+ */
+function identifiantDeMatch(id: string): string {
+  const m = id.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  return m ? m[0] : id.replace(/^match-/, "");
+}
+
 /** Un match précis, pour sa fiche. L'identifiant porte le préfixe posé par lireEvenements. */
 export async function lireMatch(id: string): Promise<Evenement | null> {
-  const brut = id.replace(/^match-/, "");
-  if (MODE_DEMO) return EVENEMENTS_DEMO.find((e) => e.id === id || e.id === brut) ?? null;
+  const brut = identifiantDeMatch(id);
+  if (MODE_DEMO) return EVENEMENTS_DEMO.find((e) => e.id === id || e.id === brut
+    || identifiantDeMatch(e.id) === brut) ?? null;
 
   const { data, error } = await supabase
     .from("club_matches")
