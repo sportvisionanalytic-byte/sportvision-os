@@ -2354,6 +2354,10 @@ const VIEWS={
       ${photographe?'':`<button onclick="setMediaTab('prestations')" class="btn bg2 bs" id="mtab-prestations" style="flex-shrink:0;font-size:11px;display:none">Par prestation</button>`}
       ${photographe?'':`<button onclick="setMediaTab('expirants')" class="btn bg2 bs" id="mtab-expirants" style="flex-shrink:0;font-size:11px;display:none">⚠ Expirants</button>`}
       ${photographe?'':`<button onclick="modalAjouterLien(null)" class="btn bg2 bs" id="mtab-ajout-lien" style="flex-shrink:0;font-size:11px;display:none">+ Ajouter un lien</button>`}
+      ${/* 25/09/2026 — Le troisieme chemin de paiement du Pass. Reserve aux memes roles que
+            media_commerce_staff() en base, et pas un de plus : un onglet visible dont chaque
+            action serait refusee par la RLS est pire que pas d'onglet. */''}
+      ${['admin','sec','compta'].includes(S.role)?`<button onclick="setMediaTab('acces')" class="btn bg2 bs" id="mtab-acces" style="flex-shrink:0;font-size:11px">💶 Accès payés au club</button>`:''}
     </div>
     ${photographe?'':`<div id="mtab-liens-kpi" style="display:none;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Liens en attente</div><div class="fs-v" id="ml-att" style="color:var(--er)">—</div></div>
@@ -12164,7 +12168,7 @@ function setMediaTab(tab){
   // liste tout en laissant _galAlbum charge, et le prochain depot serait verse dans la galerie
   // precedente.
   _galVueAlbumId=null;
-  ['liens','prestations','expirants','bibliotheque','albums','stats'].forEach(t=>{
+  ['liens','prestations','expirants','bibliotheque','albums','stats','acces'].forEach(t=>{
     const b=document.getElementById('mtab-'+t);
     if(b)b.className='btn '+(t===tab?'bp':'bg2')+' bs';
     if(b)b.style.fontSize='11px';
@@ -12649,6 +12653,7 @@ async function loadProdMedias(){
   // Les statistiques ne lisent pas media_liens : elles ont leur propre ecran et leurs propres
   // agregations. On sort avant tout le reste plutot que de faire cohabiter deux chargements.
   if(_mediaTab==='stats'){ return renderStatsGaleries(el); }
+  if(_mediaTab==='acces'){ return renderAccesPayesAuClub(el); }
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
@@ -12670,6 +12675,137 @@ async function loadProdMedias(){
     else if(_mediaTab==='bibliotheque') loadMediaBibliotheque(el);
     else if(_mediaTab==='albums') loadPhotoAlbums(el);
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ─── Accès payés au club : espèces, virement, geste commercial (25/09/2026) ───────────────────
+//
+// LE TROISIEME CHEMIN, ET POURQUOI IL EXISTE
+//
+// Décision de Fouka : « s'ils passent par l'application ils paieront par Apple, et s'ils passent
+// par le club ils me paieront en espèces ou en virement et moi je débloque leur compte ».
+//
+// Beaucoup de familles règlent au bord du terrain, en liquide, ou par virement après un message
+// du coach. Cet argent n'entre ni par Stripe ni par Apple. Sans cet écran, la seule façon
+// d'ouvrir leur accès serait une requête SQL à la main — donc pas de trace de qui a encaissé
+// quoi, et une ligne de commande fabriquée un soir de match serait fausse pour la comptabilité.
+//
+// L'écran ne crée AUCUN droit lui-même : il appelle media_ouvrir_acces_manuellement (v274), qui
+// vérifie le rôle, refuse un doublon, écrit une vraie commande avec son moyen d'encaissement et
+// son encaisseur, puis passe par le même moteur que Stripe et Apple. Un accès ouvert ici est
+// indistinguable d'un accès payé en ligne, et c'est le but : un seul modèle de droits.
+//
+// « Offert » est un moyen à part entière, et il enregistre 0 € : un geste commercial noté au
+// tarif plein gonflerait le chiffre d'affaires d'une recette qui n'a jamais existé.
+let _accesClubs=[], _accesClubId=null, _accesProduit=null, _accesJoueurs=[], _accesRecherche='';
+
+async function renderAccesPayesAuClub(el){
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    if(!_accesClubs.length){
+      const cl=await sbFetch('clubs?select=id,nom&order=nom.asc&limit=200').catch(()=>null);
+      _accesClubs=Array.isArray(cl)?cl:[];
+    }
+    if(!_accesClubId&&_accesClubs.length)_accesClubId=_accesClubs[0].id;
+    await _accesChargerProduit();
+    _accesPeindre(el);
+  }catch(e){
+    el.innerHTML='<div style="padding:20px;color:var(--er)">'+esc(msgErreur(e,'Cet écran n\'a pas pu se charger.'))+'</div>';
+  }
+}
+
+/** Le Pass que ce club vend, et les joueurs avec leur état. Deux appels, jamais un par joueur. */
+async function _accesChargerProduit(){
+  _accesProduit=null;_accesJoueurs=[];
+  if(!_accesClubId)return;
+  const prods=await sbFetch('media_products?select=id,name,price_cents,currency&club_id=eq.'+_accesClubId+'&type=eq.pass_saison&status=eq.active&order=price_cents.asc&limit=1').catch(()=>null);
+  _accesProduit=(Array.isArray(prods)&&prods[0])||null;
+  if(!_accesProduit)return;
+  const js=await sbFetch('rpc/media_joueurs_pour_acces',{method:'POST',body:{
+    p_club_id:_accesClubId,p_product_id:_accesProduit.id,p_recherche:_accesRecherche||null,
+  }}).catch(()=>null);
+  _accesJoueurs=Array.isArray(js)?js:[];
+}
+
+function _accesPeindre(el){
+  const euro=c=>(Number(c||0)/100).toLocaleString('fr-FR',{minimumFractionDigits:2})+' €';
+  const clubs=_accesClubs.map(c=>'<option value="'+esc(c.id)+'"'+(c.id===_accesClubId?' selected':'')+'>'+esc(c.nom)+'</option>').join('');
+
+  if(!_accesProduit){
+    el.innerHTML='<div class="fs" style="padding:16px"><label style="font-size:11px;color:var(--t3)">Club</label>'
+      +'<select id="acces-club" onchange="_accesChangerClub(this.value)" class="fi" style="width:100%;margin-top:4px">'+clubs+'</select>'
+      +'<div style="margin-top:14px;font-size:13px;color:var(--t3)">Ce club ne vend aucun Pass saison actif. Créez-le d\'abord dans la tarification des galeries&nbsp;: sans produit, il n\'y a pas de droit à ouvrir.</div></div>';
+    return;
+  }
+
+  const lignes=_accesJoueurs.length?_accesJoueurs.map(j=>{
+    const nom=esc(j.nom_complet||'—')+(j.equipe?' <span style="color:var(--t3);font-size:11px">· '+esc(j.equipe)+'</span>':'');
+    if(j.deja_actif){
+      return '<tr><td style="padding:8px 6px">'+nom+'</td><td style="padding:8px 6px;text-align:right;color:var(--t3);font-size:12px">Accès déjà ouvert</td></tr>';
+    }
+    return '<tr><td style="padding:8px 6px">'+nom+'</td><td style="padding:8px 6px;text-align:right">'
+      +'<button class="btn bg2 bs" style="font-size:11px" onclick="_accesOuvrir(\''+escJs(j.player_id)+'\',\''+escJs(j.nom_complet||'')+'\')">Ouvrir l\'accès</button></td></tr>';
+  }).join('')
+   :'<tr><td colspan="2" style="padding:18px 6px;color:var(--t3);font-size:13px">Aucun joueur ne correspond.</td></tr>';
+
+  el.innerHTML='<div class="fs" style="padding:16px">'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
+      +'<div style="flex:1;min-width:180px"><label style="font-size:11px;color:var(--t3)">Club</label>'
+      +'<select id="acces-club" onchange="_accesChangerClub(this.value)" class="fi" style="width:100%;margin-top:4px">'+clubs+'</select></div>'
+      +'<div style="flex:1;min-width:180px"><label style="font-size:11px;color:var(--t3)">Chercher un joueur</label>'
+      +'<input id="acces-q" class="fi" style="width:100%;margin-top:4px" placeholder="Nom ou prénom" value="'+esc(_accesRecherche)+'" oninput="_accesChercher(this.value)"></div>'
+    +'</div>'
+    +'<div style="margin-top:12px;font-size:12.5px;color:var(--t2)">'+esc(_accesProduit.name)+' — <strong>'+euro(_accesProduit.price_cents)+'</strong>'
+    +'<div style="font-size:11.5px;color:var(--t3);margin-top:3px">C\'est le tarif du club. Un accès ouvert ici enregistre ce montant, sauf « offert » qui enregistre 0 €.</div></div>'
+    +'<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13px"><tbody>'+lignes+'</tbody></table>'
+    +'</div>';
+}
+
+function _accesChangerClub(id){
+  _accesClubId=id;_accesRecherche='';
+  const el=document.getElementById('prod-media-real');
+  if(el)renderAccesPayesAuClub(el);
+}
+
+// La recherche attend que la frappe s'arrête : une requête par caractère sur un nom de dix
+// lettres, c'est dix allers-retours dont neuf sont jetés.
+let _accesTimer=null;
+function _accesChercher(v){
+  _accesRecherche=v;
+  clearTimeout(_accesTimer);
+  _accesTimer=setTimeout(async()=>{
+    await _accesChargerProduit();
+    const el=document.getElementById('prod-media-real');
+    if(el)_accesPeindre(el);
+    const q=document.getElementById('acces-q');
+    if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length);}
+  },350);
+}
+
+async function _accesOuvrir(playerId,nom){
+  const moyen=prompt('Comment cette famille a-t-elle payé ?\n\nTapez : especes, virement, ou offert','especes');
+  if(!moyen)return;
+  const m=String(moyen).trim().toLowerCase();
+  if(!['especes','virement','offert'].includes(m)){
+    toast('Moyen inconnu. Tapez espèces, virement ou offert.');return;
+  }
+  const note=prompt('Une note ? (facultatif — reçu, date du virement, raison du geste)','')||null;
+  if(!confirm('Ouvrir l\'accès de '+nom+' ?\n\nMoyen : '+m+'\n\nLa famille verra ses photos immédiatement.'))return;
+  try{
+    const r=await sbFetch('rpc/media_ouvrir_acces_manuellement',{method:'POST',body:{
+      p_product_id:_accesProduit.id,p_player_id:playerId,p_moyen:m,p_note:note,
+    }});
+    // Le serveur dit combien de droits il a crees. Zero signifie que quelque chose a echoue
+    // silencieusement : on ne le presente jamais comme une reussite (regle du 10/09, pas de faux
+    // succes).
+    const droits=Number((r&&(r.droits!==undefined?r.droits:r[0]&&r[0].droits))||0);
+    if(!droits){toast('L\'accès n\'a pas été ouvert. Rien n\'a changé.');return;}
+    toast('Accès ouvert pour '+nom+'.','success');
+    await _accesChargerProduit();
+    const el=document.getElementById('prod-media-real');
+    if(el)_accesPeindre(el);
+  }catch(e){
+    toast(msgErreur(e,'L\'accès n\'a pas pu s\'ouvrir.'));
+  }
 }
 
 // ─── Pass Photo — albums (migration-connect-pass-photo-v1.sql, 28/08/2026) ────────────────────
