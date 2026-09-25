@@ -18327,7 +18327,9 @@ function majEcartRem(){
   const moi=String(colId)===String(S.uid);
   if(!e){el.textContent='';bloc.style.display='none';return;}
   el.innerHTML='Recommandé <b>'+reco.toLocaleString('fr-FR')+' €</b> · Retenu <b>'+Number(rem).toLocaleString('fr-FR')+' €</b>'+(e.d?' · Écart <b style="color:'+(e.motifRequis?'var(--wa)':'var(--t2)')+'">'+(e.d>0?'+':'')+e.d.toLocaleString('fr-FR')+' € ('+e.pct+' %)</b>':'')
-    +(moi&&e.d?' · <b style="color:var(--wa)">votre propre mission : motif obligatoire, la décision revient à l\'Admin</b>':'');
+    +(moi&&e.d?' · <b style="color:var(--wa)">votre propre mission : '+Number(reco).toLocaleString('fr-FR')+' € seront retenus, l\'écart part en validation chez l\'Admin</b>':'');
+  // Le champ motif reste OUVERT sur sa propre ligne, mais il n'est plus obligatoire : un motif
+  // fait gagner du temps a l'Admin, il ne conditionne plus la creation de l'affectation.
   bloc.style.display=(e.motifRequis||(moi&&e.d!==0))?'grid':'none';
 }
 async function chargerEquipe(prestationId,ref){
@@ -18834,14 +18836,12 @@ async function ajouterMembreEquipe(prestationId,ref){
     }catch(e){}
     const motifRem=document.getElementById('eq-motif')?.value||null;
     const ecartAjout=ecartRemu(rem,autoPay);
-    const maPropreMission=String(colId)===String(S.uid);
-    if(ecartAjout&&maPropreMission&&ecartAjout.d!==0&&!motifRem){
-      const msg='Votre propre mission : tout écart avec la grille demande un motif, et la décision revient à l\'Admin.';
-      err.textContent=msg;toast(msg,'warn');
-      const m=document.getElementById('eq-motif');
-      if(m){m.style.outline='2px solid var(--wa)';m.scrollIntoView({block:'center'});m.focus();}
-      if(btn)btn.disabled=false;return;
-    }
+    // 25/09/2026 — LE MOTIF N'EST PLUS EXIGE SUR SA PROPRE LIGNE (v271, decision de Fouka :
+    // « il ne faut pas lui obliger de mettre un motif d'ajustement », « il faut lui laisser mettre
+    // la somme qu'il veut, et moi je valide a la finalite »). Le garde-fou reste entier ailleurs :
+    // la remuneration retenue est celle de la grille, le montant demande part en exception, et
+    // seul l'Admin tranche. Bloquer ici empechait de creer l'affectation, donc de FAIRE la
+    // mission — pour une ligne de texte qui ne protegeait rien.
     if(ecartAjout&&ecartAjout.motifRequis&&!motifRem){
       // Bien visible (première mission réelle, 10/09) : le petit texte rouge seul passait inaperçu.
       const msg='Écart de '+ecartAjout.pct+' % avec le montant recommandé : choisissez le motif de l\'ajustement.';
