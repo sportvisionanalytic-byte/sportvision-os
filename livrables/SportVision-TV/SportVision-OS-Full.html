@@ -2315,27 +2315,42 @@ const VIEWS={
   // transfert, le constructeur de tarifs et un onglet Statistiques qui n'afficherait que des
   // zéros serait lui promettre des écrans qui ne lui répondront pas. On ne masque donc rien
   // qui le protège — le serveur refuse déjà — on retire seulement ce qui ne le concerne pas.
+  // ── « GALERIES PHOTO » PARLE DE PHOTOS, PLUS DE LIENS (25/09/2026) ──────────────────────────
+  //
+  // DEMANDE DE FOUKA, mot pour mot : « quand on va dans Galerie Photo, ça ne doit pas se passer
+  // par lien, ça doit juste se passer par prestation, par import d'image ».
+  //
+  // L'écran s'ouvrait déjà sur les galeries — c'est tout son habillage qui parlait d'autre chose :
+  // titre « Centre Médias », sous-titre « Pilotage des liens, aucun fichier stocké ici », bouton
+  // principal « + Ajouter un lien », quatre compteurs de liens, et quatre onglets de liens AVANT
+  // celui des galeries. Le Responsable Production arrivait sur un écran de suivi de transferts et
+  // n'y trouvait pas ce qu'il venait faire.
+  //
+  // CE QUI CHANGE : le même écran pour tout le monde. On importe des photos, on les rattache à un
+  // club, une équipe, une journée ou une prestation. Les liens restent accessibles, groupés
+  // derrière un seul onglet discret : ils ne disparaissent pas — l'opérateur en dépose encore sur
+  // sa mission, et la Production les y vérifie — mais ils ne sont plus le visage de cet écran.
   'prod.media':()=>{
     const photographe = S.role === 'photo';
     return `
     <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">${photographe?'Galeries photo':'Centre Médias'}</div><div style="font-size:12px;color:var(--t3);margin-top:2px">${photographe?'Vos galeries : versez les photos d\'un match, elles deviennent la galerie du club.':'Pilotage des liens — aucun fichier stocké ici'}</div></div>
-      ${photographe?'':`<button class="btn bp bs" onclick="modalAjouterLien(null)">+ Ajouter un lien</button>`}
+      <div><div class="sh-t">Galeries photo</div><div style="font-size:12px;color:var(--t3);margin-top:2px">${photographe?'Vos galeries : versez les photos d\'un match, elles deviennent la galerie du club.':'Importez les photos d\'une prestation, puis rattachez-les à un club, une équipe ou une journée.'}</div></div>
     </div>
-    ${photographe?'':`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+      <button onclick="setMediaTab('albums')" class="btn bp bs" id="mtab-albums" style="flex-shrink:0;font-size:11px">📸 ${photographe?'Mes albums':'Galeries'}</button>
+      ${photographe?'':`<button onclick="setMediaTab('stats')" class="btn bg2 bs" id="mtab-stats" style="flex-shrink:0;font-size:11px">📊 Statistiques</button>`}
+      ${photographe?'':`<button onclick="setMediaTab('bibliotheque')" class="btn bg2 bs" id="mtab-bibliotheque" style="flex-shrink:0;font-size:11px">Bibliothèque</button>`}
+      ${photographe?'':`<button onclick="setMediaTab('liens')" class="btn bg2 bs" id="mtab-liens" style="flex-shrink:0;font-size:11px;opacity:.75">🔗 Liens de transfert</button>`}
+      ${photographe?'':`<button onclick="setMediaTab('prestations')" class="btn bg2 bs" id="mtab-prestations" style="flex-shrink:0;font-size:11px;display:none">Par prestation</button>`}
+      ${photographe?'':`<button onclick="setMediaTab('expirants')" class="btn bg2 bs" id="mtab-expirants" style="flex-shrink:0;font-size:11px;display:none">⚠ Expirants</button>`}
+      ${photographe?'':`<button onclick="modalAjouterLien(null)" class="btn bg2 bs" id="mtab-ajout-lien" style="flex-shrink:0;font-size:11px;display:none">+ Ajouter un lien</button>`}
+    </div>
+    ${photographe?'':`<div id="mtab-liens-kpi" style="display:none;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Liens en attente</div><div class="fs-v" id="ml-att" style="color:var(--er)">—</div></div>
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À vérifier</div><div class="fs-v" id="ml-verif" style="color:var(--wa)">—</div></div>
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Expirants</div><div class="fs-v" id="ml-exp" style="color:var(--er)">—</div></div>
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Validés</div><div class="fs-v" id="ml-ok" style="color:var(--ok)">—</div></div>
     </div>`}
-    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
-      ${photographe?'':`<button onclick="setMediaTab('liens')" class="btn bp bs" id="mtab-liens" style="flex-shrink:0;font-size:11px">Tous les liens</button>`}
-      ${photographe?'':`<button onclick="setMediaTab('prestations')" class="btn bg2 bs" id="mtab-prestations" style="flex-shrink:0;font-size:11px">Par prestation</button>`}
-      ${photographe?'':`<button onclick="setMediaTab('expirants')" class="btn bg2 bs" id="mtab-expirants" style="flex-shrink:0;font-size:11px">⚠ Expirants</button>`}
-      ${photographe?'':`<button onclick="setMediaTab('bibliotheque')" class="btn bg2 bs" id="mtab-bibliotheque" style="flex-shrink:0;font-size:11px">Bibliothèque</button>`}
-      <button onclick="setMediaTab('albums')" class="btn ${photographe?'bp':'bg2'} bs" id="mtab-albums" style="flex-shrink:0;font-size:11px">📸 ${photographe?'Mes albums':'Pass Photo'}</button>
-      ${photographe?'':`<button onclick="setMediaTab('stats')" class="btn bg2 bs" id="mtab-stats" style="flex-shrink:0;font-size:11px">📊 Statistiques</button>`}
-    </div>
     <div id="prod-media-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
   },
 
@@ -2399,7 +2414,7 @@ const VIEWS={
   // ── PROD : RÉMUNÉRATIONS ──────────────────────────────────────────────────
   'prod.rem':()=>`
     <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">Rémunérations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Contrôle des heures, présences et transmissions comptabilité</div></div>
+      <div><div class="sh-t">Rémunérations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Heures, présences, et ce qui reste à virer en fin de mois</div></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       <div class="fs"><div class="fs-l">Total équipe</div><div class="fs-v" id="rem-kpi-total" style="color:var(--acc)">—</div></div>
@@ -2411,7 +2426,7 @@ const VIEWS={
       <button onclick="filterProdRem('all')" class="btn bp bs" id="prem-all" style="flex-shrink:0;font-size:11px">Toutes</button>
       <button onclick="filterProdRem('controle')" class="btn bg2 bs" id="prem-ctrl" style="flex-shrink:0;font-size:11px">À contrôler</button>
       <button onclick="filterProdRem('valide')" class="btn bg2 bs" id="prem-val" style="flex-shrink:0;font-size:11px">Validées prod</button>
-      <button onclick="filterProdRem('transmis')" class="btn bg2 bs" id="prem-tx" style="flex-shrink:0;font-size:11px">Transmises compta</button>
+      <button onclick="filterProdRem('transmis')" class="btn bg2 bs" id="prem-tx" style="flex-shrink:0;font-size:11px;opacity:.7" title="Ancien état : ces lignes ont été transmises avant que l'étape soit retirée. Elles se marquent payées comme les autres.">Transmises compta (ancien)</button>
     </div>
     <div id="prod-rem-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -12022,7 +12037,10 @@ const PP_STATUT_CLR={a_attribuer:'var(--er)',attribuee:'var(--wa)',a_commencer:'
 const LV_STATUT_LB={a_preparer:'À préparer',en_preparation:'En préparation',a_valider:'À valider',valide:'Validé',pret_a_livrer:'Prêt à livrer',livre:'Livré',consulte:'Consulté',lien_expirant:'Lien expirant',lien_expire:'Lien expiré',remplace:'Remplacé',archive:'Archivé'};
 const LV_STATUT_CLR={a_preparer:'var(--t3)',en_preparation:'#7C4DFF',a_valider:'var(--wa)',valide:'var(--ok)',pret_a_livrer:'var(--ok)',livre:'var(--ok)',consulte:'var(--ok)',lien_expirant:'var(--er)',lien_expire:'var(--er)',remplace:'var(--t3)',archive:'var(--t3)'};
 
-let _mediaTab='liens';
+// « albums » et non « liens » : l'entree de menu s'appelle « Galeries photo », et c'est sur les
+// galeries qu'elle doit ouvrir. Le defaut historique a « liens » etait deja contredit par
+// ouvrirMedias(), qui passe 'albums' — mais un chargement direct de la vue retombait dessus.
+let _mediaTab='albums';
 let _mediaLiens=[];
 let _mediaPostprod=[];
 let _mediaLivrables=[];
@@ -12037,6 +12055,17 @@ let _mediaTabDemande=null;
 function ouvrirMedias(tab){_mediaTabDemande=tab||'albums';switchView('media');}
 function setMediaTab(tab){
   _mediaTab=tab;
+  // Ce qui appartient au suivi des liens ne s'affiche que dans le suivi des liens : les quatre
+  // compteurs, les deux sous-vues, et le bouton d'ajout. Sur l'écran des galeries, ils n'ont rien
+  // à y faire — c'est précisément ce qui faisait croire que « Galeries photo » servait à gérer des
+  // liens (demande de Fouka, 25/09/2026).
+  const dansLesLiens = tab==='liens' || tab==='prestations' || tab==='expirants';
+  const kpi=document.getElementById('mtab-liens-kpi');
+  if(kpi)kpi.style.display = dansLesLiens ? 'grid' : 'none';
+  ['prestations','expirants','ajout-lien'].forEach(id=>{
+    const b=document.getElementById('mtab-'+id);
+    if(b)b.style.display = dansLesLiens ? '' : 'none';
+  });
   // Changer d'onglet quitte la page galerie : sans cela, revenir aux albums reafficherait la
   // liste tout en laissant _galAlbum charge, et le prochain depot serait verse dans la galerie
   // precedente.
@@ -16139,11 +16168,27 @@ function renderProdRemList(){
       const name=esc([col.prenom,col.nom].filter(Boolean).join(' ')||'—');
       const sp=r.statut_paiement||'en_attente';
       const payStatClr=sp==='payé'?'ba':sp==='transmis_compta'?'bb':sp==='validé'?'bw':'bw';
-      const payLbl=sp==='payé'?'Payé':sp==='transmis_compta'?'Transmis compta':sp==='validé'?'Validé prod':'En attente';
+      // « À payer » et non « Validé prod » : c'est ce que la ligne attend, pas ce qu'elle a subi.
+      const payLbl=sp==='payé'?'Payé':sp==='transmis_compta'?'Transmis compta':sp==='validé'?'À payer':'En attente';
+      // ── DEUX ETAPES, PLUS TROIS (25/09/2026) ────────────────────────────────────────────────
+      //
+      // DEMANDE DE FOUKA, mot pour mot : « je comprends pas pourquoi il y a un truc compta pour
+      // l'argent des photographes vidéastes, faut juste écrire prestation validée, et à la fin du
+      // mois le photographe reçoit son virement. Il n'y a pas de transmission compta. »
+      //
+      // Il a raison sur le fond : « transmis à la comptabilité » décrivait un geste qui n'existe
+      // pas chez nous. Il n'y a pas de service comptable qui reçoit un dossier et le traite : il y
+      // a un virement, en fin de mois, par la meme personne qui a valide. Une etape qui ne
+      // correspond a aucun geste reel n'est pas une securite, c'est une ligne de plus a cliquer et
+      // un statut de plus a expliquer.
+      //
+      // L'ETAT RESTE LISIBLE POUR L'EXISTANT : une ligne deja marquee « transmis compta » garde
+      // son libelle et peut etre passee a « paye ». On retire l'etape du chemin, on n'efface pas
+      // le passe — une ligne dont le statut n'a plus d'action serait une impasse.
       const actions=sp==='en_attente'||!sp
         ?`<button onclick="majStatutPaiement('${r.id}','validé')" style="padding:3px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✓ Valider</button>`
-        :sp==='validé'
-        ?`<button onclick="majStatutPaiement('${r.id}','transmis_compta')" style="padding:3px 8px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:var(--wa);cursor:pointer;white-space:nowrap">→ Compta</button>`
+        :(sp==='validé'||sp==='transmis_compta')
+        ?`<button onclick="majStatutPaiement('${r.id}','payé')" style="padding:3px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">✓ Marquer payé</button>`
         :'—';
       const preAnnulee=['annulée','refusée'].includes(pre.statut);
       return`<tr${preAnnulee?' style="background:rgba(240,68,94,.05)"':''}>
@@ -16249,7 +16294,9 @@ async function majStatutPaiement(id,statut){
     if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'Mise à jour impossible.')),'er');return;}
     if(Array.isArray(r)&&!r.length){toast('Rien n\'a été enregistré : cette rémunération n\'est pas modifiable depuis votre compte.','er');return;}
     if(statut==='payé')logFinancialAudit('paiement','prestations_equipe',id,null,r?.[0]?.remuneration,{statut_paiement:statut});
-    const labels={validé:'Rémunération validée.',transmis_compta:'Transmis à la comptabilité.',payé:'Paiement enregistré.'};
+    const labels={validé:'Rémunération validée — à virer en fin de mois.',
+                  transmis_compta:'Transmis à la comptabilité.',
+                  payé:'Paiement enregistré.'};
     toast(labels[statut]||'Statut mis à jour.','ok');
     loadViewData(S.role,S.view);
   }catch(e){toast('Erreur mise à jour du statut.','er');}
