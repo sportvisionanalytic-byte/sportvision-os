@@ -13,9 +13,23 @@ export function SponsorCard({ sponsor }: { sponsor: Sponsor }) {
     <Link href={`/sponsors/${sponsor.id}`}>
       <Card className="h-full p-4.5 hover:-translate-y-0.5 hover:border-brand-blue-pale hover:shadow-sv-card-hover">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="truncate text-[15px] font-extrabold tracking-tight">{sponsor.name}</div>
-            {sponsor.sector && <div className="mt-0.5 text-[12px] text-text-soft">{sponsor.sector}</div>}
+          <div className="flex min-w-0 items-center gap-3">
+            {/* Le logo (25/09/2026). Il etait enregistre en base depuis le 03/09 mais ne
+                s'affichait nulle part dans cette liste : un club pouvait l'envoyer depuis le
+                parcours d'accueil sans jamais le revoir. « object-contain » et non « cover » :
+                un logo se recadre mal, et un sponsor reconnait le sien au premier coup d'oeil. */}
+            {sponsor.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={sponsor.logoUrl}
+                alt=""
+                className="h-10 w-10 flex-none rounded-sv bg-surface-sunken object-contain"
+              />
+            )}
+            <div className="min-w-0">
+              <div className="truncate text-[15px] font-extrabold tracking-tight">{sponsor.name}</div>
+              {sponsor.sector && <div className="mt-0.5 text-[12px] text-text-soft">{sponsor.sector}</div>}
+            </div>
           </div>
           <Badge tone={SPONSOR_LEVEL_TONE[sponsor.level]}>{SPONSOR_LEVEL_LABEL[sponsor.level]}</Badge>
         </div>
