@@ -83,11 +83,14 @@ export interface TeamCandidate {
   id: string;
   name: string;
   confidence: number;
-  /** Vrai si le score vient du NOM de l'equipe, faux s'il ne vient que d'une de ses categories.
-   *  La nuance decide de tout quand plusieurs equipes partagent une categorie : « U15 D2 » ne
-   *  designe qu'une equipe, « U15 » en designe deux, et seul le premier cas peut etre tranche
-   *  sans demander. */
-  parLeNom?: boolean;
+  /** Ce que vaut le rapprochement sur le NOM SEUL de l'equipe, categories exclues.
+   *
+   *  C'est lui qui departage des ex aequo, et il faut le garder en NOMBRE, pas en oui/non.
+   *  Deux essais rates le 25/09/2026 le montrent : un booleen « au-dessus du seuil » comptait
+   *  « U12 » comme un nom valable pour « U12 F » autant que pour « U12 » ; un booleen « egalite
+   *  parfaite » cassait « U11A », qui ne colle exactement a aucun nom mais colle bien mieux a
+   *  « U11 » qu'a « U11 F ». Seule la comparaison des scores dit les deux choses a la fois. */
+  noteNom?: number;
 }
 
 export interface PreviewRow {
@@ -214,8 +217,7 @@ function rankTeams(sourceName: string, teams: ClubTeamRef[]): TeamCandidate[] {
       id: t.id,
       name: t.name,
       confidence: Math.round(scoreEquipe(sourceName, t) * 100) / 100,
-      // Le score du NOM seul, sans les categories : c'est lui qui departage des ex aequo.
-      parLeNom: scoreTeamName(sourceName, t.name) >= AUTO_ASSIGN,
+      noteNom: scoreTeamName(sourceName, t.name),
     }))
     .filter((c) => c.confidence >= MIN_CANDIDATE)
     .sort((a, b) => b.confidence - a.confidence);
@@ -460,8 +462,14 @@ export function buildImportPreview(input: PreviewInput): ImportPreview {
       // une seule des équipes à égalité correspond par son NOM et pas seulement par sa catégorie,
       // c'est elle — « U15 D2 » reste décidé, « U15 » devient une question.
       const exAequo = best ? teamCandidates.filter((c) => c.confidence === best.confidence) : [];
-      const parLeNom = exAequo.filter((c) => c.parLeNom);
-      if (exAequo.length > 1 && parLeNom.length === 1) {
+      // À égalité sur le score global, c'est le NOM qui départage : on garde ceux qui portent le
+      // meilleur score de nom, et on ne tranche que s'il n'en reste qu'un.
+      //   « U12 »  → noms U12 = 1, U12 F = 0,85          → U12
+      //   « U11A » → noms U11 = 0,85, U11 F = 0,40       → U11
+      //   « U15 »  → noms U15 D2 = 0,53, U15 F = 0,53    → on demande
+      const meilleurNom = Math.max(...exAequo.map((c) => c.noteNom ?? 0));
+      const parLeNom = exAequo.filter((c) => (c.noteNom ?? 0) === meilleurNom);
+      if (exAequo.length > 1 && parLeNom.length === 1 && meilleurNom >= MIN_CANDIDATE) {
         teamId = parLeNom[0]!.id;
       } else if (exAequo.length > 1) {
         mappingVerdict = "ambiguous";
