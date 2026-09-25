@@ -12826,7 +12826,7 @@ async function loadPhotoAlbums(el){
   if(!el)return;
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,match_id,event_id,watermark_previews,access_mode,cover_asset_id,clubs(nom),club_teams(name),saisons(label),prestations(reference)&order=created_at.desc&limit=200');
+    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,team_ids,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,match_id,event_id,watermark_previews,access_mode,cover_asset_id,clubs(nom),club_teams(name),saisons(label),prestations(reference)&order=created_at.desc&limit=200');
     if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(msgErreur(rows,'Impossible de charger les galeries.'))+'</div></div>';return;}
     _photoAlbums=Array.isArray(rows)?rows:[];
     renderPhotoAlbumsList(_photoAlbums);
@@ -12959,15 +12959,28 @@ function modalCreerAlbum(albumId){
         <input id="pa-structure" type="text" class="l-inp" style="height:38px" placeholder="FC Sens U12 — facultatif" value="${esc(existing?.structure_externe||'')}">
         <div style="font-size:11px;color:var(--t3);margin-top:4px">Simple affichage. Ne crée ni club, ni compte Club+, ni fiche client.</div></div>
 
-      <details id="pa-plus" style="border-top:1px solid var(--b1);padding-top:11px" ${(existing&&(existing.club_id||existing.team_id||existing.saison_id))?'open':''}>
-        <summary style="cursor:pointer;font-size:12px;color:var(--t2);font-weight:600;list-style:revert">Rattacher à SportVision <span style="font-weight:400;color:var(--t3)">— facultatif</span></summary>
-        <div style="display:flex;flex-direction:column;gap:11px;margin-top:11px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div><label style="${L}">Club SportVision</label>
-              <select id="pa-club" class="l-inp" style="height:38px" onchange="_paLoadTeams(this.value);_paLoadRattachements(this.value)"><option value="">Aucun</option></select></div>
-            <div><label style="${L}">Équipe</label>
-              <select id="pa-team" class="l-inp" style="height:38px"><option value="">Aucune</option></select></div>
-          </div>
+      <!-- 26/09/2026, Fouka : « mettre option pour club en Full Communication et la ca propose nos
+           clubs ; apres quand on met la categorie, ca propose les prestations uniquement de la
+           categorie ; pouvoir aussi selectionner plusieurs categories ».
+           CE BLOC N'EST PLUS REPLIE. Il l'etait parce que le rattachement etait facultatif, et il
+           l'est toujours — mais le replier faisait rater l'enchainement qui evite de tout retaper :
+           club, puis categories, puis le match ou la prestation deja filtre. On garde le pli
+           uniquement pour la saison et la prestation, qui sont de la mecanique. -->
+      <div style="border-top:1px solid var(--b1);padding-top:11px;display:flex;flex-direction:column;gap:11px">
+          <div><label style="${L}">Club partenaire</label>
+            <select id="pa-club" class="l-inp" style="height:38px" onchange="_paClubChoisi(this.value)"><option value="">Aucun — structure extérieure</option></select>
+            <div id="pa-club-aide" style="font-size:11px;color:var(--t3);margin-top:4px">Nos clubs sous contrat. Laissez vide pour un tournoi, un club adverse ou une académie.</div></div>
+
+          <!-- PLUSIEURS CATEGORIES, parce qu'un plateau du samedi matin reunit U6, U7 et U8 sur le
+               meme terrain avec le meme photographe. Avant, il fallait choisir : trois galeries
+               pour un seul reportage, ou une galerie de club ouverte aux Seniors qui n'ont rien a
+               y voir. La v280 fait qu'une galerie couvre N categories, et n'est servie qu'a
+               celles-la. -->
+          <div><label style="${L}">Catégories couvertes</label>
+            <div id="pa-teams" style="max-height:132px;overflow-y:auto;border:1px solid var(--b1);border-radius:8px;padding:7px;background:var(--s2)">
+              <div style="font-size:12px;color:var(--t3)">Choisissez d'abord un club.</div>
+            </div>
+            <div id="pa-teams-aide" style="font-size:11px;color:var(--t3);margin-top:4px">Aucune catégorie cochée : la galerie est servie à tout le club.</div></div>
           <!-- 21/09/2026, Fouka : « si je fais un entraînement, ou à la fin d'un match, que je
                puisse mettre les photos liées à la prestation ou liées à un entraînement
                particulier ». Il fallait taper une référence de prestation de mémoire, et le MATCH
@@ -12980,6 +12993,11 @@ function modalCreerAlbum(albumId){
             </select>
             <div id="pa-lien-aide" style="font-size:11px;color:var(--t3);margin-top:4px">Choisissez un club pour voir ses matchs, entraînements et prestations récents.</div>
           </div>
+      </div>
+
+      <details id="pa-plus" style="border-top:1px solid var(--b1);padding-top:11px" ${(existing&&(existing.saison_id||existing.mission_id))?'open':''}>
+        <summary style="cursor:pointer;font-size:12px;color:var(--t2);font-weight:600;list-style:revert">Saison et prestation <span style="font-weight:400;color:var(--t3)">— rempli automatiquement le plus souvent</span></summary>
+        <div style="display:flex;flex-direction:column;gap:11px;margin-top:11px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div><label style="${L}">Saison</label>
               <input id="pa-season" type="text" class="l-inp" style="height:38px" placeholder="2026-2027" value="${esc(existing?.saisons?.label||'')}"></div>
@@ -12996,7 +13014,14 @@ function modalCreerAlbum(albumId){
         <button class="btn bp" onclick="sauvegarderAlbum('${albumId||''}')">${existing?'Enregistrer':'Créer la galerie'}</button>
       </div>
     </div>`);
-  _paLoadClubs(existing?.club_id||'',existing?.team_id||'');
+  // TOUTES ses categories, pas seulement la principale : sans les supplementaires, un simple
+  // changement de titre les effacerait silencieusement — exactement le defaut qu'avait le champ
+  // « prestation liee » avant le 12/09.
+  const dejaCochees=[
+    ...(existing?.team_id?[existing.team_id]:[]),
+    ...((existing?.team_ids)||[]),
+  ];
+  _paLoadClubs(existing?.club_id||'', dejaCochees);
   // La galerie ouverte retrouve son rattachement, quel qu'il soit.
   const lienExistant=existing?.match_id?('match:'+existing.match_id)
     :existing?.event_id?('evenement:'+existing.event_id)
@@ -13019,7 +13044,14 @@ async function _paLoadRattachements(clubId, valeurInitiale){
     if(aide)aide.textContent='Choisissez un club pour voir ses matchs, entraînements et prestations récents.';
     return;
   }
-  const r=await sbFetch('rpc/galerie_rattachements',{method:'POST',body:{p_club_id:clubId,p_jours:60}}).catch(()=>[]);
+  // v280 : le filtre par categorie. Avant, la branche « prestation » de galerie_rattachements
+  // rendait team_id = null pour TOUTES les prestations : filtrer etait impossible, pas difficile.
+  // Un rattachement sans equipe resolue reste propose, cote base : c'est precisement celui qu'on
+  // veut pouvoir rattacher a la main.
+  const filtre=_paTeamsCochees();
+  const r=await sbFetch('rpc/galerie_rattachements',{method:'POST',body:{
+    p_club_id:clubId, p_jours:60, p_team_ids:filtre.length?filtre:null,
+  }}).catch(()=>[]);
   _paRattachements=Array.isArray(r)?r:[];
   const ICONE={match:'⚽',entrainement:'🏃',evenement:'📅',prestation:'🎬'};
   sel.innerHTML='<option value="">Rien de particulier</option>'+_paRattachements.map(x=>{
@@ -13027,8 +13059,12 @@ async function _paLoadRattachements(clubId, valeurInitiale){
     return `<option value="${x.genre}:${x.ref_id}"${valeurInitiale===x.genre+':'+x.ref_id?' selected':''}>${ICONE[x.genre]||'•'} ${d} — ${esc(x.libelle||'')}</option>`;
   }).join('');
   if(aide)aide.textContent=_paRattachements.length
-    ? 'Les 60 derniers jours. Choisir remplit l’équipe, la date et le titre.'
-    : 'Aucun match ni entraînement récent pour ce club.';
+    ? (filtre.length
+        ? _paRattachements.length+' evenement'+(_paRattachements.length>1?'s':'')+' des categories cochees, sur 60 jours.'
+        : 'Les 60 derniers jours. Choisir remplit la date et le titre.')
+    : (filtre.length
+        ? 'Rien sur ces categories ces 60 derniers jours. Decochez pour tout voir.'
+        : 'Aucun match ni entrainement recent pour ce club.');
 }
 
 // Choisir remplit le reste. On n'ECRASE jamais un titre deja saisi : quelqu'un qui a nomme sa
@@ -13043,33 +13079,107 @@ function _paChoisirRattachement(){
   if(titre&&!titre.value.trim())titre.value=x.libelle||'';
   const date=document.getElementById('pa-date');
   if(date&&x.date_evenement)date.value=x.date_evenement;
-  const team=document.getElementById('pa-team');
-  if(team&&x.team_id){
-    // L'equipe peut ne pas etre encore chargee : on attend la liste plutot que de perdre le choix.
-    const poser=()=>{ if([...team.options].some(o=>o.value===x.team_id)) team.value=x.team_id; else setTimeout(poser,250); };
+  // Cocher les equipes du rattachement choisi. Un match en a une, un plateau en a plusieurs : on
+  // coche tout ce qu'il couvre plutot que de faire deviner. On n'en DECOCHE aucune : quelqu'un qui
+  // avait deja coche des categories a la main ne doit pas les voir disparaitre.
+  const equipes=(Array.isArray(x.team_ids)&&x.team_ids.length)?x.team_ids:(x.team_id?[x.team_id]:[]);
+  if(equipes.length){
+    // Les cases peuvent ne pas etre encore chargees : on attend la liste plutot que de perdre le
+    // choix, comme le faisait l'ancien menu deroulant.
+    const poser=()=>{
+      const cases=[...document.querySelectorAll('#pa-teams input[type=checkbox]')];
+      if(!cases.length){setTimeout(poser,250);return;}
+      let change=false;
+      equipes.forEach(id=>{
+        const c=cases.find(k=>k.value===id);
+        if(c&&!c.checked){c.checked=true;change=true;}
+      });
+      // On rafraichit le libellé d'aide, mais SANS refiltrer : refiltrer sur les categories qu'on
+      // vient de cocher pourrait faire disparaitre de la liste le rattachement qu'on a choisi.
+      if(change){
+        const aide=document.getElementById('pa-teams-aide');
+        const n=_paTeamsCochees().length;
+        if(aide)aide.textContent=n+' categorie'+(n>1?'s':'')+' cochee'+(n>1?'s':'')+' d\'apres l\'evenement choisi.';
+      }
+    };
     poser();
   }
 }
 
-async function _paLoadClubs(selectedClubId,selectedTeamId){
+async function _paLoadClubs(selectedClubId,dejaCochees){
   const sel=document.getElementById('pa-club');
   if(!sel)return;
   try{
+    // Nos clubs sous contrat. La table `clubs` ne contient QUE ceux-la (deux a ce jour) : l'annuaire
+    // federal de 34 586 clubs vit ailleurs et n'a rien a faire dans ce menu.
     const clubs=await sbFetch('clubs?select=id,nom&order=nom.asc');
-    sel.innerHTML='<option value="">Choisir…</option>'+(Array.isArray(clubs)?clubs:[]).map(c=>`<option value="${c.id}" ${c.id===selectedClubId?'selected':''}>${esc(c.nom)}</option>`).join('');
-    if(selectedClubId) await _paLoadTeams(selectedClubId,selectedTeamId);
+    sel.innerHTML='<option value="">Aucun — structure extérieure</option>'+(Array.isArray(clubs)?clubs:[]).map(c=>`<option value="${c.id}" ${c.id===selectedClubId?'selected':''}>${esc(c.nom)}</option>`).join('');
+    if(selectedClubId) await _paLoadTeams(selectedClubId, dejaCochees||[]);
   }catch(e){sel.innerHTML='<option value="">Erreur de chargement</option>';}
 }
 
-async function _paLoadTeams(clubId,selectedTeamId){
-  const sel=document.getElementById('pa-team');
-  if(!sel)return;
-  if(!clubId){sel.innerHTML="<option value=\"\">Choisissez d'abord un club</option>";return;}
-  sel.innerHTML='<option value="">Chargement…</option>';
+// Choisir un club recharge SES categories, puis SES rattachements. Dans cet ordre : les
+// rattachements sont filtres par les categories cochees, et aucune ne l'est encore.
+async function _paClubChoisi(clubId){
+  await _paLoadTeams(clubId, []);
+  await _paLoadRattachements(clubId);
+}
+
+/** Les categories cochees, dans l'ordre de la liste. La PREMIERE est la principale (team_id), les
+ *  suivantes sont supplementaires (team_ids) : c'est la forme attendue par la v280, et elle fait
+ *  qu'une galerie mono-categorie reste exactement ce qu'elle etait. */
+function _paTeamsCochees(){
+  return [...document.querySelectorAll('#pa-teams input[type=checkbox]:checked')].map(c=>c.value);
+}
+
+async function _paLoadTeams(clubId,selectionnees){
+  const box=document.getElementById('pa-teams');
+  const aide=document.getElementById('pa-teams-aide');
+  if(!box)return;
+  if(!clubId){
+    box.innerHTML='<div style="font-size:12px;color:var(--t3)">Choisissez d\'abord un club.</div>';
+    if(aide)aide.textContent='Sans club, la galerie n\'est rattachee a aucune categorie.';
+    return;
+  }
+  box.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
   try{
     const teams=await sbFetch('club_teams?select=id,name&club_id=eq.'+clubId+'&order=name.asc');
-    sel.innerHTML='<option value="">Choisir…</option>'+(Array.isArray(teams)?teams:[]).map(t=>`<option value="${t.id}" ${t.id===selectedTeamId?'selected':''}>${esc(t.name)}</option>`).join('');
-  }catch(e){sel.innerHTML='<option value="">Erreur de chargement</option>';}
+    const dejaLa=new Set(selectionnees||[]);
+    const L=Array.isArray(teams)?teams:[];
+    if(!L.length){
+      box.innerHTML='<div style="font-size:12px;color:var(--t3)">Ce club n\'a aucune equipe enregistree.</div>';
+      return;
+    }
+    box.innerHTML=L.map(t=>
+      '<label style="display:flex;align-items:center;gap:7px;padding:3px 2px;font-size:12.5px;color:var(--t1);cursor:pointer">'
+      +'<input type="checkbox" value="'+esc(t.id)+'"'+(dejaLa.has(t.id)?' checked':'')
+      +' onchange="_paTeamsChange()" style="width:15px;height:15px;flex-shrink:0">'
+      +esc(t.name)+'</label>').join('');
+    _paTeamsChange();
+  }catch(e){
+    box.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';
+  }
+}
+
+// Cocher une categorie refiltre les rattachements : c'est tout l'objet de la demande. On ne perd
+// jamais le rattachement deja choisi s'il survit au filtre.
+let _paFiltreTimer=null;
+function _paTeamsChange(){
+  const cochees=_paTeamsCochees();
+  const aide=document.getElementById('pa-teams-aide');
+  if(aide){
+    aide.textContent = cochees.length===0
+      ? 'Aucune categorie cochee : la galerie est servie a tout le club.'
+      : cochees.length===1
+        ? 'Une categorie : seules ses familles verront cette galerie.'
+        : cochees.length+' categories : les familles de chacune verront cette galerie, les autres non.';
+  }
+  clearTimeout(_paFiltreTimer);
+  _paFiltreTimer=setTimeout(()=>{
+    const club=document.getElementById('pa-club')?.value||'';
+    const garde=document.getElementById('pa-lien')?.value||'';
+    _paLoadRattachements(club, garde);
+  },200);
 }
 
 async function sauvegarderAlbum(albumId){
@@ -13083,7 +13193,13 @@ async function sauvegarderAlbum(albumId){
   err.textContent='Enregistrement…';
   try{
     const clubId=v('pa-club')||null;
-    const teamId=v('pa-team')||null;
+    // v280 — LES CATEGORIES COUVERTES. La premiere cochee est la principale (team_id), les
+    // suivantes sont supplementaires (team_ids). Cette forme-la n'est pas un detail : elle fait
+    // qu'une galerie mono-categorie reste EXACTEMENT ce qu'elle etait avant, team_ids vide, et que
+    // tout le code qui lit team_id continue de marcher sans le savoir.
+    const teamsCochees=_paTeamsCochees();
+    const teamId=teamsCochees[0]||null;
+    const teamIdsSupp=teamsCochees.slice(1);
     const season=v('pa-season');
     const missionRef=v('pa-mission');
 
@@ -13123,6 +13239,7 @@ async function sauvegarderAlbum(albumId){
       title,
       club_id:clubId,
       team_id:teamId,
+      team_ids:teamIdsSupp,
       saison_id:saisonId,
       pole_id:v('pa-pole')||null,
       structure_externe:v('pa-structure')||null,
