@@ -43,6 +43,16 @@ export interface TabularParseOptions {
    * vérifiée : c'est là qu'un nombre dans la case adversaire trahit une ligne pas encore remplie.
    */
   mappageImpose?: boolean;
+  /**
+   * Vrai quand la colonne date n'existe pas dans le fichier et a été RECONSTRUITE à partir des
+   * titres de section (planning « par blocs », voir tabular-sections.ts).
+   *
+   * La nuance décide de ce qu'est une ligne sans adversaire. Dans un fichier à colonne date, une
+   * ligne datée sans adversaire est une anomalie : quelqu'un a saisi une date pour rien. Dans un
+   * planning par blocs, la date vient du titre du jour et se pose sur TOUTES les lignes de ce
+   * jour, y compris les créneaux laissés vides — elle ne prouve donc rien.
+   */
+  dateParSection?: boolean;
 }
 
 export function rowsToSourceEvents(rows: string[][], options: TabularParseOptions): ParseResult {
@@ -67,8 +77,25 @@ export function rowsToSourceEvents(rows: string[][], options: TabularParseOption
     const dateRaw = at(row, "date")?.trim() ?? "";
 
     if (!opponentRaw && !dateRaw) continue; // ligne totalement vide : pas une erreur
+
+    // Lue tôt, et pas seulement pour les lignes valides : un signalement daté peut être écarté
+    // par le plancher de saison, un signalement sans date ne le peut pas.
+    const dateLigne = parseFlexibleDate(dateRaw);
     if (!opponentRaw) {
-      issues.push({ line: humanLine, raw: rawLine, reason: "Adversaire manquant." });
+      // UN CRÉNEAU VIDE N'EST PAS UNE ERREUR (25/09/2026). Le planning de Villemomble liste ses
+      // équipes semaine après semaine et laisse la case adversaire vide quand il n'y a pas de
+      // match. Sur les dix onglets, ça faisait 264 « adversaire manquant » — assez pour qu'un
+      // club croie l'import cassé, et assez pour noyer les 15 signalements qui, eux, méritaient
+      // d'être lus.
+      //
+      // On ne se tait QUE dans un planning par blocs, et QUE si la ligne ne décrit rien d'autre :
+      // ni heure lisible, ni lieu. Dès qu'un de ces deux est là, quelqu'un a commencé à remplir la
+      // ligne et l'adversaire manquant est une vraie anomalie, qu'on continue de signaler. Et dans
+      // un fichier à vraie colonne date, on ne se tait jamais : la date saisie prouve l'intention.
+      const heure = parseFlexibleTime(at(row, "time")?.trim() ?? "");
+      const lieu = at(row, "location")?.trim();
+      if (options.dateParSection && !heure && !lieu) continue;
+      issues.push({ line: humanLine, raw: rawLine, reason: "Adversaire manquant.", matchDate: dateLigne });
       continue;
     }
     // TROUVÉ SUR LE PLANNING RÉEL DE VILLEMOMBLE (25/09/2026) : le club prépare ses lignes à
@@ -93,11 +120,12 @@ export function rowsToSourceEvents(rows: string[][], options: TabularParseOption
         line: humanLine,
         raw: rawLine,
         reason: `Adversaire non renseigné ("${opponentRaw}") : ligne préparée mais pas encore remplie.`,
+        matchDate: dateLigne,
       });
       continue;
     }
 
-    const matchDate = parseFlexibleDate(dateRaw);
+    const matchDate = dateLigne;
     if (!matchDate) {
       issues.push({
         line: humanLine,

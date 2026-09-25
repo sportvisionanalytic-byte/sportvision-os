@@ -99,6 +99,15 @@ export interface SourceIssue {
   line: number;
   raw: string;
   reason: string;
+  /**
+   * La date de la ligne, quand elle a pu être lue malgré le problème.
+   *
+   * Sert au plancher de saison : un souci sur une ligne de l'an dernier n'est pas un souci de
+   * cette saison. Sans ça, le classeur de Villemomble remontait 344 signalements, dont 241
+   * venaient de quatre onglets périmés que le plancher écartait déjà — de quoi faire croire à un
+   * club que son import est cassé alors qu'il vient de marcher.
+   */
+  matchDate?: string | null;
 }
 
 export interface ParseResult {

@@ -335,10 +335,16 @@ export function ImportMatchesModal({
    */
   const handleUrl = useCallback(
     async (rawUrl: string) => {
+      // `normalizeCalendarUrl` transforme au passage une adresse Google Sheets copiée depuis la
+      // barre du navigateur en son adresse d'export : un club colle ce qu'il voit, pas un lien
+      // d'export qu'il ne sait pas fabriquer.
       const url = normalizeCalendarUrl(rawUrl);
       if (!url) return;
-      const icsProvider = getProvider("ICS");
-      if (!icsProvider) return;
+      // Un classeur n'est pas un calendrier d'abonnement : ni le même format à rapporter, ni le
+      // même lecteur ensuite. On décide ici, sur l'adresse, comme le fait le relais.
+      const tableur = /spreadsheets|\.xlsx(\?|$)|format=xlsx/i.test(url);
+      const lecteur = getProvider(tableur ? "FOOTCLUBS_XLSX" : "ICS");
+      if (!lecteur) return;
 
       setFatalError(null);
       setResult(null);
@@ -347,19 +353,26 @@ export function ImportMatchesModal({
         const response = await fetch("/clubplus/api/calendar/fetch", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ url }),
+          body: JSON.stringify({ url, format: tableur ? "tableur" : "ics" }),
         });
-        const payload = (await response.json()) as { text?: string; error?: string };
-        if (!response.ok || !payload.text) {
+        const payload = (await response.json()) as
+          { text?: string; bytesBase64?: string; error?: string };
+        if (!response.ok || (!payload.text && !payload.bytesBase64)) {
           setFatalError(payload.error ?? "Impossible de récupérer ce calendrier.");
           return;
         }
 
+        const octets = payload.bytesBase64
+          ? Uint8Array.from(atob(payload.bytesBase64), (c) => c.charCodeAt(0)).buffer
+          : null;
+
         setFileName(new URL(url).hostname);
-        setFileBytes(null);
-        setFileText(payload.text);
-        setProvider(icsProvider);
-        setInspection(null);
+        setFileBytes(octets);
+        setFileText(payload.text ?? null);
+        setProvider(lecteur);
+        setInspection(octets && lecteur.inspect
+          ? await lecteur.inspect({ fileName: url, bytes: octets })
+          : null);
         setLayout(null);
         setMapping(null);
         setTeamIdByLine({});
@@ -368,7 +381,8 @@ export function ImportMatchesModal({
         setAdjustOpen(false);
         setUrlUsed(url);
 
-        setParsed(await icsProvider.parse({ fileName: url, text: payload.text, teams }));
+        setParsed(await lecteur.parse({
+          fileName: url, text: payload.text ?? undefined, bytes: octets ?? undefined, teams }));
         setStep("review");
       } catch {
         setFatalError("Impossible de récupérer ce calendrier.");

@@ -25,7 +25,7 @@ import { lireCalendrierDePoule, ressembleAUnCalendrierDePoule, estEquipeDuClub, 
 import { detectProvider } from "../providers/index.ts";
 import { buildImportPreview, type ClubTeamRef, type ExistingMatch, type TeamSourceMapping } from "../diff.ts";
 import { fallbackIdentityKey, externalIdentityKey } from "../identity.ts";
-import { parseFlexibleDate, parseFlexibleTime, coerceSportStatus, detectSportStatus } from "../normalize.ts";
+import { parseFlexibleDate, parseFlexibleTime, coerceSportStatus, detectSportStatus, normalizeCalendarUrl } from "../normalize.ts";
 import { readXlsx } from "../xlsx.ts";
 import { detectTabularLayout } from "../autodetect.ts";
 import { enrichirDepuisSections } from "../tabular-sections.ts";
@@ -1368,4 +1368,45 @@ test("la liste d'exécution des sources dit exactement la même chose que le typ
   assert.ok(duType.length >= 7, "le type n'a pas été lu correctement");
   assert.deepEqual([...duRuntime].sort(), [...duType].sort(),
     "toute source du type doit figurer dans la liste d'exécution, sinon elle devient « MANUAL » en silence");
+});
+
+test("une adresse Google Sheets collée depuis le navigateur devient un export lisible", () => {
+  // Un club colle ce qu'il voit dans sa barre d'adresse. Telle quelle, elle renvoie une page HTML
+  // et la synchronisation échouerait sur un message que personne ne saurait interpréter.
+  const colle = "https://docs.google.com/spreadsheets/d/1qyxLYHbUtFrBM0jRP/edit?usp=sharing";
+  assert.equal(normalizeCalendarUrl(colle),
+    "https://docs.google.com/spreadsheets/d/1qyxLYHbUtFrBM0jRP/export?format=xlsx");
+
+  // L'onglet regardé est conservé.
+  assert.equal(normalizeCalendarUrl("https://docs.google.com/spreadsheets/d/ABC/edit#gid=1234567"),
+    "https://docs.google.com/spreadsheets/d/ABC/export?format=xlsx&gid=1234567");
+
+  // Une adresse d'export déjà correcte n'est pas retouchée.
+  const deja = "https://docs.google.com/spreadsheets/d/ABC/export?format=csv";
+  assert.equal(normalizeCalendarUrl(deja), deja);
+
+  // Le reste du monde ne bouge pas.
+  assert.equal(normalizeCalendarUrl("webcal://fede.fr/cal.ics"), "https://fede.fr/cal.ics");
+  assert.equal(normalizeCalendarUrl("https://fede.fr/cal.ics"), "https://fede.fr/cal.ics");
+});
+
+test("un problème sur une ligne de l'an dernier n'est pas un problème de cette saison", () => {
+  // Mesuré sur Villemomble : 241 des 344 signalements venaient de quatre onglets périmés que le
+  // plancher écartait déjà. Un club qui ouvre l'écran et lit « 344 erreurs » conclut que son
+  // import est cassé, alors qu'il vient de marcher.
+  const equipes: ClubTeamRef[] = [{ id: "t-sen", name: "Séniors R2", categories: ["Seniors"] }];
+  const vue = buildImportPreview({
+    provider: "FOOTCLUBS_XLSX",
+    events: [evenement({ matchDate: "2026-09-20" })],
+    issues: [
+      { line: 10, raw: "", reason: "Adversaire manquant.", matchDate: "2025-11-02" },
+      { line: 11, raw: "", reason: "Adversaire manquant.", matchDate: "2026-09-20" },
+      { line: 12, raw: "", reason: "Feuille illisible." },
+    ],
+    existing: [], teams: equipes, mappings: [], defaultTeamId: null, minDate: "2026-07-01",
+  });
+  assert.equal(vue.issues.length, 2, "celui de l'an dernier part, les deux autres restent");
+  assert.equal(vue.counts.error, 2, "et le compteur affiché dit la même chose");
+  assert.ok(vue.issues.some((i) => i.reason === "Feuille illisible."),
+    "un signalement qu'on ne sait pas dater n'est jamais caché");
 });

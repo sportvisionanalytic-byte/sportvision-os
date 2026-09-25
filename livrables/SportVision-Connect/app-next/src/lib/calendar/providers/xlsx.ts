@@ -32,7 +32,9 @@ import {
   type CalendarProvider,
   type ParseResult,
   type ProviderInput,
+  type SourceEvent,
   type SourceInspection,
+  type SourceIssue,
   type TabularMapping,
 } from "../types.ts";
 
@@ -76,62 +78,131 @@ export const xlsxProvider: CalendarProvider = {
   async parse(input: ProviderInput): Promise<ParseResult> {
     const workbook = await toWorkbook(input);
     const provided = input.options as TabularMapping | undefined;
-    const sheetIndex = provided?.sheetIndex ?? pickBestSheet(workbook.sheets, input.teams);
-    const sheet = workbook.sheets[sheetIndex];
-    if (!sheet) {
-      return { events: [], issues: [{ line: 0, raw: input.fileName, reason: "Feuille de calcul introuvable." }] };
+
+    // UN ONGLET DÉSIGNÉ : on lit celui-là, et rien d'autre. C'est le choix de l'utilisateur.
+    if (provided?.sheetIndex !== undefined) {
+      return lireFeuille(workbook, provided.sheetIndex, input, provided, 0);
     }
 
-    // Mapping fourni (l'utilisateur a corrigé) : il fait foi. Sinon on détecte.
-    let mapping = provided;
-    let updatedAtColumn: number | null = null;
-    let lignes = sheet.rows;
-    // Un humain a-t-il DÉSIGNÉ les colonnes, ou seulement choisi une feuille ? La nuance compte :
-    // `provided` peut ne porter qu'un `sheetIndex`, et choisir un onglet n'est pas se prononcer
-    // sur le contenu des colonnes. Seul le premier cas fait taire les garde-fous.
-    const mappageImpose = !!provided
-      && TABULAR_REQUIRED_FIELDS.every((f) => provided.columns?.[f] !== undefined);
-    // `mapping.columns` peut manquer : l'écran d'import n'envoie parfois qu'un `sheetIndex`, quand
-    // l'utilisateur choisit un onglet sans se prononcer sur les colonnes. Sans le `?.`, la lecture
-    // plantait — trouvé le 25/09/2026 en rejouant les dix onglets du classeur de Villemomble.
-    if (!mapping || TABULAR_REQUIRED_FIELDS.some((f) => mapping!.columns?.[f] === undefined)) {
-      let layout = detectTabularLayout(lignes, { teams: input.teams });
+    // AUCUN ONGLET DÉSIGNÉ : on les lit TOUS.
+    //
+    // TROUVÉ LE 25/09/2026 EN BRANCHANT LA SYNCHRONISATION DE NUIT sur le classeur de Villemomble :
+    // le lecteur ne retenait qu'un onglet, « le meilleur » au sens du nombre d'équipes reconnues.
+    // Sur un classeur d'une feuille par mois, il a choisi novembre — la saison passée — et la
+    // synchronisation n'a rien importé du tout. Personne ne l'aurait su : elle aurait simplement
+    // annoncé zéro match, nuit après nuit.
+    //
+    // « Le meilleur onglet » n'a de sens que pour un export d'une seule table précédée d'une page
+    // de garde. Un planning de club, lui, est réparti exprès. Les lignes périmées sont déjà
+    // écartées par le plancher de saison, et un match présent deux fois dans le fichier est
+    // reconnu comme doublon par le moteur : rien ne s'oppose à tout lire.
+    const events: SourceEvent[] = [];
+    const issues: SourceIssue[] = [];
+    let auMoinsUneLue = false;
 
-      // Planning « par blocs » : la date est un titre de section, pas une colonne. On la reporte
-      // sur chaque ligne, puis on relit avec le moteur habituel — aucune regle de lecture
-      // nouvelle, juste une colonne de plus.
-      if (layout.missingRequired.includes("date")) {
-        const enrichies = enrichirDepuisSections(lignes);
-        if (enrichies) {
-          const relecture = detectTabularLayout(enrichies, { teams: input.teams });
-          if (relecture.missingRequired.length < layout.missingRequired.length) {
-            lignes = enrichies;
-            layout = relecture;
-          }
-        }
+    for (let i = 0; i < workbook.sheets.length; i++) {
+      const resultat = lireFeuille(workbook, i, input, undefined, i * DECALAGE_PAR_FEUILLE);
+      if (resultat.events.length > 0) {
+        auMoinsUneLue = true;
+        events.push(...resultat.events);
+        issues.push(...resultat.issues);
+      } else {
+        // Un onglet illisible n'est signalé QUE si aucun autre n'a rien donné : un classeur de
+        // club contient des pages de garde et des listes de contacts, et se plaindre de chacune
+        // noierait les vrais signalements sous du bruit.
+        issues.push(...resultat.issues.map((x) => ({
+          ...x, reason: `« ${workbook.sheets[i]?.name ?? i} » : ${x.reason}` })));
       }
-
-      if (layout.missingRequired.length > 0) {
-        return {
-          events: [],
-          issues: [
-            {
-              line: 0,
-              raw: input.fileName,
-              reason: `Impossible de reconnaître ${layout.missingRequired
-                .map((f) => TABULAR_FIELD_LABELS[f].toLowerCase())
-                .join(" et ")} dans « ${sheet.name} ». Désignez les colonnes vous-même.`,
-            },
-          ],
-        };
-      }
-      mapping = layoutToMapping(layout, sheetIndex);
-      updatedAtColumn = layout.updatedAtColumn;
     }
 
-    return rowsToSourceEvents(lignes, { mapping, updatedAtColumn, mappageImpose });
+    if (!auMoinsUneLue) return { events: [], issues };
+    // On ne garde que les signalements des onglets qui ont vraiment produit des matchs.
+    return { events, issues: issues.filter((x) => !/^« /.test(String(x.reason))) };
   },
 };
+
+/** Le pas entre deux onglets dans la numérotation des lignes.
+ *
+ *  Les lignes d'un classeur portent leur numéro Excel, et ce numéro sert de clé : c'est lui que
+ *  l'écran d'import utilise pour retenir « sur CETTE ligne, l'équipe est celle-ci ». Lire
+ *  plusieurs onglets sans décalage ferait de la ligne 5 de janvier et de la ligne 5 de février la
+ *  même clé — un choix fait sur l'une s'appliquerait silencieusement à l'autre.
+ *
+ *  Un million : très au-delà du million de lignes d'une feuille Excel, donc sans collision
+ *  possible, et assez lisible pour qu'on retrouve l'onglet et la ligne à l'œil (3000042 = onglet
+ *  3, ligne 42). */
+const DECALAGE_PAR_FEUILLE = 1_000_000;
+
+/** Lit UN onglet. `decalage` s'ajoute aux numéros de ligne pour qu'ils restent uniques dans le
+ *  classeur entier. */
+function lireFeuille(
+  workbook: { sheets: { name: string; rows: string[][] }[] },
+  sheetIndex: number,
+  input: ProviderInput,
+  provided: TabularMapping | undefined,
+  decalage: number,
+): ParseResult {
+  const sheet = workbook.sheets[sheetIndex];
+  if (!sheet) {
+    return { events: [], issues: [{ line: 0, raw: input.fileName, reason: "Feuille de calcul introuvable." }] };
+  }
+
+  // Mapping fourni (l'utilisateur a corrigé) : il fait foi. Sinon on détecte.
+  let mapping = provided;
+  let updatedAtColumn: number | null = null;
+  let lignes = sheet.rows;
+  let dateParSection = false;
+  // Un humain a-t-il DÉSIGNÉ les colonnes, ou seulement choisi une feuille ? La nuance compte :
+  // `provided` peut ne porter qu'un `sheetIndex`, et choisir un onglet n'est pas se prononcer
+  // sur le contenu des colonnes. Seul le premier cas fait taire les garde-fous de contenu.
+  const mappageImpose = !!provided
+    && TABULAR_REQUIRED_FIELDS.every((f) => provided.columns?.[f] !== undefined);
+  // `mapping.columns` peut manquer : l'écran d'import n'envoie parfois qu'un `sheetIndex`, quand
+  // l'utilisateur choisit un onglet sans se prononcer sur les colonnes. Sans le `?.`, la lecture
+  // plantait — trouvé le 25/09/2026 en rejouant les dix onglets du classeur de Villemomble.
+  if (!mapping || TABULAR_REQUIRED_FIELDS.some((f) => mapping!.columns?.[f] === undefined)) {
+    let layout = detectTabularLayout(lignes, { teams: input.teams });
+
+    // Planning « par blocs » : la date est un titre de section, pas une colonne. On la reporte
+    // sur chaque ligne, puis on relit avec le moteur habituel — aucune regle de lecture
+    // nouvelle, juste une colonne de plus.
+    if (layout.missingRequired.includes("date")) {
+      const enrichies = enrichirDepuisSections(lignes);
+      if (enrichies) {
+        const relecture = detectTabularLayout(enrichies, { teams: input.teams });
+        if (relecture.missingRequired.length < layout.missingRequired.length) {
+          lignes = enrichies;
+          layout = relecture;
+          dateParSection = true;
+        }
+      }
+    }
+
+    if (layout.missingRequired.length > 0) {
+      return {
+        events: [],
+        issues: [
+          {
+            line: 0,
+            raw: input.fileName,
+            reason: `Impossible de reconnaître ${layout.missingRequired
+              .map((f) => TABULAR_FIELD_LABELS[f].toLowerCase())
+              .join(" et ")} dans « ${sheet.name} ». Désignez les colonnes vous-même.`,
+          },
+        ],
+      };
+    }
+    mapping = layoutToMapping(layout, sheetIndex);
+    updatedAtColumn = layout.updatedAtColumn;
+  }
+
+  const lu = rowsToSourceEvents(lignes, { mapping, updatedAtColumn, mappageImpose, dateParSection });
+  if (!decalage) return lu;
+  return {
+    events: lu.events.map((e) => ({ ...e, sourceLine: e.sourceLine + decalage })),
+    issues: lu.issues.map((x) => ({ ...x, line: x.line ? x.line + decalage : x.line })),
+  };
+}
 
 /** Ce que l'écran d'import a besoin de savoir pour AFFICHER ce qui a été compris : quelle feuille
  * a été retenue et quelles colonnes ont été reconnues. Sans ça, l'utilisateur devrait faire

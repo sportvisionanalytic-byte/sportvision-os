@@ -155,7 +155,24 @@ export function coerceSportStatus(raw: string | null | undefined, fallback: Spor
  * agenda. Un fetch dessus échoue toujours, on le normalise donc dès la saisie. */
 export function normalizeCalendarUrl(raw: string): string {
   const value = raw.trim();
-  return /^webcal:\/\//i.test(value) ? value.replace(/^webcal:\/\//i, "https://") : value;
+  const sansWebcal = /^webcal:\/\//i.test(value) ? value.replace(/^webcal:\/\//i, "https://") : value;
+
+  // GOOGLE SHEETS : un club colle l'adresse qu'il a dans la barre du navigateur, celle qui finit
+  // par « /edit?usp=sharing ». Elle renvoie une page HTML, pas un fichier — la synchronisation
+  // échouerait avec un message incompréhensible, et le club conclurait que ça ne marche pas.
+  //
+  // On la transforme donc en l'adresse d'export du même document. C'est la MÊME ressource, chez
+  // le même hôte, vue par la même personne : on ne contourne aucune autorisation. Un classeur
+  // resté privé répond 401/403, que le récupérateur nomme déjà correctement.
+  //
+  // `gid` est conservé s'il est présent : il désigne l'onglet que le club regardait.
+  const sheets = /^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/.exec(sansWebcal);
+  if (sheets && !/\/export\b/.test(sansWebcal)) {
+    const gid = /[#?&]gid=(\d+)/.exec(sansWebcal)?.[1];
+    return `https://docs.google.com/spreadsheets/d/${sheets[1]}/export?format=xlsx`
+      + (gid ? `&gid=${gid}` : "");
+  }
+  return sansWebcal;
 }
 
 /** "3-1", "3 - 1", "3:1" → "3-1". Tout le reste → null (jamais un score inventé). */

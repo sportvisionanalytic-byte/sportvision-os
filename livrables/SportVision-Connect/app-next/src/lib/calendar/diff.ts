@@ -355,6 +355,14 @@ export function buildImportPreview(input: PreviewInput): ImportPreview {
     ? events.filter((e) => !e.matchDate || e.matchDate >= minDate)
     : events;
   const ignoredBeforeMinDate = events.length - evenements.length;
+  // Les signalements suivent le même plancher : un souci sur une ligne de l'an dernier n'est pas
+  // un souci de cette saison. Mesuré sur Villemomble — 241 des 344 signalements venaient de
+  // quatre onglets périmés que le plancher écartait déjà, de quoi faire croire à un club que son
+  // import est cassé alors qu'il venait de marcher. Un signalement sans date reste affiché : on
+  // ne cache jamais ce qu'on ne sait pas dater.
+  const signalements = minDate
+    ? issues.filter((i) => !i.matchDate || i.matchDate >= minDate)
+    : issues;
   const teamIdByLine = input.overrides?.teamIdByLine ?? {};
   const excluded = new Set(input.overrides?.excludedLines ?? []);
   const forcedIncluded = new Set(input.overrides?.includedLines ?? []);
@@ -614,9 +622,9 @@ export function buildImportPreview(input: PreviewInput): ImportPreview {
     unchanged: 0,
     needs_mapping: 0,
     ambiguous: 0,
-    error: issues.length,
+    error: signalements.length,
   };
   for (const row of rows) counts[row.verdict] += 1;
 
-  return { rows, issues, counts, selectedCount: rows.filter((r) => r.include).length, ignoredBeforeMinDate };
+  return { rows, issues: signalements, counts, selectedCount: rows.filter((r) => r.include).length, ignoredBeforeMinDate };
 }

@@ -61,8 +61,13 @@ export function validateCalendarUrl(raw: string): { url: URL } | { error: string
 }
 
 /** Lit le corps en s'arrêtant net au plafond, sans jamais faire confiance à Content-Length : un
- * serveur peut annoncer 1 Ko et envoyer 1 Go. */
-async function readCapped(response: Response): Promise<string | null> {
+ * serveur peut annoncer 1 Ko et envoyer 1 Go.
+ *
+ * Rend des OCTETS depuis le 25/09/2026 : la synchronisation automatique ne lisait que l'ICS, donc
+ * décoder en texte tout de suite suffisait. Un classeur .xlsx est un ZIP — le décoder en UTF-8
+ * détruit son contenu sans erreur visible. Le décodage est donc devenu l'affaire de l'appelant,
+ * qui sait ce qu'il attend. */
+async function readCapped(response: Response): Promise<Uint8Array | null> {
   const reader = response.body?.getReader();
   if (!reader) return null;
   const chunks: Uint8Array[] = [];
@@ -84,12 +89,31 @@ async function readCapped(response: Response): Promise<string | null> {
     merged.set(chunk, offset);
     offset += chunk.length;
   }
-  return new TextDecoder("utf-8").decode(merged);
+  return merged;
 }
 
-export type RemoteCalendarResult = { text: string } | { error: string; status: number };
+export type RemoteCalendarResult =
+  | { text: string; bytes: ArrayBuffer }
+  | { error: string; status: number };
 
-export async function fetchRemoteCalendar(rawUrl: string): Promise<RemoteCalendarResult> {
+/**
+ * Ce que l'appelant attend du corps rapporté.
+ *
+ *   "ics"     un calendrier d'abonnement. On exige BEGIN:VCALENDAR — c'était la seule vérification
+ *             existante, et elle reste, parce qu'une URL qui renvoie une page de connexion HTML
+ *             doit être refusée avec une phrase que le club comprend.
+ *   "tableur" un .xlsx. On exige la signature ZIP « PK\x03\x04 » : un export Google Sheets d'un
+ *             document resté privé renvoie une page HTML en 200, et la lire comme un classeur
+ *             donnerait une erreur de décompression illisible.
+ *   "texte"   un CSV. Rien à exiger : tout fichier texte est un CSV plausible, c'est le lecteur
+ *             qui dira s'il y trouve des colonnes.
+ */
+export type FormatAttendu = "ics" | "tableur" | "texte";
+
+export async function fetchRemoteCalendar(
+  rawUrl: string,
+  attendu: FormatAttendu = "ics",
+): Promise<RemoteCalendarResult> {
   const validated = validateCalendarUrl(rawUrl);
   if ("error" in validated) return { error: validated.error, status: 400 };
 
@@ -120,15 +144,31 @@ export async function fetchRemoteCalendar(rawUrl: string): Promise<RemoteCalenda
       };
     }
 
-    const text = await readCapped(response);
-    if (text === null) return { error: "Fichier trop volumineux ou illisible.", status: 502 };
-    if (!text.includes("BEGIN:VCALENDAR")) {
+    const octets = await readCapped(response);
+    if (octets === null) return { error: "Fichier trop volumineux ou illisible.", status: 502 };
+    const bytes = octets.buffer.slice(octets.byteOffset, octets.byteOffset + octets.byteLength) as ArrayBuffer;
+    const text = new TextDecoder("utf-8").decode(octets);
+
+    if (attendu === "ics" && !text.includes("BEGIN:VCALENDAR")) {
       return {
         error: "Cette adresse ne renvoie pas un calendrier .ics. Vérifiez qu'il s'agit bien d'un lien d'abonnement.",
         status: 422,
       };
     }
-    return { text };
+    if (attendu === "tableur") {
+      const zip = octets.length > 4 && octets[0] === 0x50 && octets[1] === 0x4b
+        && octets[2] === 0x03 && octets[3] === 0x04;
+      if (!zip) {
+        return {
+          error: text.slice(0, 400).includes("<html")
+            ? "Cette adresse renvoie une page web, pas un classeur. Si le document est sur Google "
+              + "Sheets, il doit être partagé « avec toute personne disposant du lien »."
+            : "Cette adresse ne renvoie pas un fichier .xlsx.",
+          status: 422,
+        };
+      }
+    }
+    return { text, bytes };
   } catch (error) {
     const aborted = error instanceof Error && error.name === "AbortError";
     return { error: aborted ? "La source n'a pas répondu à temps." : "Impossible de joindre cette adresse.", status: 502 };

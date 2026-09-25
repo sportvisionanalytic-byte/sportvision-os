@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { icsProvider } from "@/lib/calendar/providers/ics";
-import { fetchRemoteCalendar } from "@/lib/calendar/remote";
+import { getProvider } from "@/lib/calendar/providers";
+import { fetchRemoteCalendar, type FormatAttendu } from "@/lib/calendar/remote";
 import { buildImportPreview } from "@/lib/calendar/diff";
 import type { ProviderId } from "@/lib/calendar/types";
 import {
@@ -26,6 +26,19 @@ import {
 //
 // Aucun moteur parallèle : mêmes providers, même identité, même diff, même écriture que l'import
 // manuel. Seule la décision « qu'est-ce qu'on applique sans humain » est propre à ce fichier.
+
+/**
+ * Ce qu'une source doit renvoyer, selon son format.
+ *
+ * Le lecteur de classeurs attend des octets, celui d'ICS attend du texte, et confondre les deux
+ * échoue de façon illisible : un .xlsx passé dans un décodeur UTF-8 devient une bouillie que la
+ * décompression refuse, sans jamais nommer la vraie cause.
+ */
+function formatAttendu(provider: ProviderId): FormatAttendu {
+  if (provider === "FOOTCLUBS_XLSX") return "tableur";
+  if (provider === "CSV") return "texte";
+  return "ics";
+}
 
 export interface AutoSyncSource {
   clubId: string;
@@ -69,7 +82,26 @@ export async function syncCalendarSourceOnce(supabase: SupabaseClient, source: A
     message: null,
   };
 
-  const remote = await fetchRemoteCalendar(source.sourceUrl);
+  // Les équipes sont chargées AVANT la lecture, et pas après comme auparavant : un classeur n'a
+  // ni format fixe ni onglet désigné, et c'est en reconnaissant les équipes du club dans les
+  // cellules que le lecteur choisit le bon onglet et les bonnes colonnes. Un .ics, lui, s'en
+  // passait — d'où l'ordre d'origine.
+  const [teams, existing, mappings, saisons] = await Promise.all([
+    fetchTeams(supabase, source.clubId),
+    fetchExistingMatches(supabase, source.clubId),
+    fetchTeamSourceMappings(supabase, source.clubId, source.saisonId, source.provider),
+    fetchSaisons(supabase),
+  ]);
+
+  // LE PLANCHER. Une source distante est relue chaque nuit sans que personne la regarde, et une
+  // source de club garde souvent la saison passée à côté de la nouvelle : le classeur de
+  // Villemomble, mesuré le 25/09/2026, avait dix onglets mensuels dont sept contenaient encore
+  // 2025-2026. Sans plancher, la synchronisation nocturne aurait réinjecté l'an dernier dans
+  // cette saison — des lignes parfaitement valides, simplement périmées, que rien n'aurait
+  // signalées.
+  const debutSaison = saisons.find((s) => s.id === source.saisonId)?.dateDebut ?? null;
+
+  const remote = await fetchRemoteCalendar(source.sourceUrl, formatAttendu(source.provider));
   if ("error" in remote) {
     // La source est injoignable ou a changé. On ne supprime rien et on ne touche à aucun match :
     // le calendrier déjà en place reste intact et consultable, seule la trace du run dit ce qui
@@ -92,22 +124,28 @@ export async function syncCalendarSourceOnce(supabase: SupabaseClient, source: A
     return { ...base, message: remote.error };
   }
 
-  const parsed = await icsProvider.parse({ fileName: source.sourceUrl, text: remote.text });
+  const lecteur = getProvider(source.provider);
+  if (!lecteur) {
+    // Une source enregistrée avec un provider que le moteur ne sait pas lire. On ne devine pas :
+    // lire un classeur avec le lecteur d'ICS ne rendrait rien, et lire un ICS avec celui des
+    // classeurs échouerait sur une décompression. Mieux vaut le dire.
+    const message = `Aucun lecteur pour la source « ${source.provider} ».`;
+    await recordCalendarSyncRun(supabase, {
+      clubId: source.clubId, saisonId: source.saisonId, provider: source.provider,
+      triggerKind: "scheduled", startedAt,
+      created: 0, updated: 0, cancelled: 0, unchanged: 0, changes: [],
+      errors: [{ line: 0, label: source.sourceUrl, message }],
+      sourceLabel: source.sourceUrl,
+    });
+    return { ...base, message };
+  }
 
-  const [teams, existing, mappings, saisons] = await Promise.all([
-    fetchTeams(supabase, source.clubId),
-    fetchExistingMatches(supabase, source.clubId),
-    fetchTeamSourceMappings(supabase, source.clubId, source.saisonId, source.provider),
-    fetchSaisons(supabase),
-  ]);
-
-  // LE PLANCHER. Une source distante est relue chaque nuit sans que personne la regarde, et une
-  // source de club garde souvent la saison passée à côté de la nouvelle : le classeur de
-  // Villemomble, mesuré le 25/09/2026, avait dix onglets mensuels dont sept contenaient encore
-  // 2025-2026. Sans plancher, la synchronisation nocturne aurait réinjecté l'an dernier dans
-  // cette saison — des lignes parfaitement valides, simplement périmées, que rien n'aurait
-  // signalées.
-  const debutSaison = saisons.find((s) => s.id === source.saisonId)?.dateDebut ?? null;
+  const parsed = await lecteur.parse({
+    fileName: source.sourceUrl,
+    text: remote.text,
+    bytes: remote.bytes,
+    teams,
+  });
 
   const preview = buildImportPreview({
     provider: source.provider,
