@@ -1,41 +1,49 @@
--- Une galerie publiée doit être visible par quelqu'un (25/09/2026).
+-- Une galerie publiée doit être atteignable par quelqu'un (25/09/2026).
 --
--- TROUVÉ EN AUDITANT, et c'est le défaut le plus lourd de la journée : 23 galeries publiées sur
--- 25, portant 2 666 photos sur 2 670, n'ont AUCUN CLUB. `media_album_list` commence par
--- `a.club_id = p_club_id` : sans club, aucune famille ne peut les atteindre. La quasi-totalité
--- des photos prises depuis le début de la saison n'a jamais pu être vue par une seule famille.
--- L'opérateur croyait avoir publié ; il avait rempli un dossier que personne n'ouvrirait jamais.
+-- DEUX VERSIONS FAUSSES DE CE TEST ONT PRÉCÉDÉ CELLE-CI, LE MÊME JOUR. Elles méritent d'être
+-- écrites, parce que l'erreur était la même : juger la visibilité sur un seul chemin.
 --
--- CE QUE CE TEST NE DIT PAS, ET C'EST UNE CORRECTION. Sa première version accusait l'ÉQUIPE
--- manquante. C'était faux : la v195 du 12/09 sert explicitement une galerie sans équipe à TOUTES
--- les familles du club, parce qu'une galerie sans équipe est le tournoi, le plateau, le gala, la
--- journée club — et c'est le seul moyen de couvrir plusieurs catégories d'un coup. Un test qui
--- exige une équipe pousserait à coller une équipe unique sur ces galeries-là, donc à priver de
--- photos toutes les familles sauf une. Le contraire du but.
+--   1. « Sans ÉQUIPE, personne ne voit la galerie. » Faux : la v195 du 12/09 sert explicitement
+--      une galerie sans équipe à toutes les familles du club — c'est le tournoi, le plateau, la
+--      journée club, et le seul moyen de couvrir plusieurs catégories d'un coup.
 --
--- POURQUOI LE CLUB N'EST PAS RENDU OBLIGATOIRE POUR AUTANT. Une galerie sans club est légitime :
--- un club non client, un tournoi extérieur, une vente à un joueur seul. L'OS avertit désormais au
--- moment d'enregistrer, et n'empêche rien.
+--   2. « Sans CLUB, personne ne voit la galerie. » Faux aussi, et c'est l'erreur la plus lourde :
+--      23 galeries publiées n'ont aucun club, et ce sont justement celles que SportVision VEND —
+--      Amiens, Joinville, RC Argenteuil, la Villemomble Cup. Des équipes qui ne sont pas clientes.
+--      Elles se vendent PAR UN LIEN, pas par la liste d'un club. Les 23 en ont un, actif, et ces
+--      liens totalisaient 2 116 vues au moment d'écrire ces lignes.
 --
--- CE TEST NE JUGE DONC PAS, IL COMPTE. Il échoue si des galeries publiées et pleines de photos
--- restent sans club — parce qu'à ce volume, ce n'est plus un choix, c'est un oubli.
-with orphelines as (
-  select a.id, a.title,
+-- LA RÈGLE JUSTE EST DONC : une galerie publiée pleine de photos doit être atteignable par AU
+-- MOINS UN chemin — rattachée à un club, ses familles la trouvent dans leur espace ; ou porteuse
+-- d'un lien actif, elle se vend à qui le reçoit. Aucun des deux, et personne ne la verra jamais.
+--
+-- CE TEST NE JUGE PAS LE CHOIX DU CHEMIN. Il échoue seulement quand il n'y en a aucun.
+with atteignables as (
+  select a.id,
+         a.club_id is not null as par_le_club,
+         exists (
+           select 1 from media_album_links l
+           where l.album_id = a.id and l.is_enabled
+             and (l.expires_at is null or l.expires_at > now())
+         ) as par_un_lien,
          (select count(*) from media_assets x where x.album_id = a.id) as photos
   from media_albums a
-  where a.status = 'published' and a.club_id is null
+  where a.status = 'published'
 ),
-lourdes as (
-  select count(*) as nb, coalesce(sum(photos), 0) as photos from orphelines where photos > 0
+perdues as (
+  select count(*) as nb, coalesce(sum(photos), 0) as photos
+  from atteignables
+  where photos > 0 and not par_le_club and not par_un_lien
 ),
 total as (
-  select count(*) as galeries, (select count(*) from media_assets) as photos from media_albums
+  select count(*) as galeries, coalesce(sum(photos), 0) as photos
+  from atteignables where photos > 0
 )
 select case
-  when (select nb from lourdes) = 0
-    then '✅ toutes les galeries publiées qui portent des photos sont rattachées à un club'
-  else '❌ ' || (select nb from lourdes) || ' galerie(s) publiée(s) portant '
-       || (select photos from lourdes) || ' photos sur ' || (select photos from total)
-       || ' ne sont rattachées à aucun club : aucune famille ne peut les atteindre, '
-       || 'et la reconnaissance n''a aucun effectif où chercher'
+  when (select nb from perdues) = 0
+    then '✅ les ' || (select galeries from total) || ' galeries publiées qui portent des photos ('
+         || (select photos from total) || ') sont atteignables, par leur club ou par un lien actif'
+  else '❌ ' || (select nb from perdues) || ' galerie(s) publiée(s) portant '
+       || (select photos from perdues) || ' photos ne sont rattachées à aucun club ET n''ont '
+       || 'aucun lien actif : personne ne peut les atteindre, par aucun chemin'
 end as verdict;

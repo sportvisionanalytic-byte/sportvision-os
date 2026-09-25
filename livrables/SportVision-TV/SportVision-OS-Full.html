@@ -12875,32 +12875,36 @@ async function sauvegarderAlbum(albumId){
       match_id:genreLien==='match'?idLien:null,
       event_id:(genreLien==='entrainement'||genreLien==='evenement')?idLien:null,
     };
-    // ── SANS CLUB, PERSONNE NE VERRA CETTE GALERIE (25/09/2026) ──
+    // ── SANS CLUB NI LIEN, PERSONNE NE VERRA CETTE GALERIE (25/09/2026) ────────────────────
     //
-    // Constate ce jour-la : 23 galeries publiees sur 25, portant 2 666 photos sur 2 670, n'ont
-    // aucun club. `media_album_list` commence par `a.club_id = p_club_id` : sans club, aucune
-    // famille ne peut les atteindre. La quasi-totalite des photos de la saison n'a jamais pu
-    // etre vue par personne, et rien ne le signalait.
+    // DEUX AVERTISSEMENTS FAUX ONT PRECEDE CELUI-CI, LE MEME JOUR, ET LA MEME ERREUR LES DEUX
+    // FOIS : juger la visibilite sur un seul chemin.
     //
-    // CORRECTION DE CE QUI ETAIT ECRIT ICI QUELQUES HEURES PLUS TOT. La premiere version de cet
-    // avertissement accusait l'EQUIPE manquante. C'etait faux, et faux dans le sens dangereux :
-    // la v195 du 12/09 sert deja une galerie sans equipe a TOUTES les familles du club, parce
-    // qu'une galerie sans equipe est justement le tournoi, le plateau, le gala, la journee club.
-    // Avertir a tort aurait pousse les operateurs a coller une equipe unique sur des galeries qui
-    // couvrent plusieurs categories — et a priver de photos toutes les familles sauf une.
+    //   « Sans equipe, personne ne la verra. » Faux : la v195 sert une galerie sans equipe a
+    //   toutes les familles du club — c'est le tournoi, le plateau, la journee club.
     //
-    // On ne rend pas le club obligatoire : exiger un club interdirait de vendre a un club non
-    // client, a un tournoi exterieur ou a un joueur seul. Ce qu'on retire, c'est le silence.
+    //   « Sans club, personne ne la verra. » Faux aussi, et c'est ce qui comptait le plus :
+    //   les galeries sans club sont justement celles qu'on VEND — Amiens, Joinville, la
+    //   Villemomble Cup, des equipes non clientes. Elles se vendent PAR UN LIEN. Les 23 en base
+    //   en ont un, actif, totalisant 2 116 vues.
+    //
+    // UNE GALERIE A DONC DEUX CHEMINS, et il suffit d'en avoir un : le club, dont les familles la
+    // trouvent dans leur espace ; ou un lien de partage, qui la vend a qui le recoit. On n'avertit
+    // que lorsqu'il n'y en a AUCUN — et sans rien interdire, parce qu'on peut tres bien
+    // enregistrer une galerie puis lui creer son lien juste apres.
     if(!clubId){
-      const ok = await demanderConfirmation(
-        'Cette galerie n’est rattachée à aucun club.\n\n'
-        + 'Aucune famille ne la verra dans son espace : les galeries se trouvent par leur club. '
-        + 'La reconnaissance des joueurs ne pourra pas tourner non plus, faute d’effectif ou '
-        + 'chercher.\n\n'
-        + 'C’est le bon choix pour un club non client, un tournoi extérieur ou une vente à '
-        + 'un joueur seul. Dans tous les autres cas, choisissez un club.',
-        { titre: 'Personne ne verra cette galerie', action: 'Enregistrer quand même' });
-      if(!ok){ err.textContent=''; return; }
+      const liens = albumId
+        ? await sbFetch('media_album_links?select=id&album_id=eq.'+albumId+'&is_enabled=is.true').catch(()=>[])
+        : [];
+      if(!Array.isArray(liens) || !liens.length){
+        const ok = await demanderConfirmation(
+          'Cette galerie n’est rattachée à aucun club et n’a aucun lien de partage actif.\n\n'
+          + 'Personne ne peut l’atteindre : les familles trouvent les galeries par leur club, '
+          + 'et les autres équipes y accèdent par un lien.\n\n'
+          + 'C’est normal si vous créez le lien juste après. Sinon, choisissez un club.',
+          { titre: 'Personne ne peut atteindre cette galerie', action: 'Enregistrer quand même' });
+        if(!ok){ err.textContent=''; return; }
+      }
     }
     // Une galerie avec un club et SANS equipe est parfaitement normale et bien visible : elle est
     // servie a toutes les familles du club (v195). C'est meme le seul moyen de couvrir plusieurs
