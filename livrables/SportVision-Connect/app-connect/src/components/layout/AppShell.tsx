@@ -148,7 +148,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen bg-bg font-sans text-text">
       {/* ============ SIDEBAR DESKTOP ============ */}
-      <aside className="sticky top-0 hidden h-screen w-[252px] flex-none flex-col gap-5 overflow-y-auto border-r border-border p-3.5 lg:flex">
+      <aside className="sv-decor sticky top-0 hidden h-screen w-[252px] flex-none flex-col gap-5 overflow-y-auto border-r border-border p-3.5 lg:flex">
         <div className="flex items-center gap-2.5 px-2">
           <Link href="/dashboard" className="flex flex-1 items-center gap-2.5">
             <Image src="/uploads/logo.png" alt="SportVision Connect" width={32} height={32} className="object-contain" />
@@ -209,7 +209,7 @@ export function AppShell({
       </aside>
 
       {/* ============ HEADER MOBILE ============ */}
-      <div className="fixed inset-x-0 top-0 z-30 flex items-center gap-3 border-b border-border bg-bg/90 px-4 py-3.5 backdrop-blur-md lg:hidden">
+      <div className="sv-decor fixed inset-x-0 top-0 z-30 flex items-center gap-3 border-b border-border bg-bg/90 px-4 py-3.5 backdrop-blur-md lg:hidden">
         <Image src="/uploads/logo.png" alt="SportVision Connect" width={28} height={28} className="object-contain" />
         <span className="bg-sv-gradient bg-clip-text text-[10px] font-medium uppercase tracking-[.14em] text-transparent">
           Connect
@@ -285,14 +285,16 @@ export function AppShell({
 
       {/* ============ COLONNE DE CONTENU (topbar desktop + contenu) ============ */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar space="joueur" firstName={firstName} lastName={lastName} email={email} avatarUrl={avatarUrl} profileHref="/profil" />
+        <div className="sv-decor">
+          <Topbar space="joueur" firstName={firstName} lastName={lastName} email={email} avatarUrl={avatarUrl} profileHref="/profil" />
+        </div>
         <main className="flex-1 pb-16 pt-[68px] lg:pb-0 lg:pt-0">
           <div className="mx-auto max-w-[1160px] px-5 py-7 lg:px-8">{children}</div>
         </main>
       </div>
 
       {/* ============ BOTTOM NAV MOBILE (5 onglets + feuille "Plus") ============ */}
-      <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-bg/95 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:hidden">
+      <div className="sv-decor fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-bg/95 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:hidden">
         {MOBILE_TABS.map((item) => {
           const active = isActive(pathname, item.href);
           return (
