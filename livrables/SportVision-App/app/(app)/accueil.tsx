@@ -109,7 +109,10 @@ export default function Accueil() {
         {clubNom ? <Ecusson url={clubLogo} nom={clubNom} taille={46} /> : null}
       </View>
 
-      {parent && famille.sportifs.length > 1 ? (
+      {/* Le bandeau s'affiche des qu'un enfant est choisi, meme s'il est seul : c'est la seule
+          chose qui distingue l'ecran d'un parent de celui d'un joueur. La barre de choix, elle,
+          n'apparait qu'a partir de deux enfants — elle se masque d'elle-meme. */}
+      {parent && famille.choisi ? (
         <View style={{ gap: E.s }}>
           <SelecteurEnfant />
           <BandeauEnfant />
@@ -137,10 +140,22 @@ export default function Accueil() {
       ) : null}
 
       {parent && !famille.chargement && !famille.sportifs.length ? (
-        <Vide
-          titre="Aucun sportif rattaché"
-          texte="Demandez à votre club de vous rattacher à votre enfant, ou ajoutez-le depuis votre espace en ligne."
-        />
+        <View style={s.aiguillage}>
+          <Text style={s.aiguillageTitre}>Aucun enfant rattaché</Text>
+          <Text style={s.aiguillageTexte}>
+            Rattachez votre enfant à son club pour retrouver son calendrier, ses résultats et ses
+            photos. Vous pouvez le faire ici, ou demander à son club de s'en charger.
+          </Text>
+          <Pressable
+            onPress={() => router.push("/connect/affiliations")}
+            accessibilityRole="button"
+            accessibilityLabel="Rattacher mon enfant"
+            style={({ pressed }) => [s.aiguillageBouton, pressed ? { opacity: 0.85 } : null]}
+          >
+            <Ionicons name="person-add" size={16} color={C.texte} />
+            <Text style={s.aiguillageBoutonTexte}>Rattacher mon enfant</Text>
+          </Pressable>
+        </View>
       ) : null}
 
       {!clubNom && !parent && !espaceInconnu ? (

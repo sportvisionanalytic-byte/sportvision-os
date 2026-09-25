@@ -56,9 +56,19 @@ export const PAGES: Record<PageConnect, { chemin: string; titre: string }> = {
 };
 
 export interface SourceConnect {
-  uri: string;
-  method: "POST";
-  body: string;
+  /** Une page minuscule qui se soumet toute seule. Voir sourceConnect pour le pourquoi. */
+  html: string;
+  /** L'origine de Connect : sans elle, iOS traite la page comme « about:blank » et le POST part
+   *  d'une origine nulle, que le serveur refuse. */
+  baseUrl: string;
+}
+
+/** Échapper ce qui part dans un attribut HTML. Un jeton ne contient normalement ni guillemet ni
+ *  chevron, mais on n'écrit jamais du HTML par concaténation sans échapper : c'est comme ça que
+ *  naissent les failles qu'on met six mois à retrouver. */
+function pourAttribut(v: string): string {
+  return v.replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 /**
@@ -73,13 +83,36 @@ export async function sourceConnect(page: PageConnect): Promise<SourceConnect | 
   const s = data.session;
   if (!s?.access_token || !s?.refresh_token) return null;
 
-  const corps = new URLSearchParams({
-    access_token: s.access_token,
-    refresh_token: s.refresh_token,
-    next: PAGES[page].chemin,
-  }).toString();
+  // POURQUOI UNE PAGE QUI SE SOUMET, ET PAS UN CHARGEMENT EN POST (corrigé le 25/09/2026)
+  //
+  // La première version passait par `source={{ uri, method: "POST", body }}`. Ça marche sur
+  // Android. Sur iOS, PAS DU TOUT : l'implémentation native de react-native-webview n'écrit
+  // jamais httpMethod ni httpBody — vérifié dans son code, il n'y en a aucune trace. Le chargement
+  // partait donc en GET, les jetons n'arrivaient nulle part, et Connect réclamait le mot de passe
+  // à quelqu'un qui venait de le saisir. Signalé par Fouka : « quand j'appuie sur prestation, ça
+  // me fait me reconnecter ».
+  //
+  // Une page HTML qui contient un formulaire et le soumet elle-même fait exactement le même
+  // travail, sur les deux plateformes, sans dépendre de ce que le composant natif veut bien
+  // transmettre. Les jetons restent dans le corps de la requête et n'apparaissent jamais dans une
+  // adresse — c'était le but du POST, il est conservé.
+  const champs = [
+    ["access_token", s.access_token],
+    ["refresh_token", s.refresh_token],
+    ["next", PAGES[page].chemin],
+  ]
+    .map(([n, v]) => `<input type="hidden" name="${n}" value="${pourAttribut(String(v))}">`)
+    .join("");
 
-  return { uri: `${CONNECT}/auth/app`, method: "POST", body: corps };
+  // Le fond est celui de l'application : sans lui, un flash blanc apparaît le temps de la
+  // soumission, et sur un écran sombre ça se voit beaucoup.
+  const html = `<!doctype html><html><head><meta charset="utf-8">`
+    + `<meta name="viewport" content="width=device-width,initial-scale=1">`
+    + `<style>html,body{margin:0;height:100%;background:#070A17}</style></head>`
+    + `<body><form id="f" method="POST" action="${CONNECT}/auth/app">${champs}</form>`
+    + `<script>document.getElementById("f").submit();</script></body></html>`;
+
+  return { html, baseUrl: `${CONNECT}/` };
 }
 
 /** L'adresse simple d'une page, pour les cas où il n'y a rien à transporter (l'aide est publique). */

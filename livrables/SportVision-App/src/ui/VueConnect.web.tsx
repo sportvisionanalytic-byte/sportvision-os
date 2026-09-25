@@ -18,7 +18,7 @@ export const VueConnect = forwardRef<PoigneeVueConnect, ProprietesVueConnect>(
 
     // On ouvre la page telle quelle, sans les jetons : dans un navigateur, la session est déjà
     // dans les cookies du site. Le transport de session ne sert qu'à l'application.
-    const adresse = new URLSearchParams(source.body).get("next") ?? "/dashboard";
+    const adresse = (source.html.match(/name="next" value="([^"]*)"/) ?? [])[1] || "/dashboard";
 
     return (
       <View style={s.page}>
