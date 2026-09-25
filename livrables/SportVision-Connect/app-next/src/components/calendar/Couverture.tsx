@@ -62,6 +62,17 @@ export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; on
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [demande, setDemande] = useState(false);
+  // ── LE BRIEF POUR LA PRODUCTION (25/09/2026) ────────────────────────────────────────────────
+  // Demande de Fouka : « quand le CM prévoit une couverture, il faut qu'il puisse mettre un brief
+  // à envoyer au responsable production, directement ».
+  //
+  // Il décidait « photo + vidéo sur ce match » sans aucun moyen de dire POURQUOI ni QUOI — le
+  // sponsor à cadrer, le joueur qui fait ses débuts, le partenaire à saluer. Il fallait un appel
+  // téléphonique, ou rien.
+  //
+  // Facultatif, et il le reste : une couverture sans consigne est le cas courant, et exiger un
+  // texte ferait écrire « RAS » à tout le monde — ce qui ne vaut pas mieux que rien.
+  const [brief, setBrief] = useState("");
   const envoyee = useRef(false);
   const peutDecider = ctx.membership.role === "external_cm";
   // Le club (président, admin, communication, direction sportive) ne décide pas : il DEMANDE.
@@ -92,7 +103,8 @@ export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; on
         "La demande n'a pas pu être envoyée.",
       );
     } else {
-      void agir(() => definirCouverture(createClient(), evenement.id, choix), "La couverture n'a pas pu être enregistrée.");
+      void agir(() => definirCouverture(createClient(), evenement.id, choix, brief),
+        "La couverture n'a pas pu être enregistrée.");
     }
   }
 
@@ -251,7 +263,15 @@ export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; on
   return (
     <span className="mt-1 block" onClick={stop}>
       <span className="block text-[11.5px] font-bold text-text-soft">Comment SportVision couvrira cet événement ?</span>
-      <span className="mt-1.5 flex flex-wrap gap-1.5">
+      <textarea
+        value={brief}
+        onChange={(e) => setBrief(e.target.value)}
+        rows={2}
+        placeholder="Consignes pour l'équipe sur place (facultatif) : un sponsor à cadrer, un joueur à suivre, une remise de maillot…"
+        aria-label="Brief pour la production"
+        className="mt-1.5 w-full resize-none rounded-lg border border-border-strong bg-input-bg px-2.5 py-2 text-[12.5px] text-text outline-none focus-visible:border-brand-blue"
+      />
+      <span className="mt-1 flex flex-wrap gap-1.5">
         {CHOIX.filter((c) => cible || (c.id !== "communication" && c.id !== "autre")).map((c) => (
           <Button key={c.id} variant="secondary" className="h-9 px-3 text-[12.5px]" loading={envoi} onClick={() => choisir(c.id)}>
             {c.libelle}

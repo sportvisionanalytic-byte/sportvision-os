@@ -456,8 +456,15 @@ export async function definirCouverture(
   supabase: SupabaseClient,
   refEvenement: string,
   type: TypeCouverture,
+  /** Consignes écrites par le CM pour l'équipe sur place. Facultatif : une couverture sans brief
+   *  est le cas courant, et l'exiger ferait écrire « RAS » à tout le monde. */
+  brief?: string | null,
 ): Promise<void> {
-  const { error } = await supabase.rpc("cm_definir_couverture", { p_ref: refEvenement, p_type: type });
+  const { error } = await supabase.rpc("cm_definir_couverture", {
+    p_ref: refEvenement,
+    p_type: type,
+    p_brief: brief?.trim() ? brief.trim() : null,
+  });
   if (error) throw new Error(error.message);
 }
 

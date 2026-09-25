@@ -5949,7 +5949,7 @@ async function loadPrestations(){
     // touché par les correctifs précédents (seul le widget dashboard l'était).
     const _preRole=localStorage.getItem('sv_role');
     const _prePoleQS=(S.activePoleId&&(_preRole==='admin'||_preRole==='rh'))?'&pole_id=eq.'+S.activePoleId:'';
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,source,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,options_selectionnees,mode_paiement_choisi,distance_km,frais_deplacement_ht,offre_id,catalogue_offres(nom,categorie,description,tarif_type,prix_ht,duree_estimee,livrables_inclus),clients(nom)&order=date_prestation.desc&limit=200'+_prePoleQS);
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,source,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,brief_cm,livrables_demandes,options_selectionnees,mode_paiement_choisi,distance_km,frais_deplacement_ht,offre_id,catalogue_offres(nom,categorie,description,tarif_type,prix_ht,duree_estimee,livrables_inclus),clients(nom)&order=date_prestation.desc&limit=200'+_prePoleQS);
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div>Aucune prestation. Créez la première.</div></div>';return;}
     _prestationsCache=data;
     // Badge "PRÊTE" (spec refonte Responsable Production §23) : réservé au
@@ -6224,6 +6224,11 @@ function modalDetailPrestation(idx){
           <input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0" ${ro}>
         </div>
       </div>
+      ${p.brief_cm?`<div style="background:rgba(147,112,219,.07);border:1px solid rgba(147,112,219,.3);border-radius:var(--rb);padding:12px 14px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#b39ddb;margin-bottom:6px">✍️ Consignes du CM</div>
+        <div style="font-size:12.5px;color:var(--t1);line-height:1.6;white-space:pre-line">${esc(p.brief_cm)}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:7px">Écrit par le CM au moment de décider la couverture. Non modifiable ici : c'est sa consigne, pas une note interne.</div>
+      </div>`:''}
       ${(p.description_besoin||p.livrables_demandes||['admin','sec','prod'].includes(S.role))?`<div style="background:rgba(54,107,255,.05);border:1px solid rgba(54,107,255,.15);border-radius:var(--rb);padding:12px 14px;display:flex;flex-direction:column;gap:10px">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--acc)">Brief prestation</div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description du besoin</label>
