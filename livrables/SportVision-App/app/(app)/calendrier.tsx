@@ -41,6 +41,9 @@ export default function Calendrier() {
   // L'ecusson du club, pour les cartes de match. Cote parent il vient du club de l'enfant
   // regarde, comme partout ailleurs dans l'application.
   const ecussonClub = parent ? famille.detail?.clubLogoUrl : profil?.clubLogoUrl;
+  // Affilie ou non : la phrase a dire n'est pas la meme, et se tromper envoie la personne
+  // appeler son club pour un probleme qui n'existe pas.
+  const affilie = parent ? famille.choisi?.enAttente === false : !!profil?.affilie;
 
   const [evenements, setEvenements] = useState<Evenement[]>([]);
   const [chargement, setChargement] = useState(true);
@@ -229,9 +232,13 @@ export default function Calendrier() {
           texte={
             evenements.length
               ? "Changez de mois ci-dessus, ou retirez le filtre pour voir tout ce que le club a publié."
-              : parent
-                ? "Le calendrier se remplira dès que le club aura publié les matchs et les entraînements de son équipe."
-                : "Votre calendrier se remplira dès que votre club aura validé votre affiliation."
+              : !affilie
+                ? (parent
+                    ? "Le calendrier apparaîtra dès que le club aura validé le rattachement de votre enfant."
+                    : "Votre calendrier apparaîtra dès que votre club aura validé votre affiliation.")
+                : (parent
+                    ? "Le club n'a encore publié aucun match ni entraînement pour son équipe."
+                    : "Votre club n'a encore publié aucun match ni entraînement.")
           }
         />
       )}
