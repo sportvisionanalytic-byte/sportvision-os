@@ -11,12 +11,16 @@
     "newArchEnabled": true,
     "extra": {
       "supabaseUrl": "https://lulgezzpvrlbftbykzrc.supabase.co",
-      "supabaseCle": "sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4"
+      "supabaseCle": "sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4",
+      "router": {},
+      "eas": {
+        "projectId": "06558393-29af-4039-8170-a9c0939a58f8"
+      }
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "fr.sportvision.app",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "infoPlist": {
         "CFBundleDisplayName": "SportVision",
         "ITSAppUsesNonExemptEncryption": false,
@@ -55,6 +59,13 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "owner": "sportvision-an",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/06558393-29af-4039-8170-a9c0939a58f8"
     }
   }
 }
