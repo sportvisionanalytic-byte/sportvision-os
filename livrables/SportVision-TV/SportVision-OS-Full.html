@@ -12846,31 +12846,36 @@ async function sauvegarderAlbum(albumId){
       match_id:genreLien==='match'?idLien:null,
       event_id:(genreLien==='entrainement'||genreLien==='evenement')?idLien:null,
     };
-    // ── SANS EQUIPE, PERSONNE NE VERRA CETTE GALERIE (25/09/2026) ──
+    // ── SANS CLUB, PERSONNE NE VERRA CETTE GALERIE (25/09/2026) ──
     //
-    // Constate ce jour-la : 23 galeries publiees sur 36, portant 2 685 photos sur 2 698,
-    // n'avaient ni club ni equipe. Elles etaient donc invisibles pour TOUTES les familles —
-    // media_album_list filtre sur club_id et team_id — et la reconnaissance ne pouvait pas
-    // demarrer non plus, faute d'equipe ou trouver des joueurs.
+    // Constate ce jour-la : 23 galeries publiees sur 25, portant 2 666 photos sur 2 670, n'ont
+    // aucun club. `media_album_list` commence par `a.club_id = p_club_id` : sans club, aucune
+    // famille ne peut les atteindre. La quasi-totalite des photos de la saison n'a jamais pu
+    // etre vue par personne, et rien ne le signalait.
     //
-    // On ne rend pas ces champs obligatoires : la raison d'origine tient toujours, et exiger un
-    // club interdirait de vendre a un club non client, a un tournoi ou a un joueur seul.
+    // CORRECTION DE CE QUI ETAIT ECRIT ICI QUELQUES HEURES PLUS TOT. La premiere version de cet
+    // avertissement accusait l'EQUIPE manquante. C'etait faux, et faux dans le sens dangereux :
+    // la v195 du 12/09 sert deja une galerie sans equipe a TOUTES les familles du club, parce
+    // qu'une galerie sans equipe est justement le tournoi, le plateau, le gala, la journee club.
+    // Avertir a tort aurait pousse les operateurs a coller une equipe unique sur des galeries qui
+    // couvrent plusieurs categories — et a priver de photos toutes les familles sauf une.
     //
-    // Ce qu'on retire, c'est le SILENCE. L'operateur croyait avoir publie ; il avait rempli un
-    // dossier que personne n'ouvrirait jamais. Il le sait maintenant, et decide en connaissance
-    // de cause.
-    if(!teamId){
-      const raison = !clubId
-        ? 'Cette galerie n’est rattachée à aucun club ni à aucune équipe.'
-        : 'Cette galerie est rattachée à un club, mais à aucune équipe.';
+    // On ne rend pas le club obligatoire : exiger un club interdirait de vendre a un club non
+    // client, a un tournoi exterieur ou a un joueur seul. Ce qu'on retire, c'est le silence.
+    if(!clubId){
       const ok = await demanderConfirmation(
-        raison + '\n\nAucune famille ne la verra dans son espace : les galeries s’affichent par '
-        + 'équipe. La reconnaissance des joueurs ne pourra pas tourner non plus.\n\n'
-        + 'C’est le bon choix pour un tournoi, un club non client ou une vente à un joueur seul. '
-        + 'Dans tous les autres cas, choisissez une équipe.',
+        'Cette galerie n’est rattachée à aucun club.\n\n'
+        + 'Aucune famille ne la verra dans son espace : les galeries se trouvent par leur club. '
+        + 'La reconnaissance des joueurs ne pourra pas tourner non plus, faute d’effectif ou '
+        + 'chercher.\n\n'
+        + 'C’est le bon choix pour un club non client, un tournoi extérieur ou une vente à '
+        + 'un joueur seul. Dans tous les autres cas, choisissez un club.',
         { titre: 'Personne ne verra cette galerie', action: 'Enregistrer quand même' });
       if(!ok){ err.textContent=''; return; }
     }
+    // Une galerie avec un club et SANS equipe est parfaitement normale et bien visible : elle est
+    // servie a toutes les familles du club (v195). C'est meme le seul moyen de couvrir plusieurs
+    // equipes ou plusieurs categories d'un coup. Aucun avertissement ici, ce serait un contresens.
 
     let r;
     if(albumId){
