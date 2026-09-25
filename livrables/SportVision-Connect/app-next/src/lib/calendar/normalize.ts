@@ -35,6 +35,17 @@ export function teamMatchKey(raw: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
+    // LA CATEGORIE SE DETACHE DE SON SUFFIXE (25/09/2026).
+    //
+    // Le planning de Villemomble ecrit indifferemment « U16 D1 » et « U16D1 », « U18 F » et
+    // « U18F » — c'est un tableur rempli a la main, semaine apres semaine, par plusieurs
+    // personnes. Sans cette coupure, « u16d1 » et « u16 d1 » n'ont aucun mot en commun et le
+    // rapprochement rend zero : dix lignes attendaient une decision humaine pour une espace.
+    //
+    // On ne coupe qu'apres une categorie d'age reconnaissable (U suivi d'un a deux chiffres),
+    // jamais au milieu d'un nom de club : « Bondy93 » reste « bondy93 ».
+    .replace(/\bu(\d{1,2})(?=[a-z])/g, "u$1 ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 

@@ -78,6 +78,18 @@ export function rowsToSourceEvents(rows: string[][], options: TabularParseOption
 
     if (!opponentRaw && !dateRaw) continue; // ligne totalement vide : pas une erreur
 
+    // UNE LEGENDE N'EST PAS UN MATCH (25/09/2026). Le planning de Villemomble intercale, entre
+    // deux journees, une ligne de reperes de stades : « EXTERIEUR | RIPERT | MIMOUN | POMPIDOU ».
+    // Lue comme un match, elle donnait « EXTERIEUR contre RIPERT » — neuf fois sur la saison,
+    // neuf lignes en attente d'une decision humaine qui n'avait aucun sens a prendre.
+    //
+    // On reconnait la ligne par sa premiere cellule, pas par sa position : un planning ne met pas
+    // ses reperes toujours au meme endroit. « Exterieur » comme nom d'equipe n'existe pas.
+    if (/^(exterieur|extérieur|domicile|a domicile|à domicile|lieux?)$/i.test(
+          (at(row, "team") ?? "").trim())) {
+      continue;
+    }
+
     // Lue tôt, et pas seulement pour les lignes valides : un signalement daté peut être écarté
     // par le plancher de saison, un signalement sans date ne le peut pas.
     const dateLigne = parseFlexibleDate(dateRaw);
