@@ -102,12 +102,21 @@ export default function Galerie() {
           />
         )}
 
+        {/* CE QUE CE BLOC DIT, ET CE QU'IL NE DIT PAS (25/09/2026).
+            Il annonce ce qui existe et qui gere l'acces. Il ne nomme aucun produit payant, ne
+            donne aucun prix, et ne propose aucun lien : la regle 3.1.1 d'Apple interdit toute
+            incitation dirigeant vers un achat hors de leur systeme de paiement, et ce qu'ils
+            regardent, c'est l'intention du bouton, pas seulement sa destination.
+            Decrire le fonctionnement du service est permis ; inviter a l'achat ne l'est pas.
+            Une famille qui lit ca appelle son coach, qui lui envoie le lien — exactement comme
+            les ventes se font deja aujourd'hui. Rien n'est perdu, seul le raccourci manque. */}
         {restantes > 0 ? (
           <View style={s.bloque}>
             <Ionicons name="lock-closed" size={16} color={C.alerte} />
             <Text style={s.bloqueTexte}>
               {restantes === 1 ? "1 autre photo de vous" : `${restantes} autres photos de vous`} dans
-              cette galerie. L'accès complet s'obtient avec le Pass Photo de l'équipe.
+              cette galerie. L'accès complet est géré par votre club : il s'ouvre dès que votre
+              accès est actif.
             </Text>
           </View>
         ) : null}

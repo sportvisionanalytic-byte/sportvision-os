@@ -178,7 +178,7 @@ export default function Photos() {
                   // c'est tout.
                   <View style={{ gap: E.xs }}>
                     <Text style={s.note}>
-                      Cette galerie s'ouvre avec le Pass Photo de l'équipe.
+                      L'accès à cette galerie est géré par votre club.
                     </Text>
                     <Pressable
                       onPress={() => router.push("/acces")}
