@@ -6,12 +6,13 @@
 //
 // Le contenu lui-même vient de src/ui/VueWeb, qui a deux versions : la vue web sur téléphone, un
 // écran d'explication sur le web. C'est ce qui évite le message technique vu en relecture.
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { VueWeb, type PoigneeVueWeb } from "../src/ui/VueWeb";
+import { VueConnect, type PoigneeVueConnect } from "../src/ui/VueConnect";
+import { sourceClubPlus, type SourceConnect } from "../src/lib/connect";
 import { ADRESSES, oublierPorte, type Porte } from "../src/lib/espaces";
 import { C, E, R, TOUCHE } from "../src/theme/couleurs";
 import { P } from "../src/theme/polices";
@@ -25,7 +26,25 @@ export default function EspaceWeb() {
   const { porte } = useLocalSearchParams<{ porte?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const vue = useRef<PoigneeVueWeb>(null);
+  const vue = useRef<PoigneeVueConnect>(null);
+  // LA SESSION EST TRANSPORTEE (25/09/2026). Un coach qui ouvrait l'espace club devait ressaisir
+  // son mot de passe alors que l'application connaissait deja sa session. Au bord d'un terrain,
+  // personne ne retape un mot de passe : on referme et on appelle le club.
+  const [source, setSource] = useState<SourceConnect | null>(null);
+  const [sansSession, setSansSession] = useState(false);
+
+  // La page qui transporte la session est fabriquee a l'ouverture de l'ecran, pas plus tot : elle
+  // contient les jetons, et un jeton fabrique d'avance est un jeton qui vieillit en memoire.
+  useEffect(() => {
+    let vivant = true;
+    (async () => {
+      const s = await sourceClubPlus();
+      if (!vivant) return;
+      if (!s) { setSansSession(true); return; }
+      setSource(s);
+    })();
+    return () => { vivant = false; };
+  }, []);
   const [peutReculer, setPeutReculer] = useState(false);
   const [charge, setCharge] = useState(false);
 
@@ -57,13 +76,19 @@ export default function EspaceWeb() {
         </Pressable>
       </View>
 
-      <VueWeb
-        ref={vue}
-        adresse={ADRESSES[cle]}
-        surHistorique={setPeutReculer}
-        surChargement={() => setCharge(true)}
-        surRetourChoix={changerEspace}
-      />
+      {sansSession ? (
+        <View style={s.attente}>
+          <Text style={s.titre}>Vous n'êtes plus connecté</Text>
+        </View>
+      ) : source ? (
+        <VueConnect
+          ref={vue}
+          source={source}
+          surHistorique={setPeutReculer}
+          surChargement={() => setCharge(true)}
+          surPanne={() => setCharge(true)}
+        />
+      ) : null}
 
       {!charge ? (
         <View style={s.attente} pointerEvents="none">

@@ -45,9 +45,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-bg text-text">
-      <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      {/* « sv-decor » marque la navigation du site, et rien d'autre. Ouverte depuis
+          l'application mobile, elle est masquee par une regle CSS (voir globals.css) : sinon
+          elle se superposerait a la barre d'onglets de l'application. */}
+      <div className="sv-decor contents">
+        <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header onOpenMobileNav={() => setMobileNavOpen(true)} />
+        <div className="sv-decor">
+          <Header onOpenMobileNav={() => setMobileNavOpen(true)} />
+        </div>
         <main className="min-w-0 flex-1 px-4 py-5 sm:px-7 sm:py-6">{children}</main>
       </div>
     </div>

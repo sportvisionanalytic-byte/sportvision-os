@@ -24,6 +24,8 @@
 import { supabase } from "./supabase";
 
 const CONNECT = "https://connect.sportvision-an.fr";
+/** Club+ vit sur son propre domaine, sous le prefixe /clubplus impose par son Next.js. */
+const CLUBPLUS = "https://clubplus.sportvision-an.fr/clubplus";
 
 export type PageConnect =
   | "commandes" | "factures" | "cotisations" | "affiliations" | "reconnaissance" | "aide"
@@ -137,3 +139,34 @@ export function cheminReconnaissanceEnfant(kind: string, refId: string): string 
   return `/particulier/sportifs/${kind}/${refId}/reconnaissance`;
 }
 
+/**
+ * L'espace club, ouvert déjà connecté (25/09/2026).
+ *
+ * Un coach qui ouvrait l'espace club depuis l'application tombait sur l'écran de connexion de
+ * Club+ et devait ressaisir son mot de passe — alors que l'application connaît déjà sa session.
+ * Une fois suffit à agacer, et au bord d'un terrain on ne retape pas un mot de passe.
+ *
+ * Même mécanique que pour Connect, sur l'autre domaine : une page qui se soumet toute seule,
+ * parce que le composant natif d'iOS n'envoie jamais le corps d'une requête POST.
+ */
+export async function sourceClubPlus(chemin = "/dashboard"): Promise<SourceConnect | null> {
+  const { data } = await supabase.auth.getSession();
+  const s = data.session;
+  if (!s?.access_token || !s?.refresh_token) return null;
+
+  const champs = [
+    ["access_token", s.access_token],
+    ["refresh_token", s.refresh_token],
+    ["next", chemin],
+  ]
+    .map(([n, v]) => `<input type="hidden" name="${n}" value="${pourAttribut(String(v))}">`)
+    .join("");
+
+  const html = `<!doctype html><html><head><meta charset="utf-8">`
+    + `<meta name="viewport" content="width=device-width,initial-scale=1">`
+    + `<style>html,body{margin:0;height:100%;background:#070A17}</style></head>`
+    + `<body><form id="f" method="POST" action="${CLUBPLUS}/auth/app">${champs}</form>`
+    + `<script>document.getElementById("f").submit();</script></body></html>`;
+
+  return { html, baseUrl: `${CLUBPLUS}/` };
+}
