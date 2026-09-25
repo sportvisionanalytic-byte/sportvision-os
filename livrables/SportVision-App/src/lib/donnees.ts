@@ -40,6 +40,8 @@ export interface Evenement {
   score?: string | null;
   /** Reporte ou annule : la base le sait, et une famille qui se deplace pour rien ne le pardonne pas. */
   statut?: "reporte" | "annule";
+  /** L'ecusson du club adverse, quand la federation le connait. Voir ecussonsDesAdversaires. */
+  ecussonAdversaire?: string | null;
 }
 
 /**
@@ -57,7 +59,7 @@ export async function lireEvenements(clubId: string): Promise<Evenement[]> {
       .order("event_date", { ascending: true }),
     supabase
       .from("club_matches")
-      .select("id, team, opponent, match_date, kickoff_time, lieu, score, is_home, competition, sport_status")
+      .select("id, team, opponent, match_date, kickoff_time, lieu, score, is_home, competition, sport_status, opponent_club_slug")
       .eq("club_id", clubId)
       .order("match_date", { ascending: true }),
   ]);
@@ -102,8 +104,43 @@ export async function lireEvenements(clubId: string): Promise<Evenement[]> {
     });
   }
 
+  await ajouterEcussonsAdversaires(liste, (matchs.data ?? []) as { id: string; opponent_club_slug?: string | null }[]);
+
   return liste.sort((a, b) =>
     a.date === b.date ? (a.heure ?? "").localeCompare(b.heure ?? "") : a.date.localeCompare(b.date));
+}
+
+/**
+ * L'ecusson du club adverse, pour chaque match qui en identifie un.
+ *
+ * POURQUOI UNE SEULE REQUETE POUR TOUTE LA LISTE. Un calendrier de saison compte plusieurs
+ * centaines de matchs mais une centaine d'adversaires distincts au plus, et beaucoup reviennent.
+ * Une requete par match ferait des centaines d'allers-retours pour afficher un ecran, au bord
+ * d'un terrain, en 4G.
+ *
+ * `federation_clubs` est lisible par tout compte connecte (policy federation_clubs_lecture) :
+ * c'est un annuaire public de 34 586 clubs, il ne contient rien de personnel.
+ *
+ * UN ECHEC NE FAIT RIEN ECHOUER. Sans ecusson, la carte affiche un blason neutre, ce qu'elle
+ * faisait tres bien avant. Perdre un calendrier entier parce qu'une image manque serait absurde.
+ */
+async function ajouterEcussonsAdversaires(
+  liste: Evenement[], lignes: { id: string; opponent_club_slug?: string | null }[],
+): Promise<void> {
+  const slugs = [...new Set(lignes.map((r) => r.opponent_club_slug).filter(Boolean))] as string[];
+  if (!slugs.length) return;
+  try {
+    const { data } = await supabase
+      .from("federation_clubs").select("slug, logo_url").in("slug", slugs);
+    const parSlug = new Map(
+      (data ?? []).filter((f) => f.logo_url).map((f) => [f.slug as string, f.logo_url as string]));
+    if (!parSlug.size) return;
+    const parMatch = new Map(lignes.map((r) => [`match-${r.id}`, r.opponent_club_slug]));
+    for (const e of liste) {
+      const slug = parMatch.get(e.id);
+      if (slug) e.ecussonAdversaire = parSlug.get(slug) ?? null;
+    }
+  } catch { /* le calendrier vaut mieux sans ecusson que pas de calendrier */ }
 }
 
 export type Issue = "gagne" | "nul" | "perdu";
@@ -184,15 +221,25 @@ export async function lireMatch(id: string): Promise<Evenement | null> {
 
   const { data, error } = await supabase
     .from("club_matches")
-    .select("id, team, opponent, match_date, kickoff_time, lieu, score, is_home, competition")
+    .select("id, team, opponent, match_date, kickoff_time, lieu, score, is_home, competition, opponent_club_slug")
     .eq("id", brut)
     .maybeSingle();
   if (error) throw new ErreurChargement(error);
   if (!data) return null;
 
   const domicile = data.is_home !== false;
+  let ecussonAdversaire: string | null = null;
+  const slug = (data as { opponent_club_slug?: string | null }).opponent_club_slug;
+  if (slug) {
+    try {
+      const { data: f } = await supabase
+        .from("federation_clubs").select("logo_url").eq("slug", slug).maybeSingle();
+      ecussonAdversaire = (f?.logo_url as string | null) ?? null;
+    } catch { /* la fiche vaut mieux sans ecusson que pas de fiche */ }
+  }
   return {
     id: `match-${data.id}`,
+    ecussonAdversaire,
     genre: "match",
     titre: `${data.team ?? "Notre équipe"} ${domicile ? "vs" : "@"} ${data.opponent ?? "adversaire"}`,
     date: data.match_date,

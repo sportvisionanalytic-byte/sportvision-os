@@ -104,7 +104,15 @@ export default function FicheMatch() {
                 </View>
 
                 <View style={s.camp}>
-                  <Ecusson nom={match.adversaire} taille={54} neutre />
+                  {/* L'ecusson de l'adversaire vient de l'annuaire federal (25/09/2026). Sans
+                      lui, blason neutre : on n'invente pas le blason d'un club, et on n'y met
+                      jamais notre sigle. */}
+                  <Ecusson
+                    url={match.ecussonAdversaire}
+                    nom={match.adversaire}
+                    taille={54}
+                    neutre={!match.ecussonAdversaire}
+                  />
                   <Text style={s.campNom} numberOfLines={2}>{match.adversaire || "Adversaire"}</Text>
                 </View>
               </View>

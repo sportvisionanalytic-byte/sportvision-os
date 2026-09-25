@@ -38,6 +38,9 @@ export default function Calendrier() {
   const router = useRouter();
   const { filtre: filtreDemande } = useLocalSearchParams<{ filtre?: string }>();
   const parent = profil?.espace === "parent";
+  // L'ecusson du club, pour les cartes de match. Cote parent il vient du club de l'enfant
+  // regarde, comme partout ailleurs dans l'application.
+  const ecussonClub = parent ? famille.detail?.clubLogoUrl : profil?.clubLogoUrl;
 
   const [evenements, setEvenements] = useState<Evenement[]>([]);
   const [chargement, setChargement] = useState(true);
@@ -170,6 +173,7 @@ export default function Calendrier() {
           jourChoisi={jourChoisi}
           surJour={setJourChoisi}
           surEvenement={ouvrir}
+          ecussonClub={ecussonClub}
         />
       ) : duMois.length ? (
         <View style={{ gap: E.l }}>
@@ -182,7 +186,7 @@ export default function Calendrier() {
               {aVenir.map((e) => (
                 <View key={e.id} style={{ gap: 4 }}>
                   {e.date === aujourdhui ? <Text style={s.marqueur}>Aujourd'hui</Text> : null}
-                  <CarteEvenement e={e} onPress={() => ouvrir(e)} />
+                  <CarteEvenement e={e} ecussonClub={ecussonClub} onPress={() => ouvrir(e)} />
                 </View>
               ))}
             </View>
@@ -194,7 +198,7 @@ export default function Calendrier() {
                 <Text style={s.libelleSection}>Terminés</Text>
                 <Text style={s.compte}>{termines.length}</Text>
               </View>
-              {termines.map((e) => <CarteEvenement key={e.id} e={e} onPress={() => ouvrir(e)} />)}
+              {termines.map((e) => <CarteEvenement key={e.id} e={e} ecussonClub={ecussonClub} onPress={() => ouvrir(e)} />)}
             </View>
           ) : null}
         </View>
@@ -216,7 +220,7 @@ export default function Calendrier() {
 
 /** La grille du mois : une pastille par genre d'événement, et le détail du jour touché en dessous. */
 function VueMois({
-  mois, evenements, aujourdhui, jourChoisi, surJour, surEvenement,
+  mois, evenements, aujourdhui, jourChoisi, surJour, surEvenement, ecussonClub,
 }: {
   mois: string;
   evenements: Evenement[];
@@ -224,6 +228,8 @@ function VueMois({
   jourChoisi: string | null;
   surJour: (jour: string | null) => void;
   surEvenement: (e: Evenement) => void;
+  /** L'ecusson du club, pour les cartes de match de la journee ouverte. */
+  ecussonClub?: string | null;
 }) {
   const annee = Number(mois.slice(0, 4));
   const numeroMois = Number(mois.slice(5, 7));
@@ -285,7 +291,7 @@ function VueMois({
           <Text style={s.libelleSection}>
             {versDate(jour).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
           </Text>
-          {duJour.map((e) => <CarteEvenement key={e.id} e={e} onPress={() => surEvenement(e)} />)}
+          {duJour.map((e) => <CarteEvenement key={e.id} e={e} ecussonClub={ecussonClub} onPress={() => surEvenement(e)} />)}
         </View>
       ) : (
         <Text style={s.aide}>Touchez un jour marqué pour voir ce qu'il contient.</Text>

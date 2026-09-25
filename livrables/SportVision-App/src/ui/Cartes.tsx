@@ -75,7 +75,23 @@ export function Ecusson({
   );
 }
 
-export function CarteEvenement({ e, onPress }: { e: Evenement; onPress?: () => void }) {
+/**
+ * Une ligne du calendrier.
+ *
+ * LES DEUX ECUSSONS (25/09/2026). Signale par Fouka : « je vois toujours pas nos logos a nous ».
+ * La carte n'en affichait aucun, et n'en recevait aucun — ni le notre, ni celui de l'adversaire.
+ * Un match sans blason, c'est une ligne de tableur ; avec les deux, c'est une affiche.
+ *
+ * Le notre vient du club de la personne, l'adversaire de l'annuaire federal (130 adversaires de
+ * la saison, tous enrichis le 25/09). Quand l'un manque, un blason neutre prend sa place : on ne
+ * met jamais notre sigle a la place de l'ecusson d'un club.
+ *
+ * Ils ne s'affichent QUE sur un match. Un entrainement n'oppose personne, et deux blasons
+ * identiques face a face n'auraient aucun sens.
+ */
+export function CarteEvenement({
+  e, onPress, ecussonClub,
+}: { e: Evenement; onPress?: () => void; ecussonClub?: string | null }) {
   const couleur = COULEUR_GENRE[e.genre];
   const heure = heureCourte(e.heure);
   const issue = issueDuMatch(e.score);
@@ -125,6 +141,16 @@ export function CarteEvenement({ e, onPress }: { e: Evenement; onPress?: () => v
         {e.genre === "match" && e.equipe ? <Text style={s.equipe}>{e.equipe}</Text> : null}
       </View>
 
+      {/* Les deux blasons, sur un match seulement. Petits : ils identifient, ils ne decorent pas,
+          et la ligne doit rester lisible sur un telephone tenu d'une main. */}
+      {e.genre === "match" ? (
+        <View style={s.affiche}>
+          <Ecusson url={ecussonClub} nom={e.equipe} taille={26} />
+          <Text style={s.contre}>{e.domicile === false ? "@" : "vs"}</Text>
+          <Ecusson url={e.ecussonAdversaire} nom={e.adversaire} taille={26} neutre={!e.ecussonAdversaire} />
+        </View>
+      ) : null}
+
       {/* Le score prend la place de la fleche : c'est ce qu'on vient lire sur un match joue.
           Le mot « victoire » ou « défaite » l'accompagne, parce qu'une couleur seule n'est pas
           lisible par tout le monde. */}
@@ -148,6 +174,8 @@ const s = StyleSheet.create({
     padding: E.m,
   },
   ligne: { flexDirection: "row", alignItems: "center", gap: E.m },
+  affiche: { flexDirection: "row", alignItems: "center", gap: 5 },
+  contre: { color: C.texteFaible, fontFamily: P.texteFort, fontSize: 10.5 },
   pastilleDate: {
     width: 52, height: 56, borderRadius: R.m, borderWidth: 1,
     alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.04)",

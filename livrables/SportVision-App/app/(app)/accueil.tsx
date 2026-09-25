@@ -262,6 +262,7 @@ export default function Accueil() {
               <CarteEvenement
                 key={e.id}
                 e={e}
+                ecussonClub={clubLogo}
                 onPress={() => router.push({ pathname: "/match/[id]", params: { id: e.id } })}
               />
             ))}
