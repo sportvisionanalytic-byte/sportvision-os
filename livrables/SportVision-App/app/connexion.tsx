@@ -152,5 +152,5 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(46,204,138,.10)", borderWidth: 1, borderColor: "rgba(46,204,138,.30)",
     borderRadius: R.m, padding: E.m,
   },
-  infoTexte: { color: "#9FE8C6", fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
+  infoTexte: { color: C.succesTexte, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
 });

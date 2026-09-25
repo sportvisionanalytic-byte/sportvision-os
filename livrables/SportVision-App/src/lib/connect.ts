@@ -137,7 +137,3 @@ export function cheminReconnaissanceEnfant(kind: string, refId: string): string 
   return `/particulier/sportifs/${kind}/${refId}/reconnaissance`;
 }
 
-/** L'adresse simple d'une page, pour les cas où il n'y a rien à transporter (l'aide est publique). */
-export function adresseConnect(page: PageConnect): string {
-  return CONNECT + PAGES[page].chemin;
-}

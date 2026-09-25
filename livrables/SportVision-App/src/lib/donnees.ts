@@ -369,6 +369,7 @@ export async function ouvrirGalerie(albumId: string): Promise<string | null> {
 /** Le bucket public des apercus. Les originaux, eux, ne sortent jamais par la. */
 const BUCKET_APERCUS = "galerie-previews";
 
+/** L'adresse publique d'un apercu. Utilisee par lirePhotosDuJoueur, plus bas dans ce fichier. */
 export function urlApercu(chemin: string): string {
   return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_APERCUS}/${chemin}`;
 }

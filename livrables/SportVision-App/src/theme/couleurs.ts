@@ -29,6 +29,23 @@ export const C = {
   succes: "#12B76A",
   alerte: "#E8A33D",
   danger: "#F0445E",
+
+  // ── Les memes couleurs, eclaircies pour du TEXTE sur fond sombre (25/09/2026) ──
+  //
+  // Le vert, l'ambre et le rouge ci-dessus sont faits pour des pastilles et des bordures. Poses
+  // en couleur de texte sur le fond #070A17, ils passent tout juste le contraste : lisibles a
+  // l'interieur, penibles dehors, au soleil, sur un telephone a mi-luminosite — c'est-a-dire
+  // dans la situation reelle d'un parent au bord d'un terrain.
+  //
+  // Ces huit teintes existaient deja, mais ecrites en dur dans huit fichiers. Une couleur qui
+  // vit a huit endroits finit par en avoir neuf, et la neuvieme est toujours legerement
+  // differente.
+  succesTexte: "#9FE8C6",
+  alerteTexte: "#F3D49B",
+  alerteTexteChaud: "#F0CE96",
+  dangerTexte: "#FFB4BD",
+  violetTexte: "#C9A7FF",
+  cyanTexte: "#A9E8F8",
 } as const;
 
 /** Le dégradé de marque, dans l'ordre du site : bleu, cyan, violet vif. */

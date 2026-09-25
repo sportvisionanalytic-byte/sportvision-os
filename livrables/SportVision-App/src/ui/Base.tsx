@@ -17,15 +17,6 @@ export function Titre({ children, style }: { children: React.ReactNode; style?: 
 export function SousTitre({ children }: { children: React.ReactNode }) {
   return <Text style={s.sousTitre}>{children}</Text>;
 }
-export function Texte({ children, doux }: { children: React.ReactNode; doux?: boolean }) {
-  return <Text style={doux ? s.texteDoux : s.texte}>{children}</Text>;
-}
-
-/** L'étiquette d'une section : petite, espacée, jamais un titre déguisé. */
-export function Etiquette({ children, couleur }: { children: React.ReactNode; couleur?: string }) {
-  return <Text style={[s.etiquette, couleur ? { color: couleur } : null]}>{children}</Text>;
-}
-
 export function Champ({ label, ...props }: TextInputProps & { label: string }) {
   return (
     <View style={{ gap: E.xs }}>
@@ -106,10 +97,6 @@ export function Bouton({
   );
 }
 
-export function Carte({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
-  return <View style={[s.carte, style]}>{children}</View>;
-}
-
 /** Une pastille d'état : toujours un mot, jamais une couleur seule. */
 export function Pastille({
   texte, ton = "neutre",
@@ -162,5 +149,5 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(240,68,94,.12)", borderWidth: 1, borderColor: "rgba(240,68,94,.35)",
     borderRadius: R.l, padding: E.m,
   },
-  erreurTexte: { color: "#FFB4BD", fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
+  erreurTexte: { color: C.dangerTexte, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
 });

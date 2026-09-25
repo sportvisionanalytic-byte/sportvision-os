@@ -100,7 +100,7 @@ const s = StyleSheet.create({
     alignSelf: "flex-start", paddingHorizontal: E.s, paddingVertical: 5, borderRadius: R.pill,
     backgroundColor: "rgba(232,163,61,.14)", borderWidth: 1, borderColor: "rgba(232,163,61,.3)",
   },
-  demoTexte: { color: "#F3D49B", fontFamily: P.texteFort, fontSize: 11.5 },
+  demoTexte: { color: C.alerteTexte, fontFamily: P.texteFort, fontSize: 11.5 },
   enteteSection: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: E.s },
   titreSection: { color: C.texte, fontFamily: P.titre, fontSize: 20, letterSpacing: -0.4 },
   vide: {
@@ -112,7 +112,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(240,68,94,.32)", borderRadius: R.l,
     backgroundColor: "rgba(240,68,94,.07)", padding: E.l, gap: E.s,
   },
-  problemeTitre: { color: "#FFB4BD", fontFamily: P.titreFort, fontSize: 16 },
+  problemeTitre: { color: C.dangerTexte, fontFamily: P.titreFort, fontSize: 16 },
   problemeTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
   reessayer: {
     alignSelf: "flex-start", minHeight: 40, justifyContent: "center",

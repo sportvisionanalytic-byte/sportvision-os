@@ -97,7 +97,7 @@ const s = StyleSheet.create({
     width: 30, height: 30, borderRadius: R.pill, alignItems: "center", justifyContent: "center",
     backgroundColor: "rgba(131,45,255,.18)", borderWidth: 1, borderColor: "rgba(131,45,255,.4)",
   },
-  numeroTexte: { color: "#C9A7FF", fontFamily: P.titre, fontSize: 13 },
+  numeroTexte: { color: C.violetTexte, fontFamily: P.titre, fontSize: 13 },
   etapeTitre: { color: C.texte, fontFamily: P.titreFort, fontSize: 15.5 },
   etapeTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
   note: {
@@ -105,5 +105,5 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(0,199,255,.08)", borderWidth: 1, borderColor: "rgba(0,199,255,.25)",
     borderRadius: R.l, padding: E.m,
   },
-  noteTexte: { flex: 1, color: "#A9E8F8", fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
+  noteTexte: { flex: 1, color: C.cyanTexte, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
 });

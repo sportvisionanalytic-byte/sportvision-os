@@ -306,7 +306,7 @@ const s = StyleSheet.create({
     gap: E.s, padding: E.l, borderRadius: R.l,
     backgroundColor: "rgba(232,163,61,.08)", borderWidth: 1, borderColor: "rgba(232,163,61,.3)",
   },
-  aiguillageTitre: { color: "#F3D49B", fontFamily: P.titreFort, fontSize: 16.5 },
+  aiguillageTitre: { color: C.alerteTexte, fontFamily: P.titreFort, fontSize: 16.5 },
   aiguillageTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 14, lineHeight: 20 },
   aiguillageBouton: {
     flexDirection: "row", alignItems: "center", gap: E.s, alignSelf: "flex-start",

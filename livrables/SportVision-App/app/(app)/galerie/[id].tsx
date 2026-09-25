@@ -164,7 +164,7 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(232,163,61,.10)", borderWidth: 1, borderColor: "rgba(232,163,61,.28)",
     borderRadius: R.m, padding: E.m,
   },
-  bloqueTexte: { flex: 1, color: "#F0CE96", fontSize: 13.5, lineHeight: 19 },
+  bloqueTexte: { flex: 1, color: C.alerteTexteChaud, fontSize: 13.5, lineHeight: 19 },
   action: { height: 50, borderRadius: R.m, alignItems: "center", justifyContent: "center", backgroundColor: C.accent },
   actionTexte: { color: "#fff", fontSize: 15, fontWeight: "700" },
   plein: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
