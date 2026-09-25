@@ -57,12 +57,28 @@ construire_ios() {
 
 construire_android() {
   [ -d "$JDK" ] || { echo "JDK 17 absent. Installer : brew install openjdk@17" >&2; exit 1; }
+  # La cle de depot. Sans elle, Gradle repartirait sur la cle de DEBOGAGE du modele Expo et
+  # produirait un AAB que Google Play refuse — sans que le build echoue, ce qui est le piege.
+  local cle="$RACINE/credentials/sportvision-upload.keystore"
+  [ -f "$cle" ] || { echo "Cle de depot absente : $cle" >&2
+    echo "Elle est hors de Git, a restaurer depuis la sauvegarde." >&2; exit 1; }
+  local mdp
+  mdp="$(grep -m1 '^ANDROID_UPLOAD_KEYSTORE_PASSWORD=' "$RACINE/../../.env" | cut -d= -f2-)"
+  [ -n "$mdp" ] || { echo "ANDROID_UPLOAD_KEYSTORE_PASSWORD absent du .env de la racine." >&2; exit 1; }
+  export SPORTVISION_KEYSTORE="$cle" SPORTVISION_KEYSTORE_PASSWORD="$mdp"
   echo "▸ Android : bundle release (versionCode $(plutil -extract expo.android.versionCode raw app.json))"
   cd android
   JAVA_HOME="$JDK" PATH="$JDK/bin:$PATH" ./gradlew bundleRelease
   cd ..
   cp android/app/build/outputs/bundle/release/app-release.aab "$SORTIE/SportVision.aab"
-  echo "  bundle : $SORTIE/SportVision.aab"
+  # On verifie la signature plutot que de la supposer : un AAB signe en debogage se construit
+  # sans erreur et n'est refuse qu'au depot, apres coup.
+  if unzip -l "$SORTIE/SportVision.aab" | grep -q "ANDROIDD.RSA"; then
+    echo "  ERREUR : le bundle est signe avec la cle de DEBOGAGE. Google Play le refusera." >&2
+    echo "  Verifier que plugins/signature-android.js est bien liste dans app.json." >&2
+    exit 1
+  fi
+  echo "  bundle : $SORTIE/SportVision.aab (signe avec la cle de depot)"
 }
 
 preparer

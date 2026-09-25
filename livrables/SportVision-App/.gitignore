@@ -43,3 +43,7 @@ yarn-error.*
 
 # Les binaires construits : 25 Mo par IPA, ils ne vont pas dans Git.
 /build/
+
+# La cle de depot Android. Jamais dans Git, et a sauvegarder ailleurs : la perdre
+# empeche de publier toute mise a jour.
+/credentials/

@@ -50,7 +50,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#070B18"
         }
-      ]
+      ],
+      "./plugins/signature-android"
     ],
     "experiments": {
       "typedRoutes": true
