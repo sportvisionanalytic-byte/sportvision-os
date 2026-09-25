@@ -12846,6 +12846,32 @@ async function sauvegarderAlbum(albumId){
       match_id:genreLien==='match'?idLien:null,
       event_id:(genreLien==='entrainement'||genreLien==='evenement')?idLien:null,
     };
+    // ── SANS EQUIPE, PERSONNE NE VERRA CETTE GALERIE (25/09/2026) ──
+    //
+    // Constate ce jour-la : 23 galeries publiees sur 36, portant 2 685 photos sur 2 698,
+    // n'avaient ni club ni equipe. Elles etaient donc invisibles pour TOUTES les familles —
+    // media_album_list filtre sur club_id et team_id — et la reconnaissance ne pouvait pas
+    // demarrer non plus, faute d'equipe ou trouver des joueurs.
+    //
+    // On ne rend pas ces champs obligatoires : la raison d'origine tient toujours, et exiger un
+    // club interdirait de vendre a un club non client, a un tournoi ou a un joueur seul.
+    //
+    // Ce qu'on retire, c'est le SILENCE. L'operateur croyait avoir publie ; il avait rempli un
+    // dossier que personne n'ouvrirait jamais. Il le sait maintenant, et decide en connaissance
+    // de cause.
+    if(!teamId){
+      const raison = !clubId
+        ? 'Cette galerie n’est rattachée à aucun club ni à aucune équipe.'
+        : 'Cette galerie est rattachée à un club, mais à aucune équipe.';
+      const ok = await demanderConfirmation(
+        raison + '\n\nAucune famille ne la verra dans son espace : les galeries s’affichent par '
+        + 'équipe. La reconnaissance des joueurs ne pourra pas tourner non plus.\n\n'
+        + 'C’est le bon choix pour un tournoi, un club non client ou une vente à un joueur seul. '
+        + 'Dans tous les autres cas, choisissez une équipe.',
+        { titre: 'Personne ne verra cette galerie', action: 'Enregistrer quand même' });
+      if(!ok){ err.textContent=''; return; }
+    }
+
     let r;
     if(albumId){
       r=await sbFetch('media_albums?id=eq.'+albumId,{method:'PATCH',body});
