@@ -16624,8 +16624,23 @@ function calcGrade(xp){
 // Statuts de prestation à partir desquels une mission acceptée est considérée réalisée
 // (média livré ou au-delà) et donne donc droit à son XP.
 const MISSION_XP_DONE_STATUTS=['livrée','facturée','partiellement_payée','payée','clôturée'];
+// ── RATTRAPAGE, PLUS SOURCE DE VERITE (25/09/2026) ────────────────────────────────────────────
+//
+// Depuis la v262, les XP de mission sont credites par `mission_valider_travail`, cote serveur, au
+// moment ou la Production valide le travail — c'est ce que Fouka decrit : « une fois que c'est
+// valide, il recoit ses XP ». Cette fonction-ci reste, mais elle ne decide plus quand : elle
+// rattrape les missions validees avant la v262, ou celles dont le credit serveur aurait echoue.
+//
+// ELLE EXIGE DESORMAIS LA VALIDATION. Elle se declenchait sur le seul statut de la PRESTATION :
+// un operateur dont le travail avait ete REFUSE par la Production touchait ses XP quand meme, des
+// que la prestation passait en « livree ». Les deux sources disaient donc deux choses
+// differentes. Elles disent maintenant la meme : valide, credite ; refuse ou non decide, rien.
+//
+// L'index unique xp_events(source_type, source_id, type) empeche de toute facon le double credit
+// entre les deux chemins.
+//
 // Synchronise l'XP de mission (100 XP + 50 si responsable) dans xp_events/profiles.xp
-// pour les missions acceptées et réalisées qui n'ont pas encore été créditées.
+// pour les missions acceptées, réalisées ET VALIDÉES qui n'ont pas encore été créditées.
 // Idempotent : ne recrédite jamais une mission déjà synchronisée (contrainte unique
 // xp_events(source_type,source_id,type) en base + vérification préalable ici).
 // `preloadedRows` évite une requête redondante quand l'appelant a déjà chargé
@@ -16639,15 +16654,18 @@ async function syncMissionXp(uid,preloadedRows){
     if(!prof||prof.role!=='photo')return;
     let rows=preloadedRows;
     if(!rows){
-      rows=await sbFetch('prestations_equipe_display?select=id,statut,est_responsable,prestations(statut)&collaborateur_id=eq.'+uid+'&statut=eq.acceptée').catch(()=>[]);
+      rows=await sbFetch('prestations_equipe_display?select=id,statut,est_responsable,travail_valide,prestations(statut)&collaborateur_id=eq.'+uid+'&statut=eq.acceptée').catch(()=>[]);
     }
-    const eligible=(Array.isArray(rows)?rows:[]).filter(r=>r.statut==='acceptée'&&MISSION_XP_DONE_STATUTS.includes(r.prestations?.statut));
+    // `travail_valide===true` et non « pas false » : une mission jamais arbitree n'a pas ete
+    // validee, elle attend. Crediter dans le doute reviendrait a dire que la validation ne sert a
+    // rien.
+    const eligible=(Array.isArray(rows)?rows:[]).filter(r=>r.statut==='acceptée'&&r.travail_valide===true&&MISSION_XP_DONE_STATUTS.includes(r.prestations?.statut));
     if(!eligible.length)return;
     const existing=await sbFetch('xp_events?select=source_id&collaborateur_id=eq.'+uid+'&type=eq.prestation&source_type=eq.prestations_equipe').catch(()=>[]);
     const already=new Set((Array.isArray(existing)?existing:[]).map(e=>e.source_id));
     const missing=eligible.filter(r=>!already.has(r.id));
     if(!missing.length)return;
-    const events=missing.map(r=>({collaborateur_id:uid,montant:100+(r.est_responsable?50:0),type:'prestation',source_id:r.id,source_type:'prestations_equipe',description:'Mission réalisée',attribue_par:uid}));
+    const events=missing.map(r=>({collaborateur_id:uid,montant:100+(r.est_responsable?50:0),type:'prestation',source_id:r.id,source_type:'prestations_equipe',description:'Mission validée par la Production',attribue_par:uid}));
     // Les deux écritures doivent réussir ensemble : si xp_events échoue, la
     // mission n'est pas marquée "déjà synchronisée" (le test d'idempotence se
     // base sur xp_events), donc surtout ne PAS créditer profiles.xp — sinon le
@@ -16706,7 +16724,7 @@ async function loadPhotoDash(){
   const dbtn=document.getElementById('photo-dispo-btn');
   if(dbtn){dbtn.style.color=dc.clr;dbtn.style.background=dc.bg;dbtn.style.borderColor=dc.br;dbtn.textContent='● '+dc.lb;}
   try{
-    const rawEquipe=await sbFetch('prestations_equipe_display?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
+    const rawEquipe=await sbFetch('prestations_equipe_display?select=id,statut,remuneration,est_responsable,travail_valide,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
     if(!Array.isArray(rawEquipe))throw new Error(rawEquipe?.message||'Erreur API');
     _photoDashCache=rawEquipe;
     await syncMissionXp(uid,rawEquipe);
@@ -22164,7 +22182,7 @@ async function loadPhotoRevenus(){
   const uid=localStorage.getItem('sv_uid');
   if(!uid)return;
   try{
-    const data=await sbFetch('prestations_equipe_display?select=id,remuneration,est_responsable,statut,prestations(id,reference,statut,type_prestation,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=200');
+    const data=await sbFetch('prestations_equipe_display?select=id,remuneration,est_responsable,statut,travail_valide,prestations(id,reference,statut,type_prestation,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=200');
     if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
     // r.statut = statut de l'invitation, pas celui de la mission — voir loadPhotoDash.
     _revAllData=data.filter(r=>r.statut!=='refusée'&&r.prestations&&r.prestations.statut!=='annulée');
@@ -35756,7 +35774,7 @@ async function modalFicheCollaborateur(id){
     const today=ymdLocal();
     const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw,dispoRangeRaw,kitResaRaw,docsRaw,gradeRecoRaw,clientsCmRaw,poleAffRaw,coordRaw,logiRaw]=await Promise.all([
       sbFetch('profiles?select=*&id=eq.'+id).catch(()=>[]),
-      sbFetch('prestations_equipe_display?select=id,statut,remuneration,prestations(id,reference,date_prestation,statut,lieu,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=200').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=id,statut,remuneration,est_responsable,travail_valide,prestations(id,reference,date_prestation,statut,lieu,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=200').catch(()=>[]),
       sbFetch('collaborateur_certifications?select=*&collaborateur_id=eq.'+id).catch(()=>[]),
       sbFetch('xp_events?select=montant&collaborateur_id=eq.'+id).catch(()=>[]),
       sbFetch('disponibilites?select=*&collaborateur_id=eq.'+id+'&date=eq.'+today).catch(()=>[]),
@@ -41429,7 +41447,7 @@ async function loadMobilePhotoDash(ct){
   try{
     const today=ymdLocal();
     const [equipe,notifs]=await Promise.all([
-      sbFetch('prestations_equipe_display?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc&limit=100').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=id,statut,remuneration,est_responsable,travail_valide,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc&limit=100').catch(()=>[]),
       sbFetch('notifications?select=id&destinataire_id=eq.'+uid+'&lue=eq.false&order=created_at.desc&limit=5').catch(()=>[]),
     ]);
     // d.statut = statut de l'invitation, d.prestations.statut = statut réel de
