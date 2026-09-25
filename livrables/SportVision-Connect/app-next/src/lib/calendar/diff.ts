@@ -83,6 +83,11 @@ export interface TeamCandidate {
   id: string;
   name: string;
   confidence: number;
+  /** Vrai si le score vient du NOM de l'equipe, faux s'il ne vient que d'une de ses categories.
+   *  La nuance decide de tout quand plusieurs equipes partagent une categorie : « U15 D2 » ne
+   *  designe qu'une equipe, « U15 » en designe deux, et seul le premier cas peut etre tranche
+   *  sans demander. */
+  parLeNom?: boolean;
 }
 
 export interface PreviewRow {
@@ -110,6 +115,9 @@ export interface ImportPreview {
   counts: Record<RowVerdict, number>;
   /** Lignes réellement écrites si l'utilisateur confirme en l'état. */
   selectedCount: number;
+  /** Lignes écartées parce qu'antérieures au plancher. Comptées, jamais tues : un club qui
+   *  s'étonne de ne pas voir ses matchs doit pouvoir lire pourquoi. */
+  ignoredBeforeMinDate: number;
 }
 
 export interface PreviewOverrides {
@@ -132,6 +140,18 @@ export interface PreviewInput {
    * colonne équipe, ou d'un ICS par équipe exporté un fichier à la fois). */
   defaultTeamId: string | null;
   overrides?: PreviewOverrides;
+  /**
+   * Plancher de date (AAAA-MM-JJ). Toute ligne antérieure est écartée avant tout rapprochement.
+   *
+   * POURQUOI, ET CE N'EST PAS THÉORIQUE : le classeur de Villemomble garde dix onglets mensuels
+   * d'une saison sur l'autre. Le 25/09/2026, août, septembre et octobre portaient bien 2026, mais
+   * novembre à mai contenaient ENCORE la saison passée — novembre 2025, janvier 2026. Une
+   * synchronisation sans plancher aurait injecté l'an dernier dans cette saison, et personne ne
+   * l'aurait vu venir : les lignes sont parfaitement valides, elles sont simplement périmées.
+   *
+   * Non renseigné : aucun filtre, le comportement d'avant.
+   */
+  minDate?: string | null;
 }
 
 // Seuils de rapprochement de noms d'équipe. Ils ne servent qu'à PROPOSER : au-dessus de
@@ -140,6 +160,17 @@ export interface PreviewInput {
 const AUTO_ASSIGN = 0.85;
 const MIN_CANDIDATE = 0.5;
 const AMBIGUITY_GAP = 0.12;
+
+// Seuils PROPRES AUX NOMS D'ADVERSAIRES, et ils sont volontairement plus bas que ceux des équipes.
+// Un nom d'adversaire porte beaucoup plus de bruit : la fédération écrit « Suresnes JS Seniors F 1 »
+// là où le club écrit « JS Suresnes » — mêmes deux mots utiles, trois mots de décoration en plus.
+// Mesuré le 25/09/2026 sur Villemomble, ces deux-là marquent 0,46, sous le seuil des équipes.
+//
+// Le garde-fou n'est donc pas le seuil, c'est l'ÉCART : on ne tranche que si un seul candidat se
+// détache nettement. Deux adversaires qui se ressemblent autant ne départagent rien, et la ligne
+// ressort « nouveau » — une ligne de trop se voit et se corrige, un match écrasé ne se voit pas.
+const ADVERSAIRE_MIN = 0.3;
+const ADVERSAIRE_ECART = 0.25;
 
 /** Score de proximité entre un libellé d'équipe côté source et une équipe du club. Dice sur les
  * mots, avec deux raccourcis : égalité stricte (1) et inclusion ("U18" dans "U18 D2", 0.85). */
@@ -166,9 +197,26 @@ function scoreEquipe(sourceName: string, team: ClubTeamRef): number {
   return best;
 }
 
+/** « à A qu'à B », « à A, à B et à C » : la phrase que le club lit, pas une liste separee par
+ *  des virgules. Au-dela de trois, on s'arrete et on dit combien il en reste. */
+function nomsEnFrancais(candidats: TeamCandidate[]): string {
+  const noms = candidats.slice(0, 3).map((c) => c.name);
+  const reste = candidats.length - noms.length;
+  const suite = reste > 0 ? ` (et ${reste} autre${reste > 1 ? "s" : ""})` : "";
+  if (noms.length === 1) return noms[0] + suite;
+  if (noms.length === 2) return `${noms[0]} qu'à ${noms[1]}${suite}`;
+  return `${noms[0]}, à ${noms[1]} et à ${noms[2]}${suite}`;
+}
+
 function rankTeams(sourceName: string, teams: ClubTeamRef[]): TeamCandidate[] {
   return teams
-    .map((t) => ({ id: t.id, name: t.name, confidence: Math.round(scoreEquipe(sourceName, t) * 100) / 100 }))
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      confidence: Math.round(scoreEquipe(sourceName, t) * 100) / 100,
+      // Le score du NOM seul, sans les categories : c'est lui qui departage des ex aequo.
+      parLeNom: scoreTeamName(sourceName, t.name) >= AUTO_ASSIGN,
+    }))
     .filter((c) => c.confidence >= MIN_CANDIDATE)
     .sort((a, b) => b.confidence - a.confidence);
 }
@@ -229,13 +277,34 @@ function timeLabel(value: string | null): string | null {
   return value ? value.slice(0, 5) : null;
 }
 
+/**
+ * `completerSeulement` — la source ne peut que REMPLIR ce qui est vide, jamais réécrire.
+ *
+ * Posé le 25/09/2026 avec le rapprochement par créneau. Quand le tableur d'un club retrouve un
+ * match que la FÉDÉRATION a publié, les deux le nomment différemment : « FC Rueil Malmaison »
+ * contre « Rueil Malmaison FC Seniors 1 ». Sans cette règle, chaque import renommerait
+ * l'adversaire officiel avec l'abréviation interne du club, et chaque synchronisation nocturne de
+ * la fédération le renommerait en sens inverse. Deux sources qui se combattent à chaque passage.
+ *
+ * La fédération fait foi sur ce qu'elle publie — c'est déjà la règle admise pour le score
+ * officiel. Le tableur du club apporte ce qu'elle ne publie pas : le stade, l'éducateur, l'heure
+ * de rendez-vous. D'où : remplir un champ vide, oui ; en réécrire un rempli, non.
+ */
 function computeChanges(
   event: SourceEvent,
   existing: ExistingMatch,
   teamId: string | null,
   teamName: string | null,
+  completerSeulement = false,
 ): FieldChange[] {
-  const changes: FieldChange[] = [];
+  const brut: FieldChange[] = [];
+  const changes = {
+    push(c: FieldChange) {
+      const dejaRempli = c.before !== null && c.before !== undefined && String(c.before).trim() !== "";
+      if (completerSeulement && dejaRempli) return;
+      brut.push(c);
+    },
+  };
 
   if (event.matchDate !== existing.matchDate) {
     changes.push({ field: "date", before: existing.matchDate, after: event.matchDate });
@@ -274,11 +343,18 @@ function computeChanges(
   if (teamId && existing.teamId && teamId !== existing.teamId) {
     changes.push({ field: "team", before: existing.teamName, after: teamName });
   }
-  return changes;
+  return brut;
 }
 
 export function buildImportPreview(input: PreviewInput): ImportPreview {
   const { provider, events, issues, existing, teams, mappings, defaultTeamId } = input;
+  // Le plancher s'applique AVANT tout rapprochement : une ligne périmée ne doit même pas entrer
+  // en concurrence avec un match de cette saison pour occuper un créneau.
+  const minDate = input.minDate ?? null;
+  const evenements = minDate
+    ? events.filter((e) => !e.matchDate || e.matchDate >= minDate)
+    : events;
+  const ignoredBeforeMinDate = events.length - evenements.length;
   const teamIdByLine = input.overrides?.teamIdByLine ?? {};
   const excluded = new Set(input.overrides?.excludedLines ?? []);
   const forcedIncluded = new Set(input.overrides?.includedLines ?? []);
@@ -288,7 +364,30 @@ export function buildImportPreview(input: PreviewInput): ImportPreview {
   const byExternal = new Map<string, ExistingMatch>();
   const byFallback = new Map<string, ExistingMatch>();
   const byLoose = new Map<string, ExistingMatch[]>();
+  // TROISIÈME INDEX, LE CRÉNEAU — équipe + jour + coup d'envoi (25/09/2026).
+  //
+  // TROUVÉ EN CONFRONTANT LE PLANNING RÉEL DE VILLEMOMBLE aux 409 matchs déjà en base, dont 345
+  // venus de SportCorico : le seul mois de septembre produisait 18 faux « nouveaux » sur 25.
+  //
+  // La cause est juste au-dessus, dans le `continue` : un match porteur d'un identifiant externe
+  // n'était indexé QUE par cet identifiant. Une source qui n'en a pas — le tableur d'un club —
+  // ne pouvait donc STRUCTURELLEMENT jamais le retrouver. Et le repli par nom ne rattrapait rien,
+  // parce que les deux sources nomment tout différemment des DEUX côtés à la fois :
+  //
+  //     tableur     Séniors R2  vs  FC Rueil Malmaison           20/09 15:30
+  //     fédération  Seniors 1   vs  Rueil Malmaison FC Seniors 1 20/09 15:30
+  //
+  // Ce qui les trahit, c'est l'heure. Même équipe, même jour, même coup d'envoi : c'est le même
+  // match, quelle qu'en soit l'orthographe. Le créneau est donc indexé pour TOUS les matchs, avec
+  // ou sans identifiant externe — c'est exactement ce que le `continue` empêchait.
+  const byCreneau = new Map<string, ExistingMatch[]>();
   for (const match of existing) {
+    // L'heure est obligatoire pour entrer dans cet index. Sans elle, « équipe + jour » suffirait
+    // à confondre les deux matchs d'un tournoi, et on écraserait le premier avec le second.
+    if (match.teamId && match.matchDate && match.kickoffTime) {
+      const creneau = `${match.teamId}|${match.matchDate}|${timeLabel(match.kickoffTime)}`;
+      byCreneau.set(creneau, [...(byCreneau.get(creneau) ?? []), match]);
+    }
     const external = externalIdentityKey(match);
     if (external) {
       byExternal.set(external, match);
@@ -303,7 +402,7 @@ export function buildImportPreview(input: PreviewInput): ImportPreview {
   const seenIdentities = new Map<string, number>();
   const rows: PreviewRow[] = [];
 
-  for (const rawEvent of events) {
+  for (const rawEvent of evenements) {
     const event = orientSides(rawEvent, teams);
     const line = event.sourceLine;
 
@@ -342,7 +441,24 @@ export function buildImportPreview(input: PreviewInput): ImportPreview {
       teamCandidates = rankTeams(event.sourceTeamName, teams);
       const best = teamCandidates[0];
       const second = teamCandidates[1];
-      if (best && second && best.confidence < 1 && best.confidence - second.confidence < AMBIGUITY_GAP) {
+      // TROUVÉ LE 25/09/2026 sur le planning réel de Villemomble : la vérification d'ambiguïté
+      // était court-circuitée quand le meilleur score valait exactement 1 (`best.confidence < 1`).
+      // Or un score de 1 ne veut pas dire « une seule équipe » : il veut dire « correspondance
+      // parfaite », et une CATÉGORIE correspond parfaitement à toutes les équipes qui la
+      // partagent. Le tableur du club, qui écrit souvent la seule catégorie, envoyait donc
+      // « U15 » sur « U15 F » — l'équipe féminine — avec 100 % de confiance et sans rien demander.
+      //
+      // On juge désormais sur les EX AEQUO, pas sur la perfection du score. Un seul recours : si
+      // une seule des équipes à égalité correspond par son NOM et pas seulement par sa catégorie,
+      // c'est elle — « U15 D2 » reste décidé, « U15 » devient une question.
+      const exAequo = best ? teamCandidates.filter((c) => c.confidence === best.confidence) : [];
+      const parLeNom = exAequo.filter((c) => c.parLeNom);
+      if (exAequo.length > 1 && parLeNom.length === 1) {
+        teamId = parLeNom[0]!.id;
+      } else if (exAequo.length > 1) {
+        mappingVerdict = "ambiguous";
+        mappingReason = `« ${event.sourceTeamName} » ressemble autant à ${nomsEnFrancais(exAequo)}.`;
+      } else if (best && second && best.confidence < 1 && best.confidence - second.confidence < AMBIGUITY_GAP) {
         mappingVerdict = "ambiguous";
         mappingReason = `« ${event.sourceTeamName} » ressemble autant à ${best.name} qu'à ${second.name}.`;
       } else if (best && best.confidence >= AUTO_ASSIGN) {
@@ -393,6 +509,33 @@ export function buildImportPreview(input: PreviewInput): ImportPreview {
         );
         if (loose.length === 1) existingMatch = loose[0];
       }
+
+      // DERNIER RECOURS : le créneau. Il sert quand ni l'identifiant ni le nom de l'adversaire ne
+      // rapprochent — typiquement un match déjà publié par la fédération, que le tableur du club
+      // redécrit avec ses propres mots. On n'accepte QU'UN seul occupant du créneau : à plusieurs,
+      // ce sont de vrais matchs distincts et il ne faut en écraser aucun.
+      if (!existingMatch && teamId && event.matchDate && event.kickoffTime) {
+        const occupants = (byCreneau.get(`${teamId}|${event.matchDate}|${event.kickoffTime}`) ?? [])
+          .filter((m) => !usedExistingIds.has(m.id));
+        if (occupants.length === 1) {
+          existingMatch = occupants[0];
+        } else if (occupants.length > 1) {
+          // Deux matchs dans le même créneau : c'est rare, mais ça arrive — la base de Villemomble
+          // en contenait, hérités de la fédération. Le nom de l'adversaire tranche, quand il
+          // tranche vraiment : on exige UN SEUL candidat au-dessus du seuil. Sinon on ne choisit
+          // pas, et la ligne ressort « nouveau ». Une ligne de trop se voit et se corrige ; un
+          // match écrasé par le mauvais ne se voit pas.
+          const notes = occupants
+            .map((m) => ({ m, note: scoreTeamName(event.opponent, m.opponent) }))
+            .sort((x, y) => y.note - x.note);
+          const premier = notes[0];
+          const second = notes[1];
+          if (premier && premier.note >= ADVERSAIRE_MIN
+              && (!second || premier.note - second.note >= ADVERSAIRE_ECART)) {
+            existingMatch = premier.m;
+          }
+        }
+      }
     }
 
     // ── 3. Doublon interne au fichier ────────────────────────────────────────────────────────
@@ -425,7 +568,10 @@ export function buildImportPreview(input: PreviewInput): ImportPreview {
     } else if (mappingVerdict === "needs_mapping") {
       verdict = "needs_mapping";
     } else if (existingMatch) {
-      changes = computeChanges(event, existingMatch, teamId, teamName);
+      // La source n'a pas d'identifiant et retrouve un match qui en a un : il vient de la
+      // fédération. Elle complète, elle ne réécrit pas (voir computeChanges).
+      const completerSeulement = !event.externalEventId && !!existingMatch.externalEventId;
+      changes = computeChanges(event, existingMatch, teamId, teamName, completerSeulement);
       verdict = changes.length > 0 ? "updated" : "unchanged";
       if (verdict === "unchanged") reason = "Déjà à jour dans le calendrier.";
       usedExistingIds.add(existingMatch.id);
@@ -472,5 +618,5 @@ export function buildImportPreview(input: PreviewInput): ImportPreview {
   };
   for (const row of rows) counts[row.verdict] += 1;
 
-  return { rows, issues, counts, selectedCount: rows.filter((r) => r.include).length };
+  return { rows, issues, counts, selectedCount: rows.filter((r) => r.include).length, ignoredBeforeMinDate };
 }

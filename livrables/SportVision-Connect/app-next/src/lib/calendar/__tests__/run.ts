@@ -14,6 +14,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import { parseCsvSource } from "../providers/csv.ts";
 import { parseIcsSource } from "../providers/ics.ts";
@@ -1188,4 +1189,183 @@ test("planning par blocs : un tableau ordinaire n'est PAS transforme", () => {
     ["21/09/2026", "U16 D3", "AS Montereau"],
   ];
   assert.equal(enrichirDepuisSections(ordinaire), null);
+});
+
+// ─────────── Fusion Excel + fédération : les trois défauts du 25/09/2026 ───────────
+//
+// TROUVÉS EN PASSANT LE VRAI PLANNING DE VILLEMOMBLE (Google Sheets, 10 onglets mensuels) face
+// aux 409 matchs déjà en base, dont 345 venus de SportCorico. Le seul mois de septembre produisait
+// 18 faux « nouveaux » sur 25 : le même match, décrit deux fois, une fois par la fédération et une
+// fois par le tableur du club.
+
+/** Un événement source complet, pour n'écrire dans chaque test que ce qui compte. */
+function evenement(sur: Partial<SourceEvent> = {}): SourceEvent {
+  return {
+    matchDate: "2026-09-20", kickoffTime: "15:30", sourceTeamName: "Séniors R2",
+    opponent: "FC Rueil Malmaison", isHome: null, competitionName: "Championnat",
+    location: null, sportStatus: "scheduled", externalEventId: null,
+    externalCompetitionId: null, externalTeamId: null, sourceUpdatedAt: null,
+    sourceLine: 1, rawLabel: "", score: null, ...sur,
+  };
+}
+
+test("une catégorie partagée par plusieurs équipes n'élit personne", () => {
+  // Villemomble a cinq équipes dont la catégorie est « U15 » ou « U14 ». Le tableur du club, lui,
+  // n'écrit souvent que la catégorie. Le moteur choisissait alors la première de la liste avec une
+  // confiance de 100 % : « U15 » est parti sur « U15 F », l'équipe féminine.
+  const equipes: ClubTeamRef[] = [
+    { id: "t-u15-d2", name: "U15 D2", categories: ["U15"] },
+    { id: "t-u15-f", name: "U15 F", categories: ["U15"] },
+    { id: "t-u16", name: "U16 D3", categories: ["U16"] },
+  ];
+  const vue = preview("FOOTCLUBS_XLSX", [evenement({ sourceTeamName: "U15" })], [], {
+    teams: equipes, defaultTeamId: null });
+  assert.equal(vue.rows[0]!.verdict, "ambiguous",
+    "« U15 » désigne deux équipes : le moteur doit demander, pas choisir");
+  assert.equal(vue.rows[0]!.teamId, null, "aucune équipe ne doit être retenue tant que c'est ambigu");
+});
+
+test("un nom d'équipe complet reste décidé, même si la catégorie est partagée", () => {
+  // Le garde-fou ci-dessus ne doit pas bloquer le cas normal : « U15 D2 » ne désigne qu'une équipe.
+  const equipes: ClubTeamRef[] = [
+    { id: "t-u15-d2", name: "U15 D2", categories: ["U15"] },
+    { id: "t-u15-f", name: "U15 F", categories: ["U15"] },
+  ];
+  const vue = preview("FOOTCLUBS_XLSX", [evenement({ sourceTeamName: "U15 D2" })], [], {
+    teams: equipes, defaultTeamId: null });
+  assert.equal(vue.rows[0]!.teamId, "t-u15-d2");
+  assert.equal(vue.rows[0]!.verdict, "new");
+});
+
+test("le tableur du club reconnaît un match déjà publié par la fédération", () => {
+  // LE DÉFAUT CENTRAL. Les matchs porteurs d'un identifiant externe n'étaient indexés QUE par cet
+  // identifiant : une source qui n'en a pas ne pouvait structurellement jamais les retrouver.
+  // Or les deux sources nomment tout différemment des deux côtés à la fois — l'équipe comme
+  // l'adversaire — donc le repli par nom ne rattrapait rien non plus.
+  const equipes: ClubTeamRef[] = [{ id: "t-sen", name: "Séniors R2", categories: ["Seniors"] }];
+  const deLaFederation: ExistingMatch = {
+    id: "db-fede", provider: "SPORTCORICO" as const, externalEventId: "SC-99812",
+    teamId: "t-sen", teamName: "Seniors 1", opponent: "Rueil Malmaison FC Seniors 1",
+    matchDate: "2026-09-20", kickoffTime: "15:30", competition: "Régional 2",
+    location: "Stade Claude Ripert", sportStatus: "scheduled", score: null,
+  };
+  const vue = preview("FOOTCLUBS_XLSX", [evenement()], [deLaFederation], {
+    teams: equipes, defaultTeamId: null });
+  assert.notEqual(vue.rows[0]!.verdict, "new",
+    "même équipe, même jour, même coup d'envoi : c'est le même match, pas un second");
+  assert.equal(vue.rows[0]!.existingId, "db-fede");
+});
+
+test("le tableur ne réécrit pas ce que la fédération publie", () => {
+  // La fédération fait foi sur ce qu'elle publie (même principe que le score officiel). Le tableur
+  // du club complète ce qui manque, il ne renomme pas l'adversaire ni ne déplace le match.
+  const equipes: ClubTeamRef[] = [{ id: "t-sen", name: "Séniors R2", categories: ["Seniors"] }];
+  const deLaFederation: ExistingMatch = {
+    id: "db-fede", provider: "SPORTCORICO" as const, externalEventId: "SC-99812",
+    teamId: "t-sen", teamName: "Seniors 1", opponent: "Rueil Malmaison FC Seniors 1",
+    matchDate: "2026-09-20", kickoffTime: "15:30", competition: "Régional 2",
+    location: null, sportStatus: "scheduled", score: null,
+  };
+  const vue = preview("FOOTCLUBS_XLSX",
+    [evenement({ location: "Stade Claude Ripert" })], [deLaFederation],
+    { teams: equipes, defaultTeamId: null });
+  const champs = vue.rows[0]!.changes.map((c) => c.field);
+  assert.ok(champs.includes("location"), "le lieu manquant doit être complété");
+  assert.ok(!champs.includes("opponent"), "l'adversaire publié par la fédération ne doit pas être renommé");
+  assert.ok(!champs.includes("competition"), "la compétition publiée par la fédération ne doit pas être réécrite");
+});
+
+test("deux matchs le même jour pour la même équipe ne sont pas fusionnés au hasard", () => {
+  // Un tournoi : deux vrais matchs, à deux heures différentes. Le rapprochement par créneau ne
+  // doit s'appliquer que lorsqu'un SEUL match occupe le créneau.
+  const equipes: ClubTeamRef[] = [{ id: "t-u13", name: "U13", categories: ["U13"] }];
+  const existants: ExistingMatch[] = ["10:00", "14:00"].map((h, i) => ({
+    id: `db-${i}`, provider: "SPORTCORICO" as const, externalEventId: `SC-${i}`,
+    teamId: "t-u13", teamName: "U13", opponent: `Adversaire ${i}`,
+    matchDate: "2026-09-20", kickoffTime: h, competition: "Tournoi",
+    location: null, sportStatus: "scheduled", score: null,
+  }));
+  const vue = preview("FOOTCLUBS_XLSX",
+    [evenement({ sourceTeamName: "U13", kickoffTime: "16:00", opponent: "Troisième club" })],
+    existants, { teams: equipes, defaultTeamId: null });
+  assert.equal(vue.rows[0]!.verdict, "new", "un troisième créneau est un troisième match");
+});
+
+test("rien n'est lu avant la date plancher de la saison", () => {
+  // Le classeur de Villemomble garde dix onglets mensuels, et novembre à mai contiennent ENCORE
+  // la saison passée (novembre 2025, janvier 2026…). Sans plancher, une synchronisation injecterait
+  // l'an dernier dans cette saison.
+  const equipes: ClubTeamRef[] = [{ id: "t-sen", name: "Séniors R2", categories: ["Seniors"] }];
+  const vue = buildImportPreview({
+    provider: "FOOTCLUBS_XLSX",
+    events: [evenement({ matchDate: "2025-11-02", sourceLine: 1 }),
+             evenement({ matchDate: "2026-09-20", sourceLine: 2 })],
+    issues: [], existing: [], teams: equipes, mappings: [], defaultTeamId: null,
+    minDate: "2026-09-01",
+  });
+  assert.equal(vue.rows.length, 1, "la ligne d'avant le plancher ne doit pas être proposée");
+  assert.equal(vue.rows[0]!.source.matchDate, "2026-09-20");
+  assert.equal(vue.ignoredBeforeMinDate, 1, "et elle doit être comptée, pas disparaître en silence");
+});
+
+test("créneau occupé par deux matchs : le nom de l'adversaire départage", () => {
+  // TROUVÉ SUR VILLEMOMBLE : la base contenait DEUX matchs de Séniors Féminines le 19/09 à 18h,
+  // contre Montreuil et contre Suresnes. Le tableur du club décrivait celui de Suresnes. Le
+  // rapprochement par créneau, prudent, refusait de choisir et créait un troisième match.
+  //
+  // Le nom suffit à trancher : « JS Suresnes » ne ressemble qu'à l'un des deux. On n'accepte que
+  // si UN SEUL candidat dépasse le seuil — sinon on préfère créer une ligne de trop, visible,
+  // plutôt qu'écraser le mauvais match, invisible.
+  const equipes: ClubTeamRef[] = [{ id: "t-sf", name: "Séniors Féminines", categories: ["Seniors"] }];
+  const existants: ExistingMatch[] = ([
+    ["db-montreuil", "Montreuil FC Seniors F 1"],
+    ["db-suresnes", "Suresnes JS Seniors F 1"],
+  ] as const).map(([id, adversaire], i) => ({
+    id, provider: "SPORTCORICO" as const, externalEventId: `SC-${i}`,
+    teamId: "t-sf", teamName: "Seniors F 1", opponent: adversaire,
+    matchDate: "2026-09-19", kickoffTime: "18:00", competition: "Régional",
+    location: null, sportStatus: "scheduled" as const, score: null,
+  }));
+  const vue = preview("FOOTCLUBS_XLSX", [evenement({
+    sourceTeamName: "Séniors Féminines", opponent: "JS Suresnes",
+    matchDate: "2026-09-19", kickoffTime: "18:00" })], existants,
+    { teams: equipes, defaultTeamId: null });
+  assert.notEqual(vue.rows[0]!.verdict, "new");
+  assert.equal(vue.rows[0]!.existingId, "db-suresnes", "et surtout : le bon des deux");
+});
+
+test("créneau occupé par deux inconnus : on ne choisit pas", () => {
+  const equipes: ClubTeamRef[] = [{ id: "t-sf", name: "Séniors Féminines", categories: ["Seniors"] }];
+  const existants: ExistingMatch[] = ["Montreuil FC", "Clichy AS"].map((adversaire, i) => ({
+    id: `db-${i}`, provider: "SPORTCORICO" as const, externalEventId: `SC-${i}`,
+    teamId: "t-sf", teamName: "Seniors F 1", opponent: adversaire,
+    matchDate: "2026-09-19", kickoffTime: "18:00", competition: "Régional",
+    location: null, sportStatus: "scheduled" as const, score: null,
+  }));
+  const vue = preview("FOOTCLUBS_XLSX", [evenement({
+    sourceTeamName: "Séniors Féminines", opponent: "JS Suresnes",
+    matchDate: "2026-09-19", kickoffTime: "18:00" })], existants,
+    { teams: equipes, defaultTeamId: null });
+  assert.equal(vue.rows[0]!.verdict, "new",
+    "aucun des deux ne ressemble : mieux vaut une ligne de trop, visible, qu'un écrasement muet");
+});
+
+test("la liste d'exécution des sources dit exactement la même chose que le type", () => {
+  // TROUVÉ LE 25/09/2026 : `PROVIDERS` (calendar-sync.ts) avait oublié "PDF" et "SPORTCORICO".
+  // Un oubli ici ne casse rien visiblement — `toProvider` replie la source sur "MANUAL" et
+  // continue. 605 lignes de club_matches étaient dans ce cas, sans qu'aucun écran ne le dise.
+  //
+  // Le test lit les deux déclarations dans les fichiers plutôt que d'en recopier une troisième
+  // liste : une liste de plus serait une occasion de plus de diverger.
+  const type = readFileSync(new URL("../types.ts", import.meta.url), "utf8");
+  const sync = readFileSync(new URL("../../data/club/calendar-sync.ts", import.meta.url), "utf8");
+
+  const duType = [...type.slice(type.indexOf("export type ProviderId"),
+    type.indexOf(";", type.indexOf("export type ProviderId"))).matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]);
+  const duRuntime = [...sync.slice(sync.indexOf("const PROVIDERS"),
+    sync.indexOf("];", sync.indexOf("const PROVIDERS"))).matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]);
+
+  assert.ok(duType.length >= 7, "le type n'a pas été lu correctement");
+  assert.deepEqual([...duRuntime].sort(), [...duType].sort(),
+    "toute source du type doit figurer dans la liste d'exécution, sinon elle devient « MANUAL » en silence");
 });

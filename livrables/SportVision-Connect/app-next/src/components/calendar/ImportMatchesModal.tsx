@@ -221,8 +221,13 @@ export function ImportMatchesModal({
       mappings,
       defaultTeamId: defaultTeamId || null,
       overrides: { teamIdByLine, excludedLines, includedLines },
+      // Plancher : le premier jour de la saison choisie. Un classeur de club garde souvent la
+      // saison passée dans les onglets voisins — mesuré sur Villemomble le 25/09/2026, sept
+      // onglets sur dix. Les lignes antérieures sont écartées et comptées, pas importées.
+      minDate: saisons.find((s) => s.id === saisonId)?.dateDebut ?? null,
     });
-  }, [provider, parsed, existing, teams, mappings, defaultTeamId, teamIdByLine, excludedLines, includedLines]);
+  }, [provider, parsed, existing, teams, mappings, defaultTeamId, teamIdByLine, excludedLines,
+      includedLines, saisons, saisonId]);
 
   const runParse = useCallback(
     async (
@@ -780,6 +785,18 @@ export function ImportMatchesModal({
                   )}
                 </ul>
               </details>
+            )}
+
+            {/* Le plancher ne doit jamais être muet : un club qui compte ses matchs et en trouve
+                moins doit lire pourquoi, ici, tout de suite. */}
+            {preview.ignoredBeforeMinDate > 0 && (
+              <p className="rounded-lg border border-divider px-3 py-2.5 text-[12px] text-text-soft">
+                {preview.ignoredBeforeMinDate} ligne{preview.ignoredBeforeMinDate > 1 ? "s" : ""} écartée
+                {preview.ignoredBeforeMinDate > 1 ? "s" : ""} : {preview.ignoredBeforeMinDate > 1 ? "elles datent" : "elle date"}{" "}
+                d'avant le début de la saison
+                {saisons.find((x) => x.id === saisonId)?.label ? ` ${saisons.find((x) => x.id === saisonId)!.label}` : ""}.
+                C'est souvent un onglet de l'an dernier resté dans le fichier.
+              </p>
             )}
 
             {readyRows.length > 0 && (

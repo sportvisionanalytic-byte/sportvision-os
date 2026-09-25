@@ -34,6 +34,15 @@ export interface TabularParseOptions {
   mapping: TabularMapping;
   /** Colonne "date de modification" (fraîcheur de la source, pas un champ du match). */
   updatedAtColumn?: number | null;
+  /**
+   * Vrai quand un humain a DÉSIGNÉ les colonnes lui-même, faux quand elles ont été déduites.
+   *
+   * La distinction ne sert qu'aux garde-fous de contenu : une colonne choisie par une personne
+   * fait foi, et le moteur ne se permet pas de la juger — c'est la règle déjà posée plus haut
+   * dans la chaîne (« Mapping fourni : il fait foi »). Une colonne devinée, elle, mérite d'être
+   * vérifiée : c'est là qu'un nombre dans la case adversaire trahit une ligne pas encore remplie.
+   */
+  mappageImpose?: boolean;
 }
 
 export function rowsToSourceEvents(rows: string[][], options: TabularParseOptions): ParseResult {
@@ -60,6 +69,31 @@ export function rowsToSourceEvents(rows: string[][], options: TabularParseOption
     if (!opponentRaw && !dateRaw) continue; // ligne totalement vide : pas une erreur
     if (!opponentRaw) {
       issues.push({ line: humanLine, raw: rawLine, reason: "Adversaire manquant." });
+      continue;
+    }
+    // TROUVÉ SUR LE PLANNING RÉEL DE VILLEMOMBLE (25/09/2026) : le club prépare ses lignes à
+    // l'avance — l'équipe et la compétition sont écrites, mais la case adversaire ne contient
+    // qu'un nombre (« 199 », « 90 », « 225 »), sans heure, sans lieu, sans éducateur. Ce sont des
+    // créneaux en attente, pas des matchs. Importés tels quels, ils créaient des rencontres
+    // fantômes contre un adversaire nommé « 199 ».
+    //
+    // Aucun club ne s'appelle par un nombre seul. On exige EN PLUS l'absence d'HEURE LISIBLE :
+    // c'est la signature complète d'une ligne en attente, et ça évite d'écarter une source, aussi
+    // étrange soit-elle, qui désignerait vraiment ses adversaires par un code.
+    //
+    // « Lisible », et non « remplie » : les colonnes horaires de ce même classeur contiennent
+    // parfois des nombres bruts (« 225 », « 226 ») qui ne sont pas des heures. Se fier à la
+    // cellule non vide laissait passer « Anciens D1 contre 301 ».
+    //
+    // On ne se tait pas pour autant — la ligne est signalée, parce qu'un club qui compte ses
+    // matchs doit savoir pourquoi il en manque un.
+    const heureLisible = parseFlexibleTime(at(row, "time")?.trim() ?? "");
+    if (!options.mappageImpose && /^\d+([.,]\d+)?$/.test(opponentRaw) && !heureLisible) {
+      issues.push({
+        line: humanLine,
+        raw: rawLine,
+        reason: `Adversaire non renseigné ("${opponentRaw}") : ligne préparée mais pas encore remplie.`,
+      });
       continue;
     }
 

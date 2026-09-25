@@ -86,7 +86,15 @@ export const xlsxProvider: CalendarProvider = {
     let mapping = provided;
     let updatedAtColumn: number | null = null;
     let lignes = sheet.rows;
-    if (!mapping || TABULAR_REQUIRED_FIELDS.some((f) => mapping!.columns[f] === undefined)) {
+    // Un humain a-t-il DÉSIGNÉ les colonnes, ou seulement choisi une feuille ? La nuance compte :
+    // `provided` peut ne porter qu'un `sheetIndex`, et choisir un onglet n'est pas se prononcer
+    // sur le contenu des colonnes. Seul le premier cas fait taire les garde-fous.
+    const mappageImpose = !!provided
+      && TABULAR_REQUIRED_FIELDS.every((f) => provided.columns?.[f] !== undefined);
+    // `mapping.columns` peut manquer : l'écran d'import n'envoie parfois qu'un `sheetIndex`, quand
+    // l'utilisateur choisit un onglet sans se prononcer sur les colonnes. Sans le `?.`, la lecture
+    // plantait — trouvé le 25/09/2026 en rejouant les dix onglets du classeur de Villemomble.
+    if (!mapping || TABULAR_REQUIRED_FIELDS.some((f) => mapping!.columns?.[f] === undefined)) {
       let layout = detectTabularLayout(lignes, { teams: input.teams });
 
       // Planning « par blocs » : la date est un titre de section, pas une colonne. On la reporte
@@ -121,7 +129,7 @@ export const xlsxProvider: CalendarProvider = {
       updatedAtColumn = layout.updatedAtColumn;
     }
 
-    return rowsToSourceEvents(lignes, { mapping, updatedAtColumn });
+    return rowsToSourceEvents(lignes, { mapping, updatedAtColumn, mappageImpose });
   },
 };
 

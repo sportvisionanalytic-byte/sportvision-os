@@ -6,6 +6,7 @@ import type { ProviderId } from "@/lib/calendar/types";
 import {
   applyCalendarImport,
   fetchExistingMatches,
+  fetchSaisons,
   fetchTeamSourceMappings,
   recordCalendarSyncRun,
 } from "./calendar-sync";
@@ -93,11 +94,20 @@ export async function syncCalendarSourceOnce(supabase: SupabaseClient, source: A
 
   const parsed = await icsProvider.parse({ fileName: source.sourceUrl, text: remote.text });
 
-  const [teams, existing, mappings] = await Promise.all([
+  const [teams, existing, mappings, saisons] = await Promise.all([
     fetchTeams(supabase, source.clubId),
     fetchExistingMatches(supabase, source.clubId),
     fetchTeamSourceMappings(supabase, source.clubId, source.saisonId, source.provider),
+    fetchSaisons(supabase),
   ]);
+
+  // LE PLANCHER. Une source distante est relue chaque nuit sans que personne la regarde, et une
+  // source de club garde souvent la saison passée à côté de la nouvelle : le classeur de
+  // Villemomble, mesuré le 25/09/2026, avait dix onglets mensuels dont sept contenaient encore
+  // 2025-2026. Sans plancher, la synchronisation nocturne aurait réinjecté l'an dernier dans
+  // cette saison — des lignes parfaitement valides, simplement périmées, que rien n'aurait
+  // signalées.
+  const debutSaison = saisons.find((s) => s.id === source.saisonId)?.dateDebut ?? null;
 
   const preview = buildImportPreview({
     provider: source.provider,
@@ -109,6 +119,7 @@ export async function syncCalendarSourceOnce(supabase: SupabaseClient, source: A
     // Un club d'une seule équipe n'a aucune ambiguïté possible : c'est celle-là. Au-delà, aucune
     // équipe par défaut n'est imposée sans humain — les lignes non résolues restent en attente.
     defaultTeamId: teams.length === 1 ? teams[0]!.id : null,
+    minDate: debutSaison,
   });
 
   // Le filtre qui définit ce mode : on n'écrit que les lignes dont l'équipe est établie.

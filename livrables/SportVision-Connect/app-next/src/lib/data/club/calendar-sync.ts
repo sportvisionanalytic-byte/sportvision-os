@@ -29,14 +29,18 @@ export interface SaisonRef {
   id: string;
   label: string;
   active: boolean;
+  /** Premier jour de la saison. Sert de plancher aux imports : voir `PreviewInput.minDate`. */
+  dateDebut: string | null;
 }
 
 export async function fetchSaisons(supabase: SupabaseClient): Promise<SaisonRef[]> {
-  const { data } = await supabase.from("saisons").select("id, label, active").order("label", { ascending: false });
-  return ((data ?? []) as { id: string; label: string; active: boolean }[]).map((row) => ({
+  const { data } = await supabase.from("saisons")
+    .select("id, label, active, date_debut").order("label", { ascending: false });
+  return ((data ?? []) as { id: string; label: string; active: boolean; date_debut: string | null }[]).map((row) => ({
     id: row.id,
     label: row.label,
     active: row.active,
+    dateDebut: row.date_debut ?? null,
   }));
 }
 
@@ -56,7 +60,12 @@ function toSportStatus(raw: string | null): SportStatus {
   return SPORT_STATUSES.includes(raw as SportStatus) ? (raw as SportStatus) : "scheduled";
 }
 
-const PROVIDERS: ProviderId[] = ["MANUAL", "CSV", "ICS", "FOOTCLUBS_XLSX", "FFF", "OTHER"];
+// La liste d'exécution doit contenir EXACTEMENT les mêmes valeurs que le type ProviderId : tout
+// oubli ici est muet, toProvider replie silencieusement la source sur "MANUAL". Deux manquaient au
+// 25/09/2026 — "PDF" (18 lignes en base) et "SPORTCORICO" (587).
+const PROVIDERS: ProviderId[] = [
+  "MANUAL", "CSV", "ICS", "FOOTCLUBS_XLSX", "PDF", "FFF", "OTHER", "SPORTCORICO",
+];
 
 function toProvider(raw: string | null): ProviderId {
   return PROVIDERS.includes(raw as ProviderId) ? (raw as ProviderId) : "MANUAL";

@@ -15,8 +15,17 @@
 // (src/lib/calendar/__tests__/run.ts, `node --experimental-strip-types`) qui ne connaît pas les
 // alias de chemin de tsconfig. Le reste de l'app continue d'importer ce dossier via `@/`.
 
-/** Miroir de club_matches_provider_check / club_calendar_sources_provider_check. */
-export type ProviderId = "MANUAL" | "CSV" | "ICS" | "FOOTCLUBS_XLSX" | "PDF" | "FFF" | "OTHER";
+/** Miroir de club_matches_provider_check / club_calendar_sources_provider_check.
+ *
+ * SPORTCORICO manquait ici (ajouté le 25/09/2026) alors que 587 lignes de club_matches le
+ * portent : c'est la source fédérale, écrite par l'edge function federation-sync-matchs. Le
+ * moteur les repliait donc toutes sur "MANUAL" (voir toProvider). Sans conséquence tant que la
+ * fédération n'écrit pas PAR ce moteur — les clés restaient cohérentes entre elles — mais c'était
+ * un piège posé pour le jour où elle passerait par lui : elle aurait calculé
+ * "SPORTCORICO\0SC-123" face à des "MANUAL\0SC-123" déjà en base, et dupliqué la saison entière.
+ */
+export type ProviderId =
+  | "MANUAL" | "CSV" | "ICS" | "FOOTCLUBS_XLSX" | "PDF" | "FFF" | "OTHER" | "SPORTCORICO";
 
 /** Miroir de club_matches_sport_status_check. Statut SPORTIF du match, distinct de
  * `club_matches.status` qui décrit l'avancement de la PRODUCTION de contenu (a_venir /
