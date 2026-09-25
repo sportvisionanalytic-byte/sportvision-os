@@ -56,3 +56,17 @@ input::placeholder {
     font-size: 16px !important;
   }
 }
+
+/* ── Ouvert depuis l'application mobile (25/09/2026) ─────────────────────────────────────────
+   La marque data-app est posee sur <html> par le layout racine, depuis le cookie sv_app que
+   /auth/app depose quand la session vient de l'application native.
+
+   POURQUOI. Les pages de Connect ouvertes dans l'application arrivaient avec toute la
+   navigation du site — barre laterale, en-tete, barre d'onglets du bas — par-dessus la barre
+   d'onglets de l'application. Deux navigations empilees, et la personne ne sait plus ou elle
+   est. Signale par Fouka : « ca me met au menu, c'est pas bon ».
+
+   Le contenu, lui, ne bouge pas : seules les marges reservees aux barres disparaissent, sinon
+   la page garderait un vide en haut et en bas. */
+html[data-app="1"] .sv-decor { display: none !important; }
+html[data-app="1"] main { padding-top: 0 !important; padding-bottom: 0 !important; }

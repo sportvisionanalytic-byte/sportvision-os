@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { Sora, DM_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -70,9 +71,29 @@ export const viewport: Viewport = {
   themeColor: "#09081A",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// OUVERT DEPUIS L'APPLICATION MOBILE (25/09/2026)
+//
+// L'application native ouvre certaines pages de Connect dans une fenetre : prestations, paiement
+// collectif, commandes, factures, affiliation, equipes, messages. Elles arrivaient avec TOUTE la
+// decoration du site — sa barre laterale, son en-tete, sa barre d'onglets du bas — par-dessus la
+// barre d'onglets de l'application. Deux navigations empilees, et la personne ne sait plus ou
+// elle est. Signale par Fouka : « ca me met au menu, c'est pas bon ».
+//
+// Le cookie est pose par /auth/app, c'est-a-dire uniquement quand la session vient de
+// l'application. Il vaut pour toute la navigation qui suit dans la fenetre, et non pour la seule
+// premiere page : un parametre d'adresse se serait perdu au premier lien clique.
+//
+// Le masquage se fait en CSS, depuis une marque posee sur <html> par le SERVEUR. Le faire cote
+// client ferait apparaitre le menu une fraction de seconde avant de le cacher, et ce clignotement
+// se voit d'autant plus que le fond est sombre.
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const depuisApplication = (await cookies()).get("sv_app")?.value === "1";
   return (
-    <html lang="fr" className={`${sora.variable} ${dmSans.variable} ${ibmPlexMono.variable}`}>
+    <html
+      lang="fr"
+      data-app={depuisApplication ? "1" : undefined}
+      className={`${sora.variable} ${dmSans.variable} ${ibmPlexMono.variable}`}
+    >
       <head>
         {/* Material Symbols Rounded — bibliothèque d'icônes unique du design de référence. */}
         <link

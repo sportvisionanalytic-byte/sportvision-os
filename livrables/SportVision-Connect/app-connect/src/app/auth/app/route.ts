@@ -68,5 +68,27 @@ export async function POST(request: Request) {
 
   // 303 et non 307 : la redirection qui suit doit être un GET, sinon le navigateur rejouerait le
   // POST sur la page d'arrivée avec les jetons dans le corps.
-  return NextResponse.redirect(`${origin}${next}`, { status: 303 });
+  const reponse = NextResponse.redirect(`${origin}${next}`, { status: 303 });
+
+  // ── « Je viens de l'application » (25/09/2026) ────────────────────────────────────────────
+  //
+  // Le layout racine lit ce cookie et masque la navigation du site : barre latérale, en-tête,
+  // barre d'onglets du bas. Sans lui, ces pages arrivaient avec toute la décoration de Connect
+  // par-dessus la barre d'onglets de l'application — deux navigations empilées, et la personne
+  // ne sait plus où elle est.
+  //
+  // Un cookie et non un paramètre d'adresse : le paramètre se perdrait au premier lien cliqué
+  // dans la page, et la décoration reviendrait au deuxième écran.
+  //
+  // Il ne porte AUCUN droit : il ne décide que de l'affichage. Quelqu'un qui le poserait à la
+  // main dans son navigateur n'obtiendrait rien de plus qu'un site sans menu.
+  reponse.cookies.set("sv_app", "1", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+
+  return reponse;
 }
