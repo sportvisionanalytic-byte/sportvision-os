@@ -4602,6 +4602,20 @@ function msgErreur(r,repli){
   if(code==='42501'&&r.message&&!/row-level security|permission denied|policy/i.test(String(r.message))){
     return String(r.message);
   }
+  // 25/09/2026 — MÊME OUBLI QUE LE 42501 DU 13/09, AVEC UN AUTRE CODE. Notre responsable
+  // production essayait de s'ajouter à une mission avec un montant différent de la grille. Le
+  // serveur répondait exactement ce qu'il fallait — « Votre propre rémunération : 55,00 €
+  // recommandés par la grille. Un autre montant demande un motif et part en validation Admin. » —
+  // et l'écran affichait « Ajout impossible ». Il ne pouvait ni comprendre ni corriger.
+  //
+  // 22023 est le code que 19 de nos fonctions métier utilisent pour refuser avec une phrase
+  // écrite pour un humain. Le traduire en « action impossible » jetait la seule information utile.
+  //
+  // Comme pour le 42501, on ne laisse passer que ce qui ressemble à une phrase : un message de
+  // PostgREST ou de PostgreSQL sur un type invalide n'aiderait personne.
+  if(code==='22023'&&r.message&&!/invalid input syntax|cannot be cast|type .* does not exist/i.test(String(r.message))){
+    return String(r.message);
+  }
   if(code==='SV_AUCUNE_LIGNE')return String(r.message);   // sbFetch : PATCH sans effet
   if(_ERREURS_SQL[code])return _ERREURS_SQL[code];
   // Une erreur reseau remonte comme une exception, sans code : elle se reconnait au texte.
@@ -18300,9 +18314,20 @@ function majEcartRem(){
   const el=document.getElementById('eq-ecart');const bloc=document.getElementById('eq-motif-bloc');
   if(!el||!bloc)return;
   const e=ecartRemu(rem,reco);
+  // SA PROPRE MISSION : le motif est exige des le premier euro d'ecart (25/09/2026).
+  //
+  // La regle des 15 % vaut quand on fixe la remuneration de QUELQU'UN D'AUTRE. Sur sa propre
+  // ligne, la base refuse tout montant different de la grille sans motif, et l'envoie en
+  // validation Admin — c'est ce qui empeche de se payer plus en silence.
+  //
+  // L'ecran ne le savait pas : le bloc motif restait cache sous 15 %, le serveur refusait, et le
+  // responsable production lisait « Ajout impossible » sans comprendre. La fenetre de modification
+  // de remuneration gerait deja ce cas ; celle-ci l'ignorait.
+  const moi=String(colId)===String(S.uid);
   if(!e){el.textContent='';bloc.style.display='none';return;}
-  el.innerHTML='Recommandé <b>'+reco.toLocaleString('fr-FR')+' €</b> · Retenu <b>'+Number(rem).toLocaleString('fr-FR')+' €</b>'+(e.d?' · Écart <b style="color:'+(e.motifRequis?'var(--wa)':'var(--t2)')+'">'+(e.d>0?'+':'')+e.d.toLocaleString('fr-FR')+' € ('+e.pct+' %)</b>':'');
-  bloc.style.display=e.motifRequis?'grid':'none';
+  el.innerHTML='Recommandé <b>'+reco.toLocaleString('fr-FR')+' €</b> · Retenu <b>'+Number(rem).toLocaleString('fr-FR')+' €</b>'+(e.d?' · Écart <b style="color:'+(e.motifRequis?'var(--wa)':'var(--t2)')+'">'+(e.d>0?'+':'')+e.d.toLocaleString('fr-FR')+' € ('+e.pct+' %)</b>':'')
+    +(moi&&e.d?' · <b style="color:var(--wa)">votre propre mission : motif obligatoire, la décision revient à l\'Admin</b>':'');
+  bloc.style.display=(e.motifRequis||(moi&&e.d!==0))?'grid':'none';
 }
 async function chargerEquipe(prestationId,ref){
   const el=document.getElementById('eq-liste');
@@ -18810,6 +18835,14 @@ async function ajouterMembreEquipe(prestationId,ref){
     }catch(e){}
     const motifRem=document.getElementById('eq-motif')?.value||null;
     const ecartAjout=ecartRemu(rem,autoPay);
+    const maPropreMission=String(colId)===String(S.uid);
+    if(ecartAjout&&maPropreMission&&ecartAjout.d!==0&&!motifRem){
+      const msg='Votre propre mission : tout écart avec la grille demande un motif, et la décision revient à l\'Admin.';
+      err.textContent=msg;toast(msg,'warn');
+      const m=document.getElementById('eq-motif');
+      if(m){m.style.outline='2px solid var(--wa)';m.scrollIntoView({block:'center'});m.focus();}
+      if(btn)btn.disabled=false;return;
+    }
     if(ecartAjout&&ecartAjout.motifRequis&&!motifRem){
       // Bien visible (première mission réelle, 10/09) : le petit texte rouge seul passait inaperçu.
       const msg='Écart de '+ecartAjout.pct+' % avec le montant recommandé : choisissez le motif de l\'ajustement.';
