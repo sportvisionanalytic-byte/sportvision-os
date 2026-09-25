@@ -75,6 +75,30 @@ export default function Photos() {
         </View>
       ) : null}
 
+      {/* Le groupe « Medias » du site compte trois entrees : les galeries de l'equipe (cet
+          ecran), les photos deja achetees, et ce que SportVision a livre. L'application n'avait
+          que la premiere — une famille qui avait paye ne retrouvait pas ses propres photos. */}
+      <View style={s.mediasLiens}>
+        <Pressable
+          onPress={() => router.push("/connect/galeries")}
+          accessibilityRole="button"
+          accessibilityLabel="Mes galeries, les photos que vous avez achetées"
+          style={({ pressed }) => [s.mediasLien, pressed ? { opacity: 0.85 } : null]}
+        >
+          <Ionicons name="albums-outline" size={16} color={C.cyan} />
+          <Text style={s.mediasLienTexte}>Mes galeries</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push("/connect/contenus")}
+          accessibilityRole="button"
+          accessibilityLabel="Mes contenus, photos et vidéos livrées par SportVision"
+          style={({ pressed }) => [s.mediasLien, pressed ? { opacity: 0.85 } : null]}
+        >
+          <Ionicons name="film-outline" size={16} color={C.violet} />
+          <Text style={s.mediasLienTexte}>Mes contenus</Text>
+        </Pressable>
+      </View>
+
       {galeries.length > 1 ? (
         <View style={s.filtres}>
           {([
@@ -181,7 +205,7 @@ export default function Photos() {
                       L'accès à cette galerie est géré par votre club.
                     </Text>
                     <Pressable
-                      onPress={() => router.push("/acces")}
+                      onPress={() => router.push("/aide-photos")}
                       style={({ pressed }) => [s.action, s.actionVide, pressed ? { opacity: 0.85 } : null]}
                     >
                       <Text style={[s.actionTexte, { color: C.texte }]}>Comprendre mon accès</Text>
@@ -214,6 +238,13 @@ export default function Photos() {
 }
 
 const s = StyleSheet.create({
+  mediasLiens: { flexDirection: "row", gap: E.s },
+  mediasLien: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    height: TOUCHE, borderRadius: R.m,
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
+  },
+  mediasLienTexte: { color: C.texte, fontFamily: P.texteFort, fontSize: 13.5 },
   titre: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
   sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
   carte: { backgroundColor: C.surface, borderRadius: R.l, borderWidth: 1, borderColor: C.bordure, overflow: "hidden" },

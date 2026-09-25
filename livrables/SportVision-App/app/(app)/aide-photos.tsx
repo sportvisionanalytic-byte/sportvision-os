@@ -1,3 +1,10 @@
+// Comment j'accède aux photos (25/09/2026).
+//
+// ANCIENNEMENT « acces ». Le site appelle « Accès à mon profil » une tout autre chose : la
+// liste de qui a le droit de voir votre profil, avec les demandes a accepter ou refuser. Deux
+// notions differentes sous un seul mot, c'est une confusion qui finit par arriver jusqu'a une
+// famille. Cet ecran-ci explique le chemin des photos ; l'autre vit dans Profil et ouvre la
+// page du site.
 // Comprendre l'accès aux photos (22/09/2026).
 //
 // Pourquoi cet écran existe : une galerie verrouillée doit pouvoir s'expliquer, sans devenir une

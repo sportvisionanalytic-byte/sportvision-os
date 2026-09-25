@@ -27,7 +27,7 @@ const CONNECT = "https://connect.sportvision-an.fr";
 
 export type PageConnect =
   | "commandes" | "factures" | "cotisations" | "affiliations" | "reconnaissance" | "aide"
-  | "contenus" | "galeries" | "equipes" | "messages" | "prestations" | "profil";
+  | "contenus" | "galeries" | "equipes" | "messages" | "prestations" | "profil" | "acces";
 
 /**
  * Le chemin réel dans Connect, et le titre affiché dans la barre de l'application.
@@ -51,6 +51,11 @@ export const PAGES: Record<PageConnect, { chemin: string; titre: string }> = {
   factures:       { chemin: "/factures",       titre: "Factures et paiements" },
   // Mon compte
   profil:         { chemin: "/profil",         titre: "Mon profil" },
+  // ATTENTION AU MOT « ACCES ». Ici, c'est celui du site : qui a le droit de voir MON profil,
+  // avec les demandes a accepter ou refuser. L'ecran de l'application qui portait le meme nom
+  // expliquait comment obtenir ses photos — deux choses differentes sous un seul mot. Il
+  // s'appelle desormais « aide-photos ».
+  acces:          { chemin: "/acces",          titre: "Accès à mon profil" },
   reconnaissance: { chemin: "/reconnaissance", titre: "Me reconnaître" },
   aide:           { chemin: "/aide",           titre: "Aide" },
 };

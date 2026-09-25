@@ -39,17 +39,38 @@ export function Ecusson({
     );
   }
 
-  // Deux lettres au plus, et jamais un numero d'equipe : « SF Villemomble » donne SFV, pas SV,
-  // qu'on lirait SportVision.
+  // LES INITIALES D'UN CLUB (corrigé le 25/09/2026)
+  //
+  // Signalé par Fouka : « il y a écrit SV ». Le code prenait la première lettre de chaque mot,
+  // donc « SF Villemomble » donnait S + V = « SV » — c'est-à-dire SportVision, exactement ce que
+  // le commentaire d'origine disait vouloir éviter. Il décrivait une intention que le code ne
+  // tenait pas.
+  //
+  // Un sigle déjà écrit en majuscules se garde ENTIER : c'est le nom que le club se donne.
+  // « SF Villemomble » → SFV, « RCP Fontainebleau » → RCP, « Villeneuve 340 SC » → VSC.
+  // Les numéros d'équipe sont écartés : U18, 340, 1 ne disent rien d'un club.
   const initiales = (nom ?? "")
     .split(/\s+/)
+    // La ponctuation ne fait pas partie d'un sigle : « Neuilly O. » donnait « NO. », avec le
+    // point, dans un carre de quarante pixels.
+    .map((m) => m.replace(/[^\p{L}\p{N}]/gu, ""))
     .filter((m) => m.length > 1 && !/^[uU]?\d/.test(m))
-    .slice(0, 3)
-    .map((m) => m[0]?.toUpperCase())
-    .join("");
+    .map((m) => (m === m.toUpperCase() ? m : m[0]?.toUpperCase() ?? ""))
+    .join("")
+    .slice(0, 3);
+
+  // Aucune initiale exploitable : un blason neutre, jamais « SV ». Afficher le sigle de
+  // SportVision à la place de l'écusson d'un club, c'est signer la photo d'un autre.
+  if (!initiales) {
+    return (
+      <View style={[style, s.ecussonVide]}>
+        <Ionicons name="shield-outline" size={taille * 0.46} color={C.texteFaible} />
+      </View>
+    );
+  }
   return (
     <View style={[style, s.ecussonVide]}>
-      <Text style={{ color: C.texteDoux, fontFamily: P.titre, fontSize: taille * 0.34 }}>{initiales || "SV"}</Text>
+      <Text style={{ color: C.texteDoux, fontFamily: P.titre, fontSize: taille * 0.34 }}>{initiales}</Text>
     </View>
   );
 }

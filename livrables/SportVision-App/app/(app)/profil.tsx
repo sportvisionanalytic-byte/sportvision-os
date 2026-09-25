@@ -223,7 +223,15 @@ export default function Profil() {
           <Ligne
             icone="key-outline" titre="Comment j'accède aux photos"
             detail="Ce qu'est le Pass Photo et qui le transmet"
-            onPress={() => router.push("/acces")}
+            onPress={() => router.push("/aide-photos")}
+          />
+          {/* A ne pas confondre avec la ligne ci-dessus, et c'est tout le probleme : le site
+              appelle « Acces » la liste de qui peut voir VOTRE profil, avec des demandes a
+              accepter ou refuser. Une demande en attente etait invisible depuis l'application. */}
+          <Ligne
+            icone="shield-half-outline" titre="Accès à mon profil"
+            detail="Qui peut voir votre profil, et les demandes en attente"
+            onPress={() => router.push("/connect/acces")}
           />
           <Ligne
             icone="scan-outline" titre="Me reconnaître sur les photos"
