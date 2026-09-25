@@ -6,11 +6,12 @@
 // La barre compte autant que le contenu. Une page plein écran sans retour, c'est l'impasse :
 // on l'a déjà vu en relecture, et c'est le moment où l'on ferme l'application.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VueConnect, type PoigneeVueConnect } from "../../../src/ui/VueConnect";
+import { Esquisse } from "../../../src/ui/Esquisse";
 import { PAGES, sourceConnect, type PageConnect, type SourceConnect } from "../../../src/lib/connect";
 import { Bouton } from "../../../src/ui/Base";
 import { C, E, R, TOUCHE } from "../../../src/theme/couleurs";
@@ -99,9 +100,12 @@ export default function EcranConnect() {
         />
       ) : null}
 
+      {/* L'esquisse remplace la roue sur fond vide. La page met toujours une seconde a repondre —
+          mesure sur le serveur reel, trois fois de suite — mais l'oeil a quelque chose a lire
+          tout de suite, et la page remplace des blocs au lieu d'apparaitre dans le noir. */}
       {!charge && !sansSession && !panne ? (
         <View style={s.roue} pointerEvents="none">
-          <ActivityIndicator color={C.accentClair} />
+          <Esquisse />
         </View>
       ) : null}
     </View>
