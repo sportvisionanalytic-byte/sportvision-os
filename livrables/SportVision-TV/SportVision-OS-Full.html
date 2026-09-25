@@ -13086,7 +13086,22 @@ async function _galDeposerOriginal(assetId,path,blob,contentType){
     const res=await fetch(a.url,{method:'PUT',headers:{'Content-Type':contentType||'application/octet-stream'},body:blob});
     if(res.ok)return{ok:true,error:null};
     return{ok:false,error:'Cloudflare a refusé le fichier (HTTP '+res.status+')'};
-  }catch(e){return{ok:false,error:'Réseau indisponible'};}
+  }catch(e){
+    // « Réseau indisponible » ETAIT LE MESSAGE, ET IL MENTAIT (corrige le 25/09/2026).
+    //
+    // Un `fetch` vers un stockage externe leve pour deux raisons tres differentes : la connexion
+    // est vraiment coupee, ou le navigateur a REFUSE d'envoyer parce que le bucket n'autorise pas
+    // cette origine (CORS). Le second cas ne se distingue pas du premier dans l'exception — le
+    // navigateur ne dit rien de plus, par conception.
+    //
+    // Accuser le reseau envoyait chercher une panne qui n'existait pas : le depot fonctionnait
+    // parfaitement depuis un serveur, seule la politique CORS du bucket manquait. On nomme donc
+    // les deux causes, dans l'ordre de probabilite, plutot qu'une seule et fausse.
+    return{ok:false,error:navigator.onLine===false
+      ? 'Connexion perdue'
+      : 'Le stockage a refusé l’envoi depuis le navigateur. Si la connexion fonctionne, '
+        + 'c’est la politique CORS du bucket qui manque (Cloudflare → R2 → Settings → CORS Policy).'};
+  }
 }
 
 /** Relire un original, ou qu'il soit. `asset` doit porter storage_bucket et original_path. */
