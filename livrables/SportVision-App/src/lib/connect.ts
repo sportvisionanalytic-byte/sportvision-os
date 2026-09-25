@@ -23,7 +23,9 @@
 // les journaux du serveur et dans l'en-tête Referer envoyé au site suivant.
 import { supabase } from "./supabase";
 
-const CONNECT = "https://connect.sportvision-an.fr";
+/** L'adresse de Connect. Exportee pour que rien ne la recopie : une seconde ecriture en dur
+ *  serait une seconde a corriger le jour d'un changement de domaine. */
+export const CONNECT = "https://connect.sportvision-an.fr";
 /** Club+ vit sur son propre domaine, sous le prefixe /clubplus impose par son Next.js. */
 const CLUBPLUS = "https://clubplus.sportvision-an.fr/clubplus";
 

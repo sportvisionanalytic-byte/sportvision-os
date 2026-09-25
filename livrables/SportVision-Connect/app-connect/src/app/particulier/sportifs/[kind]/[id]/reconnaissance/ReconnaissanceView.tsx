@@ -222,8 +222,8 @@ export function ReconnaissanceView({
           <div className="mt-5 border-t border-border pt-5">
             <h3 className="font-sora text-[15px] font-semibold">Retirer votre accord</h3>
             <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
-              La photo et son empreinte sont effacées immédiatement. Les photos déjà achetées restent
-              à vous.
+              La photo et son empreinte sont effacées immédiatement. Les photos qui sont déjà dans
+              votre espace y restent.
             </p>
             <Button
               variant="danger"
@@ -263,8 +263,11 @@ export function ReconnaissanceView({
 
           <h3 className="mt-4 font-sora text-[15px] font-semibold">Vous pouvez changer d&apos;avis à tout moment</h3>
           <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
+            {/* « déjà achetées » était faux (Fouka, 25/09/2026) : beaucoup paient le Pass Photo
+                sans acheter de photo à l'unité. Parler d'achat leur laissait croire que ce
+                qu'ils ont déjà reçu pouvait disparaître avec leur accord. */}
             Un bouton sur cette page retire votre accord. La photo et l&apos;empreinte sont effacées
-            immédiatement. Les photos déjà achetées restent à vous.
+            immédiatement. Les photos qui sont déjà dans votre espace y restent.
           </p>
 
           <h3 className="mt-4 font-sora text-[15px] font-semibold">Durée</h3>

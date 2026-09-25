@@ -79,7 +79,10 @@ export default function Services() {
           <Ligne
             icone="people-outline" teinte={C.cyan}
             titre="Paiement collectif"
-            detail="Lancer une collecte entre parents, ou participer à celle du groupe"
+            // « entre parents » etait faux (Fouka, 25/09/2026) : une collecte se lance aussi
+            // entre joueurs, entre dirigeants, ou pour un cadeau au coach. Nommer les
+            // participants restreignait un outil qui ne l'est pas.
+            detail="Lancer une collecte, ou participer à celle du groupe"
             onPress={() => router.push("/connect/cotisations")}
           />
         </View>

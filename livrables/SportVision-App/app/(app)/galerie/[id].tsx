@@ -5,13 +5,14 @@
 // aperçus, pas un de plus : c'est la règle du site, et elle est tenue en base, pas ici.
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator, Dimensions, Linking, Modal, Pressable, StyleSheet, Text, View,
+  ActivityIndicator, Dimensions, Linking, Modal, Platform, Pressable, StyleSheet, Text, View,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { lirePhotosDuJoueur, ouvrirGalerie, type PhotoDuJoueur } from "../../../src/lib/donnees";
+import { CONNECT } from "../../../src/lib/connect";
 import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
 import { C, E, R } from "../../../src/theme/couleurs";
@@ -119,6 +120,25 @@ export default function Galerie() {
               accès est actif.
             </Text>
           </View>
+        ) : null}
+
+        {/* LE RACCOURCI VERS CONNECT N'EXISTE QUE SUR ANDROID, ET C'EST UNE CONTRAINTE, PAS UN
+            CHOIX (25/09/2026, demande de Fouka : « le pass doit être verrouillé et ça doit
+            rediriger vers Connect web »).
+            Google autorise un lien de paiement externe. Apple l'interdit — règle 3.1.1 : aucune
+            incitation, dans l'app, à acheter hors de leur système. Ils jugent l'INTENTION du
+            bouton, pas seulement sa destination. L'app est déjà sous le coup d'un refus en
+            examen ; ajouter ce bouton sur iOS, c'est un second refus quasi certain.
+            Sur iPhone, le bloc ci-dessus décrit donc le fonctionnement sans inviter à payer, et
+            la famille passe par son coach ou par le lien reçu — comme les ventes se font déjà. */}
+        {restantes > 0 && Platform.OS === "android" ? (
+          <Pressable
+            accessibilityRole="button" accessibilityLabel="Ouvrir cette galerie dans Connect"
+            onPress={() => Linking.openURL(`${CONNECT}/galeries`)}
+            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
+          >
+            <Text style={s.actionTexte}>Débloquer mon Pass Photo</Text>
+          </Pressable>
         ) : null}
 
         {deverrouillee ? (
