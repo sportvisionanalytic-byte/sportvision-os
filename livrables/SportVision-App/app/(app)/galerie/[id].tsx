@@ -5,14 +5,13 @@
 // aperçus, pas un de plus : c'est la règle du site, et elle est tenue en base, pas ici.
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator, Dimensions, Linking, Modal, Platform, Pressable, StyleSheet, Text, View,
+  ActivityIndicator, Dimensions, Linking, Modal, Pressable, StyleSheet, Text, View,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { lirePhotosDuJoueur, ouvrirGalerie, type PhotoDuJoueur } from "../../../src/lib/donnees";
-import { CONNECT } from "../../../src/lib/connect";
 import { acheterPass, passProposable, reprendreAchatsEnAttente, type PassProposable } from "../../../src/lib/achat-pass";
 import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
@@ -156,33 +155,28 @@ export default function Galerie() {
           </View>
         ) : null}
 
-        {/* DEUX BOUTONS DIFFERENTS, PARCE QUE LES DEUX MAGASINS N'ONT PAS LES MEMES REGLES.
-            iOS : l'achat se fait DANS l'app, par StoreKit. Le prix affiche est celui d'Apple,
-            jamais celui du club — c'est Apple qui debite, et son palier ne tombe pas toujours
-            sur le tarif du club. Le bouton n'apparait que si le Pass est reellement achetable
-            (produit declare en base ET connu du magasin, voir passProposable).
-            Android : Google autorise le lien de paiement externe, et Stripe coute moins cher que
-            les 15 % d'Apple. On garde donc le renvoi vers Connect, inchange. */}
-        {restantes > 0 && Platform.OS === "ios" && pass ? (
+        {/* UN SEUL BOUTON, LES DEUX MAGASINS (26/09/2026).
+            Il y en avait deux : StoreKit sur iOS, un lien vers Connect sur Android. Ce lien
+            reposait sur une affirmation de ma part trop rapide — que Google autorisait le
+            paiement externe. Play exige aussi son systeme de facturation, et l'ouverture imposee
+            par le DMA dans l'EEE passe par un programme d'inscription. Fouka a tranche pour
+            l'achat integre des deux cotes.
+            Le prix affiche vient du magasin, jamais du club : Apple impose ses paliers (19,99 la
+            ou le club affiche 19,90), Google accepte le prix exact. C'est le magasin qui debite,
+            c'est donc lui qui annonce.
+            Le bouton n'apparait que si le Pass est reellement achetable : declare en base POUR
+            CETTE plateforme, et connu du magasin. Un produit pas encore cree dans la console
+            n'affiche rien, plutot qu'un bouton qui echoue au paiement. */}
+        {restantes > 0 && pass ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Débloquer le Pass Photo pour ${pass.prixApple}`}
+            accessibilityLabel={`Débloquer le Pass Photo pour ${pass.prixMagasin}`}
             disabled={achatEnCours}
             onPress={lancerAchat}
             style={({ pressed }) => [s.action, pressed || achatEnCours ? { opacity: 0.85 } : null]}
           >
             {achatEnCours ? <ActivityIndicator color="#fff" />
-              : <Text style={s.actionTexte}>Débloquer mon Pass Photo · {pass.prixApple}</Text>}
-          </Pressable>
-        ) : null}
-
-        {restantes > 0 && Platform.OS === "android" ? (
-          <Pressable
-            accessibilityRole="button" accessibilityLabel="Ouvrir cette galerie dans Connect"
-            onPress={() => Linking.openURL(`${CONNECT}/galeries`)}
-            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
-          >
-            <Text style={s.actionTexte}>Débloquer mon Pass Photo</Text>
+              : <Text style={s.actionTexte}>Débloquer mon Pass Photo · {pass.prixMagasin}</Text>}
           </Pressable>
         ) : null}
 

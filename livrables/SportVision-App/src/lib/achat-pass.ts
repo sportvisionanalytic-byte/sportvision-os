@@ -3,13 +3,21 @@
 // DECISION DE FOUKA, ET CE QU'ELLE CHANGE
 //
 // « J'accepte qu'Apple prenne 15 %, pour que les gens puissent payer et deverrouiller le Pass
-// directement sur l'application. » Jusqu'ici l'app iOS n'affichait aucun chemin d'achat, parce
+// directement sur l'application. » Jusqu'ici l'app n'affichait aucun chemin d'achat sur iOS, parce
 // que la regle 3.1.1 interdit d'envoyer acheter ailleurs. Le probleme n'etait pas de vendre,
 // c'etait de vendre HORS du systeme d'Apple. En passant par StoreKit, l'interdiction tombe.
 //
-// Les trois chemins restent ouverts, et ils aboutissent tous au meme droit d'acces :
-//   - dans l'app iOS        -> Apple (ce fichier) ;
-//   - sur Connect, au web   -> Stripe (inchange) ;
+// PUIS GOOGLE, LE MEME JOUR. J'avais d'abord ecrit que Google autorisait le lien externe, et
+// c'etait trop affirmatif : Play exige aussi son systeme de facturation, et le lien externe passe
+// par un programme d'inscription meme dans l'EEE. Fouka a tranche : « vas-y, fais les trucs de
+// paiement sur Google Android ». Le bouton Android n'ouvre donc plus Connect, il achete.
+//
+// Les chemins aboutissent tous au meme droit d'acces, ecrit par le meme code cote serveur :
+//   - dans l'app iOS        -> Apple ;
+//   - dans l'app Android    -> Google Play ;
+//   - sur Connect, au web   -> Stripe (inchange, et la meilleure marge : a mettre en avant par
+//                              QR code et par le club, hors des apps ou c'est interdit d'en
+//                              parler) ;
 //   - par le club           -> especes ou virement, Fouka ouvre l'acces depuis l'OS.
 //
 // POURQUOI LE BOUTON PEUT NE PAS APPARAITRE, ET POURQUOI C'EST VOULU
@@ -30,16 +38,28 @@ import * as IAP from "expo-iap";
 import { supabase } from "./supabase";
 import { SUPABASE_URL } from "./config";
 
+/** Le magasin du telephone. Sur le web (Expo web) il n'y en a aucun, et rien n'est propose. */
+type Magasin = "apple" | "google";
+function magasin(): Magasin | null {
+  if (Platform.OS === "ios") return "apple";
+  if (Platform.OS === "android") return "google";
+  return null;
+}
+
 export interface PassProposable {
+  /** Quel magasin encaissera. Porte jusqu'au serveur : c'est lui qui decide qui interroger. */
+  plateforme: Magasin;
   productId: string;
   /** Le libelle du club, pour les ecrans web. Sur iOS on affiche celui d'Apple. */
   nom: string;
   dejaActif: boolean;
-  /** Le prix TEL QU'APPLE L'AFFICHE, deja formate dans la devise du magasin de la personne.
-   *  Jamais le tarif du club : Apple impose ses paliers (19,99 la ou le club affiche 19,90), et
-   *  annoncer un prix different de celui qui sera debite est une reclamation assuree. */
-  prixApple: string;
-  appleProductId: string;
+  /** Le prix TEL QUE LE MAGASIN L'AFFICHE, deja formate dans sa devise. Jamais le tarif du club :
+   *  Apple impose ses paliers (19,99 la ou le club affiche 19,90) alors que Google accepte le prix
+   *  exact. Annoncer un prix different de celui qui sera debite est une reclamation assuree, et le
+   *  seul moyen de ne jamais se tromper est de ne jamais le calculer soi-meme. */
+  prixMagasin: string;
+  /** L'identifiant du produit chez CE magasin. */
+  skuMagasin: string;
 }
 
 let connecte = false;
@@ -66,7 +86,8 @@ async function connexion(): Promise<boolean> {
 export async function passProposable(
   clubId: string, playerId: string,
 ): Promise<PassProposable | null> {
-  if (Platform.OS !== "ios") return null;
+  const m = magasin();
+  if (!m) return null;
 
   const { data, error } = await supabase.rpc("media_pass_disponible", {
     p_club_id: clubId, p_player_id: playerId,
@@ -74,9 +95,11 @@ export async function passProposable(
   if (error || !Array.isArray(data) || data.length === 0) return null;
 
   const p = data[0] as {
-    product_id: string; name: string; apple_product_id: string | null; deja_actif: boolean;
+    product_id: string; name: string; deja_actif: boolean;
+    apple_product_id: string | null; google_product_id: string | null;
   };
-  if (!p.apple_product_id || p.deja_actif) return null;
+  const sku = m === "apple" ? p.apple_product_id : p.google_product_id;
+  if (!sku || p.deja_actif) return null;
 
   if (!(await connexion())) return null;
 
@@ -84,19 +107,20 @@ export async function passProposable(
   // dans App Store Connect, il ne rend rien, et l'app n'affiche rien.
   let produits: { id?: string; displayPrice?: string; title?: string }[] = [];
   try {
-    produits = (await IAP.fetchProducts({ skus: [p.apple_product_id], type: "in-app" })) ?? [];
+    produits = (await IAP.fetchProducts({ skus: [sku], type: "in-app" })) ?? [];
   } catch {
     return null;
   }
-  const produit = produits.find((x) => x?.id === p.apple_product_id);
+  const produit = produits.find((x) => x?.id === sku);
   if (!produit?.displayPrice) return null;
 
   return {
+    plateforme: m,
     productId: p.product_id,
     nom: produit.title || p.name,
     dejaActif: false,
-    prixApple: produit.displayPrice,
-    appleProductId: p.apple_product_id,
+    prixMagasin: produit.displayPrice,
+    skuMagasin: sku,
   };
 }
 
@@ -140,7 +164,7 @@ export async function acheterPass(
       const recu = (achat as { purchaseToken?: string | null }).purchaseToken;
       if (!recu) return;
       try {
-        const ok = await livrer(recu, pass.productId, beneficiairePlayerId, jeton);
+        const ok = await livrer(pass.plateforme, recu, pass.productId, beneficiairePlayerId, jeton);
         if (!ok.ok) { terminer({ etat: "erreur", message: ok.message }); return; }
         // Le serveur a ouvert l'acces : on peut cloturer sans rien perdre.
         await IAP.finishTransaction({ purchase: achat, isConsumable: true });
@@ -163,17 +187,16 @@ export async function acheterPass(
       }
     });
 
+    // LE VERROU ANTI-REUTILISATION, ecrit deux fois parce que les deux magasins ne l'appellent
+    // pas pareil : appAccountToken chez Apple, obfuscatedAccountId chez Google. Le magasin grave
+    // l'identifiant du compte Supabase dans la transaction, nous le rend a la verification, et le
+    // serveur refuse tout jeton dont ce champ ne designe pas l'appelant. Sans ca, le premier a
+    // presenter un jeton intercepte gagnerait l'acces, y compris celui qui ne l'a pas paye.
     IAP.requestPurchase({
       type: "in-app",
-      request: {
-        apple: {
-          sku: pass.appleProductId,
-          quantity: 1,
-          // Le verrou anti-reutilisation : Apple grave l'identifiant du compte dans la
-          // transaction, et le serveur refuse tout recu dont ce champ ne le designe pas.
-          appAccountToken: utilisateur,
-        },
-      },
+      request: pass.plateforme === "apple"
+        ? { apple: { sku: pass.skuMagasin, quantity: 1, appAccountToken: utilisateur } }
+        : { google: { skus: [pass.skuMagasin], obfuscatedAccountId: utilisateur } },
     }).catch((e) => terminer({
       etat: "erreur",
       message: e instanceof Error ? e.message : "L'achat n'a pas pu démarrer.",
@@ -185,12 +208,15 @@ export async function acheterPass(
  *  en francais et decrit la vraie cause, la masquer derriere « une erreur est survenue »
  *  rendrait le probleme impossible a comprendre pour la personne comme pour le support. */
 async function livrer(
-  recu: string, productId: string, beneficiaire: string | undefined, jeton: string,
+  plateforme: Magasin, recu: string, productId: string,
+  beneficiaire: string | undefined, jeton: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const r = await fetch(`${SUPABASE_URL}/functions/v1/apple-iap-valider`, {
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/iap-valider`, {
     method: "POST",
     headers: { Authorization: `Bearer ${jeton}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ jws: recu, product_id: productId, beneficiary_player_id: beneficiaire }),
+    body: JSON.stringify({
+      plateforme, jeton: recu, product_id: productId, beneficiary_player_id: beneficiaire,
+    }),
   });
   const corps = await r.json().catch(() => ({}));
   if (!r.ok || corps?.error) {
@@ -203,9 +229,10 @@ async function livrer(
  * Rattraper un achat paye dont l'acces ne s'est jamais ouvert.
  *
  * Le cas arrive : reseau coupe juste apres le paiement, application fermee pendant l'appel au
- * serveur. Apple conserve la transaction tant qu'elle n'est pas close, et la represente au
- * lancement suivant. Sans ce rattrapage, la personne aurait paye pour rien et n'aurait aucun
- * moyen de s'en sortir seule.
+ * serveur. Les deux magasins conservent la transaction tant qu'elle n'est pas close et la
+ * representent au lancement suivant — chez Google c'est meme la regle, un achat non consomme
+ * revient systematiquement. Sans ce rattrapage, la personne aurait paye pour rien et n'aurait
+ * aucun moyen de s'en sortir seule.
  *
  * Silencieux par construction : appele au demarrage, il ne doit jamais afficher d'erreur a
  * quelqu'un qui n'a rien demande.
@@ -213,7 +240,8 @@ async function livrer(
 export async function reprendreAchatsEnAttente(
   clubId: string, playerId: string, beneficiairePlayerId?: string,
 ): Promise<boolean> {
-  if (Platform.OS !== "ios") return false;
+  const m = magasin();
+  if (!m) return false;
   try {
     if (!(await connexion())) return false;
     const enAttente = (await IAP.getAvailablePurchases()) ?? [];
@@ -227,15 +255,16 @@ export async function reprendreAchatsEnAttente(
       p_club_id: clubId, p_player_id: playerId,
     });
     const p = (Array.isArray(data) ? data[0] : null) as
-      { product_id: string; apple_product_id: string | null } | null;
-    if (!p?.apple_product_id) return false;
+      { product_id: string; apple_product_id: string | null; google_product_id: string | null } | null;
+    const attendu = m === "apple" ? p?.apple_product_id : p?.google_product_id;
+    if (!p || !attendu) return false;
 
     let repris = false;
     for (const achat of enAttente) {
       const a = achat as { purchaseToken?: string | null; id?: string; productId?: string };
       const sku = a.productId ?? a.id;
-      if (sku !== p.apple_product_id || !a.purchaseToken) continue;
-      const ok = await livrer(a.purchaseToken, p.product_id, beneficiairePlayerId, jeton);
+      if (sku !== attendu || !a.purchaseToken) continue;
+      const ok = await livrer(m, a.purchaseToken, p.product_id, beneficiairePlayerId, jeton);
       if (ok.ok) {
         await IAP.finishTransaction({ purchase: achat, isConsumable: true });
         repris = true;

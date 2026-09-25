@@ -10,36 +10,31 @@ donc c'est toi.
 
 ## Les trois chemins, et ce qu'ils rapportent
 
-| Chemin | Qui encaisse | Ce que tu gardes sur 39,90 € | Où c'est proposé |
+| Chemin | Qui encaisse | Ce que tu gardes | Où c'est proposé |
 |---|---|---|---|
-| Dans l'app iPhone | Apple | ~33,90 € (15 % de commission) | Bouton dans la galerie |
-| Lien Stripe ou QR code | toi, via Stripe | ~38,60 € (1,4 % + 0,25 €) | Connect web, Android, QR, WhatsApp du club |
+| Dans l'app iPhone | Apple | ~33,99 € sur 39,99 € (15 %) | Bouton dans la galerie |
+| Dans l'app Android | Google | ~33,92 € sur 39,90 € (15 %) | Bouton dans la galerie |
+| Lien Stripe ou QR code | toi, via Stripe | ~38,60 € sur 39,90 € (1,4 % + 0,25 €) | Connect web, QR, WhatsApp du club |
 | Espèces ou virement au club | toi, directement | 39,90 € | Onglet « Accès payés au club » dans l'OS |
 
-### Une nuance sur Google Play que j'avais annoncée trop vite
+Les deux magasins coûtent la même chose. Le QR code Stripe te rapporte **4,70 € de plus par Pass**,
+et l'encaissement au club **6 €**. Sur cent Pass, c'est 470 à 600 € d'écart : ça vaut la peine de
+distribuer le QR code partout où c'est permis, c'est-à-dire partout sauf dans les apps.
 
-J'ai écrit plus tôt que « Google autorise un lien de paiement externe ». C'est trop affirmatif.
+### Google Play aussi, et pourquoi
 
-La politique Google Play exige elle aussi son propre système de facturation pour le contenu
-numérique consommé dans l'app. Ce qui est vrai, c'est que dans l'Espace économique européen — donc
-en France — Google **doit** permettre les systèmes alternatifs et les offres externes depuis le
-DMA. Mais ce n'est pas un droit qu'on exerce en posant un lien : il faut s'inscrire au programme
-correspondant dans la Play Console, et Google prélève alors une commission réduite, pas zéro.
+J'avais écrit que « Google autorise un lien de paiement externe ». C'était trop affirmatif : Play
+exige aussi son propre système de facturation pour le contenu numérique, et l'ouverture imposée par
+le DMA dans l'EEE passe par un programme d'inscription, pas par un simple lien.
 
-**Ce que ça veut dire concrètement pour toi.** L'app n'est pas encore publiée sur Play, donc rien
-n'est cassé. Mais le bouton Android qui renvoie vers Connect est à vérifier avant de soumettre,
-sinon le refus viendra de Google cette fois. Trois options :
+Tu as tranché pour l'achat intégré des deux côtés. Le bouton Android n'ouvre donc plus Connect, il
+achète. C'était l'option la plus sûre : mieux vaut un quatrième chemin conforme qu'un refus au
+dépôt sur Play, surtout que l'app n'y est pas encore publiée.
 
-1. **Mettre Google Play Billing sur Android aussi.** Le plus sûr, et `expo-iap` gère déjà les
-   deux plateformes : le travail est de quelques heures, pas de quelques jours. Coût : la
-   commission Google (15 % sous le million de dollars, même programme que chez Apple).
-2. **S'inscrire au programme d'offres externes de l'EEE.** Tu gardes Stripe, avec une commission
-   Google réduite. Plus de paperasse, meilleure marge.
-3. **Retirer le bouton sur Android aussi**, et laisser le QR code et le lien du club faire le
-   travail hors de l'app, comme aujourd'hui sur iOS avant cette décision.
-
-Je n'ai pas tranché à ta place parce que les trois sont défendables et que c'est un arbitrage de
-marge. Dis-moi lequel et je le fais.
+**Une différence à connaître : Google accepte le prix exact, Apple non.** Le même Pass coûtera
+39,90 € sur Android et 39,99 € sur iPhone, parce qu'Apple impose ses paliers. L'app affiche
+toujours le prix que le magasin lui donne, jamais celui du club, donc personne ne verra un prix
+différent de ce qui lui sera prélevé.
 
 ---
 
@@ -122,25 +117,88 @@ jamais servi à un compte Apple. C'est avec ça qu'on teste un achat réel sans 
 
 ---
 
+## Ce que tu dois faire dans Google Play Console
+
+### 1. Le compte de développeur et la fiche de l'app
+
+L'app n'est pas encore sur Play. Il faut créer la fiche, envoyer l'AAB
+(`build/SportVision.aab`, versionCode 2) au moins sur une piste de test interne : **les produits
+in-app ne sont configurables qu'une fois qu'un AAB déclarant la facturation a été envoyé.**
+C'est déjà le cas du nôtre, la permission `com.android.vending.BILLING` y est.
+
+### 2. Les deux produits in-app
+
+Play Console → ton app → **Monétisation** → Produits → **Produits in-app** → créer.
+
+| ID du produit (exactement ceci) | Prix |
+|---|---|
+| `pass_photo_19_90` | 19,90 € |
+| `pass_photo_39_90` | 39,90 € |
+
+Google n'impose aucun palier : mets le prix exact du club. C'est pour ça que les identifiants
+portent 19,90 et non 19,99 comme côté Apple.
+
+Chaque produit doit être **activé**, sinon l'app ne le voit pas et n'affiche aucun bouton.
+
+### 3. Le compte de service, pour que le serveur puisse interroger Google
+
+C'est l'équivalent de la clé d'API Apple, et sans lui tous les achats Android sont refusés.
+
+1. Play Console → **Configuration** → **Accès à l'API** → lier un projet Google Cloud.
+2. Dans Google Cloud → IAM → **Comptes de service** → créer un compte de service → créer une
+   **clé JSON** (téléchargeable une seule fois).
+3. Retour dans Play Console → Accès à l'API → donner à ce compte de service l'autorisation
+   **« Voir les données financières »** et **« Gérer les commandes et les abonnements »** sur
+   l'application.
+
+Puis envoie-moi le fichier JSON, je pose le secret. Ou fais-le toi :
+
+```
+GOOGLE_PLAY_SERVICE_ACCOUNT = tout le contenu du fichier JSON, tel quel
+```
+
+Attention : l'autorisation met parfois **jusqu'à 24 h** à se propager côté Google. Un refus
+d'achat le premier jour ne veut pas forcément dire que la configuration est fausse.
+
+### 4. Un compte de test
+
+Play Console → Configuration → **Test de licence** : ajoute ton adresse Google. Les achats faits
+depuis ce compte ne sont pas débités, et notre serveur les reconnaît comme des achats de test.
+
+---
+
 ## Ce qui est déjà fait
 
 - `media_activer_commande` (v274) : les trois chemins ouvrent le même accès, par le même code.
   Testé sur les deux vrais produits, rejeu compris — `tests/trois-chemins-un-seul-acces.test.sql`.
-- `apple-iap-valider` : déployée, protégée par JWT, refuse correctement sans session.
-- `media_pass_disponible` (v275) : ce que l'app a le droit de savoir, cloisonné au joueur et à son
-  parent confirmé. Vérifié : un autre compte est refusé.
+- `iap-valider` : UNE fonction pour les deux magasins, déployée, protégée par JWT, refuse
+  correctement sans session. Elle remplace `apple-iap-valider`, supprimée : deux fonctions qui
+  écrivent des droits payants auraient fini par diverger pendant qu'une correction n'irait que
+  d'un côté.
+- `media_pass_disponible` (v275, étendue en v279) : ce que l'app a le droit de savoir, pour les
+  deux magasins, cloisonné au joueur et à son parent confirmé. Vérifié : un autre compte est refusé.
 - `media_joueurs_pour_acces` (v276) + onglet « Accès payés au club » dans l'OS : en production,
   vérifié dans le fichier servi.
-- L'app : `expo-iap` intégré, build 7, BILLING déclaré côté Android, OpenIAP 3.5.2 lié.
+- L'app : `expo-iap` intégré, un seul bouton d'achat pour les deux plateformes, BILLING déclaré
+  côté Android, OpenIAP 3.5.2 lié.
 
 ## Ce qui reste, dans l'ordre
 
+**Apple**
 1. Accord Paid Applications + banque (bloquant, rien ne marche avant).
 2. Small Business Program (sinon 30 % au lieu de 15 %).
-3. Les deux consommables.
+3. Les deux consommables `pass_photo_19_99` / `pass_photo_39_99`.
 4. La clé d'API → les trois secrets.
 5. Un compte sandbox, et je teste un achat de bout en bout.
-6. Soumettre le build 7 avec les produits.
+6. Soumettre le build avec les produits.
+
+**Google**
+1. Créer la fiche et envoyer l'AAB sur une piste de test (bloquant : pas de produits avant).
+2. Les deux produits `pass_photo_19_90` / `pass_photo_39_90`, activés.
+3. Le compte de service → le secret `GOOGLE_PLAY_SERVICE_ACCOUNT`.
+4. Un compte de test de licence, et je teste un achat de bout en bout.
+
+Les deux pistes sont indépendantes : tu peux avancer sur l'une sans l'autre.
 
 ## Un point d'attention pour la revue Apple
 
