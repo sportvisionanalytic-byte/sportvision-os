@@ -338,7 +338,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 .mbn-i.on{color:var(--acc)}
 .mbn-i:active{background:rgba(255,255,255,.05)}
 .mbn-ic{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.mbn-lb{font-size:9.5px;font-weight:600;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56px;text-align:center}
+.mbn-lb{font-size:9.5px;font-weight:600;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:64px;text-align:center}
 /* ── LOGIN MOBILE LOGO ─── */
 .l-mob-logo{display:none;align-items:center;gap:12px;margin-bottom:28px}
 .l-mob-hero{display:none;font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:24px;text-align:center}
@@ -37277,6 +37277,29 @@ const BNAV_ITEMS={
   cm:   ['dash','clients','planning','contenus'],
 };
 
+// Le nom court de chaque onglet du bas, ecrit a la main (25/09/2026).
+//
+// TROUVE EN MESURANT L'OS SUR UN IPHONE : sept libelles sur dix-sept ne tiennent pas dans la
+// barre. L'ecran d'un administrateur affichait « Tableau d… », « Prestatio… », « Vue d'en… » :
+// trois onglets sur cinq illisibles.
+//
+// COUPER AU PREMIER MOT A DEJA ETE ESSAYE, et c'etait pire : « Mes prestations » et « Mes
+// medias » donnaient deux onglets « Mes » indiscernables pour un photographe (cf. le commentaire
+// plus bas, qui est la raison pour laquelle on etait revenu au libelle complet). Un nom coupe par
+// une machine ne peut pas etre bon dans tous les cas.
+//
+// ON L'ECRIT DONC. La barre du bas n'a pas besoin du meme mot que le menu lateral : « Accueil »
+// y designe sans ambiguite ce que le menu appelle « Tableau de bord ». Un id absent d'ici garde
+// son libelle complet, qui tient deja.
+const BNAV_LB={
+  dash:'Accueil',              // « Tableau de bord »
+  fin:'Finance',               // « Vue d'ensemble », dans le contexte Finance de l'admin
+  demandes:'Demandes',         // « Demandes entrantes »
+  equipe:'Équipe',             // « Équipe terrain »
+  rapprochement:'Banque',      // « Rapprochement », bancaire, pour la comptabilite
+  clients:'Structures',        // « Mes structures » : clubs, tournois et stages, pas que des clubs
+};
+
 function renderBottomNav(){
   const nav=document.getElementById('mob-bnav');
   if(!nav)return;
@@ -37295,7 +37318,7 @@ function renderBottomNav(){
     // l'audit mobile 375-430px.
     return`<button class="mbn-i${isOn?' on':''}" data-bnav="${id}" onclick="switchView('${id}')">
       <span class="mbn-ic" style="color:${isOn?'var(--acc)':'var(--t3)'}">${IC[item.ic]||IC.dash}</span>
-      <span class="mbn-lb">${item.lb}</span>
+      <span class="mbn-lb">${BNAV_LB[id]||item.lb}</span>
     </button>`;
   }).join('')+
   `<button class="mbn-i" onclick="openMobMore()" style="color:var(--t3)">
