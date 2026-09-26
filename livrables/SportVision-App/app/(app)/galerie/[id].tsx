@@ -23,13 +23,15 @@ import { C, E, R } from "../../../src/theme/couleurs";
 // rejouant la requete, alors que ces photos se vendent.
 
 export default function Galerie() {
-  const { id, titre, joueur, ouverte, club, pourEnfant } = useLocalSearchParams<{
-    id: string; titre?: string; joueur?: string; ouverte?: string;
+  // `ouverte` n'est plus lu (26/09/2026) : « la galerie est deverrouillee » ne dit RIEN de ce qui
+  // se vend ici. En Full Communication elle l'est pour toutes les familles du club, et le Pass reste
+  // pourtant a prendre — il n'ouvre pas l'acces, il retire le filigrane et rend toutes les photos.
+  const { id, titre, joueur, club, pourEnfant } = useLocalSearchParams<{
+    id: string; titre?: string; joueur?: string;
     club?: string; pourEnfant?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const deverrouillee = ouverte === "1";
 
   const [photos, setPhotos] = useState<PhotoDuJoueur[]>([]);
   const [total, setTotal] = useState(0);
@@ -153,7 +155,15 @@ export default function Galerie() {
             d'acheter le pass photo ».
             Une famille doit pouvoir prendre le Pass AVANT que son enfant soit reconnu : c'est meme
             l'ordre naturel, elle paie puis les photos arrivent. */}
-        {restantes > 0 || (pass && !deverrouillee && !ouvertMaintenant) ? (
+        {/* 26/09/2026, SECONDE CORRECTION DU MEME BLOC — et celle-ci vient d'une mesure.
+            Je conditionnais l'offre du Pass a « la galerie n'est pas deverrouillee ». Or en Full
+            Communication elle l'est POUR TOUT LE MONDE : le contrat du club donne le droit de voir.
+            Mesure sur le compte de Nathan Girard, U16A : galerie visible, deverrouillee = vrai, zero
+            photo de lui, et aucune offre de Pass. C'est ce que Fouka constatait.
+            Voir et voir SANS FILIGRANE sont deux choses. `pass` vaut deja null quand le Pass est
+            acquis (passProposable le verifie) : sa seule presence suffit donc a dire qu'il y a
+            quelque chose a vendre. */}
+        {restantes > 0 || (pass && !ouvertMaintenant) ? (
           <View style={s.bloque}>
             <Ionicons name="lock-closed" size={16} color={C.alerte} />
             <Text style={s.bloqueTexte}>
@@ -186,7 +196,7 @@ export default function Galerie() {
             Le bouton n'apparait que si le Pass est reellement achetable : declare en base POUR
             CETTE plateforme, et connu du magasin. Un produit pas encore cree dans la console
             n'affiche rien, plutot qu'un bouton qui echoue au paiement. */}
-        {pass && !deverrouillee && !ouvertMaintenant ? (
+        {pass && !ouvertMaintenant ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Débloquer le Pass Photo pour ${pass.prixMagasin}`}

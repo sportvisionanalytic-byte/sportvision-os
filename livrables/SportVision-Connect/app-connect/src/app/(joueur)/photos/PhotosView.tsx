@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
-import { fetchAlbumLink, fetchPhotoAlbums, type AvailableMediaProduct, type PhotoAlbumTeaser } from "@/lib/supabase/photoPass";
+import { fetchPhotoAlbums, type AvailableMediaProduct, type PhotoAlbumTeaser } from "@/lib/supabase/photoPass";
 
 // Moteur média générique (Espace joueur) — voir page.tsx pour le contexte. Achat via l'edge
 // function create-pass-photo-checkout (mode Stripe 'payment', ponctuel, product_id désormais
@@ -16,7 +16,7 @@ import { fetchAlbumLink, fetchPhotoAlbums, type AvailableMediaProduct, type Phot
 //
 // RÈGLE DE SÉCURITÉ (P2 audit 04-05/09, finding H47) : le lien HD réel n'est plus jamais présent
 // dans la liste d'albums (media_album_list ne le renvoie plus du tout). "Ouvrir la galerie" déclenche
-// un appel serveur dédié (fetchAlbumLink → media_album_get_link) qui revérifie l'entitlement à cet
+// un appel serveur dédié (media_album_get_link) qui revérifiait l'entitlement à cet
 // instant précis et journalise l'accès, plutôt que d'exposer un lien permanent dès le chargement
 // de la page. Un album verrouillé n'affiche jamais qu'un teaser (titre, date, aperçu, nb photos).
 function formatDate(iso: string | null): string {
@@ -240,21 +240,8 @@ export function PhotosView({
 }
 
 function AlbumCard({ album, nbPhotosJoueur }: { album: PhotoAlbumTeaser; nbPhotosJoueur: number }) {
-  const [loading, setLoading] = useState(false);
-  const [linkError, setLinkError] = useState(false);
 
-  async function handleOpen() {
-    setLoading(true);
-    setLinkError(false);
-    const supabase = createClient();
-    const link = await fetchAlbumLink(supabase, album.id);
-    setLoading(false);
-    if (!link) {
-      setLinkError(true);
-      return;
-    }
-    window.open(link, "_blank", "noopener,noreferrer");
-  }
+
 
   return (
     <div className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface">
@@ -297,28 +284,21 @@ function AlbumCard({ album, nbPhotosJoueur }: { album: PhotoAlbumTeaser; nbPhoto
             Vidéo du match
           </a>
         )}
-        {album.unlocked ? (
-          <>
-            <button
-              onClick={handleOpen}
-              disabled={loading}
-              className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus disabled:opacity-60"
-            >
-              {loading ? "Ouverture…" : "Ouvrir la galerie"}
-              {!loading && <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>}
-            </button>
-            {linkError && (
-              <span className="mt-1 text-[13px] leading-relaxed text-danger">
-                Accès indisponible pour le moment, contactez SportVision si cela persiste.
-              </span>
-            )}
-          </>
-        ) : (
-          <span className="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-text-faint">
-            <span className="material-symbols-rounded !text-[15px]" aria-hidden="true">lock</span>
-            Accès requis
+        {/* « OUVRIR LA GALERIE » EST RETIRE (26/09/2026, règle énoncée par Fouka).
+            « Les joueurs, parents, doivent voir uniquement leurs photos via l'achat du pass. Ils ne
+            peuvent pas voir les galeries. » Ce bouton ouvrait la galerie ENTIÈRE dans un nouvel
+            onglet, sur la page publique par lien — et Fouka l'a constaté trois fois : « ouvrir la
+            collection, ça met un lien externe ».
+            Le lien restait par ailleurs partageable une fois ouvert : une famille pouvait le
+            transmettre à toutes les autres, qui n'avaient alors plus aucune raison de payer.
+            Le chemin d'une famille est « Mes photos » : ses photos à elle, et rien d'autre.
+            Parcourir la galerie entière reste au club, dans Club+. */}
+        <span className="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-text-faint">
+          <span className="material-symbols-rounded !text-[15px]" aria-hidden="true">
+            {album.unlocked ? "photo_library" : "lock"}
           </span>
-        )}
+          {album.unlocked ? "Voir mes photos ci-dessus" : "Accès requis"}
+        </span>
       </div>
     </div>
   );

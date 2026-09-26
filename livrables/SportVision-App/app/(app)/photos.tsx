@@ -10,7 +10,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
 import { useFamille } from "../../src/lib/famille";
-import { lireGaleries, ouvrirGalerie, type Galerie } from "../../src/lib/donnees";
+import { lireGaleries, type Galerie } from "../../src/lib/donnees";
 import { dateLongue } from "../../src/lib/dates";
 import { Ecran, Probleme, Vide } from "../../src/ui/Ecran";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
@@ -34,7 +34,6 @@ export default function Photos() {
   const equipeNom = parent ? famille.detail?.categorie : profil?.equipeNom;
   const [galeries, setGaleries] = useState<Galerie[]>([]);
   const [chargement, setChargement] = useState(true);
-  const [ouverture, setOuverture] = useState<string | null>(null);
   const [filtre, setFiltre] = useState<"tout" | "ouvertes" | "verrouillees">("tout");
   const [panne, setPanne] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -50,14 +49,7 @@ export default function Photos() {
 
   useEffect(() => { charger(); }, [charger]);
 
-  async function ouvrir(g: Galerie) {
-    setOuverture(g.id); setErreur(null);
-    // Le lien n'existe qu'a cet instant : la base revalide le droit et journalise l'ouverture.
-    const lien = await ouvrirGalerie(g.id);
-    setOuverture(null);
-    if (!lien) { setErreur("Cette collection n'a pas pu s'ouvrir. Si votre accès vient d'être ouvert, patientez une minute et réessayez."); return; }
-    Linking.openURL(lien);
-  }
+
 
   return (
     <Ecran enCours={chargement} rafraichir={charger} teinte="violet">
@@ -141,7 +133,10 @@ export default function Photos() {
               onPress={playerId ? () => router.push({
                 pathname: "/galerie/[id]",
                 params: {
-                  id: g.id, titre: g.titre, joueur: playerId, ouverte: g.ouverte ? "1" : "0",
+                  // `ouverte` n'est plus transmis : l'ecran de galerie ne s'en sert plus. « La
+                  // galerie est deverrouillee » ne dit rien de ce qui reste a vendre, puisqu'en Full
+                  // Communication elle l'est pour toutes les familles du club.
+                  id: g.id, titre: g.titre, joueur: playerId,
                   // Le club sert a retrouver le Pass vendu par CE club, et `pourEnfant` dit au
                   // serveur pour qui l'acces s'ouvre : un parent achete au nom de son enfant, et
                   // cette distinction se decide ici, pas cote serveur, qui la revérifie ensuite.
@@ -193,20 +188,14 @@ export default function Photos() {
 
               <View style={{ padding: E.m, gap: E.s }}>
 
-                {g.ouverte ? (
-                  <Pressable
-                    accessibilityRole="button" accessibilityLabel="Ouvrir la collection complète"
-                    onPress={() => ouvrir(g)}
-                    style={({ pressed }) => [s.action, s.actionPleine, pressed ? { opacity: 0.85 } : null]}
-                  >
-                    {ouverture === g.id
-                      ? <ActivityIndicator color="#fff" />
-                      : <Text style={s.actionTexte}>Ouvrir la collection</Text>}
-                  </Pressable>
-                ) : (
-                  // Ni prix, ni bouton d'achat, ni renvoi vers une page de paiement : l'App Store
-                  // l'interdit, même sous forme d'allusion. On explique l'état de l'accès, et
-                  // c'est tout.
+                {/* « OUVRIR LA COLLECTION » EST RETIRE D'ICI AUSSI (26/09/2026).
+                    Je l'avais retire de l'ecran d'une galerie, pas de cette liste : Fouka l'a
+                    retrouve la, et il envoyait toujours vers la page web par un lien externe.
+                    La regle qu'il a enoncee : « les joueurs, parents, voient uniquement leurs
+                    photos via l'achat du pass. Ils ne peuvent pas voir les galeries. »
+                    Parcourir la galerie entiere est reserve au club, dans Club+. La carte ouvre
+                    donc l'ecran « mes photos », et c'est le seul chemin. */}
+                {g.ouverte ? null : (
                   <View style={{ gap: E.xs }}>
                     <Text style={s.note}>
                       L'accès à cette galerie est géré par votre club.
