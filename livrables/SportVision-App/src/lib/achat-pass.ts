@@ -118,9 +118,38 @@ async function connexion(): Promise<boolean> {
  *   aucun      ce club ne vend pas de Pass. Rien a payer, on peut passer a la suite.
  */
 export type EtatPass =
-  | { etat: "a_prendre"; offre: PassProposable | null }
+  | { etat: "a_prendre"; offre: PassProposable | null; motif: MotifSansOffre | null }
   | { etat: "acquis" }
   | { etat: "aucun" };
+
+/**
+ * POURQUOI LE MAGASIN NE REND RIEN, quand il ne rend rien.
+ *
+ * Ajoute le 26/09/2026 apres trois allers-retours ou ni Fouka ni moi ne pouvions savoir si le
+ * bouton manquait a cause d'Apple, du produit, ou du code. L'echec etait avale en silence — et un
+ * silence ne se diagnostique pas. Meme principe que le repere de version dans Profil : quand on ne
+ * peut pas distinguer deux causes opposees, on fait dire a l'application ce qu'elle constate.
+ */
+export type MotifSansOffre =
+  /** Ce produit n'est pas declare pour cette plateforme dans la base. */
+  | "non_declare"
+  /** La liaison au magasin a echoue : pas de reseau, ou module natif absent. */
+  | "magasin_injoignable"
+  /** Le magasin repond, mais ne connait pas ce produit. Le cas d'un accord Paid Applications
+   *  inactif, ou d'un produit pas encore approuve. */
+  | "produit_inconnu"
+  /** Le magasin l'a rendu sans prix affichable — anormal. */
+  | "produit_sans_prix";
+
+export const MOTIF_LISIBLE: Record<MotifSansOffre, string> = {
+  non_declare: "non déclaré pour cette plateforme",
+  magasin_injoignable: "magasin injoignable",
+  produit_inconnu: "le magasin ne connaît pas ce produit",
+  produit_sans_prix: "produit sans prix affichable",
+};
+
+/** Le dernier motif constate, pour l'afficher dans Profil sans le recalculer. */
+export let dernierMotif: { sku: string | null; motif: MotifSansOffre | null } = { sku: null, motif: null };
 
 export async function etatDuPass(clubId: string, playerId: string): Promise<EtatPass> {
   const { data, error } = await supabase.rpc("media_pass_disponible", {
@@ -129,7 +158,8 @@ export async function etatDuPass(clubId: string, playerId: string): Promise<Etat
   if (error || !Array.isArray(data) || data.length === 0) return { etat: "aucun" };
   const p = data[0] as { deja_actif: boolean };
   if (p.deja_actif) return { etat: "acquis" };
-  return { etat: "a_prendre", offre: await passProposable(clubId, playerId) };
+  const offre = await passProposable(clubId, playerId);
+  return { etat: "a_prendre", offre, motif: offre ? null : dernierMotif.motif };
 }
 
 /**
@@ -154,9 +184,16 @@ export async function passProposable(
     apple_product_id: string | null; google_product_id: string | null;
   };
   const sku = m === "apple" ? p.apple_product_id : p.google_product_id;
-  if (!sku || p.deja_actif) return null;
+  dernierMotif = { sku, motif: null };
+  if (!sku || p.deja_actif) {
+    if (!sku) dernierMotif = { sku: null, motif: "non_declare" };
+    return null;
+  }
 
-  if (!(await connexion())) return null;
+  if (!(await connexion())) {
+    dernierMotif = { sku, motif: "magasin_injoignable" };
+    return null;
+  }
 
   // Le second accord : le magasin connait-il ce produit ? Tant qu'il n'est pas cree et approuve
   // dans App Store Connect, il ne rend rien, et l'app n'affiche rien.
@@ -164,10 +201,12 @@ export async function passProposable(
   try {
     produits = (await (await iap())!.fetchProducts({ skus: [sku], type: "in-app" })) ?? [];
   } catch {
+    dernierMotif = { sku, motif: "magasin_injoignable" };
     return null;
   }
   const produit = produits.find((x) => x?.id === sku);
-  if (!produit?.displayPrice) return null;
+  if (!produit) { dernierMotif = { sku, motif: "produit_inconnu" }; return null; }
+  if (!produit.displayPrice) { dernierMotif = { sku, motif: "produit_sans_prix" }; return null; }
 
   return {
     plateforme: m,

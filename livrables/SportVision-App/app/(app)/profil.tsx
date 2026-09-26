@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
 import * as Updates from "expo-updates";
+import { MOTIF_LISIBLE, dernierMotif } from "../../src/lib/achat-pass";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
@@ -340,6 +341,17 @@ export default function Profil() {
             titre="Version"
             detail={`SportVision ${version} (${Constants.expoConfig?.ios?.buildNumber ?? "?"}) · ${misAJour}`}
           />
+          {/* 26/09/2026 — POURQUOI LE PASS N'EST PAS PROPOSE, quand il ne l'est pas.
+              Trois allers-retours ou ni Fouka ni moi ne pouvions savoir si le bouton manquait a
+              cause d'Apple, du produit ou du code : l'echec etait avale en silence. Cette ligne
+              n'apparait QUE quand quelque chose cloche, et nomme ce que l'application a constate. */}
+          {dernierMotif.motif ? (
+            <Ligne
+              icone="pricetag-outline"
+              titre="Pass Photo"
+              detail={`${dernierMotif.sku ?? "aucun produit"} — ${MOTIF_LISIBLE[dernierMotif.motif]}`}
+            />
+          ) : null}
         </View>
       </Section>
 
