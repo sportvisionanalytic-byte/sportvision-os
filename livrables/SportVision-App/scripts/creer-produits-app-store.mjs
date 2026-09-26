@@ -230,14 +230,51 @@ for (const p of PRODUITS) {
   });
   if (!prix.ok) console.error(`  ! prix non posé : ${expliquer(prix)}`);
   else console.log(`  prix ${p.prixCible} € posé (${p.club})`);
+
+  // ── 6. La disponibilité par territoire ──────────────────────────────────────
+  // ÉTAPE OUBLIÉE DANS LA PREMIÈRE VERSION, et c'est elle qui maintenait les deux produits en
+  // MISSING_METADATA alors que le type, le libellé, le prix, la note de revue et la capture étaient
+  // tous en place. Rien ne le disait : l'état ne nomme pas ce qui manque, et j'ai d'abord cru que
+  // c'était la capture. C'est en interrogeant la ressource une par une que le 404 est apparu.
+  const dispo = await appel("GET", `/v2/inAppPurchases/${id}/inAppPurchaseAvailability`);
+  if (dispo.statut === 404) {
+    const creeDispo = await appel("POST", "/v1/inAppPurchaseAvailabilities", {
+      data: {
+        type: "inAppPurchaseAvailabilities",
+        // Les nouveaux territoires s'ajoutent tout seuls : sinon il faudrait y repenser à chaque
+        // fois qu'Apple en ouvre un.
+        attributes: { availableInNewTerritories: true },
+        relationships: {
+          inAppPurchase: { data: { type: "inAppPurchases", id } },
+          availableTerritories: { data: [{ type: "territories", id: "FRA" }] },
+        },
+      },
+    });
+    if (!creeDispo.ok) { console.error(`  ! disponibilité non posée : ${expliquer(creeDispo)}`); echecs++; }
+    else console.log(`  disponible en France`);
+  }
+}
+
+// ── L'ÉTAT RÉEL, RELU CHEZ APPLE ────────────────────────────────────────────────
+// La première version annonçait « Terminé » sur l'absence d'erreur. Elle a donc dit « Fait » alors
+// que les deux produits étaient en MISSING_METADATA — un faux succès, exactement ce que ce projet
+// s'interdit. On relit, et on nomme ce qui manque.
+const final = await appel("GET", `/v1/apps/${app.id}/inAppPurchasesV2?limit=50`);
+let pasPrets = 0;
+for (const x of final.json?.data ?? []) {
+  const etat = x.attributes?.state;
+  if (!PRODUITS.some((p) => p.productId === x.attributes?.productId)) continue;
+  console.log(`  ${x.attributes?.productId} → ${etat}`);
+  if (etat !== "READY_TO_SUBMIT" && etat !== "APPROVED") pasPrets++;
 }
 
 console.log(
-  echecs
-    ? `\nTerminé avec ${echecs} problème(s). Ce qui a été créé est conservé : relancer ce script `
-      + `reprend là où il s'est arrêté.`
-    : `\nTerminé. Les deux produits existent.\n\nIl reste, et seulement toi peux le faire : une `
-      + `capture d'écran de revue par produit, et l'accord Paid Applications actif si ce n'est déjà `
-      + `fait. Ensuite le bouton d'achat apparaîtra dans l'app, sans nouveau build.`,
+  pasPrets || echecs
+    ? `\n${pasPrets} produit(s) pas encore servi(s) par StoreKit. MISSING_METADATA ne dit pas ce qui `
+      + `manque : vérifier une par une la localisation, le prix, la capture de revue et la `
+      + `disponibilité par territoire. Relancer ce script reprend là où il s'est arrêté.`
+    : `\nLes deux produits sont READY_TO_SUBMIT : StoreKit les sert en bac à sable, le bouton `
+      + `d'achat apparaît dans l'application sans nouveau build.`,
 );
+process.exit(pasPrets || echecs ? 1 : 0);
 process.exit(echecs ? 1 : 0);
