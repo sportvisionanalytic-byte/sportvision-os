@@ -14079,6 +14079,19 @@ async function _galChargerAssets(){
   if(c)c.textContent=_galAssets.filter(a=>a.status==='ready').length+' photo(s) publiable(s) · '+_galAssets.length+' au total';
   _galBandeauApercusNets();
   _galRenderGrille();
+  // 26/09/2026 — LA LIGNE QUI MANQUAIT, ET C'EST TOUTE LA CAUSE DU « JE DOIS DECOCHER RECOCHER ».
+  //
+  // Le bouton « Mettre la galerie en ligne » est desactive tant que _galRendreFinal() calcule zero
+  // photo prete. Cette fonction etait appelee au chargement de l'ecran, a l'ouverture des offres et
+  // au basculement de « Galerie gratuite » — mais PAS ici, a la fin des envois. Le bouton gardait
+  // donc l'etat calcule quand la galerie etait vide, et seul un aller-retour sur la case le
+  // reveillait. C'est exactement le geste que Fouka repetait a chaque depot.
+  //
+  // La place est ici et nulle part ailleurs : _galChargerAssets() est le seul point par lequel
+  // passent TOUS les changements du nombre de photos — un versement, une suppression, une
+  // regeneration, un masquage, un reordonnancement. Le brancher sur le seul versement aurait laisse
+  // le meme defaut sur les quatre autres chemins.
+  _galRendreFinal();
   await _galChargerJoueurs();
 }
 
