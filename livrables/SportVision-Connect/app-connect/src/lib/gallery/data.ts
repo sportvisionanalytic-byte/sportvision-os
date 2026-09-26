@@ -139,15 +139,46 @@ export async function fetchGalleryPhotos(
   });
   if (error || !Array.isArray(data)) return { photos: [], total: 0 };
   const rows = data as Record<string, unknown>[];
+
+  // 26/09/2026 — L'APERÇU NET, POUR QUI Y A DROIT.
+  //
+  // Constat de Fouka : un community manager qui ouvrait la galerie depuis Club+ voyait le
+  // filigrane. La page publique par lien ne regardait que le lien, jamais qui le présentait. La
+  // base tranche maintenant (v284) et ne rend `preview_clair_path` qu'au staff SportVision, au
+  // staff du club et aux familles qui ont pris le Pass.
+  //
+  // Le fichier net vit dans un bucket privé : une balise <img> n'y a pas accès, il faut une adresse
+  // signée. Un seul appel pour toute la page, et un échec de signature n'est pas une erreur
+  // d'écran : on retombe sur l'aperçu public, filigrané. Mieux vaut une photo barrée qu'un trou.
+  const aSigner = rows
+    .map((r) => r.preview_clair_path as string | null)
+    .filter((c): c is string => !!c);
+  const signees = new Map<string, string>();
+  if (aSigner.length) {
+    const { data: urls } = await supabase.storage
+      .from("sportvision-media-prive")
+      .createSignedUrls(aSigner, 60 * 60);
+    for (const u of urls ?? []) {
+      if (u?.path && u?.signedUrl) signees.set(u.path, u.signedUrl);
+    }
+  }
+
   return {
     total: rows.length > 0 ? Number(rows[0]!.total ?? rows.length) : 0,
-    photos: rows.map((r) => ({
-      id: r.id as string,
-      thumbUrl: publicMediaUrl(r.thumb_path as string),
-      previewUrl: publicMediaUrl((r.preview_path as string) ?? (r.thumb_path as string)),
-      width: (r.width as number) ?? null,
-      height: (r.height as number) ?? null,
-    })),
+    photos: rows.map((r) => {
+      const net = (r.preview_clair_path as string | null) ?? null;
+      const netUrl = net ? signees.get(net) ?? null : null;
+      return {
+        id: r.id as string,
+        // La vignette reste publique et marquée : elle sert la grille, et le net n'existe qu'en
+        // taille aperçu. Quand le net est disponible, il remplace la vignette aussi — une grille
+        // nette au-dessus d'un aperçu net, c'est ce qu'attend un coach qui trie ses photos.
+        thumbUrl: netUrl ?? publicMediaUrl(r.thumb_path as string),
+        previewUrl: netUrl ?? publicMediaUrl((r.preview_path as string) ?? (r.thumb_path as string)),
+        width: (r.width as number) ?? null,
+        height: (r.height as number) ?? null,
+      };
+    }),
   };
 }
 

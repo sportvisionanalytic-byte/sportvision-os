@@ -11,7 +11,7 @@ import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { lirePhotosDuJoueur, ouvrirGalerie, type PhotoDuJoueur } from "../../../src/lib/donnees";
+import { lirePhotosDuJoueur, type PhotoDuJoueur } from "../../../src/lib/donnees";
 import { acheterPass, passProposable, reprendreAchatsEnAttente, type PassProposable } from "../../../src/lib/achat-pass";
 import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
@@ -36,7 +36,6 @@ export default function Galerie() {
   const [chargement, setChargement] = useState(true);
   const [agrandie, setAgrandie] = useState<PhotoDuJoueur | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [ouverture, setOuverture] = useState(false);
   const [panne, setPanne] = useState(false);
   const [pass, setPass] = useState<PassProposable | null>(null);
   const [achatEnCours, setAchatEnCours] = useState(false);
@@ -87,13 +86,7 @@ export default function Galerie() {
     // fait, lui afficher un message serait du bruit.
   }
 
-  async function ouvrirCollection() {
-    setOuverture(true); setErreur(null);
-    const lien = await ouvrirGalerie(id);
-    setOuverture(false);
-    if (!lien) { setErreur("Cette collection n'a pas pu s'ouvrir. Si votre accès vient d'être ouvert, patientez une minute et réessayez."); return; }
-    Linking.openURL(lien);
-  }
+
 
   // Tout ce que la base a rendu est affichable : c'est elle qui a deja decide combien.
   const visibles = photos;
@@ -153,12 +146,20 @@ export default function Galerie() {
             prix a l'ecran dont un seul sera debite est une reclamation qui arrive.
             La mention du club reste, parce qu'elle est vraie : beaucoup de familles paieront au
             club en especes ou par virement, et leur acces s'ouvrira sans passer par ici. */}
-        {restantes > 0 ? (
+        {/* 26/09/2026 — CE BLOC NE DEPEND PLUS DU MARQUAGE, ET C'EST UN CORRECTIF.
+            Il n'apparaissait que s'il RESTAIT des photos a debloquer, donc jamais tant qu'aucune
+            photo n'etait rattachee au joueur. Or c'est l'etat de depart de toute galerie : mesure
+            du 26/09, 110 photos publiees et zero rattachement. Fouka : « ca ne me propose pas
+            d'acheter le pass photo ».
+            Une famille doit pouvoir prendre le Pass AVANT que son enfant soit reconnu : c'est meme
+            l'ordre naturel, elle paie puis les photos arrivent. */}
+        {restantes > 0 || (pass && !deverrouillee && !ouvertMaintenant) ? (
           <View style={s.bloque}>
             <Ionicons name="lock-closed" size={16} color={C.alerte} />
             <Text style={s.bloqueTexte}>
-              {restantes === 1 ? "1 autre photo de vous" : `${restantes} autres photos de vous`} dans
-              cette galerie.{" "}
+              {restantes > 0
+                ? `${restantes === 1 ? "1 autre photo de vous" : `${restantes} autres photos de vous`} dans cette galerie. `
+                : "Le Pass ouvre toutes vos photos de la saison, dans cette galerie et les suivantes. "}
               {/* LE TEXTE DÉPEND DU BOUTON, ET C'EST UN CORRECTIF (26/09/2026).
                   Il annonçait « votre accès s'ouvre ici » en toutes circonstances, alors que le
                   bouton n'apparaît que si le magasin connaît vraiment le produit. Sur un appareil
@@ -185,7 +186,7 @@ export default function Galerie() {
             Le bouton n'apparait que si le Pass est reellement achetable : declare en base POUR
             CETTE plateforme, et connu du magasin. Un produit pas encore cree dans la console
             n'affiche rien, plutot qu'un bouton qui echoue au paiement. */}
-        {restantes > 0 && pass ? (
+        {pass && !deverrouillee && !ouvertMaintenant ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Débloquer le Pass Photo pour ${pass.prixMagasin}`}
@@ -198,16 +199,15 @@ export default function Galerie() {
           </Pressable>
         ) : null}
 
-        {deverrouillee || ouvertMaintenant ? (
-          <Pressable
-            accessibilityRole="button" accessibilityLabel="Ouvrir la collection complète"
-            onPress={ouvrirCollection}
-            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
-          >
-            {ouverture ? <ActivityIndicator color="#fff" />
-              : <Text style={s.actionTexte}>Ouvrir la collection complète</Text>}
-          </Pressable>
-        ) : null}
+        {/* « OUVRIR LA COLLECTION COMPLETE » EST RETIRE (26/09/2026), et ce n'est pas une
+            regression : c'est la regle metier, enoncee par Fouka. « Les joueurs, parents, ils
+            doivent voir uniquement leurs photos via l'achat du pass. Ils ne peuvent pas voir les
+            galeries ou acheter des galeries. »
+            Ce bouton ouvrait la page publique de la galerie DANS LE NAVIGATEUR — ce que Fouka a
+            constate : « ouvrir la collection, ca met vers un lien externe ». Le reparer aurait
+            voulu dire donner aux familles un acces qu'elles ne doivent pas avoir. Parcourir la
+            galerie entiere est reserve au club : coach, president, community manager, depuis
+            Club+. */}
       </Ecran>
 
       {/* Le plein écran : fond noir, une seule sortie, aucun piège. */}
