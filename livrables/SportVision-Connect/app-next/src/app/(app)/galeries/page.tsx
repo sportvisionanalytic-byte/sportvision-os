@@ -35,6 +35,12 @@ import { useFermetureEchap } from "@/lib/use-fermeture-echap";
 
 const CONNECT_URL = "https://connect.sportvision-an.fr";
 
+/** L'adresse publique d'un aperçu. La base rend un CHEMIN et non une adresse : elle ne connaît pas
+ *  l'URL du projet Supabase, les clients si. */
+function couvertureUrl(chemin: string): string {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/galerie-previews/${chemin}`;
+}
+
 interface LienClub {
   label: string | null;
   audience: string | null;
@@ -66,6 +72,10 @@ interface GalerieClub {
   equipe: string | null;
   event_date: string | null;
   cover_url: string | null;
+  /** 26/09/2026 — Le chemin de la photo de couverture, calculé par la base (v288) : la photo
+   *  désignée depuis l'OS, sinon la première de la galerie. Les 24 galeries publiées n'avaient
+   *  AUCUNE couverture, parce que `cover_url` n'est écrite que si quelqu'un la choisit à la main. */
+  cover_path: string | null;
   photos: number;
   publie: boolean;
   liens: LienClub[];
@@ -230,7 +240,13 @@ export default function GaleriesClubPage() {
           <div key={g.album_id} className="rounded-2xl border border-border bg-surface p-3 sm:p-4">
             <div className="flex items-start gap-4">
               <div className="h-[68px] w-[68px] flex-none overflow-hidden rounded-xl bg-surface-sunken sm:h-[86px] sm:w-[86px]">
-                {g.cover_url && <img src={g.cover_url} alt="" className="h-full w-full object-cover" />}
+                {(g.cover_url ?? (g.cover_path ? couvertureUrl(g.cover_path) : null)) && (
+                  <img
+                    src={g.cover_url ?? couvertureUrl(g.cover_path!)}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-bold tracking-tight">{g.titre}</div>

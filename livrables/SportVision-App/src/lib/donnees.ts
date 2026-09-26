@@ -319,7 +319,13 @@ export async function lireGaleries(
     id: String(r.id),
     titre: String(r.title ?? "Galerie"),
     date: (r.event_date as string | null) ?? null,
-    apercuUrl: (r.cover_preview_url as string | null) ?? null,
+    // 26/09/2026 — LA CARTE ETAIT VIDE SUR LES 24 GALERIES PUBLIEES, sans exception.
+    // `cover_preview_url` n'est ecrite que si quelqu'un designe une photo a la main depuis l'OS, et
+    // personne ne l'avait jamais fait. La base rend desormais un `cover_path` calcule (v288) : la
+    // photo designee, sinon la premiere de la galerie. On garde l'ancienne adresse quand elle
+    // existe — une couverture choisie a la main reste le meilleur choix.
+    apercuUrl: (r.cover_preview_url as string | null)
+      ?? (r.cover_path ? urlApercu(r.cover_path as string) : null),
     nbPhotos: Number(r.photo_count ?? 0),
     ouverte: r.unlocked === true,
   }));

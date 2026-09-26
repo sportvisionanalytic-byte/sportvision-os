@@ -32,6 +32,7 @@ interface AlbumListRpcRow {
   title: string;
   event_date: string | null;
   cover_preview_url: string | null;
+  cover_path: string | null;
   photo_count: number;
   published_at: string | null;
   unlocked: boolean;
@@ -56,7 +57,14 @@ export async function fetchPhotoAlbums(
     id: r.id,
     title: r.title,
     eventDate: r.event_date,
-    coverPreviewUrl: r.cover_preview_url,
+    // 26/09/2026 — Les 24 galeries publiées n'avaient AUCUNE couverture : `cover_preview_url` n'est
+    // écrite que si quelqu'un désigne une photo à la main depuis l'OS. La base rend désormais un
+    // chemin calculé (v288) — la photo désignée, sinon la première de la galerie.
+    coverPreviewUrl:
+      r.cover_preview_url
+      ?? (r.cover_path
+        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/galerie-previews/${r.cover_path}`
+        : null),
     photoCount: r.photo_count ?? 0,
     publishedAt: r.published_at,
     unlocked: r.unlocked === true,

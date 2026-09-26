@@ -69,16 +69,22 @@ export default function Photos() {
 
       {/* Le groupe « Medias » du site compte trois entrees : les galeries de l'equipe (cet
           ecran), les photos deja achetees, et ce que SportVision a livre. L'application n'avait
-          que la premiere — une famille qui avait paye ne retrouvait pas ses propres photos. */}
+          que la premiere — une famille qui avait paye ne retrouvait pas ses propres photos.
+          26/09/2026 — « Mes galeries » S'APPELLE DESORMAIS « MES ACHATS ». Fouka a ouvert le bouton
+          et est tombe sur « Aucune galerie pour l'instant » alors que sa galerie etait affichee
+          juste en dessous. Les deux mots designaient deux choses differentes : l'ecran liste les
+          galeries de l'EQUIPE, ce bouton mene aux photos ACHETEES par lien (une vente de tournoi,
+          un club adverse). Pour une famille de club, il est vide par nature — et un bouton qui
+          contredit ce qu'on voit fait douter du reste. */}
       <View style={s.mediasLiens}>
         <Pressable
           onPress={() => router.push("/connect/galeries")}
           accessibilityRole="button"
-          accessibilityLabel="Mes galeries, les photos que vous avez achetées"
+          accessibilityLabel="Mes achats, les photos que vous avez achetées par un lien"
           style={({ pressed }) => [s.mediasLien, pressed ? { opacity: 0.85 } : null]}
         >
           <Ionicons name="albums-outline" size={16} color={C.cyan} />
-          <Text style={s.mediasLienTexte}>Mes galeries</Text>
+          <Text style={s.mediasLienTexte}>Mes achats</Text>
         </Pressable>
         <Pressable
           onPress={() => router.push("/connect/contenus")}
