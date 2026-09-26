@@ -11,8 +11,12 @@ import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { lirePhotosDuJoueur, type PhotoDuJoueur } from "../../../src/lib/donnees";
+import {
+  lireEtatReconnaissance, lirePhotosDuJoueur,
+  type EtatReconnaissance, type PhotoDuJoueur,
+} from "../../../src/lib/donnees";
 import { acheterPass, passProposable, reprendreAchatsEnAttente, type PassProposable } from "../../../src/lib/achat-pass";
+import { cheminReconnaissanceEnfant } from "../../../src/lib/connect";
 import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
 import { C, E, R } from "../../../src/theme/couleurs";
@@ -42,6 +46,7 @@ export default function Galerie() {
   const [pass, setPass] = useState<PassProposable | null>(null);
   const [achatEnCours, setAchatEnCours] = useState(false);
   const [ouvertMaintenant, setOuvertMaintenant] = useState(false);
+  const [reco, setReco] = useState<EtatReconnaissance | null>(null);
 
   const charger = useCallback(async () => {
     if (!id || !joueur) { setChargement(false); return; }
@@ -71,8 +76,11 @@ export default function Galerie() {
         charger();
         return;
       }
-      const p = await passProposable(club, joueur);
-      if (vivant) setPass(p);
+      const [p, e] = await Promise.all([
+        passProposable(club, joueur),
+        lireEtatReconnaissance(joueur),
+      ]);
+      if (vivant) { setPass(p); setReco(e); }
     })();
     return () => { vivant = false; };
   }, [club, joueur, enfant, charger]);
@@ -82,7 +90,11 @@ export default function Galerie() {
     setAchatEnCours(true); setErreur(null);
     const r = await acheterPass(pass, enfant);
     setAchatEnCours(false);
-    if (r.etat === "ouvert") { setPass(null); setOuvertMaintenant(true); charger(); }
+    if (r.etat === "ouvert") {
+      setPass(null); setOuvertMaintenant(true); charger();
+      // Acheter change la marche suivante : on relit l'etat pour la nommer tout de suite.
+      if (joueur) lireEtatReconnaissance(joueur).then(setReco);
+    }
     else if (r.etat === "erreur") setErreur(r.message);
     // « annule » : la personne a ferme la feuille de paiement d'Apple. Elle sait ce qu'elle a
     // fait, lui afficher un message serait du bruit.
@@ -136,11 +148,52 @@ export default function Galerie() {
             ))}
           </View>
         ) : (
+          /* 26/09/2026 — « RIEN POUR LE MOMENT » NE SUFFISAIT PAS.
+             C'etait vrai et inutile : la famille ne pouvait pas savoir qu'il lui restait une chose a
+             faire, ni laquelle. Les quatre marches sont le Pass, l'accord, la photo de reference,
+             puis les photos retrouvees. On nomme celle qui vient, jamais les quatre a la fois. */
           <Vide
-            titre="Rien pour le moment"
-            texte="Dès qu'une photo de vous sera repérée dans cette galerie, elle apparaîtra ici."
+            titre={reco && !reco.photoReference ? "Une étape vous attend" : "Rien pour le moment"}
+            texte={
+              !reco
+                ? "Dès qu'une photo de vous sera repérée dans cette galerie, elle apparaîtra ici."
+                : !reco.consentement
+                  ? "Pour vous retrouver sur les photos, il faut d'abord votre accord. Cela se fait dans « Me reconnaître », et se retire quand vous voulez."
+                  : !reco.photoReference
+                    ? "Votre accord est enregistré. Il reste à déposer une photo de votre visage : c'est elle qui permet de vous retrouver sur les photos du match."
+                    : !reco.empreinte
+                      ? "Votre photo est enregistrée, son empreinte est en cours de calcul. Revenez dans quelques minutes."
+                      : "Vous n'apparaissez sur aucune photo de cette galerie. Ce sont les prochains matchs qui la rempliront."
+            }
           />
         )}
+
+        {/* LA MARCHE SUIVANTE, ET UN SEUL BOUTON A LA FOIS.
+            La page « Me reconnaître » vit dans Connect et s'ouvre DANS l'application, deja
+            connectee : c'est la meme page pour tout le monde, avec son texte d'engagement et sa
+            version — deux ecrans separes finiraient par faire accepter deux choses differentes sous
+            le meme nom. */}
+        {reco && (!reco.consentement || !reco.photoReference) ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={reco.consentement ? "Déposer ma photo de référence" : "Donner mon accord pour être reconnu"}
+            // LE CHEMIN DIFFERE SELON QUI DEMANDE, et ce n'est pas un detail : mesure du 25/09,
+            // pour un compte parent /reconnaissance repond 307 et renvoie vers /particulier — cette
+            // page-la est celle d'un JOUEUR qui donne son propre accord. Un parent consent pour un
+            // enfant precis, et la page vit donc sous la fiche de cet enfant.
+            onPress={() => router.push({
+              pathname: "/connect/[page]",
+              params: enfant
+                ? { page: "reconnaissance", chemin: cheminReconnaissanceEnfant("club", enfant) }
+                : { page: "reconnaissance" },
+            })}
+            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
+          >
+            <Text style={s.actionTexte}>
+              {reco.consentement ? "Déposer ma photo de référence" : "Me reconnaître sur les photos"}
+            </Text>
+          </Pressable>
+        ) : null}
 
         {/* CE QUE CE BLOC DIT (revu le 25/09/2026, decision de Fouka de vendre via Apple).
             Il annonce ce qui manque et comment l'obtenir. Il ne nomme toujours AUCUN prix :

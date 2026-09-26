@@ -464,3 +464,43 @@ export async function lirePhotosDuJoueur(
   // « 4 photos » et « 4 photos sur 41 ».
   return { photos, total: Number(lignes[0]?.total ?? photos.length) };
 }
+
+
+/**
+ * Où en est la reconnaissance pour ce joueur — les quatre marches, dans l'ordre.
+ *
+ * POURQUOI L'ÉCRAN A BESOIN DE ÇA. Tout le mécanisme existe et fonctionne, mais rien ne le disait à
+ * la famille : l'écran affichait « Rien pour le moment », ce qui est vrai et inutile. Mesure du
+ * 26/09 sur les six joueurs en base : deux avaient donné leur accord, AUCUN n'avait déposé de photo
+ * de référence, donc aucune empreinte, donc zéro photo retrouvée.
+ *
+ * Une famille qui paie le Pass et tombe sur une galerie vide demande un remboursement, et elle a
+ * raison. L'écran doit nommer la marche suivante.
+ *
+ * Rend `null` sans bruit en cas de refus ou de panne : l'écran retombe alors sur son texte neutre,
+ * il ne montre pas une erreur à quelqu'un qui regardait des photos.
+ */
+export interface EtatReconnaissance {
+  consentement: boolean;
+  photoReference: boolean;
+  empreinte: boolean;
+  photosTrouvees: number;
+}
+
+export async function lireEtatReconnaissance(playerId: string): Promise<EtatReconnaissance | null> {
+  if (MODE_DEMO) {
+    return { consentement: true, photoReference: true, empreinte: true, photosTrouvees: 12 };
+  }
+  const { data, error } = await supabase.rpc("media_etat_reconnaissance", { p_player_id: playerId });
+  if (error) return null;
+  const r = (Array.isArray(data) ? data[0] : null) as {
+    consentement: boolean; photo_reference: boolean; empreinte: boolean; photos_trouvees: number;
+  } | null;
+  if (!r) return null;
+  return {
+    consentement: !!r.consentement,
+    photoReference: !!r.photo_reference,
+    empreinte: !!r.empreinte,
+    photosTrouvees: Number(r.photos_trouvees ?? 0),
+  };
+}
