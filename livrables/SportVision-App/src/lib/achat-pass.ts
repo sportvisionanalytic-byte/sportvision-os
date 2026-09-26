@@ -102,11 +102,41 @@ async function connexion(): Promise<boolean> {
 }
 
 /**
- * Le Pass achetable pour ce joueur, ou `null`.
+ * OU EN EST LE PASS, ET POURQUOI CE N'EST PAS UN SIMPLE `null` (corrige le 26/09/2026).
  *
- * Rend `null` sans bruit dans tous les cas ou il n'y a rien a proposer : pas sur iOS, pas de
- * produit Apple declare, produit inconnu du magasin, ou acces deja actif. L'appelant n'a donc
- * qu'une chose a tester.
+ * `passProposable` rendait `null` dans trois situations qui n'ont rien a voir : le Pass est deja
+ * acquis, aucun Pass n'existe pour ce club, ou le magasin ne connait pas encore le produit. L'ecran
+ * ne pouvait donc pas savoir quoi demander — et Fouka l'a constate : « ca ne me met pas d'acheter le
+ * pass, ca me met directement deposer ma photo de reference ». On reclamait une photo de reference a
+ * quelqu'un qui n'avait pas paye.
+ *
+ * Les trois etats sont desormais distincts :
+ *   a_prendre  il y a un Pass a payer. `offre` porte le produit du magasin, ou `null` quand le
+ *              magasin ne le sert pas encore (produit pas encore approuve) : dans ce cas on ne
+ *              propose rien, mais on ne passe SURTOUT pas a l'etape suivante.
+ *   acquis     le Pass est pris. C'est la, et seulement la, qu'on parle de reconnaissance.
+ *   aucun      ce club ne vend pas de Pass. Rien a payer, on peut passer a la suite.
+ */
+export type EtatPass =
+  | { etat: "a_prendre"; offre: PassProposable | null }
+  | { etat: "acquis" }
+  | { etat: "aucun" };
+
+export async function etatDuPass(clubId: string, playerId: string): Promise<EtatPass> {
+  const { data, error } = await supabase.rpc("media_pass_disponible", {
+    p_club_id: clubId, p_player_id: playerId,
+  });
+  if (error || !Array.isArray(data) || data.length === 0) return { etat: "aucun" };
+  const p = data[0] as { deja_actif: boolean };
+  if (p.deja_actif) return { etat: "acquis" };
+  return { etat: "a_prendre", offre: await passProposable(clubId, playerId) };
+}
+
+/**
+ * Le Pass achetable pour ce joueur, ou `null` quand le magasin ne peut pas le vendre.
+ *
+ * Reserve a `etatDuPass`, qui seul sait interpreter le `null`. L'appeler directement fait perdre la
+ * distinction qui compte.
  */
 export async function passProposable(
   clubId: string, playerId: string,

@@ -15,7 +15,10 @@ import {
   lireEtatReconnaissance, lirePhotosAIdentifier, lirePhotosDuJoueur, repondreCestMoi,
   type EtatReconnaissance, type PhotoAIdentifier, type PhotoDuJoueur,
 } from "../../../src/lib/donnees";
-import { acheterPass, passProposable, reprendreAchatsEnAttente, type PassProposable } from "../../../src/lib/achat-pass";
+import {
+  acheterPass, etatDuPass, reprendreAchatsEnAttente,
+  type EtatPass, type PassProposable,
+} from "../../../src/lib/achat-pass";
 import { cheminReconnaissanceEnfant } from "../../../src/lib/connect";
 import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
@@ -43,7 +46,10 @@ export default function Galerie() {
   const [agrandie, setAgrandie] = useState<PhotoDuJoueur | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [panne, setPanne] = useState(false);
-  const [pass, setPass] = useState<PassProposable | null>(null);
+  const [etatPass, setEtatPass] = useState<EtatPass | null>(null);
+  // Le produit du magasin, quand il y en a un a vendre. Extrait pour alleger les conditions.
+  const pass: PassProposable | null =
+    etatPass?.etat === "a_prendre" ? etatPass.offre : null;
   const [achatEnCours, setAchatEnCours] = useState(false);
   const [ouvertMaintenant, setOuvertMaintenant] = useState(false);
   const [reco, setReco] = useState<EtatReconnaissance | null>(null);
@@ -79,13 +85,13 @@ export default function Galerie() {
         return;
       }
       const [p, e, t] = await Promise.all([
-        passProposable(club, joueur),
+        etatDuPass(club, joueur),
         lireEtatReconnaissance(joueur),
         // Ne rend rien tant que le Pass n'est pas pris (v287) : inutile de conditionner ici.
         lirePhotosAIdentifier(id, joueur),
       ]);
       if (vivant) {
-        setPass(p); setReco(e);
+        setEtatPass(p); setReco(e);
         // On ne propose a trancher QUE ce que la machine a suggere. Faire defiler cent photos dont
         // on ne dit rien n'est pas une question, c'est une corvee.
         setATrancher(t.filter((x) => x.suggeree && !x.mienne));
@@ -112,7 +118,7 @@ export default function Galerie() {
     const r = await acheterPass(pass, enfant);
     setAchatEnCours(false);
     if (r.etat === "ouvert") {
-      setPass(null); setOuvertMaintenant(true); charger();
+      setEtatPass({ etat: "acquis" }); setOuvertMaintenant(true); charger();
       // Acheter change la marche suivante : on relit l'etat pour la nommer tout de suite.
       if (joueur) lireEtatReconnaissance(joueur).then(setReco);
     }
@@ -174,9 +180,18 @@ export default function Galerie() {
              faire, ni laquelle. Les quatre marches sont le Pass, l'accord, la photo de reference,
              puis les photos retrouvees. On nomme celle qui vient, jamais les quatre a la fois. */
           <Vide
-            titre={reco && !reco.photoReference ? "Une étape vous attend" : "Rien pour le moment"}
+            titre={
+              etatPass?.etat === "a_prendre" ? "Vos photos vous attendent"
+                : reco && !reco.photoReference ? "Une étape vous attend"
+                : "Rien pour le moment"
+            }
             texte={
-              !reco
+              // L'ORDRE DU TEXTE SUIT L'ORDRE REEL DES ETAPES. Il annoncait la photo de reference en
+              // premier, alors que le Pass vient avant : une famille lisait donc une consigne qu'elle
+              // ne devait pas encore suivre.
+              etatPass?.etat === "a_prendre"
+                ? "Le Pass ouvre vos photos de la saison. Une fois pris, vous pourrez vous faire reconnaître sur les photos du match."
+                : !reco
                 ? "Dès qu'une photo de vous sera repérée dans cette galerie, elle apparaîtra ici."
                 : !reco.consentement
                   ? "Pour vous retrouver sur les photos, il faut d'abord votre accord. Cela se fait dans « Me reconnaître », et se retire quand vous voulez."
@@ -194,27 +209,6 @@ export default function Galerie() {
             connectee : c'est la meme page pour tout le monde, avec son texte d'engagement et sa
             version — deux ecrans separes finiraient par faire accepter deux choses differentes sous
             le meme nom. */}
-        {reco && (!reco.consentement || !reco.photoReference) ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={reco.consentement ? "Déposer ma photo de référence" : "Donner mon accord pour être reconnu"}
-            // LE CHEMIN DIFFERE SELON QUI DEMANDE, et ce n'est pas un detail : mesure du 25/09,
-            // pour un compte parent /reconnaissance repond 307 et renvoie vers /particulier — cette
-            // page-la est celle d'un JOUEUR qui donne son propre accord. Un parent consent pour un
-            // enfant precis, et la page vit donc sous la fiche de cet enfant.
-            onPress={() => router.push({
-              pathname: "/connect/[page]",
-              params: enfant
-                ? { page: "reconnaissance", chemin: cheminReconnaissanceEnfant("club", enfant) }
-                : { page: "reconnaissance" },
-            })}
-            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
-          >
-            <Text style={s.actionTexte}>
-              {reco.consentement ? "Déposer ma photo de référence" : "Me reconnaître sur les photos"}
-            </Text>
-          </Pressable>
-        ) : null}
 
         {/* CE QUE CE BLOC DIT (revu le 25/09/2026, decision de Fouka de vendre via Apple).
             Il annonce ce qui manque et comment l'obtenir. Il ne nomme toujours AUCUN prix :
@@ -329,6 +323,34 @@ export default function Galerie() {
           >
             {achatEnCours ? <ActivityIndicator color="#fff" />
               : <Text style={s.actionTexte}>Débloquer mon Pass Photo · {pass.prixMagasin}</Text>}
+          </Pressable>
+        ) : null}
+
+        {/* 26/09/2026 — CE BOUTON NE S'AFFICHE PLUS AVANT LE PAIEMENT.
+            Fouka : « ca ne me met pas d'acheter le pass, ca me met directement deposer ma photo de
+            reference ». On reclamait une photo du visage d'un enfant a une famille qui n'avait rien
+            paye — dans le mauvais ordre, et pour une donnee biometrique.
+            La condition tient au fait que les trois etats du Pass sont maintenant distincts :
+            « a_prendre » veut dire qu'il reste a payer, et rien d'autre ne se demande avant. */}
+        {etatPass?.etat !== "a_prendre" && reco && (!reco.consentement || !reco.photoReference) ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={reco.consentement ? "Déposer ma photo de référence" : "Donner mon accord pour être reconnu"}
+            // LE CHEMIN DIFFERE SELON QUI DEMANDE, et ce n'est pas un detail : mesure du 25/09,
+            // pour un compte parent /reconnaissance repond 307 et renvoie vers /particulier — cette
+            // page-la est celle d'un JOUEUR qui donne son propre accord. Un parent consent pour un
+            // enfant precis, et la page vit donc sous la fiche de cet enfant.
+            onPress={() => router.push({
+              pathname: "/connect/[page]",
+              params: enfant
+                ? { page: "reconnaissance", chemin: cheminReconnaissanceEnfant("club", enfant) }
+                : { page: "reconnaissance" },
+            })}
+            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
+          >
+            <Text style={s.actionTexte}>
+              {reco.consentement ? "Déposer ma photo de référence" : "Me reconnaître sur les photos"}
+            </Text>
           </Pressable>
         ) : null}
 
