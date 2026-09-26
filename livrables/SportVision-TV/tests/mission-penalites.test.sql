@@ -17,7 +17,7 @@
 --   4. L'opérateur est notifié de la retenue, du motif et du net.
 --   5. La retenue ne dépasse pas la rémunération : le net ne passe jamais sous zéro.
 --   6. Une pénalité sans motif est refusée.
---   7. Personne ne se pénalise ni ne se valide soi-même.
+--   7. Il ne se pénalise pas, mais il valide son propre travail (v270) et l'Admin en est prévenu.
 --   8. Un opérateur ne se retire pas sa propre pénalité, et un tiers n'en pose pas.
 --   9. L'opérateur conteste, et sa contestation remonte à qui a décidé.
 --  10. Annuler restitue le net et laisse la trace ; rien ne s'efface.
@@ -139,7 +139,15 @@ begin
   exception when others then null;
   end;
 
-  -- ══ 7. PERSONNE NE SE PÉNALISE NI NE SE VALIDE SOI-MÊME ══════════════════
+  -- ══ 7. IL NE SE PÉNALISE PAS, MAIS IL VALIDE SON PROPRE TRAVAIL ══════════
+  --
+  -- Mis à jour le 26/09/2026. Ce test tenait encore la règle d'avant la v270 : « on ne valide pas
+  -- son propre travail ». Fouka l'a renversée le 25/09 — le Responsable Production valide ses
+  -- propres missions, seul l'écart avec la grille remonte à l'Admin. Le test disait donc ROUGE sur
+  -- un comportement VOULU, ce qui est la pire sorte de test : il pousse à défaire une décision.
+  --
+  -- La distinction tient, et c'est elle qu'on vérifie : se VALIDER est permis et laisse une trace
+  -- que l'Admin reçoit ; se PÉNALISER reste refusé, parce que là il serait juge de sa propre faute.
   msg := null;
   begin
     perform mission_penaliser(v_aff_prod, 10, 'Sur ma propre ligne');
@@ -148,9 +156,25 @@ begin
   end;
   begin
     perform mission_valider_travail(v_aff_prod, true);
-    e := e || 'un responsable a valide son propre travail'::text;
-  exception when others then null;
+  exception when others then
+    e := e || ('un responsable n a PAS pu valider son propre travail (v270) : '||left(sqlerrm,60))::text;
   end;
+  -- L'Admin doit l'apprendre au moment où ça se fait, sinon la décision de Fouka revient à une
+  -- validation sans contrepartie.
+  --
+  -- LA VÉRIFICATION SE FAIT CÔTÉ SERVEUR, et ce détail est le défaut que j'ai d'abord pris pour un
+  -- trou dans le produit : interrogée en restant `authenticated` dans la peau du responsable, la
+  -- table `notifications` ne rend que SES notifications. Celle de l'Admin existait, elle était
+  -- simplement hors de sa portée — la RLS faisait son travail et mon test mesurait autre chose.
+  perform pg_temp.serveur();
+  if not exists (
+    select 1 from notifications
+     where type = 'mission_verdict' and titre like 'Travail validé par son propre auteur%'
+       and destinataire_id in (select id from profiles where role='admin' and coalesce(actif,true))
+  ) then
+    e := e || 'aucun admin n a ete prevenu de l auto-validation'::text;
+  end if;
+  perform pg_temp.incarner(v_prod);
 
   -- ══ 8. NI L'OPÉRATEUR NI UN TIERS N'ARBITRENT ════════════════════════════
   perform pg_temp.incarner(v_ope);

@@ -1,18 +1,26 @@
--- La galerie suit la mission toute seule (v221, 14/09/2026).
+-- La galerie NE suit PLUS la mission toute seule (v277, 25/09/2026).
 --
--- LA DEMANDE DE FOUKA : « ce n'est pas nous qui devons créer la galerie à chaque fois. Quand le
--- photographe termine la prestation de Fontainebleau, automatiquement ça va dans leur espace
--- Connect avec leurs photos. »
+-- CE TEST A ÉTÉ RETOURNÉ LE 26/09/2026, et l'histoire vaut d'être écrite ici parce qu'elle explique
+-- pourquoi il vérifie aujourd'hui l'inverse de ce qu'il vérifiait hier.
 --
--- CE QU'ON MESURE :
---   1. À l'affectation de l'équipe, les galeries de la mission existent, en brouillon, une par
---      équipe, avec le bon club, la bonne saison.
---   2. Rien n'est publié à ce moment-là : personne n'est prévenu tant que rien n'a été regardé.
---   3. À la validation de la Production (mission « livrée »), une galerie qui contient des photos
---      prêtes est publiée — donc les familles la reçoivent.
---   4. Une galerie VIDE n'est pas publiée : on n'envoie pas quinze familles sur une page blanche.
---   5. Rejouer le passage de statut ne crée pas de seconde galerie ni ne republie.
---   6. Une mission qui saute l'affectation reçoit quand même ses galeries à la livraison.
+-- La v221 (14/09) créait les galeries automatiquement, sur la demande de Fouka : « ce n'est pas
+-- nous qui devons créer la galerie à chaque fois ». L'automatisme a produit **18 galeries vides que
+-- personne n'avait demandées**, et Fouka a tranché l'inverse le 25/09 : « c'est le responsable
+-- production qui les crée. Il crée tout lui-même. » La v277 a retiré les deux appels à
+-- creer_galeries_mission_auto.
+--
+-- Le test, lui, continuait d'exiger une création automatique. Il ne tombait même pas en rouge : il
+-- levait une violation de clé étrangère sur un `v_album` NULL, ce qui le rendait simplement muet.
+-- Un test muet sur une règle métier renversée est un piège : le premier qui le répare « pour qu'il
+-- passe » remet l'automatisme que Fouka a fait retirer.
+--
+-- CE QU'ON MESURE MAINTENANT :
+--   1. À l'affectation de l'équipe, AUCUNE galerie n'est créée. C'est la décision du 25/09.
+--   2. À la livraison non plus : aucune création, à aucun stade.
+--   3. Ce qui reste automatique, et qui doit le rester : une galerie créée À LA MAIN, en brouillon,
+--      qui contient des photos prêtes, est PUBLIÉE quand la mission passe à « livrée ».
+--   4. Une galerie vide n'est jamais publiée : on n'envoie pas quinze familles sur une page blanche.
+--   5. Rejouer le passage de statut ne republie ni ne duplique rien.
 
 begin;
 
@@ -31,7 +39,7 @@ do $$
 declare
   v_club uuid; v_equipe uuid; v_equipe2 uuid; v_saison uuid; v_client uuid;
   v_admin uuid; v_presta uuid; v_presta2 uuid;
-  v_album uuid; e text[] := '{}'; n int;
+  v_album uuid; v_album_vide uuid; e text[] := '{}'; n int;
 begin
   perform set_config('role','postgres',true);
   perform set_config('request.jwt.claims','{"role":"service_role"}',true);
@@ -52,46 +60,48 @@ begin
     values ('ZZ-AUTO-1', v_client, 'match', current_date, 'demande_reçue', v_admin,
             'ZZ Auto U13, ZZ Auto U15') returning id into v_presta;
 
-  -- ══ 1. À L'AFFECTATION, LES GALERIES EXISTENT ════════════════════════════
+  -- ══ 1. À L'AFFECTATION, AUCUNE GALERIE N'EST CRÉÉE ══════════════════════
   perform pg_temp.jusqua(v_presta, 'équipe_affectée');
   select count(*) into n from media_albums where mission_id = v_presta;
-  if n < 1 then
-    e := e || format('a l affectation : %s galerie(s), aucune creee automatiquement', n);
+  if n <> 0 then
+    e := e || format('a l affectation : %s galerie(s) creee(s) automatiquement, la v277 en interdit', n);
   end if;
-  select count(*) into n from media_albums where mission_id = v_presta and club_id = v_club and saison_id = v_saison;
-  if n < 1 then e := e || 'les galeries creees n ont pas le bon club ou la bonne saison'::text; end if;
 
-  -- ══ 2. RIEN N'EST PUBLIÉ À CE STADE ══════════════════════════════════════
-  select count(*) into n from media_albums where mission_id = v_presta and status = 'published';
-  if n <> 0 then e := e || format('%s galerie(s) publiee(s) des l affectation', n); end if;
+  -- ══ 2. À LA LIVRAISON NON PLUS ═══════════════════════════════════════════
+  perform pg_temp.jusqua(v_presta, 'livrée');
+  select count(*) into n from media_albums where mission_id = v_presta;
+  if n <> 0 then
+    e := e || format('a la livraison : %s galerie(s) creee(s) « en filet », la v277 a retire ce rattrapage', n);
+  end if;
 
-  -- ══ 3. UNE GALERIE AVEC DES PHOTOS EST PUBLIÉE À LA LIVRAISON ════════════
-  select id into v_album from media_albums where mission_id = v_presta order by title limit 1;
+  -- ══ 3. CE QUI RESTE AUTOMATIQUE : PUBLIER CE QUI CONTIENT DES PHOTOS ═════
+  --
+  -- Le Responsable Production crée la galerie lui-même. Ce qu'il n'a pas à faire, c'est retourner
+  -- la publier une fois la mission livrée : c'est le seul automatisme que la v277 conserve.
+  insert into media_albums (club_id, team_id, saison_id, mission_id, title, status)
+    values (v_club, v_equipe, v_saison, v_presta, 'ZZ Galerie a la main', 'draft') returning id into v_album;
   insert into media_assets (album_id, club_id, kind, storage_bucket, original_path, status, position)
     values (v_album, v_club, 'photo','sportvision-media-prive','zz/auto1.jpg','ready',1);
+  -- Et une seconde, vide, qui ne doit PAS partir aux familles.
+  insert into media_albums (club_id, team_id, saison_id, mission_id, title, status)
+    values (v_club, v_equipe2, v_saison, v_presta, 'ZZ Galerie vide', 'draft') returning id into v_album_vide;
 
-  perform pg_temp.jusqua(v_presta, 'livrée');
-  select status into n from (select case when status = 'published' then 1 else 0 end as status
-                               from media_albums where id = v_album) z;
-  if n <> 1 then e := e || 'la galerie avec des photos n a pas ete publiee a la livraison'::text; end if;
+  update prestations set statut = 'prêt_validation' where id = v_presta;
+  update prestations set statut = 'livrée' where id = v_presta;
+
+  select count(*) into n from media_albums where id = v_album and status = 'published';
+  if n <> 1 then e := e || 'la galerie qui contient des photos n a pas ete publiee a la livraison'::text; end if;
 
   -- ══ 4. UNE GALERIE VIDE RESTE EN BROUILLON ═══════════════════════════════
-  select count(*) into n from media_albums
-   where mission_id = v_presta and id <> v_album and status = 'published';
-  if n <> 0 then e := e || format('%s galerie(s) vide(s) publiee(s)', n); end if;
+  select count(*) into n from media_albums where id = v_album_vide and status = 'published';
+  if n <> 0 then e := e || 'une galerie vide a ete publiee aux familles'::text; end if;
 
-  -- ══ 5. REJOUER NE DUPLIQUE RIEN ══════════════════════════════════════════
+  -- ══ 5. REJOUER NE DUPLIQUE NI NE REPUBLIE ════════════════════════════════
   update prestations set statut = 'prêt_validation' where id = v_presta;
   update prestations set statut = 'livrée' where id = v_presta;
   select count(*) into n from media_albums where mission_id = v_presta;
-  if n > 2 then e := e || format('apres rejeu : %s galeries au lieu de 2', n); end if;
+  if n <> 2 then e := e || format('apres rejeu : %s galeries au lieu de 2', n); end if;
 
-  -- ══ 6. UNE MISSION SANS AFFECTATION EST RATTRAPÉE ════════════════════════
-  insert into prestations (reference, client_id, type_prestation, date_prestation, statut, created_by)
-    values ('ZZ-AUTO-2', v_client, 'reportage', current_date, 'demande_reçue', v_admin) returning id into v_presta2;
-  update prestations set statut = 'livrée' where id = v_presta2;
-  select count(*) into n from media_albums where mission_id = v_presta2;
-  if n < 1 then e := e || 'une mission livree sans affectation n a recu aucune galerie'::text; end if;
 
   if array_length(e,1) is not null then
     raise exception E'ECHECS :\n  - %', array_to_string(e, E'\n  - ');

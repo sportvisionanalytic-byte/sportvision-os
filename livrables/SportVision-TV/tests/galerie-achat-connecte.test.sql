@@ -5,6 +5,17 @@
 -- verifie separement contre la fonction deployee (voir le rapport).
 begin;
 
+-- DÉCOR MANQUANT, AJOUTÉ LE 26/09/2026. Ce test tenait pour acquis un club et une équipe dont il
+-- codait l'identifiant en dur. Ce club a été supprimé de la production, et le test a cessé de
+-- s'exécuter sans que personne ne le voie : il levait une violation de clé étrangère, pas un ROUGE.
+-- Un test qui ne s'exécute pas ne prouve rien, et 26 tests étaient dans cet état. Il crée
+-- désormais son propre décor, et le `rollback` final l'efface comme le reste.
+insert into clubs (id, nom) values ('8be55101-0d61-4b27-8d7b-a4761547d88b', 'ZZ Club de test')
+  on conflict (id) do nothing;
+insert into club_teams (id, club_id, name)
+  values ('bee719f7-d735-4a0b-b070-0d20eb73e7ec', '8be55101-0d61-4b27-8d7b-a4761547d88b', 'ZZ Equipe de test')
+  on conflict (id) do nothing;
+
 create temp table _res(n text, cas text, attendu text, obtenu text, ok boolean) on commit drop;
 create temp table _ctx(nom text, val text) on commit drop;
 grant all on _res to authenticated;

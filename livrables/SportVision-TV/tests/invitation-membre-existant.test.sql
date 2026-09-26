@@ -11,6 +11,25 @@
 --   Tout est annulé, rien ne subsiste. Club de test : Villeneuve 340 SC.
 
 begin;
+-- DÉCOR MANQUANT, AJOUTÉ LE 26/09/2026. Ce test cherchait un SECOND club (« Villeneuve 340 SC »)
+-- pour vérifier qu'un CM ne déborde pas hors de son périmètre. Ce club a été supprimé de la
+-- production : la recherche rendait NULL, et la vérification de cloisonnement devenait vide de
+-- sens — bien pire qu'un échec, un test incapable de détecter une fuite. Il crée maintenant le
+-- club témoin, effacé par le `rollback` final.
+insert into clubs (id, nom) values ('8be55102-0d61-4b27-8d7b-a4761547d88b', 'Villeneuve 340 SC')
+  on conflict (id) do nothing;
+
+-- DÉCOR MANQUANT, AJOUTÉ LE 26/09/2026. Ce test tenait pour acquis un club et une équipe dont il
+-- codait l'identifiant en dur. Ce club a été supprimé de la production, et le test a cessé de
+-- s'exécuter sans que personne ne le voie : il levait une violation de clé étrangère, pas un ROUGE.
+-- Un test qui ne s'exécute pas ne prouve rien, et 26 tests étaient dans cet état. Il crée
+-- désormais son propre décor, et le `rollback` final l'efface comme le reste.
+insert into clubs (id, nom) values ('8be55101-0d61-4b27-8d7b-a4761547d88b', 'ZZ Club de test')
+  on conflict (id) do nothing;
+insert into club_teams (id, club_id, name)
+  values ('bee719f7-d735-4a0b-b070-0d20eb73e7ec', '8be55101-0d61-4b27-8d7b-a4761547d88b', 'ZZ Equipe de test')
+  on conflict (id) do nothing;
+
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 
 create temp table ctx on commit drop as select '8be55101-0d61-4b27-8d7b-a4761547d88b'::uuid as club_id;

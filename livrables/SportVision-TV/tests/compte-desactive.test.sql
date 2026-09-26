@@ -70,7 +70,10 @@ declare
   e text[] := '{}';
 begin
   perform pg_temp.redevenir_systeme();
-  select id into v_club from clubs order by created_at limit 1;
+  -- 26/09/2026 : ce test prenait « le club le plus ancien » de la production. Villemomble a
+  -- désormais un CM principal, et l'index cca_un_seul_principal_actif refusait l'insertion : le
+  -- test ne s'exécutait plus du tout. Il crée son propre club, effacé par le rollback.
+  insert into clubs (nom) values ('ZZ Club Compte Desactive') returning id into v_club;
   select id into v_pole from poles order by nom limit 1;
 
   for i in 1 .. array_length(comptes, 1) loop

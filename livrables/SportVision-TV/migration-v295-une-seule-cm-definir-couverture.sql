@@ -1,0 +1,25 @@
+-- v295 — 26/09/2026 : accepter une demande de couverture échouait depuis hier soir
+--
+-- TROUVÉ PAR LA SUITE DE TESTS, pas par un signalement. La v269 (25/09, 20 h 40) a ajouté le brief
+-- du CM avec un `create or replace function cm_definir_couverture(p_ref, p_type, p_brief default
+-- null)`. Une signature différente ne REMPLACE pas, elle SURCHARGE : les deux versions ont vécu
+-- côte à côte, et comme `p_brief` a une valeur par défaut, un appel à deux arguments devient
+-- ambigu. Postgres refuse de choisir :
+--
+--     ERROR 42725 : function cm_definir_couverture(text, unknown) is not unique
+--
+-- CE QUE ÇA CASSAIT, concrètement : `cm_select_coverage_wish` appelle
+-- `cm_definir_couverture(v_ref, v_type)` — deux arguments. C'est le geste par lequel le CM ACCEPTE
+-- la demande de couverture d'un club depuis sa liste « À couvrir ». Il échouait depuis hier soir,
+-- et le circuit présences (v132, figé) était coupé à son étape décisive.
+--
+-- Club+ n'était pas touché : il appelle avec TROIS arguments nommés, que PostgREST résout sans
+-- ambiguïté. C'est exactement pour ça que personne ne l'a vu — le chemin le plus visible marchait.
+--
+-- LA RÈGLE : une fonction métier n'a qu'une signature. La version à deux arguments est celle de la
+-- v132, rendue obsolète par la v269 ; `p_brief default null` reproduit son comportement à
+-- l'identique. On la supprime au lieu de la garder « au cas où ».
+--
+-- Idempotent.
+
+drop function if exists public.cm_definir_couverture(text, text);

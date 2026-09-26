@@ -11,6 +11,14 @@
 --   Tout est annulé, rien ne subsiste.
 
 begin;
+-- DÉCOR MANQUANT, AJOUTÉ LE 26/09/2026. Ce test cherchait un SECOND club (« Villeneuve 340 SC »)
+-- pour vérifier qu'un CM ne déborde pas hors de son périmètre. Ce club a été supprimé de la
+-- production : la recherche rendait NULL, et la vérification de cloisonnement devenait vide de
+-- sens — bien pire qu'un échec, un test incapable de détecter une fuite. Il crée maintenant le
+-- club témoin, effacé par le `rollback` final.
+insert into clubs (id, nom) values ('8be55102-0d61-4b27-8d7b-a4761547d88b', 'Villeneuve 340 SC')
+  on conflict (id) do nothing;
+
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 
 create temp table ctx on commit drop as

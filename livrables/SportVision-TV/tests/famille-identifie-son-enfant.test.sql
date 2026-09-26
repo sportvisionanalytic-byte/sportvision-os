@@ -83,7 +83,22 @@ begin
   insert into media_player_tags (media_ref_type, media_ref_id, player_id, source, statut)
     values ('media_asset', ph_staff, v_lina, 'humain', 'valide');
 
-  -- ══ 1. ELLE VOIT LA GALERIE DE L'ÉQUIPE DE SON ENFANT ════════════════════
+  -- ══ 0. SANS LE PASS, ELLE NE PARCOURT RIEN ═══════════════════════════════
+  --
+  -- AJOUTÉ LE 26/09/2026, ET C'EST L'INVERSE DE CE QUE CE TEST TENAIT POUR VRAI. Il vérifiait
+  -- qu'une famille SANS Pass voyait les trois photos pour s'identifier. Décision de Fouka du même
+  -- jour, qui fixe l'ordre du parcours : acheter le Pass, PUIS déposer la photo de référence, PUIS
+  -- « oui c'est bien moi ». `media_galerie_a_identifier` rendait la galerie entière à n'importe
+  -- quelle famille de l'enfant, ce qui contournait le plafond de quatre photos de la v282 : il
+  -- suffisait de l'appeler pour parcourir les 110 photos sans avoir rien payé (v287).
+  perform pg_temp.incarner(v_cpt_lina);
+  select count(*) into n from media_galerie_a_identifier(v_album, v_lina);
+  if n <> 0 then e := e || format('sans Pass : %s photo(s) a identifier au lieu de 0', n); end if;
+
+  -- ══ 1. AVEC LE PASS, ELLE VOIT LA GALERIE DE L'ÉQUIPE DE SON ENFANT ══════
+  perform pg_temp.serveur();
+  insert into media_entitlements (club_id, saison_id, beneficiary_person_id, purchased_by_user_id, scope_type, scope_id, status)
+    values (v_club, v_saison, v_lina, v_cpt_lina, 'club', v_club, 'active');
   perform pg_temp.incarner(v_cpt_lina);
   select count(*) into n from media_galerie_a_identifier(v_album, v_lina);
   if n <> 3 then e := e || format('galerie a identifier : %s photo(s) au lieu de 3', n); end if;
@@ -99,8 +114,6 @@ begin
    where media_ref_id = ph1 and player_id = v_lina and statut = 'valide' and source = 'famille';
   if n <> 1 then e := e || format('apres marquage : %s marquage famille au lieu de 1', n); end if;
 
-  insert into media_entitlements (club_id, saison_id, beneficiary_person_id, purchased_by_user_id, scope_type, scope_id, status)
-    values (v_club, v_saison, v_lina, v_cpt_lina, 'club', v_club, 'active');
   perform pg_temp.incarner(v_cpt_lina);
   if not can_access_asset(ph1) then e := e || 'la photo identifiee reste fermee malgre le Pass'::text; end if;
   if can_access_asset(ph2) then e := e || 'une photo NON identifiee est ouverte'::text; end if;
