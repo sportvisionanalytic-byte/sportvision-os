@@ -77,7 +77,7 @@ export const PHOTOS_DEMO: PhotoDuJoueur[] = [
   "foot-action-02", "foot-portrait-01", "foot-action-03", "foot-action-04",
   "foot-action-04", "foot-portrait-02", "foot-groupe-02", "foot-action-05",
   "foot-portrait-03", "foot-action-06", "foot-groupe-03", "foot-portrait-04",
-].map((nom, i) => ({ id: `p-${i}`, url: PHOTO(nom) }));
+].map((nom, i) => ({ id: `p-${i}`, url: PHOTO(nom), net: true }));
 
 /** Le fond photographique de la carte « prochain match ». */
 export const FOND_MATCH_DEMO = PHOTO("foot-action-02");

@@ -13437,6 +13437,14 @@ function _galPublicUrl(path){return SB_URL+'/storage/v1/object/public/galerie-pr
 // POUR REVENIR EN ARRIERE : remettre 'sportvision-media-prive' ci-dessous. Les photos deja
 // deposees sur R2 continueront d'etre servies depuis R2, puisque chacune sait ou elle est.
 const GAL_STOCKAGE_ORIGINAUX='r2';
+// L'apercu NET (sans filigrane) va dans le bucket PRIVE de Supabase, et non sur R2 ou vivent les
+// originaux (26/09/2026). C'est deliberé : la garde qui decide qui peut le lire est une politique
+// de storage.objects (v281, sv_media_prive_apercus_clairs_select), et une politique Postgres ne
+// s'applique pas a un objet Cloudflare. Le mettre sur R2 aurait demande une fonction de signature
+// a chaque vignette d'une grille de cent photos.
+// Le cout est modeste : environ 270 ko par photo, moins d'un giga pour toute la saison, la ou les
+// originaux en pesent 48.
+const GAL_BUCKET_APERCUS_NETS='sportvision-media-prive';
 
 /** Une adresse signee aupres de r2-fichier. Trois modes, une seule regle d'autorisation cote
  *  serveur : si la base montre la ligne media_assets a cet appelant, c'est qu'elle l'autorise. */
@@ -13637,13 +13645,23 @@ async function _galTraiterFichier(entry){
     entry.width=bitmap.width;entry.height=bitmap.height;
 
     setEtat('traitement','Génération des versions…');
-    const filigrane=_galAlbum.watermark_previews!==false;
-    // La VIGNETTE est filigranee elle aussi (08/09) : une image de 480 px se capture et se publie
+    // 26/09/2026 — TROIS DERIVES, ET PLUS AUCUN CHOIX A FAIRE (v281/v282).
+    //
+    // Avant, il n'y en avait que deux et le filigrane etait un REGLAGE : marque (et ceux qui ont
+    // paye le voyaient aussi) ou clair (et il partait en 1600 px a quiconque devinait l'adresse).
+    // D'ou la danse decocher/recocher/regenerer avant chaque mise en ligne.
+    //
+    // Desormais le public est TOUJOURS marque, et l'apercu clair part dans le bucket prive sous
+    // apercus-clairs/, ou la politique de stockage decide qui peut le lire : staff, coach, CM, et
+    // les familles qui ont paye le Pass. Il n'y a plus rien a decider ni a verifier.
+    //
+    // La VIGNETTE est marquee elle aussi (08/09) : une image de 480 px se capture et se publie
     // aussi bien qu'une grande, et laisser la grille propre revenait a offrir la galerie entiere
     // en basse definition.
-    const thumbBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.thumb.max,filigrane,'thumb'),GAL_MEDIA_CFG.thumb.mime,GAL_MEDIA_CFG.thumb.quality);
-    const previewBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.preview.max,filigrane,'preview'),GAL_MEDIA_CFG.preview.mime,GAL_MEDIA_CFG.preview.quality);
-    if(!thumbBlob||!previewBlob)throw new Error('Génération des versions impossible');
+    const thumbBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.thumb.max,true,'thumb'),GAL_MEDIA_CFG.thumb.mime,GAL_MEDIA_CFG.thumb.quality);
+    const previewBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.preview.max,true,'preview'),GAL_MEDIA_CFG.preview.mime,GAL_MEDIA_CFG.preview.quality);
+    const clairBlob=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.preview.max,false,'preview'),GAL_MEDIA_CFG.preview.mime,GAL_MEDIA_CFG.preview.quality);
+    if(!thumbBlob||!previewBlob||!clairBlob)throw new Error('Génération des versions impossible');
 
     const assetId=entry.assetId||_galUuid();
     entry.assetId=assetId;
@@ -13651,6 +13669,9 @@ async function _galTraiterFichier(entry){
     const originalPath='media/'+_galAlbum.id+'/'+assetId+'.'+ext;
     const thumbPath=_galAlbum.id+'/'+assetId+'-t.webp';
     const previewPath=_galAlbum.id+'/'+assetId+'-p.webp';
+    // Dans le bucket PRIVE, sous un prefixe dedie : la politique de la v281 lit l'identifiant de
+    // galerie en 2e segment, exactement comme celle des originaux sous media/<galerie>/.
+    const clairPath='apercus-clairs/'+_galAlbum.id+'/'+assetId+'-pc.webp';
 
     // La ligne est créée AVANT le dépôt du fichier : si le même fichier a déjà été déposé,
     // l'index unique (album, checksum) le refuse ici, et on s'arrête sans avoir rien téléversé.
@@ -13678,8 +13699,9 @@ async function _galTraiterFichier(entry){
     await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{status:'processing'}});
     const up2=await _galUpload('galerie-previews',thumbPath,thumbBlob,'image/webp');
     const up3=await _galUpload('galerie-previews',previewPath,previewBlob,'image/webp');
-    if(!up2.ok||!up3.ok){
-      const msg=(up2.error||up3.error||'Envoi des versions impossible');
+    const up4=await _galUpload(GAL_BUCKET_APERCUS_NETS,clairPath,clairBlob,'image/webp');
+    if(!up2.ok||!up3.ok||!up4.ok){
+      const msg=(up2.error||up3.error||up4.error||'Envoi des versions impossible');
       await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{status:'failed',processing_error:msg}});
       setEtat('erreur','Versions : '+msg);return;
     }
@@ -13687,11 +13709,12 @@ async function _galTraiterFichier(entry){
     // 'ready' en dernier, et seulement là : une photo n'apparaît dans une galerie que lorsque ses
     // trois fichiers existent réellement (§7).
     const fin=await sbFetch('media_assets?id=eq.'+assetId,{method:'PATCH',body:{
-      thumb_path:thumbPath,preview_path:previewPath,status:'ready',processing_error:null,
-      // On garde la trace du reglage REELLEMENT applique a cet apercu (v181) : le filigrane se
-      // pose a la fabrication, donc l'activer plus tard ne protege pas ce qui est deja depose.
-      // Sans cette trace, rien ne permettait de le savoir avant de mettre la galerie en vente.
-      preview_watermarked:filigrane,
+      thumb_path:thumbPath,preview_path:previewPath,preview_clair_path:clairPath,
+      status:'ready',processing_error:null,
+      // La trace reste (v181), mais elle vaut desormais toujours `true` : l'apercu PUBLIC est
+      // marque sans exception. Elle sert encore a reperer les photos deposees avant la v282, dont
+      // le public peut etre clair et qu'il faut regenerer.
+      preview_watermarked:true,
     }});
     if(sbErr(fin)){setEtat('erreur','Finalisation : '+(msgErreur(fin,'échec')));return;}
 
@@ -14029,11 +14052,32 @@ function galMenuPhoto(assetId,index){
     </div>`);
 }
 
+// Combien de photos n'ont PAS d'apercu net, et donc resteraient filigranees meme pour une famille
+// qui a paye. Mesure du 26/09 : 2 887 photos sur 2 887, soit tout l'existant — l'apercu net
+// n'existe que depuis ce jour. Le dire ici, au seul endroit ou on peut y remedier.
+function _galBandeauApercusNets(){
+  const zone=document.getElementById('gal-nets');
+  if(!zone)return;
+  const aFaire=(_galAssets||[]).filter(a=>a.status==='ready'&&a.original_path&&!a.preview_clair_path).length;
+  if(!aFaire){zone.style.display='none';zone.innerHTML='';return;}
+  zone.style.display='';
+  zone.innerHTML='<div class="fs" style="border-color:rgba(245,165,36,.3);padding:12px 14px">'
+    +'<div style="font-size:12.5px;color:var(--t1);font-weight:600;margin-bottom:4px">'
+    +aFaire+' photo'+(aFaire>1?'s n\'ont':' n\'a')+' pas encore d\'aperçu net</div>'
+    +'<div style="font-size:11.5px;color:var(--t3);line-height:1.5;margin-bottom:9px">'
+    +'Les familles qui ont pris le Pass, les coachs et le community manager y verront encore le '
+    +'filigrane. Régénérer refabrique les trois versions depuis l\'original, qui n\'est jamais modifié.'
+    +'</div>'
+    +'<button class="btn bg2 bs" style="min-height:38px" onclick="galRegenererApercus()">Régénérer les aperçus</button>'
+    +'</div>';
+}
+
 async function _galChargerAssets(){
   const rows=await sbFetch('rpc/media_album_assets',{method:'POST',body:{p_album_id:_galAlbum.id,p_limit:500,p_offset:0}}).catch(()=>[]);
   _galAssets=Array.isArray(rows)?rows:[];
   const c=document.getElementById('gal-count');
   if(c)c.textContent=_galAssets.filter(a=>a.status==='ready').length+' photo(s) publiable(s) · '+_galAssets.length+' au total';
+  _galBandeauApercusNets();
   _galRenderGrille();
   await _galChargerJoueurs();
 }
@@ -14202,6 +14246,10 @@ async function ouvrirGalerie(albumId){
 
     <section style="margin-bottom:34px">
       <div style="${T}"><span style="${N}">1</span> Photos <span id="gal-count" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3);font-size:12.5px">…</span></div>
+      <!-- 26/09/2026 — Les photos deposees AVANT la v282 n'ont pas d'apercu net : une famille qui
+           paie le Pass y verrait encore le filigrane, et rien ne le dirait. Ce bandeau est le seul
+           endroit ou ca se voit, et il propose l'action qui corrige. -->
+      <div id="gal-nets" style="display:none;margin-bottom:12px"></div>
       <div id="gal-drop"
         ondragover="event.preventDefault();this.style.borderColor='var(--ac)'"
         ondragleave="this.style.borderColor='var(--b1)'"
@@ -14244,10 +14292,19 @@ async function ouvrirGalerie(albumId){
     <details style="border-top:1px solid var(--b1);padding-top:14px;margin-bottom:20px">
       <summary style="cursor:pointer;font-size:12.5px;color:var(--t2);font-weight:600;list-style:revert;min-height:40px;display:flex;align-items:center">Options avancées</summary>
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:14px">
-        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2);cursor:pointer;min-height:40px">
-          <input type="checkbox" id="gal-wm" ${album.watermark_previews!==false?'checked':''} onchange="galBasculerFiligrane(this.checked)">
-          Filigrane SportVision sur les aperçus (jamais sur l’original)
-        </label>
+        <!-- 26/09/2026 — LA CASE « FILIGRANE » EST RETIREE, ET C'EST VOULU.
+             Elle forcait un choix impossible : marque, et ceux qui ont paye le voyaient aussi ;
+             clair, et la galerie partait en 1600 px a qui devinait l'adresse. C'est elle qui
+             obligeait Fouka a decocher/recocher/regenerer avant chaque mise en ligne.
+             Depuis la v282 il y a DEUX apercus : le public, toujours marque, et le clair, prive et
+             garde par media_voit_sans_filigrane. Le filigrane n'est plus un reglage de galerie,
+             c'est une consequence de qui regarde. Rien a decider, donc rien a cocher.
+             La colonne watermark_previews reste en base pour les photos d'avant. -->
+        <div style="font-size:12px;color:var(--t3);line-height:1.5">
+          Le filigrane n'est plus un réglage : l'aperçu public en porte toujours un, et les
+          familles qui ont pris le Pass, les coachs et le community manager voient les photos
+          nettes. L'original n'est jamais marqué.
+        </div>
         <div style="display:flex;gap:9px;flex-wrap:wrap">
           <button class="btn bg2 bs" style="min-height:40px" onclick="galTrierParDate()">Trier par date d’ajout</button>
           <button class="btn bg2 bs" style="min-height:40px" onclick="galRegenererApercus()">Régénérer les aperçus protégés</button>
@@ -14371,18 +14428,14 @@ async function galMettreEnLigne(){
       if(!ok)return;
     }
     offres=[];
-    // Meme garde a la mise en ligne : une galerie offerte ne part pas avec des photos barrees
-    // sans qu'on l'ait dit. Fouka a justement mis en ligne avant de cocher « gratuite ».
-    // « Annuler » arrete la mise en ligne, il ne publie pas en douce des photos barrees : un
-    // bouton nomme « Annuler » qui poursuit l'action est un piege.
-    const marquees=(_galAssets||[]).filter(a=>a.status==='ready'&&a.preview_watermarked===true).length;
-    if(marquees){
-      const regenerer=await demanderConfirmation(
-        marquees+' photo'+(marquees>1?'s portent':' porte')+' encore le filigrane, alors que cette galerie est gratuite.\n\nLe filigrane est appose au depot : il faut regenerer les apercus pour le retirer. Sans cela, les familles ouvriront des photos barrees.',
-        {titre:'Des photos offertes sont filigranees',action:'Regenerer sans filigrane',danger:false});
-      if(regenerer)await galRegenererApercus();
-      return;
-    }
+    // 26/09/2026 — LE SECOND GARDE-FOU DISPARAIT AUSSI, pour la meme raison que celui d'au-dessus.
+    // Il refusait de publier une galerie GRATUITE dont les photos etaient filigranees. C'etait juste
+    // quand gratuit voulait dire net pour tout le monde. Depuis la v281, une galerie offerte par le
+    // contrat Full Communication affiche le filigrane aux familles qui n'ont pas pris le Pass et des
+    // photos nettes aux autres : c'est la regle demandee, pas un defaut a signaler.
+    //
+    // Les deux garde-fous etaient la cause de « a chaque fois je dois decocher recocher pour pouvoir
+    // mettre en ligne ». Les photos finissent de monter, on clique, c'est tout.
   }else{
     offres=_galOffresPourEnregistrement();
     if(!offres)return;
@@ -14395,30 +14448,23 @@ async function galMettreEnLigne(){
   // manquait, alors que c'est la seule qui sort de SportVision. (12/09/2026)
   const nbPretes=(_galAssets||[]).filter(a=>a.status==='ready').length;
 
-  // GALERIE PAYANTE : des apercus sans filigrane partiraient en clair, en 1600 px (12/09/2026).
-  // Le filigrane se pose a la fabrication de l'apercu, donc l'activer apres un depot ne protege
-  // rien de ce qui est deja la. On le dit ici, au seul moment ou ca compte.
+  // 26/09/2026 — LE GARDE-FOU QUI BLOQUAIT LA MISE EN LIGNE EST RETIRE, ET C'EST UN CORRECTIF.
   //
-  // 13/09/2026 — Deux trous trouves a l'audit, tous deux dans le sens qui coute de l'argent :
-  //   • `status!=='published'` : l'alerte ne sortait qu'a la PREMIERE mise en ligne. Publier une
-  //     galerie gratuite puis lui ajouter une offre payante ne declenchait rien, alors que c'est
-  //     le chemin le plus naturel (« finalement, on la vend »).
-  //   • `watermark_previews!==false` : filigrane decoche ET galerie payante, silence complet.
-  //     C'etait pourtant le cas le plus grave, pas une exception a ignorer.
-  if(!gratuit){
-    const filigraneCoupe=_galAlbum.watermark_previews===false;
-    const nus=(_galAssets||[]).filter(a=>a.status==='ready'&&a.preview_watermarked!==true).length;
-    if(nus){
-      const deja=_galAlbum.status==='published';
-      const regenerer=await demanderConfirmation(
-        nus+' photo'+(nus>1?'s ont':' a')+' un apercu SANS filigrane, alors que cette galerie est payante.'
-        +(deja?'\n\nCette galerie est deja en ligne : ces apercus sont visibles en ce moment meme.':'')
-        +(filigraneCoupe?'\n\nLe filigrane est decoche pour cette galerie. Recochez-le avant de regenerer, sinon les nouveaux apercus repartiront en clair.':'')
-        +'\n\nLe filigrane est appose au moment du depot : l\'activer ensuite ne protege pas les photos deja versees. Telles quelles, elles sont visibles en grand et telechargeables sans payer.\n\nRegenerer les apercus prend quelques secondes par photo.',
-        {titre:'Des apercus ne sont pas proteges',action:filigraneCoupe?'Regenerer quand meme':'Regenerer maintenant',danger:deja});
-      if(regenerer){ await galRegenererApercus(); return; }
-    }
-  }
+  // Il refusait de publier une galerie payante dont des apercus etaient clairs, et conseillait de
+  // recocher le filigrane avant de regenerer. Il avait raison tant qu'il n'y avait QU'UN fichier :
+  // un apercu clair public, c'etait la galerie offerte en 1600 px.
+  //
+  // Fouka : « a chaque fois que je mets des photos je dois decocher recocher pour pouvoir mettre en
+  // ligne ; j'aimerais que quand les photos finissent de telecharger je puisse directement cliquer
+  // sur mettre en ligne ». Il subissait cette danse a chaque depot.
+  //
+  // Depuis la v282, l'apercu PUBLIC est toujours marque et le clair vit dans le bucket prive,
+  // garde par media_voit_sans_filigrane. Le danger a disparu, donc l'avertissement aussi : le
+  // laisser aurait ete un obstacle sans objet, et un obstacle sans objet finit par etre clique
+  // sans etre lu.
+  //
+  // CE QUI RESTE A SURVEILLER : les photos deposees AVANT cette version peuvent avoir un apercu
+  // public clair. C'est l'objet du bandeau de l'ecran de galerie, qui propose de les regenerer.
 
   if(_galAlbum.status!=='published'){
     if(!nbPretes){
@@ -14527,9 +14573,11 @@ async function _galPeutTarifer(){
 async function galRegenererApercus(){
   const total=_galAssets.filter(a=>a.status==='ready'&&a.original_path).length;
   if(!total){toast('Aucune photo a regenerer.','error');return;}
-  if(!await demanderConfirmation('Regenerer les apercus de '+total+' photo(s) ?\n\nLes originaux ne sont pas modifies. Les vignettes et apercus publics seront remplaces par des versions filigranees avec le reglage actuel.',{titre:'Regenerer les apercus',action:'Regenerer',danger:false}))return;
+  if(!await demanderConfirmation('Regenerer les apercus de '+total+' photo(s) ?\n\nLes originaux ne sont pas modifies. Trois versions sont refabriquees : la vignette et l\'apercu publics, tous deux filigranes, et l\'apercu NET reserve aux coachs, au community manager et aux familles qui ont pris le Pass.',{titre:'Regenerer les apercus',action:'Regenerer',danger:false}))return;
 
-  const filigrane=_galAlbum.watermark_previews!==false;
+  // 26/09/2026 — Le filigrane n'est plus un reglage : le public en porte toujours un, le clair
+  // jamais. C'est aussi ce qui rattrape les photos deposees avant la v282, qui n'ont pas d'apercu
+  // net du tout — sans ce passage, une famille qui paie le Pass verrait encore des photos barrees.
   let faits=0, echecs=0;
   const zone=document.getElementById('gal-count');
   const avancement=()=>{ if(zone)zone.textContent='Regeneration '+(faits+echecs)+' / '+total+'…'; };
@@ -14545,9 +14593,11 @@ async function galRegenererApercus(){
       const blob=await (await fetch(signed)).blob();
       const bitmap=await createImageBitmap(blob);
 
-      const thumb=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.thumb.max,filigrane,'thumb'),GAL_MEDIA_CFG.thumb.mime,GAL_MEDIA_CFG.thumb.quality);
-      const preview=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.preview.max,filigrane,'preview'),GAL_MEDIA_CFG.preview.mime,GAL_MEDIA_CFG.preview.quality);
-      if(!thumb||!preview)throw new Error('generation impossible');
+      const thumb=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.thumb.max,true,'thumb'),GAL_MEDIA_CFG.thumb.mime,GAL_MEDIA_CFG.thumb.quality);
+      const preview=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.preview.max,true,'preview'),GAL_MEDIA_CFG.preview.mime,GAL_MEDIA_CFG.preview.quality);
+      const clair=await _galToBlob(_galDessiner(bitmap,GAL_MEDIA_CFG.preview.max,false,'preview'),GAL_MEDIA_CFG.preview.mime,GAL_MEDIA_CFG.preview.quality);
+      if(!thumb||!preview||!clair)throw new Error('generation impossible');
+      const clairPath=a.preview_clair_path||('apercus-clairs/'+_galAlbum.id+'/'+a.id+'-pc.webp');
 
       // Meme chemin, en ecrasement : les liens deja envoyes continuent de fonctionner, et le
       // navigateur des familles recupere la version protegee au prochain chargement.
@@ -14555,9 +14605,15 @@ async function galRegenererApercus(){
       // aux familles continuent de fonctionner et servent la version protegee.
       const u1=await sbUpload('galerie-previews',a.thumb_path,thumb);
       const u2=await sbUpload('galerie-previews',a.preview_path,preview);
-      if(!u1||!u2)throw new Error('envoi impossible');
-      // La trace suit le fichier : c'est elle que le controle avant mise en ligne regarde (v181).
-      await sbFetch('media_assets?id=eq.'+a.id,{method:'PATCH',body:{preview_watermarked:filigrane}});
+      const u3=await sbUpload(GAL_BUCKET_APERCUS_NETS,clairPath,clair);
+      if(!u1||!u2||!u3)throw new Error('envoi impossible');
+      // La trace suit le fichier. Elle vaut desormais toujours `true` cote public, et le chemin du
+      // net est enregistre : sans lui, la base ne saurait pas que la version nette existe et
+      // continuerait a servir l'apercu marque a ceux qui ont paye.
+      await sbFetch('media_assets?id=eq.'+a.id,{method:'PATCH',body:{
+        preview_watermarked:true, preview_clair_path:clairPath,
+      }});
+      a.preview_clair_path=clairPath;
       bitmap.close&&bitmap.close();
       faits++;
     }catch(e){
@@ -15018,14 +15074,11 @@ function galQrCode(url){
   `);
 }
 
-async function galBasculerFiligrane(actif){
-  const r=await sbFetch('media_albums?id=eq.'+_galAlbum.id,{method:'PATCH',body:{watermark_previews:!!actif}});
-  if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'modification impossible')),'error');return;}
-  _galAlbum.watermark_previews=!!actif;
-  // Les aperçus déjà produits ne sont pas régénérés : le réglage vaut pour les dépôts suivants.
-  // Le dire plutôt que de laisser croire à un effet rétroactif.
-  toast(actif?'Filigrane activé pour les prochains dépôts':'Filigrane désactivé pour les prochains dépôts','ok');
-}
+// galBasculerFiligrane a ete SUPPRIMEE le 26/09/2026. Plus aucun ecran ne l'appelait depuis le
+// retrait de la case a cocher, et elle ecrivait watermark_previews — un reglage qui n'a plus
+// d'effet sur rien depuis que l'apercu public est toujours marque et le net toujours fabrique.
+// Une fonction morte qui ecrit encore en base est une trappe : quelqu'un la rebranche un jour en
+// croyant qu'elle fait quelque chose.
 
 // Galerie gratuite : visible par le club sans achat (access_mode='free_members', vérifié cote
 // serveur par can_access_media() — inutile de créer une offre). Le filigrane, pensé pour protéger
@@ -15043,31 +15096,19 @@ async function galBasculerGratuit(actif){
   if(zoneOffres)zoneOffres.style.display=actif?'none':'';
   if(zoneActions)zoneActions.style.display=actif?'none':'';
 
-  if(actif&&_galAlbum.watermark_previews!==false){
-    const wm=document.getElementById('gal-wm');
-    if(wm)wm.checked=false;
-    await galBasculerFiligrane(false);
-  }
-
   toast(actif?'Galerie gratuite : aucune offre requise pour la mettre en ligne.':'Galerie payante : au moins une offre est requise.','ok');
   _galRendreFinal();
 
-  // 14/09/2026, defaut signale par Fouka : « j'ai cree des galeries gratuites mais il y a le
-  // filigrane ». Decocher le filigrane ne vaut que pour les PROCHAINS depots : il est appose a la
-  // fabrication de l'apercu, pas a l'affichage. Les photos deja versees restent donc marquees, et
-  // rien ne le disait — la galerie s'annoncait gratuite en affichant des photos barrees.
+  // 26/09/2026 — LE BLOC DU 14/09 EST RETIRE, ET LE DEFAUT QU'IL CORRIGEAIT N'EXISTE PLUS.
   //
-  // C'est le symetrique exact de l'alerte deja en place a la mise en ligne d'une galerie PAYANTE
-  // dont les apercus sont nus. Le meme oubli, dans l'autre sens ; il manquait de ce cote.
-  if(actif){
-    const marquees=(_galAssets||[]).filter(a=>a.status==='ready'&&a.preview_watermarked===true).length;
-    if(marquees){
-      const regenerer=await demanderConfirmation(
-        marquees+' photo'+(marquees>1?'s portent':' porte')+' encore le filigrane.\n\nIl est appose au moment du depot : le decocher maintenant ne retire rien de ce qui est deja la. Cette galerie est offerte, elle afficherait des photos barrees.\n\nRegenerer les apercus prend quelques secondes par photo.',
-        {titre:'Retirer le filigrane des photos deja versees ?',action:'Regenerer sans filigrane'});
-      if(regenerer)await galRegenererApercus();
-    }
-  }
+  // Il repondait a « j'ai cree des galeries gratuites mais il y a le filigrane » en decochant le
+  // filigrane et en proposant de regenerer. C'etait la bonne reponse quand il n'y avait qu'un
+  // apercu : gratuit voulait dire net pour tout le monde.
+  //
+  // Desormais gratuit ne veut plus dire net. Une galerie offerte par le contrat Full Communication
+  // affiche des apercus MARQUES aux familles qui n'ont pas pris le Pass, et nets aux autres : c'est
+  // exactement la regle demandee le 26/09. Decocher un filigrane qui n'est plus un reglage n'aurait
+  // aucun sens, et regenerer sans filigrane rendrait la galerie entiere gratuite en 1600 px.
 }
 
 async function galDefinirCouverture(assetId){

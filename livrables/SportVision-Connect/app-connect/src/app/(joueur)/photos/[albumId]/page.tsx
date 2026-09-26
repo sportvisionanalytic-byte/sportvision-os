@@ -9,7 +9,10 @@ import { fetchPhotoAlbums } from "@/lib/supabase/photoPass";
 // « Mes photos » dans une galerie (migrations v160 et v162), côté joueur.
 // Même règle que côté parent : la base ne rend que les rattachements validés par une personne, et
 // seulement au joueur lui-même. Tant que l'accès n'est pas acheté, on n'en montre que six.
-const APERCU_MAX = 6;
+// 26/09/2026 — LA COUPE N'EST PLUS FAITE ICI. La base ne rend que quatre photos à qui n'a pas pris
+// le Pass (v282), et le vrai total à côté. Couper une seconde fois ici aurait masqué des photos
+// qu'on a le droit de voir ; et surtout, une limite posée dans la page se contourne en rejouant la
+// requête, alors que ces photos se vendent.
 
 export default async function MesPhotosDansUnAlbumPage({
   params,
@@ -34,15 +37,18 @@ export default async function MesPhotosDansUnAlbumPage({
   const saisonId = (membership?.saison_id as string | null) || null;
   if (!saisonId) notFound();
 
-  const [photos, albums] = await Promise.all([
+  const [mesPhotos, albums] = await Promise.all([
     fetchPhotosDuJoueur(supabase, albumId, player.playerId),
     fetchPhotoAlbums(supabase, player.club.id, player.club.team.id, saisonId),
   ]);
   const album = albums.find((a) => a.id === albumId);
   if (!album) notFound();
 
-  const visibles = album.unlocked ? photos : photos.slice(0, APERCU_MAX);
-  const restantes = photos.length - visibles.length;
+  // Tout ce que la base a rendu est affichable : c'est elle qui a déjà décidé combien.
+  const photos = mesPhotos.photos;
+  const visibles = photos;
+  // Ce qui manque, et c'est le chiffre qui fait acheter : le total vrai moins ce qu'on montre.
+  const restantes = Math.max(0, mesPhotos.total - photos.length);
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
@@ -76,12 +82,12 @@ export default async function MesPhotosDansUnAlbumPage({
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {visibles.map((p) => (
+            {visibles.map((p: (typeof photos)[number]) => (
               <div key={p.assetId} className="overflow-hidden rounded-sv border border-border bg-surface">
                 {p.thumbPath || p.previewPath ? (
                   // eslint-disable-next-line @next/next/no-img-element -- aperçu distant, pas un domaine autorisé pour next/image
                   <img
-                    src={publicMediaUrl((p.previewPath ?? p.thumbPath)!)}
+                    src={p.previewNetUrl ?? publicMediaUrl((p.previewPath ?? p.thumbPath)!)}
                     alt=""
                     loading="lazy"
                     className="aspect-[4/3] w-full object-cover"

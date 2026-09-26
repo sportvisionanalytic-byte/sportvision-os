@@ -17,7 +17,10 @@ import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
 import { C, E, R } from "../../../src/theme/couleurs";
 
-const APERCU_MAX = 6;
+// 26/09/2026 — LA COUPE N'EST PLUS FAITE ICI. La base ne rend que quatre photos a qui n'a pas pris
+// le Pass (v282), et le vrai total a cote. Couper une seconde fois dans l'ecran aurait masque des
+// photos qu'on a le droit de voir, et surtout : une limite posee dans l'application se contourne en
+// rejouant la requete, alors que ces photos se vendent.
 
 export default function Galerie() {
   const { id, titre, joueur, ouverte, club, pourEnfant } = useLocalSearchParams<{
@@ -29,6 +32,7 @@ export default function Galerie() {
   const deverrouillee = ouverte === "1";
 
   const [photos, setPhotos] = useState<PhotoDuJoueur[]>([]);
+  const [total, setTotal] = useState(0);
   const [chargement, setChargement] = useState(true);
   const [agrandie, setAgrandie] = useState<PhotoDuJoueur | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -42,8 +46,11 @@ export default function Galerie() {
     if (!id || !joueur) { setChargement(false); return; }
     setChargement(true);
     setPanne(false);
-    try { setPhotos(await lirePhotosDuJoueur(id, joueur)); }
-    catch { setPanne(true); setPhotos([]); }
+    try {
+      const r = await lirePhotosDuJoueur(id, joueur);
+      setPhotos(r.photos); setTotal(r.total);
+    }
+    catch { setPanne(true); setPhotos([]); setTotal(0); }
     finally { setChargement(false); }
   }, [id, joueur]);
 
@@ -88,8 +95,10 @@ export default function Galerie() {
     Linking.openURL(lien);
   }
 
-  const visibles = deverrouillee || ouvertMaintenant ? photos : photos.slice(0, APERCU_MAX);
-  const restantes = photos.length - visibles.length;
+  // Tout ce que la base a rendu est affichable : c'est elle qui a deja decide combien.
+  const visibles = photos;
+  // Ce qui manque, et c'est le chiffre qui fait acheter : le total vrai moins ce qu'on montre.
+  const restantes = Math.max(0, total - photos.length);
   const largeur = (Dimensions.get("window").width - E.l * 2 - E.s * 2) / 3;
 
   return (

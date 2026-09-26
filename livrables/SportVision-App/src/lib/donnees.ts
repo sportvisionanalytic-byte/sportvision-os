@@ -377,6 +377,20 @@ export function urlApercu(chemin: string): string {
 export interface PhotoDuJoueur {
   id: string;
   url: string;
+  /** L'apercu est-il net ? Faux = il porte le filigrane, et il n'y en a que quelques-uns. */
+  net: boolean;
+}
+
+/** Ce que la base rend pour une galerie : les photos servies, et le VRAI total.
+ *
+ *  Les deux sont necessaires et distincts. Sans Pass, la base ne rend que quatre lignes (v282, la
+ *  limite est en base et non ici : une limite cote ecran se contourne en rejouant la requete, et
+ *  ces photos se vendent). L'ecran doit pourtant pouvoir dire « 37 autres photos de vous » — d'ou
+ *  `total`, qui compte tout meme quand on n'en sert que quatre. Sans lui, il annoncerait « 0 autre »
+ *  et laisserait croire qu'il n'y en a pas plus, exactement l'inverse de l'effet voulu. */
+export interface PhotosDuJoueur {
+  photos: PhotoDuJoueur[];
+  total: number;
 }
 
 /**
@@ -384,14 +398,69 @@ export interface PhotoDuJoueur {
  * rattachements valides par une personne, et seulement au joueur lui-meme ou a son parent
  * confirme : l'application ne refait pas ce controle, elle s'y fie.
  */
-export async function lirePhotosDuJoueur(albumId: string, playerId: string): Promise<PhotoDuJoueur[]> {
-  if (MODE_DEMO) return PHOTOS_DEMO;
+/** Le bucket des apercus NETS. Prive, et c'est tout l'interet : la politique de storage (v281)
+ *  decide qui peut lire, donc une adresse qui circule ne sert a rien a qui n'y a pas droit. */
+const BUCKET_NETS = "sportvision-media-prive";
+
+/**
+ * Des adresses utilisables pour les apercus nets.
+ *
+ * POURQUOI SIGNER, ET POURQUOI EN UN SEUL APPEL. Un bucket prive ne repond pas a une balise image :
+ * le point d'acces authentifie veut un en-tete Authorization, qu'aucun <Image> n'envoie. On demande
+ * donc des adresses signees — et la signature elle-meme passe par la politique de lecture, donc un
+ * compte sans droit n'obtient rien, meme s'il connait le chemin.
+ *
+ * `createSignedUrls` au pluriel : une galerie peut contenir cent photos, et cent allers-retours au
+ * bord d'un terrain en 4G, c'est l'ecran qui ne s'affiche jamais.
+ *
+ * Une signature qui echoue n'est PAS une erreur d'ecran : on retombe sur l'apercu public, filigrane.
+ * Mieux vaut une photo barree qu'une case vide.
+ */
+async function signerLesNets(chemins: string[]): Promise<Map<string, string>> {
+  const par = new Map<string, string>();
+  if (!chemins.length) return par;
+  try {
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NETS)
+      .createSignedUrls(chemins, 60 * 60);
+    if (error || !Array.isArray(data)) return par;
+    for (const d of data) {
+      if (d?.path && d?.signedUrl) par.set(d.path, d.signedUrl);
+    }
+  } catch { /* on retombe sur l'apercu public */ }
+  return par;
+}
+
+export async function lirePhotosDuJoueur(
+  albumId: string, playerId: string,
+): Promise<PhotosDuJoueur> {
+  if (MODE_DEMO) return { photos: PHOTOS_DEMO, total: PHOTOS_DEMO.length };
   const { data, error } = await supabase.rpc("media_photos_du_joueur", {
     p_album_id: albumId, p_player_id: playerId,
   });
   if (error) { await refermerSiPerdue(error); throw new ErreurChargement(error); }
-  if (!Array.isArray(data)) return [];
-  return (data as { asset_id: string; preview_path: string | null; thumb_path: string | null }[])
-    .map((r) => ({ id: r.asset_id, url: urlApercu((r.preview_path ?? r.thumb_path) ?? "") }))
+  if (!Array.isArray(data)) return { photos: [], total: 0 };
+
+  type Ligne = {
+    asset_id: string; preview_path: string | null; thumb_path: string | null;
+    preview_clair_path: string | null; total: number | null;
+  };
+  const lignes = data as Ligne[];
+  // La base ne rend un chemin net qu'a qui y a droit : s'il y en a, on les signe tous d'un coup.
+  const signees = await signerLesNets(
+    lignes.map((r) => r.preview_clair_path).filter((c): c is string => !!c),
+  );
+  const photos = lignes
+    .map((r) => {
+      const net = r.preview_clair_path ? signees.get(r.preview_clair_path) : undefined;
+      return {
+        id: r.asset_id,
+        url: net ?? urlApercu((r.preview_path ?? r.thumb_path) ?? ""),
+        net: !!net,
+      };
+    })
     .filter((p) => !!p.url);
+  // Le total vient de la base, jamais de la longueur de la liste : c'est toute la difference entre
+  // « 4 photos » et « 4 photos sur 41 ».
+  return { photos, total: Number(lignes[0]?.total ?? photos.length) };
 }
