@@ -149,8 +149,17 @@ export default function Galerie() {
             <Ionicons name="lock-closed" size={16} color={C.alerte} />
             <Text style={s.bloqueTexte}>
               {restantes === 1 ? "1 autre photo de vous" : `${restantes} autres photos de vous`} dans
-              cette galerie. Votre accès s'ouvre ici, ou auprès de votre club si vous préférez
-              régler avec lui.
+              cette galerie.{" "}
+              {/* LE TEXTE DÉPEND DU BOUTON, ET C'EST UN CORRECTIF (26/09/2026).
+                  Il annonçait « votre accès s'ouvre ici » en toutes circonstances, alors que le
+                  bouton n'apparaît que si le magasin connaît vraiment le produit. Sur un appareil
+                  où il manque, l'écran promettait donc quelque chose qu'il ne tenait pas — et
+                  Fouka l'a constaté avant moi : « je vois toujours pas où payer le pass ».
+                  Sans bouton, on décrit le fonctionnement sans inviter à acheter ailleurs : c'est
+                  permis par la règle 3.1.1, contrairement à un renvoi vers un paiement externe. */}
+              {pass
+                ? "Votre accès s'ouvre ici, ou auprès de votre club si vous préférez régler avec lui."
+                : "Votre accès est géré par votre club : il s'ouvre dès qu'il est actif."}
             </Text>
           </View>
         ) : null}
