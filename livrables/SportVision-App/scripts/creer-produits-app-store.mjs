@@ -130,14 +130,17 @@ console.log(`${deja.size} achat(s) intégré(s) déjà déclaré(s).`);
 let echecs = 0;
 
 for (const p of PRODUITS) {
-  if (deja.has(p.productId)) {
-    console.log(`= ${p.productId} existe déjà (${deja.get(p.productId)}), rien à faire.`);
-    continue;
-  }
+  // 26/09/2026 — DEFAUT DE LA PREMIERE VERSION : un produit deja cree faisait `continue`, donc le
+  // libelle et le prix n'etaient jamais poses. Or c'est exactement l'etat ou le script se retrouve
+  // apres un echec partiel : les deux produits existaient, sans prix, et le relancer ne reparait
+  // rien. Un script de rattrapage qui saute les etapes restantes ne rattrape rien.
+  let id = deja.get(p.productId) ?? null;
+  if (id) console.log(`= ${p.productId} existe déjà (${id}), on complète ce qui manque.`);
 
   // ── 3. Créer le consommable ─────────────────────────────────────────────────
   // CONSUMABLE et non NON_CONSUMABLE : une famille peut racheter un Pass la saison suivante, ou pour
   // un second enfant. Un non-consommable ne s'achète qu'une fois par compte Apple, pour toujours.
+  if (!id) {
   const cree = await appel("POST", "/v2/inAppPurchases", {
     data: {
       type: "inAppPurchases",
@@ -149,7 +152,9 @@ for (const p of PRODUITS) {
           "Pass Photo : donne accès aux photos de l'enfant prises par SportVision lors des matchs "
           + "de son club. Pour le tester, ouvrir Mes photos, choisir une galerie, puis « Débloquer "
           + "mon Pass Photo ».",
-        availableInAllTerritories: true,
+        // `availableInAllTerritories` N'EXISTE PAS sur cette ressource : Apple a repondu « unknown
+        // attribute » a la premiere tentative. La disponibilite par territoire se regle par le
+        // calendrier de prix (etape 5), ou l'on designe la France comme territoire de base.
       },
       relationships: { app: { data: { type: "apps", id: app.id } } },
     },
@@ -159,8 +164,9 @@ for (const p of PRODUITS) {
     echecs++;
     continue;
   }
-  const id = cree.json?.data?.id;
+  id = cree.json?.data?.id;
   console.log(`+ ${p.productId} créé (${id})`);
+  }
 
   // ── 4. Le nom affiché et la description ─────────────────────────────────────
   const loc = await appel("POST", "/v1/inAppPurchaseLocalizations", {
@@ -169,7 +175,9 @@ for (const p of PRODUITS) {
       attributes: {
         locale: "fr-FR",
         name: "Pass Photo saison 2026-2027",
-        description: "Accès à vos photos de la saison, dans l'application et sur le web.",
+        // 55 CARACTERES MAXIMUM. Apple a refuse la premiere version, plus longue. Compte tenu
+        // avant d'ecrire : « Vos photos de la saison, dans l'app et sur le web. » fait 54.
+        description: "Vos photos de la saison, dans l'app et sur le web.",
       },
       relationships: { inAppPurchaseV2: { data: { type: "inAppPurchases", id } } },
     },
@@ -179,13 +187,22 @@ for (const p of PRODUITS) {
   // ── 5. Le prix ──────────────────────────────────────────────────────────────
   // Apple ne prend pas un montant : il prend un « price point », son propre palier. On cherche donc
   // celui qui correspond en France, et on refuse de deviner si aucun ne colle exactement.
-  const points = await appel(
-    "GET",
-    `/v2/inAppPurchases/${id}/pricePoints?filter[territory]=FRA&limit=200`,
-  );
-  const palier = (points.json?.data ?? []).find(
-    (x) => Number(x.attributes?.customerPrice) === p.prixCible,
-  );
+  // LES PALIERS SONT PAGINES, et c'est ce qui m'a fait conclure a tort qu'aucun palier a 39,99 €
+  // n'existait en France : il n'etait simplement pas dans les 200 premiers. On suit `links.next`
+  // jusqu'a trouver, plutot que de deduire une absence d'une premiere page.
+  let palier = null;
+  let suivant = `/v2/inAppPurchases/${id}/pricePoints?filter[territory]=FRA&limit=200`;
+  let pages = 0;
+  while (suivant && !palier && pages < 30) {
+    const page = await appel("GET", suivant);
+    if (!page.ok) break;
+    palier = (page.json?.data ?? []).find(
+      (x) => Number(x.attributes?.customerPrice) === p.prixCible,
+    ) ?? null;
+    const url = page.json?.links?.next;
+    suivant = url ? url.replace(API, "") : null;
+    pages++;
+  }
   if (!palier) {
     console.error(
       `  ! aucun palier à ${p.prixCible} € en France. `
@@ -199,13 +216,14 @@ for (const p of PRODUITS) {
       type: "inAppPurchasePriceSchedules",
       relationships: {
         inAppPurchase: { data: { type: "inAppPurchases", id } },
-        manualPrices: { data: [{ type: "inAppPurchasePrices", id: "prix-1" }] },
+        // La forme ${...} est imposee pour une creation en ligne : Apple refuse « prix-1 » nu.
+        manualPrices: { data: [{ type: "inAppPurchasePrices", id: "${prix-1}" }] },
         baseTerritory: { data: { type: "territories", id: "FRA" } },
       },
     },
     included: [{
       type: "inAppPurchasePrices",
-      id: "prix-1",
+      id: "${prix-1}",
       attributes: { startDate: null, endDate: null },
       relationships: { inAppPurchasePricePoint: { data: { type: "inAppPurchasePricePoints", id: palier.id } } },
     }],
