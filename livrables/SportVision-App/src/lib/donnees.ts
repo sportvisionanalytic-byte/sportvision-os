@@ -504,3 +504,70 @@ export async function lireEtatReconnaissance(playerId: string): Promise<EtatReco
     photosTrouvees: Number(r.photos_trouvees ?? 0),
   };
 }
+
+
+/**
+ * La dernière marche : « est-ce bien vous ? »
+ *
+ * Fouka décrit le parcours : « acheter le pass, une fois que tu as acheté le pass il dépose sa photo
+ * de référence pour le retrouver, et après s'il y a des photos il peut mettre oui c'est bien moi ».
+ *
+ * La base ne rend cette liste QU'À qui a pris le Pass (v287) : avant, elle servait la galerie entière
+ * à n'importe quelle famille et contournait le plafond de quatre photos. Personne ne l'appelait, donc
+ * personne n'en a profité, mais la porte était ouverte.
+ *
+ * `suggeree` marque ce que la reconnaissance a proposé sans qu'on ait tranché — c'est par là que
+ * l'écran commence : trois photos à confirmer valent mieux que cent à faire défiler.
+ */
+export interface PhotoAIdentifier {
+  id: string;
+  url: string;
+  net: boolean;
+  /** La reconnaissance pense que c'est ce joueur, personne ne l'a encore confirmé. */
+  suggeree: boolean;
+  /** Déjà confirmée comme étant la sienne. */
+  mienne: boolean;
+}
+
+export async function lirePhotosAIdentifier(
+  albumId: string, playerId: string,
+): Promise<PhotoAIdentifier[]> {
+  if (MODE_DEMO) return [];
+  const { data, error } = await supabase.rpc("media_galerie_a_identifier", {
+    p_album_id: albumId, p_player_id: playerId,
+  });
+  if (error || !Array.isArray(data)) return [];
+  type Ligne = {
+    asset_id: string; preview_path: string | null; thumb_path: string | null;
+    preview_clair_path: string | null; suggeree: boolean; mienne: boolean;
+  };
+  const lignes = data as Ligne[];
+  const signees = await signerLesNets(
+    lignes.map((r) => r.preview_clair_path).filter((c): c is string => !!c),
+  );
+  return lignes.map((r) => {
+    const net = r.preview_clair_path ? signees.get(r.preview_clair_path) : undefined;
+    return {
+      id: r.asset_id,
+      url: net ?? urlApercu((r.preview_path ?? r.thumb_path) ?? ""),
+      net: !!net,
+      suggeree: !!r.suggeree,
+      mienne: !!r.mienne,
+    };
+  }).filter((p) => !!p.url);
+}
+
+/**
+ * Répondre « c'est moi » ou « ce n'est pas moi » sur une photo.
+ *
+ * Rend `false` sans lever : un refus se dit à l'écran, il ne fait pas tomber la grille de photos que
+ * la personne était en train de trier.
+ */
+export async function repondreCestMoi(
+  assetId: string, playerId: string, cestMoi: boolean,
+): Promise<boolean> {
+  const { error } = await supabase.rpc("media_famille_marque", {
+    p_asset_id: assetId, p_player_id: playerId, p_cest_lui: cestMoi,
+  });
+  return !error;
+}

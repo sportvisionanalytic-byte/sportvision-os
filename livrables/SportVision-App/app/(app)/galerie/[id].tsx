@@ -12,8 +12,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  lireEtatReconnaissance, lirePhotosDuJoueur,
-  type EtatReconnaissance, type PhotoDuJoueur,
+  lireEtatReconnaissance, lirePhotosAIdentifier, lirePhotosDuJoueur, repondreCestMoi,
+  type EtatReconnaissance, type PhotoAIdentifier, type PhotoDuJoueur,
 } from "../../../src/lib/donnees";
 import { acheterPass, passProposable, reprendreAchatsEnAttente, type PassProposable } from "../../../src/lib/achat-pass";
 import { cheminReconnaissanceEnfant } from "../../../src/lib/connect";
@@ -47,6 +47,8 @@ export default function Galerie() {
   const [achatEnCours, setAchatEnCours] = useState(false);
   const [ouvertMaintenant, setOuvertMaintenant] = useState(false);
   const [reco, setReco] = useState<EtatReconnaissance | null>(null);
+  const [aTrancher, setATrancher] = useState<PhotoAIdentifier[]>([]);
+  const [enCours, setEnCours] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     if (!id || !joueur) { setChargement(false); return; }
@@ -76,14 +78,33 @@ export default function Galerie() {
         charger();
         return;
       }
-      const [p, e] = await Promise.all([
+      const [p, e, t] = await Promise.all([
         passProposable(club, joueur),
         lireEtatReconnaissance(joueur),
+        // Ne rend rien tant que le Pass n'est pas pris (v287) : inutile de conditionner ici.
+        lirePhotosAIdentifier(id, joueur),
       ]);
-      if (vivant) { setPass(p); setReco(e); }
+      if (vivant) {
+        setPass(p); setReco(e);
+        // On ne propose a trancher QUE ce que la machine a suggere. Faire defiler cent photos dont
+        // on ne dit rien n'est pas une question, c'est une corvee.
+        setATrancher(t.filter((x) => x.suggeree && !x.mienne));
+      }
     })();
     return () => { vivant = false; };
   }, [club, joueur, enfant, charger]);
+
+  async function repondre(photo: PhotoAIdentifier, cestMoi: boolean) {
+    if (!joueur) return;
+    setEnCours(photo.id);
+    const ok = await repondreCestMoi(photo.id, joueur, cestMoi);
+    setEnCours(null);
+    if (!ok) { setErreur("Votre réponse n'a pas pu être enregistrée. Réessayez."); return; }
+    // La photo quitte la file, qu'on ait dit oui ou non : dans les deux cas elle est tranchee.
+    setATrancher((l) => l.filter((x) => x.id !== photo.id));
+    // « C'est moi » ajoute une photo a mes photos : on relit.
+    if (cestMoi) charger();
+  }
 
   async function lancerAchat() {
     if (!pass) return;
@@ -208,6 +229,55 @@ export default function Galerie() {
             d'acheter le pass photo ».
             Une famille doit pouvoir prendre le Pass AVANT que son enfant soit reconnu : c'est meme
             l'ordre naturel, elle paie puis les photos arrivent. */}
+        {/* « EST-CE BIEN VOUS ? » — la derniere marche du parcours decrit par Fouka.
+            Elle vient AVANT le verrou et avant l'achat dans l'ecran, parce que c'est la seule qui
+            demande quelque chose a la personne : tout le reste est de l'information.
+            La base ne rend ces photos qu'a qui a pris le Pass (v287), donc ce bloc n'apparait jamais
+            avant l'achat — aucune condition a ecrire ici. */}
+        {aTrancher.length ? (
+          <View style={{ gap: E.s }}>
+            <Text style={s.sousTitre}>
+              {aTrancher.length === 1
+                ? "Une photo pourrait être vous"
+                : `${aTrancher.length} photos pourraient être vous`}
+            </Text>
+            <Text style={s.bloqueTexte}>
+              Votre réponse sert à vous retrouver sur les prochaines. Personne d'autre ne la voit.
+            </Text>
+            {aTrancher.slice(0, 1).map((photo) => (
+              <View key={photo.id} style={{ gap: E.s }}>
+                <Pressable onPress={() => setAgrandie(photo)} accessibilityRole="imagebutton" accessibilityLabel="Agrandir cette photo">
+                  <Image
+                    source={{ uri: photo.url }}
+                    style={{ width: "100%", height: 260, borderRadius: R.m, backgroundColor: C.surface }}
+                    contentFit="cover"
+                    transition={140}
+                  />
+                </Pressable>
+                <View style={{ flexDirection: "row", gap: E.s }}>
+                  <Pressable
+                    accessibilityRole="button" accessibilityLabel="Oui, c'est moi"
+                    disabled={enCours === photo.id}
+                    onPress={() => repondre(photo, true)}
+                    style={({ pressed }) => [s.action, { flex: 1 }, pressed || enCours === photo.id ? { opacity: 0.85 } : null]}
+                  >
+                    {enCours === photo.id ? <ActivityIndicator color="#fff" />
+                      : <Text style={s.actionTexte}>Oui, c'est moi</Text>}
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button" accessibilityLabel="Non, ce n'est pas moi"
+                    disabled={enCours === photo.id}
+                    onPress={() => repondre(photo, false)}
+                    style={({ pressed }) => [s.action, s.actionCreuse, { flex: 1 }, pressed ? { opacity: 0.85 } : null]}
+                  >
+                    <Text style={[s.actionTexte, { color: C.texte }]}>Non</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {/* 26/09/2026, SECONDE CORRECTION DU MEME BLOC — et celle-ci vient d'une mesure.
             Je conditionnais l'offre du Pass a « la galerie n'est pas deverrouillee ». Or en Full
             Communication elle l'est POUR TOUT LE MONDE : le contrat du club donne le droit de voir.
@@ -307,6 +377,11 @@ const s = StyleSheet.create({
   bloqueTexte: { flex: 1, color: C.alerteTexteChaud, fontSize: 13.5, lineHeight: 19 },
   action: { height: 50, borderRadius: R.m, alignItems: "center", justifyContent: "center", backgroundColor: C.accent },
   actionTexte: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  // « Non » ne doit pas avoir le meme poids visuel que « Oui, c'est moi » : la reponse attendue est
+  // la confirmation, le refus est l'exception. Deux boutons pleins cote a cote donnent l'impression
+  // d'un choix cornelien la ou il n'y a qu'une question simple.
+  actionCreuse: { backgroundColor: "transparent", borderWidth: 1, borderColor: C.bordureForte },
+  sousTitre: { color: C.texte, fontSize: 16, fontWeight: "700" },
   plein: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
   pleinImage: { width: "100%", height: "86%" },
   fermer: {

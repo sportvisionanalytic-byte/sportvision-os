@@ -6,6 +6,7 @@
 import React, { useState } from "react";
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
+import * as Updates from "expo-updates";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
@@ -162,6 +163,22 @@ export default function Profil() {
   }
 
   const version = Constants.expoConfig?.version ?? "1.0.0";
+  // 26/09/2026 — DIRE QUELLE VERSION TOURNE VRAIMENT, et c'est un correctif de methode.
+  //
+  // Fouka a signale quatre fois « je vois aucune modification », et a chaque fois la cause etait
+  // differente : pas de mise a jour publiee, puis pas de canal declare, puis un build non installe.
+  // Aucune de ces trois n'etait visible depuis le telephone. Sans repere, impossible de distinguer
+  // « le correctif n'est pas arrive » de « le correctif ne marche pas » — deux problemes opposes qui
+  // se ressemblent parfaitement vus de l'ecran.
+  //
+  // `updateId` est null quand l'application tourne sur le code livre avec le build ; il porte un
+  // identifiant des qu'une mise a jour a distance a ete appliquee. C'est exactement la distinction
+  // qui manquait.
+  const misAJour = Updates.updateId
+    ? `mise à jour du ${new Date(Updates.createdAt ?? Date.now()).toLocaleString("fr-FR", {
+        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+      })}`
+    : "version d'origine du build";
 
   return (
     <Ecran teinte="violet">
@@ -318,7 +335,11 @@ export default function Profil() {
             icone="document-text-outline" titre="Conditions et confidentialité"
             onPress={() => Linking.openURL("https://sportvision-an.fr/confidentialite")}
           />
-          <Ligne icone="information-circle-outline" titre="Version" detail={`SportVision ${version}`} />
+          <Ligne
+            icone="information-circle-outline"
+            titre="Version"
+            detail={`SportVision ${version} (${Constants.expoConfig?.ios?.buildNumber ?? "?"}) · ${misAJour}`}
+          />
         </View>
       </Section>
 
