@@ -90,15 +90,34 @@ begin
   if not peut_confirmer_match(v_match) then
     e := e || 'le coach de l''equipe ne peut pas confirmer son propre match'::text;
   end if;
+  -- ON MESURE L'ÉCART, PAS L'ÉTAT (27/09/2026). Ce test exigeait un champs_verrouilles VIDE après
+  -- confirmation. Depuis la v300, `team` y est dès la création du match : le nom d'équipe affiché est
+  -- celui du club, et la synchro fédérale ne doit plus le réécrire. L'assertion tombait donc en rouge
+  -- sur un comportement voulu, alors que la règle de la v241 ne parle ni du nom d'équipe ni de la
+  -- création : elle dit que CONFIRMER sans rien corriger ne verrouille RIEN DE PLUS, pour que la
+  -- fédération reste libre de déplacer le match. C'est cet écart qu'on mesure maintenant.
+  perform pg_temp.serveur();
+  select champs_verrouilles into v_verrous from club_matches where id = v_match;
+  perform pg_temp.incarner(v_coachA);
   perform match_confirmer(v_match);
   perform pg_temp.serveur();
-  select horaire_confirme_par, horaire_confirme_le, champs_verrouilles
-    into v_par, v_conf, v_verrous from club_matches where id = v_match;
+  select horaire_confirme_par, horaire_confirme_le into v_par, v_conf from club_matches where id = v_match;
   if v_conf is null then e := e || 'la confirmation n''a pas ete enregistree'::text; end if;
   if v_par is distinct from v_coachA then e := e || 'la confirmation ne porte pas le nom du coach'::text; end if;
-  -- Confirmer sans rien changer ne verrouille rien : la fédération reste libre de corriger.
-  if array_length(v_verrous,1) is not null then
-    e := e || format('une confirmation sans correction a verrouille des champs : %s', array_to_string(v_verrous,','));
+  if exists (
+    select 1 from club_matches m
+     where m.id = v_match
+       and coalesce(m.champs_verrouilles,'{}') <> coalesce(v_verrous,'{}')
+  ) then
+    e := e || format('une confirmation sans correction a verrouille des champs de plus : %s -> %s',
+                     array_to_string(coalesce(v_verrous,'{}'),','),
+                     (select array_to_string(coalesce(champs_verrouilles,'{}'),',') from club_matches where id = v_match));
+  end if;
+  -- Et la regle de fond tient : l'horaire et le lieu restent libres, sinon la federation ne pourrait
+  -- plus deplacer le match.
+  select champs_verrouilles into v_verrous from club_matches where id = v_match;
+  if coalesce(v_verrous,'{}') && array['kickoff_time','match_date','lieu'] then
+    e := e || format('confirmer a verrouille l horaire ou le lieu : %s', array_to_string(v_verrous,','));
   end if;
 
   -- ══ 7. LA FÉDÉRATION REDÉPLACE, LA CONFIRMATION TOMBE ════════════════════

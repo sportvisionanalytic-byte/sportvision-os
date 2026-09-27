@@ -74,6 +74,14 @@ export interface PhotoDuJoueur {
 export interface PhotosDuJoueur {
   photos: PhotoDuJoueur[];
   total: number;
+  /**
+   * 27/09/2026 (v299) — Ce ne sont PAS les photos de ce sportif, mais quatre photos de la galerie,
+   * filigranées, que la base rend tant que la famille n'a ni Pass ni photo marquée. L'écran doit le
+   * dire : en production il y avait 3 399 photos en ligne et ZÉRO marquage, donc l'écran restait
+   * vide et ne donnait aucune raison d'acheter. Annoncer « ses photos » devant ces quatre-là ferait
+   * chercher son enfant dans des photos d'ambiance.
+   */
+  apercuGalerie: boolean;
 }
 
 export async function fetchPhotosDuJoueur(
@@ -85,10 +93,10 @@ export async function fetchPhotosDuJoueur(
     p_album_id: albumId,
     p_player_id: playerId,
   });
-  if (error || !Array.isArray(data)) return { photos: [], total: 0 };
+  if (error || !Array.isArray(data)) return { photos: [], total: 0, apercuGalerie: false };
   type Ligne = {
     asset_id: string; preview_path: string | null; thumb_path: string | null;
-    preview_clair_path: string | null; total: number | null;
+    preview_clair_path: string | null; total: number | null; apercu_galerie: boolean | null;
   };
   const lignes = data as Ligne[];
 
@@ -120,6 +128,7 @@ export async function fetchPhotosDuJoueur(
     })),
     // Le total vient de la base, jamais de la longueur de la liste.
     total: Number(lignes[0]?.total ?? lignes.length),
+    apercuGalerie: lignes.some((r) => r.apercu_galerie === true),
   };
 }
 

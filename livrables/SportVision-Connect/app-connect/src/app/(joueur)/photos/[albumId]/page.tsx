@@ -49,6 +49,8 @@ export default async function MesPhotosDansUnAlbumPage({
   const visibles = photos;
   // Ce qui manque, et c'est le chiffre qui fait acheter : le total vrai moins ce qu'on montre.
   const restantes = Math.max(0, mesPhotos.total - photos.length);
+  const apercuGalerie = mesPhotos.apercuGalerie;
+  const total = mesPhotos.total;
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
@@ -58,9 +60,18 @@ export default async function MesPhotosDansUnAlbumPage({
       </Link>
 
       <div className="flex flex-col gap-2">
-        <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Vous dans « {album.title} »</h1>
+        <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">
+          {apercuGalerie ? album.title : "Vous dans « " + album.title + " »"}
+        </h1>
+        {/* 27/09/2026 (v299) — L'ÉCRAN NE PROMET QUE CE QU'IL MONTRE. Tant que la famille n'a ni Pass
+            ni photo marquée, la base rend quatre photos de la galerie, filigranées, pour qu'il y ait
+            une raison d'acheter : il y avait 3 399 photos en ligne et ZÉRO marquage, donc cet écran
+            affichait « aucune photo de vous » et s'arrêtait là. Dire « vos photos » devant ces
+            quatre-là ferait chercher son enfant dans des photos d'ambiance. */}
         <p className="max-w-[560px] text-[15px] text-text-tertiary">
-          {photos.length === 0
+          {apercuGalerie
+            ? "Un aperçu du match. " + total + " photos ont été prises ce jour-là."
+            : photos.length === 0
             ? "Aucune photo de vous n'a encore été repérée dans cette galerie."
             : photos.length === 1
               ? "1 photo de vous a été repérée dans cette galerie."
@@ -98,9 +109,11 @@ export default async function MesPhotosDansUnAlbumPage({
               </div>
             ))}
           </div>
-          {restantes > 0 && (
+          {(restantes > 0 || apercuGalerie) && (
             <p className="text-[14px] leading-relaxed text-text-tertiary">
-              {restantes === 1
+              {apercuGalerie
+                ? total + " photos dans cette galerie. Le Pass vous permet de vous y retrouver, et de les voir sans filigrane."
+                : restantes === 1
                 ? "1 autre photo de vous vous attend dans cette galerie."
                 : restantes + " autres photos de vous vous attendent dans cette galerie."}{" "}
               <Link href="/photos" className="underline hover:text-text-secondary">

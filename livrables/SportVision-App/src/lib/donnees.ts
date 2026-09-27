@@ -397,6 +397,13 @@ export interface PhotoDuJoueur {
 export interface PhotosDuJoueur {
   photos: PhotoDuJoueur[];
   total: number;
+  /**
+   * Ce ne sont PAS les photos de cet enfant, mais quatre photos de la galerie, filigranees, que la
+   * base rend quand la famille n'a encore ni Pass ni photo marquee (v299). L'ecran doit le dire :
+   * annoncer « les photos de votre enfant » devant des photos d'ambiance serait un mensonge, et la
+   * famille chercherait son enfant dedans.
+   */
+  apercuGalerie: boolean;
 }
 
 /**
@@ -440,16 +447,16 @@ async function signerLesNets(chemins: string[]): Promise<Map<string, string>> {
 export async function lirePhotosDuJoueur(
   albumId: string, playerId: string,
 ): Promise<PhotosDuJoueur> {
-  if (MODE_DEMO) return { photos: PHOTOS_DEMO, total: PHOTOS_DEMO.length };
+  if (MODE_DEMO) return { photos: PHOTOS_DEMO, total: PHOTOS_DEMO.length, apercuGalerie: false };
   const { data, error } = await supabase.rpc("media_photos_du_joueur", {
     p_album_id: albumId, p_player_id: playerId,
   });
   if (error) { await refermerSiPerdue(error); throw new ErreurChargement(error); }
-  if (!Array.isArray(data)) return { photos: [], total: 0 };
+  if (!Array.isArray(data)) return { photos: [], total: 0, apercuGalerie: false };
 
   type Ligne = {
     asset_id: string; preview_path: string | null; thumb_path: string | null;
-    preview_clair_path: string | null; total: number | null;
+    preview_clair_path: string | null; total: number | null; apercu_galerie: boolean | null;
   };
   const lignes = data as Ligne[];
   // La base ne rend un chemin net qu'a qui y a droit : s'il y en a, on les signe tous d'un coup.
@@ -468,7 +475,11 @@ export async function lirePhotosDuJoueur(
     .filter((p) => !!p.url);
   // Le total vient de la base, jamais de la longueur de la liste : c'est toute la difference entre
   // « 4 photos » et « 4 photos sur 41 ».
-  return { photos, total: Number(lignes[0]?.total ?? photos.length) };
+  return {
+    photos,
+    total: Number(lignes[0]?.total ?? photos.length),
+    apercuGalerie: lignes.some((r) => r.apercu_galerie === true),
+  };
 }
 
 

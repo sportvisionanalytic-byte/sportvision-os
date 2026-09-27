@@ -42,6 +42,12 @@ export default function Galerie() {
 
   const [photos, setPhotos] = useState<PhotoDuJoueur[]>([]);
   const [total, setTotal] = useState(0);
+  // 27/09/2026 (v299) — CE QUE L'ECRAN MONTRE N'EST PAS TOUJOURS « VOS PHOTOS ». Tant que la famille
+  // n'a ni Pass ni photo marquee, la base rend quatre photos de la galerie, filigranees, pour qu'il
+  // y ait une raison d'acheter : en production, 3 399 photos en ligne et ZERO marquage, donc l'ecran
+  // etait vide et ne vendait rien. Annoncer « vos photos » devant ces quatre-la ferait chercher son
+  // enfant dans des photos d'ambiance.
+  const [apercuGalerie, setApercuGalerie] = useState(false);
   const [chargement, setChargement] = useState(true);
   const [agrandie, setAgrandie] = useState<PhotoDuJoueur | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -62,7 +68,7 @@ export default function Galerie() {
     setPanne(false);
     try {
       const r = await lirePhotosDuJoueur(id, joueur);
-      setPhotos(r.photos); setTotal(r.total);
+      setPhotos(r.photos); setTotal(r.total); setApercuGalerie(r.apercuGalerie);
     }
     catch { setPanne(true); setPhotos([]); setTotal(0); }
     finally { setChargement(false); }
@@ -147,6 +153,8 @@ export default function Galerie() {
           <Text style={s.titre} numberOfLines={3}>{titre || "Galerie"}</Text>
           <Text style={s.sous}>
             {chargement ? "Recherche en cours…"
+              : apercuGalerie
+                ? `Un aperçu du match. ${total} photos ont été prises ce jour-là.`
               : photos.length === 0 ? "Aucune photo de vous n'a encore été repérée dans cette galerie."
               : photos.length === 1 ? "1 photo de vous a été repérée."
               : `${photos.length} photos de vous ont été repérées.`}
@@ -284,7 +292,9 @@ export default function Galerie() {
           <View style={s.bloque}>
             <Ionicons name="lock-closed" size={16} color={C.alerte} />
             <Text style={s.bloqueTexte}>
-              {restantes > 0
+              {apercuGalerie
+                ? `${total} photos dans cette galerie. Le Pass vous permet de vous y retrouver, et de les voir sans filigrane. `
+                : restantes > 0
                 ? `${restantes === 1 ? "1 autre photo de vous" : `${restantes} autres photos de vous`} dans cette galerie. `
                 : "Le Pass ouvre toutes vos photos de la saison, dans cette galerie et les suivantes. "}
               {/* LE TEXTE DÉPEND DU BOUTON, ET C'EST UN CORRECTIF (26/09/2026).

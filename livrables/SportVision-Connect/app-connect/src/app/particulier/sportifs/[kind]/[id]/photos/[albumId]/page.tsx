@@ -44,6 +44,10 @@ export default async function PhotosDeMonEnfantPage({
   const visibles = photos;
   // Ce qui manque, et c'est le chiffre qui fait acheter : le total vrai moins ce qu'on montre.
   const restantes = Math.max(0, mesPhotos.total - photos.length);
+  // 27/09/2026 (v299) — voir le commentaire de l'écran joueur : sans Pass ni marquage, ces photos
+  // sont celles de la galerie, pas celles de ce sportif. L'écran ne promet que ce qu'il montre.
+  const apercuGalerie = mesPhotos.apercuGalerie;
+  const total = mesPhotos.total;
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
@@ -57,10 +61,12 @@ export default async function PhotosDeMonEnfantPage({
 
       <div className="flex flex-col gap-2">
         <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">
-          {detail.first_name} dans « {album.title} »
+          {apercuGalerie ? album.title : detail.first_name + " dans « " + album.title + " »"}
         </h1>
         <p className="max-w-[560px] text-[15px] text-text-tertiary">
-          {photos.length === 0
+          {apercuGalerie
+            ? "Un aperçu du match. " + total + " photos ont été prises ce jour-là."
+            : photos.length === 0
             ? "Aucune photo de " + detail.first_name + " n'a encore été repérée dans cette galerie."
             : photos.length === 1
               ? "1 photo de " + detail.first_name + " a été repérée dans cette galerie."
