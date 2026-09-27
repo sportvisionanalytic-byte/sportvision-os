@@ -13,10 +13,7 @@ import {
   declarerMonNumero, lireEtatReconnaissance, lirePhotosAIdentifier, lirePhotosDuJoueur, repondreCestMoi,
   type EtatReconnaissance, type PhotoAIdentifier, type PhotoDuJoueur,
 } from "../../../src/lib/donnees";
-import {
-  acheterPass, etatDuPass, reprendreAchatsEnAttente,
-  type EtatPass, type PassProposable,
-} from "../../../src/lib/achat-pass";
+import { MOTIF_LISIBLE, acheterPass, dernierMotif, etatDuPass, reprendreAchatsEnAttente, type EtatPass, type PassProposable } from "../../../src/lib/achat-pass";
 import { cheminReconnaissanceEnfant } from "../../../src/lib/connect";
 import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
@@ -321,7 +318,15 @@ export default function Galerie() {
             Voir et voir SANS FILIGRANE sont deux choses. `pass` vaut deja null quand le Pass est
             acquis (passProposable le verifie) : sa seule presence suffit donc a dire qu'il y a
             quelque chose a vendre. */}
-        {restantes > 0 || (pass && !ouvertMaintenant) ? (
+        {/* LA TROISIEME CONDITION EST UN CORRECTIF DU 27/09/2026, et elle vient d'un constat de
+            Fouka : « je vois pas ou on achete le pass, ca a rien change sur l'app ».
+            Quand le magasin ne rend AUCUNE offre — accord Paid Applications encore inactif, produit
+            pas encore approuve, module natif absent — `pass` vaut null. Et si la famille n'a encore
+            aucune photo, `restantes` vaut 0. Les deux conditions etaient donc fausses : l'ecran
+            n'affichait RIEN DU TOUT, pas meme une explication. Un echec invisible fait chercher le
+            defaut au mauvais endroit, et c'est exactement ce qui s'est passe pendant deux jours.
+            L'app CONNAIT la raison (dernierMotif) et ne la montrait que dans Profil. */}
+        {restantes > 0 || (pass && !ouvertMaintenant) || (etatPass?.etat === "a_prendre" && !pass) ? (
           <View style={s.bloque}>
             <Ionicons name="lock-closed" size={16} color={C.alerte} />
             <Text style={s.bloqueTexte}>
@@ -341,6 +346,16 @@ export default function Galerie() {
                 ? "Votre accès s'ouvre ici, ou auprès de votre club si vous préférez régler avec lui."
                 : "Votre accès est géré par votre club : il s'ouvre dès qu'il est actif."}
             </Text>
+            {/* LA RAISON, EN CLAIR, QUAND IL N'Y A PAS DE BOUTON. On ne renvoie vers aucun paiement
+                extérieur — la règle 3.1.1 l'interdit — on explique seulement pourquoi l'achat n'est
+                pas proposé sur cet appareil. Sans cette ligne, l'écran est muet et le défaut se
+                cherche à l'aveugle. */}
+            {!pass && etatPass?.etat === "a_prendre" && dernierMotif.motif ? (
+              <Text style={s.bloqueRaison}>
+                Achat indisponible sur cet appareil : {MOTIF_LISIBLE[dernierMotif.motif]}
+                {dernierMotif.sku ? ` (${dernierMotif.sku})` : ""}.
+              </Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -527,4 +542,5 @@ const s = StyleSheet.create({
   },
   numBoutonTexte: { color: "#fff", fontSize: 14, fontWeight: "600" },
   numDit: { color: C.texteDoux, fontSize: 13, lineHeight: 18 },
+  bloqueRaison: { color: C.texteDoux, fontSize: 12, lineHeight: 17, marginTop: 6 },
 });
