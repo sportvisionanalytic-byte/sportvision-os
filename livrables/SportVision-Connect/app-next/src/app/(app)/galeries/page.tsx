@@ -57,6 +57,16 @@ interface VideoGalerie {
   url: string;
 }
 
+/** Un sportif du club, propose au marquage. `horsCategorie` : il n'est pas dans l'equipe de cette
+ *  galerie — un U14 qui a joue en U16, par exemple. On le signale, on ne l'interdit pas (v309). */
+interface JoueurRattachable {
+  playerId: string;
+  prenom: string;
+  nom: string;
+  nbPhotos: number;
+  horsCategorie: boolean;
+}
+
 interface PhotoGalerie {
   id: string;
   /** L'adresse à afficher : l'aperçu NET quand le staff y a droit, sinon le public filigrané. */
@@ -88,6 +98,20 @@ export default function GaleriesClubPage() {
   const [erreur, setErreur] = useState(false);
   // La visionneuse : quelle galerie est ouverte, ses photos, et la photo agrandie.
   const [ouverte, setOuverte] = useState<GalerieClub | null>(null);
+  // « QUI EST SUR CETTE PHOTO ? » — LE GESTE DU COACH (28/09/2026).
+  //
+  // Mesure qui l'a rendu necessaire : 5 646 photos pretes, 0 marquage. Tant que rien ne relie une
+  // photo a un enfant, une famille qui paie le Pass voit ses quatre photos d'apercu et plus rien.
+  // La reconnaissance faciale n'est pas prete et reste aveugle aux photos de dos ; le numero de
+  // maillot demande qu'on releve les numeros. Le coach, lui, reconnait ses joueurs sans rien
+  // calculer — c'est le seul chemin qui marche aujourd'hui.
+  //
+  // Tout existait deja cote base : media_rattacher_joueur, media_joueurs_de_galerie, et le
+  // cloisonnement du coach sur ses equipes. Il manquait cet ecran.
+  const [joueurs, setJoueurs] = useState<JoueurRattachable[] | null>(null);
+  const [marquages, setMarquages] = useState<Record<string, string[]>>({});
+  const [photoMarquee, setPhotoMarquee] = useState<string | null>(null);
+  const [enCours, setEnCours] = useState<string | null>(null);
   const [photos, setPhotos] = useState<PhotoGalerie[] | null>(null);
   const [agrandie, setAgrandie] = useState<string | null>(null);
   // Échap ferme la fenêtre du QR, comme les autres modales de Club+ depuis le 10/09.
@@ -154,10 +178,36 @@ export default function GaleriesClubPage() {
     // PAR IDENTIFIANT DE GALERIE, SANS AUCUN JETON (v285). La fonction ne redéfinit pas qui a le
     // droit de voir : elle demande à media_club_galleries, celle qui a servi à afficher cette
     // carte. Une seule vérité sur « qui voit quoi ».
+    setJoueurs(null); setMarquages({}); setPhotoMarquee(null);
     const { data, error } = await supabase.rpc("media_club_gallery_photos", {
       p_album_id: g.album_id, p_limit: 200, p_offset: 0,
     });
     if (error || !Array.isArray(data)) { setPhotos([]); return; }
+
+    // Les sportifs proposes, et ce qui est deja marque. Les deux echouent sans bruit si le club n'a
+    // pas le droit de marquer cette galerie : l'ecran reste alors une simple visionneuse.
+    void (async () => {
+      const [j, m] = await Promise.all([
+        supabase.rpc("media_joueurs_de_galerie", { p_album_id: g.album_id }),
+        supabase.rpc("media_tags_de_galerie", { p_album_id: g.album_id }),
+      ]);
+      if (Array.isArray(j.data)) {
+        setJoueurs((j.data as Record<string, unknown>[]).map((r) => ({
+          playerId: String(r.player_id), prenom: String(r.prenom ?? ""), nom: String(r.nom ?? ""),
+          nbPhotos: Number(r.nb_photos ?? 0), horsCategorie: r.hors_categorie === true,
+        })));
+      } else setJoueurs([]);
+      if (Array.isArray(m.data)) {
+        const par: Record<string, string[]> = {};
+        for (const t of m.data as Record<string, unknown>[]) {
+          const a = String(t.asset_id ?? t.media_ref_id ?? "");
+          const p = String(t.player_id ?? "");
+          if (!a || !p) continue;
+          (par[a] ??= []).push(p);
+        }
+        setMarquages(par);
+      }
+    })();
     const rows = data as Record<string, unknown>[];
 
     // Le fichier net vit dans un bucket privé : une balise <img> n'y accède pas, il faut une adresse
@@ -187,6 +237,31 @@ export default function GaleriesClubPage() {
         net: Boolean(netUrl),
       };
     }));
+  }
+
+  /**
+   * Marquer, ou demarquer, un sportif sur une photo.
+   *
+   * PAS DE FAUX SUCCES : l'ecran ne bascule QU'APRES la reponse de la base. Si le rattachement est
+   * refuse — mauvaise galerie, enfant d'un autre club — la vignette revient ou elle etait. Un
+   * marquage humain vaut `valide` et OUVRE la photo a la famille de l'enfant : montrer une coche qui
+   * n'a pas pris ferait croire qu'une famille recoit une photo qu'elle ne recevra jamais.
+   */
+  async function basculerJoueur(assetId: string, playerId: string, attacher: boolean) {
+    setEnCours(assetId + playerId);
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("media_rattacher_joueur", {
+      p_asset_id: assetId, p_player_id: playerId, p_attacher: attacher,
+    });
+    setEnCours(null);
+    if (error || !data) return;
+    setMarquages((m) => {
+      const actuels = new Set(m[assetId] ?? []);
+      if (attacher) actuels.add(playerId); else actuels.delete(playerId);
+      return { ...m, [assetId]: [...actuels] };
+    });
+    setJoueurs((js) => js?.map((j) => j.playerId === playerId
+      ? { ...j, nbPhotos: Math.max(0, j.nbPhotos + (attacher ? 1 : -1)) } : j) ?? js);
   }
 
   // `copier()` est SUPPRIMEE avec le bouton qu'elle servait : le club ne diffuse plus de lien.
@@ -370,20 +445,100 @@ export default function GaleriesClubPage() {
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {photos.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setAgrandie(p.url)}
-                    className="aspect-square overflow-hidden rounded-lg bg-white/5"
-                    aria-label="Agrandir cette photo"
-                  >
-                    <img src={p.url} alt="" className="h-full w-full object-cover" loading="lazy" />
-                  </button>
-                ))}
+                {photos.map((p) => {
+                  const dessus = marquages[p.id] ?? [];
+                  return (
+                    <div key={p.id} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setAgrandie(p.url)}
+                        className="aspect-square w-full overflow-hidden rounded-lg bg-white/5"
+                        aria-label="Agrandir cette photo"
+                      >
+                        <img src={p.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                      </button>
+                      {/* Le bouton n'apparait que si la base a rendu des sportifs, c'est-a-dire si ce
+                          club a le droit de marquer cette galerie. Un bouton qui echouerait est un
+                          faux chemin. */}
+                      {joueurs && joueurs.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setPhotoMarquee(p.id)}
+                          className="absolute bottom-1.5 right-1.5 min-h-8 rounded-full bg-black/70 px-2.5 text-[11px] font-medium text-white backdrop-blur hover:bg-black/85"
+                          aria-label={dessus.length ? `${dessus.length} sportif(s) identifié(s), modifier` : "Dire qui est sur cette photo"}
+                        >
+                          {dessus.length ? `${dessus.length} identifié${dessus.length > 1 ? "s" : ""}` : "Qui est dessus ?"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
+
+          {/* QUI EST SUR CETTE PHOTO — la liste des sportifs du club, l'equipe de la galerie en tete.
+              Les hors categorie sont signales et non caches : un U14 qui a joue en U16 doit pouvoir
+              etre reconnu (v309), et c'est justement ce que le coach sait et qu'aucun modele ne
+              devine. */}
+          {photoMarquee && joueurs && (
+            <div
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4"
+              onClick={() => setPhotoMarquee(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Qui est sur cette photo"
+            >
+              <div
+                className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-t-sv-card bg-surface p-5 sm:rounded-sv-card"
+                onClick={(ev) => ev.stopPropagation()}
+              >
+                <h2 className="font-sora text-[17px] font-bold">Qui est sur cette photo&nbsp;?</h2>
+                <p className="mt-1 mb-4 text-[12.5px] leading-relaxed text-text-tertiary">
+                  Le sportif que vous cochez recevra cette photo dès qu’il aura pris son Pass.
+                  Cochez seulement ceux que vous reconnaissez.
+                </p>
+                <div className="flex flex-col gap-0.5">
+                  {joueurs.map((j) => {
+                    const coche = (marquages[photoMarquee] ?? []).includes(j.playerId);
+                    const occupe = enCours === photoMarquee + j.playerId;
+                    return (
+                      <label
+                        key={j.playerId}
+                        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-sv-pill px-2 hover:bg-white/5"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={coche}
+                          disabled={occupe}
+                          onChange={(ev) => basculerJoueur(photoMarquee, j.playerId, ev.target.checked)}
+                          className="h-4 w-4"
+                        />
+                        <span className="min-w-0 flex-1 text-[14px]">
+                          {j.prenom} {j.nom}
+                          {j.horsCategorie && (
+                            <span className="ml-2 text-[11px] text-text-tertiary">hors catégorie</span>
+                          )}
+                        </span>
+                        {j.nbPhotos > 0 && (
+                          <span className="text-[11.5px] text-text-tertiary">{j.nbPhotos} photo{j.nbPhotos > 1 ? "s" : ""}</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="mt-5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setPhotoMarquee(null)}
+                    className="min-h-11 rounded-sv-pill bg-white/10 px-5 text-[14px] font-medium hover:bg-white/15"
+                  >
+                    Terminé
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {agrandie && (
             <div
