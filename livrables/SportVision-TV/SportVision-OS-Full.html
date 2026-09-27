@@ -14085,18 +14085,44 @@ function galMenuPhoto(assetId,index){
 function _galBandeauApercusNets(){
   const zone=document.getElementById('gal-nets');
   if(!zone)return;
-  const aFaire=(_galAssets||[]).filter(a=>a.status==='ready'&&a.original_path&&!a.preview_clair_path).length;
-  if(!aFaire){zone.style.display='none';zone.innerHTML='';return;}
+  const prets=(_galAssets||[]).filter(a=>a.status==='ready'&&a.original_path);
+  // DEUX DEFAUTS DISTINCTS, ET ILS N'ONT PAS LA MEME GRAVITE (27/09/2026).
+  //
+  // Le responsable production : « le filigrane ne se met pas bien sur toutes les photos des
+  // galeries ». Mesure : 31 photos deposees le 14/09 ont un apercu PUBLIC sans filigrane. Ce
+  // bandeau ne surveillait que l'apercu NET, il ne pouvait donc pas le dire.
+  //
+  //   sans filigrane  la galerie est en vente et le visiteur voit une photo propre -> URGENT
+  //   sans apercu net le payeur voit encore le filigrane                           -> a faire
+  const nus=prets.filter(a=>a.preview_watermarked!==true).length;
+  const sansNet=prets.filter(a=>!a.preview_clair_path).length;
+  if(!nus&&!sansNet){zone.style.display='none';zone.innerHTML='';return;}
   zone.style.display='';
-  zone.innerHTML='<div class="fs" style="border-color:rgba(245,165,36,.3);padding:12px 14px">'
-    +'<div style="font-size:12.5px;color:var(--t1);font-weight:600;margin-bottom:4px">'
-    +aFaire+' photo'+(aFaire>1?'s n\'ont':' n\'a')+' pas encore d\'aperçu net</div>'
-    +'<div style="font-size:11.5px;color:var(--t3);line-height:1.5;margin-bottom:9px">'
-    +'Les familles qui ont pris le Pass, les coachs et le community manager y verront encore le '
-    +'filigrane. Régénérer refabrique les trois versions depuis l\'original, qui n\'est jamais modifié.'
-    +'</div>'
-    +'<button class="btn bg2 bs" style="min-height:38px" onclick="galRegenererApercus()">Régénérer les aperçus</button>'
-    +'</div>';
+  let html='';
+  if(nus){
+    html+='<div class="fs" style="border-color:rgba(240,68,94,.35);padding:12px 14px;margin-bottom:8px">'
+      +'<div style="font-size:12.5px;color:var(--er);font-weight:700;margin-bottom:4px">'
+      +nus+' photo'+(nus>1?'s n\'ont':' n\'a')+' PAS de filigrane sur l\'aperçu public</div>'
+      +'<div style="font-size:11.5px;color:var(--t3);line-height:1.5;margin-bottom:9px">'
+      +'En attendant, la galerie publique sert la vignette à leur place : elles restent visibles mais '
+      +'en petit, et personne ne peut enregistrer une photo propre sans l\'acheter. Régénérer rend la '
+      +'pleine taille, filigranée.'
+      +'</div>'
+      +'<button class="btn bp bs" style="min-height:38px" onclick="galRegenererApercus()">Régénérer maintenant</button>'
+      +'</div>';
+  }
+  if(sansNet){
+    html+='<div class="fs" style="border-color:rgba(245,165,36,.3);padding:12px 14px">'
+      +'<div style="font-size:12.5px;color:var(--t1);font-weight:600;margin-bottom:4px">'
+      +sansNet+' photo'+(sansNet>1?'s n\'ont':' n\'a')+' pas encore d\'aperçu net</div>'
+      +'<div style="font-size:11.5px;color:var(--t3);line-height:1.5;margin-bottom:9px">'
+      +'Les familles qui ont pris le Pass, les coachs et le community manager y verront encore le '
+      +'filigrane. Régénérer refabrique les trois versions depuis l\'original, qui n\'est jamais modifié.'
+      +'</div>'
+      +(nus?'':'<button class="btn bg2 bs" style="min-height:38px" onclick="galRegenererApercus()">Régénérer les aperçus</button>')
+      +'</div>';
+  }
+  zone.innerHTML=html;
 }
 
 async function _galChargerAssets(){

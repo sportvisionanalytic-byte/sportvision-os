@@ -16,6 +16,7 @@ import { FournisseurFamille } from "../src/lib/famille";
 import { FournisseurBiometrie, useBiometrie } from "../src/lib/biometrie";
 import { Verrou } from "../src/ui/Verrou";
 import { C } from "../src/theme/couleurs";
+import { appliquerMiseAJour } from "../src/lib/mise-a-jour";
 
 /**
  * Les écrans, ou le verrou par-dessus.
@@ -43,6 +44,13 @@ export default function Racine() {
   // le 22/09). Le texte s'affiche dans la police système puis bascule.
   useFonts(Ionicons.font);
   usePolices();
+
+  // UNE MISE À JOUR S'APPLIQUE AU LANCEMENT, PAS AU LANCEMENT D'APRÈS (27/09/2026).
+  // Sans cet appel, expo-updates télécharge au démarrage et n'applique qu'au démarrage SUIVANT :
+  // Fouka rechargeait une fois et ne voyait rien, et nous avons cherché un défaut de paiement pendant
+  // deux jours alors que le correctif n'était pas encore chargé. Voir src/lib/mise-a-jour.ts pour les
+  // garde-fous — une seule tentative, relance seulement si c'est nouveau, toute erreur avalée.
+  React.useEffect(() => { void appliquerMiseAJour(); }, []);
 
   return (
     <SafeAreaProvider>
