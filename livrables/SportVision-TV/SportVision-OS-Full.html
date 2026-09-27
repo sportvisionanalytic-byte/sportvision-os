@@ -14184,6 +14184,24 @@ function galQuiEstSurLaPhoto(assetId){
   openModal(`
     <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:3px">Qui est sur cette photo ?</div>
     <div style="font-size:11.5px;color:var(--t3);margin-bottom:14px">${esc(a.original_filename||'Photo')}</div>
+    <!-- LES NUMEROS LISIBLES SUR LA PHOTO (27/09/2026, v305).
+         Demande de Fouka : « qu'a chaque match les joueurs puissent mettre : j'etais le numero 7 a ce
+         match-la, comme ca ca detecte aussi les photos de dos ».
+         Le travail se partage : ici on releve le numero SANS savoir a qui il appartient — un chiffre a
+         taper, bien plus rapide que choisir un nom dans une liste de vingt — et la famille declare de
+         son cote « j'etais le 7 a ce match ». La jointure PROPOSE la photo, la famille confirme.
+         Un enfant de dos n'a pas de visage a reconnaitre : c'est le seul signal disponible. -->
+    <div style="border:1px solid var(--b1);border-radius:var(--rp);padding:10px 11px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:3px">Numéros lisibles sur la photo</div>
+      <div style="font-size:11px;color:var(--t3);margin-bottom:8px">Séparés par un espace. Inutile de savoir qui c'est : la famille déclare son numéro de son côté.</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="gal-nums" value="${(a.numeros_visibles||[]).join(' ')}" inputmode="numeric"
+               placeholder="7 11"
+               style="flex:1;min-height:40px;padding:0 10px;border:1px solid var(--b1);border-radius:var(--rp);background:var(--s1);color:var(--t1);font-size:15px;font-weight:600;letter-spacing:1px">
+        <button class="btn bp bs" style="min-height:40px" onclick="galEnregistrerNumeros('${assetId}')">Enregistrer</button>
+      </div>
+      <div id="gal-nums-msg" style="font-size:11.5px;color:var(--t3);margin-top:7px"></div>
+    </div>
     <div id="gqp-err" style="font-size:11.5px;color:var(--er);margin-bottom:8px"></div>
     <div style="display:flex;flex-direction:column;gap:2px;max-height:320px;overflow-y:auto">
       ${_galJoueurs.map(j=>{
@@ -14199,6 +14217,28 @@ function galQuiEstSurLaPhoto(assetId){
     <div style="display:flex;justify-content:flex-end;margin-top:16px">
       <button class="btn bp bs" style="min-height:40px" onclick="closeModal()">Termine</button>
     </div>`);
+}
+
+// v305 — Releve les numeros lisibles sur une photo, et relance la jointure avec les numeros que les
+// familles ont declares. Ne valide JAMAIS un marquage : la base ne produit que des suggestions, que
+// la famille confirme dans « oui c'est bien moi ». Une declaration n'est pas verifiable — l'enfant
+// peut se tromper, deux enfants peuvent avoir echange de maillot.
+async function galEnregistrerNumeros(assetId){
+  const champ=document.getElementById('gal-nums');
+  const msg=document.getElementById('gal-nums-msg');
+  if(!champ)return;
+  const nums=[...new Set((champ.value.match(/\d{1,2}/g)||[]).map(Number).filter(n=>n>=1&&n<=99))].sort((x,y)=>x-y);
+  if(msg)msg.textContent='Enregistrement…';
+  const r=await sbFetch('rpc/media_numeros_de_la_photo',{method:'POST',
+    body:{p_asset_id:assetId,p_numeros:nums}}).catch(()=>null);
+  // Pas de faux succes : si la fonction n'a rien renvoye, on le dit au lieu d'afficher « enregistre ».
+  if(r===null||r===undefined){ if(msg)msg.textContent="Les numéros n'ont pas pu être enregistrés."; return; }
+  const a=_galAssets.find(x=>x.id===assetId);
+  if(a)a.numeros_visibles=nums;
+  if(msg)msg.textContent=nums.length
+    ? 'Enregistré : n°'+nums.join(', n°')+'. Les familles qui ont déclaré ces numéros verront ces photos proposées.'
+    : 'Aucun numéro relevé sur cette photo.';
+  await _galChargerAssets();
 }
 
 async function galBasculerJoueur(assetId,playerId,attacher,input){

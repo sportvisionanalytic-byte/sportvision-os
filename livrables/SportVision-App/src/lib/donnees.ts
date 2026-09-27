@@ -444,6 +444,43 @@ async function signerLesNets(chemins: string[]): Promise<Map<string, string>> {
   return par;
 }
 
+/**
+ * « À ce match-là, j'étais le numéro 7. »
+ *
+ * POURQUOI CE GESTE EXISTE (demande de Fouka, 27/09/2026). Un moteur de visages ne rend RIEN sur une
+ * photo de dos, et c'est une grande part d'un match. Le dossard y est lisible, mais un modèle qui lit
+ * « 7 » ne saura jamais QUI portait le 7 ce jour-là. La famille, elle, le sait — et le numéro change
+ * d'un match à l'autre en jeunes, donc il se déclare par match et pas une fois pour la saison.
+ *
+ * Ce que la base rend ensuite : des SUGGESTIONS, jamais des photos attribuées d'office. Une
+ * déclaration n'est pas vérifiable (l'enfant peut se tromper, deux enfants peuvent avoir échangé de
+ * maillot), donc la famille confirme dans « oui c'est bien moi », comme pour les visages.
+ */
+export interface NumeroDeclare {
+  numero: number;
+  /** Un autre sportif revendique le MEME numero sur ce match : rien n'est propose a personne. */
+  conflit: boolean;
+  photosProposees: number;
+  photosAvecCeNumero: number;
+}
+
+export async function declarerMonNumero(
+  albumId: string, playerId: string, numero: number,
+): Promise<NumeroDeclare> {
+  if (MODE_DEMO) return { numero, conflit: false, photosProposees: 0, photosAvecCeNumero: 0 };
+  const { data, error } = await supabase.rpc("media_declarer_mon_numero", {
+    p_album_id: albumId, p_player_id: playerId, p_numero: numero,
+  });
+  if (error) { await refermerSiPerdue(error); throw new ErreurChargement(error); }
+  const r = (data ?? {}) as Record<string, unknown>;
+  return {
+    numero: Number(r.numero ?? numero),
+    conflit: r.conflit === true,
+    photosProposees: Number(r.photos_proposees ?? 0),
+    photosAvecCeNumero: Number(r.photos_avec_ce_numero ?? 0),
+  };
+}
+
 export async function lirePhotosDuJoueur(
   albumId: string, playerId: string,
 ): Promise<PhotosDuJoueur> {

@@ -4,15 +4,13 @@
 // reconnaît. L'écran ouvre donc directement dessus. Tant que l'accès n'est pas acheté, six
 // aperçus, pas un de plus : c'est la règle du site, et elle est tenue en base, pas ici.
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator, Dimensions, Linking, Modal, Pressable, StyleSheet, Text, View,
-} from "react-native";
+import { ActivityIndicator, Dimensions, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  lireEtatReconnaissance, lirePhotosAIdentifier, lirePhotosDuJoueur, repondreCestMoi,
+  declarerMonNumero, lireEtatReconnaissance, lirePhotosAIdentifier, lirePhotosDuJoueur, repondreCestMoi,
   type EtatReconnaissance, type PhotoAIdentifier, type PhotoDuJoueur,
 } from "../../../src/lib/donnees";
 import {
@@ -48,6 +46,13 @@ export default function Galerie() {
   // etait vide et ne vendait rien. Annoncer « vos photos » devant ces quatre-la ferait chercher son
   // enfant dans des photos d'ambiance.
   const [apercuGalerie, setApercuGalerie] = useState(false);
+  // « A ce match-la, j'etais le numero 7 » (27/09/2026, demande de Fouka). Un moteur de visages ne
+  // rend rien sur une photo de dos : le dossard y est lisible, mais lui seul ne dit pas QUI portait
+  // ce numero. La famille le sait, et comme le numero change d'un match a l'autre en jeunes, il se
+  // declare ICI, sur la galerie du match, et pas une fois pour la saison.
+  const [numero, setNumero] = useState("");
+  const [numeroEnCours, setNumeroEnCours] = useState(false);
+  const [numeroDit, setNumeroDit] = useState<string | null>(null);
   const [chargement, setChargement] = useState(true);
   const [agrandie, setAgrandie] = useState<PhotoDuJoueur | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -136,6 +141,34 @@ export default function Galerie() {
 
 
   // Tout ce que la base a rendu est affichable : c'est elle qui a deja decide combien.
+  async function envoyerMonNumero() {
+    const n = Number(numero.trim());
+    if (!joueur || !Number.isInteger(n) || n < 1 || n > 99) {
+      setNumeroDit("Un numéro de maillot est entre 1 et 99.");
+      return;
+    }
+    setNumeroEnCours(true);
+    try {
+      const r = await declarerMonNumero(id, joueur, n);
+      // ON DIT LA VERITE DANS LES TROIS CAS, y compris quand il n'y a rien a proposer : annoncer
+      // « c'est enregistre » devant zero photo laisserait attendre quelque chose qui ne viendra pas.
+      setNumeroDit(
+        r.conflit
+          ? `Quelqu'un d'autre a aussi indiqué le n°${r.numero} pour ce match. Nous ne proposons rien tant que ce n'est pas tranché.`
+          : r.photosProposees > 0
+            ? `${r.photosProposees} photo${r.photosProposees > 1 ? "s" : ""} portant le n°${r.numero} vous ${r.photosProposees > 1 ? "sont proposées" : "est proposée"} ci-dessous.`
+            : r.photosAvecCeNumero === 0
+              ? `Le n°${r.numero} est enregistré. Aucun numéro n'a encore été relevé sur ces photos : dès que ce sera fait, les vôtres apparaîtront.`
+              : `Le n°${r.numero} est enregistré, mais vous avez déjà répondu sur ces photos.`,
+      );
+      await charger();
+    } catch {
+      setNumeroDit("Le numéro n'a pas pu être enregistré. Réessayez.");
+    } finally {
+      setNumeroEnCours(false);
+    }
+  }
+
   const visibles = photos;
   // Ce qui manque, et c'est le chiffre qui fait acheter : le total vrai moins ce qu'on montre.
   const restantes = Math.max(0, total - photos.length);
@@ -364,6 +397,45 @@ export default function Galerie() {
           </Pressable>
         ) : null}
 
+        {/* LE NUMERO DE MAILLOT, APRES LE PASS COMME LE RESTE (27/09/2026).
+            Meme condition que le bloc ci-dessus : rien ne se demande a une famille qui n'a pas encore
+            paye. Ce geste ne reclame aucune donnee biometrique — c'est un chiffre — mais il n'a de
+            sens que pour qui va voir ses photos. */}
+        {etatPass?.etat !== "a_prendre" ? (
+          <View style={s.numBloc}>
+            <Text style={s.numTitre}>Vous étiez quel numéro à ce match&nbsp;?</Text>
+            <Text style={s.numSous}>
+              Sur une photo de dos, votre visage ne se voit pas — votre numéro, si. Indiquez-le et nous
+              vous proposerons ces photos aussi.
+            </Text>
+            <View style={s.numLigne}>
+              <TextInput
+                value={numero}
+                onChangeText={(t) => setNumero(t.replace(/[^0-9]/g, "").slice(0, 2))}
+                keyboardType="number-pad"
+                placeholder="7"
+                placeholderTextColor={C.texteDoux}
+                accessibilityLabel="Votre numéro de maillot à ce match"
+                style={s.numChamp}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Enregistrer mon numéro de maillot"
+                disabled={numeroEnCours || !numero}
+                onPress={envoyerMonNumero}
+                style={({ pressed }) => [
+                  s.numBouton,
+                  (numeroEnCours || !numero) ? { opacity: 0.5 } : null,
+                  pressed ? { opacity: 0.85 } : null,
+                ]}
+              >
+                <Text style={s.numBoutonTexte}>{numeroEnCours ? "…" : "C'était moi"}</Text>
+              </Pressable>
+            </View>
+            {numeroDit ? <Text style={s.numDit}>{numeroDit}</Text> : null}
+          </View>
+        ) : null}
+
         {/* « OUVRIR LA COLLECTION COMPLETE » EST RETIRE (26/09/2026), et ce n'est pas une
             regression : c'est la regle metier, enoncee par Fouka. « Les joueurs, parents, ils
             doivent voir uniquement leurs photos via l'achat du pass. Ils ne peuvent pas voir les
@@ -420,4 +492,39 @@ const s = StyleSheet.create({
     position: "absolute", right: E.l, width: 38, height: 38, borderRadius: 19,
     alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)",
   },
+
+  numBloc: {
+    gap: 8,
+    padding: E.m,
+    borderRadius: 14,
+    backgroundColor: C.surface,
+    borderWidth: 1,
+    borderColor: C.bordure,
+  },
+  numTitre: { color: C.texte, fontSize: 15, fontWeight: "600" },
+  numSous: { color: C.texteDoux, fontSize: 13, lineHeight: 18 },
+  numLigne: { flexDirection: "row", gap: 8, alignItems: "center" },
+  numChamp: {
+    width: 68,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: C.bordure,
+    backgroundColor: C.fond,
+    color: C.texte,
+    fontSize: 17,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  numBouton: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: C.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  numBoutonTexte: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  numDit: { color: C.texteDoux, fontSize: 13, lineHeight: 18 },
 });
