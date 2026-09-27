@@ -6,7 +6,8 @@
 -- une photo PROPRE en pleine taille au lieu de l'acheter. Les photos sont le produit.
 --
 -- CE QUE CE TEST TIENT POUR VRAI :
---   1. Sans filigrane et sans droit : la galerie publique sert la VIGNETTE, jamais l'aperçu.
+--   1. Sans filigrane et sans droit : la photo ne sort PAS. La vignette non plus — elle est propre
+--      elle aussi sur ces photos-là, vérifié en ouvrant les fichiers.
 --   2. Avec filigrane : rien ne change, l'aperçu pleine taille sort normalement.
 --   3. Le correctif s'effacera de lui-même : il suffit que le drapeau repasse à `true`.
 --   4. Et il ne prive personne : l'acheteur reçoit l'ORIGINAL, pas l'aperçu.
@@ -42,27 +43,38 @@ begin
             encode(gen_random_bytes(16),'hex'))
     returning id, slug, token into v_lien, v_slug, v_token;
 
-  -- ══ 1. SANS FILIGRANE : LA VIGNETTE, PAS L'APERÇU ════════════════════════
+  -- ══ 1. SANS FILIGRANE : LA PHOTO NE SORT PAS DU TOUT ════════════════════
+  --
+  -- CE TEST A ÉTÉ RETOURNÉ LE 27/09, ET L'HISTOIRE COMPTE. Sa première version exigeait qu'on serve
+  -- la VIGNETTE à la place de l'aperçu, en tenant pour acquis qu'elle était filigranée et trop petite
+  -- pour valoir un vol. J'ai fini par télécharger les fichiers et les ouvrir : sur ces photos-là le
+  -- filigrane a échoué sur les DEUX dérivés. La vignette est propre elle aussi. Le test garantissait
+  -- donc une protection qui n'en était pas une.
+  --
+  -- La règle est maintenant simple et vérifiable : tant que l'aperçu n'est pas régénéré, la photo ne
+  -- sort pas. Le client voit une galerie plus courte, jamais une photo propre qu'il n'a pas payée.
   perform set_config('role','anon',true);
   perform set_config('request.jwt.claims','{"role":"anon"}',true);
-  select x.preview_path, x.thumb_path into v_preview, v_thumb
-    from media_gallery_photos(v_slug, v_token, null, 50, 0) x
-   where x.id = ph_nue;
-  if v_preview is null then
-    e := e || 'la photo non filigranee ne sort plus du tout : la galerie afficherait une case vide'::text;
-  elsif v_preview <> v_thumb then
-    e := e || format('APERCU PLEINE TAILLE SERVI SANS FILIGRANE : %s', v_preview);
+  select count(*) into n from media_gallery_photos(v_slug, v_token, null, 50, 0) x where x.id = ph_nue;
+  if n <> 0 then
+    e := e || 'la photo sans filigrane est servie a un visiteur'::text;
   end if;
 
   -- ══ 2. AVEC FILIGRANE : RIEN NE CHANGE ═══════════════════════════════════
-  select x.preview_path, x.thumb_path into v_preview, v_thumb
+  select x.preview_path into v_preview
     from media_gallery_photos(v_slug, v_token, null, 50, 0) x
    where x.id = ph_marquee;
-  if v_preview = v_thumb then
-    e := e || 'une photo correctement filigranee est degradee en vignette'::text;
-  end if;
   if v_preview is distinct from 'ap/f1-p.webp' then
     e := e || format('l apercu marque n est pas servi tel quel : %s', coalesce(v_preview,'(null)')); end if;
+
+  -- ══ 2bis. ET LA PAGE N'ANNONCE QUE CE QU'ELLE SERT ═══════════════════════
+  --
+  -- Consequence directe : afficher « 2 photos » au-dessus d'une grille qui n'en montre qu'une ferait
+  -- croire a une panne au lieu d'une galerie plus courte.
+  select x.photo_count into n from media_gallery_open(v_slug, v_token, null) x;
+  if n <> 1 then
+    e := e || format('la page annonce %s photo(s) alors qu une seule est servie', n);
+  end if;
 
   -- ══ 3. LE CORRECTIF S'EFFACE DE LUI-MÊME ═════════════════════════════════
   --
@@ -73,11 +85,9 @@ begin
   update media_assets set preview_watermarked = true where id = ph_nue;
   perform set_config('role','anon',true);
   perform set_config('request.jwt.claims','{"role":"anon"}',true);
-  select x.preview_path, x.thumb_path into v_preview, v_thumb
-    from media_gallery_photos(v_slug, v_token, null, 50, 0) x
-   where x.id = ph_nue;
-  if v_preview = v_thumb then
-    e := e || 'apres regeneration, la pleine taille ne revient pas'::text;
+  select count(*) into n from media_gallery_photos(v_slug, v_token, null, 50, 0) x where x.id = ph_nue;
+  if n <> 1 then
+    e := e || 'apres regeneration, la photo ne revient pas dans la galerie'::text;
   end if;
 
   -- ══ 4. ET LA PRODUCTION NE DOIT PLUS AVOIR DE FUITE OUVERTE ══════════════
@@ -90,5 +100,5 @@ begin
   if cardinality(e) > 0 then
     raise exception 'ROUGE : %', array_to_string(e, ' | ');
   end if;
-  raise exception 'VERT : sans filigrane on sert la vignette, avec filigrane rien ne change, et le garde-fou s efface apres regeneration';
+  raise exception 'VERT : sans filigrane la photo ne sort pas, la page n annonce que ce qu elle sert, et tout revient apres regeneration';
 end $$;

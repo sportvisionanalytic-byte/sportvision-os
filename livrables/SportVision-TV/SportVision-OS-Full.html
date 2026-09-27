@@ -18841,6 +18841,13 @@ async function chargerEquipe(prestationId,ref){
       const arbitrage=arbitrable?`<div style="display:flex;align-items:center;gap:10px;padding-left:40px">
           <button onclick="modalVerdictMission('${m.id}','${prestationId}','${ref}',${m.travail_valide===true})" ${m.collaborateur?.id===S.uid?'title="Votre propre mission : vous pouvez la valider. L\'Admin en est informé, et la rémunération reste à la grille tant qu\'il n\'a pas tranché une éventuelle exception."':''} style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer;text-decoration:underline">${m.travail_valide===false?'Revenir sur le refus':'Valider ou refuser le travail'}${m.collaborateur?.id===S.uid?' (la vôtre)':''}</button>
           <button onclick="modalPenaliteMission('${m.id}','${prestationId}','${ref}',${Number(m.remuneration||0)},${retenu})" style="font-size:11px;color:var(--er);background:none;border:none;cursor:pointer;text-decoration:underline">Retenir une pénalité</button>
+          <!-- v313 — LE GESTE SYMETRIQUE (27/09/2026). Demande de Fouka : la Production doit pouvoir
+               recompenser, pas seulement retenir. Il est pose ICI, a cote de la retenue, et pas dans
+               un autre ecran : les deux se decident au meme moment, en regardant la meme ligne.
+               Il ne s'affiche pas sur sa propre ligne — la base le refuse (on n'est pas juge et
+               partie sur son propre salaire), et proposer un bouton qui echouera est un faux
+               chemin. -->
+          ${m.collaborateur?.id===S.uid?'':`<button onclick="modalPrimeMission('${m.id}','${prestationId}','${ref}',${Number(m.remuneration||0)},${Number(m.primes_total||0)})" style="font-size:11px;color:var(--ok);background:none;border:none;cursor:pointer;text-decoration:underline">Accorder une prime</button>`}
         </div>`:'';
       return`<div style="display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
         <div style="display:flex;align-items:center;gap:10px">
@@ -18936,6 +18943,55 @@ async function modalPenaliteMission(affectationId,prestationId,ref,remuneration,
     if(sbErr(r)){err.textContent=msgErreur(r,'Retenue impossible.');return;}
     o.remove();
     toast('Retenue appliquée. Net à payer : '+Number(r?.net_a_payer||0).toLocaleString('fr-FR')+' €. L\'opérateur est prévenu.','warn');
+    chargerEquipe(prestationId,ref);
+  };
+}
+
+// v313 — ACCORDER UNE PRIME, le geste symetrique de la retenue (27/09/2026).
+//
+// Fouka : « permettre aux responsables de production de donner des primes a ces photographes
+// videastes, de 0 jusqu'a 100 euros ». Un responsable qui n'a que le baton ne s'en sert pas, ou
+// s'en sert mal.
+//
+// Memes regles que la retenue, et la base les fait respecter de toute facon : Production seulement,
+// jamais sur sa propre ligne, motif ecrit obligatoire, rien apres paiement, plafond 100 EUR. Les
+// controles ci-dessous ne sont donc pas la securite — ils evitent un aller-retour reseau pour dire
+// a l'utilisateur ce qu'il verra de toute maniere.
+async function modalPrimeMission(affectationId,prestationId,ref,remuneration,dejaPrime){
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const o=_svSurcouche(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Accorder une prime</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Rémunération acceptée ${Number(remuneration||0).toLocaleString('fr-FR')} €${Number(dejaPrime||0)>0?', déjà primé '+Number(dejaPrime).toLocaleString('fr-FR')+' €':''} · 100 € au maximum par prime</div>
+    <div style="padding:10px 12px;margin-bottom:14px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.25);border-radius:8px;font-size:11.5px;color:var(--t2);line-height:1.5">
+      La prime s'ajoute au net à payer et l'opérateur en est prévenu, avec le motif.
+      <b>Écrivez ce qui est récompensé</b> : une prime sans raison est une faveur, et une faveur ne se
+      défend pas devant les autres opérateurs. Au-delà de 100 €, la décision revient à l'Admin.
+    </div>
+    <div style="display:grid;grid-template-columns:120px 1fr;gap:10px">
+      <div><label style="${lbl}">Montant (€)</label>
+        <input id="pr-montant" type="number" min="0" step="0.01" max="100" class="l-inp" style="height:38px"></div>
+      <div><label style="${lbl}">Motif</label>
+        <input id="pr-motif" class="l-inp" style="height:38px" placeholder="Couverture supplémentaire du plateau U10"></div>
+    </div>
+    <div style="margin-top:10px"><label style="${lbl}">Détail (facultatif)</label>
+      <textarea id="pr-detail" class="l-inp" rows="2" placeholder="Les faits. C'est ce qui rend la prime compréhensible par les autres."></textarea></div>
+    <div id="pr-err" style="color:var(--er);font-size:12px;margin-top:8px"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn bg2" data-x="annuler">Annuler</button>
+      <button class="btn bp" id="pr-ok" style="background:var(--ok)">Accorder</button>
+    </div>`);
+  o.querySelector('[data-x="annuler"]').onclick=()=>o.remove();
+  o.querySelector('#pr-ok').onclick=async()=>{
+    const err=o.querySelector('#pr-err');
+    const montant=Number(o.querySelector('#pr-montant').value);
+    const motif=o.querySelector('#pr-motif').value.trim();
+    if(!montant||montant<=0){err.textContent='Indiquez un montant.';return;}
+    if(montant>100){err.textContent='Une prime va de 1 à 100 € : au-delà, c\'est une décision de l\'Admin.';return;}
+    if(!motif){err.textContent='Une prime sans motif écrit n\'est pas défendable : dites ce qui est récompensé.';return;}
+    const r=await sbFetch('rpc/mission_primer',{method:'POST',body:{p_affectation_id:affectationId,p_montant:montant,p_motif:motif,p_detail:o.querySelector('#pr-detail').value.trim()||null}});
+    if(sbErr(r)){err.textContent=msgErreur(r,'Prime impossible.');return;}
+    o.remove();
+    toast('Prime accordée. Net à payer : '+Number(r?.net_a_payer||0).toLocaleString('fr-FR')+' €. L\'opérateur est prévenu.','ok');
     chargerEquipe(prestationId,ref);
   };
 }
