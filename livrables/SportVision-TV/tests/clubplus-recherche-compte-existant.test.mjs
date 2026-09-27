@@ -26,14 +26,16 @@
 // le refusent (« déjà inscrit ») sans rien envoyer, et c'est précisément cette branche que l'on
 // mesure. Les comptes de remplissage sont créés par l'API d'administration, déjà confirmés.
 //
-// PROPRETÉ. Club de test « Villeneuve 340 SC », organisation « ZZ Test Org … » créée puis
-// supprimée, adresses zz-cp-dec-…@example.invalid. Tout est supprimé à la fin, et vérifié.
+// PROPRETÉ. Le test crée SON PROPRE décor : club « ZZ Test Club … », organisation « ZZ Test Org … »,
+// adresses zz-cp-dec-…@example.invalid. Tout est supprimé à la fin, et vérifié. Il ne dépend d'aucune
+// donnée préexistante : un test qui s'appuie sur un club réel meurt le jour où ce club est supprimé,
+// et c'est exactement ce qui est arrivé à « Villeneuve 340 SC ».
 
 import { rapporteur, SB, ANON, enTeteAdmin } from "./_session-os.mjs";
 
 const T0 = Date.now();
 const MDP = "ZzClubplusDec!2026";
-const CLUB_NOM = "Villeneuve 340 SC";
+const CLUB_NOM = `ZZ Test Club ${T0}`;
 const SEULEMENT = (process.env.SEULEMENT || "").split(",").map((s) => s.trim()).filter(Boolean);
 const doit = (f) => SEULEMENT.length === 0 || SEULEMENT.includes(f);
 // Chaque fonction est mesurée déployée, puis (si fourni) depuis le code du dépôt.
@@ -78,8 +80,15 @@ let club = null;
 let org = null;
 const debut = Date.now();
 try {
-  club = (await lire(`clubs?select=id&nom=eq.${encodeURIComponent(CLUB_NOM)}`))[0];
-  if (!club) throw new Error("club de test introuvable");
+  // Le club est créé ici, pas cherché. Insérer dans `clubs` crée aussi, par trigger, la ligne
+  // `organizations` de même identifiant : le nettoyage la reprend. `plan: "performance"` est
+  // nécessaire, pas décoratif : un club naît en `free`, plafonné à UN utilisateur, et
+  // `clubplus-invite` répond alors 403 avant même de chercher le compte — le test ne mesurerait
+  // plus rien. C'est ce plafond que le club supprimé portait déjà.
+  const rClub = await api("clubs", { method: "POST", body: JSON.stringify({ id: crypto.randomUUID(), nom: CLUB_NOM, ville: "ZZ Test", plan: "performance" }) });
+  if (!rClub.ok) throw new Error(`club de test impossible : ${(await rClub.text()).slice(0, 200)}`);
+  club = (await rClub.json())[0];
+  if (!club?.id) throw new Error("club de test créé sans identifiant");
 
   // L'Owner Club+ de test (il a le droit d'appeler clubplus-invite pour son club), et le compte
   // « ancien », créés en premier.
@@ -154,11 +163,18 @@ try {
     await del(`organizations?id=eq.${org}`);
   }
   for (const id of ids.slice(0, 2)) await fermer(id);
-  if (club) await del(`club_onboarding_events?club_id=eq.${club.id}&detail=ilike.ZZ*`);
+  if (club) {
+    await del(`club_onboarding_events?club_id=eq.${club.id}`);
+    await del(`club_members?club_id=eq.${club.id}`);
+    await del(`memberships?organization_id=eq.${club.id}`);
+    await del(`organizations?id=eq.${club.id}`);
+    await del(`clubs?id=eq.${club.id}`);
+  }
   const restes = [];
   const d = await (await auth(`admin/users?filter=${encodeURIComponent(`-${T0}@example.invalid`)}&per_page=500`)).json();
   if ((d?.users || []).length) restes.push(`${d.users.length} compte(s)`);
   if ((await lire(`organizations?select=id&nom=like.*${T0}*`)).length) restes.push("organisation ZZ");
+  if (club && (await lire(`clubs?select=id&id=eq.${club.id}`)).length) restes.push("club de test");
   for (const id of ids.slice(0, 2)) {
     if ((await lire(`club_members?select=id&user_id=eq.${id}`)).length) restes.push(`rattachement ${id}`);
     if ((await lire(`memberships?select=id&user_id=eq.${id}`)).length) restes.push(`adhésion ${id}`);
