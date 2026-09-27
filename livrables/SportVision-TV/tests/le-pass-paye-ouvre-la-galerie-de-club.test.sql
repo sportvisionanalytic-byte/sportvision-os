@@ -31,9 +31,19 @@ begin
   insert into clubs (nom) values ('ZZ Club Voisin') returning id into v_autre_club;
   insert into club_teams (club_id, name) values (v_club, 'ZZ Pass U13') returning id into v_equipe;
 
-  -- LA galerie du cas : celle du club, sans aucune equipe.
+  -- LA galerie du cas : celle de l'equipe de l'enfant, alors que le Pass a ete pris pour un
+  -- PERIMETRE D'EQUIPE. C'est bien ce que la v297 corrige, et le decor a change le 27/09.
+  --
+  -- DEUX REGLES DISTINCTES, ET IL FAUT LES GARDER SEPAREES POUR LIRE CE TEST :
+  --   media_droit_paye()                  a-t-elle PAYE pour cette galerie ?
+  --   media_galerie_concerne_le_joueur()  cette galerie PARLE-T-ELLE de son enfant ?
+  --
+  -- La premiere ouvre la porte, la seconde dit si la famille a quelque chose a y faire. Le decor
+  -- posait `team_id = null` : la porte s'ouvrait (v297) mais depuis la v304 la famille n'est plus
+  -- concernee par une galerie sans equipe, donc l'etape d'identification rendait zero. Une galerie
+  -- portant SON equipe mesure les deux regles a la fois, et c'est le cas reel.
   insert into media_albums (club_id, team_id, saison_id, title, status, event_date, published_at)
-    select v_club, null, s.id, 'ZZ Plateau du club', 'published', current_date, now()
+    select v_club, v_equipe, s.id, 'ZZ Plateau de son equipe', 'published', current_date, now()
       from saisons s where current_date between s.date_debut and s.date_fin
     returning id into v_album;
   insert into media_assets (album_id, club_id, kind, storage_bucket, original_path, status, position)
@@ -82,11 +92,11 @@ begin
     returning id into v_order;
   perform media_activer_commande(v_order);
 
-  -- ══ 3. LA GALERIE DE CLUB S'OUVRE (v297) ═════════════════════════════════
+  -- ══ 3. LA GALERIE S'OUVRE APRES PAIEMENT (v297) ══════════════════════════
   perform set_config('role','authenticated',true);
   perform set_config('request.jwt.claims', json_build_object('sub',v_user::text,'role','authenticated')::text, true);
   if not can_access_media(v_album) then
-    e := e || 'PASS PAYE ET GALERIE DE CLUB TOUJOURS VERROUILLEE (v297)'::text;
+    e := e || 'PASS PAYE ET GALERIE TOUJOURS VERROUILLEE (v297)'::text;
   end if;
 
   -- ══ 4. ET LE FILIGRANE TOMBE, DU MÊME COUP (v298) ════════════════════════

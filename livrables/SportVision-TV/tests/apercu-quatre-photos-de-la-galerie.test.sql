@@ -31,8 +31,14 @@ begin
 
   insert into clubs (nom) values ('ZZ Club Apercu') returning id into v_club;
   insert into club_teams (club_id, name) values (v_club,'ZZ Apercu U13') returning id into v_equipe;
+  -- LA GALERIE PORTE L'EQUIPE DE L'ENFANT, et ce detail est le sujet d'une correction du 27/09.
+  -- Ce decor posait `team_id = null`, une « galerie de club ». Fouka a tranche le meme jour : une
+  -- famille ne voit que les galeries de l'equipe de son enfant, et une galerie sans equipe n'est
+  -- plus une affaire de famille (v302, v304). Le test tombait donc en rouge sur un comportement
+  -- VOULU — et laisser un decor qui n'existe plus dans le produit aurait pousse quelqu'un a defaire
+  -- la regle pour « faire passer le test ».
   insert into media_albums (club_id, team_id, saison_id, title, status, event_date, published_at)
-    values (v_club, null, v_saison, 'ZZ Plateau Apercu', 'published', current_date, now())
+    values (v_club, v_equipe, v_saison, 'ZZ Plateau Apercu', 'published', current_date, now())
     returning id into v_album;
   -- Dix photos, dont deux de groupe : le repli doit sortir les photos de groupe d'abord.
   for i in 1..10 loop

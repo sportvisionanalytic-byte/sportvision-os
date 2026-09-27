@@ -1060,6 +1060,22 @@ const NAV={
     {id:'cockpit',lb:'Cockpit',ic:'check'},
     {id:'pre',lb:'Missions',ic:'pre'},
     {id:'livr',lb:'Livraisons',ic:'check'},
+    // 27/09/2026 — MIKAEL, RESPONSABLE PRODUCTION, NE POUVAIT PAS LIVRER SES PROPRES PHOTOS.
+    // Fouka : « dans son espace, il se voit que en tant que responsable production, mais il ne peut
+    // pas livrer ses photos, il ne peut pas faire ses livrables ».
+    //
+    // Il est les DEUX : il encadre le pôle Football ET il est affecté sur le terrain (4 missions
+    // acceptées, mesuré). Or « Missions » et « Livraisons » ci-dessus sont les écrans d'ENCADREMENT
+    // — les missions du pôle, les livrables des autres à relire. Rien ne montrait SES missions à lui
+    // ni ne lui offrait de déposer ses liens. La base ne le bloquait pas (media_liens accepte un
+    // `prod` dans son pôle) : c'était la navigation, et elle seule.
+    //
+    // Aucun droit n'est ajouté ici. Les deux écrans sont ceux du rôle photo, réutilisés tels quels :
+    // ils filtrent sur `collaborateur_id = <soi>`, donc ils ne montrent que ses propres missions et
+    // ses propres liens, exactement comme pour un opérateur.
+    {type:'sep',lb:'Sur le terrain'},
+    {id:'terrainpre',lb:'Mes missions',ic:'pre'},
+    {id:'terrainmedias',lb:'Mes livrables',ic:'med'},,
     // 12/09/2026 — Le Mode Jour J etait atteignable depuis une fiche mission et depuis le menu
     // mobile, mais pas depuis le menu sur poste fixe : le jour d'une mission, la supervision se
     // cherchait. Il reprend sa place dans « Operations ».
@@ -3536,6 +3552,12 @@ const VIEWS={
 // admin.cmagency/sec.cmagency, admin.connectcomptes/sec.connectcomptes...).
 VIEWS['admin.media']=VIEWS['prod.media'];
 VIEWS['photo.media']=VIEWS['prod.media'];
+// 27/09/2026 — L'espace terrain du Responsable Production : les gabarits du role photo, reutilises
+// sous des identifiants de vue distincts pour ne pas ecraser 'prod.pre' (Missions du pole) ni
+// 'prod.media' (Galeries photo), qui sont ses ecrans d'encadrement. Meme patron que les deux alias
+// ci-dessus.
+VIEWS['prod.terrainpre']=VIEWS['photo.pre'];
+VIEWS['prod.terrainmedias']=VIEWS['photo.medias'];
 VIEWS['admin.docrh']=VIEWS['sec.docrh'];
 // Alias admin → rh.* (migration-poles-v14, 31/08/2026, séparation collaborateurs par pôle) :
 // nouveau rôle 'rh' (Secrétaire générale, accès staff transversal à tous les pôles), mêmes
@@ -5882,6 +5904,11 @@ async function loadViewData(role,view){
   // écrans CM déjà consultables depuis 'Communication').
   if(['cm','admin','prod'].includes(role)&&view==='mediabank') await loadCmMediaBank();
   if(role==='photo'&&view==='medias') await loadPhotoMedias();
+  // L'espace terrain du Responsable Production (27/09/2026) : les MEMES chargeurs que l'operateur.
+  // Tous deux filtrent sur `collaborateur_id = <soi>`, donc ils ne rendent que ses propres missions
+  // et ses propres liens — aucun elargissement de perimetre.
+  if(role==='prod'&&view==='terrainpre') await loadPhotoMesPrestations();
+  if(role==='prod'&&view==='terrainmedias') await loadPhotoMedias();
   if(role==='photo'&&view==='kits') await loadPhotoKits();
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='prod'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
