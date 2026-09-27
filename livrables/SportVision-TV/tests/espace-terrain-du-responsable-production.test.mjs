@@ -84,5 +84,47 @@ for (const nom of ["loadPhotoMesPrestations", "loadPhotoMedias"]) {
     "l'ecran « Mes missions » montrerait celles des autres");
 }
 
+// ── 5. AUCUN TROU DANS AUCUN MENU ──────────────────────────────────────────────────────────────
+//
+// LE DEFAUT QUI A BLOQUE MIKAEL (27/09/2026). En ajoutant les deux entrees ci-dessus, j'ai laisse une
+// VIRGULE EN TROP : `{id:'terrainmedias',...},,`. En JavaScript, `[a,,b]` est un tableau creux — une
+// syntaxe parfaitement valide, donc `node --check` l'accepte sans broncher. Mais le rendu de la
+// navigation parcourt NAV.prod et plante sur l'element `undefined` : Mikael n'accedait plus a
+// « Galeries », « Livraisons » et le reste de son espace.
+//
+// Une erreur de syntaxe se voit. Un tableau creux, non : il faut CHARGER le menu et le parcourir.
+{
+  const i = src.indexOf("const NAV={");
+  let nav = null;
+  if (i >= 0) {
+    let prof = 0; const j = src.indexOf("{", i); let fin = -1;
+    for (let k = j; k < src.length; k++) {
+      if (src[k] === "{") prof++;
+      else if (src[k] === "}") { prof--; if (prof === 0) { fin = k + 1; break; } }
+    }
+    if (fin > 0) {
+      try { nav = Function(`"use strict";return (${src.slice(j, fin)})`)(); } catch { nav = null; }
+    }
+  }
+  t("le menu NAV se charge", nav !== null, "impossible de l'evaluer : sa structure est cassee");
+  if (nav) {
+    // ON PARCOURT PAR INDICE, ET C'EST INDISPENSABLE : `forEach` SAUTE LES TROUS d'un tableau creux.
+    // Ma premiere version utilisait forEach et restait VERTE avec la virgule doublee remise — un test
+    // incapable d'echouer sur le defaut meme qu'il est cense surveiller. Verifie en la remettant.
+    let trous = 0;
+    for (const [role, entrees] of Object.entries(nav)) {
+      if (!Array.isArray(entrees)) continue;
+      for (let n = 0; n < entrees.length; n++) {
+        if (!(n in entrees)) { trous++; console.log(`       TROU dans NAV.${role} a l'index ${n}`); continue; }
+        const e = entrees[n];
+        if (e === undefined || e === null) { trous++; console.log(`       TROU dans NAV.${role} a l'index ${n}`); }
+        else if (!e.id && !e.type) { trous++; console.log(`       entree sans id ni type dans NAV.${role} a l'index ${n}`); }
+      }
+    }
+    t("aucun trou dans aucun menu de role", trous === 0,
+      "un element undefined fait planter le rendu de la navigation : le role perd tout son espace");
+  }
+}
+
 console.log(ko === 0 ? "\nTout est vert." : `\n${ko} verification(s) en echec.`);
 process.exit(ko === 0 ? 0 : 1);
