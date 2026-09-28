@@ -94,22 +94,22 @@ export function ReconnaissanceView({
     if (erreurDepot) {
       // UN REFUS DE DROITS N'EST PAS UNE PANNE DE RÉSEAU (28/09/2026).
       //
-      // Ce message disait « Vérifiez votre connexion » quelle que soit la cause. Or la règle du
-      // stockage refuse le dépôt dans deux cas parfaitement normaux : un joueur MINEUR qui essaie
-      // de déposer lui-même — c'est à son représentant légal de le faire, la photo d'un visage
-      // d'enfant n'est pas une donnée qu'un mineur confie seul — et un accord de reconnaissance
-      // qui n'est pas actif. Dans les deux cas, réessayer ne donnera jamais rien, et on envoie la
-      // personne vérifier son wifi pendant que la vraie raison reste invisible.
+      // Ce message disait « Vérifiez votre connexion » quelle que soit la cause, et envoyait donc
+      // la personne vérifier son wifi pendant que la vraie raison restait invisible. Réessayer ne
+      // donnera jamais rien sur un refus de droits.
       //
-      // Trouvé le 28/09 : Fouka testait avec un compte joueur né en 2009, donc mineur.
+      // Depuis la v323, le sportif dépose lui-même sa photo quel que soit son âge : le refus ne
+      // vient donc plus de la minorité. Il reste deux causes, et ce sont elles qu'on nomme —
+      // l'accord de reconnaissance qui n'est pas enregistré, ou un lien avec ce sportif qui n'est
+      // pas confirmé par le club.
       const brut = `${(erreurDepot as { message?: string })?.message ?? ""}`.toLowerCase();
       const refuse = brut.includes("row-level security") || brut.includes("unauthorized")
         || brut.includes("violates") || brut.includes("policy") || brut.includes("403");
       setErreur(
         refuse
           ? (pourMoi
-              ? "Vous ne pouvez pas déposer cette photo depuis ce compte. Pour un sportif mineur, c'est le parent dont le lien est confirmé qui la dépose."
-              : `Le dépôt a été refusé. Vérifiez que votre lien avec ${prenom} est bien confirmé par le club, et que l'accord de reconnaissance est enregistré.`)
+              ? "Le dépôt a été refusé. Vérifiez que votre accord de reconnaissance est bien enregistré, juste au-dessus."
+              : `Le dépôt a été refusé. Vérifiez que l'accord de reconnaissance est enregistré, et que votre lien avec ${prenom} est bien confirmé par le club.`)
           : "La photo n'a pas pu être déposée. Vérifiez votre connexion et réessayez.",
       );
       setEnCours(null);
