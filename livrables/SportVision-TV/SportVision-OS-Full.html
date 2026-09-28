@@ -13794,6 +13794,10 @@ const RECO_CFG={
   seuilPropose:0.55,
   // Les visages minuscules d'un fond de terrain ne donnent rien de fiable.
   scoreMin:0.6,
+  // MAIS UNE PHOTO DEPOSEE EXPRES N'EST PAS UNE PHOTO DE MATCH. Sur un portrait, il n'y a personne
+  // d'autre a confondre, et le seuil de match ecarte pour rien : le portrait de Nathan sortait a
+  // 0,53, donc jete, alors que la detection avait parfaitement fonctionne.
+  scoreMinReference:0.3,
 };
 let _recoModule=null,_recoCharge=null;
 
@@ -13820,11 +13824,31 @@ function recoPreparer(){
   return _recoCharge;
 }
 
-/** Les visages d'une image déjà décodée : empreinte, cadre, qualité. */
-async function recoVisagesDe(source){
+/** Les visages d'une image déjà décodée : empreinte, cadre, qualité.
+ *
+ *  UN CANEVAS, JAMAIS UN IMAGEBITMAP. face-api refuse un ImageBitmap (« toNetInput - expected media
+ *  to be of type HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | tf.Tensor3D »), et son
+ *  refus part dans une promesse non attendue : rien ne remonte, la detection ne rend simplement
+ *  jamais rien. Les trois appelants passaient un bitmap, donc l'identification de l'OS n'a
+ *  vraisemblablement jamais marque une seule photo, sans jamais afficher d'erreur. On normalise ici
+ *  plutot que chez chacun d'eux.
+ *
+ *  ET ON REDUIT. Un visage perdu dans 6 000 px de haut sort a 0,53 de confiance, sous le seuil : la
+ *  detection marchait et on jetait son resultat. Ramene a 1 200 px, le meme visage donne un score
+ *  franc et le modele travaille dix fois plus vite. Les cadres restent en proportions, donc rien
+ *  d'autre ne change. */
+async function recoVisagesDe(source,scoreMin){
   const fa=await recoPreparer();
+  const seuil=(scoreMin==null?RECO_CFG.scoreMin:scoreMin);
+  if(!source.getContext&&!(source instanceof HTMLImageElement)){
+    const cote=Math.max(source.width,source.height),ech=cote>1200?1200/cote:1;
+    const toile=document.createElement('canvas');
+    toile.width=Math.round(source.width*ech);toile.height=Math.round(source.height*ech);
+    toile.getContext('2d',{willReadFrequently:true}).drawImage(source,0,0,toile.width,toile.height);
+    source=toile;
+  }
   const res=await fa.detectAllFaces(source).withFaceLandmarks().withFaceDescriptors();
-  return (res||[]).filter(d=>(d.detection&&d.detection.score||0)>=RECO_CFG.scoreMin).map(d=>({
+  return (res||[]).filter(d=>(d.detection&&d.detection.score||0)>=seuil).map(d=>({
     empreinte:Array.from(d.descriptor),
     boite:{x:+(d.detection.box.x/source.width).toFixed(4),y:+(d.detection.box.y/source.height).toFixed(4),
            l:+(d.detection.box.width/source.width).toFixed(4),h:+(d.detection.box.height/source.height).toFixed(4)},
@@ -13860,7 +13884,7 @@ async function recoCalculerReferences(joueurs,onAvance){
       if(!url)continue;
       const blob=await (await fetch(url)).blob();
       const bmp=await createImageBitmap(blob,{imageOrientation:'from-image'});
-      const visages=await recoVisagesDe(bmp);
+      const visages=await recoVisagesDe(bmp,RECO_CFG.scoreMinReference);
       if(bmp.close)bmp.close();
       // Une photo de référence doit montrer UN visage. Deux, et on ne sait pas lequel est l'enfant.
       if(visages.length!==1)continue;
@@ -13907,7 +13931,10 @@ async function recoReprendreGalerie(albumId){
     toast('Aucun sportif de cette équipe n’a autorisé la reconnaissance.','wa');
     return;
   }
-  const photos=(await sbFetch('media_assets?select=id,original_path&album_id=eq.'+albumId+'&status=eq.ready&order=position')||[]);
+  // storage_bucket ET preview_clair_path, SANS QUOI RIEN NE MARCHE. `_galUrlOriginal` decide d'apres
+  // storage_bucket ; absent de la requete, il vaut undefined, la fonction croit tout chez Supabase et
+  // signe un chemin qui n'existe plus depuis le passage a R2 : « Object not found », en silence.
+  const photos=(await sbFetch('media_assets?select=id,original_path,preview_clair_path,storage_bucket&album_id=eq.'+albumId+'&status=eq.ready&order=position')||[]);
   if(sbErr(photos)||!photos.length){toast('Aucune photo prête dans cette galerie.','wa');return;}
 
   openModal('<div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:10px">Identification en cours</div>'+
@@ -13921,7 +13948,11 @@ async function recoReprendreGalerie(albumId){
     for(let i=0;i<photos.length;i++){
       dire('Photo '+(i+1)+' sur '+photos.length+'…');
       try{
-        const url=await _galUrlOriginal(photos[i],600);
+        // L'APERCU CLAIR D'ABORD : sans filigrane, toujours chez Supabase quel que soit l'hebergeur
+        // de l'original, et deja plus petit que ce qu'on reduirait. Aucune sortie R2 a payer.
+        const url=photos[i].preview_clair_path
+          ?await _recoUrlSignee('sportvision-media-prive',photos[i].preview_clair_path)
+          :await _galUrlOriginal(photos[i],600);
         if(!url)continue;
         const bmp=await createImageBitmap(await (await fetch(url)).blob(),{imageOrientation:'from-image'});
         const visages=await recoVisagesDe(bmp);
@@ -41292,11 +41323,18 @@ async function loadEquipeEnDirect(){
   // des photographes/vidéastes Football en regardant le pôle Basket).
   const _eqPoleSelect=(S.activePoleId&&_eqRole==='admin')?',pole_affectations!pole_affectations_user_id_fkey!inner(pole_id)':'';
   const _eqPoleQS=(S.activePoleId&&_eqRole==='admin')?'&pole_affectations.pole_id=eq.'+S.activePoleId:'';
-  const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
+  const [profiles,todayMissions,monthMissions,disponibilites,logistique]=await Promise.all([
     sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone,zone,materiel_personnel'+_eqPoleSelect+_eqRoleFilter+_eqPoleQS+'&order=prenom.asc').catch(()=>[]),
     sbFetch('prestations_equipe_display?select=collaborateur_id,statut,prestations!inner(id,reference,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
     sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(id,date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
+    // VILLE, VEHICULE ET PERMIS NE SONT PLUS SUR profiles. Ils l'ont quitte le 10/09/2026 pour
+    // collaborateur_logistique, dont la RLS ne laisse passer que l'interesse, l'Admin et la
+    // Production — l'annuaire interne, lui, est ouvert a compta, com, photo et cm. Cet ecran a
+    // continue de lire `c.ville` sur profiles : la colonne n'existant plus la, elle valait
+    // `undefined`, et le bandeau ne s'est plus jamais affiche. Rien ne le disait, exactement comme
+    // `storage_bucket` oublie dans la requete de reconnaissance le meme jour.
+    sbFetch('collaborateur_logistique?select=collaborateur_id,ville,vehicule,permis').catch(()=>[]),
   ]);
 
   const collabs=(Array.isArray(profiles)?profiles:[]).filter(p=>p.role!=='client');
@@ -41306,6 +41344,10 @@ async function loadEquipeEnDirect(){
   if(Array.isArray(monthMissions))monthMissions.forEach(m=>{missionCount[m.collaborateur_id]=(missionCount[m.collaborateur_id]||0)+1;});
   const dispoMap={};
   if(Array.isArray(disponibilites))disponibilites.forEach(d=>{dispoMap[d.collaborateur_id]=d.statut;});
+  // On repose la logistique sur la fiche, la ou l'affichage la cherche.
+  const logiMap={};
+  if(Array.isArray(logistique))logistique.forEach(l=>{logiMap[l.collaborateur_id]=l;});
+  collabs.forEach(c=>{const l=logiMap[c.id];if(l){c.ville=l.ville;c.vehicule=l.vehicule;c.permis=l.permis;}});
 
   _equipeCache=collabs;
 
