@@ -7,12 +7,28 @@
 --
 -- Une règle d'âge se défait sans bruit à la première réécriture de fonction. Elle se teste.
 --
+-- MISE À JOUR DU 28/09/2026 — LE DÉPÔT NE SUIT PLUS L'ÂGE, IL SUIT L'ACCORD.
+--
+-- Décision de Fouka, ce jour-là : « lui-même dépose lui-même sa photo de référence, le parent
+-- n'est pas obligé de le faire à sa place. » Ce test exigeait qu'un enfant de 12 ans ne puisse pas
+-- déposer sa photo MÊME quand son parent avait donné l'accord — et il fallait alors que le parent
+-- prenne le téléphone de l'enfant pour faire le geste à sa place.
+--
+-- CE QUI PROTÈGE UN MINEUR, C'EST L'ACCORD, PAS LA MAIN QUI TÉLÉVERSE. La base légale du
+-- traitement, c'est le consentement du titulaire de l'autorité parentale, et il est donné avant.
+-- L'enfant ne fait ensuite que fournir le fichier ; sans accord, personne ne dépose — ni lui, ni
+-- le parent, et c'est ce que le contrôle 5 vérifie désormais.
+--
+-- CE QUI N'A PAS BOUGÉ, et c'est la règle légale : ACCORDER seul reste réservé aux quinze ans et
+-- plus (contrôles 1 à 4). Le seuil de l'article 8 du RGPD porte sur le consentement, pas sur le
+-- téléversement d'un fichier.
+--
 -- CE QU'ON MESURE :
 --   1. Un joueur de 16 ans accorde seul, et c'est tracé comme tel (`joueur_15_17`).
 --   2. Un joueur majeur aussi, sous son propre titre.
 --   3. Un joueur de 12 ans ne peut pas, et le message lui dit quoi faire.
 --   4. Son parent confirmé, lui, le peut.
---   5. Le dépôt de la photo suit la même règle : accorder sans pouvoir déposer ne servirait à rien.
+--   5. Le dépôt de la photo suit l'ACCORD, pas l'âge — voir la mise à jour du 28/09 ci-dessous.
 --   6. Le RETRAIT reste ouvert au joueur à tout âge : on ne met jamais d'obstacle devant quelqu'un
 --      qui veut faire effacer ses données.
 --   7. Personne ne consent pour l'enfant d'un autre.
@@ -34,7 +50,7 @@ end $i$;
 do $$
 declare
   v_club uuid; v_saison uuid;
-  v_seize uuid; v_douze uuid; v_majeur uuid;
+  v_seize uuid; v_douze uuid; v_majeur uuid; v_sans_accord uuid;
   v_c_seize uuid; v_c_douze uuid; v_c_majeur uuid; v_c_parent uuid; v_parent uuid;
   e text[] := '{}'; q text; msg text; n int;
 begin
@@ -60,6 +76,11 @@ begin
     values (v_c_douze,'ZZ','Douze', v_club, (current_date - interval '12 years')::date) returning id into v_douze;
   insert into player_profiles (user_id, prenom, nom, club_id, date_naissance)
     values (v_c_majeur,'ZZ','Majeur', v_club, (current_date - interval '20 years')::date) returning id into v_majeur;
+
+  -- UN ENFANT DONT PERSONNE N'A RIEN ACCORDE. C'est lui qui prouve que l'accord reste la
+  -- condition du depot, maintenant que l'age ne l'est plus (28/09/2026).
+  insert into player_profiles (prenom, nom, club_id, date_naissance)
+    values ('ZZ','SansAccord', v_club, (current_date - interval '12 years')::date) returning id into v_sans_accord;
 
   insert into parent_profiles (user_id, prenom, nom) values (v_c_parent,'ZZ','ParentAge') returning id into v_parent;
   insert into parent_player_relationships (parent_id, player_id, statut, confirmed_at)
@@ -123,12 +144,23 @@ begin
     e := e || ('un joueur de 16 ans ne peut pas deposer sa photo — '||left(sqlerrm,70))::text;
   end;
 
+  -- LE JOUEUR DE 12 ANS DEPOSE LUI-MEME, parce que son parent a accorde juste au-dessus (cas 4).
+  -- C'est la decision du 28/09 : l'accord protege, pas la main qui televerse.
   perform pg_temp.incarner(v_c_douze);
-  msg := null;
   begin
-    perform enregistrer_photo_reference(v_douze, 'visages/'||v_douze::text||'/ref.jpg');
-    e := e || 'un joueur de 12 ans a depose sa photo de reference'::text;
-  exception when others then msg := sqlerrm;
+    perform enregistrer_photo_reference(v_douze, 'visages/'||v_douze::text||'/ref2.jpg');
+  exception when others then
+    e := e || ('un joueur de 12 ans ne peut pas deposer alors que son parent a accorde — '||left(sqlerrm,60))::text;
+  end;
+
+  -- MAIS SANS ACCORD, PERSONNE NE DEPOSE. C'est la borne qui compte vraiment : on la verifie sur
+  -- un troisieme enfant, dont aucun parent n'a rien accorde.
+  perform pg_temp.serveur();
+  perform pg_temp.incarner(v_c_douze);
+  begin
+    perform enregistrer_photo_reference(v_sans_accord, 'visages/'||v_sans_accord::text||'/ref.jpg');
+    e := e || 'une photo a ete deposee SANS aucun accord'::text;
+  exception when others then null;
   end;
 
   -- ══ 6. LE RETRAIT RESTE OUVERT À TOUT ÂGE ════════════════════════════════
