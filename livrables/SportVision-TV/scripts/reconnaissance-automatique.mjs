@@ -203,18 +203,30 @@ const serveur = createServer((_, rep) => {
   rep.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
   rep.end("<!doctype html><html><head><meta charset='utf-8'></head><body></body></html>");
 }).listen(0, "127.0.0.1");
-await new Promise((r) => serveur.on("listening", r));
+// ON ATTACHE L'ECOUTE AVANT, ET ON REGARDE L'ETAT (29/09/2026).
+//
+// `serveur.on("listening", ...)` pose apres coup : si l'evenement est DEJA passe quand on attache
+// le gestionnaire, il ne reviendra jamais et l'attente ne se termine pas. En lancement manuel le
+// hasard du timing passait ; installe en service, le script restait bloque la, indefiniment, sans
+// ecrire une ligne — journal a zero octet, processus vivant, rien a diagnostiquer.
+await new Promise((resoudre, rejeter) => {
+  if (serveur.listening) return resoudre();
+  serveur.once("listening", resoudre);
+  serveur.once("error", rejeter);
+});
 
 // SwiftShader rend WebGL disponible sans carte graphique. Sans ces drapeaux, le navigateur sans
 // ecran tombe en plein calcul — « Resulting promise was garbage collected », vu au premier essai.
+dire("Démarrage du navigateur…");
 const navigateur = await chromium.launch({
   args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--disable-dev-shm-usage"],
 });
+dire("Navigateur prêt.");
 const page = await navigateur.newPage();
 page.on("console", (m) => { if (m.type() === "error") console.log("   navigateur :", m.text().slice(0, 140)); });
 await page.goto(`http://127.0.0.1:${serveur.address().port}/`);
 
-console.log("Chargement des modèles…");
+dire("Chargement des modèles…");
 await page.addScriptTag({ url: CFG.lib });
 // LE DETECTEUR DE PERSONNES, a cote du detecteur de visages. face-api embarque son propre
 // TensorFlow ; coco-ssd, lui, cherche `window.tf`. On le lui donne plutot que d'en charger un
