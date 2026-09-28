@@ -303,18 +303,26 @@ serve(async (req) => {
     const attendu = plateforme === "apple" ? product.apple_product_id : product.google_product_id;
     if (!attendu) return json({ error: "Ce produit n'est pas vendu sur cette plateforme." }, 400);
 
-    // Rejeu : si ce jeton a déjà ouvert un accès, on le redit sans rien recréer. C'est le cas
-    // NORMAL d'une restauration d'achat ou d'une réinstallation, surtout sur Android.
-    const { data: dejaVue } = await admin
-      .from("media_orders").select("id")
-      .eq("store_transaction_id", jetonAchat).maybeSingle();
-    if (dejaVue) return json({ ok: true, deja_active: true, order_id: dejaVue.id });
-
+    // ON VALIDE D'ABORD, ON CHERCHE LE REJEU ENSUITE (28/09/2026).
+    //
+    // L'ordre etait inverse, et la recherche portait sur le RECU COMPLET. Deux defauts en un :
+    // le recu d'Apple n'est pas stable — un meme achat restaure en produit un different — et il
+    // est trop gros pour etre indexe (voir plus bas). L'identifiant de transaction, lui, ne bouge
+    // jamais : c'est la vraie cle de cet achat, et c'est sur elle qu'on reconnait un rejeu.
+    //
+    // Le cout est un appel de plus chez Apple quand l'achat est deja connu. C'est le cas NORMAL
+    // d'une restauration ou d'une reinstallation, et cet appel se compte en millisecondes.
     const verdict = plateforme === "apple"
       ? await verifierApple(jetonAchat)
       : await verifierGoogle(jetonAchat, attendu);
 
     if (verdict.invalide) return json({ error: verdict.invalide }, 400);
+
+    // Rejeu : cet achat a deja ouvert un acces, on le redit sans rien recreer.
+    const { data: dejaVue } = await admin
+      .from("media_orders").select("id")
+      .eq("store_transaction_id", verdict.reference).maybeSingle();
+    if (dejaVue) return json({ ok: true, deja_active: true, order_id: dejaVue.id });
     if (verdict.productId !== attendu) {
       // Payer le Pass d'un club pour ouvrir celui d'un autre.
       return json({ error: "Cet achat ne correspond pas à ce produit." }, 400);
@@ -356,7 +364,22 @@ serve(async (req) => {
         status: "pending",
         shipping_status: "non_requis",
         source: plateforme,
-        store_transaction_id: jetonAchat,
+        // L'IDENTIFIANT DE TRANSACTION, PAS LE RECU (28/09/2026). On ecrivait ici le recu JWS
+        // complet d'Apple, 3 000 a 4 000 octets. Or cette colonne porte un index unique, et un
+        // index btree refuse au-dela de 2 704 octets :
+        //
+        //   ERROR 54000 : index row size 3016 exceeds btree version 4 maximum 2704
+        //                 for index "media_orders_store_tx_uniq"
+        //
+        // AUCUN achat iOS ne pouvait donc etre enregistre. Apple validait le recu, notre serveur
+        // le refusait a l'ecriture, et la famille lisait « Impossible d'enregistrer cet achat »
+        // apres avoir paye. Le relecteur d'Apple butait exactement la — c'est tres probablement
+        // la raison du refus de la version 1.0.
+        //
+        // L'identifiant de transaction fait une vingtaine de chiffres, il est stable d'une
+        // restauration a l'autre, et c'est la vraie cle naturelle de cet achat. Le recu, lui,
+        // n'avait rien a faire dans un index.
+        store_transaction_id: verdict.reference,
         note_encaissement: `${plateforme === "apple" ? "App Store" : "Google Play"}`
           + ` (${verdict.environnement}) · ${verdict.reference}`,
       })
@@ -367,7 +390,7 @@ serve(async (req) => {
       // résultat. On rend l'accès déjà créé plutôt qu'une erreur.
       const { data: concurrente } = await admin
         .from("media_orders").select("id")
-        .eq("store_transaction_id", jetonAchat).maybeSingle();
+        .eq("store_transaction_id", verdict.reference).maybeSingle();
       if (concurrente) return json({ ok: true, deja_active: true, order_id: concurrente.id });
       console.error("[iap-valider] insertion refusée :", orderErr);
       return json({ error: "Impossible d'enregistrer cet achat." }, 500);
