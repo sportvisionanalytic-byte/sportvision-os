@@ -57,6 +57,10 @@ export interface PassProposable {
    *  exact. Annoncer un prix different de celui qui sera debite est une reclamation assuree, et le
    *  seul moyen de ne jamais se tromper est de ne jamais le calculer soi-meme. */
   prixMagasin: string;
+  /** La devise que le magasin a REELLEMENT rendue. « EUR » partout en production : les deux Pass ne
+   *  sont vendus qu'en France, avec un seul prix, en euros. Autre chose signifie que l'appareil est
+   *  sur une autre boutique — et l'ecran doit le DIRE, pas laisser croire a un defaut de l'app. */
+  deviseMagasin: string | null;
   /** L'identifiant du produit chez CE magasin. */
   skuMagasin: string;
 }
@@ -270,6 +274,7 @@ export async function passProposable(
     nom: produit.title || p.name,
     dejaActif: false,
     prixMagasin: prix,
+    deviseMagasin: produit.currency ? String(produit.currency).toUpperCase() : null,
     skuMagasin: sku,
   };
 }

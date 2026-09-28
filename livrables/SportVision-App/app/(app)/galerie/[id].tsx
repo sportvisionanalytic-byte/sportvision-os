@@ -399,6 +399,21 @@ export default function Galerie() {
           </Pressable>
         ) : null}
 
+        {/* LA DEVISE VIENT DE LA BOUTIQUE DE L'APPAREIL, JAMAIS DU CODE (28/09/2026).
+            Verifie cote Apple : les deux Pass n'ont qu'UN SEUL prix, territoire France, et les deux
+            comptes de test sont francais. Un prix dans une autre devise ne peut donc venir que du
+            compte utilise SUR CET APPAREIL — et en TestFlight ce n'est pas le compte sandbox des
+            Reglages Developpeur, c'est le vrai compte App Store.
+            Ce message existe parce que la question est revenue quatre fois dans la journee, chaque
+            fois lue comme un defaut de l'application. L'ecran repond desormais tout seul. */}
+        {pass && !ouvertMaintenant && pass.deviseMagasin && pass.deviseMagasin !== "EUR" ? (
+          <Text style={s.avertissement}>
+            Ce prix est affiché en {pass.deviseMagasin} parce que le compte App Store de cet appareil
+            est rattaché à une autre boutique. En France, le Pass est vendu en euros. Réglages → votre
+            nom → Médias et achats → Afficher le compte → Pays/Région.
+          </Text>
+        ) : null}
+
         {/* 26/09/2026 — CE BOUTON NE S'AFFICHE PLUS AVANT LE PAIEMENT.
             Fouka : « ca ne me met pas d'acheter le pass, ca me met directement deposer ma photo de
             reference ». On reclamait une photo du visage d'un enfant a une famille qui n'avait rien
@@ -533,6 +548,11 @@ export default function Galerie() {
 }
 
 const s = StyleSheet.create({
+  avertissement: {
+    marginTop: E.s, paddingHorizontal: E.m, paddingVertical: E.s,
+    backgroundColor: C.surface, borderRadius: R.s,
+    color: C.texteDoux, fontSize: 12.5, lineHeight: 18,
+  },
   retour: { flexDirection: "row", alignItems: "center", gap: 2, alignSelf: "flex-start" },
   retourTexte: { color: C.texteDoux, fontSize: 14.5, fontWeight: "600" },
   titre: { color: C.texte, fontSize: 23, fontWeight: "800", letterSpacing: -0.5 },
