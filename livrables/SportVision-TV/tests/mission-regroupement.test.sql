@@ -1,9 +1,27 @@
--- Une mission par club, par jour et par lieu (migration v133, 10/09/2026).
+-- Une mission par club, par jour et par lieu (migration v133, 10/09/2026), AFFINÉE LE 25/09.
+--
+-- DÉCOR RENDU EXPLICITE LE 28/09/2026, et c'est tout le sujet. Ce fichier n'écrivait jamais
+-- `is_home`, dont la valeur par défaut en base est `true` : les neuf matchs du décor étaient donc
+-- TOUS à domicile, sans que le test le dise ni, visiblement, le sache.
+--
+-- Or la règle a été affinée le 25/09, sur un cas réel : « j'ai créé une mission d'une journée et ça
+-- a créé trois missions pour mon responsable production, il faut les réunir en une seule ». Un
+-- samedi à Fontainebleau donnait trois missions — « T3 », « T1 », « STADE PHILIPPE MAHUT 2 » —
+-- pour trois terrains du MÊME complexe. À domicile, le terrain ne compte donc plus : c'est le même
+-- endroit, l'opérateur y passe la journée. À l'extérieur, le lieu compte toujours, et il le faut :
+-- on ne peut pas être à Melun et à Provins le même après-midi.
+--
+-- Conséquence : « autre stade » et « lieu inconnu » ne mesuraient plus rien, puisqu'à domicile tout
+-- se regroupe. Les matchs concernés sont désormais déclarés À L'EXTÉRIEUR, ce qui est le scénario
+-- que ces vérifications veulent réellement décrire. Et un cas est AJOUTÉ pour verrouiller la
+-- décision du 25/09 dans l'autre sens : deux terrains à domicile le même jour = UNE mission.
 --
 -- Ce que ce test tient pour vrai :
 --   • trois matchs le même jour au même stade = une mission, qui dit combien, lesquels, et
 --     commence à l'heure du premier ; la Production reçoit une nouvelle mission, puis « match ajouté » ;
---   • autre stade, autre jour, lieu inconnu, ou mission déjà en cours : mission à part ;
+--   • à domicile, deux terrains différents le même jour = une seule mission (décision du 25/09) ;
+--   • à l'extérieur : autre lieu, ou lieu inconnu = mission à part ;
+--   • autre jour, ou mission déjà en cours : mission à part ;
 --   • retirer un match d'une mission regroupée garde la mission pour les autres ;
 --   • un match ajouté alors qu'une équipe est déjà prévue rejoint la mission, et la Production
 --     est invitée à revoir l'équipe.
@@ -40,19 +58,25 @@ select pole_id, 'a7a7a7a7-0000-0000-0000-000000000002'::uuid, 'membre', true fro
 
 create temp table m (cle text primary key, id uuid) on commit drop;
 grant select on m to authenticated;
-create temp table decor (k text, equipe text, h time, lieu text, decal int) on commit drop;
+-- `domicile` est declare pour CHAQUE match, jamais laisse au defaut : c'est cette colonne qui
+-- decide du regroupement, donc l'omettre rendait le decor muet sur ce qu'il mesure.
+create temp table decor (k text, equipe text, h time, lieu text, decal int, domicile boolean) on commit drop;
 insert into decor values
-  ('u10a', 'ZZ U10 A', '09:30', 'Stade Claude Ripert', 0),
-  ('u10b', 'ZZ U10 B', '10:30', 'Stade Claude Ripert', 0),
-  ('u10c', 'ZZ U10 C', '11:00', 'stade claude ripert ', 0),
-  ('autre_stade', 'ZZ U12', '09:30', 'Gymnase Nord', 0),
-  ('lendemain', 'ZZ U11 A', '09:30', 'Stade Claude Ripert', 1),
-  ('sans_lieu_1', 'ZZ U13 A', '14:00', null, 0),
-  ('sans_lieu_2', 'ZZ U13 B', '15:00', null, 0),
-  ('tard', 'ZZ U10 D', '12:00', 'Stade Claude Ripert', 0),
-  ('apres_depart', 'ZZ U10 E', '13:00', 'Stade Claude Ripert', 0);
-insert into club_matches (club_id, team, opponent, match_date, kickoff_time, lieu)
-select ctx.club_id, d.equipe, 'ZZ Adversaire ' || d.k, ctx.j + d.decal, d.h, d.lieu from ctx, decor d;
+  ('u10a', 'ZZ U10 A', '09:30', 'Stade Claude Ripert', 0, true),
+  ('u10b', 'ZZ U10 B', '10:30', 'Stade Claude Ripert', 0, true),
+  ('u10c', 'ZZ U10 C', '11:00', 'stade claude ripert ', 0, true),
+  -- Le meme jour, a domicile, sur un AUTRE terrain du complexe : une seule mission (25/09).
+  ('autre_terrain', 'ZZ U10 F', '11:30', 'Terrain T3', 0, true),
+  -- A l'exterieur, ailleurs : on ne peut pas y etre en meme temps, donc mission a part.
+  ('autre_stade', 'ZZ U12', '09:30', 'Gymnase Nord', 0, false),
+  ('lendemain', 'ZZ U11 A', '09:30', 'Stade Claude Ripert', 1, true),
+  -- A l'exterieur sans lieu connu : on ne devine pas, chacune sa mission.
+  ('sans_lieu_1', 'ZZ U13 A', '14:00', null, 0, false),
+  ('sans_lieu_2', 'ZZ U13 B', '15:00', null, 0, false),
+  ('tard', 'ZZ U10 D', '12:00', 'Stade Claude Ripert', 0, true),
+  ('apres_depart', 'ZZ U10 E', '13:00', 'Stade Claude Ripert', 0, true);
+insert into club_matches (club_id, team, opponent, match_date, kickoff_time, lieu, is_home)
+select ctx.club_id, d.equipe, 'ZZ Adversaire ' || d.k, ctx.j + d.decal, d.h, d.lieu, d.domicile from ctx, decor d;
 insert into m select d.k, cm.id from decor d join club_matches cm on cm.team = d.equipe and cm.club_id = (select club_id from ctx);
 
 create temp table verdicts (n serial, controle text, attendu text, obtenu text) on commit drop;
@@ -102,18 +126,24 @@ select pg_temp.note('Production : 1 nouvelle mission, puis 2 « match ajouté »
      from notifications where destinataire_id = 'a7a7a7a7-0000-0000-0000-000000000002'));
 
 -- ── Ce qui reste à part ──
-select pg_temp.decider('autre_stade'), pg_temp.decider('lendemain'), pg_temp.decider('sans_lieu_1'), pg_temp.decider('sans_lieu_2');
-select pg_temp.note('autre stade : mission à part', 'oui', case when pg_temp.mission('autre_stade') <> pg_temp.mission('u10a') then 'oui' else 'non' end);
+select pg_temp.decider('autre_terrain'), pg_temp.decider('autre_stade'), pg_temp.decider('lendemain'), pg_temp.decider('sans_lieu_1'), pg_temp.decider('sans_lieu_2');
+-- Decision du 25/09 : a domicile, le terrain ne compte pas. C'est le cas qui a coute trois missions
+-- a un responsable production pour une seule journee a Fontainebleau.
+select pg_temp.note('à domicile, un autre terrain rejoint la même mission (25/09)', 'oui',
+  case when pg_temp.mission('autre_terrain') = pg_temp.mission('u10a') then 'oui' else 'non' end);
+select pg_temp.note('à l''extérieur, un autre lieu fait mission à part', 'oui', case when pg_temp.mission('autre_stade') <> pg_temp.mission('u10a') then 'oui' else 'non' end);
 select pg_temp.note('lendemain, même stade : mission à part', 'oui', case when pg_temp.mission('lendemain') <> pg_temp.mission('u10a') then 'oui' else 'non' end);
-select pg_temp.note('lieu inconnu : pas de regroupement deviné', 'oui', case when pg_temp.mission('sans_lieu_1') <> pg_temp.mission('sans_lieu_2') then 'oui' else 'non' end);
+select pg_temp.note('à l''extérieur, lieu inconnu : pas de regroupement deviné', 'oui', case when pg_temp.mission('sans_lieu_1') <> pg_temp.mission('sans_lieu_2') then 'oui' else 'non' end);
 
 -- ── Retirer un match d'une mission regroupée ──
 select pg_temp.note('retirer U10 B — CM', 'autorisé', pg_temp.cm('select cm_annuler_couverture(''match:' || (select id from m where cle = 'u10b') || ''')'));
-select pg_temp.note('la mission reste, pour les deux autres', 'planifiée/2',
+-- Trois et non deux depuis le 28/09 : le cas « autre terrain a domicile » ajoute plus haut rejoint
+-- legitimement cette mission, c'est exactement ce que la decision du 25/09 demande.
+select pg_temp.note('la mission reste, pour les trois autres', 'planifiée/3',
   (select p.statut::text || '/' || (select count(*) from planned_presences pp where pp.created_prestation_id = p.id and pp.statut <> 'annule')
      from prestations p where p.id = pg_temp.mission('u10a')));
-select pg_temp.note('elle dit maintenant « 2 matchs »', 'oui',
-  (select case when description_besoin like '%2 matchs au même endroit%' and equipes = 'ZZ U10 A, ZZ U10 C' then 'oui' else description_besoin || ' | ' || equipes end
+select pg_temp.note('elle dit maintenant « 3 matchs »', 'oui',
+  (select case when description_besoin like '%3 matchs au même endroit%' and equipes = 'ZZ U10 A, ZZ U10 C, ZZ U10 F' then 'oui' else description_besoin || ' | ' || equipes end
      from prestations where id = pg_temp.mission('u10a')));
 select pg_temp.note('la Production est prévenue du retrait', '1',
   (select count(*)::text from notifications where destinataire_id = 'a7a7a7a7-0000-0000-0000-000000000002' and titre = 'Match retiré d''une mission'));

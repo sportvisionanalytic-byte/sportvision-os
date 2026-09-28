@@ -1,12 +1,29 @@
 -- Rattacher un joueur à une photo de galerie (v162, 12/09/2026).
 --
+-- ATTENTES REALIGNEES LE 28/09/2026 sur trois decisions posterieures, chacune ecrite et voulue. Ce
+-- fichier tenait encore les regles du 12/09, et il etait rouge depuis, invisible : le lanceur
+-- comptait vert tout test qui renvoyait un tableau sans lire ses verdicts.
+--
+--   v309  LA BORNE EST LE CLUB, PLUS L'EQUIPE. Fouka : « parfois il y a un U14 qui joue en U15 ou
+--         U16, il faudrait quand meme que ca le reconnaisse ». Un joueur du club mais d'une autre
+--         equipe est donc rattachable, et la liste le montre marque « Hors equipe ». Ce qui reste
+--         impossible, et que ce test verifie toujours : un joueur d'un AUTRE CLUB.
+--   v315  LE COACH DU CLUB MARQUE SES JOUEURS, demande explicite : le club connait ses enfants
+--         mieux que nous. Il voit donc cet ecran.
+--   v299  UN APERCU AVANT ACHAT. Quelques photos de la galerie sont montrees a qui n'a rien paye,
+--         pour donner envie. Le parent voit donc des photos meme sans aucun rattachement — mais ce
+--         ne sont PAS « les photos de son enfant », et la colonne `apercu_galerie` fait la
+--         difference. Les verifications ci-dessous portent desormais sur `not apercu_galerie` : ce
+--         qui est ATTRIBUE a l'enfant, et non ce qui est simplement montre. C'est plus fin que la
+--         version d'avant, qui ne pouvait pas distinguer les deux.
+--
 -- Ce que ce test tient pour vrai :
---   • la Production rattache et détache un joueur de l'équipe de la galerie ;
---   • un joueur étranger à l'équipe est refusé ;
+--   • la Production rattache et détache un joueur du CLUB de la galerie ;
+--   • un joueur d'un autre club est refusé ;
 --   • un photographe qui n'était pas sur la mission ne marque rien ;
---   • un coach du club ne marque rien non plus ;
+--   • le coach du club, lui, marque ses joueurs (v315) ;
 --   • détacher une suggestion de machine la marque « rejetée » et ne l'efface pas ;
---   • un rattachement validé rend la photo visible au parent (v160) ; l'enlever la referme.
+--   • un rattachement validé ATTRIBUE la photo au parent (v160) ; l'enlever la désattribue.
 -- Décor fictif, tout est annulé.
 
 begin;
@@ -63,38 +80,40 @@ begin
   return coalesce(v, '∅');
 end $$;
 
-select pg_temp.note('la Production voit les joueurs de l''équipe de la galerie', 'Dans l''équipe',
+select pg_temp.note('la Production voit les joueurs du club, hors équipe compris (v309)', 'Dans l''équipe, Hors équipe',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000001',
-    'select string_agg(nom, '', '') from media_joueurs_de_galerie((select album from ctx))'));
+    'select string_agg(nom, '', '' order by nom) from media_joueurs_de_galerie((select album from ctx))'));
 select pg_temp.note('le photographe hors mission ne voit rien', '∅',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000002',
     'select coalesce(string_agg(nom, '', ''), ''∅'') from media_joueurs_de_galerie((select album from ctx))'));
-select pg_temp.note('le coach du club ne voit pas cet écran', 'refusé',
+select pg_temp.note('le coach du club voit bien cet écran (v315)', 'vu',
   case when pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000003',
     'select coalesce(string_agg(nom, '', ''), ''∅'') from media_joueurs_de_galerie((select album from ctx))') in ('∅','refusé')
   then 'refusé' else 'vu' end);
 
-select pg_temp.note('rattacher un joueur étranger à l''équipe est refusé', 'refusé',
+select pg_temp.note('rattacher un joueur du club hors équipe est accepté (v309)', 'valide',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000001',
-    'select media_rattacher_joueur((select photo from ctx), (select etranger from ctx), true)::text'));
+    'select media_rattacher_joueur((select photo from ctx), (select etranger from ctx), true)->>''statut'''));
 select pg_temp.note('la Production rattache le joueur à la photo', 'valide',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000001',
     'select media_rattacher_joueur((select photo from ctx), (select joueur from ctx), true)->>''statut'''));
 select pg_temp.note('le compteur du joueur passe à 1', '1',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000001',
     'select nb_photos::text from media_joueurs_de_galerie((select album from ctx)) where player_id = (select joueur from ctx)'));
-select pg_temp.note('le parent voit alors la photo de son enfant', 'zz/rj1-p.webp',
+select pg_temp.note('la photo est alors ATTRIBUEE a l''enfant du parent', 'zz/rj1-p.webp',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000004',
-    'select preview_path from media_photos_du_joueur((select album from ctx), (select joueur from ctx))'));
+    'select string_agg(preview_path, '', '') filter (where not apercu_galerie) from media_photos_du_joueur((select album from ctx), (select joueur from ctx))'));
 select pg_temp.note('un photographe hors mission ne peut pas rattacher', 'refusé',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000002',
     'select media_rattacher_joueur((select photo from ctx), (select joueur from ctx), true)::text'));
 select pg_temp.note('détacher supprime le rattachement posé à la main', 'supprime',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000001',
     'select media_rattacher_joueur((select photo from ctx), (select joueur from ctx), false)->>''statut'''));
-select pg_temp.note('le parent ne voit plus rien', '∅',
+-- Detachee, la photo n'est PLUS attribuee a l'enfant. Elle peut rester visible comme vitrine
+-- (v299), ce qui n'est pas la meme chose et ne doit pas etre confondu.
+select pg_temp.note('détachée, la photo n''est plus attribuée à l''enfant', '∅',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000004',
-    'select coalesce(string_agg(preview_path, '', ''), ''∅'') from media_photos_du_joueur((select album from ctx), (select joueur from ctx))'));
+    'select coalesce(string_agg(preview_path, '', '') filter (where not apercu_galerie), ''∅'') from media_photos_du_joueur((select album from ctx), (select joueur from ctx))'));
 
 -- Une suggestion de machine : elle attend, elle ne montre rien, et son refus laisse une trace.
 insert into media_player_tags (media_ref_type, media_ref_id, player_id, source, statut, score, moteur)
@@ -102,9 +121,9 @@ select 'media_asset', photo, joueur, 'suggestion', 'propose', 0.71, 'a_choisir' 
 select pg_temp.note('la suggestion apparaît dans la file à trancher', '1',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000001',
     'select count(*)::text from media_suggestions_a_trancher(50) where asset_id = (select photo from ctx)'));
-select pg_temp.note('tant qu''elle n''est pas validée, le parent ne voit rien', '∅',
+select pg_temp.note('une suggestion non validée n''attribue rien au parent', '∅',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000004',
-    'select coalesce(string_agg(preview_path, '', ''), ''∅'') from media_photos_du_joueur((select album from ctx), (select joueur from ctx))'));
+    'select coalesce(string_agg(preview_path, '', '') filter (where not apercu_galerie), ''∅'') from media_photos_du_joueur((select album from ctx), (select joueur from ctx))'));
 select pg_temp.note('refuser une suggestion la marque rejetée, sans l''effacer', 'rejete',
   pg_temp.essai('d1d1d1d1-1111-0000-0000-000000000001',
     'select media_rattacher_joueur((select photo from ctx), (select joueur from ctx), false)->>''statut'''));

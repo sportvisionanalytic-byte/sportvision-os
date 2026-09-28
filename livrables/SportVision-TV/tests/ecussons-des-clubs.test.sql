@@ -58,8 +58,19 @@ select case
     then '❌ ' || (select n from heberges) || ' écusson(s) servis depuis un serveur tiers au lieu '
          || 'du nôtre'
   when (select avec from adversaires) < (select total from adversaires)
+    -- LE MESSAGE NOMME LES CLUBS (28/09/2026). Il annoncait juste un compte, et il fallait refaire
+    -- tout le diagnostic a la main pour savoir lesquels. Or la cause est presque toujours la meme :
+    -- l'annuaire compte 34 448 lignes non enrichies sur 34 586, et le resolveur est tombe sur une
+    -- fiche pas encore enrichie plutot que sur sa jumelle qui l'est (« as-bondy » quand
+    -- « bondy-as » porte le nom ET le logo). C'est un probleme de DONNEES, pas de code : soit la
+    -- fiche doit etre enrichie, soit les deux slugs sont un doublon d'orthographe a fusionner.
     then '❌ ' || ((select total from adversaires) - (select avec from adversaires))
-         || ' adversaire(s) sur ' || (select total from adversaires) || ' sans écusson'
+         || ' adversaire(s) sur ' || (select total from adversaires) || ' sans écusson : '
+         || (select string_agg(distinct f.slug, ', ') from federation_clubs f
+              where f.slug in (select distinct opponent_club_slug from club_matches
+                                where opponent_club_slug is not null)
+                and f.logo_url is null)
+         || ' — a enrichir, ou a fusionner avec leur jumelle deja enrichie'
   else '✅ ' || (select count(*) from clubs) || ' clubs et ' || (select total from adversaires)
        || ' adversaires ont leur écusson, tous hébergés chez nous'
 end as verdict;

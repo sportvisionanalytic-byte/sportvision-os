@@ -39,14 +39,19 @@ select pole_id, 'a8a8a8a8-0000-0000-0000-000000000002'::uuid, 'membre', true fro
 
 create temp table m (cle text primary key, id uuid) on commit drop;
 grant select on m to authenticated;
-create temp table decor (k text, equipe text, h time, lieu text) on commit drop;
+-- `domicile` est declare pour CHAQUE match, jamais laisse au defaut (28/09/2026). La colonne
+-- `club_matches.is_home` vaut `true` par defaut, et depuis l'affinage du 25/09 le terrain ne compte
+-- plus a domicile : « Gymnase Nord » rejoignait donc la mission du Stade Claude Ripert, et ce test
+-- comptait UNE mission la ou il en attendait deux. Le match « ailleurs » doit etre a l'EXTERIEUR
+-- pour etre ailleurs — c'est ce que le mot veut dire, et le decor ne le disait pas.
+create temp table decor (k text, equipe text, h time, lieu text, domicile boolean) on commit drop;
 insert into decor values
-  ('u10a', 'ZZ U10 A', '09:30', 'Stade Claude Ripert'),
-  ('u10b', 'ZZ U10 B', '10:30', 'Stade Claude Ripert'),
-  ('u10c', 'ZZ U10 C', '11:00', 'Stade Claude Ripert'),
-  ('autre', 'ZZ U12', '15:00', 'Gymnase Nord');
-insert into club_matches (club_id, team, opponent, match_date, kickoff_time, lieu)
-select ctx.club_id, d.equipe, 'ZZ Adversaire ' || d.k, ctx.j, d.h, d.lieu from ctx, decor d;
+  ('u10a', 'ZZ U10 A', '09:30', 'Stade Claude Ripert', true),
+  ('u10b', 'ZZ U10 B', '10:30', 'Stade Claude Ripert', true),
+  ('u10c', 'ZZ U10 C', '11:00', 'Stade Claude Ripert', true),
+  ('autre', 'ZZ U12', '15:00', 'Gymnase Nord', false);
+insert into club_matches (club_id, team, opponent, match_date, kickoff_time, lieu, is_home)
+select ctx.club_id, d.equipe, 'ZZ Adversaire ' || d.k, ctx.j, d.h, d.lieu, d.domicile from ctx, decor d;
 insert into m select d.k, cm.id from decor d join club_matches cm on cm.team = d.equipe and cm.club_id = (select club_id from ctx);
 
 create temp table verdicts (n serial, controle text, attendu text, obtenu text) on commit drop;
