@@ -7,7 +7,7 @@ import React, { useState } from "react";
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
 import * as Updates from "expo-updates";
-import { MOTIF_LISIBLE, dernierMotif } from "../../src/lib/achat-pass";
+import { MOTIF_LISIBLE, dernierMotif, deviseMagasin } from "../../src/lib/achat-pass";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
@@ -350,6 +350,20 @@ export default function Profil() {
               icone="pricetag-outline"
               titre="Pass Photo"
               detail={`${dernierMotif.sku ?? "aucun produit"} — ${MOTIF_LISIBLE[dernierMotif.motif]}`}
+            />
+          ) : null}
+
+          {/* 28/09/2026 — LA DEVISE DU MAGASIN, QUAND CE N'EST PAS L'EURO.
+              Nos deux Pass ne sont vendus qu'en France. Si le magasin facture dans une autre
+              devise, c'est que le compte App Store de cet appareil est sur une autre boutique — et
+              le montant debite sera bien celui-la. Le dire vaut mieux que le maquiller : une
+              famille qui voit « 19,99 € » et se fait prelever en dollars appelle sa banque.
+              Invisible tant que tout va bien. */}
+          {deviseMagasin.devise && deviseMagasin.devise.toUpperCase() !== "EUR" ? (
+            <Ligne
+              icone="warning-outline"
+              titre="Devise du magasin"
+              detail={`${deviseMagasin.devise} (${deviseMagasin.brut ?? "?"}) — ce compte App Store n'est pas sur la boutique française`}
             />
           ) : null}
         </View>

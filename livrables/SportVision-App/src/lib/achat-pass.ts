@@ -167,6 +167,20 @@ export const MOTIF_LISIBLE: Record<MotifSansOffre, string> = {
 /** Le dernier motif constate, pour l'afficher dans Profil sans le recalculer. */
 export let dernierMotif: { sku: string | null; motif: MotifSansOffre | null } = { sku: null, motif: null };
 
+/**
+ * CE QUE LE MAGASIN A REELLEMENT RENDU, devise comprise (28/09/2026).
+ *
+ * Fouka : « je vois toujours le prix en dollars », apres une correction du formatage qui aurait du
+ * suffire. Sans savoir ce que le magasin renvoie VRAIMENT, impossible de distinguer trois causes
+ * qui se ressemblent parfaitement vues de l'ecran : la mise a jour n'est pas arrivee, la
+ * bibliotheque formate mal, ou la boutique du compte est americaine — et dans ce dernier cas Apple
+ * debiterait vraiment en dollars, ce qu'aucun maquillage d'affichage ne doit cacher.
+ *
+ * Profil n'en montre rien tant que la devise est l'euro : une famille ne voit jamais cette ligne.
+ * Elle n'apparait que quand quelque chose cloche, et c'est alors exactement ce qu'il faut lire.
+ */
+export let deviseMagasin: { devise: string | null; brut: string | null } = { devise: null, brut: null };
+
 export async function etatDuPass(clubId: string, playerId: string): Promise<EtatPass> {
   const { data, error } = await supabase.rpc("media_pass_disponible", {
     p_club_id: clubId, p_player_id: playerId,
@@ -237,6 +251,7 @@ export async function passProposable(
   // ne bouge pas — on n'affiche JAMAIS le tarif du club (19,90) a la place de celui qu'Apple
   // debitera (19,99), parce qu'annoncer un prix different de ce qui sera preleve est une
   // reclamation assuree.
+  deviseMagasin = { devise: produit.currency ?? null, brut: produit.displayPrice ?? null };
   const prix = formaterPrix(produit.price, produit.currency) ?? produit.displayPrice;
   if (!prix) { dernierMotif = { sku, motif: "produit_sans_prix" }; return null; }
 
