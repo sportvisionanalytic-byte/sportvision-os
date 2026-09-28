@@ -32,6 +32,35 @@ export interface EtatConsentement {
   retire_le?: string | null;
 }
 
+export interface PhotoReference {
+  id: string;
+  storage_path: string | null;
+  created_at: string;
+  a_une_empreinte: boolean;
+}
+
+/** Les photos de référence déjà déposées. Tant qu'il n'y en avait qu'une, un booléen suffisait ;
+ *  depuis la v332 il peut y en avoir plusieurs, et l'écran doit pouvoir les montrer et en retirer
+ *  une. `player_face_refs` n'étant lisible que d'un administrateur, la v333 a posé cette fonction. */
+export async function listerPhotosReference(
+  supabase: SupabaseClient,
+  playerId: string,
+): Promise<PhotoReference[]> {
+  const { data } = await supabase.rpc("photos_de_reference_du_sportif", { p_player_id: playerId });
+  return Array.isArray(data) ? (data as PhotoReference[]) : [];
+}
+
+/** Retirer une photo ratée. Sans ce geste, la limite de cinq deviendrait un mur. */
+export async function retirerPhotoReference(
+  supabase: SupabaseClient,
+  faceRefId: string,
+): Promise<boolean> {
+  const { error } = await supabase.rpc("retirer_photo_reference", { p_face_ref_id: faceRefId });
+  return !error;
+}
+
+export const PHOTOS_REFERENCE_MAX = 5;
+
 export async function lireEtatConsentement(
   supabase: SupabaseClient,
   playerId: string,

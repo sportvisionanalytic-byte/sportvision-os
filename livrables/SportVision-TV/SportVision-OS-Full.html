@@ -13801,7 +13801,16 @@ const RECO_CFG={
   // Distance euclidienne entre deux empreintes. 0,6 est le seuil usuel de cette bibliothèque ;
   // on marque automatiquement bien en dessous, parce qu'un faux positif ici, c'est la photo d'un
   // enfant envoyée à la famille d'un autre. Entre les deux, la machine propose et un humain tranche.
-  seuilCertain:0.42,
+  // LE SEUIL DE VALIDATION AUTOMATIQUE EST CALE SUR DE VRAIES REPONSES (28/09/2026). Fouka avait
+  // tranche huit propositions a la main, et ces huit reponses disent ou est la frontiere, bien
+  // mieux qu'un seuil de bibliotheque :
+  //     0,226  0,482  0,491  0,505  → « c'est moi »        (4 sur 4)
+  //     0,506  0,518         0,527  → « ce n'est pas moi »
+  //                   0,519         → « c'est moi »
+  // Sous 0,506, aucune erreur. Le moteur automatique utilise la meme valeur : ces deux chiffres
+  // doivent rester ensemble, sinon une photo versee et la meme photo reprise plus tard ne seraient
+  // pas jugees pareil.
+  seuilCertain:0.50,
   seuilPropose:0.55,
   // Les visages minuscules d'un fond de terrain ne donnent rien de fiable.
   scoreMin:0.6,

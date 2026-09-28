@@ -405,10 +405,16 @@ export default function Galerie() {
             paye — dans le mauvais ordre, et pour une donnee biometrique.
             La condition tient au fait que les trois etats du Pass sont maintenant distincts :
             « a_prendre » veut dire qu'il reste a payer, et rien d'autre ne se demande avant. */}
-        {etatPass && etatPass.etat !== "a_prendre" && reco && (!reco.consentement || !reco.photoReference) ? (
+        {/* v332 — LE BOUTON RESTE APRES LA PREMIERE PHOTO, et ce n'est pas un detail : une seule
+            photo de reference ne reconnait que les prises de vue qui lui ressemblent. Deux ou trois
+            angles changent bien plus que n'importe quel reglage, et tant que ce bouton disparaissait
+            des la premiere photo, personne ne pouvait en deposer une seconde. */}
+        {etatPass && etatPass.etat !== "a_prendre" && reco ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={reco.consentement ? "Déposer ma photo de référence" : "Donner mon accord pour être reconnu"}
+            accessibilityLabel={!reco.consentement ? "Donner mon accord pour être reconnu"
+              : !reco.photoReference ? "Déposer ma photo de référence"
+              : "Ajouter une photo de référence sous un autre angle"}
             // LE CHEMIN DIFFERE SELON QUI DEMANDE, et ce n'est pas un detail : mesure du 25/09,
             // pour un compte parent /reconnaissance repond 307 et renvoie vers /particulier — cette
             // page-la est celle d'un JOUEUR qui donne son propre accord. Un parent consent pour un
@@ -419,10 +425,12 @@ export default function Galerie() {
                 ? { page: "reconnaissance", chemin: cheminReconnaissanceEnfant("club", enfant) }
                 : { page: "reconnaissance" },
             })}
-            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
+            style={({ pressed }) => [s.action, reco.photoReference ? s.actionCreuse : null, pressed ? { opacity: 0.85 } : null]}
           >
-            <Text style={s.actionTexte}>
-              {reco.consentement ? "Déposer ma photo de référence" : "Me reconnaître sur les photos"}
+            <Text style={[s.actionTexte, reco.photoReference ? { color: C.texte } : null]}>
+              {!reco.consentement ? "Me reconnaître sur les photos"
+                : !reco.photoReference ? "Déposer ma photo de référence"
+                : "Ajouter une photo sous un autre angle"}
             </Text>
           </Pressable>
         ) : null}

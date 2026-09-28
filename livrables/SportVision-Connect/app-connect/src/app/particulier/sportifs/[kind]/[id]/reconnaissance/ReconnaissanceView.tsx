@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
@@ -10,8 +10,12 @@ import {
   VERSION_TEXTE_CONSENTEMENT,
   extensionDe,
   lireEtatConsentement,
+  listerPhotosReference,
   refuserPhoto,
+  retirerPhotoReference,
+  PHOTOS_REFERENCE_MAX,
   type EtatConsentement,
+  type PhotoReference,
 } from "@/lib/supabase/reconnaissance";
 import type { AthleteDetail } from "../AthleteDetailView";
 
@@ -44,6 +48,10 @@ export function ReconnaissanceView({
   const [erreur, setErreur] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const champPhoto = useRef<HTMLInputElement>(null);
+  // PLUSIEURS PHOTOS, SOUS PLUSIEURS ANGLES (v331/v332). Une seule photo de référence ne reconnaît
+  // que les prises de vue qui lui ressemblent : même angle, même lumière. Deux ou trois angles
+  // changent bien plus que n'importe quel réglage — c'est le levier mesuré sur une vraie galerie.
+  const [photos, setPhotos] = useState<PhotoReference[]>([]);
 
   const prenom = detail.first_name;
   // Le sujet de chaque phrase. Écrit une fois ici plutôt que dispersé en conditions dans le texte.
@@ -51,11 +59,31 @@ export function ReconnaissanceView({
   const son = pourMoi ? "votre" : "son";
   const retour = retourHref ?? `/particulier/sportifs/${detail.kind}/${detail.ref_id}`;
   const accorde = etat?.autorise === true;
-  const photoDeposee = etat?.photo_deposee === true;
+  // `photo_deposee` etait un booleen, vrai des qu'UNE photo existait. Depuis la v332 il peut y en
+  // avoir plusieurs, et c'est leur liste qui fait foi — le booleen ne saurait plus rien en dire.
+
+  const relirePhotos = useCallback(async () => {
+    const supabase = createClient();
+    setPhotos(await listerPhotosReference(supabase, detail.ref_id));
+  }, [detail.ref_id]);
+
+  useEffect(() => { void relirePhotos(); }, [relirePhotos]);
 
   async function rafraichir() {
     const supabase = createClient();
     setEtat(await lireEtatConsentement(supabase, detail.ref_id));
+    await relirePhotos();
+  }
+
+  async function retirerUnePhoto(id: string) {
+    setErreur(null); setMessage(null);
+    const supabase = createClient();
+    if (!(await retirerPhotoReference(supabase, id))) {
+      setErreur("Cette photo n'a pas pu être retirée. Réessayez dans un instant.");
+      return;
+    }
+    await relirePhotos();
+    setMessage("Photo retirée. Son empreinte a été effacée avec elle.");
   }
 
   async function donnerAccord() {
@@ -201,7 +229,7 @@ export function ReconnaissanceView({
             </div>
             <div className="flex gap-2">
               <dt className="text-text-tertiary">Photo de référence</dt>
-              <dd>{photoDeposee ? "déposée" : "à déposer"}</dd>
+              <dd>{photos.length ? `${photos.length} déposée${photos.length > 1 ? "s" : ""}` : "à déposer"}</dd>
             </div>
             <div className="flex gap-2">
               <dt className="text-text-tertiary">Version du texte accepté</dt>
@@ -211,18 +239,51 @@ export function ReconnaissanceView({
 
           <div className="mt-5 border-t border-border pt-5">
             <h3 className="font-sora text-[15px] font-semibold">
-              {photoDeposee ? "Remplacer la photo de référence" : "Déposer la photo de référence"}
+              {photos.length ? "Ajouter une autre photo de référence" : "Déposer une photo de référence"}
             </h3>
             <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
-              Une photo récente de {lui}, de face, visage bien visible et sans lunettes de soleil.
+              Une photo récente de {lui}, visage bien visible et sans lunettes de soleil.
               Format JPEG, PNG ou HEIC, 8 Mo maximum.
             </p>
+            {/* CE CONSEIL N'EST PAS DU REMPLISSAGE : c'est la seule chose que la famille puisse
+                faire pour ameliorer nettement le resultat. Une photo de face et une de profil
+                valent plus que n'importe quel reglage. */}
+            <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
+              {photos.length === 0
+                ? `Commencez par une photo de face. Vous pourrez en ajouter d'autres ensuite : deux ou trois angles différents améliorent beaucoup la reconnaissance, notamment de profil ou de dos.`
+                : `Vous avez ${photos.length} photo${photos.length > 1 ? "s" : ""} sur ${PHOTOS_REFERENCE_MAX}. Un angle différent — de profil, de trois quarts — aide plus qu'une seconde photo de face.`}
+            </p>
+
+            {photos.length ? (
+              <ul className="mt-3 flex flex-col gap-1.5">
+                {photos.map((ph, i) => (
+                  <li key={ph.id} className="flex items-center gap-3 rounded-sv border border-border bg-white/[.03] px-3 py-2">
+                    <span className="material-symbols-rounded !text-[18px] text-text-tertiary" aria-hidden="true">photo_camera</span>
+                    <span className="flex-1 text-[14px]">
+                      Photo {i + 1}
+                      <span className="ml-2 text-[12.5px] text-text-tertiary">
+                        {ph.a_une_empreinte ? "prise en compte" : "en attente de traitement"}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void retirerUnePhoto(ph.id)}
+                      className="text-[13px] font-semibold text-text-tertiary underline hover:text-text-primary"
+                    >
+                      Retirer
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <label
               htmlFor="photo-reference"
               className="mt-3 inline-flex h-12 cursor-pointer items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[15px] font-semibold hover:bg-white/[.12]"
             >
               <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">add_a_photo</span>
-              {enCours === "photo" ? "Dépôt en cours…" : "Choisir une photo"}
+              {enCours === "photo" ? "Dépôt en cours…"
+                : photos.length >= PHOTOS_REFERENCE_MAX ? "Retirez-en une pour en ajouter"
+                : photos.length ? "Ajouter une photo" : "Choisir une photo"}
             </label>
             <input
               ref={champPhoto}
@@ -230,7 +291,7 @@ export function ReconnaissanceView({
               type="file"
               accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
               className="sr-only"
-              disabled={enCours !== null}
+              disabled={enCours !== null || photos.length >= PHOTOS_REFERENCE_MAX}
               onChange={(e) => {
                 const fichier = e.target.files?.[0];
                 if (fichier) void deposerPhoto(fichier);
