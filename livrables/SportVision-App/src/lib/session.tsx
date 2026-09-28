@@ -9,6 +9,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { rejouerInscription } from "./inscription";
 import { MODE_DEMO, PROFIL_DEMO } from "./demonstration";
+import { oublierCookiesConnect } from "./connect";
 
 export type Espace = "joueur" | "parent" | "aucun";
 
@@ -147,7 +148,18 @@ export function FournisseurSession({ children }: { children: React.ReactNode }) 
       return;
     }
     supabase.auth.getSession().then(({ data }) => charger(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => charger(s));
+    const { data: sub } = supabase.auth.onAuthStateChange((evenement, s) => {
+      // LE RACCOURCI VERS CONNECT MEURT AVEC LA SESSION (28/09/2026). Depuis que les pages de
+      // Connect s'ouvrent directement quand ses cookies sont deja poses, il faut oublier ce
+      // raccourci des qu'on change de personne : sans ca, quelqu'un qui se connecte apres une
+      // deconnexion dans la MEME session d'application ouvrirait les pages avec les cookies du
+      // precedent. Les cookies du site ne se ferment pas tout seuls quand la session native se
+      // ferme.
+      if (evenement === "SIGNED_OUT" || evenement === "SIGNED_IN" || evenement === "USER_UPDATED") {
+        oublierCookiesConnect();
+      }
+      charger(s);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 

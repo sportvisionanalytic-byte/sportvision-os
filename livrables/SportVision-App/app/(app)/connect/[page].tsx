@@ -12,7 +12,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VueConnect, type PoigneeVueConnect } from "../../../src/ui/VueConnect";
 import { Esquisse } from "../../../src/ui/Esquisse";
-import { PAGES, sourceConnect, type PageConnect, type SourceConnect } from "../../../src/lib/connect";
+import {
+  PAGES, sourceConnect, sourceConnectDirecte, cookiesConnectDisponibles,
+  marquerCookiesConnectPoses, oublierCookiesConnect,
+  type PageConnect, type SourceConnect,
+} from "../../../src/lib/connect";
 import { Bouton } from "../../../src/ui/Base";
 import { C, E, R, TOUCHE } from "../../../src/theme/couleurs";
 import { P } from "../../../src/theme/polices";
@@ -40,16 +44,46 @@ export default function EcranConnect() {
   const [sansSession, setSansSession] = useState(false);
   const [panne, setPanne] = useState(false);
 
-  const preparer = useCallback(async () => {
+  // LE CHEMIN COURT, ET SON REPLI (28/09/2026).
+  //
+  // Le pont pose les cookies de Connect, et la vue web les partage d'un ecran a l'autre. Une fois
+  // qu'il a servi, les pages suivantes s'ouvrent DIRECTEMENT : un aller-retour au lieu de trois.
+  // On ne devine pas si les cookies tiennent encore — si Connect renvoie vers /auth/login, on
+  // refait le pont. Le pire cas est donc l'ancien comportement, jamais une impasse.
+  const preparer = useCallback(async (forcerLePont = false) => {
     setPanne(false);
     setCharge(false);
-    const s = await sourceConnect(cle, typeof chemin === "string" && chemin ? chemin : undefined);
+    const ch = typeof chemin === "string" && chemin ? chemin : undefined;
+    if (!forcerLePont && cookiesConnectDisponibles()) {
+      setSansSession(false);
+      setSource(sourceConnectDirecte(cle, ch));
+      return;
+    }
+    const s = await sourceConnect(cle, ch);
     if (!s) { setSansSession(true); return; }
     setSansSession(false);
     setSource(s);
   }, [cle, chemin]);
 
   useEffect(() => { preparer(); }, [preparer]);
+
+  // Connect renvoie vers /auth/login quand il ne reconnait pas la session. Deux cas, deux suites :
+  // on venait du chemin court — les cookies ont expire, on refait le pont ; on venait DEJA du
+  // pont — la session elle-meme ne vaut plus rien, et il faut le dire au lieu de boucler.
+  const surAdresse = useCallback((url: string) => {
+    if (!url.includes("/auth/login")) {
+      if (url.startsWith("https://connect.sportvision-an.fr") && !url.includes("/auth/")) {
+        marquerCookiesConnectPoses();
+      }
+      return;
+    }
+    if (cookiesConnectDisponibles()) {
+      oublierCookiesConnect();
+      preparer(true);
+    } else {
+      setSansSession(true);
+    }
+  }, [preparer]);
 
   function retour() {
     if (peutReculer) { vue.current?.reculer(); return; }
@@ -95,6 +129,7 @@ export default function EcranConnect() {
           ref={vue}
           source={source}
           surHistorique={setPeutReculer}
+          surAdresse={surAdresse}
           surChargement={() => setCharge(true)}
           surPanne={() => setPanne(true)}
         />

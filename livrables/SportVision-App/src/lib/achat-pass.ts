@@ -61,6 +61,22 @@ export interface PassProposable {
   skuMagasin: string;
 }
 
+/**
+ * Le prix du magasin, ecrit a la francaise.
+ *
+ * `Intl` peut manquer selon le moteur : en cas de doute on rend `null` et l'appelant retombe sur
+ * la chaine du magasin. Mieux vaut un prix formate a l'anglaise qu'aucun prix — un ecran d'achat
+ * sans montant ne se presente pas a quelqu'un.
+ */
+function formaterPrix(montant?: number | null, devise?: string | null): string | null {
+  if (typeof montant !== "number" || !Number.isFinite(montant) || !devise) return null;
+  try {
+    return new Intl.NumberFormat("fr-FR", { style: "currency", currency: String(devise).toUpperCase() }).format(montant);
+  } catch {
+    return null;
+  }
+}
+
 // LA BIBLIOTHEQUE EST CHARGEE A LA DEMANDE, ET C'EST UN GARDE-FOU (26/09/2026).
 //
 // `runtimeVersion` suit la politique `appVersion`, donc les builds 6, 7 et 8 partagent tous le
@@ -197,7 +213,7 @@ export async function passProposable(
 
   // Le second accord : le magasin connait-il ce produit ? Tant qu'il n'est pas cree et approuve
   // dans App Store Connect, il ne rend rien, et l'app n'affiche rien.
-  let produits: { id?: string; displayPrice?: string; title?: string }[] = [];
+  let produits: { id?: string; displayPrice?: string; title?: string; price?: number | null; currency?: string | null }[] = [];
   try {
     produits = (await (await iap())!.fetchProducts({ skus: [sku], type: "in-app" })) ?? [];
   } catch {
@@ -206,14 +222,30 @@ export async function passProposable(
   }
   const produit = produits.find((x) => x?.id === sku);
   if (!produit) { dernierMotif = { sku, motif: "produit_inconnu" }; return null; }
-  if (!produit.displayPrice) { dernierMotif = { sku, motif: "produit_sans_prix" }; return null; }
+
+  // ON FORMATE NOUS-MEMES, A PARTIR DU MONTANT ET DE LA DEVISE DU MAGASIN (28/09/2026).
+  //
+  // Fouka, en testant : « je vois le prix en dollars ». Verifie cote Apple le jour meme : les deux
+  // Pass ne sont disponibles QUE en France, territoire de reference FRA, et le compte de test
+  // sandbox est lui aussi en FRA. Le montant et la devise etaient donc bons — c'est la CHAINE
+  // DEJA FORMATEE qui ne l'etait pas. `displayPrice` est mis en forme par la bibliotheque, et sa
+  // mise en forme suit la langue du telephone : sur un appareil en anglais, un prix en euros
+  // ressort avec un point et parfois un symbole etranger.
+  //
+  // Le montant et la devise viennent du magasin, on n'invente rien : on ne fait qu'ecrire
+  // « 19,99 € » a la francaise au lieu de recopier une chaine formatee ailleurs. La regle de fond
+  // ne bouge pas — on n'affiche JAMAIS le tarif du club (19,90) a la place de celui qu'Apple
+  // debitera (19,99), parce qu'annoncer un prix different de ce qui sera preleve est une
+  // reclamation assuree.
+  const prix = formaterPrix(produit.price, produit.currency) ?? produit.displayPrice;
+  if (!prix) { dernierMotif = { sku, motif: "produit_sans_prix" }; return null; }
 
   return {
     plateforme: m,
     productId: p.product_id,
     nom: produit.title || p.name,
     dejaActif: false,
-    prixMagasin: produit.displayPrice,
+    prixMagasin: prix,
     skuMagasin: sku,
   };
 }

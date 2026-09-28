@@ -64,12 +64,40 @@ export const PAGES: Record<PageConnect, { chemin: string; titre: string }> = {
   aide:           { chemin: "/aide",           titre: "Aide" },
 };
 
-export interface SourceConnect {
-  /** Une page minuscule qui se soumet toute seule. Voir sourceConnect pour le pourquoi. */
-  html: string;
-  /** L'origine de Connect : sans elle, iOS traite la page comme « about:blank » et le POST part
-   *  d'une origine nulle, que le serveur refuse. */
-  baseUrl: string;
+export type SourceConnect =
+  | {
+      /** Une page minuscule qui se soumet toute seule. Voir sourceConnect pour le pourquoi. */
+      html: string;
+      /** L'origine de Connect : sans elle, iOS traite la page comme « about:blank » et le POST part
+       *  d'une origine nulle, que le serveur refuse. */
+      baseUrl: string;
+    }
+  /** Le chemin court : la page directement, quand les cookies de Connect sont deja poses. */
+  | { uri: string };
+
+/**
+ * Les cookies de Connect sont-ils deja poses dans la vue web ?
+ *
+ * LE POURQUOI, ET C'EST LE GROS DU TEMPS D'ATTENTE (28/09/2026). Ouvrir une page de Connect
+ * coutait TROIS aller-retours a chaque fois : le pont (une page vide qui se soumet), l'echange de
+ * session sur /auth/app, puis seulement la page demandee. Fouka : « ca met du temps a charger,
+ * beaucoup trop de temps ».
+ *
+ * Or l'echange de session pose des cookies, et la vue web les PARTAGE d'un ecran a l'autre
+ * (`sharedCookiesEnabled`). Le pont n'est donc necessaire qu'une fois : ensuite la page s'ouvre
+ * directement, en UN aller-retour au lieu de trois.
+ *
+ * On ne devine pas si les cookies tiennent encore : on tente le chemin court, et si Connect
+ * renvoie vers /auth/login, l'ecran refait le pont. Le pire cas est l'ancien comportement.
+ */
+let cookiesConnectPoses = false;
+export function cookiesConnectDisponibles(): boolean { return cookiesConnectPoses; }
+export function marquerCookiesConnectPoses(): void { cookiesConnectPoses = true; }
+export function oublierCookiesConnect(): void { cookiesConnectPoses = false; }
+
+/** La page demandee, sans passer par le pont. A n'utiliser que si les cookies sont poses. */
+export function sourceConnectDirecte(page: PageConnect, cheminForce?: string): SourceConnect {
+  return { uri: `${CONNECT}${cheminForce ?? PAGES[page].chemin}` };
 }
 
 /** Échapper ce qui part dans un attribut HTML. Un jeton ne contient normalement ni guillemet ni
@@ -90,8 +118,26 @@ function pourAttribut(v: string): string {
 export async function sourceConnect(
   page: PageConnect, cheminForce?: string,
 ): Promise<SourceConnect | null> {
-  const { data } = await supabase.auth.getSession();
-  const s = data.session;
+  // ON RAFRAICHIT AVANT DE TRANSMETTRE (28/09/2026).
+  //
+  // Fouka : « ca met du temps a charger, limite la ca m'a dit de me reconnecter ». Ce n'etait pas
+  // une deconnexion : c'etait CET ecran, parce que le jeton transmis a Connect etait perime. On
+  // envoyait ce que `getSession()` avait sous la main sans regarder sa date de fin — et une session
+  // qui expire dans dix secondes tient le temps de partir, pas le temps d'arriver : la page fait
+  // trois aller-retours (le pont, l'echange de session, puis la page elle-meme), et le jeton meurt
+  // en route. Connect repond alors « reconnectez-vous » a quelqu'un qui est connecte.
+  //
+  // Deux minutes de marge : c'est plus que la chaine ne prend, meme sur un reseau lent.
+  let s = (await supabase.auth.getSession()).data.session;
+  const finBientot = s?.expires_at ? s.expires_at * 1000 - Date.now() < 120_000 : false;
+  if (!s || finBientot) {
+    // Un echec ici n'est pas fatal : si on avait deja une session, on tente quand meme avec elle
+    // plutot que d'afficher « session expiree » a quelqu'un dont la session est peut-etre bonne.
+    try {
+      const rafraichie = (await supabase.auth.refreshSession()).data.session;
+      if (rafraichie) s = rafraichie;
+    } catch { /* on garde ce qu'on avait */ }
+  }
   if (!s?.access_token || !s?.refresh_token) return null;
 
   // POURQUOI UNE PAGE QUI SE SOUMET, ET PAS UN CHARGEMENT EN POST (corrigé le 25/09/2026)
@@ -152,8 +198,26 @@ export function cheminReconnaissanceEnfant(kind: string, refId: string): string 
  * parce que le composant natif d'iOS n'envoie jamais le corps d'une requête POST.
  */
 export async function sourceClubPlus(chemin = "/dashboard"): Promise<SourceConnect | null> {
-  const { data } = await supabase.auth.getSession();
-  const s = data.session;
+  // ON RAFRAICHIT AVANT DE TRANSMETTRE (28/09/2026).
+  //
+  // Fouka : « ca met du temps a charger, limite la ca m'a dit de me reconnecter ». Ce n'etait pas
+  // une deconnexion : c'etait CET ecran, parce que le jeton transmis a Connect etait perime. On
+  // envoyait ce que `getSession()` avait sous la main sans regarder sa date de fin — et une session
+  // qui expire dans dix secondes tient le temps de partir, pas le temps d'arriver : la page fait
+  // trois aller-retours (le pont, l'echange de session, puis la page elle-meme), et le jeton meurt
+  // en route. Connect repond alors « reconnectez-vous » a quelqu'un qui est connecte.
+  //
+  // Deux minutes de marge : c'est plus que la chaine ne prend, meme sur un reseau lent.
+  let s = (await supabase.auth.getSession()).data.session;
+  const finBientot = s?.expires_at ? s.expires_at * 1000 - Date.now() < 120_000 : false;
+  if (!s || finBientot) {
+    // Un echec ici n'est pas fatal : si on avait deja une session, on tente quand meme avec elle
+    // plutot que d'afficher « session expiree » a quelqu'un dont la session est peut-etre bonne.
+    try {
+      const rafraichie = (await supabase.auth.refreshSession()).data.session;
+      if (rafraichie) s = rafraichie;
+    } catch { /* on garde ce qu'on avait */ }
+  }
   if (!s?.access_token || !s?.refresh_token) return null;
 
   const champs = [
