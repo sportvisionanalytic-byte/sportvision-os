@@ -23,6 +23,7 @@
 //
 //   node livrables/SportVision-TV/scripts/reconnaissance-automatique.mjs          # vide la file
 //   node livrables/SportVision-TV/scripts/reconnaissance-automatique.mjs --voir   # dit seulement ce qui attend
+//   node livrables/SportVision-TV/scripts/reconnaissance-automatique.mjs --simuler # calcule tout, n'ecrit rien
 //
 // Reprenable : chaque ligne de la file est close dès qu'elle est traitée, donc on peut
 // l'interrompre et le relancer sans rien refaire deux fois.
@@ -31,6 +32,11 @@ import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 
 const VOIR_SEULEMENT = process.argv.includes("--voir");
+// MESURER SANS RIEN ÉCRIRE (28/09/2026). Pour comparer deux réglages, j'ai effacé les marquages de
+// la galerie et relancé le moteur — pendant que Fouka regardait ses photos, qui ont disparu de son
+// écran le temps de la passe. On ne mesure pas en abîmant ce que quelqu'un utilise. Ce mode calcule
+// tout et annonce ce qu'il POSERAIT, sans toucher à une seule ligne.
+const SIMULER = process.argv.includes("--simuler");
 const RACINE = new URL("../../../", import.meta.url).pathname;
 const env = Object.fromEntries(readFileSync(`${RACINE}.env`, "utf8").split("\n")
   .filter((l) => l.includes("=") && !l.trimStart().startsWith("#"))
@@ -53,6 +59,26 @@ const CFG = {
   // écartée : la détection marchait et on jetait son résultat.
   scoreMin: 0.6,
   scoreMinReference: 0.3,
+  // L'EXPANSION : deux visages de la MÊME galerie sont-ils la même personne ? Question de
+  // géométrie, pas de métier — la règle « qui a le droit d'être reconnu » reste en base.
+  //
+  // LE SEUIL EST MESURÉ, PAS CHOISI. Sur la galerie « RCPF VS PSG U16 » (110 photos, 183 visages,
+  // 8 reconnus directement), le mode --simuler a compté ce que chaque réglage retrouve EN PLUS :
+  //
+  //     depuis les seuls « certains »   0,38 → 0   0,42 → 0   0,45 → 0   0,50 → 0
+  //     depuis tous les reconnus        0,38 → 0   0,42 → 4   0,45 → 5   0,50 → 38
+  //
+  // Deux enseignements. Partir des seuls « certains » ne donne RIEN : il n'y en avait qu'un, et une
+  // chaîne ne part pas d'un point unique. Et le bond de 5 à 38 entre 0,45 et 0,50 n'est pas un
+  // gain, c'est un effondrement : 0,50 approche les 0,574 qui séparent deux personnes différentes
+  // du même banc de touche, et la chaîne se met à ramasser tout le monde. 38 sur les 175 visages
+  // restants, avec vingt-deux joueurs sur le terrain, c'est exactement la signature de « tout le
+  // monde ressemble à tout le monde ».
+  //
+  // On s'arrête donc à 0,45 : +63 % de photos retrouvées, et on reste loin du point de bascule. Un
+  // faux positif ici, c'est la photo d'un enfant envoyée à la famille d'un autre.
+  seuilExpansion: 0.45,
+  toursExpansion: 2,
 };
 
 const entetes = { apikey: CLE, Authorization: `Bearer ${CLE}`, "Content-Type": "application/json" };
@@ -222,6 +248,7 @@ for (const [album, lignes] of parAlbum) {
       console.log(`   ${j.joueur} : ${r.visages ? r.visages.length : 0} visage(s) sur la référence, on ne devine pas`);
       continue;
     }
+    if (SIMULER) { console.log(`   ${j.joueur} : empreinte de référence calculée (simulation, rien écrit)`); continue; }
     const rep = await rpc("visage_reference_ajouter", {
       p_player_id: j.player_id, p_empreinte: `[${r.visages[0].join(",")}]`, p_modele: CFG.modele,
     });
@@ -235,49 +262,159 @@ for (const [album, lignes] of parAlbum) {
     for (const l of lignes) await rpc("reconnaissance_fait", { p_id: l.id, p_resultat: "aucune photo" });
     continue;
   }
-  let marques = 0, visagesVus = 0, comparaisons = 0, illisibles = 0, sansVisage = 0;
+  // LA GALERIE SE LIT EN DEUX TEMPS (28/09/2026).
+  //
+  // Fouka : « il faut que ça retrouve automatiquement toutes les photos. On ne va pas passer les
+  // 117 photos en revue. »
+  //
+  // POURQUOI UNE SEULE PASSE NE SUFFIT PAS. Comparer chaque visage à L'UNIQUE photo de référence,
+  // c'est ne retrouver que les prises de vue qui lui ressemblent : même angle, même lumière. Un
+  // profil, une tête baissée, un contre-jour sortent au-delà du seuil et sont perdus — alors qu'ils
+  // ressemblent beaucoup, eux, à un visage de face DE LA MÊME GALERIE qui, lui, a été reconnu.
+  //
+  // CE QU'ON FAIT À LA PLACE. On relève d'abord tous les visages de la galerie, sans rien décider.
+  // La base dit ensuite lesquels sont sûrement le joueur : ceux-là deviennent des ANCRES. On
+  // repasse alors sur les visages restants et on retient ceux qui sont très proches d'une ancre.
+  // Les nouveaux deviennent ancres à leur tour, deux fois. C'est la photo de référence multipliée
+  // par la galerie elle-même, sans rien demander de plus à la famille.
+  //
+  // CE QUI BORNE LA DÉRIVE, parce qu'un enchaînement mal réglé finirait par relier deux enfants :
+  //   - l'expansion part UNIQUEMENT de ce que la base a jugé certain, jamais d'une simple proposition ;
+  //   - son seuil (0,38) est plus sévère que celui qui déclenche un marquage automatique (0,42) ;
+  //   - deux tours, pas plus ;
+  //   - un visage déjà attribué à un autre joueur n'est jamais repris ;
+  //   - et ce qui vient de l'expansion est PROPOSÉ, jamais validé d'office : la famille tranche.
+  //
+  // AUCUNE EMPREINTE DE GALERIE N'EST CONSERVÉE. Elles vivent dans ce tableau le temps de la passe
+  // et disparaissent avec le processus. C'est ce que le texte de consentement promet.
+  let marques = 0, visagesVus = 0, illisibles = 0, sansVisage = 0;
   const motifs = new Map();
+  const vus = [];   // { asset, emp, joueur, distance, ancre }
+
   for (let i = 0; i < photos.length; i++) {
-    if (i % 20 === 0) process.stdout.write(`   photo ${i + 1}/${photos.length}…\r`);
+    if (i % 20 === 0) process.stdout.write(`   lecture ${i + 1}/${photos.length}…\r`);
     try {
       const url = await urlSignee(...aLire(photos[i]));
       if (!url) { illisibles++; continue; }
       const r = await visagesDe(url);
       // ON DIT POURQUOI, TOUJOURS. Ce `continue` était muet : une photo introuvable, un décodage
       // refusé et une photo sans visage se ressemblaient toutes les trois, et le moteur annonçait
-      // « 0 identification sur 110 photos » avec l'air d'avoir travaillé. Il avait en réalité
-      // échoué 110 fois de la même façon, et il a fallu trois tours pour s'en apercevoir.
+      // « 0 identification sur 110 photos » avec l'air d'avoir travaillé.
       if (r.erreur) { motifs.set(r.erreur, (motifs.get(r.erreur) || 0) + 1); continue; }
       if (!r.visages || !r.visages.length) { sansVisage++; continue; }
       visagesVus += r.visages.length;
-      const dejaVus = new Set();
-      for (const emp of r.visages) {
-        const { d: props } = await rpc("visage_rapprocher_direct", {
-          p_asset_id: photos[i].id, p_empreinte: `[${emp.join(",")}]`,
-          p_modele: CFG.modele, p_seuil: CFG.seuilPropose,
-        });
-        comparaisons++;
-        if (!Array.isArray(props) || !props.length) continue;
-        // Le plus proche seulement : deux visages d'une même photo ne désignent pas la même personne.
-        const c = props[0];
-        if (dejaVus.has(c.player_id)) continue;
-        dejaVus.add(c.player_id);
-        const dist = Number(c.distance);
-        const rep = await rpc("marquer_par_reconnaissance", {
-          p_asset_id: photos[i].id, p_player_id: c.player_id, p_distance: dist,
-          p_modele: CFG.modele, p_certain: dist < CFG.seuilCertain,
-        });
-        if (rep.ok) marques++;
-      }
+      for (const emp of r.visages) vus.push({ asset: photos[i].id, emp, joueur: null, distance: null, ancre: false });
     } catch { /* une photo illisible n'arrête pas le lot */ }
   }
+  process.stdout.write(`   ${visagesVus} visage(s) relevé(s) sur ${photos.length} photo(s)          \n`);
+
+  // ── Ce que la base reconnaît directement ────────────────────────────────────────────────────
+  // La règle reste où elle est : c'est `visage_rapprocher_direct` qui sait qui a le droit d'être
+  // rapproché, de quelle équipe, avec quel consentement. Le moteur ne la rejoue pas.
+  for (const v of vus) {
+    const { d: props } = await rpc("visage_rapprocher_direct", {
+      p_asset_id: v.asset, p_empreinte: `[${v.emp.join(",")}]`,
+      p_modele: CFG.modele, p_seuil: CFG.seuilPropose,
+    });
+    if (!Array.isArray(props) || !props.length) continue;
+    v.joueur = props[0].player_id;
+    v.distance = Number(props[0].distance);
+    v.ancre = v.distance < CFG.seuilCertain;
+  }
+  const directs = vus.filter((v) => v.joueur).length;
+  const ancres0 = vus.filter((v) => v.ancre).length;
+
+  // ── L'expansion ─────────────────────────────────────────────────────────────────────────────
+  const distance = (a, b) => { let s = 0; for (let k = 0; k < a.length; k++) { const d = a[k] - b[k]; s += d * d; } return Math.sqrt(s); };
+
+  // EN SIMULATION, ON COMPARE PLUSIEURS RÉGLAGES D'UN SEUL COUP. Relire 110 photos coûte onze
+  // minutes ; refaire cette lecture pour chaque seuil à essayer serait absurde, et c'est en la
+  // refaisant qu'on finit par effacer des données pour « repartir propre ». Les empreintes sont
+  // là, en mémoire : autant les interroger plusieurs fois.
+  if (SIMULER) {
+    console.log("\n   réglages comparés sur cette même lecture :");
+    console.log("   ancres            | seuil | retrouvés en plus");
+    for (const depuisCertains of [true, false]) {
+      for (const seuil of [0.38, 0.42, 0.45, 0.50]) {
+        const etat = vus.map((v) => ({ emp: v.emp, joueur: v.joueur, ancre: depuisCertains ? v.ancre : !!v.joueur }));
+        let gagnes = 0;
+        for (let tour = 0; tour < CFG.toursExpansion; tour++) {
+          const ancres = etat.filter((v) => v.ancre);
+          if (!ancres.length) break;
+          const neufs = [];
+          for (const v of etat) {
+            if (v.joueur) continue;
+            let best = Infinity, qui = null;
+            for (const a of ancres) { const d = distance(v.emp, a.emp); if (d < best) { best = d; qui = a; } }
+            if (qui && best < seuil) { v.joueur = qui.joueur; neufs.push(v); gagnes++; }
+          }
+          if (!neufs.length) break;
+          for (const v of neufs) v.ancre = true;
+        }
+        console.log(`   ${depuisCertains ? "certains seulement" : "tous les reconnus "} | ${seuil.toFixed(2)}  | ${gagnes}`);
+      }
+    }
+    console.log("");
+  }
+  // ON PART DE TOUS LES VISAGES QUE LA BASE A RECONNUS, pas des seuls « certains ». Mesuré : avec
+  // une seule certitude dans la galerie, une chaîne n'a aucun point d'appui et ne retrouve rien.
+  for (const v of vus) if (v.joueur) v.ancre = true;
+  for (let tour = 0; tour < CFG.toursExpansion; tour++) {
+    const ancres = vus.filter((v) => v.ancre);
+    if (!ancres.length) break;
+    let gagnes = 0;
+    for (const v of vus) {
+      if (v.joueur) continue;
+      let meilleur = null, best = Infinity;
+      for (const a of ancres) {
+        const d = distance(v.emp, a.emp);
+        if (d < best) { best = d; meilleur = a; }
+      }
+      if (meilleur && best < CFG.seuilExpansion) {
+        v.joueur = meilleur.joueur;
+        // On garde la distance À LA RÉFÉRENCE de l'ancre, majorée de l'écart parcouru : c'est ce
+        // que le marquage enregistre, et il doit rester honnête sur la certitude réelle.
+        v.distance = Math.min(CFG.seuilPropose, (meilleur.distance ?? CFG.seuilCertain) + best);
+        v.parExpansion = true;
+        gagnes++;
+      }
+    }
+    if (!gagnes) break;
+    // Les nouveaux deviennent ancres pour le tour suivant, mais jamais « certains » : ils ne
+    // valident rien tout seuls.
+    for (const v of vus) if (v.parExpansion && !v.ancre) v.ancre = true;
+  }
+
+  // ── Le marquage ─────────────────────────────────────────────────────────────────────────────
+  const parPhoto = new Map();
+  for (const v of vus) {
+    if (!v.joueur) continue;
+    // Deux visages d'une même photo ne désignent pas la même personne : on ne garde que le plus proche.
+    const cle = `${v.asset}|${v.joueur}`;
+    const dejaLa = parPhoto.get(cle);
+    if (!dejaLa || v.distance < dejaLa.distance) parPhoto.set(cle, v);
+  }
+  let parExpansion = 0;
+  for (const v of parPhoto.values()) {
+    if (SIMULER) { marques++; if (v.parExpansion) parExpansion++; continue; }
+    const rep = await rpc("marquer_par_reconnaissance", {
+      p_asset_id: v.asset, p_player_id: v.joueur, p_distance: v.distance,
+      // CE QUI VIENT DE L'EXPANSION EST TOUJOURS PROPOSÉ. Seule une ressemblance directe à la
+      // photo de référence peut valider sans relecture humaine.
+      p_modele: CFG.modele, p_certain: !v.parExpansion && v.distance < CFG.seuilCertain,
+    });
+    if (rep.ok) { marques++; if (v.parExpansion) parExpansion++; }
+  }
+  console.log(`   ${marques} identification(s) sur ${photos.length} photo(s) — ${directs} visage(s) reconnu(s) directement (dont ${ancres0} certain(s)), ${parExpansion} retrouvé(s) par ressemblance${sansVisage ? `, ${sansVisage} photo(s) sans visage` : ""}${illisibles ? `, ${illisibles} introuvable(s)` : ""}`);
+  for (const [motif, n] of [...motifs].sort((a, b) => b[1] - a[1]))
+    console.log(`   ${n} photo(s) en echec : ${motif}`);
   totalPhotos += photos.length;
   totalMarques += marques;
   albumsFaits++;
   console.log(`   ${marques} identification(s) sur ${photos.length} photo(s) — ${visagesVus} visage(s) detecte(s), ${sansVisage} photo(s) sans visage${illisibles ? `, ${illisibles} introuvable(s) dans le stockage` : ""}   `);
   for (const [motif, n] of [...motifs].sort((a, b) => b[1] - a[1]))
     console.log(`   ${n} photo(s) en echec : ${motif}`);
-  for (const l of lignes) await rpc("reconnaissance_fait", { p_id: l.id, p_resultat: `${marques} identification(s)` });
+  if (!SIMULER) for (const l of lignes) await rpc("reconnaissance_fait", { p_id: l.id, p_resultat: `${marques} identification(s)` });
 }
 
 await navigateur.close();

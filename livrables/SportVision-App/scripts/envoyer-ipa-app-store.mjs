@@ -6,7 +6,11 @@
 // affiche simplement un build, et il faut penser à regarder LEQUEL. Une soumission serait partie
 // avec le mauvais binaire.
 //
-// Les trois étapes vont donc ensemble, dans cet ordre, et la dernière est celle qu'on oublie.
+// Et rattacher à la version ne met PAS le build à disposition des testeurs : le 27/09, TestFlight
+// ne proposait rien parce que le groupe interne ne contenait aucun build, et on a cherché du côté
+// du téléphone pendant ce temps.
+//
+// Les quatre étapes vont donc ensemble, dans cet ordre, et ce sont les deux dernières qu'on oublie.
 //
 //   node livrables/SportVision-App/scripts/envoyer-ipa-app-store.mjs [chemin de l'ipa]
 //
@@ -113,4 +117,22 @@ if (rep.statut >= 300) {
   process.exit(1);
 }
 console.log(`\nVersion ${v.attributes.versionString} (${v.attributes.appStoreState}) : build ${avant.d?.data?.attributes?.version ?? "aucun"} → ${attendu}`);
+
+// ── 4. TestFlight, sans quoi le build reste invisible du telephone ────────────────────────────
+//
+// Rattacher a la version ne le met PAS a disposition des testeurs : ce sont deux relations
+// distinctes. Le 27/09, TestFlight ne proposait rien parce que le groupe interne ne contenait
+// aucun build — on a cherche du cote de l'appareil pendant ce temps.
+const groupes = await api("GET", `/v1/apps/${APP}/betaGroups?limit=10`);
+const groupe = (groupes.d?.data ?? []).find((g) => g.attributes.isInternalGroup) ?? groupes.d?.data?.[0];
+if (!groupe) {
+  console.log("Aucun groupe de test interne : le build n'ira pas sur TestFlight tout seul.");
+} else {
+  const r = await api("POST", `/v1/betaGroups/${groupe.id}/relationships/builds`,
+    { data: [{ type: "builds", id: build.id }] });
+  console.log(r.statut < 300
+    ? `TestFlight — groupe « ${groupe.attributes.name} » : build ${attendu} disponible.`
+    : `TestFlight refuse (${r.statut}) : ${JSON.stringify(r.d).slice(0, 200)}`);
+}
+
 console.log("Reste la soumission, qui doit emporter les deux Pass avec la version.");
