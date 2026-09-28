@@ -1,4 +1,14 @@
 -- Qui a le droit de fixer un prix de galerie. Tout est annule a la fin (rollback).
+--
+-- ATTENTES REALIGNEES LE 28/09/2026 SUR LA DECISION DU 07/09. Ce test affirmait que le Secretariat
+-- ne peut PAS fixer un prix — la decision de la migration galeries-v7. Fouka l'a inversee le 07/09
+-- au soir, et la migration galeries-v14 l'ecrit noir sur blanc : « Le SECRETARIAT retrouve le droit
+-- de fixer les prix (decision inverse de la v7). Fouka a tranche : c'est lui qui prepare les liens
+-- au quotidien. » La production applique la v14 depuis. Le test, lui, est reste sur la v7 pendant
+-- trois semaines, et personne ne l'a vu parce que le lanceur ne lisait pas les verdicts renvoyes.
+--
+-- Ce qui n'a PAS change, et que ce test continue de tenir : photographes, CM et comptabilite ne
+-- fixent aucun prix. Ceux-la sont les bornes qui comptent.
 begin;
 
 -- DÉCOR MANQUANT, AJOUTÉ LE 26/09/2026. Ce test tenait pour acquis un club et une équipe dont il
@@ -79,7 +89,9 @@ insert into _res select '1', 'Comptabilite : REFUSE', 'false', media_pricing_sta
 
 -- ── 2. Le secretariat : c'est le changement demande ────────────────────────
 set local request.jwt.claims = '{"sub":"b4eab475-3293-4804-8bf6-8b27a15d410c","role":"authenticated"}';
-insert into _res select '2', 'Secretariat : NE PEUT PLUS fixer un prix', 'false', media_pricing_staff()::text, not media_pricing_staff();
+-- Decision du 07/09 (galeries-v14), inverse de la v7 : le Secretariat prepare les liens, donc il
+-- en fixe les prix.
+insert into _res select '2', 'Secretariat : peut fixer un prix (decision du 07/09)', 'true', media_pricing_staff()::text, media_pricing_staff();
 
 -- ── 3. Ses autres droits n'ont pas bouge ───────────────────────────────────
 insert into _res select '3', 'Secretariat : media_staff_write inchange', 'true', media_staff_write()::text, media_staff_write();
@@ -97,21 +109,21 @@ begin
 
   update media_album_links set price_override_cents = 100 where album_id = v_a;
   get diagnostics v_upd = row_count;
-  insert into _res values ('4', 'Secretariat : ne peut PAS changer le prix', '0 ligne', v_upd||' ligne', v_upd = 0);
+  insert into _res values ('4', 'Secretariat : peut changer le prix', '1 ligne', v_upd||' ligne', v_upd = 1);
 
   begin
     insert into media_album_links (album_id, slug) values (v_a, 'zz-sec-tentative');
-    insert into _res values ('4', 'Secretariat : ne peut PAS creer un lien', 'refuse', 'ACCEPTE', false);
+    insert into _res values ('4', 'Secretariat : peut creer un lien', 'ACCEPTE', 'ACCEPTE', true);
   exception when insufficient_privilege then
-    insert into _res values ('4', 'Secretariat : ne peut PAS creer un lien', 'refuse', 'refuse', true);
+    insert into _res values ('4', 'Secretariat : peut creer un lien', 'ACCEPTE', 'refuse', false);
   end;
 
   begin
     delete from media_album_links where album_id = v_a;
     get diagnostics v_upd = row_count;
-    insert into _res values ('4', 'Secretariat : ne peut PAS supprimer un lien', '0 ligne', v_upd||' ligne', v_upd = 0);
+    insert into _res values ('4', 'Secretariat : peut desactiver un lien', 'au moins 1 ligne', v_upd||' ligne', v_upd >= 1);
   exception when insufficient_privilege then
-    insert into _res values ('4', 'Secretariat : ne peut PAS supprimer un lien', '0 ligne', 'refuse', true);
+    insert into _res values ('4', 'Secretariat : peut desactiver un lien', 'au moins 1 ligne', 'refuse', false);
   end;
 end $$;
 

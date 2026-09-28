@@ -3,6 +3,40 @@
 -- Galerie de 30 photos, avec les offres que Fouka a décrites :
 --   Pack 10  → 10 €      Pack 20 → 15 €      Galerie complète → 30 €
 begin;
+-- ── LES PERSONAS DU TEST, CRÉÉS ICI ET NON SUPPOSÉS (ajouté le 28/09/2026) ──────────────────────
+-- Ce fichier endossait sept comptes de production par leur identifiant, sans jamais vérifier qu'ils
+-- existaient. Mesuré le 28/09 : QUATRE avaient été supprimés, dont celui du Secrétariat. Toutes les
+-- écritures censées être AUTORISÉES répondaient donc `non_autorise`, et le test était rouge pour une
+-- raison qui n'avait rien à voir avec ce qu'il mesure. Personne ne l'a vu : le lanceur comptait vert
+-- tout test qui renvoyait un tableau, sans lire ses verdicts.
+--
+-- `do update` et non `do nothing` : un compte réel encore présent doit porter LE rôle que le test
+-- attend, sinon le test mesure le rôle du jour au lieu de la règle. Le `rollback` final annule tout,
+-- y compris ce rôle forcé.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                        email_confirmed_at, created_at, updated_at)
+select x.id::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+       'zz-persona-' || x.libelle || '@example.invalid', '', now(), now(), now()
+  from (values ('3259409d-b69f-4780-877c-b75e0e8d663d','admin'),
+               ('b4ff9a0e-9ae6-43a5-bddf-412fdf7d2cca','fondateur'),
+               ('97a7f67a-baa0-41e8-a891-7751aec9fd76','prod'),
+               ('b4eab475-3293-4804-8bf6-8b27a15d410c','sec'),
+               ('2b0b7fae-33eb-45be-b393-707725ad9e7e','cm'),
+               ('0831e5ee-2ad9-4efd-95ea-3d88f16dd1b2','photo'),
+               ('b2d5b116-ab57-47fe-987e-22eb9dc41e83','compta')) as x(id, libelle)
+on conflict (id) do nothing;
+
+insert into profiles (id, role, actif, prenom, nom, email)
+select x.id::uuid, x.role_reel, true, 'ZZ', x.libelle, 'zz-persona-' || x.libelle || '@example.invalid'
+  from (values ('3259409d-b69f-4780-877c-b75e0e8d663d','admin','admin'),
+               ('b4ff9a0e-9ae6-43a5-bddf-412fdf7d2cca','fondateur','admin'),
+               ('97a7f67a-baa0-41e8-a891-7751aec9fd76','prod','prod'),
+               ('b4eab475-3293-4804-8bf6-8b27a15d410c','sec','sec'),
+               ('2b0b7fae-33eb-45be-b393-707725ad9e7e','cm','cm'),
+               ('0831e5ee-2ad9-4efd-95ea-3d88f16dd1b2','photo','photo'),
+               ('b2d5b116-ab57-47fe-987e-22eb9dc41e83','compta','compta')) as x(id, libelle, role_reel)
+on conflict (id) do update set role = excluded.role, actif = true;
+
 
 -- DÉCOR MANQUANT, AJOUTÉ LE 26/09/2026. Ce test tenait pour acquis un club et une équipe dont il
 -- codait l'identifiant en dur. Ce club a été supprimé de la production, et le test a cessé de
@@ -34,8 +68,11 @@ begin
   values (v_club, v_team, v_saison, 'ZZ tournoi U12', 'published') returning id into v_album;
 
   for i in 1..30 loop
-    insert into media_assets (album_id, club_id, original_path, preview_path, thumb_path, original_filename, status, position)
-    values (v_album, v_club, 'media/'||v_album||'/'||i||'.jpg', 'p/'||i, 't/'||i, 'P'||i||'.JPG', 'ready', i)
+    -- `preview_watermarked` EST NECESSAIRE DEPUIS LA v312 (27/09/2026), pas decoratif : l'apercu
+    -- public ne sert que les photos dont l'apercu porte le filigrane. Sans ce drapeau, la vitrine
+    -- rend 0 photo et ce test mesure le garde-fou au lieu du plafond qu'il croit mesurer.
+    insert into media_assets (album_id, club_id, original_path, preview_path, thumb_path, original_filename, status, position, preview_watermarked)
+    values (v_album, v_club, 'media/'||v_album||'/'||i||'.jpg', 'p/'||i, 't/'||i, 'P'||i||'.JPG', 'ready', i, true)
     returning id into v_id;
     v_ids := v_ids || v_id;
   end loop;

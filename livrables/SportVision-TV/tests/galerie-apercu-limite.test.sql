@@ -2,6 +2,17 @@
 --
 -- Ce test compte ce qui sort de la base, pas ce qui s'affiche : c'est tout l'objet du lot. Une
 -- limite d'affichage se contourne depuis l'inspecteur du navigateur en dix secondes.
+--
+-- ATTENTES REALIGNEES LE 28/09/2026. Ce fichier affirmait qu'un lien SANS plafond n'en sert que 12
+-- — la règle de la migration galeries-v12. Fouka l'a inversée le 07/09 au soir, et la galeries-v14
+-- l'écrit : « L'APERÇU N'EST PLUS LIMITÉ PAR DÉFAUT. Sur un tournoi de 500 photos, un parent ne peut
+-- pas retrouver son enfant dans 12 vignettes : il n'achèterait rien. » Le test est resté sur la v12
+-- pendant trois semaines, invisible parce que le lanceur ne lisait pas les verdicts renvoyés.
+--
+-- CE QUI NE CHANGE PAS, et qui est la vraie valeur de ce fichier : un plafond, QUAND IL EST POSÉ, ne
+-- doit pas se contourner en paginant. Cette vérification est conservée telle quelle — elle est
+-- simplement appliquée à un lien qui porte un plafond (lien D, 12 photos) au lieu d'un lien qui n'en
+-- porte aucun.
 begin;
 
 -- DÉCOR MANQUANT, AJOUTÉ LE 26/09/2026. Ce test tenait pour acquis un club et une équipe dont il
@@ -22,8 +33,8 @@ declare
   v_club uuid := '8be55101-0d61-4b27-8d7b-a4761547d88b';
   v_team uuid := 'bee719f7-d735-4a0b-b070-0d20eb73e7ec';
   v_saison uuid; v_album uuid; v_prod uuid;
-  lA uuid; lB uuid; lC uuid;
-  sA text; tA text; sB text; tB text; sC text; tC text;
+  lA uuid; lB uuid; lC uuid; lD uuid;
+  sA text; tA text; sB text; tB text; sC text; tC text; sD text; tD text;
   i integer; v_n integer; v_total bigint; v_vis integer; o record;
   v_ids uuid[] := '{}'; v_id uuid; v_premier uuid;
 begin
@@ -33,8 +44,11 @@ begin
 
   -- 200 photos : un vrai album de match, pas trois photos de test.
   for i in 1..200 loop
-    insert into media_assets (album_id, club_id, original_path, preview_path, thumb_path, original_filename, status, position)
-    values (v_album, v_club, 'media/'||v_album||'/'||i||'.jpg', 'p/'||i, 't/'||i, 'P'||i||'.JPG', 'ready', i)
+    -- `preview_watermarked` EST NECESSAIRE DEPUIS LA v312 (27/09/2026), pas decoratif : l'apercu
+    -- public ne sert que les photos dont l'apercu porte le filigrane. Sans ce drapeau, la vitrine
+    -- rend 0 photo et ce test mesure le garde-fou au lieu du plafond qu'il croit mesurer.
+    insert into media_assets (album_id, club_id, original_path, preview_path, thumb_path, original_filename, status, position, preview_watermarked)
+    values (v_album, v_club, 'media/'||v_album||'/'||i||'.jpg', 'p/'||i, 't/'||i, 'P'||i||'.JPG', 'ready', i, true)
     returning id into v_id;
     v_ids := v_ids || v_id;
   end loop;
@@ -53,29 +67,47 @@ begin
   values (v_album, media_gallery_unique_slug('ZZ apercu C'), 40)
   returning id, slug, token into lC, sC, tC;
 
-  -- ── 1. Par défaut, 12 photos et pas 200 ────────────────────────────────
+  -- Lien D : un plafond de 12, POSE explicitement. C'est sur lui que se mesure l'impossibilite de
+  -- contourner un plafond, puisque le lien A n'en a plus par defaut.
+  insert into media_album_links (album_id, slug, preview_limit)
+  values (v_album, media_gallery_unique_slug('ZZ apercu D'), 12)
+  returning id, slug, token into lD, sD, tD;
+
+  -- ── 1. Par défaut, AUCUNE limite (décision du 07/09, galeries-v14) ─────
   select count(*)::integer into v_n from media_gallery_photos(sA, tA, null, 200, 0);
-  insert into _res values ('1', 'demande de 200 photos : 12 servies', '12', v_n::text, v_n = 12);
+  insert into _res values ('1', 'lien sans plafond : les 200 photos sont parcourables', '200', v_n::text, v_n = 200);
 
   select total, visibles into v_total, v_vis from media_gallery_photos(sA, tA, null, 200, 0) limit 1;
   insert into _res values ('1', 'le vrai total reste annonce (argument de vente)', '200', v_total::text, v_total = 200);
-  insert into _res values ('1', 'la page sait combien sont visibles', '12', v_vis::text, v_vis = 12);
+  insert into _res values ('1', 'la page sait combien sont visibles', '200', v_vis::text, v_vis = 200);
   select apercu_limite into v_n from media_gallery_open(sA, tA);
-  insert into _res values ('1', 'l ouverture annonce la meme limite', '12', v_n::text, v_n = 12);
+  insert into _res values ('1', 'l ouverture n annonce aucun plafond', 'aucun',
+    coalesce(v_n::text,'aucun'), coalesce(v_n, 0) = 0);
 
-  -- ── 2. On ne contourne pas en paginant ─────────────────────────────────
-  select count(*)::integer into v_n from media_gallery_photos(sA, tA, null, 60, 12);
+  -- ── 1bis. Un plafond POSE est respecte, et annonce ─────────────────────
+  select count(*)::integer into v_n from media_gallery_photos(sD, tD, null, 200, 0);
+  insert into _res values ('1bis', 'lien plafonne a 12 : 12 servies sur 200 demandees', '12', v_n::text, v_n = 12);
+  select total, visibles into v_total, v_vis from media_gallery_photos(sD, tD, null, 200, 0) limit 1;
+  insert into _res values ('1bis', 'le vrai total reste annonce', '200', v_total::text, v_total = 200);
+  insert into _res values ('1bis', 'la page sait combien sont visibles', '12', v_vis::text, v_vis = 12);
+  select apercu_limite into v_n from media_gallery_open(sD, tD);
+  insert into _res values ('1bis', 'l ouverture annonce la meme limite', '12', v_n::text, v_n = 12);
+
+  -- ── 2. UN PLAFOND NE SE CONTOURNE PAS EN PAGINANT ──────────────────────
+  -- Mesure sur le lien D (plafond 12). C'est LE point du fichier : une limite d'affichage se
+  -- contourne depuis l'inspecteur, une limite servie par la base ne se contourne pas.
+  select count(*)::integer into v_n from media_gallery_photos(sD, tD, null, 60, 12);
   insert into _res values ('2', 'page 2 (offset 12) : rien', '0', v_n::text, v_n = 0);
-  select count(*)::integer into v_n from media_gallery_photos(sA, tA, null, 60, 199);
+  select count(*)::integer into v_n from media_gallery_photos(sD, tD, null, 60, 199);
   insert into _res values ('2', 'offset en fin d album : rien', '0', v_n::text, v_n = 0);
-  select count(*)::integer into v_n from media_gallery_photos(sA, tA, null, 60, 8);
+  select count(*)::integer into v_n from media_gallery_photos(sD, tD, null, 60, 8);
   insert into _res values ('2', 'offset 8 : seulement les 4 restantes', '4', v_n::text, v_n = 4);
   -- Une page 2 qui renverrait a nouveau les premieres photos donnerait l'illusion d'une galerie
   -- sans fin, et ferait defiler indefiniment le navigateur.
   select count(*)::integer into v_n from (
-    select id from media_gallery_photos(sA, tA, null, 60, 0)
+    select id from media_gallery_photos(sD, tD, null, 60, 0)
     intersect
-    select id from media_gallery_photos(sA, tA, null, 60, 8)
+    select id from media_gallery_photos(sD, tD, null, 60, 8)
   ) x;
   insert into _res values ('2', 'les pages ne se repetent pas', '4 communes au plus', v_n::text, v_n <= 4);
 
@@ -105,13 +137,13 @@ begin
 
   -- ── 5. Une photo hors vitrine n est jamais servie ──────────────────────
   -- C'est LE point du lot : le chemin de la 50e photo ne doit atteindre aucun navigateur.
-  select count(*)::integer into v_n from media_gallery_photos(sA, tA, null, 200, 0) where id = v_ids[50];
-  insert into _res values ('5', 'la 50e photo n est servie sur aucune page', '0', v_n::text, v_n = 0);
+  select count(*)::integer into v_n from media_gallery_photos(sD, tD, null, 200, 0) where id = v_ids[50];
+  insert into _res values ('5', 'la 50e photo n est servie sur aucune page du lien plafonne', '0', v_n::text, v_n = 0);
   select count(*)::integer into v_n from (
-    select id from media_gallery_photos(sA, tA, null, 200, 0)
-    union select id from media_gallery_photos(sA, tA, null, 200, 12)
-    union select id from media_gallery_photos(sA, tA, null, 200, 24)
-    union select id from media_gallery_photos(sA, tA, null, 200, 100)
+    select id from media_gallery_photos(sD, tD, null, 200, 0)
+    union select id from media_gallery_photos(sD, tD, null, 200, 12)
+    union select id from media_gallery_photos(sD, tD, null, 200, 24)
+    union select id from media_gallery_photos(sD, tD, null, 200, 100)
   ) x;
   insert into _res values ('5', 'toutes pages confondues : jamais plus de 12', '12', v_n::text, v_n = 12);
 
