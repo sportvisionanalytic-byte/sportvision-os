@@ -9445,11 +9445,19 @@ async function chargerEquipeModal(prestationId){
   const el=document.getElementById('pd-equipe-list');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations_equipe_display?select=collaborateur_id,fonction,est_responsable,statut,profiles(prenom,nom,telephone)&prestation_id=eq.'+prestationId);
+    const data=await sbFetch('prestations_equipe_display?select=collaborateur_id,fonction,est_responsable,statut,profiles(prenom,nom,telephone,materiel_personnel)&prestation_id=eq.'+prestationId);
     if(!data||!data.length){
       const pid=escJs(prestationId);
       el.innerHTML=`<span style="color:var(--t3)">Aucun membre assigné.</span><button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${pid}',''),150)" style="margin-left:8px;font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Assigner →</button>`;
       return;
+    }
+    // LA VILLE EST DANS UNE AUTRE TABLE, ET C'EST VOULU. `collaborateur_logistique` ne repond
+    // qu'a l'interesse, a l'Admin et a la Production (decision du 10/09) : une seconde requete
+    // laisse la RLS trancher, plutot qu'un embed qui echouerait en silence pour les autres roles.
+    const villes={};
+    if(data.length){
+      const logi=await sbFetch('collaborateur_logistique?select=collaborateur_id,ville,vehicule&collaborateur_id=in.('+data.map(m=>m.collaborateur_id).join(',')+')').catch(()=>[]);
+      if(Array.isArray(logi))logi.forEach(l=>{villes[l.collaborateur_id]=l;});
     }
     const iSt={'a_envoyer':'bn','invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
     const iLb={'a_envoyer':'À envoyer','invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
@@ -9468,6 +9476,9 @@ async function chargerEquipeModal(prestationId){
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:500;color:var(--t1)">${name}${m.est_responsable?' <span style="font-size:9px;color:var(--acc)"> · Resp.</span>':''}</div>
           <div style="font-size:11px;color:var(--t3)">${esc(m.fonction||'—')}</div>
+          ${(()=>{const l=villes[m.collaborateur_id]||{};const mat=m.profiles?.materiel_personnel||'';
+            const bouts=[l.ville?'📍 '+esc(l.ville):'',l.vehicule?'🚗':'',mat?'🎒 '+esc(mat):''].filter(Boolean);
+            return bouts.length?`<div style="font-size:10.5px;color:var(--t3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${bouts.join(' · ')}</div>`:'';})()}
         </div>
         <span class="bd ${iSt[m.statut]||'bw'}" style="font-size:9.5px"><span class="bd-d"></span>${iLb[m.statut]||m.statut}</span>
         ${callBtn}${msgBtn}
@@ -17941,19 +17952,30 @@ async function submitDisponibiliteSousConditions(){
   if(typeof loadPhotoDash==='function')loadPhotoDash();
 }
 
+// LA DISPONIBILITE NE SE DECLARAIT QUE POUR LE JOUR MEME (corrige le 28/09/2026).
+//
+// La fiche collaborateur affiche « Disponibilités des 14 prochains jours » depuis longtemps, mais
+// rien ne pouvait les remplir : le seul chemin d'ecriture forcait `date = aujourd'hui`. La table
+// contenait UNE ligne, datee du 28 juillet. L'onglet etait donc vide par construction, et personne
+// ne pouvait dire « je suis pris samedi ». Meme motif que la reconnaissance le matin meme :
+// l'affichage existait, la donnee ne pouvait pas arriver.
+//
+// `definirDispoJour` est desormais le SEUL endroit qui ecrit. `setDisponibilite` l'appelle pour
+// aujourd'hui, et la grille des 14 jours pour les autres dates : une seule regle, un seul upsert.
+async function definirDispoJour(uid,date,statut,note){
+  if(!uid||!date)return false;
+  const corps={collaborateur_id:uid,date,statut};
+  if(note!==undefined)corps.note=note||null;
+  const r=await sbFetch('disponibilites?on_conflict=collaborateur_id,date',{
+    method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:corps,
+  }).catch(()=>({code:'network_error'}));
+  return !sbErr(r);
+}
+
 async function setDisponibilite(statut){
   closeModal();
   const uid=localStorage.getItem('sv_uid');
-  const today=ymdLocal();
-  let ok=false;
-  if(uid){
-    const r=await sbFetch('disponibilites?on_conflict=collaborateur_id,date',{
-      method:'POST',
-      headers:{'Prefer':'resolution=merge-duplicates'},
-      body:{collaborateur_id:uid,date:today,statut},
-    }).catch(()=>({code:'network_error'}));
-    ok=!sbErr(r);
-  }
+  const ok=await definirDispoJour(uid,ymdLocal(),statut);
   if(ok){
     localStorage.setItem('sv_dispo',statut);
   }else{
@@ -18329,6 +18351,107 @@ async function enregistrerLogistique(uid,ville,vehicule,permis){
     headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}}).catch(e=>e);
 }
 
+// LE MATERIEL PERSONNEL, EQUIPEMENT PAR EQUIPEMENT (v328, 28/09/2026).
+//
+// Avant, la fiche d'un photographe affichait « 🎒 oui » — le mot recopie de sa candidature, ou
+// `materiel` ne vaut jamais que « oui » ou « partiel » sur les 51 dossiers reels. De quoi savoir
+// qu'il a quelque chose, jamais quoi : un 70-200 et un telephone repondent tous les deux « oui ».
+//
+// `profiles.materiel_personnel` continue d'exister et d'alimenter les quatre ecrans qui s'en
+// servent deja, mais il n'est PLUS SAISI : un declencheur y reecrit le resume a chaque changement
+// ici. Une seule saisie humaine, une seule verite.
+const MATERIEL_TYPES=[
+  ['boitier_photo','📷 Boîtier photo'],['objectif','🔭 Objectif'],['camera','🎥 Caméra'],
+  ['drone','🚁 Drone'],['stabilisateur','🎛 Stabilisateur'],['micro','🎤 Micro'],
+  ['eclairage','💡 Éclairage'],['ordinateur','💻 Ordinateur de montage'],['autre','📦 Autre'],
+];
+const materielLibelle=(t)=>(MATERIEL_TYPES.find(x=>x[0]===t)||[null,t])[1];
+
+async function chargerMateriel(uid){
+  if(!uid)return[];
+  const r=await sbFetch('collaborateur_materiel?select=id,type,marque,modele,precision_libre&collaborateur_id=eq.'+uid+'&order=type.asc').catch(()=>[]);
+  return Array.isArray(r)?r:[];
+}
+
+// Le nom de l'equipement, tel qu'on le lit sur une fiche : « Sony A7 III (2 batteries) ».
+function materielTexte(m){
+  return [m.marque,m.modele].filter(Boolean).join(' ')+(m.precision_libre?' ('+m.precision_libre+')':'');
+}
+
+async function rendreMonMateriel(uid){
+  const el=document.getElementById('set-materiel-liste');
+  if(!el)return;
+  const items=await chargerMateriel(uid);
+  el.innerHTML=items.length?items.map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+      <span style="font-size:12px;color:var(--t3);white-space:nowrap">${esc(materielLibelle(m.type))}</span>
+      <span style="flex:1;min-width:0;font-size:13px;color:var(--t1);overflow:hidden;text-overflow:ellipsis">${esc(materielTexte(m))||'—'}</span>
+      <button onclick="supprimerMonMateriel('${m.id}','${uid}')" title="Retirer" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px 6px">✕</button>
+    </div>`).join('')
+    :'<div style="padding:10px 0;font-size:12.5px;color:var(--t3)">Rien de déclaré. Si tu as ton propre matériel, ajoute-le : c\'est ce qui permet de t\'affecter aux missions qui vont avec.</div>';
+}
+
+async function ajouterMonMateriel(uid){
+  const err=document.getElementById('set-materiel-err');
+  const type=document.getElementById('set-mat-type')?.value;
+  const marque=(document.getElementById('set-mat-marque')?.value||'').trim();
+  const modele=(document.getElementById('set-mat-modele')?.value||'').trim();
+  const prec=(document.getElementById('set-mat-prec')?.value||'').trim();
+  if(err)err.textContent='';
+  // Sans marque NI modele, la ligne ne dit rien de plus que « oui » — c'est justement ce qu'on
+  // quitte. On refuse ici plutot que d'accepter une fiche qui n'aide personne.
+  if(!marque&&!modele){if(err)err.textContent='Indique au moins la marque ou le modèle.';return;}
+  const r=await sbFetch('collaborateur_materiel',{method:'POST',body:{
+    collaborateur_id:uid,type:type||'autre',marque:marque||null,modele:modele||null,
+    precision_libre:prec||null},headers:{'Prefer':'return=minimal'}}).catch(e=>e);
+  if(sbErr(r)){if(err)err.textContent='Erreur : '+msgErreur(r,'Ajout impossible.');return;}
+  ['set-mat-marque','set-mat-modele','set-mat-prec'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});
+  await rendreMonMateriel(uid);
+}
+
+async function supprimerMonMateriel(id,uid){
+  const err=document.getElementById('set-materiel-err');
+  const r=await sbFetch('collaborateur_materiel?id=eq.'+id,{method:'DELETE',headers:{'Prefer':'return=minimal'}}).catch(e=>e);
+  if(sbErr(r)){if(err)err.textContent='Erreur : '+msgErreur(r,'Suppression impossible.');return;}
+  await rendreMonMateriel(uid);
+}
+
+// LES QUATORZE PROCHAINS JOURS. La fiche collaborateur les affiche depuis longtemps ; c'est ici
+// qu'ils se remplissent. On s'arrete a 14 parce que c'est l'horizon que la fiche lit : promettre
+// une saisie a trois mois que personne ne relit ne sert personne.
+const DISPO_OPTS=[['disponible','🟢'],['sous_conditions','🟡'],['indisponible','🔴']];
+
+async function rendreMesDispos(uid){
+  const el=document.getElementById('set-dispo-grille');
+  if(!el)return;
+  const today=ymdLocal();
+  const r=await sbFetch('disponibilites?select=date,statut&collaborateur_id=eq.'+uid+'&date=gte.'+today+'&order=date.asc&limit=30').catch(()=>[]);
+  const parJour={};
+  if(Array.isArray(r))r.forEach(d=>{parJour[d.date]=d.statut;});
+  const jours=[];
+  for(let i=0;i<14;i++){
+    const d=new Date(today+'T12:00:00');d.setDate(d.getDate()+i);
+    // On refabrique la date en local, jamais par toISOString : « aujourd'hui » se compte a Paris.
+    const ymd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    jours.push({ymd,lb:d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'})});
+  }
+  el.innerHTML=jours.map(j=>{
+    const cur=parJour[j.ymd]||'';
+    return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+      <span style="flex:1;font-size:12.5px;color:${cur?'var(--t1)':'var(--t3)'}">${esc(j.lb)}</span>
+      ${DISPO_OPTS.map(([v,ic])=>`<button onclick="definirMaDispo('${uid}','${j.ymd}','${v}')" title="${v.replace('_',' ')}" style="width:30px;height:26px;border-radius:6px;cursor:pointer;font-size:13px;background:${cur===v?'rgba(14,165,255,.14)':'var(--s2)'};border:${cur===v?'2px solid var(--acc)':'1px solid var(--b1)'}">${ic}</button>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+async function definirMaDispo(uid,date,statut){
+  const err=document.getElementById('set-dispo-err');
+  if(err)err.textContent='';
+  const ok=await definirDispoJour(uid,date,statut);
+  if(!ok){if(err)err.textContent='La disponibilité n\'a pas pu être enregistrée.';return;}
+  if(date===ymdLocal())localStorage.setItem('sv_dispo',statut);
+  await rendreMesDispos(uid);
+}
+
 async function loadSettings(){
   const el=document.getElementById('set-profile');
   if(!el)return;
@@ -18395,6 +18518,39 @@ async function loadSettings(){
       </div>
     </div>
     <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Mes disponibilités</div></div>
+      <div style="padding:8px 18px 18px">
+        <div style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:6px">
+          Les quatorze prochains jours. C'est ce que voit la Production avant de te proposer une
+          mission : un jour laissé vide ne dit rien, ni oui ni non.
+        </div>
+        <div id="set-dispo-grille"></div>
+        <div id="set-dispo-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:6px"></div>
+      </div>
+    </div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Mon matériel</div></div>
+      <div style="padding:8px 18px 18px">
+        <div style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:6px">
+          Ce que tu possèdes déjà, appareil par appareil. C'est ce qui permet de t'affecter aux
+          missions qui demandent ton équipement, plutôt qu'un kit à sortir du local.
+        </div>
+        <div id="set-materiel-liste"></div>
+        <div style="display:grid;grid-template-columns:150px 1fr 1fr;gap:8px;margin-top:12px">
+          <select id="set-mat-type" class="l-inp" style="height:36px">
+            ${MATERIEL_TYPES.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+          </select>
+          <input id="set-mat-marque" class="l-inp" placeholder="Marque (Sony, Canon…)" style="height:36px">
+          <input id="set-mat-modele" class="l-inp" placeholder="Modèle (A7 III, 70-200…)" style="height:36px">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px">
+          <input id="set-mat-prec" class="l-inp" placeholder="Précision (f/2.8, 2 batteries…)" style="height:36px">
+          <button class="btn bp" onclick="ajouterMonMateriel('${uid}')" style="height:36px">Ajouter</button>
+        </div>
+        <div id="set-materiel-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:6px"></div>
+      </div>
+    </div>
+    <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Notifications</div></div>
       <div style="padding:8px 18px 18px;display:flex;flex-direction:column">
         ${NOTIF_CATEGORIES.map(cat=>{
@@ -18410,6 +18566,8 @@ async function loadSettings(){
         <div id="set-notif-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:4px"></div>
       </div>
     </div>`;
+    rendreMonMateriel(uid);
+    rendreMesDispos(uid);
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 async function toggleNotifPref(uid,categorie,actif){
@@ -36523,7 +36681,7 @@ async function modalFicheCollaborateur(id){
   openModal('<div style="padding:32px;text-align:center;color:var(--t3)">Chargement de la fiche…</div>');
   try{
     const today=ymdLocal();
-    const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw,dispoRangeRaw,kitResaRaw,docsRaw,gradeRecoRaw,clientsCmRaw,poleAffRaw,coordRaw,logiRaw]=await Promise.all([
+    const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw,dispoRangeRaw,kitResaRaw,docsRaw,gradeRecoRaw,clientsCmRaw,poleAffRaw,coordRaw,logiRaw,materielRaw]=await Promise.all([
       sbFetch('profiles?select=*&id=eq.'+id).catch(()=>[]),
       sbFetch('prestations_equipe_display?select=id,statut,remuneration,est_responsable,travail_valide,prestations(id,reference,date_prestation,statut,lieu,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=200').catch(()=>[]),
       sbFetch('collaborateur_certifications?select=*&collaborateur_id=eq.'+id).catch(()=>[]),
@@ -36551,6 +36709,10 @@ async function modalFicheCollaborateur(id){
       sbFetch('pole_affectations?select=pole_id,role_pole,poles(nom,slug)&user_id=eq.'+id).catch(()=>[]),
       chargerCoordonnees(id),
       chargerLogistique(id),
+      // Le materiel personnel, equipement par equipement (v328). Meme perimetre que la
+      // logistique : l'interesse, l'Admin, la Production. Pour un autre role la liste revient
+      // vide, donc la ligne disparait au lieu d'echouer.
+      chargerMateriel(id),
     ]);
     const prof=(Array.isArray(profRaw)?profRaw:[])[0];
     // Adresse hors de profiles depuis l'audit du 10/09/2026 : vide pour qui n'a pas le droit
@@ -36690,6 +36852,13 @@ async function modalFicheCollaborateur(id){
       +(prof.telephone?ic('Téléphone',prof.telephone):'')
       +(prof.ville?ic('Ville',prof.ville+(prof.code_postal?' ('+prof.code_postal+')':'')):'')
       +(prof.adresse?ic('Adresse',prof.adresse):'')
+      +((prof.vehicule||prof.permis)?ic('Déplacements',[prof.vehicule?'🚗 Véhiculé':'',prof.permis?'🪪 Permis':''].filter(Boolean).join(' · ')):'')
+      // CE QUE LA FICHE NE DISAIT PAS. Avant la v328 elle affichait au mieux « oui », le mot
+      // recopie de la candidature. Ici c'est la liste reelle, celle qui permet de decider si on
+      // sort un kit du local ou non.
+      +((Array.isArray(materielRaw)&&materielRaw.length)
+        ?ic('Matériel personnel',materielRaw.map(m=>esc(materielLibelle(m.type))+' — '+esc(materielTexte(m))).join('<br>'))
+        :ic('Matériel personnel','<span style="color:var(--wa)">Rien de déclaré — kit à prévoir</span>'))
       +(isPhotoProfile?ic('XP','<span style="color:var(--acc);font-weight:700">'+xpTotal.toLocaleString('fr-FR')+'</span>'):'')
       +(prof.role==='cm'?ic('Clubs gérés',clientsCm.length?clientsCm.map(c=>esc(c.nom)).join(', '):'Aucun club affecté'):'')
       +ic('Prochaine mission',prochaine?(prochaine.prestations?.clients?.nom||'Mission')+' — '+fmtD(prochaine.prestations?.date_prestation):'Aucune planifiée')
