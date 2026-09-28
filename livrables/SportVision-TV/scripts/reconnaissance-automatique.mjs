@@ -180,6 +180,165 @@ function aLire(photo) {
 }
 
 // ── Ce qui attend ───────────────────────────────────────────────────────────────────────────────
+// LE NAVIGATEUR ET LES MODELES VIVENT HORS DE LA BOUCLE (28/09/2026).
+//
+// Ils etaient a l'interieur de `vider()` : en mode boucle, chaque passe aurait relance Chromium
+// et recharge les trois modeles, toutes les vingt secondes. Le commentaire de la boucle affirmait
+// le contraire — c'est le genre d'ecart qu'on ne voit pas tant qu'on ne lance pas vraiment.
+// Et en mode simple, la fermeture finale ne trouvait meme plus le navigateur : `ReferenceError`
+// apres que tout le travail ait ete fait et enregistre.
+
+// ── Un navigateur, juste pour le calcul d'images ────────────────────────────────────────────────
+// La page est servie depuis 127.0.0.1 et non `about:blank` : sans origine réelle, les requêtes
+// vers le stockage partent d'une origine nulle et sont refusées.
+const serveur = createServer((_, rep) => {
+  rep.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  rep.end("<!doctype html><html><head><meta charset='utf-8'></head><body></body></html>");
+}).listen(0, "127.0.0.1");
+await new Promise((r) => serveur.on("listening", r));
+
+// SwiftShader rend WebGL disponible sans carte graphique. Sans ces drapeaux, le navigateur sans
+// ecran tombe en plein calcul — « Resulting promise was garbage collected », vu au premier essai.
+const navigateur = await chromium.launch({
+  args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--disable-dev-shm-usage"],
+});
+const page = await navigateur.newPage();
+page.on("console", (m) => { if (m.type() === "error") console.log("   navigateur :", m.text().slice(0, 140)); });
+await page.goto(`http://127.0.0.1:${serveur.address().port}/`);
+
+console.log("Chargement des modèles…");
+await page.addScriptTag({ url: CFG.lib });
+// LE DETECTEUR DE PERSONNES, a cote du detecteur de visages. face-api embarque son propre
+// TensorFlow ; coco-ssd, lui, cherche `window.tf`. On le lui donne plutot que d'en charger un
+// second, qui se disputerait le meme backend.
+await page.evaluate(() => { if (!window.tf && window.faceapi) window.tf = window.faceapi.tf; });
+await page.addScriptTag({ url: "https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" });
+await page.addScriptTag({ url: "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" });
+await page.evaluate(async (cfg) => {
+  const fa = window.faceapi;
+  // LE PROCESSEUR, PAS LA CARTE GRAPHIQUE. Dans un navigateur sans ecran, WebGL passe par une
+  // emulation logicielle qui tient mal la charge : le premier essai s'est effondre au bout de
+  // quelques images. Le processeur est plus lent mais ne lache pas, et ce script tourne seul, la
+  // nuit — personne n'attend devant.
+  try { await fa.tf.setBackend("cpu"); } catch { /* on prend ce qui vient */ }
+  await fa.tf.ready();
+  await fa.nets.ssdMobilenetv1.loadFromUri(cfg.modeles);
+  await fa.nets.faceLandmark68Net.loadFromUri(cfg.modeles);
+  await fa.nets.faceRecognitionNet.loadFromUri(cfg.modeles);
+
+  // Le detecteur de personnes. S'il ne se charge pas, on continue sans : la reconnaissance de
+  // visages garde toute sa valeur, seule la silhouette est perdue — et on le DIT.
+  try { window._personnes = await window.cocoSsd.load({ base: "lite_mobilenet_v2" }); }
+  catch (e) { window._personnes = null; window._raterPersonnes = String(e && e.message || e).slice(0, 120); }
+
+  // Le lecteur de chiffres. Comme le detecteur de personnes : s'il manque, on continue sans, et on
+  // le dit. Aucune de ces deux capacites n'est indispensable a la reconnaissance de visages.
+  try { window._ocr = await window.Tesseract.createWorker("eng", 1, {}); 
+        await window._ocr.setParameters({ tessedit_char_whitelist: "0123456789" }); }
+  catch (e) { window._ocr = null; window._raterOcr = String(e && e.message || e).slice(0, 120); }
+
+  // LA RECHERCHE DES CHIFFRES. `reference` est la hauteur du CORPS, pas celle de la zone fouillee :
+  // sans elle, un chiffre valant 12 % du corps devient 2 % de l'image et se fait rejeter par la
+  // borne de taille. C'est ce qui faisait manquer un « 11 » pourtant parfaitement isole.
+  window._chercherChiffres = function (ctx, x, y, w, h, clairSurFonce, reference) {
+    const X = Math.max(0, Math.round(x)), Y = Math.max(0, Math.round(y));
+    const W = Math.max(1, Math.round(w)), H = Math.max(1, Math.round(h));
+    const d = ctx.getImageData(X, Y, W, H).data;
+    // CE QUI DISTINGUE UN CHIFFRE BLANC, CE N'EST PAS SA LUMINOSITE, C'EST SON ABSENCE DE COULEUR.
+    // Un « 11 » blanc sur un maillot bleu clair donne deux gris voisins : en niveaux de gris, on
+    // ne separait rien. Par la saturation, le chiffre ressort net.
+    const masque = new Uint8Array(W * H);
+    for (let i = 0, k = 0; i < masque.length; i++, k += 4) {
+      const r = d[k] / 255, g = d[k + 1] / 255, b = d[k + 2] / 255;
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      const sat = mx === 0 ? 0 : (mx - mn) / mx, lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      masque[i] = clairSurFonce ? ((sat < 0.25 && lum > 0.62) ? 1 : 0) : ((lum < 0.32) ? 1 : 0);
+    }
+    const ech = reference || H;
+    const hMin = Math.max(6, ech * 0.07), hMax = ech * 0.32;
+    const vu = new Uint8Array(W * H), file = new Int32Array(W * H), taches = [];
+    for (let s = 0; s < masque.length; s++) {
+      if (!masque[s] || vu[s]) continue;
+      let tete = 0, queue = 0; file[queue++] = s; vu[s] = 1;
+      let x0 = W, x1 = 0, y0 = H, y1 = 0, n = 0;
+      while (tete < queue) {
+        const p = file[tete++]; const px = p % W, py = (p - px) / W; n++;
+        if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
+        if (px > 0     && masque[p - 1] && !vu[p - 1]) { vu[p - 1] = 1; file[queue++] = p - 1; }
+        if (px < W - 1 && masque[p + 1] && !vu[p + 1]) { vu[p + 1] = 1; file[queue++] = p + 1; }
+        if (py > 0     && masque[p - W] && !vu[p - W]) { vu[p - W] = 1; file[queue++] = p - W; }
+        if (py < H - 1 && masque[p + W] && !vu[p + W]) { vu[p + W] = 1; file[queue++] = p + W; }
+      }
+      const th = y1 - y0 + 1, tw = x1 - x0 + 1;
+      if (th < hMin || th > hMax) continue;
+      if (tw < th * 0.12 || tw > th * 1.3) continue;              // un chiffre est plus haut que large
+      if (n < tw * th * 0.15 || n > tw * th * 0.92) continue;     // ni un trait, ni un bloc plein
+      taches.push({ x0, x1, y0, y1, th, tw });
+    }
+    // Regrouper : « 11 », ce sont deux taches cote a cote, a la meme hauteur, de taille voisine.
+    taches.sort((a, b) => a.x0 - b.x0);
+    const groupes = [], pris = new Array(taches.length).fill(false);
+    for (let i = 0; i < taches.length; i++) {
+      if (pris[i]) continue;
+      const g = { x0: taches[i].x0, x1: taches[i].x1, y0: taches[i].y0, y1: taches[i].y1, n: 1, parts: [taches[i]] };
+      pris[i] = true;
+      for (let j = i + 1; j < taches.length; j++) {
+        if (pris[j]) continue;
+        const t = taches[j], haut = g.y1 - g.y0 + 1;
+        if (Math.abs(t.th - haut) < haut * 0.45
+            && Math.abs((t.y0 + t.y1) / 2 - (g.y0 + g.y1) / 2) < haut * 0.45
+            && t.x0 - g.x1 < haut * 0.8 && t.x0 >= g.x0) {
+          g.x1 = Math.max(g.x1, t.x1); g.y0 = Math.min(g.y0, t.y0); g.y1 = Math.max(g.y1, t.y1);
+          g.n++; g.parts.push(t); pris[j] = true;
+        }
+      }
+      if (g.n <= 2) groupes.push(g);   // un dossard fait un ou deux chiffres, jamais cinq
+    }
+    return groupes.map((g) => ({
+      x: X + g.x0, y: Y + g.y0, w: g.x1 - g.x0 + 1, h: g.y1 - g.y0 + 1,
+      // CHAQUE TACHE EST UN CHIFFRE : les dix chiffres sont d'un seul tenant, meme le 0. Leur
+      // NOMBRE dit combien de chiffres attendre, et c'est le meilleur juge d'une lecture — sans
+      // lui, « 11 » se lisait « 1 » a 83 % de confiance : sur de lui, et faux.
+      parts: g.parts.sort((a, b) => a.x0 - b.x0)
+                    .map((t) => ({ x: X + t.x0, y: Y + t.y0, w: t.x1 - t.x0 + 1, h: t.y1 - t.y0 + 1 })),
+    }));
+  };
+
+  // LA SIGNATURE D'APPARENCE. Six bandes horizontales — cheveux, epaules, maillot, hanches,
+  // cuisses, chaussettes — et pour chacune un histogramme grossier de teinte, plus la clarte et la
+  // saturation moyennes. Grossier a dessein : on veut que deux vues du MEME joueur se ressemblent
+  // malgre le mouvement, pas qu'elles soient identiques.
+  window._signature = function (ctx, x, y, w, h) {
+    const BANDES = 6, TEINTES = 12;
+    const sig = new Float32Array(BANDES * (TEINTES + 2));
+    for (let b = 0; b < BANDES; b++) {
+      const by = Math.round(y + h * b / BANDES), bh = Math.max(1, Math.round(h / BANDES));
+      const d = ctx.getImageData(Math.round(x), by, Math.max(1, Math.round(w)), bh).data;
+      let n = 0, sl = 0, ss = 0; const hist = new Float32Array(TEINTES);
+      for (let k = 0; k < d.length; k += 4) {
+        const r = d[k] / 255, g = d[k + 1] / 255, bl = d[k + 2] / 255;
+        const mx = Math.max(r, g, bl), mn = Math.min(r, g, bl), c = mx - mn;
+        let t = 0;
+        if (c > 0.001) {
+          if (mx === r) t = ((g - bl) / c + 6) % 6; else if (mx === g) t = (bl - r) / c + 2; else t = (r - g) / c + 4;
+          t = t / 6;
+        }
+        hist[Math.min(TEINTES - 1, Math.floor(t * TEINTES))] += c;  // pondere par la saturation
+        sl += mx; ss += (mx === 0 ? 0 : c / mx); n++;
+      }
+      let som = 0; for (let i = 0; i < TEINTES; i++) som += hist[i];
+      for (let i = 0; i < TEINTES; i++) sig[b * (TEINTES + 2) + i] = som > 0 ? hist[i] / som : 0;
+      sig[b * (TEINTES + 2) + TEINTES] = n ? sl / n : 0;
+      sig[b * (TEINTES + 2) + TEINTES + 1] = n ? ss / n : 0;
+    }
+    return Array.from(sig);
+  };
+}, CFG);
+const sansPersonnes = await page.evaluate(() => window._raterPersonnes || null);
+if (sansPersonnes) console.log(`   detecteur de personnes indisponible (${sansPersonnes}) : la silhouette ne sera pas utilisee.`);
+const sansOcr = await page.evaluate(() => window._raterOcr || null);
+if (sansOcr) console.log(`   lecteur de chiffres indisponible (${sansOcr}) : les dossards ne seront pas releves.`);
+
 /** Vider la file une fois. Rend le nombre de galeries traitées, pour que la boucle sache si elle a
  *  travaillé ou si elle doit se rendormir. */
 async function vider() {
@@ -202,156 +361,6 @@ async function vider() {
     return;
   }
 
-  // ── Un navigateur, juste pour le calcul d'images ────────────────────────────────────────────────
-  // La page est servie depuis 127.0.0.1 et non `about:blank` : sans origine réelle, les requêtes
-  // vers le stockage partent d'une origine nulle et sont refusées.
-  const serveur = createServer((_, rep) => {
-    rep.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    rep.end("<!doctype html><html><head><meta charset='utf-8'></head><body></body></html>");
-  }).listen(0, "127.0.0.1");
-  await new Promise((r) => serveur.on("listening", r));
-
-  // SwiftShader rend WebGL disponible sans carte graphique. Sans ces drapeaux, le navigateur sans
-  // ecran tombe en plein calcul — « Resulting promise was garbage collected », vu au premier essai.
-  const navigateur = await chromium.launch({
-    args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--disable-dev-shm-usage"],
-  });
-  const page = await navigateur.newPage();
-  page.on("console", (m) => { if (m.type() === "error") console.log("   navigateur :", m.text().slice(0, 140)); });
-  await page.goto(`http://127.0.0.1:${serveur.address().port}/`);
-
-  console.log("Chargement des modèles…");
-  await page.addScriptTag({ url: CFG.lib });
-  // LE DETECTEUR DE PERSONNES, a cote du detecteur de visages. face-api embarque son propre
-  // TensorFlow ; coco-ssd, lui, cherche `window.tf`. On le lui donne plutot que d'en charger un
-  // second, qui se disputerait le meme backend.
-  await page.evaluate(() => { if (!window.tf && window.faceapi) window.tf = window.faceapi.tf; });
-  await page.addScriptTag({ url: "https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" });
-  await page.addScriptTag({ url: "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" });
-  await page.evaluate(async (cfg) => {
-    const fa = window.faceapi;
-    // LE PROCESSEUR, PAS LA CARTE GRAPHIQUE. Dans un navigateur sans ecran, WebGL passe par une
-    // emulation logicielle qui tient mal la charge : le premier essai s'est effondre au bout de
-    // quelques images. Le processeur est plus lent mais ne lache pas, et ce script tourne seul, la
-    // nuit — personne n'attend devant.
-    try { await fa.tf.setBackend("cpu"); } catch { /* on prend ce qui vient */ }
-    await fa.tf.ready();
-    await fa.nets.ssdMobilenetv1.loadFromUri(cfg.modeles);
-    await fa.nets.faceLandmark68Net.loadFromUri(cfg.modeles);
-    await fa.nets.faceRecognitionNet.loadFromUri(cfg.modeles);
-
-    // Le detecteur de personnes. S'il ne se charge pas, on continue sans : la reconnaissance de
-    // visages garde toute sa valeur, seule la silhouette est perdue — et on le DIT.
-    try { window._personnes = await window.cocoSsd.load({ base: "lite_mobilenet_v2" }); }
-    catch (e) { window._personnes = null; window._raterPersonnes = String(e && e.message || e).slice(0, 120); }
-
-    // Le lecteur de chiffres. Comme le detecteur de personnes : s'il manque, on continue sans, et on
-    // le dit. Aucune de ces deux capacites n'est indispensable a la reconnaissance de visages.
-    try { window._ocr = await window.Tesseract.createWorker("eng", 1, {}); 
-          await window._ocr.setParameters({ tessedit_char_whitelist: "0123456789" }); }
-    catch (e) { window._ocr = null; window._raterOcr = String(e && e.message || e).slice(0, 120); }
-
-    // LA RECHERCHE DES CHIFFRES. `reference` est la hauteur du CORPS, pas celle de la zone fouillee :
-    // sans elle, un chiffre valant 12 % du corps devient 2 % de l'image et se fait rejeter par la
-    // borne de taille. C'est ce qui faisait manquer un « 11 » pourtant parfaitement isole.
-    window._chercherChiffres = function (ctx, x, y, w, h, clairSurFonce, reference) {
-      const X = Math.max(0, Math.round(x)), Y = Math.max(0, Math.round(y));
-      const W = Math.max(1, Math.round(w)), H = Math.max(1, Math.round(h));
-      const d = ctx.getImageData(X, Y, W, H).data;
-      // CE QUI DISTINGUE UN CHIFFRE BLANC, CE N'EST PAS SA LUMINOSITE, C'EST SON ABSENCE DE COULEUR.
-      // Un « 11 » blanc sur un maillot bleu clair donne deux gris voisins : en niveaux de gris, on
-      // ne separait rien. Par la saturation, le chiffre ressort net.
-      const masque = new Uint8Array(W * H);
-      for (let i = 0, k = 0; i < masque.length; i++, k += 4) {
-        const r = d[k] / 255, g = d[k + 1] / 255, b = d[k + 2] / 255;
-        const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-        const sat = mx === 0 ? 0 : (mx - mn) / mx, lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        masque[i] = clairSurFonce ? ((sat < 0.25 && lum > 0.62) ? 1 : 0) : ((lum < 0.32) ? 1 : 0);
-      }
-      const ech = reference || H;
-      const hMin = Math.max(6, ech * 0.07), hMax = ech * 0.32;
-      const vu = new Uint8Array(W * H), file = new Int32Array(W * H), taches = [];
-      for (let s = 0; s < masque.length; s++) {
-        if (!masque[s] || vu[s]) continue;
-        let tete = 0, queue = 0; file[queue++] = s; vu[s] = 1;
-        let x0 = W, x1 = 0, y0 = H, y1 = 0, n = 0;
-        while (tete < queue) {
-          const p = file[tete++]; const px = p % W, py = (p - px) / W; n++;
-          if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
-          if (px > 0     && masque[p - 1] && !vu[p - 1]) { vu[p - 1] = 1; file[queue++] = p - 1; }
-          if (px < W - 1 && masque[p + 1] && !vu[p + 1]) { vu[p + 1] = 1; file[queue++] = p + 1; }
-          if (py > 0     && masque[p - W] && !vu[p - W]) { vu[p - W] = 1; file[queue++] = p - W; }
-          if (py < H - 1 && masque[p + W] && !vu[p + W]) { vu[p + W] = 1; file[queue++] = p + W; }
-        }
-        const th = y1 - y0 + 1, tw = x1 - x0 + 1;
-        if (th < hMin || th > hMax) continue;
-        if (tw < th * 0.12 || tw > th * 1.3) continue;              // un chiffre est plus haut que large
-        if (n < tw * th * 0.15 || n > tw * th * 0.92) continue;     // ni un trait, ni un bloc plein
-        taches.push({ x0, x1, y0, y1, th, tw });
-      }
-      // Regrouper : « 11 », ce sont deux taches cote a cote, a la meme hauteur, de taille voisine.
-      taches.sort((a, b) => a.x0 - b.x0);
-      const groupes = [], pris = new Array(taches.length).fill(false);
-      for (let i = 0; i < taches.length; i++) {
-        if (pris[i]) continue;
-        const g = { x0: taches[i].x0, x1: taches[i].x1, y0: taches[i].y0, y1: taches[i].y1, n: 1, parts: [taches[i]] };
-        pris[i] = true;
-        for (let j = i + 1; j < taches.length; j++) {
-          if (pris[j]) continue;
-          const t = taches[j], haut = g.y1 - g.y0 + 1;
-          if (Math.abs(t.th - haut) < haut * 0.45
-              && Math.abs((t.y0 + t.y1) / 2 - (g.y0 + g.y1) / 2) < haut * 0.45
-              && t.x0 - g.x1 < haut * 0.8 && t.x0 >= g.x0) {
-            g.x1 = Math.max(g.x1, t.x1); g.y0 = Math.min(g.y0, t.y0); g.y1 = Math.max(g.y1, t.y1);
-            g.n++; g.parts.push(t); pris[j] = true;
-          }
-        }
-        if (g.n <= 2) groupes.push(g);   // un dossard fait un ou deux chiffres, jamais cinq
-      }
-      return groupes.map((g) => ({
-        x: X + g.x0, y: Y + g.y0, w: g.x1 - g.x0 + 1, h: g.y1 - g.y0 + 1,
-        // CHAQUE TACHE EST UN CHIFFRE : les dix chiffres sont d'un seul tenant, meme le 0. Leur
-        // NOMBRE dit combien de chiffres attendre, et c'est le meilleur juge d'une lecture — sans
-        // lui, « 11 » se lisait « 1 » a 83 % de confiance : sur de lui, et faux.
-        parts: g.parts.sort((a, b) => a.x0 - b.x0)
-                      .map((t) => ({ x: X + t.x0, y: Y + t.y0, w: t.x1 - t.x0 + 1, h: t.y1 - t.y0 + 1 })),
-      }));
-    };
-
-    // LA SIGNATURE D'APPARENCE. Six bandes horizontales — cheveux, epaules, maillot, hanches,
-    // cuisses, chaussettes — et pour chacune un histogramme grossier de teinte, plus la clarte et la
-    // saturation moyennes. Grossier a dessein : on veut que deux vues du MEME joueur se ressemblent
-    // malgre le mouvement, pas qu'elles soient identiques.
-    window._signature = function (ctx, x, y, w, h) {
-      const BANDES = 6, TEINTES = 12;
-      const sig = new Float32Array(BANDES * (TEINTES + 2));
-      for (let b = 0; b < BANDES; b++) {
-        const by = Math.round(y + h * b / BANDES), bh = Math.max(1, Math.round(h / BANDES));
-        const d = ctx.getImageData(Math.round(x), by, Math.max(1, Math.round(w)), bh).data;
-        let n = 0, sl = 0, ss = 0; const hist = new Float32Array(TEINTES);
-        for (let k = 0; k < d.length; k += 4) {
-          const r = d[k] / 255, g = d[k + 1] / 255, bl = d[k + 2] / 255;
-          const mx = Math.max(r, g, bl), mn = Math.min(r, g, bl), c = mx - mn;
-          let t = 0;
-          if (c > 0.001) {
-            if (mx === r) t = ((g - bl) / c + 6) % 6; else if (mx === g) t = (bl - r) / c + 2; else t = (r - g) / c + 4;
-            t = t / 6;
-          }
-          hist[Math.min(TEINTES - 1, Math.floor(t * TEINTES))] += c;  // pondere par la saturation
-          sl += mx; ss += (mx === 0 ? 0 : c / mx); n++;
-        }
-        let som = 0; for (let i = 0; i < TEINTES; i++) som += hist[i];
-        for (let i = 0; i < TEINTES; i++) sig[b * (TEINTES + 2) + i] = som > 0 ? hist[i] / som : 0;
-        sig[b * (TEINTES + 2) + TEINTES] = n ? sl / n : 0;
-        sig[b * (TEINTES + 2) + TEINTES + 1] = n ? ss / n : 0;
-      }
-      return Array.from(sig);
-    };
-  }, CFG);
-  const sansPersonnes = await page.evaluate(() => window._raterPersonnes || null);
-  if (sansPersonnes) console.log(`   detecteur de personnes indisponible (${sansPersonnes}) : la silhouette ne sera pas utilisee.`);
-  const sansOcr = await page.evaluate(() => window._raterOcr || null);
-  if (sansOcr) console.log(`   lecteur de chiffres indisponible (${sansOcr}) : les dossards ne seront pas releves.`);
 
   /** Les visages d'une image, tels que l'OS les calcule : empreinte et qualité.
    *

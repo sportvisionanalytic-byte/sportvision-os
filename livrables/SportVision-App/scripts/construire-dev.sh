@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Un build DE DEVELOPPEMENT, installable par cable (28/09/2026).
+#
+# POURQUOI IL EXISTE. L'archive App Store ne s'installe pas directement sur un iPhone : iOS refuse
+# son profil (« Attempted to install a Beta profile without the proper entitlement »). Et un build
+# TestFlight, lui, ignore le compte Sandbox des Reglages Developpeur : il passe par le vrai compte
+# App Store de l'appareil, dont le pays decide de la devise affichee.
+#
+# Fouka voulait payer avec son compte sandbox francais et voir des euros pendant ses tests. C'est
+# exactement ce qu'un build de developpement permet, et lui seul.
+#
+# CE QU'IL NE REMPLACE PAS : la soumission. Ce build ne part jamais chez Apple. Pour livrer, c'est
+# toujours `construire.sh ios` puis `envoyer-ipa-app-store.mjs`.
+#
+#   bash scripts/construire-dev.sh            construit et installe sur l'appareil branche
+set -euo pipefail
+
+EQUIPE_APPLE="H2J6ZBKXQD"
+CLE_ID="M3MM5D8353"
+ISSUER="299e1e5e-6b69-4964-bf18-b3d9a83ee98a"
+CLE="$HOME/Documents/AuthKey_${CLE_ID}.p8"
+RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SORTIE="$RACINE/build/dev"
+cd "$RACINE"
+
+# ON DEMANDE A XCODE, PAS A libimobiledevice. `idevice_id` cesse de repondre des que l'appareil est
+# verrouille ou que le lien de confiance expire — et il repond alors par du vide, sans erreur, ce
+# qui se lit comme « aucun iPhone branche » alors qu'il est la. `devicectl` voit l'appareil dans
+# les deux cas, et c'est lui que xcodebuild utilisera de toute facon.
+UDID="$(xcrun devicectl list devices --json-output /tmp/sv-devices.json >/dev/null 2>&1 && python3 -c '
+import json
+d = json.load(open("/tmp/sv-devices.json"))
+for x in d.get("result", {}).get("devices", []):
+    if x.get("connectionProperties", {}).get("tunnelState") == "connected":
+        print(x.get("hardwareProperties", {}).get("udid", "")); break
+')"
+[ -n "$UDID" ] || { echo "Aucun iPhone connecte. Debranche et rebranche, et deverrouille l'ecran."; exit 1; }
+echo "▸ Appareil : $UDID"
+
+# `-allowProvisioningUpdates` avec la cle d'API enregistre l'appareil et fabrique le profil de
+# developpement tout seul. Sans la cle, Xcode demande un compte Apple interactif — et sa session
+# expire regulierement, ce qui fait echouer le build sans rapport avec le code.
+xcodebuild -workspace ios/SportVision.xcworkspace -scheme SportVision \
+  -configuration Release -destination "id=$UDID" -derivedDataPath "$SORTIE" \
+  -allowProvisioningUpdates \
+  -authenticationKeyPath "$CLE" -authenticationKeyID "$CLE_ID" -authenticationKeyIssuerID "$ISSUER" \
+  DEVELOPMENT_TEAM="$EQUIPE_APPLE" CODE_SIGN_STYLE=Automatic \
+  build
+
+APP="$(find "$SORTIE/Build/Products" -name "SportVision.app" -maxdepth 3 | head -1)"
+[ -n "$APP" ] || { echo "Application introuvable dans $SORTIE"; exit 1; }
+echo "▸ Installation de $APP"
+xcrun devicectl device install app --device "$UDID" "$APP"
+echo "▸ Termine. Cette version utilise le compte Sandbox des Reglages Developpeur."

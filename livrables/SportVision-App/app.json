@@ -20,17 +20,19 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "fr.sportvision.app",
-      "buildNumber": "18",
+      "buildNumber": "19",
       "infoPlist": {
         "CFBundleDisplayName": "SportVision",
         "ITSAppUsesNonExemptEncryption": false,
         "NSFaceIDUsageDescription": "Pour rouvrir SportVision sans retaper votre mot de passe. Votre visage ne quitte jamais votre téléphone et n'est jamais transmis à SportVision.",
-        "NSCameraUsageDescription": "Pour vous reconnaître sur les photos de vos matchs, si vous y avez consenti. La comparaison se fait dans votre téléphone et aucune empreinte n'est conservée."
+        "NSCameraUsageDescription": "Pour vous reconnaître sur les photos de vos matchs, si vous y avez consenti. La comparaison se fait dans votre téléphone et aucune empreinte n'est conservée.",
+        "NSPhotoLibraryAddUsageDescription": "SportVision enregistre les photos que vous choisissez dans votre pellicule.",
+        "NSPhotoLibraryUsageDescription": "SportVision enregistre les photos que vous choisissez dans votre pellicule."
       }
     },
     "android": {
       "package": "fr.sportvision.app",
-      "versionCode": 13,
+      "versionCode": 14,
       "adaptiveIcon": {
         "backgroundColor": "#070B18",
         "foregroundImage": "./assets/android-icon-foreground.png"

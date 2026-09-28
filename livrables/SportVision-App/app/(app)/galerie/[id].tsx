@@ -19,6 +19,7 @@ import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
 import { C, E, R } from "../../../src/theme/couleurs";
 import { retourner } from "../../../src/lib/retour";
+import { enregistrerPhoto, enregistrerToutes } from "../../../src/lib/enregistrer-photo";
 
 // 26/09/2026 — LA COUPE N'EST PLUS FAITE ICI. La base ne rend que quatre photos a qui n'a pas pris
 // le Pass (v282), et le vrai total a cote. Couper une seconde fois dans l'ecran aurait masque des
@@ -54,6 +55,8 @@ export default function Galerie() {
   const [chargement, setChargement] = useState(true);
   const [agrandie, setAgrandie] = useState<PhotoDuJoueur | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
+  /** Un message de reussite, distinct de l'erreur : « photo enregistree » n'est pas un probleme. */
+  const [message, setMessage] = useState<string | null>(null);
   const [panne, setPanne] = useState(false);
   const [etatPass, setEtatPass] = useState<EtatPass | null>(null);
   // Le produit du magasin, quand il y en a un a vendre. Extrait pour alleger les conditions.
@@ -123,17 +126,69 @@ export default function Galerie() {
     return () => { vivant = false; };
   }, [club, joueur, enfant, charger, tour]);
 
-  async function repondre(photo: PhotoAIdentifier, cestMoi: boolean) {
-    if (!joueur) return;
-    setEnCours(photo.id);
-    const ok = await repondreCestMoi(photo.id, joueur, cestMoi);
-    setEnCours(null);
-    if (!ok) { setErreur("Votre réponse n'a pas pu être enregistrée. Réessayez."); return; }
-    // La photo quitte la file, qu'on ait dit oui ou non : dans les deux cas elle est tranchee.
-    setATrancher((l) => l.filter((x) => x.id !== photo.id));
-    // « C'est moi » ajoute une photo a mes photos : on relit.
-    if (cestMoi) charger();
+  /** L'ENREGISTREMENT DANS LA PELLICULE (28/09/2026).
+   *  Fouka : « faut qu'il puisse telecharger toutes ses photos du match. » L'app n'avait aucun
+   *  moyen d'enregistrer quoi que ce soit : une famille payait le Pass, regardait ses photos, et
+   *  repartait sans rien — alors que c'est la seule chose qu'elle vient chercher. */
+  const [enregistrement, setEnregistrement] = useState<string | null>(null);
+
+  async function enregistrerUne(photo: { url: string; id: string }) {
+    setEnregistrement("une"); setErreur(null);
+    const r = await enregistrerPhoto(photo.url, `sportvision-${photo.id}.jpg`);
+    setEnregistrement(null);
+    if (r.etat === "enregistre") setMessage("Photo enregistrée dans vos photos.");
+    else if (r.etat === "refuse") setErreur("SportVision n'a pas accès à vos photos. Réglages → SportVision → Photos.");
+    else setErreur(r.message);
   }
+
+  async function enregistrerLot() {
+    if (!photos.length) return;
+    setErreur(null); setEnregistrement(`0 sur ${photos.length}`);
+    const r = await enregistrerToutes(photos, (fait, total) => setEnregistrement(`${fait} sur ${total}`));
+    setEnregistrement(null);
+    if (r.etat === "enregistre") setMessage(`${r.combien} photo${r.combien > 1 ? "s" : ""} enregistrée${r.combien > 1 ? "s" : ""} dans vos photos.`);
+    else if (r.etat === "refuse") setErreur("SportVision n'a pas accès à vos photos. Réglages → SportVision → Photos.");
+    else setErreur(r.message);
+  }
+
+  /** Ce que la personne a designe dans la grille, avant de valider. */
+  const [choisies, setChoisies] = useState<Set<string>>(new Set());
+  function basculerChoix(id: string) {
+    setChoisies((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+
+  /** Confirmer d'un coup. On traite en serie plutot qu'en parallele : vingt appels simultanes sur
+   *  un reseau de stade, c'est la moitie qui echoue sans qu'on sache lesquels. */
+  async function validerChoix() {
+    if (!joueur || !choisies.size) return;
+    setEnCours("lot"); setErreur(null);
+    const faites: string[] = [];
+    let rate = 0;
+    for (const photo of aTrancher) {
+      if (!choisies.has(photo.id)) continue;
+      if (await repondreCestMoi(photo.id, joueur, true)) faites.push(photo.id); else rate++;
+    }
+    setEnCours(null);
+    setATrancher((l) => l.filter((x) => !faites.includes(x.id)));
+    setChoisies(new Set());
+    if (rate) setErreur(`${rate} photo${rate > 1 ? "s n'ont" : " n'a"} pas pu être enregistrée${rate > 1 ? "s" : ""}. Réessayez.`);
+    charger();
+  }
+
+  /** « Aucune » : on refuse tout ce qui est affiche. Un refus est conserve, donc la machine ne les
+   *  reproposera pas. */
+  async function refuserTout() {
+    if (!joueur || !aTrancher.length) return;
+    setEnCours("lot"); setErreur(null);
+    const faites: string[] = [];
+    for (const photo of aTrancher) {
+      if (await repondreCestMoi(photo.id, joueur, false)) faites.push(photo.id);
+    }
+    setEnCours(null);
+    setATrancher((l) => l.filter((x) => !faites.includes(x.id)));
+    setChoisies(new Set());
+  }
+
 
   async function lancerAchat() {
     if (!pass) return;
@@ -207,6 +262,9 @@ export default function Galerie() {
         </View>
 
         <Erreur message={erreur} />
+        {/* Une reussite n'est pas une erreur : « photo enregistree » a sa propre ligne, verte, et
+            disparait au prochain geste. */}
+        {message ? <Text style={s.reussite}>{message}</Text> : null}
 
         {chargement && !photos.length ? (
           <View style={{ paddingVertical: E.xl * 2, alignItems: "center" }}>
@@ -215,6 +273,7 @@ export default function Galerie() {
         ) : panne ? (
           <Probleme surReessayer={charger} />
         ) : visibles.length ? (
+          <>
           <View style={s.grille}>
             {visibles.map((p) => (
               <Pressable key={p.id} onPress={() => setAgrandie(p)} accessibilityRole="imagebutton" accessibilityLabel="Agrandir cette photo">
@@ -227,6 +286,22 @@ export default function Galerie() {
               </Pressable>
             ))}
           </View>
+          {photos.length ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Enregistrer mes ${photos.length} photos dans mes photos`}
+              onPress={enregistrerLot}
+              disabled={enregistrement !== null}
+              style={({ pressed }) => [s.action, s.actionCreuse, { marginTop: E.s }, pressed || enregistrement ? { opacity: 0.85 } : null]}
+            >
+              <Text style={[s.actionTexte, { color: C.texte }]}>
+                {enregistrement && enregistrement !== "une"
+                  ? `Enregistrement… ${enregistrement}`
+                  : photos.length === 1 ? "Enregistrer ma photo" : `Enregistrer mes ${photos.length} photos`}
+              </Text>
+            </Pressable>
+          ) : null}
+          </>
         ) : (
           /* 26/09/2026 — « RIEN POUR LE MOMENT » NE SUFFISAIT PAS.
              C'etait vrai et inutile : la famille ne pouvait pas savoir qu'il lui restait une chose a
@@ -281,6 +356,12 @@ export default function Galerie() {
             demande quelque chose a la personne : tout le reste est de l'information.
             La base ne rend ces photos qu'a qui a pris le Pass (v287), donc ce bloc n'apparait jamais
             avant l'achat — aucune condition a ecrire ici. */}
+        {/* TOUTES LES PHOTOS A TRANCHER, D'UN COUP (28/09/2026).
+            Fouka : « j'ai mis le numero 7 et il n'y a rien, aucune photo qui s'est rajoutee ».
+            Elles etaient bel et bien la — vingt propositions, dont les sept photos portant le
+            numero 7 — mais cet ecran n'en montrait QU'UNE, et il fallait repondre vingt fois pour
+            les voir toutes. « On ne va pas passer les 117 photos en revue » valait aussi pour ca.
+            On les montre donc en grille : on touche celles qui sont soi, et on valide en une fois. */}
         {aTrancher.length ? (
           <View style={{ gap: E.s }}>
             <Text style={s.sousTitre}>
@@ -289,39 +370,59 @@ export default function Galerie() {
                 : `${aTrancher.length} photos pourraient être vous`}
             </Text>
             <Text style={s.bloqueTexte}>
-              Votre réponse sert à vous retrouver sur les prochaines. Personne d'autre ne la voit.
+              Touchez celles où vous êtes, puis validez. Votre réponse sert à vous retrouver sur les
+              prochaines, et personne d'autre ne la voit.
             </Text>
-            {aTrancher.slice(0, 1).map((photo) => (
-              <View key={photo.id} style={{ gap: E.s }}>
-                <Pressable onPress={() => setAgrandie(photo)} accessibilityRole="imagebutton" accessibilityLabel="Agrandir cette photo">
-                  <Image
-                    source={{ uri: photo.url }}
-                    style={{ width: "100%", height: 260, borderRadius: R.m, backgroundColor: C.surface }}
-                    contentFit="cover"
-                    transition={140}
-                  />
-                </Pressable>
-                <View style={{ flexDirection: "row", gap: E.s }}>
+            <View style={s.grille}>
+              {aTrancher.map((photo) => {
+                const prise = choisies.has(photo.id);
+                return (
                   <Pressable
-                    accessibilityRole="button" accessibilityLabel="Oui, c'est moi"
-                    disabled={enCours === photo.id}
-                    onPress={() => repondre(photo, true)}
-                    style={({ pressed }) => [s.action, { flex: 1 }, pressed || enCours === photo.id ? { opacity: 0.85 } : null]}
+                    key={photo.id}
+                    onPress={() => basculerChoix(photo.id)}
+                    onLongPress={() => setAgrandie(photo)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: prise }}
+                    accessibilityLabel={prise ? "Retirer cette photo de la sélection" : "C'est moi sur cette photo"}
                   >
-                    {enCours === photo.id ? <ActivityIndicator color="#fff" />
-                      : <Text style={s.actionTexte}>Oui, c'est moi</Text>}
+                    <Image
+                      source={{ uri: photo.url }}
+                      style={{
+                        width: largeur, height: largeur, borderRadius: R.s,
+                        backgroundColor: C.surface,
+                        opacity: prise ? 1 : 0.55,
+                        borderWidth: prise ? 3 : 0, borderColor: C.accent,
+                      }}
+                      contentFit="cover"
+                      transition={140}
+                    />
                   </Pressable>
-                  <Pressable
-                    accessibilityRole="button" accessibilityLabel="Non, ce n'est pas moi"
-                    disabled={enCours === photo.id}
-                    onPress={() => repondre(photo, false)}
-                    style={({ pressed }) => [s.action, s.actionCreuse, { flex: 1 }, pressed ? { opacity: 0.85 } : null]}
-                  >
-                    <Text style={[s.actionTexte, { color: C.texte }]}>Non</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
+                );
+              })}
+            </View>
+            <Text style={s.aide}>Appui long pour agrandir une photo.</Text>
+            <View style={{ flexDirection: "row", gap: E.s }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Confirmer ${choisies.size} photo${choisies.size > 1 ? "s" : ""}`}
+                disabled={!choisies.size || enCours !== null}
+                onPress={validerChoix}
+                style={({ pressed }) => [s.action, { flex: 1 }, !choisies.size ? { opacity: 0.45 } : null, pressed ? { opacity: 0.85 } : null]}
+              >
+                {enCours === "lot" ? <ActivityIndicator color="#fff" />
+                  : <Text style={s.actionTexte}>
+                      {choisies.size ? `Ce sont mes photos (${choisies.size})` : "Ce sont mes photos"}
+                    </Text>}
+              </Pressable>
+              <Pressable
+                accessibilityRole="button" accessibilityLabel="Aucune de ces photos n'est moi"
+                disabled={enCours !== null}
+                onPress={refuserTout}
+                style={({ pressed }) => [s.action, s.actionCreuse, pressed ? { opacity: 0.85 } : null]}
+              >
+                <Text style={[s.actionTexte, { color: C.texte }]}>Aucune</Text>
+              </Pressable>
+            </View>
           </View>
         ) : null}
 
@@ -541,6 +642,21 @@ export default function Galerie() {
           >
             <Ionicons name="close" size={22} color="#fff" />
           </Pressable>
+          {/* ENREGISTRER CETTE PHOTO. A gauche, loin de la croix : les deux gestes sont opposes et
+              se toucher serait la meilleure facon de fermer en croyant enregistrer. */}
+          {agrandie ? (
+            <Pressable
+              accessibilityRole="button" accessibilityLabel="Enregistrer cette photo dans mes photos"
+              onPress={() => enregistrerUne(agrandie)}
+              disabled={enregistrement !== null}
+              style={[s.fermer, { top: insets.top + E.s, right: undefined, left: E.l }]}
+              hitSlop={12}
+            >
+              {enregistrement === "une"
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Ionicons name="arrow-down-circle-outline" size={22} color="#fff" />}
+            </Pressable>
+          ) : null}
         </Pressable>
       </Modal>
     </>
@@ -548,6 +664,11 @@ export default function Galerie() {
 }
 
 const s = StyleSheet.create({
+  aide: { fontSize: 12, color: C.texteDoux, marginTop: -2 },
+  reussite: {
+    fontSize: 13, color: C.succesTexte, backgroundColor: C.surface,
+    paddingHorizontal: E.m, paddingVertical: E.s, borderRadius: R.s, marginBottom: E.s,
+  },
   avertissement: {
     marginTop: E.s, paddingHorizontal: E.m, paddingVertical: E.s,
     backgroundColor: C.surface, borderRadius: R.s,
