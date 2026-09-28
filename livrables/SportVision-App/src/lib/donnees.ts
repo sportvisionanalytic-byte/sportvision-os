@@ -309,8 +309,13 @@ export async function lireGaleries(
   clubId: string, teamId: string, saisonId: string | null, playerId?: string,
 ): Promise<Galerie[]> {
   if (MODE_DEMO) return GALERIES_DEMO;
+  // 28/09/2026 — `p_player_id` EST CE QUI REND VISIBLES LES DEUX TIERS DU STOCK. Sur 45 galeries
+  // publiees, 35 n'ont aucune equipe et 31 aucun club : ce sont celles vendues par lien a l'equipe
+  // adverse, et la liste filtrant sur le club, AUCUNE ne remontait chez une famille. Passer l'enfant
+  // ajoute celles ou il est reconnu (v320), la meme regle que celle qui ouvre deja leur contenu.
+  // La base ignore un identifiant dont l'appelant n'a pas la charge : rien a verifier ici.
   const { data, error } = await supabase.rpc("media_album_list", {
-    p_club_id: clubId, p_team_id: teamId, p_saison_id: saisonId,
+    p_club_id: clubId, p_team_id: teamId, p_saison_id: saisonId, p_player_id: playerId ?? null,
   });
   if (error) { await refermerSiPerdue(error); throw new ErreurChargement(error); }
   if (!Array.isArray(data)) return [];

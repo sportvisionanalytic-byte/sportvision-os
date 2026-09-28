@@ -7,6 +7,15 @@
 --
 -- Tout se joue dans une transaction annulée par le `raise` final : aucune trace laissée.
 
+-- Un compte humain, pour distinguer « un humain a efface l'ecusson » de « une tache serveur a
+-- ecrase avec null ». C'est toute la difference que corrige la v322, et sans ce compte le test ne
+-- peut pas la mesurer : dans une transaction de service, `auth.uid()` est nul.
+insert into auth.users (id, email, encrypted_password, email_confirmed_at, aud, role) values
+  ('ec110000-0000-0000-0000-000000000001','zz-ecusson-humain@example.invalid','',now(),'authenticated','authenticated')
+on conflict (id) do nothing;
+insert into profiles (id, role, actif) values ('ec110000-0000-0000-0000-000000000001','admin',true)
+on conflict (id) do update set role='admin', actif=true;
+
 do $$
 declare
   v_club uuid; v_id uuid; v_slug text; v_rapport text := '';
@@ -35,15 +44,30 @@ begin
     v_rapport := v_rapport || E'\n  vert   un ecusson pose a la main n''est pas ecrase';
   end if;
 
-  -- 3. Un écusson effacé volontairement ne repousse pas derrière.
+  -- 3. LA SYNCHRONISATION N'EFFACE PAS. C'est le defaut du 28/09 au matin : la synchro federale
+  --    reecrit chaque match avec `opponent_club_slug = ce que la federation fournit ?? null`, donc
+  --    NULL quand elle ne fournit rien. L'adversaire n'ayant pas change, le trigger de la v316 ne
+  --    rattrapait rien et le null l'emportait : 21 matchs sans ecusson hier soir, 31 ce matin, dont
+  --    des noms qui se resolvent parfaitement. Ici `auth.uid()` est nul, exactement comme dans la
+  --    tache de synchronisation.
   update club_matches set opponent_club_slug = null where id = v_id;
-  update club_matches set match_date = current_date + 32 where id = v_id;
+  select opponent_club_slug into v_slug from club_matches where id = v_id;
+  if v_slug is null then
+    v_rapport := v_rapport || E'\n  ROUGE  une ecriture sans humain a efface l''ecusson (la synchro le referait chaque matin)';
+  else
+    v_rapport := v_rapport || E'\n  vert   une ecriture sans humain ne peut pas effacer l''ecusson, ' || v_slug;
+  end if;
+
+  -- 3bis. UN HUMAIN, LUI, DECIDE. Le meme geste fait par quelqu'un reste.
+  perform set_config('request.jwt.claims', '{"sub":"ec110000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+  update club_matches set opponent_club_slug = null where id = v_id;
   select opponent_club_slug into v_slug from club_matches where id = v_id;
   if v_slug is not null then
-    v_rapport := v_rapport || E'\n  ROUGE  un ecusson efface volontairement est revenu : ' || v_slug;
+    v_rapport := v_rapport || E'\n  ROUGE  un ecusson efface par un humain est revenu : ' || v_slug;
   else
-    v_rapport := v_rapport || E'\n  vert   un ecusson efface volontairement ne revient pas';
+    v_rapport := v_rapport || E'\n  vert   un ecusson efface par un humain ne revient pas';
   end if;
+  perform set_config('request.jwt.claims', '{"role":"service_role"}', true);
 
   -- 4. Changer d'adversaire relance la recherche.
   update club_matches set opponent = 'Red Star FC U14 2' where id = v_id;

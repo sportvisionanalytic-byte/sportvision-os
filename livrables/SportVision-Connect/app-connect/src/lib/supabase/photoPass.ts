@@ -46,11 +46,18 @@ export async function fetchPhotoAlbums(
    *  traite comme « toutes saisons ». Exiger une saison ici privait de galeries tout joueur dont
    *  le rattachement n'en portait pas (voir v248). */
   saisonId: string | null,
+  /** 28/09/2026 : l'enfant dont on demande les galeries. Sans lui, seules les galeries de son
+   *  equipe remontent — or 31 des 45 galeries publiees n'ont aucun club, ce sont celles vendues par
+   *  lien, et elles ne pouvaient donc apparaitre nulle part. Le transmettre ajoute celles ou il est
+   *  reconnu (v320), exactement la regle qui ouvre deja leur contenu depuis la v309. La base ignore
+   *  un identifiant dont l'appelant n'a pas la charge. */
+  playerId?: string | null,
 ): Promise<PhotoAlbumTeaser[]> {
   const { data, error } = await supabase.rpc("media_album_list", {
     p_club_id: clubId,
     p_team_id: teamId,
     p_saison_id: saisonId,
+    p_player_id: playerId ?? null,
   });
   if (error || !data) return [];
   return (data as AlbumListRpcRow[]).map((r) => ({

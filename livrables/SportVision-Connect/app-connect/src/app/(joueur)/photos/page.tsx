@@ -54,7 +54,7 @@ export default async function PhotosPage({
   // en base tolère une saison nulle depuis toujours — c'est l'écran qui ajoutait une exigence que
   // personne ne lui demandait. La source est réparée ET cet écran ne dépend plus d'elle.
   const [albumsBruts, products] = clubId && teamId
-    ? await Promise.all([fetchPhotoAlbums(supabase, clubId, teamId, saisonId), fetchAvailableMediaProducts(supabase, clubId, teamId)])
+    ? await Promise.all([fetchPhotoAlbums(supabase, clubId, teamId, saisonId, player?.playerId ?? null), fetchAvailableMediaProducts(supabase, clubId, teamId)])
     : [[], []];
   // La vidéo du match s'ouvre par le lien du montage déposé sur la mission (v157).
   const albums = await fetchAlbumsVideos(supabase, albumsBruts);
@@ -71,6 +71,7 @@ export default async function PhotosPage({
       teamId={teamId}
       teamName={teamName}
       saisonId={saisonId}
+      playerId={player?.playerId ?? null}
       albums={albums}
       products={products}
       returnStatus={paiement === "succes" ? "succes" : paiement === "annule" ? "annule" : null}

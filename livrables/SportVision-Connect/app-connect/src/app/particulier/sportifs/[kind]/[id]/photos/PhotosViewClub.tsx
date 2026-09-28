@@ -60,12 +60,14 @@ export function PhotosViewClub({
     if (returnStatus !== "succes" || !detail.club_id || !detail.team_id || !detail.saison_id) return;
     const t = setTimeout(async () => {
       const supabase = createClient();
-      const fresh = await fetchPhotoAlbums(supabase, detail.club_id!, detail.team_id!, detail.saison_id!);
+      // 28/09/2026 (v320) : meme perimetre qu'au chargement, sinon le rafraichissement RETIRE de
+      // l'ecran les galeries ou l'enfant est reconnu, juste apres un paiement.
+      const fresh = await fetchPhotoAlbums(supabase, detail.club_id!, detail.team_id!, detail.saison_id!, detail.ref_id);
       setAlbums(fresh);
       router.refresh();
     }, 2500);
     return () => clearTimeout(t);
-  }, [returnStatus, detail.club_id, detail.team_id, detail.saison_id, router]);
+  }, [returnStatus, detail.club_id, detail.team_id, detail.saison_id, detail.ref_id, router]);
 
   async function acheterProduit(productId: string, shipping?: { name: string; addressLine: string; postalCode: string; city: string }) {
     setBusyProductId(productId);

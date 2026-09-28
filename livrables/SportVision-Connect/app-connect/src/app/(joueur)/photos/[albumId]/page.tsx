@@ -39,7 +39,8 @@ export default async function MesPhotosDansUnAlbumPage({
 
   const [mesPhotos, albums] = await Promise.all([
     fetchPhotosDuJoueur(supabase, albumId, player.playerId),
-    fetchPhotoAlbums(supabase, player.club.id, player.club.team.id, saisonId),
+    // 28/09/2026 (v320) : l'enfant ouvre en plus les galeries ou il est RECONNU.
+    fetchPhotoAlbums(supabase, player.club.id, player.club.team.id, saisonId, player.playerId),
   ]);
   const album = albums.find((a) => a.id === albumId);
   if (!album) notFound();

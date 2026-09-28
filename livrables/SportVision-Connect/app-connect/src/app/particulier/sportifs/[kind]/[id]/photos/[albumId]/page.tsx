@@ -34,7 +34,8 @@ export default async function PhotosDeMonEnfantPage({
 
   const [mesPhotos, albums] = await Promise.all([
     fetchPhotosDuJoueur(supabase, albumId, id),
-    fetchPhotoAlbums(supabase, detail.club_id, detail.team_id, detail.saison_id),
+    // 28/09/2026 (v320) : l'enfant ouvre en plus les galeries ou il est RECONNU.
+    fetchPhotoAlbums(supabase, detail.club_id, detail.team_id, detail.saison_id, detail.ref_id),
   ]);
   const album = albums.find((a) => a.id === albumId);
   if (!album) notFound();

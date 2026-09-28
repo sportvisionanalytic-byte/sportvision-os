@@ -23,7 +23,8 @@ export default async function AthletePhotosPage({ params }: { params: Promise<{ 
   if (!detail || !detail.club_id || !detail.team_id || !detail.saison_id) notFound();
 
   const [albumsBruts, products] = await Promise.all([
-    fetchPhotoAlbums(supabase, detail.club_id, detail.team_id, detail.saison_id),
+    // 28/09/2026 (v320) : l'enfant ouvre en plus les galeries ou il est RECONNU.
+    fetchPhotoAlbums(supabase, detail.club_id, detail.team_id, detail.saison_id, detail.ref_id),
     fetchAvailableMediaProducts(supabase, detail.club_id, detail.team_id),
   ]);
 

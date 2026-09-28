@@ -33,6 +33,7 @@ export function PhotosView({
   teamId,
   teamName,
   saisonId,
+  playerId = null,
   albums: initialAlbums,
   products,
   returnStatus,
@@ -42,6 +43,10 @@ export function PhotosView({
   teamId: string | null;
   teamName: string | null;
   saisonId: string | null;
+  /** 28/09/2026 (v320) : l'enfant, pour que le rafraîchissement garde le MÊME périmètre que le
+   *  chargement initial. Sans lui, revenir d'un paiement réussi retirerait de l'écran les galeries
+   *  où il est reconnu — celles vendues par lien, qui n'ont aucun club. */
+  playerId?: string | null;
   albums: PhotoAlbumTeaser[];
   products: AvailableMediaProduct[];
   returnStatus: "succes" | "annule" | null;
@@ -76,12 +81,12 @@ export function PhotosView({
     if (returnStatus !== "succes" || !clubId || !teamId) return;
     const t = setTimeout(async () => {
       const supabase = createClient();
-      const fresh = await fetchPhotoAlbums(supabase, clubId, teamId, saisonId);
+      const fresh = await fetchPhotoAlbums(supabase, clubId, teamId, saisonId, playerId);
       setAlbums(fresh);
       router.refresh();
     }, 2500);
     return () => clearTimeout(t);
-  }, [returnStatus, clubId, teamId, saisonId, router]);
+  }, [returnStatus, clubId, teamId, saisonId, playerId, router]);
 
   async function acheterProduit(productId: string, shipping?: { name: string; addressLine: string; postalCode: string; city: string }) {
     setBusyProductId(productId);
