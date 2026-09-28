@@ -43,5 +43,8 @@ begin
     raise exception 'ROUGE : federation_clubs.est_autre_sport n''est plus une colonne generee, le resolveur relit l''annuaire ligne a ligne';
   end if;
 
-  raise notice 'VERT : % cas de resolution conformes', array_length(cas,1);
+  -- Une `notice` ne traverse pas l'API de la plateforme : ce test revenait MUET, et un test
+  -- muet ne prouve rien (28/09/2026). Une exception porteuse de VERT est lue par le lanceur,
+  -- et annule le decor par la meme occasion.
+  raise exception 'VERT : % cas de resolution conformes', array_length(cas,1) using errcode = 'P0001';
 end $$;

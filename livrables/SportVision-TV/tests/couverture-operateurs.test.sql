@@ -79,40 +79,58 @@ values ('66666666-6666-6666-6666-666666666666','33333333-3333-3333-3333-33333333
        ('66666666-6666-6666-6666-666666666666','44444444-4444-4444-4444-444444444444','Vidéaste','acceptée'),
        ('66666666-6666-6666-6666-666666666666','22222222-2222-2222-2222-222222222222','Photographe','refusée');
 
-create temp table resultats(cas text, valeur text) on commit drop;
+-- VERDICTS AJOUTÉS LE 28/09/2026. Ce fichier mesurait juste et ne concluait rien : il imprimait
+-- sept lignes de diagnostic sans dire ce qu'il attendait. Le lanceur ne pouvait donc pas le
+-- classer, et un test qui ne conclut pas ne protège de rien. Les attentes portent sur les RÔLES et
+-- sur des comptes, jamais sur les prénoms des opérateurs réels : un départ ou une embauche ne doit
+-- pas rendre ce test rouge.
+create temp table resultats(cas text, valeur text, attendu text, ok boolean) on commit drop;
 
 -- ── Le CM voit les opérateurs ──
 select set_config('request.jwt.claims',
   json_build_object('sub', (select id from cm), 'role', 'authenticated')::text, true);
 insert into resultats
-select 'CM — opérateurs vus',
-       coalesce(string_agg(o.prenom || ' (' || o.fonction || ')', ', ' order by o.prenom), '(aucun)')
+select 'CM — opérateurs vus (par fonction, pas par prénom)',
+       coalesce(string_agg(distinct o.fonction, ', '), '(aucun)'),
+       'Photographe et Vidéaste',
+       count(*) filter (where o.fonction = 'Photographe') >= 1
+         and count(*) filter (where o.fonction = 'Vidéaste') >= 1
   from ctx, lateral couverture_operateurs(ctx.ref) o;
 
 -- ── Un refus n'est pas une affectation ──
+-- Un opérateur qui a REFUSÉ la mission ne doit pas figurer parmi ceux qui la couvrent.
 insert into resultats
 select 'CM — un refus est-il affiché ?',
-       case when bool_or(o.prenom = 'Test') then 'OUI (défaut)' else 'non' end
+       case when bool_or(o.prenom = 'Test') then 'OUI (défaut)' else 'non' end,
+       'non',
+       not coalesce(bool_or(o.prenom = 'Test'), false)
   from ctx, lateral couverture_operateurs(ctx.ref) o;
 
 -- ── Le rôle non interne ne voit rien ──
 select set_config('request.jwt.claims','{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
+-- LA VÉRIFICATION QUI COMPTE : un compte qui n'est pas du staff ne lit AUCUNE ligne.
 insert into resultats
-select 'rôle non interne — lignes rendues', count(*)::text
+select 'rôle non interne — lignes rendues', count(*)::text, '0', count(*) = 0
   from ctx, lateral couverture_operateurs(ctx.ref) o;
 
 -- Diagnostic : à quelle étape la chaîne se rompt-elle ?
 select set_config('request.jwt.claims',
   json_build_object('sub', (select id from cm), 'role', 'authenticated')::text, true);
-insert into resultats select 'diag — club dans le périmètre du CM',
-  case when (select club_id from ctx) in (select cm_clubs_autorises()) then 'oui' else 'NON' end;
-insert into resultats select 'diag — CM réel du club',
-  coalesce((select p.prenom || ' ' || p.nom from profiles p, cm where p.id = cm.id), '(aucun)');
-insert into resultats select 'diag — présence retrouvée',
-  count(*)::text from planned_presences pp, ctx where pp.occurrence_ref = ctx.ref;
-insert into resultats select 'diag — équipe de prestation',
-  count(*)::text from prestations_equipe where prestation_id='66666666-6666-6666-6666-666666666666';
+insert into resultats select 'vitalité — club dans le périmètre du CM',
+  case when (select club_id from ctx) in (select cm_clubs_autorises()) then 'oui' else 'NON' end,
+  'oui',
+  (select club_id from ctx) in (select cm_clubs_autorises());
+insert into resultats select 'vitalité — un CM est bien attaché au club',
+  case when exists (select 1 from profiles p, cm where p.id = cm.id) then 'oui' else '(aucun)' end,
+  'oui',
+  exists (select 1 from profiles p, cm where p.id = cm.id);
+insert into resultats select 'vitalité — la présence du décor existe',
+  count(*)::text, 'au moins 1', count(*) >= 1
+  from planned_presences pp, ctx where pp.occurrence_ref = ctx.ref;
+insert into resultats select 'vitalité — l''équipe de la prestation est montée',
+  count(*)::text, 'au moins 2', count(*) >= 2
+  from prestations_equipe where prestation_id='66666666-6666-6666-6666-666666666666';
 
-select * from resultats;
+select case when ok then '✅' else '❌' end as ok, cas, attendu, valeur as obtenu from resultats;
 
 rollback;

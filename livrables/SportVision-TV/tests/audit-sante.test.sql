@@ -53,13 +53,13 @@ set local request.jwt.claims = '{"sub":"b4ff9a0e-9ae6-43a5-bddf-412fdf7d2cca","r
 do $$
 declare n integer;
 begin
-  select nombre into n from media_sante() where probleme like 'Commande payée sans droit%';
+  select nombre into n from media_sante() where probleme like 'Commande payée sans accès ouvert%';
   insert into _res values ('detecte une commande payee sans droit','>= 1', coalesce(n::text,'0'), coalesce(n,0) >= 1);
 
   select nombre into n from media_sante() where probleme like 'E-mail définitivement%';
   insert into _res values ('detecte un e-mail definitivement echoue','>= 1', coalesce(n::text,'0'), coalesce(n,0) >= 1);
 
-  select nombre into n from media_sante() where probleme like 'Photo publiable sans%';
+  select nombre into n from media_sante() where probleme like 'Photo publiée mais invisible%';
   insert into _res values ('detecte une photo sans apercu','>= 1', coalesce(n::text,'0'), coalesce(n,0) >= 1);
 
   -- Le point le plus important : ne pas crier au loup sur un cas normal.
@@ -68,13 +68,13 @@ begin
     coalesce(n::text,'absent'), coalesce(n,0) = 0);
 
   -- Chaque anomalie doit fournir de quoi la retrouver.
-  select jsonb_array_length(detail) into n from media_sante() where probleme like 'Commande payée sans droit%';
+  select jsonb_array_length(detail) into n from media_sante() where probleme like 'Commande payée sans accès ouvert%';
   insert into _res values ('le detail permet de retrouver le cas','>= 1', coalesce(n::text,'0'), coalesce(n,0) >= 1);
 
   -- Gravites correctement attribuees.
   insert into _res select 'une commande payee sans droit est CRITIQUE','critique',
-    coalesce((select gravite from media_sante() where probleme like 'Commande payée sans droit%'),'?'),
-    (select gravite from media_sante() where probleme like 'Commande payée sans droit%') = 'critique';
+    coalesce((select gravite from media_sante() where probleme like 'Commande payée sans accès ouvert%'),'?'),
+    (select gravite from media_sante() where probleme like 'Commande payée sans accès ouvert%') = 'critique';
 end $$;
 reset role;
 

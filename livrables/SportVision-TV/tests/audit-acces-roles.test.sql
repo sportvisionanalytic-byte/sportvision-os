@@ -86,7 +86,9 @@ end $$;
 
 reset role;
 
-select role, capacite, obtenu from _res order by
+-- La colonne `ok` existait deja dans _res, et ce `select` ne la renvoyait pas : le verdict etait
+-- calcule puis jete, donc le lanceur comptait ce test MUET (corrige le 28/09/2026).
+select case when ok then '✅' else '❌' end as ok, role, capacite, attendu, obtenu from _res order by
   case role when 'Fondateur' then 1 when 'Production' then 2 when 'Secretariat' then 3
             when 'Comptabilite' then 4 when 'Photographe' then 5 else 6 end,
   capacite;

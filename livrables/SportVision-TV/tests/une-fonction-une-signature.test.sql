@@ -36,5 +36,8 @@ begin
   if n > 0 then
     raise exception 'ROUGE : % fonction(s) surchargee(s) de facon ambigue%', n, v;
   end if;
-  raise notice 'VERT : aucune fonction publique n''a deux versions appelables du meme nombre d''arguments';
+  -- Une `notice` ne traverse pas l'API de la plateforme : ce test revenait MUET, et un test
+  -- muet ne prouve rien (28/09/2026). Une exception porteuse de VERT est lue par le lanceur,
+  -- et annule le decor par la meme occasion.
+  raise exception 'VERT : aucune fonction publique n''a deux versions appelables du meme nombre d''arguments' using errcode = 'P0001';
 end $$;

@@ -88,5 +88,8 @@ begin
   if cardinality(e) > 0 then
     raise exception 'ROUGE : %', array_to_string(e, ' | ');
   end if;
-  raise notice 'VERT : un match cree par la synchro porte deja le nom du club, et le garde';
+  -- Une `notice` ne traverse pas l'API de la plateforme : ce test revenait MUET, et un test
+  -- muet ne prouve rien (28/09/2026). Une exception porteuse de VERT est lue par le lanceur,
+  -- et annule le decor par la meme occasion.
+  raise exception 'VERT : un match cree par la synchro porte deja le nom du club, et le garde' using errcode = 'P0001';
 end $$;

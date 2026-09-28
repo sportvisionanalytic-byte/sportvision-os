@@ -174,7 +174,11 @@ begin
 end $$;
 
 -- La matrice complete, pour lecture humaine.
-select surface,
+-- La colonne `ok` est ajoutee le 28/09/2026 pour une raison qui n'est pas cosmetique : le verdict
+-- de ce test est l'EXCEPTION levee plus haut en cas d'echec, et ce dernier `select` n'est qu'une
+-- matrice a lire. Sans colonne de verdict, le lanceur le comptait MUET — et un test muet ne
+-- prouve rien. Arriver ici signifie qu'aucun ecart n'a ete trouve : la matrice est donc verte.
+select '✅' as ok, surface,
   coalesce(string_agg(role, ', ' order by role) filter (where vu), 'personne') as acces,
   coalesce(string_agg(role, ', ' order by role) filter (where not vu), '-') as refuse
 from res group by surface order by surface;

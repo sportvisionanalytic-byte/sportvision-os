@@ -73,7 +73,8 @@ begin
 
   perform pg_temp.serveur();
   if array_length(e,1) is null then
-    raise notice '4/4 vérifications passées.';
+    -- Une `notice` ne traverse pas l'API : ce test revenait MUET (28/09/2026).
+    raise exception 'VERT : 4/4 verifications passees.' using errcode = 'P0001';
   else
     raise exception 'ÉCHECS : %', array_to_string(e, ' | ');
   end if;
