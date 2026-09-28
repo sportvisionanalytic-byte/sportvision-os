@@ -29,7 +29,7 @@
 // Reprenable : chaque ligne de la file est close dès qu'elle est traitée, donc on peut
 // l'interrompre et le relancer sans rien refaire deux fois.
 import { chromium } from "../../SportVision-Connect/app-next/node_modules/playwright/index.mjs";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeSync } from "node:fs";
 import { createServer } from "node:http";
 
 const VOIR_SEULEMENT = process.argv.includes("--voir");
@@ -47,6 +47,14 @@ const SIMULER = process.argv.includes("--simuler");
 // En mode boucle, le moteur attend la file et la traite des qu'elle contient quelque chose. Il
 // reste immobile le reste du temps : pas de calcul, pas de requete inutile.
 const EN_BOUCLE = process.argv.includes("--boucle");
+
+// UN SERVICE MUET NE SERT A RIEN. Quand la sortie va dans un fichier et non dans un terminal, Node
+// la met en tampon : le service tournait depuis deux minutes, stable, et son journal etait vide.
+// On ecrit donc en synchrone des qu'on tourne en service — `console.log` reste utilise partout
+// ailleurs, ou la sortie est un terminal et se vide toute seule.
+const dire = EN_BOUCLE
+  ? (t) => { try { writeSync(1, String(t) + "\n"); } catch { console.log(t); } }
+  : console.log;
 const ATTENTE = Math.max(5, Number((process.argv.find((a) => a.startsWith("--attente=")) || "").split("=")[1] || 20)) * 1000;
 const RACINE = new URL("../../../", import.meta.url).pathname;
 const env = Object.fromEntries(readFileSync(`${RACINE}.env`, "utf8").split("\n")
@@ -837,16 +845,16 @@ async function vider() {
 if (EN_BOUCLE) {
   // ON RESTE IMMOBILE TANT QU'IL N'Y A RIEN. Pas de calcul, pas de modèle rechargé : le navigateur
   // et les modèles sont déjà là, une passe ne coûte donc qu'une requête toutes les vingt secondes.
-  console.log(`En attente de travail (vérification toutes les ${ATTENTE / 1000} s). Ctrl+C pour arrêter.`);
+  dire(`En attente de travail (vérification toutes les ${ATTENTE / 1000} s). Ctrl+C pour arrêter.`);
   let silencieux = 0;
   for (;;) {
     let faits = 0;
     try { faits = (await vider()).albums; }
-    catch (e) { console.log(`   passe interrompue : ${String(e && e.message || e).slice(0, 160)}`); }
-    if (faits) { silencieux = 0; console.log(`   en attente…`); }
+    catch (e) { dire(`   passe interrompue : ${String(e && e.message || e).slice(0, 160)}`); }
+    if (faits) { silencieux = 0; dire(`   en attente…`); }
     // On ne répète pas « rien à faire » toutes les vingt secondes : le journal deviendrait
     // illisible, et un vrai message s'y perdrait.
-    else if (++silencieux % 90 === 0) console.log(`   toujours rien (${Math.round(silencieux * ATTENTE / 60000)} min).`);
+    else if (++silencieux % 90 === 0) dire(`   toujours rien (${Math.round(silencieux * ATTENTE / 60000)} min).`);
     await new Promise((r) => setTimeout(r, ATTENTE));
   }
 } else {
