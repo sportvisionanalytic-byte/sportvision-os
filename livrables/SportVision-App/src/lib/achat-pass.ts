@@ -308,6 +308,33 @@ export async function acheterPass(
   // (module absent) est deja sorti juste au-dessus.
   const IAP = (await iap())!;
 
+  // ON SOLDE CE QUI TRAINE AVANT DE REDEMANDER (28/09/2026).
+  //
+  // Une transaction restee ouverte — paiement accepte par le magasin, acces jamais ouvert parce
+  // que notre verification avait echoue — empeche l'achat suivant d'aboutir : le magasin
+  // considere qu'il a deja fait son travail et ne redemande rien, donc plus aucun evenement
+  // n'arrive et l'ecran tourne dans le vide. C'est exactement ce qui est arrive le 28/09.
+  //
+  // On reprend donc d'abord. Si un achat en attente s'ouvre, c'est fini : on ne fait pas payer
+  // deux fois quelqu'un qui a deja paye.
+  try {
+    const dejaLa = (await IAP.getAvailablePurchases({ onlyIncludeActiveItemsIOS: false })) ?? [];
+    for (const achat of dejaLa) {
+      const a = achat as { purchaseToken?: string | null; id?: string; productId?: string };
+      if ((a.productId ?? a.id) !== pass.skuMagasin || !a.purchaseToken) continue;
+      const ok = await livrer(pass.plateforme, a.purchaseToken, pass.productId, beneficiairePlayerId, jeton);
+      if (ok.ok) {
+        await IAP.finishTransaction({ purchase: achat, isConsumable: true });
+        dernierAchat = { quand: new Date().toISOString(), issue: "ouvert", detail: "achat en attente repris" };
+        return { etat: "ouvert" };
+      }
+      // Le serveur refuse encore ce recu : le garder ouvert ne sert a rien et bloque la suite.
+      // On le solde et on laisse la personne racheter.
+      await IAP.finishTransaction({ purchase: achat, isConsumable: true });
+      dernierAchat = { quand: new Date().toISOString(), issue: "erreur", detail: `recu en attente refuse : ${ok.message}` };
+    }
+  } catch { /* le rattrapage est un confort, jamais un obstacle a l'achat */ }
+
   return await new Promise<Resultat>((resolve) => {
     let fini = false;
     const terminer = (r: Resultat) => {
@@ -426,7 +453,12 @@ export async function reprendreAchatsEnAttente(
   try {
     if (!(await connexion())) return false;
     const m2 = (await iap())!;
-    const enAttente = (await m2.getAvailablePurchases()) ?? [];
+    // `onlyIncludeActiveItemsIOS: false` N'EST PAS UN DETAIL (28/09/2026) : par defaut iOS ne rend
+    // que les articles « actifs », et un consommable paye mais non solde n'en est pas un. Le Pass
+    // EST un consommable. Sans ce drapeau, la transaction restee ouverte apres un echec de
+    // validation n'etait jamais vue par ce rattrapage — elle bloquait les achats suivants sans que
+    // rien ne puisse la reprendre.
+    const enAttente = (await m2.getAvailablePurchases({ onlyIncludeActiveItemsIOS: false })) ?? [];
     if (!enAttente.length) return false;
 
     const { data: session } = await supabase.auth.getSession();
