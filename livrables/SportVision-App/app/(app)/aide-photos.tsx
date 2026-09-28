@@ -20,6 +20,7 @@ import { useSession } from "../../src/lib/session";
 import { Ecran } from "../../src/ui/Ecran";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
 import { P } from "../../src/theme/polices";
+import { retourner } from "../../src/lib/retour";
 
 const POINTS: { icone: keyof typeof Ionicons.glyphMap; titre: string; texte: string }[] = [
   {
@@ -45,7 +46,7 @@ export default function Acces() {
 
   return (
     <Ecran teinte="violet">
-      <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Retour aux photos" style={s.retour} hitSlop={10}>
+      <Pressable onPress={() => retourner("/photos")} accessibilityRole="button" accessibilityLabel="Retour aux photos" style={s.retour} hitSlop={10}>
         <Ionicons name="chevron-back" size={18} color={C.texteDoux} />
         <Text style={s.retourTexte}>Photos</Text>
       </Pressable>

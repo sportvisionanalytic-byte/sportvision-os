@@ -21,6 +21,7 @@ import { Ecusson } from "../../../src/ui/Cartes";
 import { Bouton } from "../../../src/ui/Base";
 import { C, E, R, TOUCHE } from "../../../src/theme/couleurs";
 import { P } from "../../../src/theme/polices";
+import { retourner } from "../../../src/lib/retour";
 
 export default function FicheMatch() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -58,7 +59,7 @@ export default function FicheMatch() {
 
   return (
     <Ecran enCours={chargement} rafraichir={charger} teinte="bleu">
-      <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Retour" style={s.retour} hitSlop={10}>
+      <Pressable onPress={() => retourner("/calendrier")} accessibilityRole="button" accessibilityLabel="Retour" style={s.retour} hitSlop={10}>
         <Ionicons name="chevron-back" size={18} color={C.texteDoux} />
         <Text style={s.retourTexte}>Calendrier</Text>
       </Pressable>

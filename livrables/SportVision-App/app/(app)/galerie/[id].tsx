@@ -18,6 +18,7 @@ import { cheminReconnaissanceEnfant } from "../../../src/lib/connect";
 import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
 import { C, E, R } from "../../../src/theme/couleurs";
+import { retourner } from "../../../src/lib/retour";
 
 // 26/09/2026 — LA COUPE N'EST PLUS FAITE ICI. La base ne rend que quatre photos a qui n'a pas pris
 // le Pass (v282), et le vrai total a cote. Couper une seconde fois dans l'ecran aurait masque des
@@ -188,7 +189,7 @@ export default function Galerie() {
   return (
     <>
       <Ecran enCours={chargement} rafraichir={charger}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Retour aux photos" style={s.retour} hitSlop={8}>
+        <Pressable onPress={() => retourner("/photos")} accessibilityRole="button" accessibilityLabel="Retour aux photos" style={s.retour} hitSlop={8}>
           <Ionicons name="chevron-back" size={18} color={C.texteDoux} />
           <Text style={s.retourTexte}>Photos</Text>
         </Pressable>
@@ -482,9 +483,33 @@ export default function Galerie() {
             Club+. */}
       </Ecran>
 
-      {/* Le plein écran : fond noir, une seule sortie, aucun piège. */}
+      {/* LE PLEIN ÉCRAN, ET COMMENT ON EN SORT.
+        *
+        * Fouka, 28/09/2026 : « quand je clique sur une photo, je ne peux pas revenir en arrière.
+        * Même quand je clique dans des endroits. » Il était bel et bien piégé, pour deux raisons
+        * qui se cumulaient.
+        *
+        * 1. LA CROIX ÉTAIT RENDUE AVANT L'IMAGE. En React Native, ce qui vient plus tard dans le
+        *    JSX passe au-dessus : l'image, large de tout l'écran et haute de 86 %, recouvrait donc
+        *    le seul bouton de sortie. Elle est désormais rendue en dernier.
+        *
+        * 2. IL N'Y AVAIT AUCUNE AUTRE SORTIE. `onRequestClose` ne se déclenche PAS sur iOS — c'est
+        *    le bouton retour d'Android. Taper le fond ne fermait rien. Une croix masquée, et plus
+        *    rien ne répond.
+        *
+        * Un écran dont on ne peut pas sortir, c'est un refus Apple immédiat, et surtout une
+        * famille bloquée. Il y a maintenant DEUX sorties indépendantes : toucher n'importe où, et
+        * la croix. Aucune des deux ne dépend de l'autre. */}
       <Modal visible={!!agrandie} transparent animationType="fade" onRequestClose={() => setAgrandie(null)}>
-        <View style={s.plein}>
+        <Pressable
+          style={s.plein}
+          onPress={() => setAgrandie(null)}
+          accessibilityRole="button"
+          accessibilityLabel="Fermer la photo"
+        >
+          {agrandie ? (
+            <Image source={{ uri: agrandie.url }} style={s.pleinImage} contentFit="contain" transition={120} />
+          ) : null}
           <Pressable
             accessibilityRole="button" accessibilityLabel="Fermer la photo"
             onPress={() => setAgrandie(null)}
@@ -493,10 +518,7 @@ export default function Galerie() {
           >
             <Ionicons name="close" size={22} color="#fff" />
           </Pressable>
-          {agrandie ? (
-            <Image source={{ uri: agrandie.url }} style={s.pleinImage} contentFit="contain" transition={120} />
-          ) : null}
-        </View>
+        </Pressable>
       </Modal>
     </>
   );
@@ -524,7 +546,9 @@ const s = StyleSheet.create({
   plein: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
   pleinImage: { width: "100%", height: "86%" },
   fermer: {
-    position: "absolute", right: E.l, width: 38, height: 38, borderRadius: 19,
+    // zIndex explicite : l'ordre du JSX suffit, mais une future insertion ne doit pas
+    // re-enterrer la seule sortie visible sans que personne le remarque.
+    position: "absolute", right: E.l, width: 38, height: 38, borderRadius: 19, zIndex: 2,
     alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)",
   },
 
