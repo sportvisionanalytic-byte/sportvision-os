@@ -136,7 +136,22 @@ async function verifierApple(jeton: string): Promise<Verdict> {
     "https://api.storekit.itunes.apple.com",
     "https://api.storekit-sandbox.itunes.apple.com",
   ];
-  let derniere = "";
+  // ON ESSAIE LES DEUX ENVIRONNEMENTS, TOUJOURS (28/09/2026).
+  //
+  // La version precedente sortait de la boucle des qu'Apple repondait autre chose qu'un 404 :
+  // « 404 = inconnu de cet environnement, on essaie l'autre ». L'intention etait juste, la
+  // condition etait fausse.
+  //
+  // MESURE DU 28/09, avec la cle de production : l'API de PRODUCTION repond **401**, pas 404,
+  // parce que l'application n'est jamais sortie sur l'App Store. Le bac a sable, lui, repond 400
+  // « Invalid transaction id » sur une transaction inventee — donc il accepte la cle et aurait
+  // reconnu un vrai achat. On sortait sur le 401 sans jamais l'interroger : AUCUN achat de test ne
+  // pouvait aboutir, et le relecteur d'Apple butait exactement de la meme facon. C'est tres
+  // probablement ce qui a fait refuser la version.
+  //
+  // On interroge donc les deux environnements quoi qu'il arrive. Le cout est un appel de plus
+  // quand le premier echoue ; le prix de l'inverse est une soumission refusee.
+  const echecs: string[] = [];
   for (const base of bases) {
     const r = await fetch(`${base}/inApps/v1/transactions/${encodeURIComponent(transactionId)}`, {
       headers: { Authorization: `Bearer ${auth}` },
@@ -144,7 +159,7 @@ async function verifierApple(jeton: string): Promise<Verdict> {
     if (r.ok) {
       const { signedTransactionInfo } = await r.json();
       const c = corpsNonVerifie(signedTransactionInfo ?? "");
-      if (!c) { derniere = "Réponse Apple illisible."; continue; }
+      if (!c) { echecs.push(`${base.includes("sandbox") ? "bac a sable" : "production"} : reponse illisible`); continue; }
       // Ce corps vient d'Apple sur TLS authentifié : c'est lui qui fait foi.
       if (c.bundleId !== Deno.env.get("APPLE_BUNDLE_ID")) {
         throw new Error("Cet achat n'appartient pas à cette application.");
@@ -160,10 +175,12 @@ async function verifierApple(jeton: string): Promise<Verdict> {
         environnement: base.includes("sandbox") ? "sandbox" : "production",
       };
     }
-    derniere = `${r.status} ${await r.text()}`;
-    if (r.status !== 404) break;   // 404 = inconnu de cet environnement, on essaie l'autre
+    echecs.push(`${base.includes("sandbox") ? "bac a sable" : "production"} ${r.status} ${(await r.text()).slice(0, 160)}`);
   }
-  throw new Error(`Apple n'a pas reconnu cet achat (${derniere}).`);
+  // Les DEUX reponses dans le message : avec une seule, on accuse le mauvais environnement. Celle
+  // d'avant ne rapportait que la derniere, et la derniere etait celle sur laquelle on venait de
+  // sortir a tort.
+  throw new Error(`Apple n'a pas reconnu cet achat (${echecs.join(" ; ")}).`);
 }
 
 // ─────────────────────────────── Google ───────────────────────────────
