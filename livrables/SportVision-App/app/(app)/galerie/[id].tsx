@@ -6,7 +6,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Dimensions, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -82,6 +82,20 @@ export default function Galerie() {
   // s'est jamais ouvert (reseau coupe au mauvais moment), PUIS seulement regarder s'il reste
   // quelque chose a vendre. L'inverse proposerait d'acheter ce qui est deja paye.
   const enfant = pourEnfant === "1" ? joueur : undefined;
+
+  // ON RELIT L'ÉTAT EN REVENANT SUR L'ÉCRAN (28/09/2026).
+  //
+  // L'accord de reconnaissance et la photo de référence se donnent dans Connect, qui s'ouvre dans
+  // une vue web par-dessus cet écran. Au retour, l'écran n'était pas remonté : il gardait l'état
+  // chargé AVANT le dépôt et continuait d'annoncer l'étape déjà faite. Fouka : « ça met photo
+  // enregistrée, et quand je reviens dans mes photos il y a écrit une étape vous attend, alors que
+  // j'ai déjà déposé ».
+  //
+  // Un écran qui réclame ce qu'on vient de faire fait douter de ce qu'on vient de faire. On relit
+  // donc à chaque retour — `tour` change, l'effet ci-dessous se rejoue.
+  const [tour, setTour] = useState(0);
+  useFocusEffect(useCallback(() => { setTour((n) => n + 1); }, []));
+
   useEffect(() => {
     let vivant = true;
     (async () => {
@@ -106,7 +120,7 @@ export default function Galerie() {
       }
     })();
     return () => { vivant = false; };
-  }, [club, joueur, enfant, charger]);
+  }, [club, joueur, enfant, charger, tour]);
 
   async function repondre(photo: PhotoAIdentifier, cestMoi: boolean) {
     if (!joueur) return;
