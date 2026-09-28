@@ -390,7 +390,7 @@ export default function Galerie() {
             paye — dans le mauvais ordre, et pour une donnee biometrique.
             La condition tient au fait que les trois etats du Pass sont maintenant distincts :
             « a_prendre » veut dire qu'il reste a payer, et rien d'autre ne se demande avant. */}
-        {etatPass?.etat !== "a_prendre" && reco && (!reco.consentement || !reco.photoReference) ? (
+        {etatPass && etatPass.etat !== "a_prendre" && reco && (!reco.consentement || !reco.photoReference) ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={reco.consentement ? "Déposer ma photo de référence" : "Donner mon accord pour être reconnu"}
@@ -416,7 +416,13 @@ export default function Galerie() {
             Meme condition que le bloc ci-dessus : rien ne se demande a une famille qui n'a pas encore
             paye. Ce geste ne reclame aucune donnee biometrique — c'est un chiffre — mais il n'a de
             sens que pour qui va voir ses photos. */}
-        {etatPass?.etat !== "a_prendre" ? (
+        {/* `etatPass &&` N'EST PAS UNE PRECAUTION DE STYLE (28/09/2026). `etatPass?.etat !== "a_prendre"`
+    est VRAI tant que l'etat du Pass n'est pas charge — `undefined !== "a_prendre"`. Ce bloc
+    s'affichait donc pendant le chargement, PUIS disparaissait quand le bouton du Pass arrivait.
+    Fouka : « ca ne met pas tout de suite debloquer mon pass photo, avant ca met c'est bien vos
+    numeros ». On demandait son numero de maillot a quelqu'un qui n'a pas encore paye, pendant
+    une seconde, avant de se retracter. */}
+        {etatPass && etatPass.etat !== "a_prendre" ? (
           <View style={s.numBloc}>
             <Text style={s.numTitre}>Vous étiez quel numéro à ce match&nbsp;?</Text>
             <Text style={s.numSous}>
