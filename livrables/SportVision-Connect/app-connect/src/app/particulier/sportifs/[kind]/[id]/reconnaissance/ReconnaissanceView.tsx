@@ -259,25 +259,32 @@ export function ReconnaissanceView({
         <section className="rounded-sv border border-border bg-white/[.04] p-5">
           <h2 className="font-sora text-[18px] font-semibold">Comment ça marche</h2>
           <p className="mt-2 max-w-[62ch] text-[15px] leading-relaxed text-text-secondary">
-            Vous déposez une photo de {lui}, bien visible et de face. SportVision en calcule une
-            empreinte numérique et s&apos;en sert pour {pourMoi ? "vous" : "le"} retrouver sur les
-            photos des prochaines galeries de {son} club. Quand la ressemblance est très sûre, la
-            photo {pourMoi ? "vous" : "lui"} est attribuée automatiquement ; sinon, une personne de
-            SportVision vérifie avant.
+            Vous déposez une ou plusieurs photos de {lui}, visage bien visible. SportVision en
+            calcule une empreinte numérique et s&apos;en sert pour {pourMoi ? "vous" : "le"} retrouver
+            sur les photos des prochaines galeries de {son} club. Quand la ressemblance est très
+            sûre, la photo {pourMoi ? "vous" : "lui"} est attribuée automatiquement ; sinon elle{" "}
+            {pourMoi ? "vous" : "leur"} est montrée, floutée, et vous répondez si c&apos;est bien{" "}
+            {lui}. Plusieurs photos sous des angles différents améliorent nettement le résultat.
           </p>
 
           <h3 className="mt-5 font-sora text-[15px] font-semibold">Ce que nous conservons</h3>
           <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
-            La photo que vous déposez et son empreinte numérique, rattachées {pourMoi ? "à votre compte" : `au compte de ${prenom}`}.
-            Rien d&apos;autre. Elles ne servent qu&apos;à {pourMoi ? "vous" : "le"} retrouver dans les
-            galeries de {son} club.
+            Les photos que vous déposez et leur empreinte numérique, rattachées {pourMoi ? "à votre compte" : `au compte de ${prenom}`}.
+            Et, depuis cette version du texte, l&apos;empreinte du visage de {lui} sur les photos de
+            galerie que <strong>vous avez vous-même confirmées</strong> : chaque « oui c&apos;est
+            bien {pourMoi ? "moi" : "lui"} » sert à mieux {pourMoi ? "vous" : "le"} retrouver
+            ensuite, y compris de dos ou de profil. Dix au maximum, et rien d&apos;autre. Elles ne
+            servent qu&apos;à {pourMoi ? "vous" : "le"} retrouver dans les galeries de {son} club.
           </p>
 
           <h3 className="mt-4 font-sora text-[15px] font-semibold">Ce que nous ne faisons pas</h3>
           <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
             Nous ne créons aucun fichier de visages consultable. Nous ne vous identifions nulle part
             ailleurs. Nous ne transmettons ces données à personne, ni au club, ni à quiconque. Les
-            visages des autres personnes présentes sur une photo ne sont jamais enregistrés.
+            visages des autres personnes présentes sur une photo ne sont jamais enregistrés — même
+            quand vous confirmez une photo où {lui} n&apos;est pas seul, seul son visage à {lui} est
+            retenu. Et une photo que la machine a attribuée toute seule ne devient jamais une
+            référence : seules comptent les photos qu&apos;une personne a confirmées.
           </p>
 
           <h3 className="mt-4 font-sora text-[15px] font-semibold">Vous pouvez changer d&apos;avis à tout moment</h3>
@@ -285,8 +292,9 @@ export function ReconnaissanceView({
             {/* « déjà achetées » était faux (Fouka, 25/09/2026) : beaucoup paient le Pass Photo
                 sans acheter de photo à l'unité. Parler d'achat leur laissait croire que ce
                 qu'ils ont déjà reçu pouvait disparaître avec leur accord. */}
-            Un bouton sur cette page retire votre accord. La photo et l&apos;empreinte sont effacées
-            immédiatement. Les photos qui sont déjà dans votre espace y restent.
+            Un bouton sur cette page retire votre accord. Les photos de référence et toutes les
+            empreintes, celles issues des galeries comprises, sont effacées immédiatement. Les photos
+            qui sont déjà dans votre espace y restent.
           </p>
 
           <h3 className="mt-4 font-sora text-[15px] font-semibold">Durée</h3>

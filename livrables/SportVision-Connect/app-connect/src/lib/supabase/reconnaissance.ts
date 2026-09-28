@@ -6,7 +6,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // Version du texte de consentement affiché. Elle est enregistrée avec l'accord : si le texte de
 // livrables/juridique/consentement-reconnaissance-enfant.md change, cette constante change aussi,
 // sinon on ne sait plus ce que les familles ont accepté.
-export const VERSION_TEXTE_CONSENTEMENT = "v1-2026-09";
+// v2 (28/09/2026) — LE TEXTE A CHANGE, DONC LE NUMERO AUSSI.
+//
+// Decision de Fouka : une photo que la famille confirme (« oui c'est bien moi ») sert desormais a
+// mieux retrouver le sportif ensuite, et son empreinte est conservee. C'est un changement
+// SUBSTANTIEL du traitement — des donnees biometriques, souvent de mineurs — et l'ancien texte
+// disait l'inverse : « la photo que vous deposez et son empreinte. Rien d'autre. »
+//
+// Un accord donne sur v1 ne couvre donc pas ce traitement, et la base le verifie : la v334 ne
+// conserve rien tant que l'accord n'est pas en v2. Les familles deja inscrites gardent l'ancien
+// comportement jusqu'a ce qu'elles redonnent leur accord, en connaissance de cause. Ne jamais
+// modifier ce texte sans changer ce numero : c'est lui qui dit ce que chacun a accepte.
+export const VERSION_TEXTE_CONSENTEMENT = "v2-2026-09";
 
 export const BUCKET_VISAGES = "sportvision-media-prive";
 
