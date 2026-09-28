@@ -251,6 +251,11 @@ for (const [album, lignes] of parAlbum) {
     for (const l of lignes) await rpc("reconnaissance_fait", { p_id: l.id, p_resultat: "aucun sportif autorisé" });
     continue;
   }
+  // v331 — UNE LIGNE PAR PHOTO DE REFERENCE, plus une par sportif. Une famille peut en deposer
+  // plusieurs sous des angles differents, et `visage_rapprocher_direct` retient spontanement la
+  // meilleure : c'est le levier le plus efficace mesure sur une vraie galerie, bien avant les
+  // seuils. `a_une_empreinte` dit maintenant si CETTE photo est calculee, pas si le sportif en a
+  // une quelque part — sans quoi la deuxieme n'etait jamais lue.
   for (const j of joueurs) {
     if (j.a_une_empreinte || !j.chemin_photo) continue;
     const url = await urlSignee("sportvision-media-prive", j.chemin_photo, 600);
@@ -265,6 +270,9 @@ for (const [album, lignes] of parAlbum) {
     if (SIMULER) { console.log(`   ${j.joueur} : empreinte de référence calculée (simulation, rien écrit)`); continue; }
     const rep = await rpc("visage_reference_ajouter", {
       p_player_id: j.player_id, p_empreinte: `[${r.visages[0].join(",")}]`, p_modele: CFG.modele,
+      // SANS CE LIEN, l'empreinte ne sait pas de quelle photo elle vient, et la passe suivante la
+      // recalculerait indefiniment tout en declarant la photo « deja faite ».
+      p_face_ref_id: j.face_ref_id ?? null,
     });
     console.log(rep.ok ? `   ${j.joueur} : empreinte de référence calculée` : `   ${j.joueur} : refus — ${JSON.stringify(rep.d).slice(0, 120)}`);
   }

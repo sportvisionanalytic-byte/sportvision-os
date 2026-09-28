@@ -13900,7 +13900,10 @@ async function recoCalculerReferences(joueurs,onAvance){
       // Une photo de référence doit montrer UN visage. Deux, et on ne sait pas lequel est l'enfant.
       if(visages.length!==1)continue;
       const rep=await sbFetch('rpc/visage_reference_ajouter',{method:'POST',body:{
-        p_player_id:j.player_id,p_empreinte:'['+visages[0].empreinte.join(',')+']',p_modele:RECO_CFG.modele}});
+        p_player_id:j.player_id,p_empreinte:'['+visages[0].empreinte.join(',')+']',p_modele:RECO_CFG.modele,
+        // v331 : l'empreinte retient DE QUELLE photo elle vient. Sans ce lien, la passe suivante
+        // la recalculerait sans fin tout en declarant la photo deja faite.
+        p_face_ref_id:j.face_ref_id||null}});
       if(!sbErr(rep)){faits++;j.a_une_empreinte=true;}
     }catch(e){/* une référence illisible ne fait pas échouer les autres */}
     if(onAvance)onAvance(j,faits);
