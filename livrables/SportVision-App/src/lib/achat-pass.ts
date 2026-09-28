@@ -181,6 +181,15 @@ export let dernierMotif: { sku: string | null; motif: MotifSansOffre | null } = 
  */
 export let deviseMagasin: { devise: string | null; brut: string | null } = { devise: null, brut: null };
 
+/**
+ * Le dernier achat tente, et ce qu'il a donne (28/09/2026).
+ *
+ * Meme raison que la devise : quand un achat echoue, trois causes se ressemblent parfaitement vues
+ * de l'ecran — le magasin n'a pas repondu, il a repondu sans recu, ou notre serveur a refuse le
+ * recu. Profil l'affiche, et on sait laquelle sans brancher de telephone.
+ */
+export let dernierAchat: { quand: string; issue: string; detail: string | null } | null = null;
+
 export async function etatDuPass(clubId: string, playerId: string): Promise<EtatPass> {
   const { data, error } = await supabase.rpc("media_pass_disponible", {
     p_club_id: clubId, p_player_id: playerId,
@@ -304,14 +313,37 @@ export async function acheterPass(
     const terminer = (r: Resultat) => {
       if (fini) return;
       fini = true;
+      clearTimeout(minuteur);
       succes.remove();
       echec.remove();
+      dernierAchat = { quand: new Date().toISOString(), issue: r.etat, detail: "message" in r ? r.message : null };
       resolve(r);
     };
 
+    // UNE ATTENTE A TOUJOURS UNE FIN (28/09/2026).
+    //
+    // Cette promesse ne se resolvait QUE si l'un des deux ecouteurs parlait ou si la demande
+    // d'achat echouait. Quand le magasin ne dit rien — et il ne dit rien quand une transaction
+    // precedente est restee ouverte —, la roue tournait indefiniment. Fouka : « ca charge, ca
+    // charge, mais il n'est rien ». Un ecran qui tourne sans fin est pire qu'une erreur : on ne
+    // sait meme pas s'il faut attendre ou recommencer, et on finit par fermer l'application.
+    const minuteur = setTimeout(() => terminer({
+      etat: "erreur",
+      message: "L'App Store n'a pas répondu. Si vous avez déjà payé, rouvrez la galerie : l'accès s'ouvrira tout seul.",
+    }), 120_000);
+
     const succes = IAP.purchaseUpdatedListener(async (achat) => {
       const recu = (achat as { purchaseToken?: string | null }).purchaseToken;
-      if (!recu) return;
+      // SANS RECU, ON S'ARRETE EN LE DISANT. Cette ligne faisait `return` en silence : le magasin
+      // avait parle, la promesse ne se resolvait jamais, et la roue tournait pour toujours. Un
+      // achat annonce sans recu est anormal — il faut le voir, pas l'avaler.
+      if (!recu) {
+        terminer({
+          etat: "erreur",
+          message: "Le magasin a répondu sans reçu d'achat. Rouvrez la galerie : si le paiement est passé, l'accès s'ouvrira tout seul.",
+        });
+        return;
+      }
       try {
         const ok = await livrer(pass.plateforme, recu, pass.productId, beneficiairePlayerId, jeton);
         if (!ok.ok) { terminer({ etat: "erreur", message: ok.message }); return; }

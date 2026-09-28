@@ -7,7 +7,7 @@ import React, { useState } from "react";
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
 import * as Updates from "expo-updates";
-import { MOTIF_LISIBLE, dernierMotif, deviseMagasin } from "../../src/lib/achat-pass";
+import { MOTIF_LISIBLE, dernierAchat, dernierMotif, deviseMagasin } from "../../src/lib/achat-pass";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
@@ -359,6 +359,17 @@ export default function Profil() {
               le montant debite sera bien celui-la. Le dire vaut mieux que le maquiller : une
               famille qui voit « 19,99 € » et se fait prelever en dollars appelle sa banque.
               Invisible tant que tout va bien. */}
+          {/* 28/09/2026 — LE DERNIER ACHAT TENTE, quand il n'a pas abouti. Trois causes se
+              ressemblent a l'ecran : le magasin muet, un achat sans recu, un recu refuse par
+              notre serveur. Cette ligne dit laquelle. Invisible tant qu'aucun achat n'a echoue. */}
+          {dernierAchat && dernierAchat.issue === "erreur" ? (
+            <Ligne
+              icone="alert-circle-outline"
+              titre="Dernier achat"
+              detail={`${new Date(dernierAchat.quand).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} — ${dernierAchat.detail ?? "sans détail"}`}
+            />
+          ) : null}
+
           {deviseMagasin.devise && deviseMagasin.devise.toUpperCase() !== "EUR" ? (
             <Ligne
               icone="warning-outline"
