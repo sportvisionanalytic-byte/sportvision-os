@@ -51,7 +51,21 @@ const CFG = {
   lib: "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js",
   modeles: `${URL_SB}/storage/v1/object/public/modeles-reconnaissance/face-api-1.7.15`,
   modele: "face-api-1.7.15-ssd128",
-  seuilCertain: 0.42,
+  // LE SEUIL DE VALIDATION AUTOMATIQUE EST CALÉ SUR DE VRAIES RÉPONSES (28/09/2026).
+  //
+  // Fouka : « je veux que tu mettes tout de suite toutes les photos. Et là où il y a des doutes,
+  // tu demandes. » Il avait à ce moment-là tranché huit propositions à la main, et ces huit
+  // réponses disent où est la frontière, bien mieux qu'un seuil de bibliothèque :
+  //
+  //     0,226  0,482  0,491  0,505   → « c'est moi »   (4 sur 4)
+  //     0,506  0,518         0,527   → « ce n'est pas moi »
+  //                   0,519          → « c'est moi »
+  //
+  // Sous 0,506, aucune erreur. Au-dessus, une bonne sur quatre. On valide donc d'office jusqu'à
+  // 0,50 au lieu de 0,42, et le reste continue d'être proposé. C'est huit réponses, pas mille : à
+  // revoir quand plusieurs familles auront trié leurs galeries, et c'est le genre de seuil qui se
+  // remesure au lieu de se deviner.
+  seuilCertain: 0.50,
   seuilPropose: 0.55,
   // Sur une PHOTO DE MATCH, un seuil haut protège : un visage flou au fond du terrain ne doit
   // jamais désigner un enfant. Sur un PORTRAIT DÉPOSÉ EXPRÈS, il n'a aucune raison d'être aussi
@@ -372,9 +386,11 @@ for (const [album, lignes] of parAlbum) {
       }
       if (meilleur && best < CFG.seuilExpansion) {
         v.joueur = meilleur.joueur;
-        // On garde la distance À LA RÉFÉRENCE de l'ancre, majorée de l'écart parcouru : c'est ce
-        // que le marquage enregistre, et il doit rester honnête sur la certitude réelle.
-        v.distance = Math.min(CFG.seuilPropose, (meilleur.distance ?? CFG.seuilCertain) + best);
+        // La distance À LA RÉFÉRENCE de l'ancre, majorée de l'écart parcouru. On ne la plafonne
+        // PAS : plafonner écrivait 0,550 sur toutes les photos retrouvées par ressemblance, et
+        // cette colonne est justement celle qui permet de recaler les seuils plus tard. Un chiffre
+        // rond identique partout n'apprend rien à personne.
+        v.distance = (meilleur.distance ?? CFG.seuilCertain) + best;
         v.parExpansion = true;
         gagnes++;
       }
