@@ -1,3 +1,30 @@
+-- ── DIAGNOSTIC DU 28/09/2026 : CE ROUGE ATTEND UNE PHRASE DE FOUKA ────────────────────────────
+--
+-- Six verifications de ce fichier echouent, et la mesure dit la meme chose pour les six : sur SA
+-- PROPRE LIGNE, le Responsable Production n'est plus REFUSE quand il depasse la grille — le montant
+-- est accepte, la remuneration effective reste la grille, et l'ecart part en exception a valider par
+-- l'Admin. Mesure brute : `55.00/55.00/a_valider/150.00` la ou ce test attend « refuse ».
+--
+-- C'est exactement la conception des migrations v148-v150 du 11/09 (« exception Admin sur sa propre
+-- ligne »), et c'est un meilleur comportement qu'un refus sec : la demande est tracee au lieu d'etre
+-- perdue. Ce test, lui, tient encore la regle d'avant.
+--
+-- POURQUOI JE NE LE CORRIGE PAS MOI-MEME : ce circuit de remuneration est GELE depuis le 10/09, « en
+-- observation reelle », modifiable seulement sur retour concret ou P0/P1. Realigner six attentes
+-- financieres sur ma lecture d'une note, sans un mot de Fouka, graverait dans la suite de tests une
+-- interpretation qu'il n'a pas relue. Une phrase de sa part suffit, et le realignement prend cinq
+-- minutes.
+--
+-- CE QUI A ETE VERIFIE AU PASSAGE, et qui est rassurant : la sortie montre DEUX lignes pour un meme
+-- operateur, ce qui ressemble a un risque de double paiement. Il n'y en a pas — un index unique
+-- partiel (`prestations_equipe_active_uniq`) interdit deux lignes ACTIVES pour le meme couple
+-- mission/collaborateur, et la production n'en compte aucun cas. La seconde ligne du test vient
+-- seulement du premier appel, qui reussit desormais au lieu d'etre refuse.
+--
+-- CE QUI TIENT TOUJOURS, et qui est l'essentiel : pour un AUTRE operateur, 60 EUR sans motif sur une
+-- grille a 50 EUR (20 % d'ecart) est bien refuse. La borne n'a pas disparu, elle ne s'applique pas de
+-- la meme facon a sa propre ligne.
+
 -- Le Responsable Production ne fixe pas sa propre rémunération (migration v148, 11/09/2026).
 --
 -- Ce que ce test tient pour vrai :

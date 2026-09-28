@@ -33,7 +33,17 @@ begin
   insert into media_albums (club_id, team_id, saison_id, title, status)
   values ('8be55101-0d61-4b27-8d7b-a4761547d88b','bee719f7-d735-4a0b-b070-0d20eb73e7ec',
           (select id from saisons where label='2026-2027'),'ZZ permissions','published') returning id into a;
+  -- `pole_id` AJOUTE LE 28/09/2026 : depuis la v318, les policies de media_album_links appellent
+  -- media_pricing_staff_album, qui borne le responsable de pole au pole DE LA GALERIE. Un album sans
+  -- pole n'est tarifable que par admin / production / secretariat, donc la section 7 ne pouvait pas
+  -- mesurer le droit d'un responsable de pole.
+  update media_albums set pole_id = (select id from poles where nom = 'Football') where id = a;
+  -- UNE OFFRE, AJOUTEE LE 28/09/2026 : media_album_links_stats fait un `cross join lateral` sur
+  -- l'offre du lien, donc un lien SANS offre disparait entierement de l'ecran des statistiques. Le
+  -- test mesurait cette absence au lieu du droit de lire le chiffre d'affaires.
   insert into media_album_links (album_id, slug, label) values (a, media_gallery_unique_slug('ZZ permissions'), 'Test');
+  insert into media_album_link_offers (link_id, offer_type, label, price_override_cents, photos_allowance, display_order)
+  select id, 'pack', 'ZZ 5 photos', 600, 5, 1 from media_album_links where album_id = a;
   insert into _ctx values (a);
 end $$;
 
@@ -118,12 +128,18 @@ begin
     insert into _res values ('4', 'Secretariat : peut creer un lien', 'ACCEPTE', 'refuse', false);
   end;
 
+  -- LA SUPPRESSION PORTE SUR LE LIEN JETABLE QU'ON VIENT DE CREER, ET NON SUR CELUI DE L'ALBUM
+  -- (28/09/2026). Tant que le Secretariat etait censé se voir refuser la suppression, effacer
+  -- `where album_id = v_a` etait sans consequence : il ne se passait rien. Depuis la decision du
+  -- 07/09 il en a le droit, donc cette ligne emportait le lien de l'album — et les sections 5, 7 et
+  -- 8 mesuraient ensuite un album SANS lien, ce qui rend « 0 » a toutes leurs questions et ressemble
+  -- a un droit refuse. Deux faux rouges venaient de la.
   begin
-    delete from media_album_links where album_id = v_a;
+    delete from media_album_links where slug = 'zz-sec-tentative';
     get diagnostics v_upd = row_count;
-    insert into _res values ('4', 'Secretariat : peut desactiver un lien', 'au moins 1 ligne', v_upd||' ligne', v_upd >= 1);
+    insert into _res values ('4', 'Secretariat : peut supprimer un lien', 'au moins 1 ligne', v_upd||' ligne', v_upd >= 1);
   exception when insufficient_privilege then
-    insert into _res values ('4', 'Secretariat : peut desactiver un lien', 'au moins 1 ligne', 'refuse', false);
+    insert into _res values ('4', 'Secretariat : peut supprimer un lien', 'au moins 1 ligne', 'refuse', false);
   end;
 end $$;
 
@@ -134,7 +150,11 @@ do $$
 declare v_n integer; v_upd integer;
 begin
   select count(*) into v_n from media_album_links where album_id = (select album from _ctx);
-  insert into _res values ('5', 'Photographe : voit le lien de son album', '1', v_n::text, v_n = 1);
+  -- ATTENTE CORRIGEE LE 28/09/2026 : la policy de lecture de media_album_links est reservee a qui
+  -- fixe les prix, et la migration galeries-v14 le dit sans ambiguite — « Volontairement PAS les
+  -- photographes (ils deposent, ils ne vendent pas) ». Le photographe ne voit donc pas le lien, et
+  -- ce test affirmait le contraire depuis toujours.
+  insert into _res values ('5', 'Photographe : ne voit pas le lien de vente', '0', v_n::text, v_n = 0);
   update media_album_links set price_override_cents = 100 where album_id = (select album from _ctx);
   get diagnostics v_upd = row_count;
   insert into _res values ('5', 'Photographe : ne peut PAS changer le prix', '0 ligne', v_upd||' ligne', v_upd = 0);
@@ -151,12 +171,21 @@ end $$;
 
 reset role;
 
--- ── 7. Responsable de pole : on promeut le secretaire de test ──────────────
+-- ── 7. Responsable de pole : on promeut le CM de test ─────────────────────
+--
+-- LE COMPTE A CHANGE LE 28/09/2026, et c'etait la cause de deux faux rouges alarmants. Cette section
+-- promouvait le SECRETAIRE au rang de responsable de pole. Or depuis la decision du 07/09 le
+-- secretariat a DEJA le droit de fixer les prix par son role : « responsable retire de son pole » et
+-- « simple membre d'un pole » repondaient donc toujours OUI, et le test semblait annoncer qu'un
+-- simple membre pouvait tarifer. Il ne mesurait plus rien du tout.
+--
+-- Le CM, lui, n'a aucun droit tarifaire par son role. Ce qu'il obtient ici, il l'obtient par son
+-- pole et par lui seul : c'est la seule facon d'isoler la regle qu'on veut mesurer.
 insert into pole_affectations (pole_id, user_id, role_pole, actif)
-values ('086f7973-fd15-413d-8457-1afa3cc71643','b4eab475-3293-4804-8bf6-8b27a15d410c','responsable', true);
+values ((select id from poles where nom = 'Football'),'2b0b7fae-33eb-45be-b393-707725ad9e7e','responsable', true);
 
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"b4eab475-3293-4804-8bf6-8b27a15d410c","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"2b0b7fae-33eb-45be-b393-707725ad9e7e","role":"authenticated"}';
 insert into _res select '7', 'Responsable de pole actif : peut fixer un prix', 'true', media_pricing_staff()::text, media_pricing_staff();
 do $$
 declare v_upd integer;
@@ -169,23 +198,38 @@ reset role;
 
 -- Retire de son pole : il reperd le droit immediatement.
 update pole_affectations set actif = false
-where user_id = 'b4eab475-3293-4804-8bf6-8b27a15d410c' and role_pole = 'responsable';
+where user_id = '2b0b7fae-33eb-45be-b393-707725ad9e7e' and role_pole = 'responsable';
 
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"b4eab475-3293-4804-8bf6-8b27a15d410c","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"2b0b7fae-33eb-45be-b393-707725ad9e7e","role":"authenticated"}';
 insert into _res select '7', 'Responsable retire de son pole : REFUSE', 'false', media_pricing_staff()::text, not media_pricing_staff();
 reset role;
 
 -- Simple membre d'un pole actif : ce n'est pas un responsable, il n'a rien de plus.
 update pole_affectations set role_pole = 'membre', actif = true
-where user_id = 'b4eab475-3293-4804-8bf6-8b27a15d410c';
+where user_id = '2b0b7fae-33eb-45be-b393-707725ad9e7e';
 
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"b4eab475-3293-4804-8bf6-8b27a15d410c","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"2b0b7fae-33eb-45be-b393-707725ad9e7e","role":"authenticated"}';
 insert into _res select '7', 'Simple membre d un pole actif : REFUSE', 'false', media_pricing_staff()::text, not media_pricing_staff();
 reset role;
 
 -- ── 8. Le chiffre d'affaires par lien reste reserve ────────────────────────
+--
+-- CE ROUGE EST DELIBEREMENT LAISSE EN PLACE, EN ATTENTE D'UN ARBITRAGE DE FOUKA (28/09/2026).
+--
+-- La decision du 07/09 portait sur le droit de FIXER les prix : « c'est lui qui prepare les liens au
+-- quotidien ». Elle ne disait rien du droit de VOIR L'ARGENT. Mais les deux passent par la meme
+-- fonction, `media_pricing_staff()`, donc le Secretariat a gagne l'acces au chiffre d'affaires par
+-- lien en meme temps, sans que ce soit demande ni examine.
+--
+-- Les deux lectures se defendent : celui qui fixe un prix a besoin de savoir s'il fonctionne, mais le
+-- chiffre d'affaires est une donnee commerciale, et le cloisonnement financier par role est une
+-- regle etablie ailleurs (decision du 11/09 sur les donnees restreintes d'un club).
+--
+-- Ce test garde donc son attente d'origine — « pas de CA par lien » — et reste ROUGE jusqu'a
+-- decision. Le corriger dans un sens ou dans l'autre sans arbitrage graverait un choix que personne
+-- n'a fait.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"b4eab475-3293-4804-8bf6-8b27a15d410c","role":"authenticated"}';
 do $$

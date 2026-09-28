@@ -5,6 +5,15 @@
 -- trigger `resolve_team_id_from_name`, qui comparait le nom en égalité stricte. Une majuscule de
 -- différence, et le match restait sans équipe : invisible du calendrier de l'équipe, et sans
 -- galerie rattachable. Le commentaire du code promettait pourtant l'inverse.
+-- MESURES REALIGNEES LE 28/09/2026 sur la decision des v292/v293, « le nom de l'equipe est celui du
+-- club » : le trigger REECRIT desormais `club_matches.team` avec le libelle canonique de l'equipe, et
+-- le verrouille. Ce test retrouvait donc ses matchs par leur libelle FEDERAL (« SEN 3 FED »,
+-- « zz u16 elite »), qui n'existe plus apres l'insertion : la requete ne rendait aucune ligne, donc
+-- `obtenu` valait NULL et deux verifications ne mesuraient plus rien.
+--
+-- Les matchs sont maintenant retrouves par leur ADVERSAIRE, qui ne bouge pas. Et puisqu'on y est,
+-- chaque cas verifie aussi que `team` porte bien le nom du club et non celui de la federation :
+-- c'est la decision des v292/v293, et rien ne la tenait ici.
 -- Décor fictif, tout est annulé.
 
 begin;
@@ -30,14 +39,18 @@ insert into club_matches (club_id, team, opponent, match_date, provider, competi
 select club, 'SEN 3 FED', 'ZZ Adversaire', current_date, 'SPORTCORICO', 'ZZ Championnat' from ctx;
 select pg_temp.note('le rapprochement confirme par le club est utilise', 'oui',
   (select case when m.team_id = ctx.eq_a then 'oui' else 'NON' end
-     from club_matches m, ctx where m.team = 'SEN 3 FED'));
+     from club_matches m, ctx where m.opponent = 'ZZ Adversaire'));
+select pg_temp.note('et le match porte le nom du club, pas celui de la federation (v292)', 'ZZ Séniors 3',
+  (select m.team from club_matches m where m.opponent = 'ZZ Adversaire'));
 
 -- 2. Un libellé qui ne differe que par la casse et les accents.
 insert into club_matches (club_id, team, opponent, match_date, provider, competition)
 select club, 'zz u16 elite', 'ZZ Adversaire 2', current_date, 'SPORTCORICO', 'ZZ Championnat' from ctx;
 select pg_temp.note('une difference de casse ou d''accent ne perd plus le match', 'oui',
   (select case when m.team_id = ctx.eq_b then 'oui' else 'NON' end
-     from club_matches m, ctx where m.team = 'zz u16 elite'));
+     from club_matches m, ctx where m.opponent = 'ZZ Adversaire 2'));
+select pg_temp.note('et la casse du club fait foi, pas celle de la federation (v292)', 'ZZ U16 Elite',
+  (select m.team from club_matches m where m.opponent = 'ZZ Adversaire 2'));
 
 -- 3. Un libellé inconnu ne se rattache a personne, plutot que de deviner.
 insert into club_matches (club_id, team, opponent, match_date, provider, competition)

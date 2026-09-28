@@ -27,8 +27,18 @@ begin;
 -- production : la recherche rendait NULL, et la vérification de cloisonnement devenait vide de
 -- sens — bien pire qu'un échec, un test incapable de détecter une fuite. Il crée maintenant le
 -- club témoin, effacé par le `rollback` final.
-insert into clubs (id, nom) values ('8be55102-0d61-4b27-8d7b-a4761547d88b', 'Villeneuve 340 SC')
-  on conflict (id) do nothing;
+--
+-- COMPLÉTÉ LE 28/09/2026 : le club était créé SANS SA FICHE CLIENT, donc `portail_client_id`
+-- restait nul. Or c'est la fiche client qui porte le SIRET, et ce test ne parle que de ça : les
+-- treize lectures de SIRET répondaient « ∅ » pour une raison qui n'avait rien à voir avec les
+-- droits, et les contrôles de vitalité — ceux qui existent précisément pour empêcher un « ne lit
+-- pas » de passer pour une bonne nouvelle — échouaient sans être écoutés. Une correction de décor
+-- à moitié faite laisse un test qui s'exécute et ne prouve rien, ce qui est le pire des deux états.
+with cli as (
+  insert into clients (nom, statut_relation) values ('Villeneuve 340 SC', 'partenaire') returning id
+)
+insert into clubs (id, nom, portail_client_id) select '8be55102-0d61-4b27-8d7b-a4761547d88b', 'Villeneuve 340 SC', id from cli
+  on conflict (id) do update set portail_client_id = excluded.portail_client_id;
 
 create or replace function pg_temp.incarner(p uuid) returns void language plpgsql as $i$
 begin
@@ -71,6 +81,11 @@ insert into ids select 'client_autre', c.portail_client_id from clubs c
 insert into ids select 'pole', id from poles where nom = 'Football';
 
 update clients set siret = '999 111 222 33333' where id = pg_temp.id('client');
+-- Le contrat Full Communication, AJOUTÉ LE 28/09/2026 : trois vérifications en dépendent, dont un
+-- contrôle de vitalité. Sans lui, « le CM voit le contrat » répondait 0 sans qu'il y ait quoi que ce
+-- soit à voir, ce qui ressemble à un cloisonnement qui fonctionne et n'en est pas un.
+insert into contrats (client_id, type_contrat, statut, date_debut)
+values (pg_temp.id('client'), 'full_communication', 'actif', current_date - 30);
 
 -- Une personne par rôle de l'OS, au palier CM nul. `pole` : affectée au pôle Football (celui du
 -- club de test), ou non.
