@@ -82,8 +82,28 @@ cat > "$PLIST" <<PLISTFIN
 <plist version="1.0">
 <dict>
   <key>Label</key><string>$ETIQUETTE</string>
+  <!-- LE MAC NE DOIT PAS S'ENDORMIR PENDANT QUE LE MOTEUR TOURNE (29/09/2026).
+       Reglage mesure sur la machine de Fouka : mise en veille au bout d'UNE MINUTE d'inactivite.
+       Quand le Mac dort, launchd ne lance plus rien : la file reste pleine et personne ne le voit.
+       C'etait le seul vrai obstacle au « en permanence ».
+       caffeinate tient l'assertion a notre place, sans mot de passe administrateur et sans toucher
+       aux reglages du systeme :
+         -s  empeche la veille, et SEULEMENT sur secteur : sur batterie, le Mac dort comme avant.
+       On a essaye -i en plus, qui empeche la veille par inactivite quelle que soit l'alimentation.
+       Retire : sur batterie, il aurait tenu le Mac eveille jusqu'a la vider. Un moteur de
+       reconnaissance n'a pas a decider qu'un portable doit mourir debout.
+       L'assertion vit et meurt avec le processus : si le service s'arrete, le Mac redevient libre
+       de dormir. On ne laisse rien derriere soi.
+       CE QUE CA NE FAIT PAS : sur un portable Apple Silicon, fermer l'ecran endort la machine quoi
+       qu'il arrive, sauf ecran externe branche. Ecran ouvert, ou mode clamshell.
+       ATTENTION AUX ACCENTS GRAVES ICI : ce bloc part dans un heredoc non protege, donc tout ce qui
+       est entoure d'accents graves serait EXECUTE a l'ecriture du fichier. C'est arrive : un mot
+       entre accents graves a lance caffeinate sans argument, qui ne rend jamais la main, et le
+       plist est reste vide pendant que l'installeur semblait travailler. -->
   <key>ProgramArguments</key>
   <array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-s</string>
     <string>$NODE</string>
     <string>$MOTEUR</string>
     <string>--boucle</string>
