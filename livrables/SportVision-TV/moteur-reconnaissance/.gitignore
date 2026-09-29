@@ -4,5 +4,6 @@ modeles/
 node_modules/
 # Le dictionnaire de Tesseract, telecharge au premier lancement.
 *.traineddata
-# Les scripts de calibration gardent des traces de mesure.
-mesures/
+# Les planches d'etiquetage et les vignettes de diagnostic : des images, regenerables.
+mesures/*.jpg
+mesures/*.png

@@ -11,39 +11,48 @@
 // CE QUI CHANGE PAR RAPPORT À L'ANCIEN MOTEUR
 //
 // L'ancien lisait les dossards dans un Chromium, avec coco-ssd pour trouver les corps et
-// tesseract.js dans la page. Il a relevé 59 photos sur 6 295 : ça marche, mais tout passait par
-// `getImageData`, qui rapatrie les pixels depuis la carte graphique à chaque appel — des milliers
-// de fois par photo. Ici les pixels sont lus UNE fois, et tout le reste est du calcul sur un
-// tableau. Même algorithme de détection des chiffres, porté tel quel : il a fait ses preuves.
+// tesseract.js dans la page. Il avait annoté 59 photos sur 6 295 — et en les ouvrant, AUCUNE ne
+// montrait de numéro : il lisait les plis de maillot et les sponsors. La v338 les a effacées.
+// Ici tout tourne en Node : les pixels sont lus une fois, le reste est du calcul sur un tableau.
 //
-// CE QUI REMPLACE LE DÉTECTEUR DE CORPS. Le numéro se porte sur le torse, et le torse est sous le
-// visage : les boîtes que SCRFD nous donne déjà suffisent à cadrer où chercher. On ajoute une passe
-// sur l'image entière, parce qu'un joueur du premier plan porte le dossard le plus lisible de tous
-// et que sa position ne dépend d'aucune détection.
+// CE MODULE N'EST PAS BRANCHE, ET VOICI EXACTEMENT POURQUOI (29/09/2026)
 //
-// CE MODULE N'EST PAS BRANCHE, ET C'EST DELIBERE (29/09/2026)
+// CE QUI EST ETABLI. Sur 36 photos regardees une par une (mesures/dossards-verite-terrain.json),
+// 5 portent un dossard lisible, soit 14 %, et TOUTES sont des vues de dos — c'est-a-dire les photos
+// ou la reconnaissance du visage ne peut rien. La fonction vaut donc le coup : ce n'est pas un
+// gadget, c'est la seule piste sur une categorie entiere de photos.
 //
-// Le portage marche : il trouve des zones, il les lit, il rend des chiffres. Le probleme est qu'il
-// rend des chiffres QUI N'EXISTENT PAS, exactement comme son predecesseur. Mesure sur 12 photos ou
-// l'ancien moteur avait releve un numero : une seule lecture identique, 6 numeros sur 21 retrouves,
-// 12 numeros en plus. Trois de ces photos ont ete ouvertes et regardees — un joueur de profil, un
-// autre devant un sponsor « tess », un gardien en maillot raye : AUCUNE ne montre de numero.
+// CE QUI A ETE REPARE, ET QUI COMPTE.
+//   - On part des CORPS, plus des visages ni de l'image entiere. Sans cela on cherche des chiffres
+//     dans l'herbe et les grillages : 43 numeros inventes sur 36 photos.
+//   - La vignette envoyee a l'OCR faisait 963 x 1170 pixels, a cause d'un agrandissement force d'au
+//     moins trois fois. Tesseract lit mal ce qui est trop gros : un « 10 » parfaitement net etait lu
+//     « 4 » puis « 0 », et lu « 10 » a 95 % une fois ramene a 96 px de haut.
+//   - On ne lit que les dos : une personne dont on voit le visage n'a rien a lire dans le dos.
+//   - Le seuil de confiance est monte de 62 a 90, parce que les lectures justes sortent a 95 et les
+//     inventees entre 77 et 87.
 //
-// Les deux moteurs ne se contredisaient pas sur des lectures difficiles, ils inventaient tous les
-// deux. La distribution le disait deja sans ouvrir une seule photo : sur 110 numeros releves en
-// production, le 1 sortait 32 fois, le 4 vingt-quatre fois, le 3 vingt-deux fois. Un effectif de
-// U16 ne porte pas trois fois le meme numero.
+// OU ON EN EST, SANS L'ARRANGER. Sur les 110 photos de la galerie : UNE lecture juste, DEUX fausses.
+// Sur le sous-ensemble de 36 photos etiquetees, la precision paraissait de 100 % — l'echantillon
+// etait trop petit, et le seuil avait ete cale dessus. C'est la lecon a retenir de ce fichier autant
+// que le reste : une mesure sur 36 cas ne prouve rien qu'un passage sur 110 ne renverse.
 //
-// La v338 a efface ces numeros et ferme la porte cote base. Ce fichier reste, parce que la moitie
-// difficile — trouver OU chercher, a quelle echelle, et juger une lecture par le nombre de taches
-// plutot que par la confiance de l'OCR — est ecrite et mesurable. Il sera branche le jour ou il
-// saura lire un vrai numero sur une vraie photo, et pas avant : un dossard faux ne se contente pas
-// d'etre faux, il envoie les photos d'un enfant a la famille d'un autre.
+// POURQUOI CA COINCE, ET CE QU'IL FAUDRAIT. Tesseract est fait pour lire des documents imprimes. Un
+// numero de maillot est dessine : trait fin, contour creux, police fantaisie, tissu qui plisse. Sur
+// une photo ou le « 2 » est gros et net, il lit « 1 ». Aucun reglage ne rattrapera cela — il faut un
+// classifieur de chiffres entraine sur ce genre d'images (du type SVHN, les numeros de rue), pas un
+// OCR de documents. C'est un modele a trouver ou a entrainer, pas un seuil a bouger.
 //
-// CE QU'ON NE SAIT PAS ENCORE FAIRE. Sur une photo strictement de dos, il n'y a pas de visage, donc
-// pas de torse déduit : seule la passe sur l'image entière travaille. C'est justement là que le
-// dossard vaudrait le plus. Un vrai détecteur de personnes reste à ajouter, et c'est dit ici pour
-// que personne ne croie le contraire en lisant le reste.
+// EN ATTENDANT, ON NE BRANCHE RIEN. Un dossard faux ne se contente pas d'etre faux : il envoie les
+// photos d'un enfant a la famille d'un autre. Deux lectures fausses pour une juste, c'est un
+// mauvais echange, et la v338 ferme d'ailleurs la porte cote base.
+//
+// CE QUI EST DEJA UTILISABLE, LUI : personnes.mjs. Le detecteur de corps marche tres bien, y compris
+// sur les joueurs du fond, et c'est la brique qui manquait pour reconnaitre quelqu'un DE DOS.
+//
+// CE QU'ON NE SAIT PAS ENCORE FAIRE. Nommer la personne dont on lit le dossard : on sait qu'un
+// corps porte le numero 10, pas qui est ce corps. C'est la famille qui tranche, en declarant son
+// numero — le rapprochement se fait en base (v305), jamais ici.
 import sharp from "sharp";
 import { createWorker } from "tesseract.js";
 import { dirname } from "node:path";
@@ -53,9 +62,18 @@ import { fileURLToPath } from "node:url";
  *  et on ne fait que donner à l'OCR des occasions de se tromper. */
 const HAUTEUR_MIN_CHIFFRE = 6;
 
-/** En dessous, une lecture ne vaut rien. Mesuré sur l'ancien moteur : c'est le seuil qui écarte les
- *  plis de maillot pris pour des « 1 » sans écarter les vrais numéros. */
-export const CONFIANCE_MIN = 62;
+/**
+ * EN DESSOUS, ON PRÉFÈRE NE RIEN DIRE (29/09/2026).
+ *
+ * Mesuré sur 36 photos étiquetées à l'œil : les deux dossards correctement lus le sont à 95 % de
+ * confiance, et les trois lectures inventées à 87, 77 et 82. La coupure se place donc toute seule.
+ *
+ * ELLE EST VOLONTAIREMENT HAUTE. Un numéro faux ne se contente pas d'être faux : il propose les
+ * photos d'un enfant à la famille d'un autre. Rater un dossard ne coûte qu'une photo non proposée,
+ * que la reconnaissance du visage retrouvera peut-être ; en inventer un coûte la confiance d'une
+ * famille. Les deux erreurs n'ont pas le même prix, le seuil ne les traite donc pas pareil.
+ */
+export const CONFIANCE_MIN = 90;
 
 let ocr = null;
 
@@ -87,25 +105,44 @@ export async function pixelsDe(imageBrute) {
 }
 
 /**
- * Les zones où chercher : sous chaque visage, puis l'image entière.
+ * Où chercher : le haut du dos de chaque personne.
  *
- * Un torse fait environ deux largeurs de visage et trois hauteurs, à partir du menton. On prend
- * large : mieux vaut fouiller un peu de pelouse que couper le numéro en deux.
+ * CE QUI A CHANGÉ LE 29/09/2026. On cherchait sous les visages et, à défaut, dans l'image entière.
+ * Or les 5 photos à dossard des 36 regardées sont TOUTES des vues de dos, donc sans visage : il ne
+ * restait que la passe sur l'image entière, qui fouille l'herbe, les grillages et les poteaux. D'où
+ * 43 numéros inventés sur 36 photos, et 4 % de précision.
+ *
+ * Maintenant on part des corps. Le numéro se porte entre les omoplates : mesuré sur les photos
+ * étiquetées, il occupe la bande qui va de 15 % à 60 % de la hauteur du corps, et l'essentiel de sa
+ * largeur. On prend un peu plus large que nécessaire — mieux vaut fouiller un bout de short que
+ * couper un chiffre en deux.
  */
-export function zonesDeRecherche(visages, largeur, hauteur) {
+export function zonesDeRecherche(personnes, visages = []) {
   const zones = [];
-  for (const v of visages) {
-    const [x, y, w, h] = v.boite;
-    const zx = Math.max(0, x - w * 0.9);
-    const zy = Math.max(0, y + h * 0.75);
-    const zw = Math.min(largeur - zx, w * 2.8);
-    const zh = Math.min(hauteur - zy, h * 3.4);
-    if (zw > 12 && zh > 12) zones.push({ boite: [zx, zy, zw, zh], reference: h * 4.5 });
+  for (const p of personnes) {
+    const [x, y, w, h] = p.boite;
+    // ON NE LIT QUE LES DOS (29/09/2026). Un numéro de maillot se porte entre les omoplates ; sur
+    // une personne vue de face, il n'y a rien à lire, et tout ce qu'on y trouve est inventé. Le cas
+    // réel : un éducateur filmé de face, polo blanc et bleu, d'où le moteur a sorti « 2 » et « 1 ».
+    //
+    // Reconnaître un dos ne demande aucun modèle de plus : c'est une personne SANS visage. Et c'est
+    // précisément là que la reconnaissance faciale ne peut rien, donc là que le dossard vaut
+    // quelque chose — les deux méthodes se partagent le travail au lieu de se concurrencer.
+    // C'est SON visage à elle qu'on cherche, pas celui du voisin : sur un terrain les corps se
+    // chevauchent, et « un visage quelque part dans la boîte » écartait des joueurs de dos parce
+    // qu'un coéquipier passait derrière. Le sien est en haut, au milieu, et à l'échelle du corps.
+    const deFace = visages.some((v) => {
+      const [fx, fy, fw, fh] = v.boite;
+      const cx = fx + fw / 2, cy = fy + fh / 2;
+      return cx > x + w * 0.20 && cx < x + w * 0.80
+          && cy > y && cy < y + h * 0.30
+          && fh > h * 0.06 && fh < h * 0.30;
+    });
+    if (deFace) continue;
+    const zx = x + w * 0.05, zy = y + h * 0.13;
+    const zw = w * 0.90, zh = h * 0.50;
+    if (zw > 16 && zh > 16) zones.push({ boite: [zx, zy, zw, zh], reference: h });
   }
-  // L'échelle de la passe entière : celle du plus grand visage vu, faute de quoi on chercherait des
-  // chiffres de la taille de l'image.
-  const plusGrand = visages.reduce((m, v) => Math.max(m, v.boite[3]), 0);
-  if (plusGrand) zones.push({ boite: [0, 0, largeur, hauteur], reference: plusGrand * 4.5 });
   return zones;
 }
 
@@ -126,6 +163,16 @@ export function chercherChiffres(image, zone, clairSurFonce, reference) {
   const W = Math.max(1, Math.min(largeur - X, Math.round(zone[2])));
   const H = Math.max(1, Math.min(hauteur - Y, Math.round(zone[3])));
 
+  // CE QUI DISTINGUE UN CHIFFRE BLANC, CE N'EST PAS SA LUMINOSITÉ, C'EST SON ABSENCE DE COULEUR.
+  // Un « 11 » blanc sur un maillot bleu clair donne deux gris voisins : en niveaux de gris, on ne
+  // sépare rien. Par la saturation, le chiffre ressort net.
+  //
+  // OTSU A ÉTÉ ESSAYÉ ET ÉCARTÉ (29/09/2026). Un seuil calculé sur la zone paraissait plus robuste
+  // qu'une constante — au soleil, à l'ombre, quelle que soit la couleur du club. Mesuré : il fait
+  // tomber la lecture de 2 dossards sur 6 à 0 sur 6. Sur un dos, le maillot occupe l'écrasante
+  // majorité des pixels et Otsu place sa coupure à l'intérieur du tissu, pas entre le tissu et le
+  // chiffre. On garde donc la règle mesurée, et cette note pour que personne ne la « modernise »
+  // une deuxième fois.
   const masque = new Uint8Array(W * H);
   for (let ly = 0; ly < H; ly++) {
     for (let lx = 0; lx < W; lx++) {
@@ -133,15 +180,18 @@ export function chercherChiffres(image, zone, clairSurFonce, reference) {
       const r = pixels[k] / 255, g = pixels[k + 1] / 255, b = pixels[k + 2] / 255;
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       const sat = mx === 0 ? 0 : (mx - mn) / mx;
-      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      const l = 0.299 * r + 0.587 * g + 0.114 * b;
       masque[ly * W + lx] = clairSurFonce
-        ? ((sat < 0.25 && lum > 0.62) ? 1 : 0)
-        : ((lum < 0.32) ? 1 : 0);
+        ? ((sat < 0.25 && l > 0.62) ? 1 : 0)
+        : ((l < 0.32) ? 1 : 0);
     }
   }
 
+  // L'ÉCHELLE EST CELLE DU CORPS, ET LA FENÊTRE EST ÉTROITE. Mesuré sur les photos étiquetées : un
+  // numéro de maillot fait entre 12 % et 25 % de la hauteur du joueur. L'ancienne fenêtre, de 7 % à
+  // 32 %, laissait entrer les lettres du sponsor (« tessi », 6 %) et les plis de tissu.
   const ech = reference || H;
-  const hMin = Math.max(HAUTEUR_MIN_CHIFFRE, ech * 0.07), hMax = ech * 0.32;
+  const hMin = Math.max(HAUTEUR_MIN_CHIFFRE, ech * 0.10), hMax = ech * 0.30;
   const vu = new Uint8Array(W * H), file = new Int32Array(W * H), taches = [];
   for (let s = 0; s < masque.length; s++) {
     if (!masque[s] || vu[s]) continue;
@@ -198,7 +248,7 @@ export function chercherChiffres(image, zone, clairSurFonce, reference) {
  * On binarise AVEC LE MÊME CRITÈRE que la détection : donner à l'OCR une image en couleurs
  * reviendrait à lui demander de refaire le tri qu'on vient de faire, et il le referait moins bien.
  */
-async function vignette(image, zone, clairSurFonce) {
+export async function vignette(image, zone, clairSurFonce) {
   const { pixels, largeur, hauteur, canaux } = image;
   const marge = Math.round(zone.h * 0.30);
   const zx = Math.max(0, Math.round(zone.x - marge));
@@ -206,6 +256,8 @@ async function vignette(image, zone, clairSurFonce) {
   const zw = Math.max(1, Math.min(largeur - zx, Math.round(zone.w + marge * 2)));
   const zh = Math.max(1, Math.min(hauteur - zy, Math.round(zone.h + marge * 2)));
 
+  // MÊME CRITÈRE QUE LA DÉTECTION, sur ce même morceau : donner à l'OCR une image binarisée
+  // autrement que celle où l'on a trouvé le chiffre reviendrait à lui montrer autre chose.
   const gris = Buffer.allocUnsafe(zw * zh);
   for (let ly = 0; ly < zh; ly++) {
     for (let lx = 0; lx < zw; lx++) {
@@ -213,18 +265,28 @@ async function vignette(image, zone, clairSurFonce) {
       const r = pixels[k] / 255, g = pixels[k + 1] / 255, b = pixels[k + 2] / 255;
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       const sat = mx === 0 ? 0 : (mx - mn) / mx;
-      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-      const est = clairSurFonce ? (sat < 0.25 && lum > 0.62) : (lum < 0.32);
+      const l = 0.299 * r + 0.587 * g + 0.114 * b;
+      const est = clairSurFonce ? (sat < 0.25 && l > 0.62) : (l < 0.32);
       // Tesseract lit du noir sur du blanc : le chiffre devient noir, le reste blanc.
       gris[ly * zw + lx] = est ? 0 : 255;
     }
   }
 
-  // Tesseract lit mal en dessous d'une trentaine de pixels de haut. On agrandit jusqu'à 140, sans
-  // lissage : interpoler un trait binaire lui rendrait ses gris, donc son ambiguïté.
-  const ech = Math.min(12, Math.max(3, 140 / zh));
+  // LA TAILLE, ET C'ÉTAIT LE DÉFAUT (29/09/2026). L'ancienne règle agrandissait TOUJOURS d'au moins
+  // trois fois : un numéro déjà grand dans l'image donnait une vignette de 963 × 1170 pixels.
+  // Tesseract lit mal ce qui est trop gros autant que ce qui est trop petit — mesuré sur un « 10 »
+  // parfaitement net : illisible à 1 170 px de haut (il lisait « 4 », puis « 0 »), lu « 10 » à 95 %
+  // une fois ramené à 96 px. C'est ce qui faisait échouer la lecture des vrais dossards pendant que
+  // le bruit, lui, passait.
+  //
+  // On vise donc une hauteur de texte d'environ 100 pixels, en agrandissant OU en réduisant.
+  const ech = Math.min(12, Math.max(0.15, 100 / zh));
   return sharp(gris, { raw: { width: zw, height: zh, channels: 1 } })
-    .resize(Math.round(zw * ech), Math.round(zh * ech), { kernel: "nearest" })
+    .resize(Math.max(1, Math.round(zw * ech)), Math.max(1, Math.round(zh * ech)),
+            { kernel: ech >= 1 ? "nearest" : "lanczos3" })
+    // Une marge blanche : Tesseract cherche une ligne de texte, et une ligne collée au bord du
+    // cadre ne ressemble pas à une ligne de texte.
+    .extend({ top: 24, bottom: 24, left: 24, right: 24, background: { r: 255, g: 255, b: 255 } })
     .png().toBuffer();
 }
 
@@ -234,19 +296,21 @@ async function vignette(image, zone, clairSurFonce) {
  * Rend une liste d'entiers de 1 à 99, sans doublon. Une liste vide veut dire « rien de lisible »,
  * jamais « il n'y a personne » : c'est la base qui en tire les conséquences.
  */
-export async function lireDossards(image, visages, { confianceMin = CONFIANCE_MIN } = {}) {
+export async function lireDossards(image, personnes, visages = [], { confianceMin = CONFIANCE_MIN, detail = false } = {}) {
   const t = await preparerOcr();
   const numeros = [];
-  const zones = zonesDeRecherche(visages, image.largeur, image.hauteur);
-
-  for (const z of zones) {
+  for (const z of zonesDeRecherche(personnes, visages)) {
+    // Un joueur porte UN numéro. On garde la meilleure lecture de son dos, pas toutes.
+    let meilleure = null;
     for (const clair of [true, false]) {
       for (const groupe of chercherChiffres(image, z.boite, clair, z.reference)) {
         const attendus = groupe.parts.length;
         const vue = await vignette(image, groupe, clair);
         const essais = [];
-        // Trois découpages de page : le mot seul, le bloc, la ligne brute. Aucun ne gagne toujours.
-        for (const psm of ["7", "8", "13"]) {
+        // LES MODES QUI MARCHENT, mesurés sur un dossard net : 6, 7 et 11 lisent « 10 » à 95 %,
+        // tandis que 8 et 13 s'arrêtent au premier chiffre et rendent « 0 » avec autant d'aplomb.
+        // Garder ces deux-là revenait à fabriquer de faux votes pour une lecture tronquée.
+        for (const psm of ["6", "7", "11"]) {
           await t.setParameters({ tessedit_pageseg_mode: psm });
           const { data } = await t.recognize(vue);
           const brut = (data.text || "").replace(/[^0-9]/g, "");
@@ -261,15 +325,35 @@ export async function lireDossards(image, visages, { confianceMin = CONFIANCE_MI
           if (ch.length === 1) { parChiffre += ch; somme += data.confidence; nb++; }
         }
         if (parChiffre) essais.push({ t: parChiffre, c: nb ? somme / nb : 0 });
+        if (!essais.length) continue;
 
-        // La bonne LONGUEUR d'abord, la confiance ensuite.
-        essais.sort((a, b) => ((b.t.length === attendus) - (a.t.length === attendus)) || (b.c - a.c));
-        const lu = essais[0];
-        if (!lu || !lu.t) continue;
+        // L'ACCORD PLUTÔT QUE LA CONFIANCE (29/09/2026). Tesseract rend toujours quelque chose, et
+        // il le rend avec aplomb : c'est comme ça qu'un pli de maillot devenait un « 1 » à 83 %.
+        // Quatre lectures indépendantes du même bout d'image, en revanche, ne tombent d'accord par
+        // hasard que très rarement. On exige donc que la bonne longueur ET la même valeur sortent
+        // au moins deux fois.
+        const voix = new Map();
+        for (const e of essais) {
+          if (e.t.length !== attendus) continue;
+          const v = voix.get(e.t) || { n: 0, c: 0 };
+          voix.set(e.t, { n: v.n + 1, c: Math.max(v.c, e.c) });
+        }
+        let lu = null;
+        for (const [texte, v] of voix)
+          if (v.n >= 2 && v.c >= confianceMin && (!lu || v.n > lu.n || (v.n === lu.n && v.c > lu.c)))
+            lu = { t: texte, n: v.n, c: v.c };
+        if (!lu) continue;
+
         const n = +lu.t;
-        if (n >= 1 && n <= 99 && lu.c >= confianceMin && !numeros.includes(n)) numeros.push(n);
+        if (n < 1 || n > 99) continue;
+        // La plus grande lecture du dos l'emporte : un vrai numéro est le plus gros caractère du
+        // maillot, et ce qui est plus petit est un sponsor ou une taille.
+        if (!meilleure || groupe.h > meilleure.h)
+          meilleure = { n, h: groupe.h, c: lu.c, voix: lu.n, chiffres: attendus, part: groupe.h / z.reference, clair };
       }
     }
+    if (meilleure && !numeros.some((x) => (detail ? x.n : x) === meilleure.n))
+      numeros.push(detail ? meilleure : meilleure.n);
   }
   return numeros;
 }
