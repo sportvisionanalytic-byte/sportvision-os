@@ -330,6 +330,67 @@ function accumuler(references, photosConfirmees, visagesParPhoto) {
 }
 
 // ── Une galerie ─────────────────────────────────────────────────────────────────────────────────
+/**
+ * VIDER LA FILE DE PURGE BIOMÉTRIQUE (29/09/2026).
+ *
+ * POURQUOI CETTE FONCTION EXISTE. Quand un parent retire son accord, le déclencheur
+ * `effacer_biometrie_au_retrait` supprime les empreintes tout de suite — c'est elles qui permettent
+ * de reconnaître un visage, donc le retrait est effectif immédiatement — et met les FICHIERS dans
+ * `biometrie_a_purger`. Sauf que RIEN, nulle part, ne vidait cette file. Vérifié le 29/09 : aucun
+ * code du dépôt ne lisait cette table. Les photos de référence d'enfants dont les parents avaient
+ * retiré leur accord restaient donc dans le stockage, indéfiniment.
+ *
+ * ET ELLES NE PEUVENT PAS ÊTRE SUPPRIMÉES EN SQL. Supabase répond « Direct deletion from storage
+ * tables is not allowed. Use the Storage API » ; c'est cette erreur qui, dans v344, annulait la
+ * transaction entière et rendait le retrait sans effet (voir v352). Il faut l'API Storage, donc un
+ * client HTTP, donc ce moteur : c'est la seule chose qui tourne en permanence avec les droits de
+ * service.
+ *
+ * UN FICHIER DÉJÀ ABSENT COMPTE COMME PURGÉ. Sinon la file ne se vide jamais et on relit les mêmes
+ * lignes à chaque passage, en croyant qu'il reste du travail.
+ */
+async function purgerBiometrie() {
+  const { ok, d: file } = await rest(
+    "biometrie_a_purger?select=id,storage_bucket,storage_path&purge_le=is.null&limit=200");
+  if (!ok || !Array.isArray(file) || file.length === 0) return 0;
+
+  let purges = 0, restes = 0;
+  for (const l of file) {
+    let parti = false;
+    try {
+      // SANS `Content-Type`, ET C'EST INDISPENSABLE. Ce DELETE n'a pas de corps, et le serveur de
+      // stockage refuse « Body cannot be empty when content-type is set ». `entetes` porte le
+      // Content-Type utile à PostgREST ; ici il fait échouer l'appel. Mesuré le 29/09 : mon essai
+      // en curl passait justement parce que curl ne l'envoie pas de lui-même.
+      const r = await fetch(`${URL_SB}/storage/v1/object/${encodeURI(`${l.storage_bucket}/${l.storage_path}`)}`,
+        { method: "DELETE", headers: { apikey: CLE, Authorization: `Bearer ${CLE}` } });
+      // UN FICHIER DÉJÀ ABSENT, C'EST LE RÉSULTAT VOULU — MAIS IL FAUT LIRE LE CORPS POUR LE SAVOIR.
+      //
+      // Mesuré le 29/09 : Supabase Storage répond « HTTP 400 » pour un objet manquant, et ne met le
+      // 404 QUE dans le corps : {"statusCode":"404","error":"not_found","code":"NoSuchKey"}.
+      // Mon premier test regardait `r.status === 404` et comptait donc un échec : la file ne se
+      // vidait jamais, on réessayait éternellement les mêmes lignes en croyant qu'il restait du
+      // travail. Un effacement à faire indéfiniment ressemble à un effacement jamais fait.
+      const corps = r.ok ? "" : await r.text().catch(() => "");
+      parti = r.ok || /NoSuchKey|not_found|"statusCode"\s*:\s*"404"/.test(corps);
+      if (!parti) dire(`   purge refusée (${r.status}) : ${corps.slice(0, 100)}`);
+    } catch { parti = false; }
+    if (!parti) { restes++; continue; }
+    const m = await rest(`biometrie_a_purger?id=eq.${l.id}`, {
+      method: "PATCH", body: JSON.stringify({ purge_le: new Date().toISOString() }),
+      headers: { Prefer: "return=minimal" },
+    });
+    // ON NE MARQUE QUE CE QU'ON A VRAIMENT EFFACÉ, et on ne marque pas si l'écriture échoue : mieux
+    // vaut réessayer une purge déjà faite que perdre la trace d'une purge à faire.
+    if (m.ok) purges++; else restes++;
+  }
+  if (purges || restes) {
+    dire(`   purge biométrique : ${purges} fichier(s) effacé(s)`
+      + (restes ? `, ${restes} à réessayer au prochain passage` : ""));
+  }
+  return purges;
+}
+
 async function traiterGalerie(album, lignes) {
   const relacher = await tenirEveille();
   try {
@@ -758,6 +819,11 @@ async function vider() {
     // deposer sa photo attend devant son ecran ; un rattrapage de publication n'attend personne.
     // Fouka a depose sa reference a 11 h 58 et n'a rien vu venir : son travail patientait derriere
     // une galerie de 161 photos mise en file une heure plus tot.
+    // LA PURGE D'ABORD, ET MÊME QUAND LA FILE DE TRAVAIL EST VIDE. Un effacement demandé par une
+    // famille ne doit pas attendre qu'il y ait des galeries à traiter : c'est un droit, pas une
+    // tâche de fond. On le fait à chaque passage, soit toutes les vingt secondes.
+    if (!SIMULER) await purgerBiometrie().catch((e) => dire(`   purge biométrique impossible : ${String(e && e.message || e).slice(0, 90)}`));
+
     const { d: file } = await rest("reconnaissance_a_faire?select=id,album_id,player_id,priorite&traite_le=is.null&order=priorite,demande_le&limit=500");
     if (!Array.isArray(file) || file.length === 0) {
       if (!EN_BOUCLE) dire("La file est vide. Rien à faire.");

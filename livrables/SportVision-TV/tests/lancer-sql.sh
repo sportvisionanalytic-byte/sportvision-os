@@ -30,19 +30,30 @@ REF=$(echo "$SUPABASE_URL" | sed -E 's#https://([a-z0-9]+)\.supabase\.co.*#\1#')
 FILTRE="${1:-}"
 DOSSIER="$(cd "$(dirname "$0")" && pwd)"
 
+# DES FICHIERS TEMPORAIRES PROPRES A CE LANCEMENT (29/09/2026).
+#
+# CE QUE CA A COUTE. Le lanceur ecrivait dans /tmp/_t.json et /tmp/_r.json, deux noms FIXES. J'ai
+# lance un test seul pendant que la suite complete tournait : les deux invocations se sont ecrasees
+# l'une l'autre, et 60 tests ont ete comptes CASSE avec « reponse illisible ». J'ai cru pendant un
+# moment que toute la base de tests etait morte. Ce n'etait que ca.
+#
+# Un test qui ne s'execute pas ne prouve rien (lecon du 28/09) — mais un test qu'on CROIT cassé
+# alors qu'il est vert coute encore plus cher : on cesse de faire confiance a la suite entiere.
 vert=0; rouge=0; casse=0; muet=0; rapport="$(mktemp)"
+CORBEILLE="$(mktemp -d)"; trap 'rm -rf "$CORBEILLE"' EXIT
+REQ="$CORBEILLE/requete.json"; REP="$CORBEILLE/reponse.json"
 for f in "$DOSSIER"/*.test.sql; do
   nom=$(basename "$f" .test.sql)
   [ -n "$FILTRE" ] && [[ "$nom" != *"$FILTRE"* ]] && continue
-  python3 -c "import json,sys;print(json.dumps({'query':open(sys.argv[1]).read()}))" "$f" > /tmp/_t.json
+  python3 -c "import json,sys;print(json.dumps({'query':open(sys.argv[1]).read()}))" "$f" > "$REQ"
   curl -s --max-time 120 -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
     -H "Authorization: Bearer $SUPABASE_MANAGEMENT_TOKEN" -H "Content-Type: application/json" \
-    --data @/tmp/_t.json > /tmp/_r.json
-  verdict=$(python3 - "$nom" <<'PY'
+    --data @"$REQ" > "$REP"
+  verdict=$(python3 - "$nom" "$REP" <<'PY'
 import json,sys,re
 nom = sys.argv[1]
 try:
-    d = json.loads(open('/tmp/_r.json').read(), strict=False)
+    d = json.loads(open(sys.argv[2]).read(), strict=False)
 except Exception:
     print("CASSE|reponse illisible"); raise SystemExit
 if isinstance(d, list):
