@@ -17,6 +17,7 @@ import {
   type EtatConsentement,
   type PhotoReference,
 } from "@/lib/supabase/reconnaissance";
+import { messageErreurBase } from "@/lib/supabase/erreurs-serveur";
 import type { AthleteDetail } from "../AthleteDetailView";
 
 // Écran de consentement à la reconnaissance du visage de l'enfant.
@@ -78,8 +79,9 @@ export function ReconnaissanceView({
   async function retirerUnePhoto(id: string) {
     setErreur(null); setMessage(null);
     const supabase = createClient();
-    if (!(await retirerPhotoReference(supabase, id))) {
-      setErreur("Cette photo n'a pas pu être retirée. Réessayez dans un instant.");
+    const echec = await retirerPhotoReference(supabase, id);
+    if (echec) {
+      setErreur(messageErreurBase(echec, "Cette photo n'a pas pu être retirée. Réessayez dans un instant."));
       return;
     }
     await relirePhotos();
@@ -96,7 +98,12 @@ export function ReconnaissanceView({
       p_texte_version: VERSION_TEXTE_CONSENTEMENT,
     });
     if (error) {
-      setErreur("Votre accord n'a pas pu être enregistré. Réessayez, et écrivez-nous si cela se reproduit.");
+      // LA BASE A DÉJÀ ÉCRIT LA SORTIE : ON NE LA REMPLACE PLUS PAR « RÉESSAYEZ » (29/09/2026).
+      // Avant 15 ans, `donner_consentement_biometrie` refuse en disant d'inviter son parent (v226).
+      // Cette page ne teste PAS l'âge, volontairement (voir l'en-tête de (joueur)/reconnaissance/
+      // page.tsx) : sans la phrase de la base, un sportif de 13 ans réessayait indéfiniment un geste
+      // qui ne pouvait pas aboutir. Voir messageErreurBase.
+      setErreur(messageErreurBase(error, "Votre accord n'a pas pu être enregistré. Réessayez, et écrivez-nous si cela se reproduit."));
       setEnCours(null);
       return;
     }
@@ -151,7 +158,10 @@ export function ReconnaissanceView({
       // La photo est partie mais n'est rattachée à rien : on la retire tout de suite plutôt que de
       // la laisser traîner dans le stockage.
       await supabase.storage.from(BUCKET_VISAGES).remove([chemin]);
-      setErreur("La photo n'a pas pu être enregistrée. Réessayez dans un instant.");
+      // Même raison que pour l'accord : « Aucun accord actif : la photo ne peut pas être
+      // enregistrée. » et « Cinq photos de référence suffisent. Retirez-en une… » (v332) disent quoi
+      // faire, « réessayez » ne dit rien et fait recommencer un dépôt qui échouera pareil.
+      setErreur(messageErreurBase(erreurLien, "La photo n'a pas pu être enregistrée. Réessayez dans un instant."));
       setEnCours(null);
       return;
     }
@@ -170,18 +180,36 @@ export function ReconnaissanceView({
     const supabase = createClient();
     const { data, error } = await supabase.rpc("retirer_consentement_biometrie", { p_player_id: detail.ref_id });
     if (error) {
-      setErreur("Votre accord n'a pas pu être retiré. Réessayez, et écrivez-nous si cela se reproduit.");
+      setErreur(messageErreurBase(error, "Votre accord n'a pas pu être retiré. Réessayez, et écrivez-nous si cela se reproduit."));
       setEnCours(null);
       return;
     }
+    // CE QUE LA BASE FAIT VRAIMENT DEPUIS LA v352 (29/09/2026). Elle efface les empreintes tout de
+    // suite — c'est ce qui rend le retrait effectif — mais elle ne supprime plus les FICHIERS
+    // elle-même : Supabase interdit un delete sur storage.objects, et l'erreur annulait toute la
+    // transaction (le retrait n'avait alors aucun effet du tout). Elle les met en file de purge,
+    // vidée par le moteur, et nous rend leurs chemins pour que le navigateur fasse le geste tout de
+    // suite quand il peut.
+    //
+    // Il ne le peut pas toujours (réseau, refus de stockage), et le résultat n'était même pas lu :
+    // l'écran annonçait « la photo de référence est effacée » dans tous les cas. C'est la règle du
+    // 10/09 — pas de faux succès — sur la donnée la plus sensible du produit. On ne promet donc
+    // « effacées » que si le geste a réussi ; sinon on dit que la suppression est en cours, ce qui
+    // est exactement vrai. Et « les photos » au pluriel : il peut y en avoir cinq (v332).
     const chemins = ((data as { chemins?: string[] } | null)?.chemins ?? []).filter(Boolean);
+    let fichiersPartis = true;
     if (chemins.length > 0) {
-      await supabase.storage.from(BUCKET_VISAGES).remove(chemins);
+      const { error: erreurPurge } = await supabase.storage.from(BUCKET_VISAGES).remove(chemins);
+      fichiersPartis = !erreurPurge;
     }
     await rafraichir();
     setAutoriteParentale(false);
     setAutorise(false);
-    setMessage("Votre accord est retiré et la photo de référence est effacée.");
+    setMessage(
+      fichiersPartis
+        ? "Votre accord est retiré. Les empreintes et les photos de référence sont effacées."
+        : "Votre accord est retiré et les empreintes sont effacées : la reconnaissance est arrêtée dès maintenant. La suppression des photos déposées est en cours et se termine dans quelques minutes.",
+    );
     setEnCours(null);
   }
 
@@ -301,9 +329,11 @@ export function ReconnaissanceView({
 
           <div className="mt-5 border-t border-border pt-5">
             <h3 className="font-sora text-[15px] font-semibold">Retirer votre accord</h3>
+            {/* Au pluriel : il peut y avoir jusqu'à cinq photos de référence depuis la v332, et le
+                singulier laissait croire qu'une seule partait. */}
             <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
-              La photo et son empreinte sont effacées immédiatement. Les photos qui sont déjà dans
-              votre espace y restent.
+              Les empreintes et les photos de référence sont effacées immédiatement. Les photos qui
+              sont déjà dans votre espace y restent.
             </p>
             <Button
               variant="danger"

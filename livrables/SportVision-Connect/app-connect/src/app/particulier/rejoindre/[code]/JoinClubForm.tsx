@@ -28,15 +28,33 @@ export function JoinClubForm({ code, athletes }: { code: string; athletes: Athle
   // 'self'/'managed'/'new' n'ont pas de date de naissance fiable côté Connect — nécessaire pour
   // le rapprochement fort côté club (find_player_match_candidates), jamais devinée.
   const needsIdentity = choice && choice.kind !== "club";
-  const prefillFromAthlete = choice ? athletes.find((a) => a.refId === choice.refId) : null;
 
   function pick(c: Choice) {
     setChoice(c);
     setError(null);
-    if (c.kind === "managed" && prefillFromAthlete) {
-      setFirstName(prefillFromAthlete.firstName);
-      setLastName(prefillFromAthlete.lastName);
-    } else if (c.kind === "self" || c.kind === "new") {
+    // LE PRÉREMPLISSAGE SUIT LE SPORTIF QU'ON VIENT DE CHOISIR, PAS CELUI D'AVANT (29/09/2026).
+    //
+    // La source était `athletes.find(a => a.refId === choice.refId)`, calculée à partir de `choice`,
+    // l'état du rendu COURANT : dans ce clic, elle vaut encore le choix précédent. Deux symptômes,
+    // tous les deux dans le chemin le plus fréquent (un parent scanne le QR de l'équipe) :
+    //
+    //   - au PREMIER clic sur un sportif déjà suivi, rien n'était prérempli (le choix précédent
+    //     était « aucun ») : le parent retapait le nom, et le moindre écart d'orthographe faisait
+    //     rater le rapprochement fort de find_player_match_candidates — donc une SECONDE fiche
+    //     créée dans le club pour le même enfant, ce que connect_join_club_via_smart_link existe
+    //     précisément pour éviter ;
+    //   - en passant d'un enfant à l'autre, le formulaire affichait le nom du PREMIER sous la
+    //     sélection du second. « Confirmer » envoyait alors l'identité du premier : le parent
+    //     croyait inscrire un enfant et en inscrivait un autre, sans rien voir d'anormal.
+    //
+    // On lit donc `c`, l'argument du clic, qui est la seule valeur à jour ici.
+    const source = c.refId ? athletes.find((a) => a.refId === c.refId) : null;
+    if (c.kind === "managed" && source) {
+      setFirstName(source.firstName);
+      setLastName(source.lastName);
+    } else {
+      // 'self', 'new' et 'club' repartent d'un formulaire vide : pour 'club' les champs ne sont même
+      // pas affichés, et y laisser la saisie d'un autre sportif n'aurait servi qu'à la renvoyer.
       setFirstName("");
       setLastName("");
     }

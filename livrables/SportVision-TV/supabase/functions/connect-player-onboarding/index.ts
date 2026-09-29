@@ -136,7 +136,9 @@ async function upsertJoiningPlayerProfile(
   // Le claim reste ouvert au parcours « code d'invitation d'équipe » : là, le code prouve que le
   // club a voulu cette personne. Sans code, on ne touche pas à la fiche et on dit quoi faire.
   autoriserClaim: boolean,
-): Promise<{ playerId: string } | { error: string }> {
+// `conflit` distingue un refus de regle (409) d'une panne technique (500). Voir son unique usage
+// plus bas : sans lui, les deux devenaient 500 et le refus se rejouait sans fin.
+): Promise<{ playerId: string } | { error: string; conflit?: boolean }> {
   // Multi-club (04/09/2026, décision produit Fouka) — résolution par (user_id, club_id), jamais
   // user_id seul : un compte peut désormais avoir plusieurs fiches player_profiles, une par club
   // (contrainte player_user_club_unique, migration-multiclub-identity.sql). Rejoindre un DEUXIÈME
@@ -176,6 +178,20 @@ async function upsertJoiningPlayerProfile(
 
   if (unclaimedId && !autoriserClaim) {
     return {
+      // UN REFUS DE REGLE N'EST PAS UNE PANNE, ET LE CODE HTTP DOIT LE DIRE (30/09/2026).
+      //
+      // Cette fonction rendait `{ error }` pour deux choses opposees : ce refus-ci, qui est un
+      // CONFLIT (la fiche existe deja, il faut un code d'invitation), et de vraies pannes de base
+      // (`insErr.message`). L'appelant repondait 500 dans les deux cas, et deux consequences en
+      // decoulaient :
+      //   - l'heuristique `definitive` de Connect classe 400/403/404/409 comme definitif : un 500
+      //     etait donc juge REJOUABLE, l'inscription en attente etait conservee et le meme refus se
+      //     rejouait a chaque connexion, indefiniment ;
+      //   - aucun appelant ne pouvait distinguer une regle d'un crash sans lire le corps.
+      //
+      // Le drapeau `conflit` remonte jusqu'au code HTTP. Trouve en auditant les parcours
+      // d'inscription le 30/09/2026.
+      conflit: true,
       error:
         "Votre club a déjà une fiche à ce nom. Pour la rattacher à votre compte, demandez le code " +
         "d'invitation de votre équipe à votre coach ou au club, puis utilisez « J'ai un code ».",
@@ -467,7 +483,11 @@ serve(async (req) => {
       // de l'appelant forwardé) pour l'UPDATE. Voir migration-connect-v81 (exception self-service
       // du trigger) et sa fonction jumelle utilisée par "join_code" ci-dessous.
       const profileResult = await upsertJoiningPlayerProfile(admin, userClient, user.id, org.id, prenom, nom, dateNaissance, false);
-      if ("error" in profileResult) return json({ error: profileResult.error }, 500);
+      // 409 pour un conflit, 500 pour une vraie panne : voir `conflit` dans
+      // upsertJoiningPlayerProfile. Sans cette distinction, un refus de regle se rejoue sans fin.
+      if ("error" in profileResult) {
+        return json({ error: profileResult.error }, "conflit" in profileResult && profileResult.conflit ? 409 : 500);
+      }
 
       const { error: mrErr } = await admin.from("membership_requests").insert({
         club_id: org.id,
@@ -518,7 +538,11 @@ serve(async (req) => {
       if (!org) return json({ error: "Club introuvable" }, 404);
 
       const profileResult = await upsertJoiningPlayerProfile(admin, userClient, user.id, org.id, prenom, nom, dateNaissance, true);
-      if ("error" in profileResult) return json({ error: profileResult.error }, 500);
+      // 409 pour un conflit, 500 pour une vraie panne : voir `conflit` dans
+      // upsertJoiningPlayerProfile. Sans cette distinction, un refus de regle se rejoue sans fin.
+      if ("error" in profileResult) {
+        return json({ error: profileResult.error }, "conflit" in profileResult && profileResult.conflit ? 409 : 500);
+      }
 
       const { error: mrErr } = await admin.from("membership_requests").insert({
         club_id: org.id,

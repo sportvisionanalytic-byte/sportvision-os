@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { messageErreurFonction } from "@/lib/supabase/erreurs-serveur";
 
 // Rejeu de l'inscription après confirmation d'e-mail — même filet de sécurité que app-next
 // (src/lib/signup/pending-onboarding.ts) : la confirmation d'e-mail est active sur ce projet
@@ -193,7 +194,22 @@ export async function consumePendingOnboarding(
       dateNaissance: pending.dateNaissance,
     },
   });
-  if (error) throw error;
+  // L'ERREUR PORTE DÉSORMAIS LA PHRASE DE LA FONCTION (29/09/2026). `functions.invoke` réduit toute
+  // réponse non-2xx à « Edge Function returned a non-2xx status code » : ce qu'on relançait était un
+  // message que personne ne pouvait lire, et les appelants se contentaient donc de le journaliser.
+  // Le refus le plus fréquent de l'action "join" est pourtant celui qui compte le plus — « Votre
+  // club a déjà une fiche à ce nom… utilisez « J'ai un code » » — et la famille ne le voyait jamais :
+  // elle atterrissait sur son accueil sans club et sans un mot. Même garde que app-next
+  // (erreurDeFonction dans son pending-onboarding.ts).
+  if (error) {
+    throw new Error(
+      await messageErreurFonction(
+        error,
+        null,
+        "Le rattachement à votre club n'a pas pu être finalisé. Vous pouvez le refaire depuis Mon affiliation.",
+      ),
+    );
+  }
   if (data?.error) throw new Error(data.error);
 
   if (local) {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
+import { messageErreurFonction } from "@/lib/supabase/erreurs-serveur";
 
 type Choice = "search" | "declare" | "none" | "code" | null;
 interface ClubResult {
@@ -146,7 +147,14 @@ export function AddClubForm({
     });
     setBusy(false);
     if (fnError || data?.error) {
-      setError("Impossible de rejoindre ce club pour le moment. Réessayez dans un instant.");
+      // LA FONCTION A DÉJÀ ÉCRIT LA SORTIE (29/09/2026). Sur cette action précise, le refus le plus
+      // fréquent est « Votre club a déjà une fiche à ce nom… utilisez « J'ai un code » » : c'est ce
+      // qui arrive à tout joueur dont le club a importé son effectif avant qu'il crée son compte.
+      // « Réessayez dans un instant » était une impasse — réessayer ne pouvait jamais aboutir, et
+      // la porte d'entrée n'était nommée nulle part. Voir lib/supabase/erreurs-serveur.ts.
+      setError(
+        await messageErreurFonction(fnError, data, "Impossible de rejoindre ce club pour le moment. Réessayez dans un instant."),
+      );
       return;
     }
     router.push("/affiliations");
@@ -170,7 +178,10 @@ export function AddClubForm({
     });
     setBusy(false);
     if (fnError || data?.error) {
-      setError("Code invalide ou expiré. Vérifiez-le auprès de votre club.");
+      // Le code invalide n'est qu'une des raisons de refus : le plafond horaire, une adresse non
+      // confirmée ou un code appartenant à une autre équipe se lisaient tous « Code invalide ou
+      // expiré », et envoyaient la personne harceler son club pour un code qui était bon.
+      setError(await messageErreurFonction(fnError, data, "Code invalide ou expiré. Vérifiez-le auprès de votre club."));
       return;
     }
     router.push("/affiliations");
@@ -199,7 +210,9 @@ export function AddClubForm({
     });
     setBusy(false);
     if (fnError || data?.error) {
-      setError("Impossible de mettre à jour votre profil pour le moment. Réessayez dans un instant.");
+      setError(
+        await messageErreurFonction(fnError, data, "Impossible de mettre à jour votre profil pour le moment. Réessayez dans un instant."),
+      );
       return;
     }
     router.push("/affiliations");
@@ -224,7 +237,9 @@ export function AddClubForm({
     });
     setBusy(false);
     if (fnError || data?.error) {
-      setError("Impossible d'enregistrer votre club pour le moment. Réessayez dans un instant.");
+      setError(
+        await messageErreurFonction(fnError, data, "Impossible d'enregistrer votre club pour le moment. Réessayez dans un instant."),
+      );
       return;
     }
     // Un club déclaré non partenaire ne crée aucune ligne visible sur le profil (aucune écriture

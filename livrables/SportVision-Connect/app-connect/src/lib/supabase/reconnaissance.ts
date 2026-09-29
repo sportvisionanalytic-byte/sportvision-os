@@ -50,14 +50,21 @@ export async function listerPhotosReference(
   return Array.isArray(data) ? (data as PhotoReference[]) : [];
 }
 
-/** Retirer une photo ratée. Sans ce geste, la limite de cinq deviendrait un mur. */
+/** Retirer une photo ratée. Sans ce geste, la limite de cinq deviendrait un mur.
+ *
+ *  Rend `null` quand c'est fait, et sinon l'erreur telle quelle : c'est l'écran qui décide ce qu'il
+ *  en montre (voir messageErreurBase ci-dessous). La base explique par exemple qu'on ne retire pas
+ *  la photo d'un sportif qui n'est pas le sien — une phrase que « réessayez » faisait disparaître. */
 export async function retirerPhotoReference(
   supabase: SupabaseClient,
   faceRefId: string,
-): Promise<boolean> {
+): Promise<{ message?: string } | null> {
   const { error } = await supabase.rpc("retirer_photo_reference", { p_face_ref_id: faceRefId });
-  return !error;
+  return error ?? null;
 }
+
+// Les refus de ces fonctions se lisent tels quels : voir messageErreurBase dans
+// lib/supabase/erreurs-serveur.ts, et l'écran ReconnaissanceView qui l'emploie.
 
 export const PHOTOS_REFERENCE_MAX = 5;
 

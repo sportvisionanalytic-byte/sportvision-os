@@ -44,10 +44,20 @@ export default function MesInvitationsPage() {
   // tout de suite puisque c'est le club qui a designe l'enfant (accept_parent_invitation pose
   // directement le statut « confirme »).
   const [acceptee, setAcceptee] = useState<Invitation | null>(null);
+  // UNE LECTURE QUI ÉCHOUE N'EST PAS UNE ABSENCE D'INVITATION (29/09/2026).
+  //
+  // L'erreur de `lister_mes_invitations` était convertie en liste vide, et la famille lisait
+  // « Aucune invitation en attente. Si votre club vous a invité, vérifiez que vous êtes connecté
+  // avec l'adresse à laquelle il a écrit. » Elle en concluait qu'elle s'était trompée d'adresse, ou
+  // que son club ne l'avait jamais invitée — alors que le club, lui, voit l'invitation partie. C'est
+  // la leçon du 11/09 : un écran vide vient plus souvent d'un droit ou d'une panne que d'une absence
+  // de données, et les deux ne se réparent pas de la même façon. On les distingue donc.
+  const [echecChargement, setEchecChargement] = useState(false);
 
   const charger = useCallback(() => {
     void (async () => {
       const { data, error } = await createClient().rpc("lister_mes_invitations");
+      setEchecChargement(!!error);
       setInvitations(error ? [] : ((data ?? []) as Invitation[]));
     })();
   }, []);
@@ -89,7 +99,24 @@ export default function MesInvitationsPage() {
 
       {invitations === null && <p className="text-[13.5px] text-text-soft">Chargement…</p>}
 
-      {invitations?.length === 0 && (
+      {/* La liste n'a pas pu être lue : on le dit, et on propose le seul geste utile — réessayer.
+          Renvoyer vers « vérifiez votre adresse » serait envoyer la personne réparer ce qui n'est
+          pas cassé. */}
+      {echecChargement && !acceptee && (
+        <div className="rounded-2xl border border-danger-border bg-danger-bg p-6 text-center">
+          <p className="text-[14px] font-bold text-danger">Vos invitations n&apos;ont pas pu être chargées</p>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-soft">
+            Ce n&apos;est pas votre adresse qui est en cause : la liste n&apos;a pas pu être lue.
+            Réessayez dans un instant. Si cela persiste, écrivez-nous à contact@sportvision-an.fr en
+            précisant le nom de votre club.
+          </p>
+          <div className="mt-4 flex justify-center">
+            <Button onClick={() => { setInvitations(null); charger(); }}>Réessayer</Button>
+          </div>
+        </div>
+      )}
+
+      {invitations?.length === 0 && !echecChargement && (
         <div className="rounded-2xl border border-border bg-surface p-6 text-center">
           <p className="text-[14px] font-bold">
             {!acceptee

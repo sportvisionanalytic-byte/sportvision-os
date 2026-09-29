@@ -1,3 +1,24 @@
+-- ╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+-- ║  NE PAS REJOUER CE FICHIER. IL CONTIENT UNE VERSION PERIMEE ET VULNERABLE.                   ║
+-- ╚══════════════════════════════════════════════════════════════════════════════════════════════╝
+--
+-- Constate le 30/09/2026 en auditant les parcours d'inscription.
+--
+-- Le `create or replace function connect_join_club_via_smart_link` ci-dessous est la version du
+-- 04/09. La v102 (10/09) l'a REMPLACEE pour fermer une faille P0 : un inconnu devenait parent
+-- CONFIRME d'un mineur avec le seul code d'equipe, le prenom, le nom et la date de naissance de
+-- l'enfant — trois informations qui circulent sur une feuille de match ou une photo d'equipe. La
+-- v102 a ajoute `v_enfant_preexistant` : quand la fiche de l'enfant existait AVANT l'appel, le lien
+-- part en `en_attente_confirmation` au lieu d'etre confirme d'office.
+--
+-- La version ci-dessous n'a pas cette garde. Rejouer ce fichier, meme par distraction, meme « pour
+-- remettre la base d'aplomb », REOUVRIRAIT la faille sans aucun message d'erreur.
+--
+-- Le fichier est conserve tel quel : c'est une trace de ce qui a ete applique le 04/09, et le
+-- reecrire apres coup effacerait l'historique. La protection est ailleurs :
+-- `livrables/SportVision-TV/tests/lien-parent-enfant-garde-v102.test.sql` verifie que la garde est
+-- toujours en base, et passera au ROUGE si quelqu'un rejoue ce fichier.
+
 -- Smart Link × parcours "particulier" (04/09/2026, décision produit Fouka suite au finding D11 de
 -- l'audit transversal) : "il ne faut surtout pas étendre managed_athlete_profiles pour en faire un
 -- deuxième système d'affiliation club... une personne/un enfant doit rester une identité canonique
