@@ -27,7 +27,7 @@
 // donc on ne peut pas se contenter d'une colonne : chaque montant est mesuré (`widthOfTextAtSize`)
 // et posé depuis la droite. Sans ça, une colonne de montants ressemble à une colonne mal rangée, et
 // c'est précisément ce qu'on regarde en premier sur ce genre de document.
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "https://esm.sh/pdf-lib@1.17.1";
+import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage } from "https://esm.sh/pdf-lib@1.17.1";
 import type { LigneRecap, Recap } from "./document.ts";
 import { moisEnClair } from "./document.ts";
 
@@ -36,7 +36,17 @@ const LOGO = "https://sportvision-an.fr/assets/brand/logo-mark.png";
 // La charte : un bleu nuit pour le texte, un gris froid pour le secondaire, un vert sobre pour ce
 // qui rassure (le virement). Repris du PDF de contrat pour que les documents de la maison se
 // ressemblent.
-const NUIT = rgb(0.105, 0.125, 0.200);
+// LA PALETTE EST CELLE DE L'ATTESTATION DE CERTIFICATION, reprise au chiffre pres (30/09/2026).
+// Fouka : « je vois un truc du meme style que ce que tu as fait pour les certifications, mais
+// surtout au niveau de la beaute, visuellement ». Plutot que d'inventer une seconde identite, on
+// reprend celle qui existe et qu'il aime : le bleu nuit #0B1B33 de l'en-tete, et les trois couleurs
+// de la ligne degradee violet / bleu / cyan.
+const NUIT = rgb(0.043, 0.106, 0.200);
+const VIOLET = rgb(0.545, 0.169, 1);
+const BLEU = rgb(0.165, 0.337, 1);
+const CYAN = rgb(0, 0.769, 1);
+const NUIT_TEXTE = rgb(0.059, 0.090, 0.165);
+const ARDOISE = rgb(0.580, 0.639, 0.722);
 const GRIS = rgb(0.533, 0.580, 0.667);
 const TRAIT = rgb(0.910, 0.922, 0.957);
 const FOND = rgb(0.957, 0.965, 0.984);
@@ -88,6 +98,30 @@ function pourHelvetica(s: string): string {
     .replace(/[^\x20-\x7E -ÿ€Œœ]/g, "");
 }
 
+/**
+ * LA LIGNE DEGRADEE VIOLET → BLEU → CYAN, signature visuelle de l'attestation.
+ *
+ * Un PDF ne sait pas faire de degrade avec une seule primitive : on pose donc une suite de fines
+ * bandes dont la couleur s'interpole. Deux cents bandes sur 595 points font trois points chacune,
+ * ce qui ne se distingue pas a l'oeil ni a l'impression.
+ */
+function ligneDegradee(page: PDFPage, y: number, hauteur: number,
+                      x0 = 0, largeur = LARGEUR): void {
+  const etapes = 200;
+  const pas = largeur / etapes;
+  for (let i = 0; i < etapes; i++) {
+    const t = i / (etapes - 1);
+    // Deux segments : violet → bleu sur la premiere moitie, bleu → cyan sur la seconde.
+    const [a, b, u] = t < 0.5
+      ? [[0.545, 0.169, 1], [0.165, 0.337, 1], t * 2]
+      : [[0.165, 0.337, 1], [0, 0.769, 1], (t - 0.5) * 2];
+    page.drawRectangle({
+      x: x0 + i * pas, y, width: pas + 0.6, height: hauteur,
+      color: rgb(a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u),
+    });
+  }
+}
+
 interface Plume {
   page: PDFPage;
   y: number;
@@ -125,54 +159,83 @@ export async function rendreRecapitulatifPdf(r: Recap, toutes: LigneRecap[]): Pr
   const gras = await doc.embedFont(StandardFonts.HelveticaBold);
   const normal = await doc.embedFont(StandardFonts.Helvetica);
   const page = doc.addPage([LARGEUR, HAUTEUR]);
+  const p: Plume = { page, y: 0, gras, normal };
 
-  // UNE BANDE DE MARQUE, BORD A BORD, EN HAUT DE PAGE. Six points de couleur : c'est le detail qui
-  // fait la difference entre une page de texte et un document qu'on a voulu. Fouka : « je veux un
-  // beau truc, comme les certifications ». Bord a bord et non dans la marge, sinon elle a l'air
-  // d'un trait oublie.
-  page.drawRectangle({ x: 0, y: HAUTEUR - 6, width: LARGEUR, height: 6, color: NUIT });
+  // ── L'EN-TETE BLEU NUIT, repris de l'attestation de certification ─────────────────────────────
+  //
+  // C'est lui qui fait la difference entre une page de texte et un document. Le logo y est pose sur
+  // un carre blanc : l'image est un « S » bleu sur fond transparent, il disparaitrait sur le bleu
+  // nuit. L'attestation fait pareil (`.head-logo` a un fond et une ombre).
+  const H_ENTETE = 96;
+  page.drawRectangle({ x: 0, y: HAUTEUR - H_ENTETE, width: LARGEUR, height: H_ENTETE, color: NUIT });
+  ligneDegradee(page, HAUTEUR - H_ENTETE - 5, 5);
 
-  const p: Plume = { page, y: HAUTEUR - MARGE, gras, normal };
-
-  // ── L'EN-TÊTE. Le logo est téléchargé ; s'il n'arrive pas, on écrit la marque en lettres plutôt
-  //    que de laisser un trou. Un document doit sortir même quand le site est indisponible.
-  let hautDuTexte = p.y - 4;
+  let logo = null;
   try {
     const rep = await fetch(LOGO);
-    if (rep.ok) {
-      const img = await doc.embedPng(new Uint8Array(await rep.arrayBuffer()));
-      const t = 44;
-      page.drawImage(img, { x: MARGE, y: p.y - t + 10, width: t, height: t });
-      hautDuTexte = p.y - 6;
-      p.y = hautDuTexte;
-      ecrire(p, "SPORTVISION", MARGE + t + 14, 15, gras);
-      p.y -= 14;
-      ecrire(p, "Captation vidéo et photo sportive", MARGE + t + 14, 9, normal, GRIS);
-      p.y = hautDuTexte;
-    } else throw new Error("logo indisponible");
-  } catch {
-    ecrire(p, "SPORTVISION", MARGE, 18, gras);
-    p.y -= 14;
-    ecrire(p, "Captation vidéo et photo sportive", MARGE, 9, normal, GRIS);
-    p.y += 14;
+    if (rep.ok) logo = await doc.embedPng(new Uint8Array(await rep.arrayBuffer()));
+  } catch { /* le document sort quand meme : voir plus bas */ }
+
+  const yLogo = HAUTEUR - H_ENTETE + 26;
+  if (logo) {
+    page.drawRectangle({ x: MARGE, y: yLogo, width: 44, height: 44, color: BLANC });
+    page.drawImage(logo, { x: MARGE + 1, y: yLogo + 1, width: 42, height: 42 });
+  }
+  const xTexte = MARGE + (logo ? 60 : 0);
+  p.y = yLogo + 27;
+  ecrire(p, "SPORTVISION", xTexte, 17, gras, BLANC);
+  p.y -= 13;
+  ecrire(p, "CAPTATION VIDÉO ET PHOTO SPORTIVE", xTexte, 7.5, gras, ARDOISE);
+
+  // A droite, ce qu'est le document, en deux lignes comme sur l'attestation.
+  p.y = yLogo + 27;
+  ecrireADroite(p, "RÉCAPITULATIF", DROITE, 8.5, gras, ARDOISE);
+  p.y -= 12;
+  ecrireADroite(p, "DE PRESTATIONS", DROITE, 8.5, gras, ARDOISE);
+  p.y -= 16;
+  ecrireADroite(p, moisEnClair(r.mois), DROITE, 12, gras, BLANC);
+
+  const basCadreProvisoire = MARGE + 60;
+
+  // ── LE FILIGRANE. Le logo en grand, tres pale, incline : c'est ce qui fait qu'une page blanche
+  //    ressemble a une piece officielle plutot qu'a une impression. Meme geste que l'attestation
+  //    (`.wm img` : 420 px, opacite .035, rotation -20°).
+  if (logo) {
+    const t = 320;
+    const a = (-20 * Math.PI) / 180;
+    // UN PDF TOURNE AUTOUR DU COIN INFERIEUR GAUCHE, PAS AUTOUR DU CENTRE. Poser l'image aux
+    // coordonnees du centre voulu la fait deriver : premiere version, le filigrane est sorti en bas
+    // a droite et ressemblait a une tache. On calcule donc ou part le centre apres rotation, et on
+    // decale l'origine d'autant.
+    const cx = LARGEUR / 2;
+    const cy = (basCadreProvisoire + (HAUTEUR - H_ENTETE - 22)) / 2;
+    page.drawImage(logo, {
+      x: cx - (t / 2) * (Math.cos(a) - Math.sin(a)),
+      y: cy - (t / 2) * (Math.sin(a) + Math.cos(a)),
+      width: t, height: t, opacity: 0.045, rotate: degrees(-20),
+    });
   }
 
-  // Le titre et la période, cales a droite : l'oeil lit la marque a gauche, l'objet a droite.
-  ecrireADroite(p, "Récapitulatif de prestations", DROITE, 13, gras);
-  p.y -= 15;
-  ecrireADroite(p, moisEnClair(r.mois), DROITE, 11, normal, GRIS);
+  // ── LE CADRE INTERIEUR, un trait fin qui tient la page ensemble.
+  const basCadre = basCadreProvisoire;
+  page.drawRectangle({
+    x: MARGE - 14, y: basCadre, width: DROITE - MARGE + 28, height: HAUTEUR - H_ENTETE - 22 - basCadre,
+    borderColor: rgb(0.851, 0.878, 0.937), borderWidth: 0.8,
+  });
 
-  p.y -= 26;
-  page.drawLine({ start: { x: MARGE, y: p.y }, end: { x: DROITE, y: p.y }, thickness: 1, color: TRAIT });
-
+  p.y = HAUTEUR - H_ENTETE - 48;
   // ── LE DESTINATAIRE
-  p.y -= 30;
   ecrire(p, "ÉTABLI POUR", MARGE, 8, gras, GRIS);
   p.y -= 15;
   const nom = `${r.collaborateur?.prenom ?? ""} ${r.collaborateur?.nom ?? ""}`.trim();
-  ecrire(p, nom || "Collaborateur", MARGE, 14, gras);
+  const libelleNom = nom || "Collaborateur";
+  ecrire(p, libelleNom, MARGE, 15, gras, NUIT_TEXTE);
+  // SOULIGNE DU DEGRADE, comme le beneficiaire d'une attestation de certification. C'est le detail
+  // qui rattache ce document a la famille des pieces officielles de la maison, et il ne coute
+  // qu'un trait : on le pose exactement a la largeur du nom, pas plus.
+  ligneDegradee(page, p.y - 7, 2.5, MARGE, gras.widthOfTextAtSize(pourHelvetica(libelleNom), 15));
   if (r.collaborateur?.email) {
-    p.y -= 14;
+    p.y -= 20;
     ecrire(p, r.collaborateur.email, MARGE, 9, normal, GRIS);
   }
 
