@@ -35,7 +35,31 @@ export const VueConnect = forwardRef<PoigneeVueConnect, ProprietesVueConnect>(
       reculer: () => vue.current?.goBack(),
       // On passe par le JavaScript de la page : `injectJavaScript` garde les cookies et
       // l'historique, la ou recharger la source repartirait du pont.
-      allerA: (url) => vue.current?.injectJavaScript(`location.href=${JSON.stringify(url)};true;`),
+      // ON NAVIGUE DANS LA PAGE, PAS EN LA RECHARGEANT (29/09/2026).
+      //
+      // Fouka, sur la coque native de Club+ : « quand je passe de calendrier, équipe, tout ça, ça
+      // met un peu de temps de chargement ». `location.href` demandait un document neuf à chaque
+      // onglet : Next.js renvoyait la page, le navigateur retéléchargeait et rejouait tout son
+      // JavaScript. Une à deux secondes, à chaque appui, pour afficher une application déjà
+      // chargée en mémoire.
+      //
+      // Club+ est une application Next.js : ses propres liens font une transition interne,
+      // quasi instantanée. Et ils sont TOUJOURS dans la page — la coque de Club+ masque sa
+      // navigation en CSS (`display:none` sur .sv-decor) quand elle vient de l'application, elle
+      // ne la supprime pas. On clique donc son lien, et Next fait le reste.
+      //
+      // ON GARDE LE RECHARGEMENT EN REPLI, et ce n'est pas de la prudence décorative : une page
+      // qui n'a pas ce lien (un écran sans barre latérale, une section ouverte en direct)
+      // n'aurait sinon aucun moyen d'aller ailleurs, et l'onglet ne répondrait plus du tout.
+      // Le pire cas redevient l'ancien comportement, jamais une impasse.
+      allerA: (url) => {
+        const cible = JSON.stringify(url);
+        vue.current?.injectJavaScript(`(function(){try{
+          var u=${cible}, c=new URL(u,location.href).pathname;
+          var a=document.querySelector('a[href="'+c+'"]')||document.querySelector('a[href^="'+c+'"]');
+          if(a){a.click();}else{location.href=u;}
+        }catch(e){location.href=${cible};}})();true;`);
+      },
     }), []);
 
     return (
