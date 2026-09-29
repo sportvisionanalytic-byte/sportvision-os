@@ -7,17 +7,30 @@
 
 import type { CalendarEvent } from "../types/calendar";
 
-export type FiltreRapide = "tous" | "matchs" | "entrainements" | "semaine" | "weekend";
+export type FiltreRapide =
+  | "tous" | "matchs" | "domicile" | "exterieur" | "entrainements" | "semaine" | "weekend";
 
+// DOMICILE EN DEUXIEME, ET CE N'EST PAS UN HASARD (29/09/2026).
+//
+// Fouka, en programmant de vraies presences : « il faut que je puisse avoir tout de suite tous les
+// matchs a domicile, tous les matchs a l'exterieur bien separes par journee. Generalement on fait
+// quasiment que des matchs a domicile. »
+//
+// « Quasiment que des matchs a domicile » est l'information qui decide de l'ordre : le filtre le
+// plus utilise se met la ou le pouce tombe, juste apres « Tous ». Un filtre juste mais place en
+// cinquieme position ne sert personne.
 export const FILTRES_RAPIDES: { id: FiltreRapide; libelle: string }[] = [
   { id: "tous", libelle: "Tous" },
-  { id: "matchs", libelle: "Matchs" },
+  { id: "domicile", libelle: "À domicile" },
+  { id: "exterieur", libelle: "À l'extérieur" },
+  { id: "matchs", libelle: "Tous les matchs" },
   { id: "entrainements", libelle: "Entraînements" },
   { id: "semaine", libelle: "Cette semaine" },
   { id: "weekend", libelle: "Ce week-end" },
 ];
 
-type Evenement = Pick<CalendarEvent, "id" | "kind" | "title" | "startsAt" | "allDay" | "teamName" | "location" | "opponent">;
+type Evenement = Pick<CalendarEvent,
+  "id" | "kind" | "title" | "startsAt" | "allDay" | "teamName" | "location" | "opponent" | "isHome">;
 
 function debutDuJour(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -57,6 +70,13 @@ export function filtrerEvenements<E extends Evenement>(
   return evenements.filter((e) => {
     if (filtre === "matchs" && e.kind !== "match") return false;
     if (filtre === "entrainements" && e.kind !== "training") return false;
+    // DOMICILE ET EXTERIEUR NE PARLENT QUE DES MATCHS, et un match dont on ignore le lieu ne
+    // rejoint ni l'un ni l'autre. Le ranger d'office a domicile ferait programmer une presence sur
+    // un deplacement, ce qui coute un operateur et une journee. `isHome` vaut null quand la
+    // federation ne l'a pas encore publie : le match reste visible dans « Tous » et dans
+    // « Tous les matchs », la ou on le voit et ou on peut le corriger.
+    if (filtre === "domicile" && !(e.kind === "match" && e.isHome === true)) return false;
+    if (filtre === "exterieur" && !(e.kind === "match" && e.isHome === false)) return false;
     if (periode) {
       const t = new Date(e.startsAt).getTime();
       if (t < periode[0].getTime() || t >= periode[1].getTime()) return false;

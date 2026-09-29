@@ -233,6 +233,7 @@ export function Couverture({ evenement, onFait }: { evenement: CalendarEvent; on
               kind: evenement.kind,
               teamName: evenement.teamName,
               location: evenement.location,
+              isHome: evenement.isHome,
             }}
             onClose={() => {
               setDemande(false);

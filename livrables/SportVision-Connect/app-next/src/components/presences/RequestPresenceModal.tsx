@@ -58,6 +58,8 @@ export interface EvenementDemande {
   kind?: CalendarEventKind;
   teamName?: string;
   location?: string;
+  /** Match a domicile ou en deplacement. Absent quand la federation ne l'a pas publie. */
+  isHome?: boolean;
 }
 
 interface RequestPresenceModalProps {
@@ -109,6 +111,29 @@ function Badge({ kind }: { kind?: CalendarEventKind }) {
   return (
     <span className={`flex-none rounded-full px-2 py-0.5 text-[11px] font-bold ${ton}`}>
       {CALENDAR_EVENT_KIND_LABELS[kind]}
+    </span>
+  );
+}
+
+/**
+ * DOMICILE OU EXTERIEUR, LU SANS FILTRER (29/09/2026).
+ *
+ * Les deux filtres rapides servent a ne voir qu'une moitie ; ce reperage-ci sert a trancher dans la
+ * liste complete, qui est ce qu'on ouvre en premier. Sans lui, « a domicile » ne se lit qu'en
+ * changeant de filtre, donc en perdant de vue tout le reste de la journee.
+ *
+ * On n'affiche rien quand on ne sait pas. Ecrire « Domicile » par defaut ferait programmer une
+ * presence sur un deplacement — un operateur et une journee pour rien.
+ */
+function OuJoue({ kind, isHome }: { kind?: CalendarEventKind; isHome?: boolean }) {
+  if (kind !== "match" || isHome === undefined || isHome === null) return null;
+  return (
+    <span
+      className={`flex-none rounded-full px-2 py-0.5 text-[11px] font-bold ${
+        isHome ? "bg-success-bg text-success-fg" : "bg-warning-bg text-warning-fg"
+      }`}
+    >
+      {isHome ? "Domicile" : "Extérieur"}
     </span>
   );
 }
@@ -367,6 +392,7 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
                         <Details {...evenement} avecDate />
                       </span>
                       <Badge kind={evenement.kind} />
+                      <OuJoue kind={evenement.kind} isHome={evenement.isHome} />
                     </div>
                   </Section>
                 ) : (
@@ -490,6 +516,7 @@ export function RequestPresenceModal({ supabase, clubId, onClose, onSubmitted, e
                                       </span>
                                       {deja && <span className="flex-none text-[11.5px] font-bold text-success-fg">{deja}</span>}
                                       <Badge kind={e.kind} />
+                                      <OuJoue kind={e.kind} isHome={e.isHome} />
                                     </button>
                                   );
                                 })}
