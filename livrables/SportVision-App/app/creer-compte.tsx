@@ -7,7 +7,7 @@
 // Seule l'étape de confirmation reste hors de l'application : la confirmation d'e-mail protège
 // les comptes, et c'est le lien reçu qui l'active. On le dit clairement plutôt que de faire
 // semblant.
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View,
 } from "react-native";
@@ -68,18 +68,27 @@ export default function CreerCompte() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [dejaInscrit, setDejaInscrit] = useState(false);
 
-  // La recherche part 350 ms après la dernière frappe : sans cette pause, chaque lettre lance un
-  // appel, et les réponses reviennent dans le désordre.
+  // ON NE REDEMANDE PAS CE QU'ON SAIT DÉJÀ (29/09/2026). Une famille qui hésite, efface, retape,
+  // lançait un appel à chaque pause. On garde les réponses de la saisie en cours : revenir en
+  // arrière d'une lettre ne coûte plus rien, et l'affichage est instantané.
+  const dejaCherche = useRef(new Map<string, ClubTrouve[]>());
+
+  // 600 ms après la dernière frappe, et pas 350 : personne ne tape « Villemomble » en un souffle,
+  // et chaque pause lançait un appel de plus.
   useEffect(() => {
-    if (etape !== "club" || declare || recherche.trim().length < 2) { setResultats([]); return; }
+    const q = recherche.trim();
+    if (etape !== "club" || declare || q.length < 2) { setResultats([]); setChercheEnCours(false); return; }
+    const connu = dejaCherche.current.get(q.toLowerCase());
+    if (connu) { setResultats(connu); setChercheEnCours(false); return; }
     let vivant = true;
     setChercheEnCours(true);
     const t = setTimeout(async () => {
-      const r = await chercherClubs(recherche);
+      const r = await chercherClubs(q);
       if (!vivant) return;
+      dejaCherche.current.set(q.toLowerCase(), r);
       setResultats(r);
       setChercheEnCours(false);
-    }, 350);
+    }, 600);
     return () => { vivant = false; clearTimeout(t); };
   }, [recherche, etape, declare]);
 

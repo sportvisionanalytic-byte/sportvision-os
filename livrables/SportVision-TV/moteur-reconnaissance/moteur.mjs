@@ -296,7 +296,15 @@ async function traiterGalerieVraiment(album, lignes) {
   // LE MODELE FAIT PARTIE DE LA QUESTION (v337). Sans lui, la base repondait « deja calculee » a
   // cause des empreintes de l'ancien moteur, on sautait toutes les photos de reference, et la
   // passe rendait zero identification sur 284 visages releves — sans rien dire.
-  const { d: joueursBruts } = await rpc("reconnaissance_joueurs_prets", { p_album_id: album, p_modele: MODELE });
+  // UNE PREPARATION DE GALERIE N'A PAS DE SPORTIF (v347, 29/09/2026). Fouka : « des que j'ajoute une
+  // galerie d'un club partenaire, tu fais la reconnaissance, meme s'il n'y a pas encore de joueurs
+  // inscrits ». On prepare donc ce qui se prepare sans personne : les numeros de maillot et les
+  // photos d'equipe. Les VISAGES, eux, n'ont ni a etre reconnus ni a etre conserves tant que
+  // personne n'a rien demande — et surtout tant qu'aucune famille n'a rien signe.
+  const preparationSeule = lignes.every((l) => !l.player_id);
+  const { d: joueursBruts } = preparationSeule
+    ? { d: [] }
+    : await rpc("reconnaissance_joueurs_prets", { p_album_id: album, p_modele: MODELE });
   const joueurs = Array.isArray(joueursBruts) ? joueursBruts : [];
 
   // LIRE UN DOSSARD N'EST PAS DE LA BIOMÉTRIE (29/09/2026).
@@ -312,7 +320,9 @@ async function traiterGalerieVraiment(album, lignes) {
   // On sépare donc les deux passes. Les dossards se lisent toujours ; les visages, jamais sans
   // accord. Ce qui suit — empreintes de référence, grappes, marquages — reste derrière la porte.
   const reconnaissanceDesVisages = joueurs.length > 0;
-  if (!reconnaissanceDesVisages) {
+  if (preparationSeule) {
+    dire("   préparation de la galerie : numéros de maillot et photos d'équipe, aucun visage reconnu");
+  } else if (!reconnaissanceDesVisages) {
     dire("   aucun sportif n'a autorisé la reconnaissance des visages : on lit les dossards seulement");
   }
 

@@ -46,11 +46,22 @@ export async function chercherClubs(recherche: string): Promise<ClubTrouve[]> {
       { id: "demo-2", nom: "AS Démonstration Féminines", ville: "Ville-Exemple" },
     ];
   }
-  const { data, error } = await supabase.functions.invoke("connect-player-onboarding", {
-    body: { action: "search", query: q },
-  });
-  if (error || data?.error) return [];
-  return (data?.results ?? []) as ClubTrouve[];
+  // ON APPELLE LA BASE DIRECTEMENT (29/09/2026), plus la fonction de bord.
+  //
+  // Deux raisons, toutes deux vécues :
+  //   - la fonction de bord cherchait `nom ILIKE '%saisie%'` : « sports villemomble » ne trouvait
+  //     pas « SF Villemomble », un accent tapé de travers non plus, et la ville n'était jamais
+  //     regardée. Une famille dont le club EST partenaire en concluait qu'il ne l'était pas.
+  //   - elle comptait 20 recherches par heure ET PAR IP. La recherche part 350 ms après la
+  //     dernière frappe : taper « Villemomble » deux fois suffisait à se faire bloquer en pleine
+  //     inscription, et une IP n'est pas une personne — plusieurs familles d'un même réseau se
+  //     bloquaient entre elles. C'est la leçon du 13/09, qui s'était reproduite ici.
+  //
+  // La fonction de base ne rend que le nom et la ville des clubs PARTENAIRES et actifs : une
+  // famille ne peut pas énumérer autre chose, et il n'y a rien à protéger par un plafond.
+  const { data, error } = await supabase.rpc("organisations_partenaires_rechercher", { p_q: q });
+  if (error || !Array.isArray(data)) return [];
+  return data as ClubTrouve[];
 }
 
 export interface DemandeCompte {
