@@ -6,7 +6,7 @@
 // pas la liste, elle la complète.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSession } from "../../src/lib/session";
 import { lireCalendrierFamille, useFamille } from "../../src/lib/famille";
 import { lireEvenements, separer, type Evenement } from "../../src/lib/donnees";
@@ -64,11 +64,48 @@ export default function Calendrier() {
   const evenements = donnees ?? [];
   const panne = !!souci && donnees === undefined;
   const [vue, setVue] = useState<"planning" | "mois">("planning");
+  // La lecture au montage reste : elle evite que la liste s'affiche une image sans filtre avant de
+  // se filtrer, quand l'ecran est monte pour la premiere fois par le raccourci de l'accueil.
   const [filtre, setFiltre] = useState<Filtre>(
     FILTRES.some((f) => f.cle === filtreDemande) ? (filtreDemande as Filtre) : "tout",
   );
   const [mois, setMois] = useState<string | null>(null);
   const [jourChoisi, setJourChoisi] = useState<string | null>(null);
+
+  // == LE RACCOURCI « RESULTATS » DE L'ACCUEIL, A LA DEUXIEME VISITE (30/09/2026) ==============
+  //
+  // CE QUI NE MARCHAIT PAS. `useState` ne lit son argument qu'au montage, et les onglets restent
+  // montes : le premier passage par « Resultats » filtrait bien sur les matchs, le deuxieme
+  // n'appliquait plus rien. L'ecran etait deja la, son etat initial etait deja calcule.
+  //
+  // POURQUOI LES DEUX CORRECTIONS EVIDENTES ECHOUENT, et c'est la raison de la troisieme :
+  //
+  //   `useEffect(..., [filtreDemande])` : un effet ne se redeclenche que si la valeur CHANGE. On
+  //     appuie sur « Resultats » (filtre = match), on remet « Tout » a la main dans l'ecran, on
+  //     rappuie sur « Resultats » : le parametre de route vaut toujours « match », il n'a pas
+  //     bouge, l'effet ne rejoue pas, et rien ne se filtre. Le defaut revient a l'identique au
+  //     deuxieme appui apres un reglage manuel.
+  //
+  //   `useFocusEffect` qui relit le parametre a chaque prise de focus : cette fois ca s'applique,
+  //     mais le parametre RESTE dans la route. Une semaine plus tard, ouvrir l'onglet Calendrier
+  //     rebascule sur « Matchs » et cache ses entrainements, sans que rien a l'ecran explique
+  //     pourquoi. C'est le filtre collant que Fouka a refuse : il doit etre ponctuel.
+  //
+  // CE QU'ON FAIT. On applique a la prise de focus, PUIS ON CONSOMME L'INTENTION : le parametre est
+  // vide juste apres. Un appui sur « Resultats » le repose, donc le geste marche autant de fois
+  // qu'on le refait ; revenir sur l'onglet par la barre du bas ne trouve plus rien a appliquer,
+  // donc le reglage manuel tient. C'est plus simple qu'un compteur passe par l'accueil : il n'y a
+  // pas de valeur a comparer, l'intention existe ou elle n'existe plus.
+  useFocusEffect(
+    useCallback(() => {
+      if (!FILTRES.some((f) => f.cle === filtreDemande)) return;
+      setFiltre(filtreDemande as Filtre);
+      // Chaine vide plutot que `undefined` : on veut un parametre qui ne corresponde a aucun
+      // filtre, de facon sure. Selon les versions, `undefined` peut etre ignore a la fusion des
+      // parametres et laisser l'ancienne valeur en place, ce qui rendrait le filtre collant.
+      router.setParams({ filtre: "" });
+    }, [filtreDemande, router]),
+  );
 
 
   /** Les mois qui contiennent vraiment quelque chose : un mois vide n'a pas à être proposé. */

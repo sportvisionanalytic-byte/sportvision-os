@@ -1190,6 +1190,12 @@ const NAV={
     {id:'paiements',lb:'Paiements équipe',ic:'fin'},
     {id:'rem',lb:'Rémunérations',ic:'col'},
     {id:'finprod',lb:'Finance Production',ic:'fin'},
+    // Clôture du mois, version « lecture et virements » (décision du 30/09/2026, Fouka absent
+    // 10 jours). La base l'autorisait déjà : recap_a_payer et recap_virement_effectue acceptent
+    // `compta`, seule recap_envoyer est réservée à `admin`. L'écran masque donc pour ce rôle les
+    // champs et le bouton d'envoi, au lieu de lui montrer une action qui répondrait 42501 — même
+    // règle que pour la section des contestations.
+    {id:'recapmois',lb:'Clôture du mois',ic:'check'},
     {type:'sep',lb:'Dépenses'},
     {id:'depenses',lb:'Dépenses',ic:'fin'},
     {id:'frais',lb:'Frais & km',ic:'fin'},
@@ -1995,6 +2001,7 @@ const VIEWS={
       <input type="month" class="l-inp" id="mf-mois" aria-label="Mois" style="height:36px;width:auto;flex:0 0 auto" onchange="loadMesFinances()"></div>
     <div id="mf-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
   'admin.recapmois':()=>_recapMoisView(),
+  'compta.recapmois':()=>_recapMoisView(),
   'admin.finprod':()=>_finProdView(),
   'compta.finprod':()=>_finProdView(),
   'sec.finprod':()=>_finProdView(),
@@ -5835,7 +5842,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='finmedias') await loadFinMedias();
   if(role==='admin'&&view==='findepenses') await loadFinDepenses();
   if(role==='admin'&&view==='finequipe') await loadFinEquipe();
-  if(role==='admin'&&view==='recapmois') await loadRecapMois();
+  if(['admin','compta'].includes(role)&&view==='recapmois') await loadRecapMois();
   if(role==='admin'&&view==='finpoles') await loadFinPoles();
   if(role==='admin'&&view==='polerem') await loadPoleRem();
   if(role==='prod'&&view==='mesfinances') await loadMesFinances();
@@ -36117,7 +36124,12 @@ function _recapInstant(ts){
 }
 
 function _recapMoisView(){
-  return `<div class="sh"><div><div class="sh-t">Clôture du mois</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Récapitulatifs de prestations des collaborateurs freelances : ce qui reste à payer sur le mois, le montant versé que vous décidez, et l'envoi.</div></div></div>
+  // QUI PEUT ENVOYER. recap_envoyer est réservée à `admin` en base ; la comptabilité lit les
+  // montants et marque les virements (décision du 30/09/2026). On ne décrit donc pas à la
+  // comptabilité un écran d'envoi qu'elle n'a pas, et on ne lui montre aucun bouton qui
+  // répondrait 42501. Le serveur reste l'autorité, ceci n'est que de la cohérence d'affichage.
+  const peutEnvoyer=S.role==='admin';
+  return `<div class="sh"><div><div class="sh-t">Clôture du mois</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Récapitulatifs de prestations des collaborateurs freelances : ${peutEnvoyer?"ce qui reste à payer sur le mois, le montant versé que vous décidez, et l'envoi.":'ce qui reste à payer sur le mois, et les virements à marquer une fois partis.'}</div></div></div>
     <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap">
       <button class="btn bg2 bs" style="height:36px" onclick="_recapDecalerMois(-1)" title="Mois précédent">‹ Mois précédent</button>
       <div><label style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Mois</label>
@@ -36133,7 +36145,7 @@ function _recapMoisView(){
     <div id="rec-contest"></div>
     <div class="cd" style="margin-bottom:16px">
       <div class="cd-h"><div class="cd-t">À payer sur ce mois</div></div>
-      <div style="font-size:11.5px;color:var(--t3);padding:0 16px 10px">Le montant versé est pré-rempli avec le montant dû, mais c'est vous qui tranchez : corrigez-le si besoin, et expliquez l'écart dans la note, qui part avec le récapitulatif.</div>
+      ${peutEnvoyer?`<div style="font-size:11.5px;color:var(--t3);padding:0 16px 10px">Le montant versé est pré-rempli avec le montant dû, mais c'est vous qui tranchez : corrigez-le si besoin, et expliquez l'écart dans la note, qui part avec le récapitulatif.</div>`:`<div style="font-size:11.5px;color:var(--t3);padding:0 16px 10px">La direction décide du montant versé et envoie les récapitulatifs. Vous marquez les virements une fois partis, dans la section du bas.</div>`}
       <div id="rec-real">${_finSkelRows(3,64)}</div>
     </div>
     <div class="cd">
@@ -36332,6 +36344,7 @@ function _recapRenderApayer(lignes,documents){
      .join('<span style="color:var(--t3)">·</span>');
     const cid=l.collaborateur_id;
     const nomJs=escJs(l.collaborateur||'ce collaborateur');
+    const peutEnvoyer=S.role==='admin';
     const action=envoye
       ? `<div style="text-align:right">
            <span class="bd ba"><span class="bd-d"></span>Envoyé le ${_recapInstant(doc.envoye_le)}</span>
@@ -36345,11 +36358,15 @@ function _recapRenderApayer(lignes,documents){
                  on n'empeche rien. Mais une ligne a 0,00 EUR ressemble a une ligne pas encore
                  chargee, et envoyer par distraction un recapitulatif a zero a quelqu'un qui a
                  travaille serait humiliant. On le nomme, une fois, a l'endroit ou le doigt va. */''}
-           ${du===0?'<span class="bd bw"><span class="bd-d"></span>Rien à payer ce mois-ci : vérifiez avant d\'envoyer</span>':''}
-           <label style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)">Montant versé
+           ${du===0?'<span class="bd bw"><span class="bd-d"></span>Rien à payer ce mois-ci'+(peutEnvoyer?' : vérifiez avant d\'envoyer':'')+'</span>':''}
+           ${peutEnvoyer?`<label style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)">Montant versé
              <input type="number" min="0" step="0.01" class="l-inp" id="rec-verse-${cid}" style="height:34px;width:120px;text-align:right" value="${prefill.toFixed(2)}"><span style="color:var(--t3)">€</span></label>
            <input type="text" class="l-inp" id="rec-note-${cid}" style="height:34px" maxlength="400" placeholder="Note (facultative, part avec le récapitulatif)" value="${esc(brouillon?(doc.note||''):'')}">
-           <button class="btn bp bs" id="rec-btn-${cid}" onclick="envoyerRecapMois('${cid}','${nomJs}')">${brouillon?"Réessayer l'envoi":'Envoyer le récapitulatif'}</button>
+           <button class="btn bp bs" id="rec-btn-${cid}" onclick="envoyerRecapMois('${cid}','${nomJs}')">${brouillon?"Réessayer l'envoi":'Envoyer le récapitulatif'}</button>`
+           // Un brouillon porte déjà un montant décidé : la comptabilité a besoin de le voir pour
+           // rapprocher son virement, même si elle ne peut ni le changer ni l'envoyer.
+           :`${brouillon?`<div style="font-size:13px;font-weight:700;color:var(--t1)">Montant versé prévu ${_recapEur(doc.montant_verse)}</div>`:''}
+           <span style="font-size:11.5px;color:var(--t3)">La direction envoie les récapitulatifs.</span>`}
          </div>`;
     return `<div style="display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;padding:14px 16px;border-top:1px solid var(--b1)">
       <div style="min-width:240px;flex:1">
