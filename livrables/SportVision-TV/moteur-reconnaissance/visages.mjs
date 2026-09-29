@@ -36,12 +36,22 @@ const ICI = dirname(fileURLToPath(import.meta.url));
  *  espaces différents ne veut rien dire et personne ne s'en apercevrait. */
 export const MODELE = "insightface-buffalo_l-arcface512";
 
+const FILS = 6;
+
 let detecteur = null, encodeur = null;
 
 export async function preparer() {
   if (detecteur && encodeur) return;
-  // Un seul fil : le moteur tourne en tâche de fond, à priorité basse, et ne doit jamais prendre
-  // tout le processeur pendant que quelqu'un se sert du Mac.
+  // COMBIEN DE FILS, ET CE QUE COÛTAIT LA PRUDENCE (29/09/2026).
+  //
+  // On en donnait DEUX, « pour ne pas ralentir le Mac ». Mesuré sur la même détection, même image,
+  // même modèle : 2 fils → 1 640 ms, 4 → 877, 6 → 682, 8 → 596. La prudence coûtait un facteur
+  // deux et demi sur ce qui représente les trois quarts du temps du moteur.
+  //
+  // SIX, ET PAS HUIT. La machine en a dix : six laissent de quoi travailler dessus, et le service
+  // tourne de toute façon en priorité « Adaptive » — macOS lui donne les cœurs rapides quand
+  // personne ne se sert du Mac, et le bride dès qu'on y revient. C'est ce réglage-là qui protège
+  // l'usage, pas un nombre de fils choisi au doigt mouillé.
   //
   // ET ON FAIT TAIRE LES AVERTISSEMENTS DE FORME (29/09/2026). SCRFD est exporté pour une entrée de
   // 640 pixels ; on le fait tourner à 1920, ce qui est parfaitement licite — les dimensions sont
@@ -50,7 +60,7 @@ export async function preparer() {
   // plus lisible, et un journal illisible est un journal que personne ne lit le jour où il dit
   // quelque chose. Niveau 3 : les erreurs, rien d'autre.
   const options = {
-    executionProviders: ["cpu"], intraOpNumThreads: 2, graphOptimizationLevel: "all",
+    executionProviders: ["cpu"], intraOpNumThreads: FILS, graphOptimizationLevel: "all",
     logSeverityLevel: 3,
   };
   detecteur = await ort.InferenceSession.create(join(ICI, "modeles", "detection.onnx"), options);

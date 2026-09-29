@@ -19,6 +19,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
+/** Le même nombre de fils que le détecteur de visages, et pour la même raison : mesuré, deux fils
+ *  coûtaient un facteur deux et demi. Voir visages.mjs. */
+const FILS = 6;
+
 let session = null;
 
 /** COCO : la classe 1 est « personne ». */
@@ -27,7 +31,7 @@ const CLASSE_PERSONNE = 1;
 export async function preparerPersonnes() {
   if (session) return;
   session = await ort.InferenceSession.create(join(ICI, "modeles", "personnes.onnx"), {
-    executionProviders: ["cpu"], intraOpNumThreads: 2, graphOptimizationLevel: "all",
+    executionProviders: ["cpu"], intraOpNumThreads: FILS, graphOptimizationLevel: "all",
     logSeverityLevel: 3,
   });
 }
