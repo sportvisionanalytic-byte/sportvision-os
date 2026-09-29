@@ -241,16 +241,31 @@ export default function Galerie() {
     setNumeroEnCours(true);
     try {
       const r = await declarerMonNumero(id, joueur, n);
-      // ON DIT LA VERITE DANS LES TROIS CAS, y compris quand il n'y a rien a proposer : annoncer
-      // « c'est enregistre » devant zero photo laisserait attendre quelque chose qui ne viendra pas.
+      // ON DIT LA VÉRITÉ DANS LES QUATRE CAS (v340, 29/09/2026).
+      //
+      // Décision de Fouka : « dès qu'il renseigne son numéro, tu lances la recherche et tu lui dis
+      // de revenir dans 5-10 minutes le temps que tu trouves toutes les photos de son numéro. Pas
+      // que tu mettes "est-ce que c'est bien toi". »
+      //
+      // Les photos dont le dossard est déjà lu entrent DANS SA GALERIE tout de suite — son numéro
+      // et le numéro lu sur le dos, ce sont déjà deux accords, lui en demander un troisième n'ajoute
+      // rien. Et quand il reste des photos à examiner, on le dit : répondre « rien trouvé » à
+      // quelqu'un dont on n'a rien cherché, c'est lui faire croire qu'il n'y a rien.
+      const ajoutees = r.photosAjoutees > 1
+        ? `${r.photosAjoutees} photos portant le n°${r.numero} viennent d'être ajoutées à vos photos.`
+        : r.photosAjoutees === 1
+          ? `Une photo portant le n°${r.numero} vient d'être ajoutée à vos photos.`
+          : "";
+      const enCours = r.rechercheEnCours
+        ? `Nous relisons les ${r.photosAExaminer} photo${r.photosAExaminer > 1 ? "s" : ""} restante${r.photosAExaminer > 1 ? "s" : ""} pour y chercher le n°${r.numero}. Revenez dans cinq à dix minutes : celles qui le portent viendront s'ajouter toutes seules.`
+        : "";
       setNumeroDit(
         r.conflit
-          ? `Quelqu'un d'autre a aussi indiqué le n°${r.numero} pour ce match. Nous ne proposons rien tant que ce n'est pas tranché.`
-          : r.photosProposees > 0
-            ? `${r.photosProposees} photo${r.photosProposees > 1 ? "s" : ""} portant le n°${r.numero} vous ${r.photosProposees > 1 ? "sont proposées" : "est proposée"} ci-dessous.`
-            : r.photosAvecCeNumero === 0
-              ? `Le n°${r.numero} est enregistré. Aucun numéro n'a encore été relevé sur ces photos : dès que ce sera fait, les vôtres apparaîtront.`
-              : `Le n°${r.numero} est enregistré, mais vous avez déjà répondu sur ces photos.`,
+          ? `Quelqu'un d'autre a aussi indiqué le n°${r.numero} pour ce match. Nous n'ajoutons rien tant que ce n'est pas tranché : deviner entre deux enfants serait pire.`
+          : [ajoutees, enCours].filter(Boolean).join(" ")
+            || (r.photosAvecCeNumero === 0
+                  ? `Le n°${r.numero} est enregistré, mais il n'apparaît sur aucune des photos lisibles de cette galerie. Sur une photo de face, le numéro ne se voit pas : c'est votre visage qui vous y retrouvera.`
+                  : `Le n°${r.numero} est enregistré. Les photos qui le portent sont déjà dans vos photos.`),
       );
       toutRelire();
     } catch {
@@ -569,10 +584,25 @@ export default function Galerie() {
           >
             <Text style={[s.actionTexte, reco.photoReference ? { color: C.texte } : null]}>
               {!reco.consentement ? "Me reconnaître sur les photos"
-                : !reco.photoReference ? "Déposer ma photo de référence"
+                : !reco.photoReference ? "Déposer mes photos de référence"
                 : "Ajouter une photo sous un autre angle"}
             </Text>
           </Pressable>
+        ) : null}
+
+        {/* ON DIT CE QUE ÇA CHANGE, ET COMBIEN DE TEMPS ÇA PREND (29/09/2026).
+            Décision de Fouka : après le Pass, la famille dépose « une ou plusieurs » photos, puis
+            « boum, ça retrouve toutes ses photos ». Deux choses manquaient pour que ce soit vrai à
+            l'écran : dire qu'une seule photo ne suffit pas — mesuré, plusieurs angles changent plus
+            que n'importe quel réglage — et dire que la recherche prend quelques minutes, sinon on
+            revient au bout de dix secondes et on croit que rien ne marche. */}
+        {etatPass && etatPass.etat !== "a_prendre" && reco && !reco.photoReference ? (
+          <Text style={s.avertissement}>
+            Deux ou trois photos de face, prises sous des angles différents, valent bien mieux qu'une
+            seule : c'est ce qui permet de reconnaître quelqu'un de profil ou en mouvement. La
+            recherche démarre dès le dépôt et prend quelques minutes ; les photos arrivent toutes
+            seules.
+          </Text>
         ) : null}
 
         {/* LE NUMERO DE MAILLOT, APRES LE PASS COMME LE RESTE (27/09/2026).

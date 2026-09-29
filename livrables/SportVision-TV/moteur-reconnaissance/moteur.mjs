@@ -233,11 +233,24 @@ async function traiterGalerie(album, lignes) {
   // LE MODELE FAIT PARTIE DE LA QUESTION (v337). Sans lui, la base repondait « deja calculee » a
   // cause des empreintes de l'ancien moteur, on sautait toutes les photos de reference, et la
   // passe rendait zero identification sur 284 visages releves — sans rien dire.
-  const { d: joueurs } = await rpc("reconnaissance_joueurs_prets", { p_album_id: album, p_modele: MODELE });
-  if (!Array.isArray(joueurs) || joueurs.length === 0) {
-    dire("   aucun sportif n'a autorisé la reconnaissance pour cette galerie");
-    if (!SIMULER) for (const l of lignes) await rpc("reconnaissance_fait", { p_id: l.id, p_resultat: "aucun sportif autorisé" });
-    return { photos: 0, marques: 0 };
+  const { d: joueursBruts } = await rpc("reconnaissance_joueurs_prets", { p_album_id: album, p_modele: MODELE });
+  const joueurs = Array.isArray(joueursBruts) ? joueursBruts : [];
+
+  // LIRE UN DOSSARD N'EST PAS DE LA BIOMÉTRIE (29/09/2026).
+  //
+  // Le moteur s'arrêtait ici quand personne n'avait donné son accord pour la reconnaissance des
+  // visages. Or le numéro cousu sur un maillot n'est pas un visage : c'est un chiffre peint sur un
+  // vêtement, et le relever ne demande l'accord de personne.
+  //
+  // Le cas est arrivé aussitôt, en jouant le parcours de Fouka : le Pass s'achète AVANT de déposer
+  // une photo de référence, donc avant tout accord. Quelqu'un qui paie, déclare son numéro et
+  // n'a pas encore donné son accord recevait « rien trouvé » — alors que rien n'avait été cherché.
+  //
+  // On sépare donc les deux passes. Les dossards se lisent toujours ; les visages, jamais sans
+  // accord. Ce qui suit — empreintes de référence, grappes, marquages — reste derrière la porte.
+  const reconnaissanceDesVisages = joueurs.length > 0;
+  if (!reconnaissanceDesVisages) {
+    dire("   aucun sportif n'a autorisé la reconnaissance des visages : on lit les dossards seulement");
   }
 
   // 2. LES EMPREINTES DE RÉFÉRENCE MANQUANTES, une par photo déposée.
@@ -267,7 +280,7 @@ async function traiterGalerie(album, lignes) {
 
   // 3. TOUS LES VISAGES DE LA GALERIE, relevés une seule fois.
   const { d: photos } = await rest(
-    `media_assets?select=id,preview_clair_path&album_id=eq.${album}&status=eq.ready&order=position`);
+    `media_assets?select=id,preview_clair_path,numeros_lus_par&album_id=eq.${album}&status=eq.ready&order=position`);
   if (!Array.isArray(photos) || photos.length === 0) {
     dire("   aucune photo prête");
     if (!SIMULER) for (const l of lignes) await rpc("reconnaissance_fait", { p_id: l.id, p_resultat: "aucune photo" });
@@ -292,26 +305,37 @@ async function traiterGalerie(album, lignes) {
     try {
       const octets = await charger(photos[i].preview_clair_path);
       if (!octets) { illisibles++; continue; }
-      const v = await visagesDe(octets, { seuil: CFG.scoreMin, cotes: CFG.cotes });
-      const empreintes = v.map((x) => x.empreinte);
-      retenir(photos[i].id, empreintes);
+      // Les visages servent a deux choses : reconnaitre quelqu'un, et savoir si une personne est
+      // vue de face — ce dont la lecture des dossards a besoin pour ne lire que les dos. La
+      // seconde n'identifie personne et ne conserve rien : on detecte sans calculer d'empreinte.
+      const v = reconnaissanceDesVisages
+        ? await visagesDe(octets, { seuil: CFG.scoreMin, cotes: CFG.cotes })
+        : await detecterFin(octets, { seuil: CFG.scoreMin, cotes: CFG.cotes });
+      const empreintes = reconnaissanceDesVisages ? v.map((x) => x.empreinte) : [];
+      if (reconnaissanceDesVisages) retenir(photos[i].id, empreintes);
 
       // LES DOSSARDS, SUR LA MEME LECTURE D'IMAGE. On tient l'image en memoire : la relire plus
       // tard couterait un second telechargement pour rien. Une photo sans personne de dos ne
       // declenche aucun calcul.
-      if (CFG.lireLesDossards && !dossardsVus.has(photos[i].id)) {
+      // DEJA EXAMINEE PAR CE LECTEUR-CI ? On ne recommence pas. Et si c'est une version plus
+      // ancienne qui est passee, on repasse : c'est ce qui fait qu'un meilleur lecteur rattrape
+      // tout seul les galeries deja traitees.
+      if (CFG.lireLesDossards && !dossardsVus.has(photos[i].id)
+          && photos[i].numeros_lus_par !== LECTEUR_DOSSARDS) {
         try {
           const corps = await personnesDe(octets);
           const nums = corps.length ? await lireDossards(octets, corps, v) : [];
           dossardsVus.add(photos[i].id);
-          if (nums.length) {
-            numerosLus += nums.length;
-            if (!SIMULER) {
-              const rep = await rpc("media_numeros_lus", {
-                p_asset_id: photos[i].id, p_numeros: nums, p_lecteur: LECTEUR_DOSSARDS,
-              });
-              if (!rep.ok) dire(`   numero non enregistre : ${JSON.stringify(rep.d).slice(0, 110)}`);
-            }
+          numerosLus += nums.length;
+          // ON LE DIT MÊME QUAND ON NE TROUVE RIEN. Une photo de face, un gros plan, un banc de
+          // touche : il n'y a pas de dossard à y lire, et c'est une information. Sans elle, la base
+          // ne distingue pas « pas encore regardée » de « regardée, rien à lire », et l'application
+          // annonce à une famille qu'elle relit cent photos déjà lues.
+          if (!SIMULER) {
+            const rep = await rpc("media_numeros_lus", {
+              p_asset_id: photos[i].id, p_numeros: nums, p_lecteur: LECTEUR_DOSSARDS,
+            });
+            if (!rep.ok) dire(`   lecture non enregistree : ${JSON.stringify(rep.d).slice(0, 110)}`);
           }
         } catch (e) {
           motifs.set(`dossards: ${String(e.message).slice(0, 60)}`,
@@ -342,12 +366,21 @@ async function traiterGalerie(album, lignes) {
     });
     if (!rep.ok) dire("   les photos de groupe n'ont pas pu etre marquees");
   }
-  dire(`   ${nVisages} visage(s) sur ${photos.length} photo(s) en ${Math.round((Date.now() - t0) / 1000)} s`
+  dire(`   ${reconnaissanceDesVisages ? `${nVisages} visage(s)` : "dossards lus"} sur ${photos.length} photo(s) en ${Math.round((Date.now() - t0) / 1000)} s`
      + (deGroupe.size ? `, dont ${deGroupe.size} photo(s) de groupe` : "")
-     + (sansVisage ? `, ${sansVisage} sans visage` : "") + (illisibles ? `, ${illisibles} illisible(s)` : "")
+     + (reconnaissanceDesVisages && sansVisage ? `, ${sansVisage} sans visage` : "") + (illisibles ? `, ${illisibles} illisible(s)` : "")
      + (relus ? `, dont ${relus} déjà en mémoire` : ""));
-  if (numerosLus) dire(`   ${numerosLus} numéro(s) de maillot relevé(s)`);
+  if (dossardsVus.size) {
+    dire(`   ${dossardsVus.size} dos examiné(s), ${numerosLus} numéro(s) de maillot relevé(s)`);
+  }
   for (const [m, n] of [...motifs].sort((a, b) => b[1] - a[1])) dire(`   ${n} photo(s) en échec : ${m}`);
+
+  if (!reconnaissanceDesVisages) {
+    if (!SIMULER) for (const l of lignes) {
+      await rpc("reconnaissance_fait", { p_id: l.id, p_resultat: `${numerosLus} numéro(s) relevé(s), visages non autorisés` });
+    }
+    return { photos: photos.length, marques: 0 };
+  }
 
   // 4. ON REGROUPE AVANT DE NOMMER.
   //
@@ -408,9 +441,15 @@ async function traiterGalerie(album, lignes) {
   }
 
   // 5. L'APPRENTISSAGE. Les photos qu'UNE PERSONNE a confirmées deviennent des références.
+  //
+  // ON N'APPREND PAS SUR UNE PHOTO ENTRÉE PAR SON NUMÉRO (v340, 29/09/2026). Un dossard lu dans le
+  // dos met la photo dans la galerie de la famille, et c'est voulu — mais le seul visage de cette
+  // image est celui de QUELQU'UN D'AUTRE, puisque le joueur, lui, est de dos. En tirer une
+  // référence, c'est apprendre le visage du voisin sous le nom de l'enfant.
   const { d: confirmes } = await rest(
     `media_player_tags?select=media_ref_id,player_id&media_ref_type=eq.media_asset&statut=eq.valide`
-    + `&valide_par=not.is.null&media_ref_id=in.(${photos.map((p) => p.id).join(",")})`);
+    + `&valide_par=not.is.null&source=neq.numero`
+    + `&media_ref_id=in.(${photos.map((p) => p.id).join(",")})`);
   const confirmeesPar = new Map();
   for (const t of (Array.isArray(confirmes) ? confirmes : [])) {
     // Une photo de groupe ne sert pas de référence : ses visages sont trop petits, et l'empreinte

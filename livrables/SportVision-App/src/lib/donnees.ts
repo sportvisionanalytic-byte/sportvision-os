@@ -463,16 +463,25 @@ async function signerLesNets(chemins: string[]): Promise<Map<string, string>> {
  */
 export interface NumeroDeclare {
   numero: number;
-  /** Un autre sportif revendique le MEME numero sur ce match : rien n'est propose a personne. */
+  /** Un autre sportif revendique le MEME numero sur ce match : rien n'est mis a personne. */
   conflit: boolean;
-  photosProposees: number;
+  /** Les photos AJOUTEES a sa galerie sur-le-champ (v340). On ne lui demande plus de confirmer :
+   *  son numero a lui, croise avec le numero lu sur le dos, ce sont deja deux accords. */
+  photosAjoutees: number;
+  /** La galerie contient encore des photos dont personne n'a lu le dos : la recherche est lancee,
+   *  et l'ecran doit le DIRE au lieu d'annoncer « rien trouve ». */
+  rechercheEnCours: boolean;
+  photosAExaminer: number;
   photosAvecCeNumero: number;
 }
 
 export async function declarerMonNumero(
   albumId: string, playerId: string, numero: number,
 ): Promise<NumeroDeclare> {
-  if (MODE_DEMO) return { numero, conflit: false, photosProposees: 0, photosAvecCeNumero: 0 };
+  if (MODE_DEMO) {
+    return { numero, conflit: false, photosAjoutees: 0, rechercheEnCours: false,
+             photosAExaminer: 0, photosAvecCeNumero: 0 };
+  }
   const { data, error } = await supabase.rpc("media_declarer_mon_numero", {
     p_album_id: albumId, p_player_id: playerId, p_numero: numero,
   });
@@ -481,7 +490,9 @@ export async function declarerMonNumero(
   return {
     numero: Number(r.numero ?? numero),
     conflit: r.conflit === true,
-    photosProposees: Number(r.photos_proposees ?? 0),
+    photosAjoutees: Number(r.photos_ajoutees ?? 0),
+    rechercheEnCours: r.recherche_en_cours === true,
+    photosAExaminer: Number(r.photos_a_examiner ?? 0),
     photosAvecCeNumero: Number(r.photos_avec_ce_numero ?? 0),
   };
 }
