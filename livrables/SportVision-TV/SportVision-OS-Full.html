@@ -36086,6 +36086,11 @@ async function voirDetailFinProd(){
 // justement de retirer, au pire endroit possible : le collaborateur attendrait un virement dont il
 // n'aurait jamais été prévenu.
 //
+// CE QUI EST SUSPENDU SE VOIT AVANT LE RESTE. Depuis v364, une retenue contestée sort du montant dû
+// en attendant une décision. La section des contestations est donc placée AVANT la liste des
+// personnes à payer : c'est une décision à prendre avant de clôturer, et un montant manquant qu'il
+// faut pouvoir expliquer.
+//
 // LE CONTRÔLE D'ACCÈS EST CÔTÉ SERVEUR, pas ici : recap_a_payer est réservée à admin/compta,
 // recap_envoyer à admin seul. L'absence de cet écran dans les NAV non-admin est un confort de
 // navigation, jamais la barrière.
@@ -36120,6 +36125,12 @@ function _recapMoisView(){
       <button class="btn bg2 bs" style="height:36px" onclick="_recapDecalerMois(1)" title="Mois suivant">Mois suivant ›</button>
     </div>
     <div id="rec-totaux" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">${_finSkelKpi(3)}</div>
+    <!-- Les retenues contestées, AVANT la liste des personnes : c'est à trancher avant de clôturer,
+         pas après. Volontairement sans squelette de chargement, parce que la section est vide la
+         plupart du temps : un bloc qui clignote puis disparaît est du bruit sur un écran qu'on
+         ouvre chaque fin de mois. Rempli par _recapRenderContestations(), qui n'écrit rien quand
+         il n'y a rien. -->
+    <div id="rec-contest"></div>
     <div class="cd" style="margin-bottom:16px">
       <div class="cd-h"><div class="cd-t">À payer sur ce mois</div></div>
       <div style="font-size:11.5px;color:var(--t3);padding:0 16px 10px">Le montant versé est pré-rempli avec le montant dû, mais c'est vous qui tranchez : corrigez-le si besoin, et expliquez l'écart dans la note, qui part avec le récapitulatif.</div>
@@ -36153,10 +36164,22 @@ async function loadRecapMois(){
   const {debut}=_monthBounds(_monthPickerDefault('rec-mois'));
   _recapMois=debut;
   el.innerHTML=_finSkelRows(3,64);
-  const [aPayer,docs]=await Promise.all([
+  const [aPayer,docs,contest]=await Promise.all([
     sbFetch('rpc/recap_a_payer',{method:'POST',body:{p_mois:debut}}),
     sbFetch('recapitulatifs_remuneration?select=id,collaborateur_id,mois,statut,nb_prestations,montant_prestations,montant_primes,montant_ajustements,montant_frais,montant_du,montant_verse,note,virement_annonce_le,envoye_le,destinataire_email,vire_le,vire_par&mois=eq.'+debut+'&statut=neq.annule&order=created_at.asc'),
+    sbFetch('rpc/recap_contestations_en_attente',{method:'POST',body:{p_mois:debut}}),
   ]);
+  // LES CONTESTATIONS D'ABORD, ET UNE ERREUR DE LECTURE SE VOIT. Une retenue contestée est
+  // suspendue : elle est déjà sortie du montant dû. Si cette lecture échoue et qu'on se contente de
+  // n'afficher rien, l'écran devient indiscernable de « aucune contestation », et le montant
+  // manquant reste inexpliqué. C'est l'abandon silencieux que v364 cherche à éviter, réintroduit
+  // par l'affichage.
+  const _elContest=document.getElementById('rec-contest');
+  if(sbErr(contest)){
+    if(_elContest)_elContest.innerHTML='<div class="cd" style="margin-bottom:16px;border-color:rgba(240,68,94,.28);padding:14px 16px;font-size:12.5px;color:var(--er)">Les retenues contestées du mois n\'ont pas pu être lues ('+esc(msgErreur(contest,'erreur inconnue'))+'). Ne clôturez pas avant de les avoir vues : une retenue contestée est suspendue et son montant est déjà retiré des montants dus ci-dessous.</div>';
+  }else{
+    _recapRenderContestations(Array.isArray(contest)?contest:[]);
+  }
   if(sbErr(aPayer)){
     el.innerHTML='<div style="padding:18px;color:var(--er);font-size:12.5px">'+esc(msgErreur(aPayer,"Impossible de lire ce qu'il y a à payer sur ce mois."))+'</div>';
     document.getElementById('rec-totaux').innerHTML='';
@@ -36206,6 +36229,81 @@ function _recapRenderTotaux(lignes,documents){
       <div style="font-size:11px;color:var(--t3);margin-top:5px">Prestations, primes, ajustements et frais</div></div>
     <div class="fs"><div class="fs-l">Total versé</div><div class="fs-v" style="color:var(--acc)">${_recapEur(verse)}</div>
       <div style="font-size:11px;color:var(--t3);margin-top:5px">Ce qui a été annoncé sur les récapitulatifs partis</div></div>`;
+}
+
+// ── LES RETENUES CONTESTÉES, SUSPENDUES EN ATTENDANT UNE DÉCISION (v364) ────────────────────────
+// POURQUOI CETTE SECTION EXISTE. Depuis v364 une retenue contestée passe en `contestee`, donc elle
+// sort du montant dû. C'est le bon comportement : on ne prélève rien sur quelqu'un qui a objecté par
+// écrit et qui attend une réponse. Mais ça se fait en silence, et sans cet affichage personne ne
+// saurait qu'il y a une décision à prendre : on aurait remplacé un prélèvement injuste par un
+// abandon silencieux, ce qui n'est pas mieux pour la personne, juste plus discret.
+function _recapRenderContestations(lignes){
+  const el=document.getElementById('rec-contest');
+  if(!el)return;
+  // RIEN À TRANCHER : LA SECTION N'EXISTE PAS. Un bloc « aucune contestation » permanent n'apprend
+  // rien et apprend à survoler, sur l'écran où justement il ne faut pas.
+  if(!lignes.length){el.innerHTML='';return;}
+  // v364 : la direction seule tranche, et pas celui qui a posé la retenue. À la comptabilité on
+  // montre la section sans les boutons, plutôt que des boutons qui échoueraient tous en 42501.
+  const peutTrancher=S.role==='admin';
+  const total=lignes.reduce((s,c)=>s+Number(c.montant||0),0);
+  el.innerHTML=`<div class="cd" style="margin-bottom:16px;border-color:rgba(240,68,94,.28)">
+    <div class="cd-h"><div class="cd-t">Retenues contestées, en attente de votre décision</div>
+      <span class="bd bw"><span class="bd-d"></span>${lignes.length} suspendue${lignes.length>1?'s':''} · ${_recapEur(total)}</span></div>
+    <div style="font-size:11.5px;color:var(--t3);padding:0 16px 10px">Ces montants sont suspendus : ils ne sont PAS retirés des montants dus ci-dessous tant que personne n'a tranché. Une retenue maintenue rentrera dans le prochain récapitulatif ; une retenue annulée est abandonnée. ${peutTrancher?'La personne est informée de votre décision dans les deux cas.':'Seule la direction peut trancher.'}</div>
+    ${lignes.map(c=>{
+      const id=c.penalite_id;
+      const nomJs=escJs(c.collaborateur||'ce collaborateur');
+      return `<div style="padding:14px 16px;border-top:1px solid var(--b1)">
+        <div style="display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;align-items:baseline">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(c.collaborateur||'Collaborateur')}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--wa);font-variant-numeric:tabular-nums">${_recapEur(c.montant)} suspendus</div>
+        </div>
+        <div style="font-size:11.5px;color:var(--t3);margin-top:2px">Prestation du ${_mfDate(c.date_prestation)} · contestée le ${_recapInstant(c.conteste_le)}</div>
+        <div style="font-size:12.5px;color:var(--t2);margin-top:8px"><span style="color:var(--t3)">Motif de la retenue :</span> ${esc(c.motif||'non précisé')}</div>
+        <div style="margin-top:9px;padding:10px 12px;background:var(--s2);border-radius:10px;border-left:3px solid var(--wa)">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:4px">La contestation</div>
+          <div style="font-size:12.5px;color:var(--t1);white-space:pre-wrap">${esc(c.contestation||'Aucun texte enregistré.')}</div>
+        </div>
+        ${peutTrancher?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <input type="text" class="l-inp" id="rec-rep-${id}" style="height:34px;flex:1;min-width:220px" maxlength="400" placeholder="Votre réponse (facultative, elle lui est transmise)">
+          <button class="btn bg2 bs" onclick="trancherContestation('${id}','${nomJs}',true)">Maintenir la retenue</button>
+          <button class="btn bg2 bs" onclick="trancherContestation('${id}','${nomJs}',false)">Annuler la retenue</button>
+        </div>`:''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// LES DEUX BOUTONS SONT DE MÊME POIDS VISUEL, ET C'EST VOLONTAIRE. Mettre « Annuler la retenue » en
+// bouton principal pousserait à céder, le mettre en secondaire pousserait à maintenir. Sur de
+// l'argent retiré à quelqu'un qui a objecté, l'écran n'a pas d'avis à donner.
+async function trancherContestation(penaliteId,nom,maintenir){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
+  const reponse=(document.getElementById('rec-rep-'+penaliteId)?.value||'').trim();
+  if(!await demanderConfirmation(
+      (maintenir?'Maintenir la retenue de ':'Annuler la retenue de ')+nom+' ?\n\n'
+      +(maintenir
+        ?'Elle revient dans son montant dû et rentrera dans son récapitulatif.'
+        :'Elle est abandonnée, et ne sera jamais prélevée.')
+      +(reponse?'\n\nRéponse transmise : « '+reponse+' »':'\n\nIl sera informé de la décision, sans réponse écrite de votre part.'),
+      {action:maintenir?'Maintenir la retenue':'Annuler la retenue'}))return;
+  const r=await sbFetch('rpc/mission_penalite_trancher',{method:'POST',body:{
+    p_penalite_id:penaliteId,p_maintenir:maintenir,p_reponse:reponse||null}});
+  // PAS DE FAUX SUCCÈS. La fonction rend {ok:true,maintenue:…}. Un objet d'erreur PostgREST a la
+  // même forme générale (un objet, pas un tableau), d'où sbErr d'abord, puis la vérification de
+  // `ok` : sans elle, n'importe quelle réponse inattendue s'afficherait comme une décision prise.
+  if(sbErr(r)||!r||r.ok!==true){
+    toast(msgErreur(r,"La décision n'a pas été enregistrée."),'er');
+    await loadRecapMois();
+    return;
+  }
+  toast(maintenir
+    ?'Retenue maintenue. '+nom+' en est informé, et le montant revient dans son dû.'
+    :'Retenue annulée. '+nom+' en est informé.','ok');
+  // ON RECHARGE TOUT L'ÉCRAN, PAS SEULEMENT CETTE SECTION : le montant dû de la personne change
+  // (la retenue rentre si elle est maintenue), donc la liste du dessous et les totaux aussi.
+  await loadRecapMois();
 }
 
 function _recapRenderApayer(lignes,documents){
