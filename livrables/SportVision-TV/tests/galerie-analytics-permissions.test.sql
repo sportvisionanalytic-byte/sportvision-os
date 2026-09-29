@@ -17,6 +17,20 @@ create temp table _ctx(nom text, val text) on commit drop;
 grant all on _res to authenticated;
 grant all on _ctx to authenticated;
 
+-- LES MONTANTS DU DÉCOR SONT DATÉS DU 3 FÉVRIER 2026, ET CE N'EST PAS ARBITRAIRE (29/09/2026).
+--
+-- Ce test mesurait sur `current_date - 1` à `current_date + 1`, et sommait donc, en plus de son
+-- décor, LES VRAIES COMMANDES du jour. Le 29/09 il annonçait « son CA = 1500 au lieu de 1000 » et
+-- accusait le cloisonnement par pôle d'être troué. Il ne l'était pas : les 500 centimes manquants
+-- étaient une vraie commande payée ce jour-là sur « Villemomble Cup U10 - Courbevoie », un album du
+-- même pôle. Le périmètre faisait exactement son travail.
+--
+-- Un test qui mesure sur aujourd'hui mesure la production. Il devient rouge les jours de vente et
+-- vert les jours creux, ce qui est le pire des deux mondes : on finit par croire à une faille de
+-- sécurité un jour, et à une absence de faille le lendemain. Le décor est donc daté d'un jour où
+-- la base ne porte AUCUNE commande ni vue réelle (vérifié), et la fenêtre de mesure ne couvre que
+-- ce jour-là. Ne pas remettre `now()` ici.
+
 do $$
 declare
   v_club uuid := '8be55101-0d61-4b27-8d7b-a4761547d88b';
@@ -37,16 +51,16 @@ begin
 
   insert into media_album_links (album_id, slug) values (alFoot, media_gallery_unique_slug('ZZ pf')) returning id into v_lien;
   insert into media_orders (club_id, album_id, link_id, guest_email, amount_cents, currency, status, paid_at)
-  values (v_club, alFoot, v_lien, 'zz-f@x.fr', 1000, 'eur', 'paid', now());
+  values (v_club, alFoot, v_lien, 'zz-f@x.fr', 1000, 'eur', 'paid', '2026-02-03 12:00:00+00');
   insert into media_album_views (album_id, link_id, visitor_hash) values (alFoot, v_lien, 'zzpf1');
 
   insert into media_album_links (album_id, slug) values (alBasket, media_gallery_unique_slug('ZZ pb')) returning id into v_lien;
   insert into media_orders (club_id, album_id, link_id, guest_email, amount_cents, currency, status, paid_at)
-  values (v_club, alBasket, v_lien, 'zz-b@x.fr', 2000, 'eur', 'paid', now());
+  values (v_club, alBasket, v_lien, 'zz-b@x.fr', 2000, 'eur', 'paid', '2026-02-03 12:00:00+00');
 
   insert into media_album_links (album_id, slug) values (alSansPole, media_gallery_unique_slug('ZZ ps')) returning id into v_lien;
   insert into media_orders (club_id, album_id, link_id, guest_email, amount_cents, currency, status, paid_at)
-  values (v_club, alSansPole, v_lien, 'zz-s@x.fr', 5000, 'eur', 'paid', now());
+  values (v_club, alSansPole, v_lien, 'zz-s@x.fr', 5000, 'eur', 'paid', '2026-02-03 12:00:00+00');
 
   insert into _ctx values ('foot', alFoot::text), ('basket', alBasket::text), ('sanspole', alSansPole::text),
                           ('pFoot', pFoot::text), ('pBasket', pBasket::text);
@@ -106,10 +120,10 @@ begin
   insert into _res values ('2','ne voit PAS un album sans pole','0', v_n::text, v_n = 0);
 
   -- Son CA ne contient que le sien : 10 EUR, ni les 20 du Basket ni les 50 sans pole.
-  select ca_cents into v_ca from media_stats_resume(current_date - 1, current_date + 1);
+  select ca_cents into v_ca from media_stats_resume('2026-02-03'::date, '2026-02-03'::date);
   insert into _res values ('2','son CA = son pole uniquement','1000 c', v_ca::text, v_ca = 1000);
 
-  select count(*)::integer into v_n from media_stats_liens((select val::uuid from _ctx where nom='basket'), current_date - 1, current_date + 1);
+  select count(*)::integer into v_n from media_stats_liens((select val::uuid from _ctx where nom='basket'), '2026-02-03'::date, '2026-02-03'::date);
   insert into _res values ('2','aucun detail sur un album d un autre pole','0', v_n::text, v_n = 0);
 end $$;
 reset role;
@@ -123,7 +137,7 @@ begin
   insert into _res select '3','Photographe : aucun acces','false', media_stats_access()::text, not media_stats_access();
   select count(*)::integer into v_n from _media_stats_albums();
   insert into _res values ('3','et aucun album dans son perimetre','0', v_n::text, v_n = 0);
-  select ca_cents into v_ca from media_stats_resume(current_date - 1, current_date + 1);
+  select ca_cents into v_ca from media_stats_resume('2026-02-03'::date, '2026-02-03'::date);
   insert into _res values ('3','son CA est vide','0', v_ca::text, v_ca = 0);
 end $$;
 reset role;

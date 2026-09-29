@@ -58,11 +58,11 @@ set local role authenticated;
 
 -- Ce que le moteur recoit : une ligne PAR photo, et aucune n'est encore calculee.
 select pg_temp.note('les DEUX photos de reference sont proposees au calcul', '2',
-  (select count(*)::text from reconnaissance_joueurs_prets('b1110000-0000-0000-0000-0000000000b1')
+  (select count(*)::text from reconnaissance_joueurs_prets('b1110000-0000-0000-0000-0000000000b1', 'zz-modele')
     where player_id = 'b1110000-0000-0000-0000-0000000000d1'));
 
 select pg_temp.note('aucune n''a encore d''empreinte', '0',
-  (select count(*)::text from reconnaissance_joueurs_prets('b1110000-0000-0000-0000-0000000000b1')
+  (select count(*)::text from reconnaissance_joueurs_prets('b1110000-0000-0000-0000-0000000000b1', 'zz-modele')
     where player_id = 'b1110000-0000-0000-0000-0000000000d1' and a_une_empreinte));
 
 -- Le moteur calcule la premiere.
@@ -72,14 +72,14 @@ select visage_reference_ajouter('b1110000-0000-0000-0000-0000000000d1',
 -- LE CONTROLE QUI COMPTE. Avant la v331, la seconde photo etait declaree « deja calculee » parce
 -- qu'une empreinte existait pour ce sportif, et le moteur ne la lisait jamais.
 select pg_temp.note('la SECONDE photo reste a calculer', '1',
-  (select count(*)::text from reconnaissance_joueurs_prets('b1110000-0000-0000-0000-0000000000b1')
+  (select count(*)::text from reconnaissance_joueurs_prets('b1110000-0000-0000-0000-0000000000b1', 'zz-modele')
     where player_id = 'b1110000-0000-0000-0000-0000000000d1' and not a_une_empreinte));
 
 select visage_reference_ajouter('b1110000-0000-0000-0000-0000000000d1',
   pg_temp.vecteur(0.955, 0.2965)::vector, 'zz-modele', 'b1110000-0000-0000-0000-0000000000e2');
 
 select pg_temp.note('les deux sont calculees, et le moteur ne repasse pas dessus', '0',
-  (select count(*)::text from reconnaissance_joueurs_prets('b1110000-0000-0000-0000-0000000000b1')
+  (select count(*)::text from reconnaissance_joueurs_prets('b1110000-0000-0000-0000-0000000000b1', 'zz-modele')
     where player_id = 'b1110000-0000-0000-0000-0000000000d1' and not a_une_empreinte));
 
 reset role;
