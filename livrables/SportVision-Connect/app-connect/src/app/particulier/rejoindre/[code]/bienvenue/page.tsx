@@ -5,9 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 // Écran de bienvenue après affiliation (JoinClubForm.tsx) : deux propositions facultatives,
-// jamais bloquantes — photo de référence puis Pass Photo — avant de rejoindre Mes sportifs.
-// Décision Fouka (29/09/2026) : les deux existent déjà ailleurs dans l'app (reconnaissance,
-// achat du Pass), on ne les duplique pas ici, on les présente et on renvoie vers les vrais écrans.
+// jamais bloquantes — Pass Photo puis photo de référence — avant de rejoindre Mes sportifs.
+// Ordre voulu par Fouka (29/09/2026) : le Pass en premier (c'est lui qui retire le filigrane et
+// permet le téléchargement), la photo de référence ensuite (sert à retrouver automatiquement les
+// photos, mais la reconnaissance fonctionne pour tous, Pass ou non — jamais un prérequis l'un de
+// l'autre). Les deux existent déjà ailleurs dans l'app (achat du Pass, reconnaissance) : on ne les
+// duplique pas ici, on les présente au bon moment et on renvoie vers les vrais écrans.
 export default function BienvenuePage() {
   const searchParams = useSearchParams();
   const playerId = searchParams.get("playerId");
@@ -37,15 +40,15 @@ export default function BienvenuePage() {
           <h1 className="font-sora text-[24px] font-bold tracking-tight">Une dernière chose</h1>
         </div>
         <div className="flex flex-col gap-4 rounded-sv-card border border-border bg-surface p-6">
-          <span className="material-symbols-rounded !text-[32px] text-affiliations" aria-hidden="true">face</span>
-          <h2 className="font-sora text-[18px] font-bold tracking-tight">Photo de référence de {nom}</h2>
+          <span className="material-symbols-rounded !text-[32px] text-affiliations" aria-hidden="true">photo_library</span>
+          <h2 className="font-sora text-[18px] font-bold tracking-tight">Le Pass Photo</h2>
           <p className="text-[14px] leading-relaxed text-text-tertiary">
-            Ajoutez une photo pour retrouver automatiquement les photos de {nom} dans les galeries de l&apos;équipe,
-            sans avoir à les chercher une par une. Entièrement facultatif, à faire à tout moment depuis sa fiche.
+            Retrouvez les photos de {nom} toute la saison, celles du groupe incluses, sans filigrane, et téléchargez-les
+            en version numérique. Facultatif : les galeries de l&apos;équipe restent consultables sans y souscrire.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Link href={`/particulier/sportifs/club/${playerId}/reconnaissance`} className={primaryLinkClass}>
-              Ajouter une photo
+            <Link href={`/particulier/sportifs/club/${playerId}/photos`} className={primaryLinkClass}>
+              Découvrir le Pass Photo
             </Link>
             <button type="button" onClick={() => setStep(2)} className={secondaryButtonClass}>
               Plus tard
@@ -63,15 +66,16 @@ export default function BienvenuePage() {
         <h1 className="font-sora text-[24px] font-bold tracking-tight">Encore une chose</h1>
       </div>
       <div className="flex flex-col gap-4 rounded-sv-card border border-border bg-surface p-6">
-        <span className="material-symbols-rounded !text-[32px] text-affiliations" aria-hidden="true">photo_library</span>
-        <h2 className="font-sora text-[18px] font-bold tracking-tight">Le Pass Photo</h2>
+        <span className="material-symbols-rounded !text-[32px] text-affiliations" aria-hidden="true">face</span>
+        <h2 className="font-sora text-[18px] font-bold tracking-tight">Photo de référence de {nom}</h2>
         <p className="text-[14px] leading-relaxed text-text-tertiary">
-          Retrouvez les photos de {nom} toute la saison, groupe compris, sans filigrane. Facultatif : les galeries de
-          l&apos;équipe restent consultables sans y souscrire.
+          Ajoutez une ou plusieurs photos pour retrouver automatiquement les photos de {nom} dans les galeries de
+          l&apos;équipe, sans avoir à les chercher une par une. Entièrement facultatif, à faire à tout moment depuis sa
+          fiche.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link href={`/particulier/sportifs/club/${playerId}/photos`} className={primaryLinkClass}>
-            Découvrir
+          <Link href={`/particulier/sportifs/club/${playerId}/reconnaissance`} className={primaryLinkClass}>
+            Ajouter une photo
           </Link>
           <Link href="/particulier/sportifs" className={secondaryButtonClass}>
             Terminer
