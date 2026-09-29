@@ -21,13 +21,25 @@ export type Resultat =
   | { etat: "refuse" }
   | { etat: "erreur"; message: string };
 
-let autorisation: boolean | null = null;
+/** Vrai une fois que l'accès est donné. ON NE RETIENT JAMAIS UN REFUS — voir `autoriser`. */
+let autorisation = false;
 
 async function autoriser(): Promise<boolean> {
-  if (autorisation !== null) return autorisation;
+  if (autorisation) return true;
+  // ON NE GARDE PAS EN MÉMOIRE UN REFUS (30/09/2026).
+  //
+  // Le refus était retenu pour toute la durée de l'application. L'écran dit pourtant, mot pour mot,
+  // « Réglages → SportVision → Photos » : la personne y allait, donnait l'accès, revenait, appuyait
+  // sur « Enregistrer », et relisait le même refus. La seule sortie était de tuer l'application —
+  // sans que rien ne le dise. Une consigne qu'on donne doit marcher quand elle est suivie.
+  //
+  // Redemander ne rouvre pas la fenêtre du système quand elle a déjà été refusée : iOS et Android
+  // répondent aussitôt avec la décision en cours. Cet appel coûte donc un aller-retour local, et
+  // rien d'autre. Seul le OUI se retient.
+  //
   // `granted` suffit : on ajoute seulement, on ne lit jamais la pellicule.
   const { granted } = await MediaLibrary.requestPermissionsAsync(true);
-  autorisation = granted;
+  if (granted) autorisation = true;
   return granted;
 }
 

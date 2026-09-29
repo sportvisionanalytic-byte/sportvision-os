@@ -385,6 +385,19 @@ export function urlApercu(chemin: string): string {
   return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_APERCUS}/${chemin}`;
 }
 
+/**
+ * L'adresse d'un apercu, ou `null` quand il n'y a AUCUN fichier a montrer (30/09/2026).
+ *
+ * `urlApercu("")` rend l'adresse du bucket, qui n'est pas vide : les deux ecrans de photos
+ * filtraient ensuite sur `!!p.url` en croyant ecarter ces lignes, et ce filtre ne pouvait donc
+ * ecarter personne. Une ligne sans preview_path NI thumb_path produisait une case grise qu'on
+ * pouvait agrandir, partager, enregistrer — pour rien — et elle comptait dans « 3 photos de vous ».
+ * Un compteur qui compte une photo inexistante est un compteur qui ment.
+ */
+function urlApercuOuRien(chemin?: string | null): string | null {
+  return chemin ? urlApercu(chemin) : null;
+}
+
 export interface PhotoDuJoueur {
   id: string;
   url: string;
@@ -541,11 +554,11 @@ export async function lirePhotosDuJoueur(
       const net = r.preview_clair_path ? signees.get(r.preview_clair_path) : undefined;
       return {
         id: r.asset_id,
-        url: net ?? urlApercu((r.preview_path ?? r.thumb_path) ?? ""),
+        url: net ?? urlApercuOuRien(r.preview_path ?? r.thumb_path),
         net: !!net,
       };
     })
-    .filter((p) => !!p.url);
+    .filter((p): p is PhotoDuJoueur => !!p.url);
   // Le total vient de la base, jamais de la longueur de la liste : c'est toute la difference entre
   // « 4 photos » et « 4 photos sur 41 ».
   return {
@@ -639,12 +652,12 @@ export async function lirePhotosAIdentifier(
     const net = r.preview_clair_path ? signees.get(r.preview_clair_path) : undefined;
     return {
       id: r.asset_id,
-      url: net ?? urlApercu((r.preview_path ?? r.thumb_path) ?? ""),
+      url: net ?? urlApercuOuRien(r.preview_path ?? r.thumb_path),
       net: !!net,
       suggeree: !!r.suggeree,
       mienne: !!r.mienne,
     };
-  }).filter((p) => !!p.url);
+  }).filter((p): p is PhotoAIdentifier => !!p.url);
 }
 
 /**

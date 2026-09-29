@@ -3,7 +3,7 @@
 // Ce que la famille vient chercher, ce n'est pas « la galerie » : ce sont les photos où on la
 // reconnaît. L'écran ouvre donc directement dessus. Tant que l'accès n'est pas acheté, six
 // aperçus, pas un de plus : c'est la règle du site, et elle est tenue en base, pas ici.
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Dimensions, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useDonnees, oublier } from "../../../src/lib/cache";
@@ -109,15 +109,38 @@ export default function Galerie() {
   const [tour, setTour] = useState(0);
   useFocusEffect(useCallback(() => { setTour((n) => n + 1); }, []));
 
+  /** LE RATTRAPAGE NE SE TENTE QU'UNE FOIS PAR OUVERTURE DE L'ECRAN (30/09/2026).
+   *
+   *  Sans ce verrou, l'effet ci-dessous TOURNE EN ROND des qu'un Pass a deja ete achete sur iOS.
+   *  L'enchainement : `reprendreAchatsEnAttente` interroge le magasin avec
+   *  `onlyIncludeActiveItemsIOS: false`, ce qui rend aussi les transactions DEJA SOLDEES — c'est
+   *  justement ce que ce drapeau sert a voir. Le serveur revalide le recu sans broncher (il est
+   *  idempotent, tout le rattrapage repose sur ca), la fonction repond donc « oui, j'ai repris
+   *  quelque chose », on appelle `toutRelire()`, qui incremente `tour`, qui est une dependance de
+   *  cet effet — et on recommence. Indefiniment.
+   *
+   *  Ce que la personne vit : la galerie relance le magasin et le serveur en boucle, et surtout
+   *  `etatPass`, `reco` et les photos a trancher ne sont JAMAIS charges puisque l'effet ressort
+   *  avant. Donc ni « Me reconnaitre », ni le numero de maillot, ni rien de ce qui vient apres
+   *  l'achat — exactement pour la famille qui a paye.
+   *
+   *  Un seul essai par ouverture suffit : le rattrapage ne depend pas de la galerie regardee
+   *  (c'est le Pass du club pour ce joueur), et le tour suivant charge enfin l'etat. */
+  const rattrapageFait = useRef(false);
+
   useEffect(() => {
     let vivant = true;
     (async () => {
       if (!club || !joueur) return;
-      if (await reprendreAchatsEnAttente(club, joueur, enfant)) {
+      if (!rattrapageFait.current) {
+        rattrapageFait.current = true;
+        if (await reprendreAchatsEnAttente(club, joueur, enfant)) {
+          if (!vivant) return;
+          setOuvertMaintenant(true);
+          toutRelire();
+          return;
+        }
         if (!vivant) return;
-        setOuvertMaintenant(true);
-        toutRelire();
-        return;
       }
       const [p, e, t] = await Promise.all([
         etatDuPass(club, joueur),
@@ -134,7 +157,10 @@ export default function Galerie() {
       }
     })();
     return () => { vivant = false; };
-  }, [club, joueur, enfant, charger, tour]);
+    // `id` EST UNE VRAIE DEPENDANCE : le numero declare et les photos a trancher sont ceux de CETTE
+    // galerie. Sans lui, passer d'une galerie a l'autre (l'ecran n'est pas remonte, seuls les
+    // parametres changent) gardait le numero et les propositions de la precedente a l'affichage.
+  }, [club, joueur, enfant, charger, tour, id]);
 
   /** L'ENREGISTREMENT DANS LA PELLICULE (28/09/2026).
    *  Fouka : « faut qu'il puisse telecharger toutes ses photos du match. » L'app n'avait aucun
@@ -244,13 +270,21 @@ export default function Galerie() {
     if (!joueur || !aTrancher.length) return;
     setEnCours("lot"); setErreur(null);
     const faites: string[] = [];
+    let rate = 0;
     for (const photo of aTrancher) {
-      if (await repondreCestMoi(photo.id, joueur, false)) faites.push(photo.id);
+      if (await repondreCestMoi(photo.id, joueur, false)) faites.push(photo.id); else rate++;
     }
     setEnCours(null);
     setATrancher((l) => l.filter((x) => !faites.includes(x.id)));
     setChoisies(new Set());
     setConfirmeAucune(false);
+    // UN REFUS QUI N'ABOUTIT PAS SE DIT (30/09/2026). Les photos que le serveur a refusees restaient
+    // dans la grille sans un mot : on appuyait « Aucune », on confirmait, et la moitie revenait. On
+    // reappuyait, et ainsi de suite. Meme regle que la confirmation en lot juste au-dessus : la
+    // maison n'affiche pas de faux succes, elle ne laisse pas non plus un echec muet.
+    if (rate) {
+      setErreur(`${rate} photo${rate > 1 ? "s n'ont" : " n'a"} pas pu être retirée${rate > 1 ? "s" : ""}. Réessayez.`);
+    }
   }
 
 

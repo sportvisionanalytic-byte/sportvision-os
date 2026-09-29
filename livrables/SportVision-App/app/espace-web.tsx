@@ -147,17 +147,20 @@ export default function EspaceWeb() {
         </Text>
 
         {/* PLUS DE BOUTON « CHANGER » EN HAUT (décision de Fouka, 29/09) : « pour changer, il faut
-            que tu ailles dans profil, se déconnecter ». On sort d'un espace par là où l'on sort. */}
-        {avecOnglets ? (
-          <Pressable
-            accessibilityRole="button" accessibilityLabel="Mon compte"
-            onPress={() => setProfilOuvert(true)} hitSlop={10} style={s.boutonBarre}
-          >
-            <Ionicons name="person-circle-outline" size={23} color={C.texteDoux} />
-          </Pressable>
-        ) : (
-          <View style={{ width: TOUCHE }} />
-        )}
+            que tu ailles dans profil, se déconnecter ». On sort d'un espace par là où l'on sort.
+            Et ce bouton EST cette sortie, donc il est là dans TOUS LES CAS (30/09/2026). Il ne
+            s'affichait qu'avec la barre d'onglets, c'est-à-dire pour l'espace club seulement.
+            L'espace de production, lui, n'avait alors AUCUNE sortie : pas d'onglets, pas de menu,
+            pas de profil, et une flèche de retour qui ne fait que reculer dans la page web. Un
+            écran fermé, et il est encore atteignable — l'espace n'est plus proposé dans l'accueil
+            depuis le 25/09, mais le choix mémorisé sur un téléphone d'avant y renvoie à chaque
+            lancement. Aucun écran de cette application ne se garde sans issue. */}
+        <Pressable
+          accessibilityRole="button" accessibilityLabel="Mon compte"
+          onPress={() => setProfilOuvert(true)} hitSlop={10} style={s.boutonBarre}
+        >
+          <Ionicons name="person-circle-outline" size={23} color={C.texteDoux} />
+        </Pressable>
       </View>
 
       {sansSession ? (

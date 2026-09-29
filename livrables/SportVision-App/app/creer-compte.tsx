@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { chercherClubs, creerCompte, type ClubTrouve, type Profil } from "../src/lib/inscription";
+import { retourner } from "../src/lib/retour";
 import { Bouton, Champ, Erreur } from "../src/ui/Base";
 import { C, E, R } from "../src/theme/couleurs";
 
@@ -37,6 +38,16 @@ function dateValide(v: string): string | null {
   const annee = Number(a), mois = Number(mo), jour = Number(j);
   if (mois < 1 || mois > 12 || jour < 1 || jour > 31) return null;
   if (annee < 1920 || annee > new Date().getFullYear()) return null;
+  // LE JOUR DOIT EXISTER DANS SON MOIS (30/09/2026).
+  //
+  // « jour <= 31 » laissait passer le 31/02. Et une date impossible ne se voit nulle part : le
+  // compte se crée, l'écran annonce « vérifiez votre boîte mail », puis la demande de rattachement
+  // au club est rejetée par la base à chaque connexion — l'intention est rejouée à chaque fois, et
+  // échoue à chaque fois, en silence. La famille reste devant « Rejoignez votre club » sans que
+  // rien, jamais, ne lui dise pourquoi. On refuse la faute de frappe tout de suite, pendant qu'elle
+  // est encore corrigeable.
+  const d = new Date(`${a}-${mo}-${j}T12:00:00`);
+  if (Number.isNaN(d.getTime()) || d.getDate() !== jour || d.getMonth() + 1 !== mois) return null;
   return `${a}-${mo}-${j}`;
 }
 
@@ -133,7 +144,12 @@ export default function CreerCompte() {
               <Pressable
                 accessibilityRole="button" accessibilityLabel="Étape précédente"
                 onPress={() => {
-                  if (etape === "profil") router.back();
+                  // LA FLÈCHE DU PREMIER PAS PASSE PAR `retourner` (30/09/2026) : `router.back()`
+                  // ne fait RIEN quand la pile est vide, et sans rien signaler. C'est la leçon du
+                  // 28/09, déjà payée sur trois écrans, et cet écran-ci en gardait sa propre copie
+                  // — celle qui avait oublié le cas. L'inscription se quitte vers la connexion,
+                  // qui est l'endroit d'où elle s'ouvre.
+                  if (etape === "profil") retourner("/connexion");
                   else if (etape === "identite") setEtape("profil");
                   else setEtape("identite");
                 }}
@@ -295,7 +311,12 @@ export default function CreerCompte() {
                     desactive={declare ? !(decNom.trim() && decVille.trim()) : !clubChoisi}
                     onPress={() => envoyer(true)}
                   />
-                  <Bouton titre="Je le ferai plus tard" secondaire onPress={() => envoyer(false)} />
+                  {/* DÉSACTIVÉ PENDANT L'ENVOI (30/09/2026). Le bouton principal se verrouille
+                      pendant `envoi`, celui-ci ne le faisait pas : toucher « Je le ferai plus
+                      tard » pendant que la création part créait une SECONDE inscription avec la
+                      même adresse. Supabase répond alors « déjà utilisée », et l'écran affichait
+                      cette erreur à quelqu'un dont le compte venait d'être créé. */}
+                  <Bouton titre="Je le ferai plus tard" secondaire desactive={envoi} onPress={() => envoyer(false)} />
                 </View>
               </View>
             ) : null}
