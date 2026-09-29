@@ -90,6 +90,14 @@ const CFG = {
   // à remesurer dès que plusieurs familles auront trié leurs galeries. En attendant on reste
   // prudent — on valide d'office très bas, et on propose jusqu'au seuil usuel d'ArcFace.
   seuilCertain: 0.95,
+
+  // APPRENDRE DEMANDE PLUS QUE RECONNAITRE (29/09/2026). Une photo validee d'office par la machine
+  // peut servir de reference — c'est la demande de Fouka, « chaque photo que tu vois du joueur
+  // devient une photo de reference en plus » — mais pas n'importe laquelle. Valider a 0,94, puis
+  // apprendre dessus, puis valider a 0,94 de ce qu'on vient d'apprendre : c'est ainsi qu'une
+  // reconnaissance derive sans que personne ne s'en apercoive. On n'apprend donc que de ce dont on
+  // etait tres sur. Ce qu'un HUMAIN a confirme entre sans condition : lui a regarde la photo.
+  seuilApprentissage: 0.85,
   seuilPropose: 1.24,
 
   // ACCUMULATION. Un visage plus éloigné que cela, même sur une photo confirmée, n'est pas le sien :
@@ -389,10 +397,31 @@ async function traiterGalerieVraiment(album, lignes) {
 
   const visagesParPhoto = new Map();
   let nVisages = 0, sansVisage = 0, illisibles = 0, relus = 0, numerosLus = 0;
+  // OU PASSE LE TEMPS (29/09/2026). 23 s par photo, et je n'en savais rien de precis : ni le
+  // telechargement, ni les visages, ni les dossards n'etaient mesures separement. On ne peut pas
+  // accelerer ce qu'on n'a pas mesure — c'est la lecon des tuiles, d'Otsu et des silhouettes,
+  // trois pistes abandonnees le meme jour parce que la mesure contredisait l'hypothese.
+  const chrono = { charge: 0, visages: 0, personnes: 0, dossards: 0, ecriture: 0 };
   const motifs = new Map();
   const t0 = Date.now();
   for (let i = 0; i < photos.length; i++) {
-    if (i % 20 === 0) dire(`   lecture ${i + 1}/${photos.length}…`);
+    if (i % 20 === 0) {
+      dire(`   lecture ${i + 1}/${photos.length}…`);
+      // ON DIT QU'ON AVANCE (v349, 29/09/2026).
+      //
+      // `reconnaissance_commencer` compte un essai AVANT de travailler, et trois essais
+      // abandonnent la galerie. Mais un redémarrage du service au milieu d'un long album compte
+      // un essai lui aussi : « Villemomble vs OPB », 161 photos et quarante minutes de calcul,
+      // était déjà à 2 sans avoir jamais planté. Les albums les plus lourds sont précisément
+      // ceux qu'on interrompt le plus souvent : on aurait perdu les gros et gardé les petits.
+      //
+      // Vingt photos calculées prouvent que ce travail n'est pas cassé. Son budget repart donc de
+      // zéro, et seule une galerie qui plante toujours au même endroit atteint ses trois essais.
+      const suivis = lignes.filter((l) => l.id).map((l) => l.id);
+      // Les identifiants seulement : une ligne sans `id` glissee dans un uuid[] ferait echouer
+      // l'appel, et `rpc` ne leve rien — le compteur ne repartirait jamais de zero, en silence.
+      if (!SIMULER && i > 0 && suivis.length) await rpc("reconnaissance_progresse", { p_ids: suivis });
+    }
     // DÉJÀ LU DANS CE PASSAGE DE SERVICE ? On ne relit pas. Voir MEMOIRE plus bas : rien n'est
     // écrit nulle part, c'est la mémoire vive du service et elle meurt avec lui.
     const connu = MEMOIRE.get(photos[i].id);
@@ -403,14 +432,18 @@ async function traiterGalerieVraiment(album, lignes) {
       continue;
     }
     try {
+      const tCharge = Date.now();
       const octets = await charger(photos[i].preview_clair_path);
+      chrono.charge += Date.now() - tCharge;
       if (!octets) { illisibles++; continue; }
       // Les visages servent a deux choses : reconnaitre quelqu'un, et savoir si une personne est
       // vue de face — ce dont la lecture des dossards a besoin pour ne lire que les dos. La
       // seconde n'identifie personne et ne conserve rien : on detecte sans calculer d'empreinte.
+      const tVisages = Date.now();
       const v = reconnaissanceDesVisages
         ? await visagesDe(octets, { seuil: CFG.scoreMin, cotes: CFG.cotes })
         : await detecterFin(octets, { seuil: CFG.scoreMin, cotes: CFG.cotes });
+      chrono.visages += Date.now() - tVisages;
       const empreintes = reconnaissanceDesVisages ? v.map((x) => x.empreinte) : [];
       if (reconnaissanceDesVisages) retenir(photos[i].id, empreintes);
 
@@ -423,8 +456,12 @@ async function traiterGalerieVraiment(album, lignes) {
       if (CFG.lireLesDossards && !dossardsVus.has(photos[i].id)
           && photos[i].numeros_lus_par !== LECTEUR_DOSSARDS) {
         try {
+          const tCorps = Date.now();
           const corps = await personnesDe(octets);
+          chrono.personnes += Date.now() - tCorps;
+          const tDos = Date.now();
           const nums = corps.length ? await lireDossards(octets, corps, v) : [];
+          chrono.dossards += Date.now() - tDos;
           dossardsVus.add(photos[i].id);
           numerosLus += nums.length;
           // ON LE DIT MÊME QUAND ON NE TROUVE RIEN. Une photo de face, un gros plan, un banc de
@@ -432,9 +469,11 @@ async function traiterGalerieVraiment(album, lignes) {
           // ne distingue pas « pas encore regardée » de « regardée, rien à lire », et l'application
           // annonce à une famille qu'elle relit cent photos déjà lues.
           if (!SIMULER) {
+            const tEcr = Date.now();
             const rep = await rpc("media_numeros_lus", {
               p_asset_id: photos[i].id, p_numeros: nums, p_lecteur: LECTEUR_DOSSARDS,
             });
+            chrono.ecriture += Date.now() - tEcr;
             if (!rep.ok) dire(`   lecture non enregistree : ${JSON.stringify(rep.d).slice(0, 110)}`);
           }
         } catch (e) {
@@ -460,16 +499,30 @@ async function traiterGalerieVraiment(album, lignes) {
   for (const [asset, empreintes] of visagesParPhoto)
     if (empreintes.length >= CFG.visagesPourGroupe) deGroupe.add(asset);
   if (deGroupe.size && !SIMULER) {
-    const rep = await rest(`media_assets?id=in.(${[...deGroupe].join(",")})`, {
-      method: "PATCH", body: JSON.stringify({ photo_de_groupe: true }),
-      headers: { Prefer: "return=minimal" },
-    });
-    if (!rep.ok) dire("   les photos de groupe n'ont pas pu etre marquees");
+    // Par paquets, pour la meme raison que l'apprentissage plus bas : une tres grosse galerie
+    // fabriquerait une adresse trop longue et le marquage tomberait, silencieusement pour la
+    // moitie des photos. Ici au moins l'echec se dit, mais mieux vaut qu'il n'arrive pas.
+    const tous = [...deGroupe];
+    let rate = 0;
+    for (let k = 0; k < tous.length; k += 100) {
+      const rep = await rest(`media_assets?id=in.(${tous.slice(k, k + 100).join(",")})`, {
+        method: "PATCH", body: JSON.stringify({ photo_de_groupe: true }),
+        headers: { Prefer: "return=minimal" },
+      });
+      if (!rep.ok) rate += Math.min(100, tous.length - k);
+    }
+    if (rate) dire(`   ${rate} photo(s) de groupe n'ont pas pu etre marquees`);
   }
   dire(`   ${reconnaissanceDesVisages ? `${nVisages} visage(s)` : "dossards lus"} sur ${photos.length} photo(s) en ${Math.round((Date.now() - t0) / 1000)} s`
      + (deGroupe.size ? `, dont ${deGroupe.size} photo(s) de groupe` : "")
      + (reconnaissanceDesVisages && sansVisage ? `, ${sansVisage} sans visage` : "") + (illisibles ? `, ${illisibles} illisible(s)` : "")
      + (relus ? `, dont ${relus} déjà en mémoire` : ""));
+  {
+    const sec = (ms) => Math.round(ms / 1000);
+    const total = Object.values(chrono).reduce((a, b) => a + b, 0);
+    if (total > 2000) dire(`   temps : ${sec(chrono.charge)} s de téléchargement, ${sec(chrono.visages)} s de visages, `
+      + `${sec(chrono.personnes)} s de silhouettes, ${sec(chrono.dossards)} s de dossards, ${sec(chrono.ecriture)} s d'écriture`);
+  }
   if (dossardsVus.size) {
     dire(`   ${dossardsVus.size} dos examiné(s), ${numerosLus} numéro(s) de maillot relevé(s)`);
   }
@@ -546,12 +599,42 @@ async function traiterGalerieVraiment(album, lignes) {
   // dos met la photo dans la galerie de la famille, et c'est voulu — mais le seul visage de cette
   // image est celui de QUELQU'UN D'AUTRE, puisque le joueur, lui, est de dos. En tirer une
   // référence, c'est apprendre le visage du voisin sous le nom de l'enfant.
-  const { d: confirmes } = await rest(
-    `media_player_tags?select=media_ref_id,player_id&media_ref_type=eq.media_asset&statut=eq.valide`
-    + `&valide_par=not.is.null&source=neq.numero`
-    + `&media_ref_id=in.(${photos.map((p) => p.id).join(",")})`);
+  // ON NE REGARDE PLUS SEULEMENT CE QU'UN HUMAIN A CONFIRME (29/09/2026).
+  //
+  // Le filtre etait `valide_par not null`, c'est-a-dire « quelqu'un a confirme ». Il avait un sens
+  // tant que la machine se contentait de PROPOSER. Depuis qu'elle met les photos d'office (v340),
+  // ses propres validations ont `valide_par` vide — le moteur tourne avec la cle de service, et il
+  // n'y a donc aucun utilisateur a inscrire. L'apprentissage ne voyait plus rien : Fouka avait
+  // 7 photos validees et TOUJOURS une seule empreinte de reference.
+  //
+  // On prend donc les deux, avec deux exigences differentes : ce qu'un humain a confirme entre sans
+  // condition — il a regarde la photo —, ce que la machine a decide n'entre que si elle en etait
+  // tres sure. Voir seuilApprentissage.
+  //
+  // ET ON DEMANDE PAR PAQUETS (v349, 29/09/2026). `in.(...)` avec un identifiant par photo faisait
+  // 6 000 caracteres d'adresse pour 161 photos. A 400 photos on depasse la limite du serveur, qui
+  // repond 414 : `rest` rend alors un texte d'erreur, `Array.isArray` est faux, la boucle ne tourne
+  // pas — et l'apprentissage s'arrete SANS RIEN DIRE, sur les galeries les plus grosses justement.
+  // Fouka veut « toutes les equipes, tous les clubs » : c'est exactement la taille ou ca casse.
+  const confirmes = [];
+  const PAQUET = 100;
+  for (let k = 0; k < photos.length; k += PAQUET) {
+    const lot = photos.slice(k, k + PAQUET).map((p) => p.id);
+    const { ok, d } = await rest(
+      `media_player_tags?select=media_ref_id,player_id,score,valide_par&media_ref_type=eq.media_asset`
+      + `&statut=eq.valide&source=neq.numero`
+      + `&media_ref_id=in.(${lot.join(",")})`);
+    if (!ok || !Array.isArray(d)) {
+      dire(`   apprentissage : lot ${k / PAQUET + 1} illisible (${String(JSON.stringify(d)).slice(0, 90)})`);
+      continue;
+    }
+    confirmes.push(...d);
+  }
   const confirmeesPar = new Map();
-  for (const t of (Array.isArray(confirmes) ? confirmes : [])) {
+  for (const t of confirmes) {
+    const parUnHumain = t.valide_par !== null && t.valide_par !== undefined;
+    const sure = t.score !== null && Number(t.score) < CFG.seuilApprentissage;
+    if (!parUnHumain && !sure) continue;
     // Une photo de groupe ne sert pas de référence : ses visages sont trop petits, et l'empreinte
     // qu'on en tirerait abîmerait celles qu'on a déjà.
     if (deGroupe.has(t.media_ref_id)) continue;
@@ -653,6 +736,29 @@ async function vider() {
   let albums = 0, photos = 0, marques = 0;
   for (const [album, lignes] of parAlbum) {
     const aFaire = lignes.filter((l) => l.id);
+
+    // UNE FAMILLE QUI VIENT DE PAYER NE FAIT PAS LA QUEUE DERRIÈRE LE RATTRAPAGE (v349, 29/09/2026).
+    //
+    // La file est lue d'un coup, 500 lignes, triée par priorité. Correct au moment de la lecture,
+    // et faux ensuite : les 52 galeries de rattrapage (priorité 9) mettent des HEURES, et un achat
+    // de Pass qui arrive pendant ce temps entre en priorité 1 dans une file qu'on ne relit plus.
+    // Mesuré : le travail de Nathan, demandé à 14 h 20, attendait derrière un album de 161 photos
+    // de priorité 5. On promet « reviens dans cinq à dix minutes » ; on livrait le lendemain.
+    //
+    // Entre deux galeries, on regarde donc si quelqu'un de plus pressé est arrivé. Si oui, on
+    // arrête ce passage : la boucle du service en relance un dans vingt secondes, qui repartira du
+    // haut de la file. On ne perd rien, les travaux non commencés sont toujours là.
+    if (!SIMULER && aFaire.length) {
+      const ici = Math.min(...lignes.map((l) => l.priorite ?? 9));
+      if (ici > 1) {
+        const { d: presses } = await rest(
+          `reconnaissance_a_faire?select=id&traite_le=is.null&priorite=lt.${ici}&limit=1`);
+        if (Array.isArray(presses) && presses.length) {
+          dire(`   quelqu'un de plus pressé est arrivé : on reprend la file du haut.`);
+          break;
+        }
+      }
+    }
 
     // ON ANNONCE QU'ON COMMENCE, ET ON COMPTE L'ESSAI AVANT DE TRAVAILLER (v348, 29/09/2026).
     //
