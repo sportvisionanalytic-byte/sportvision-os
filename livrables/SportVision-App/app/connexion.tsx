@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../src/lib/supabase";
 import { useSession } from "../src/lib/session";
-import { oublierPorte } from "../src/lib/espaces";
+import { oublierPorte, porteMemorisee } from "../src/lib/espaces";
 import { MODE_DEMO } from "../src/lib/demonstration";
 import { Bouton, Champ, Erreur, SousTitre, Titre } from "../src/ui/Base";
 import { C, E, R } from "../src/theme/couleurs";
@@ -41,7 +41,20 @@ export default function Connexion() {
     // En démonstration, une session factice existe en permanence : sans cette exception, cet
     // écran renverrait aussitôt vers l'accueil et personne ne pourrait le relire.
     if (MODE_DEMO) return;
-    if (session) router.replace("/accueil");
+    if (!session) return;
+    // ON REVIENT DANS L'ESPACE QU'ON AVAIT CHOISI (29/09/2026).
+    //
+    // Après la connexion, cet écran envoyait TOUJOURS vers l'accueil personnel. Un coach qui avait
+    // choisi « Espace club », à qui on demandait son mot de passe pour cette raison précise,
+    // arrivait dans l'espace joueur — et devait retrouver seul le chemin de son club. Le choix
+    // était mémorisé : on ne le lisait pas.
+    porteMemorisee().then((p) => {
+      if (p === "club" || p === "sportvision") {
+        router.replace({ pathname: "/espace-web", params: { porte: p } });
+      } else {
+        router.replace("/accueil");
+      }
+    }).catch(() => router.replace("/accueil"));
   }, [session, router]);
 
   /** Revenir au choix des trois espaces : le choix memorise ne doit jamais enfermer. */

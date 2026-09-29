@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { memoriserPorte, type Porte } from "../src/lib/espaces";
+import { useSession } from "../src/lib/session";
 import { C, E, R } from "../src/theme/couleurs";
 import { P } from "../src/theme/polices";
 
@@ -65,14 +66,27 @@ const PORTES_PRO: typeof PORTES = [
 export default function Bienvenue() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { session } = useSession();
   const [choix, setChoix] = useState<Porte | null>(null);
   const [proVisibles, setProVisibles] = useState(false);
 
   async function ouvrir(p: Porte) {
     setChoix(p);
     await memoriserPorte(p);
-    if (p === "personnel") router.replace("/");
-    else router.replace({ pathname: "/espace-web", params: { porte: p } });
+    if (p === "personnel") { router.replace("/"); return; }
+    // ON DEMANDE LE MOT DE PASSE AVANT D'OUVRIR L'ESPACE, PAS APRÈS (29/09/2026).
+    //
+    // C'ÉTAIT LE « Club+ ça marche toujours pas » DE FOUKA, et ce n'était pas Club+ : cet écran
+    // envoyait sur l'espace club SANS REGARDER s'il y avait une session. Sur une installation
+    // neuve — donc juste après chaque réinstallation par câble — l'espace club n'avait aucune
+    // session à transmettre, affichait « Vous n'êtes plus connecté », et son unique bouton
+    // ramenait ICI. Toucher « Espace club » renvoyait au même écran : une boucle fermée, sans
+    // aucun endroit pour saisir son mot de passe. L'application n'offrait pas de connexion sur
+    // le chemin du club, du tout.
+    //
+    // Le choix est déjà mémorisé au-dessus : après la connexion, on repart vers cet espace-là.
+    if (!session) { router.replace("/connexion"); return; }
+    router.replace({ pathname: "/espace-web", params: { porte: p } });
   }
 
   return (

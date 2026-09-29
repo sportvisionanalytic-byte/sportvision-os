@@ -45,7 +45,7 @@ export default function EspaceWeb() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const vue = useRef<PoigneeVueConnect>(null);
-  const { profil, deconnexion } = useSession();
+  const { profil, deconnexion, chargement: sessionEnCours } = useSession();
 
   const cle: Exclude<Porte, "personnel"> = porte === "sportvision" ? "sportvision" : "club";
   // La coque à onglets est celle de Club+. L'espace de production garde la vue simple : ses écrans
@@ -86,7 +86,19 @@ export default function EspaceWeb() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { preparer(); }, [preparer]);
+  // ON ATTEND QUE LA SESSION SOIT LUE AVANT DE DÉCIDER QU'IL N'Y EN A PAS (29/09/2026).
+  //
+  // CE N'EST PAS LA CAUSE DU DÉFAUT DE FOUKA, et il faut le dire ici pour que personne ne croie
+  // l'avoir réglé en lisant cette ligne. J'ai d'abord accusé une course au démarrage ; c'était
+  // faux : app/index.tsx attend déjà `chargement` avant d'envoyer ici. Le vrai défaut était dans
+  // bienvenue.tsx, qui ouvrait l'espace club sans session et sans moyen d'en obtenir une.
+  //
+  // La garde reste, parce qu'elle est juste : cet écran vit à la racine, hors du groupe
+  // (app)/_layout.tsx qui, lui, attend `chargement`. Tout futur chemin qui mènerait ici sans
+  // passer par l'aiguillage afficherait « plus connecté » à quelqu'un de connecté, et
+  // DÉFINITIVEMENT — rien ne relance la préparation quand la session arrive une fraction de
+  // seconde plus tard. Une garde à l'endroit où la décision se prend, pas chez ceux qui appellent.
+  useEffect(() => { if (!sessionEnCours) preparer(); }, [preparer, sessionEnCours]);
 
   // CLUB+ RENVOIE VERS SA PAGE DE CONNEXION QUAND IL NE RECONNAÎT PLUS LA SESSION. Premier renvoi :
   // les cookies ont expiré, on refait le pont. Second : c'est une déconnexion voulue — on oublie
@@ -152,12 +164,24 @@ export default function EspaceWeb() {
         <View style={s.centre}>
           <Text style={s.grosTexte}>Vous n'êtes plus connecté</Text>
           <Text style={s.petitTexte}>Reconnectez-vous et cet espace s'ouvrira sans rien redemander.</Text>
+          {/* SE CONNECTER, ET C'EST LA SORTIE QUI MANQUAIT. Le seul bouton proposé ramenait au
+              choix d'espace, d'où « Espace club » renvoyait ici : une boucle fermée, sans aucun
+              endroit pour saisir son mot de passe. Un écran qui dit « reconnectez-vous » doit
+              porter le moyen de le faire. Après la connexion, on revient dans cet espace-ci :
+              le choix est mémorisé et connexion.tsx le relit. */}
+          <Pressable
+            accessibilityRole="button" accessibilityLabel="Se connecter"
+            onPress={() => router.replace("/connexion")}
+            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
+          >
+            <Text style={s.actionTexte}>Se connecter</Text>
+          </Pressable>
           <Pressable
             accessibilityRole="button" accessibilityLabel="Choisir mon espace"
             onPress={changerEspace}
-            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
+            style={({ pressed }) => [s.lien, pressed ? { opacity: 0.85 } : null]}
           >
-            <Text style={s.actionTexte}>Choisir mon espace</Text>
+            <Text style={s.lienTexte}>Choisir mon espace</Text>
           </Pressable>
         </View>
       ) : panne ? (
@@ -291,6 +315,8 @@ const s = StyleSheet.create({
   centre: { flex: 1, alignItems: "center", justifyContent: "center", padding: E.xl, gap: E.s },
   grosTexte: { color: C.texte, fontFamily: P.titreFort, fontSize: 18, textAlign: "center" },
   petitTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 14.5, lineHeight: 21, textAlign: "center", maxWidth: 320 },
+  lien: { paddingVertical: E.s, paddingHorizontal: E.m, marginTop: E.xs },
+  lienTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 14, textAlign: "center" },
   action: {
     marginTop: E.m, paddingHorizontal: E.xl, minHeight: TOUCHE, borderRadius: R.m,
     alignItems: "center", justifyContent: "center",
