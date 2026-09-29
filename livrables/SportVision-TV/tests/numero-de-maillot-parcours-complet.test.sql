@@ -11,8 +11,8 @@
 -- mettre sous la dent : il relève des numéros, en déclare un, et vérifie ce qui est proposé.
 --
 -- LES DEUX BORNES, qui comptent autant que la proposition :
---   • un numéro que personne n'a relevé ne propose rien, et ne se plaint pas ;
---   • si DEUX joueurs déclarent le même numéro sur le même match, on ne propose rien du tout —
+--   • un numéro que personne n'a relevé ne donne rien, et ne se plaint pas ;
+--   • si DEUX joueurs déclarent le même numéro sur le même match, on ne donne rien du tout —
 --     deux joueurs ne partagent pas un numéro, et on ne devine pas lequel des deux a raison.
 --
 -- Décor fictif, tout est annulé.
@@ -82,16 +82,25 @@ begin
   r := media_declarer_mon_numero(v_album, v_j1, 7::smallint);
   perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
   n := media_suggerer_par_numero(v_album);
+  -- ARBITRE PAR FOUKA LE 29/09/2026 : LES PHOTOS ENTRENT DIRECTEMENT DANS SA GALERIE.
+  --
+  -- Ce test exigeait des suggestions, et qu'aucun marquage ne soit valide « tant que la famille n'a
+  -- pas confirme ». Fouka a tranche l'autre sens : « ca lui propose pas est-ce que c'est vous. Des
+  -- que tu es sur, boum, tu les mets dans sa galerie. » Les garde-fous qui restent sont verifies
+  -- plus bas — numero jamais releve, numero revendique par deux enfants — et la contrepartie est
+  -- que la famille peut RETIRER une photo arrivee par le numero (v343) : elle corrige apres au lieu
+  -- de confirmer avant.
   select count(*) into n from media_player_tags t join media_assets a on a.id = t.media_ref_id
-   where a.album_id = v_album and t.player_id = v_j1 and t.statut = 'propose';
-  if n = 2 then v_rapport := v_rapport || E'\n  vert   les 2 photos portant le n°7 lui sont proposees';
-  else v_rapport := v_rapport || format(E'\n  ROUGE  %s photo(s) proposee(s) au lieu de 2', n); end if;
+   where a.album_id = v_album and t.player_id = v_j1 and t.statut = 'valide' and t.source = 'numero';
+  if n = 2 then v_rapport := v_rapport || E'\n  vert   les 2 photos portant le n°7 entrent dans sa galerie';
+  else v_rapport := v_rapport || format(E'\n  ROUGE  %s photo(s) entree(s) au lieu de 2', n); end if;
 
-  -- Rien n'est VALIDE tant que la famille n'a pas confirme : on propose, on n'affirme pas.
+  -- LA TRACE FAIT PARTIE DE LA REGLE. `source = 'numero'` est ce qui permet a la famille de retirer
+  -- ces photos : une entree directe sans trace serait une entree sans retour.
   select count(*) into n from media_player_tags t join media_assets a on a.id = t.media_ref_id
-   where a.album_id = v_album and t.player_id = v_j1 and t.statut = 'valide';
-  if n = 0 then v_rapport := v_rapport || E'\n  vert   rien n''est valide tant que la famille n''a pas confirme';
-  else v_rapport := v_rapport || format(E'\n  ROUGE  %s marquage(s) valide(s) sans confirmation', n); end if;
+   where a.album_id = v_album and t.player_id = v_j1 and t.statut = 'valide' and t.source <> 'numero';
+  if n = 0 then v_rapport := v_rapport || E'\n  vert   chaque photo porte la trace « numero » qui permet de la retirer';
+  else v_rapport := v_rapport || format(E'\n  ROUGE  %s photo(s) entree(s) sans trace', n); end if;
 
   -- ── UN NUMERO QUE PERSONNE N'A RELEVE ne propose rien, et ne se plaint pas ──
   perform set_config('request.jwt.claims', json_build_object('sub', v_f2, 'role', 'authenticated')::text, true);

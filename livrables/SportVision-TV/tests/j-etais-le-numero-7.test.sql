@@ -9,11 +9,24 @@
 -- ET POURQUOI PAR MATCH ET NON PAR SAISON : en jeunes le numéro change souvent. Un numéro de saison
 -- serait faux une fois sur trois, et un faux numéro attribue la photo d'un enfant à un autre.
 --
--- LES QUATRE VÉRIFICATIONS, et la dernière est celle qui protège les enfants :
---   1. Déclarer un numéro propose les photos qui le portent, et RIEN de plus.
---   2. Ce sont des SUGGESTIONS, jamais des marquages validés : une déclaration n'est pas vérifiable.
---   3. Une décision déjà prise n'est pas repassée par-dessus — ni un « c'est moi », ni un refus.
---   4. Si DEUX enfants revendiquent le même numéro, on ne propose rien à personne.
+-- ARBITRÉ PAR FOUKA LE 29/09/2026 : LES PHOTOS ENTRENT DIRECTEMENT DANS SA GALERIE.
+--
+-- Ce test exigeait des SUGGESTIONS — « est-ce bien vous ? » — au motif qu'une déclaration n'est pas
+-- vérifiable : un enfant peut se tromper de numéro, deux enfants peuvent avoir échangé de maillot.
+-- Le raisonnement tient toujours. Mais Fouka a tranché l'autre sens, et sa règle est plus large :
+-- « ça lui propose pas est-ce que c'est vous, est-ce que c'est vous. C'est seulement s'il y a des
+-- doutes. Dès que tu es sûr, boum, tu les mets dans sa galerie. » Un écran de confirmation par photo
+-- est un écran de trop pour une famille qui vient d'en payer trente-neuf euros quatre-vingt-dix.
+--
+-- CE QUI REND CE CHOIX TENABLE, et il faut le garder sous les yeux : trois garde-fous restent, et ce
+-- sont eux que ce test vérifie maintenant.
+--   1. Déclarer un numéro fait entrer les photos qui le portent, et RIEN de plus.
+--   2. Si DEUX enfants revendiquent le même numéro, personne ne reçoit rien. Deviner entre deux
+--      enfants serait pire que ne rien faire.
+--   3. Une décision déjà prise n'est jamais repassée par-dessus — ni un « c'est moi », ni un refus.
+--      Une famille qui a dit « ce n'est pas moi » ne se le voit pas remettre.
+--   4. Et la contrepartie, sans laquelle l'entrée directe serait indéfendable (v343) : la famille
+--      peut RETIRER une photo arrivée par le numéro. Elle ne confirme plus avant, elle corrige après.
 --
 -- N'ÉCRIT RIEN : le RAISE final annule la transaction.
 
@@ -74,31 +87,34 @@ begin
 
   perform set_config('role','postgres',true);
   select count(*) into n from media_player_tags
-   where media_ref_type='media_asset' and player_id=j1 and statut='propose'
+   where media_ref_type='media_asset' and player_id=j1 and statut='valide' and source='numero'
      and media_ref_id in (ph7, ph7bis);
-  if n <> 2 then e := e || format('%s photo(s) proposees au lieu des 2 qui portent le 7', n); end if;
+  if n <> 2 then e := e || format('%s photo(s) entrees dans sa galerie au lieu des 2 qui portent le 7', n); end if;
 
   -- ══ 2. RIEN DE PLUS : PAS LE 9, PAS LA PHOTO SANS NUMÉRO ═════════════════
   select count(*) into n from media_player_tags
    where media_ref_type='media_asset' and player_id=j1 and media_ref_id in (ph9, ph_rien);
   if n <> 0 then e := e || 'une photo sans son numero lui a ete proposee'::text; end if;
 
-  -- ══ 3. CE SONT DES SUGGESTIONS, JAMAIS DES MARQUAGES VALIDÉS ═════════════
+  -- ══ 3. ET LA TRACE DIT D'OU ELLES VIENNENT ═══════════════════════════════
   --
-  -- Une declaration n'est pas verifiable : l'enfant peut se tromper, deux enfants peuvent avoir
-  -- echange de maillot. La famille tranche dans l'ecran « oui c'est bien moi ».
+  -- `source = 'numero'` n'est pas decoratif : c'est ce qui permet a la famille de retirer ces photos
+  -- (v343) et a nous de savoir, plus tard, lesquelles reposaient sur une declaration plutot que sur
+  -- un visage reconnu. Une entree directe sans trace serait une entree sans retour.
   select count(*) into n from media_player_tags
-   where media_ref_type='media_asset' and player_id=j1 and statut='valide' and source='suggestion';
-  if n <> 0 then e := e || format('%s marquage(s) VALIDE(s) crees sans que personne ne tranche', n); end if;
+   where media_ref_type='media_asset' and player_id=j1 and statut='valide'
+     and media_ref_id in (ph7, ph7bis) and source <> 'numero';
+  if n <> 0 then e := e || format('%s photo(s) entree(s) sans porter la trace « numero »', n); end if;
 
   -- ══ 4. UN REFUS DÉJÀ EXPRIMÉ N'EST PAS REPROPOSÉ ═════════════════════════
   select count(*) into n from media_player_tags
-   where media_ref_type='media_asset' and player_id=j1 and media_ref_id=ph_refus and statut='propose';
+   where media_ref_type='media_asset' and player_id=j1 and media_ref_id=ph_refus
+     and statut in ('propose','valide');
   if n <> 0 then e := e || 'une photo deja refusee par la famille lui est representee'::text; end if;
 
   -- ══ 5. DEUX ENFANTS, LE MÊME NUMÉRO : ON NE PROPOSE RIEN ═════════════════
   perform set_config('role','postgres',true);
-  delete from media_player_tags where media_ref_type='media_asset' and statut='propose'
+  delete from media_player_tags where media_ref_type='media_asset' and source='numero'
    and media_ref_id in (select id from media_assets where album_id=v_album);
   perform set_config('role','authenticated',true);
   perform set_config('request.jwt.claims', json_build_object('sub',u2::text,'role','authenticated')::text, true);
@@ -108,9 +124,9 @@ begin
   end if;
   perform set_config('role','postgres',true);
   select count(*) into n from media_player_tags
-   where media_ref_type='media_asset' and statut='propose' and player_id in (j1, j2);
+   where media_ref_type='media_asset' and source='numero' and player_id in (j1, j2);
   if n <> 0 then
-    e := e || format('%s suggestion(s) produites malgre le numero revendique par deux enfants', n);
+    e := e || format('%s photo(s) donnee(s) malgre le numero revendique par deux enfants', n);
   end if;
 
   -- ══ 6. UNE FAMILLE NE DÉCLARE QUE POUR SON ENFANT ════════════════════════
@@ -125,5 +141,5 @@ begin
   if cardinality(e) > 0 then
     raise exception 'ROUGE : %', array_to_string(e, ' | ');
   end if;
-  raise exception 'VERT : le numero declare propose les photos qui le portent, rien de plus, et jamais quand deux enfants le revendiquent';
+  raise exception 'VERT : le numero declare fait entrer les photos qui le portent, rien de plus, jamais quand deux enfants le revendiquent, et toujours avec la trace qui permet de les retirer';
 end $$;

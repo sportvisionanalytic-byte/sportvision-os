@@ -43,16 +43,27 @@ insert into auth.users (id, email, encrypted_password, email_confirmed_at, aud, 
   ('f5f5f5f5-0000-0000-0000-000000000001','zz-fp-prod@example.invalid','',now(),'authenticated','authenticated'),
   ('f5f5f5f5-0000-0000-0000-000000000002','zz-fp-photo@example.invalid','',now(),'authenticated','authenticated'),
   ('f5f5f5f5-0000-0000-0000-000000000003','zz-fp-admin@example.invalid','',now(),'authenticated','authenticated'),
-  ('f5f5f5f5-0000-0000-0000-000000000004','zz-fp-compta@example.invalid','',now(),'authenticated','authenticated')
+  ('f5f5f5f5-0000-0000-0000-000000000004','zz-fp-compta@example.invalid','',now(),'authenticated','authenticated'),
+  -- UN SECOND RESPONSABLE PRODUCTION, AJOUTE LE 29/09/2026, ET VOICI POURQUOI. Depuis l'arbitrage
+  -- de Fouka, le depassement de grille sur sa propre ligne est ACCEPTE au lieu d'etre refuse. Du
+  -- coup les deux auto-affectations de la section 2, faites sur la MEME personne, creaient deux
+  -- lignes pour un seul operateur sur une seule mission — et les quatre verifications suivantes
+  -- lisaient les deux lignes collees. Ecrire l'attente a deux lignes aurait GRAVE ce doublon dans
+  -- la suite comme un comportement voulu, alors que personne ne l'a decide. Chaque verification
+  -- porte donc sur son propre operateur.
+  ('f5f5f5f5-0000-0000-0000-000000000005','zz-fp-prod2@example.invalid','',now(),'authenticated','authenticated')
 on conflict (id) do nothing;
 insert into profiles (id, prenom, nom, role, actif, niveau_operateur) values
   ('f5f5f5f5-0000-0000-0000-000000000001','QA','Prod','prod',true,3),
   ('f5f5f5f5-0000-0000-0000-000000000002','QA','Photo','photo',true,2),
   ('f5f5f5f5-0000-0000-0000-000000000003','QA','Admin','admin',true,null),
-  ('f5f5f5f5-0000-0000-0000-000000000004','QA','Compta','compta',true,null)
+  ('f5f5f5f5-0000-0000-0000-000000000004','QA','Compta','compta',true,null),
+  ('f5f5f5f5-0000-0000-0000-000000000005','QA','Prod2','prod',true,3)
 on conflict (id) do update set role = excluded.role, niveau_operateur = excluded.niveau_operateur;
 insert into pole_affectations (pole_id, user_id, role_pole, actif)
 select id, 'f5f5f5f5-0000-0000-0000-000000000001'::uuid, 'membre', true from poles where nom = 'Basket';
+insert into pole_affectations (pole_id, user_id, role_pole, actif)
+select id, 'f5f5f5f5-0000-0000-0000-000000000005'::uuid, 'membre', true from poles where nom = 'Basket';
 create temp table ctx on commit drop as
   with cli as (insert into clients (nom, statut_relation, pole_id) select 'ZZ Club Finance Prod (test)', 'partenaire', id from poles where nom = 'Basket' returning id),
        pre as (insert into prestations (client_id, pole_id, date_prestation, heure_debut, lieu, type_prestation, statut, source, format_mission)
@@ -80,7 +91,12 @@ begin
 end $$;
 create or replace function pg_temp.ligne(p_uid text) returns text language sql as $$
   select string_agg(coalesce(pe.remuneration::text, '∅') || '/' || coalesce(pe.montant_recommande::text, '∅') || '/'
-         || coalesce(to_jsonb(pe)->>'exception_statut', '∅') || '/' || coalesce(to_jsonb(pe)->>'exception_montant', '∅'), ' + ')
+         || coalesce(to_jsonb(pe)->>'exception_statut', '∅') || '/' || coalesce(to_jsonb(pe)->>'exception_montant', '∅'),
+         ' + ' order by pe.created_at, pe.id)
+    -- L'ORDRE, ET CE N'EST PAS UN DETAIL (29/09/2026). `string_agg` sans ORDER BY rendait les deux
+    -- lignes dans un ordre different d'une execution a l'autre : le meme test annoncait
+    -- « 55.00/55.00/a_valider/150.00 + 55.00/55.00/∅/∅ » puis l'inverse deux lignes plus bas. Un
+    -- test qui bat au hasard est pire qu'un test rouge : on finit par le croire quand il est vert.
     from prestations_equipe pe where pe.prestation_id = (select mission from ctx) and pe.collaborateur_id = p_uid::uuid; $$;
 create or replace function pg_temp.ajouter(p_acteur text, p_col text, p_remu text, p_reco text, p_motif text) returns text language sql as $$
   select pg_temp.fait(p_acteur::uuid,
@@ -96,17 +112,22 @@ select pg_temp.note('le recommandé retenu est celui de la grille, pas celui du 
   pg_temp.ligne('f5f5f5f5-0000-0000-0000-000000000002'));
 
 -- ── 2. Production s'affecte elle-même (niveau 3 : 55 €) ──
-select pg_temp.note('auto-affectation à 150 €, recommandé « 150 » envoyé, sans motif', 'refusé',
-  left(pg_temp.ajouter('f5f5f5f5-0000-0000-0000-000000000001', 'f5f5f5f5-0000-0000-0000-000000000001', '150', '150', null), 6));
+-- ARBITRE PAR FOUKA LE 29/09/2026 : « Accepte et trace, l'Admin valide. » Le depassement de grille
+-- sur sa propre ligne n'est plus REFUSE : le montant est accepte, la remuneration effective reste la
+-- grille, et l'ecart part en exception a valider par l'Admin. C'est la conception des migrations
+-- v148-v150 du 11/09, et c'est mieux qu'un refus sec — la demande est tracee au lieu d'etre perdue.
+select pg_temp.note('auto-affectation à 150 € sans motif : acceptée, et tracée en exception', 'autorisé',
+  pg_temp.ajouter('f5f5f5f5-0000-0000-0000-000000000001', 'f5f5f5f5-0000-0000-0000-000000000001', '150', '150', null));
 select pg_temp.note('auto-affectation sans montant : autorisée', 'autorisé',
-  pg_temp.ajouter('f5f5f5f5-0000-0000-0000-000000000001', 'f5f5f5f5-0000-0000-0000-000000000001', 'null', 'null', null));
-select pg_temp.note('sa rémunération est la grille, d''office', '55.00/55.00/∅/∅', pg_temp.ligne('f5f5f5f5-0000-0000-0000-000000000001'));
+  pg_temp.ajouter('f5f5f5f5-0000-0000-0000-000000000005', 'f5f5f5f5-0000-0000-0000-000000000005', 'null', 'null', null));
+select pg_temp.note('sa rémunération est la grille, d''office', '55.00/55.00/∅/∅', pg_temp.ligne('f5f5f5f5-0000-0000-0000-000000000005'));
 insert into memo select 'pe_prod', id::text from prestations_equipe where prestation_id = (select mission from ctx) and collaborateur_id = 'f5f5f5f5-0000-0000-0000-000000000001' order by created_at desc limit 1;
 update prestations_equipe set statut = 'acceptée' where id = (select v::uuid from memo where k = 'pe_prod');
 
 -- ── 3. Elle tente de s'augmenter ──
-select pg_temp.note('150 € sans motif sur sa ligne : refusé', 'refusé',
-  left(pg_temp.fait('f5f5f5f5-0000-0000-0000-000000000001', 'select modifier_remuneration_mission(''' || (select v from memo where k = 'pe_prod') || ''', 150, 150, null, null)'), 6));
+-- Meme arbitrage : accepte et trace.
+select pg_temp.note('150 € sans motif sur sa ligne : acceptée, et tracée', 'autorisé',
+  pg_temp.fait('f5f5f5f5-0000-0000-0000-000000000001', 'select modifier_remuneration_mission(''' || (select v from memo where k = 'pe_prod') || ''', 150, 150, null, null)'));
 select pg_temp.note('150 € avec motif : demande enregistrée', 'autorisé',
   pg_temp.fait('f5f5f5f5-0000-0000-0000-000000000001', 'select modifier_remuneration_mission(''' || (select v from memo where k = 'pe_prod') || ''', 150, 150, ''urgence'', ''Match très éloigné'')'));
 select pg_temp.note('rémunération effective = grille, 150 € en attente Admin', '55.00/55.00/a_valider/150.00', pg_temp.ligne('f5f5f5f5-0000-0000-0000-000000000001'));

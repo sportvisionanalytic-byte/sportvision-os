@@ -216,28 +216,38 @@ reset role;
 
 -- ── 8. Le chiffre d'affaires par lien reste reserve ────────────────────────
 --
--- CE ROUGE EST DELIBEREMENT LAISSE EN PLACE, EN ATTENTE D'UN ARBITRAGE DE FOUKA (28/09/2026).
+-- ARBITRE PAR FOUKA LE 29/09/2026 : « Non, le CA reste reserve. »
 --
 -- La decision du 07/09 portait sur le droit de FIXER les prix : « c'est lui qui prepare les liens au
--- quotidien ». Elle ne disait rien du droit de VOIR L'ARGENT. Mais les deux passent par la meme
--- fonction, `media_pricing_staff()`, donc le Secretariat a gagne l'acces au chiffre d'affaires par
--- lien en meme temps, sans que ce soit demande ni examine.
+-- quotidien ». Elle ne disait rien du droit de VOIR L'ARGENT. Mais les deux passaient par la meme
+-- fonction, `media_pricing_staff()`, donc le Secretariat avait gagne l'acces au chiffre d'affaires
+-- par lien en meme temps, sans que ce soit demande ni examine. Ce test tenait son rouge en attente
+-- plutot que de graver un choix que personne n'avait fait.
 --
--- Les deux lectures se defendent : celui qui fixe un prix a besoin de savoir s'il fonctionne, mais le
--- chiffre d'affaires est une donnee commerciale, et le cloisonnement financier par role est une
--- regle etablie ailleurs (decision du 11/09 sur les donnees restreintes d'un club).
+-- CE QUE LA CORRECTION FAIT (v357), ET CE QU'ELLE NE FAIT PAS. L'attente d'origine de ce test etait
+-- « aucune ligne ». C'etait trop large : cette fonction alimente l'ecran de GESTION des liens
+-- — libelles, offres, prix, activation, vues — c'est-a-dire le materiel de travail que la decision
+-- du 07/09 confie justement au Secretariat. Zero ligne, c'est un ecran vide, et on aurait echange
+-- une fuite de donnees contre un blocage de travail (la faute symetrique, celle du 11/09).
 --
--- Ce test garde donc son attente d'origine — « pas de CA par lien » — et reste ROUGE jusqu'a
--- decision. Le corriger dans un sens ou dans l'autre sans arbitrage graverait un choix que personne
--- n'a fait.
+-- Il voit donc ses liens, et l'ARGENT est masque : `orders_count` et `revenue_cents` reviennent
+-- null. Les deux ensemble, parce que masquer le seul chiffre d'affaires ne sert a rien quand le
+-- nombre de commandes multiplie par le prix le redonne. C'est ce que ce test verifie desormais.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"b4eab475-3293-4804-8bf6-8b27a15d410c","role":"authenticated"}';
 do $$
 declare v_n integer;
 begin
   begin
+    -- Il garde ses liens : un ecran vide serait l'autre faute.
     select count(*) into v_n from media_album_links_stats((select album from _ctx));
-    insert into _res values ('8', 'Secretariat : pas de CA par lien', 'refuse ou 0', v_n::text, v_n = 0);
+    insert into _res values ('8', 'Secretariat : il voit bien ses liens', 'au moins 1',
+                             v_n::text, v_n >= 1);
+    -- Mais pas un centime : les deux colonnes d'argent sont null.
+    select count(*) into v_n from media_album_links_stats((select album from _ctx))
+     where revenue_cents is not null or orders_count is not null;
+    insert into _res values ('8', 'Secretariat : aucun montant ni nombre de commandes', '0',
+                             v_n::text, v_n = 0);
   exception when others then
     insert into _res values ('8', 'Secretariat : pas de CA par lien', 'refuse ou 0', 'refuse', true);
   end;
