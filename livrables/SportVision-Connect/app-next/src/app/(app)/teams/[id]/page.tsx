@@ -880,8 +880,9 @@ function RealRosterTab({
 
   return (
     <Card className="overflow-hidden">
-      <div className="hidden grid-cols-[1.8fr_1fr_1fr_1fr] gap-3 border-b border-divider bg-surface-alt px-5 py-3 text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint sm:grid">
+      <div className="hidden grid-cols-[1.8fr_1.3fr_1fr_1fr_1fr] gap-3 border-b border-divider bg-surface-alt px-5 py-3 text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint sm:grid">
         <span>Joueur</span>
+        <span>Contact parent</span>
         <span>Licence</span>
         <span>Compte</span>
         <span>Droit à l&apos;image</span>
@@ -889,10 +890,25 @@ function RealRosterTab({
       {roster.map((p) => (
         <div
           key={p.id}
-          className="grid grid-cols-2 gap-2.5 border-b border-divider px-5 py-3.5 last:border-0 sm:grid-cols-[1.8fr_1fr_1fr_1fr] sm:items-center sm:gap-3"
+          className="grid grid-cols-2 gap-2.5 border-b border-divider px-5 py-3.5 last:border-0 sm:grid-cols-[1.8fr_1.3fr_1fr_1fr_1fr] sm:items-center sm:gap-3"
         >
-          <span className="text-[13.5px] font-bold text-text">
-            {p.firstName} {p.lastName}
+          <span className="flex items-center gap-2.5">
+            {p.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- stockage public, pas un domaine autorisé pour next/image
+              <img src={p.photoUrl} alt="" className="h-8 w-8 flex-none rounded-full object-cover" />
+            ) : (
+              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-surface-alt text-[11px] font-bold text-text-faint">
+                {(p.firstName[0] ?? "?").toUpperCase()}
+              </span>
+            )}
+            <span className="text-[13.5px] font-bold text-text">
+              {p.firstName} {p.lastName}
+            </span>
+          </span>
+          <span className="flex flex-col text-[12px] text-text-soft">
+            {p.parentPhone && <span>{p.parentPhone}</span>}
+            {p.parentEmail && <span className="truncate">{p.parentEmail}</span>}
+            {!p.parentPhone && !p.parentEmail && <span>—</span>}
           </span>
           <span className="text-[12.5px] text-text-soft">{p.licenseNumber ?? "—"}</span>
           <span className="text-[12.5px] text-text-soft">{ACCOUNT_STATUS_LABEL[p.accountStatus] ?? p.accountStatus}</span>
@@ -1085,12 +1101,14 @@ function EmptyTab({ icon: Icon, label }: { icon: typeof Inbox; label: string }) 
 function exporterEffectif(nomEquipe: string, roster: TeamRosterPlayer[]) {
   const echapper = (v: string | number | null | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const lignes = [
-    ["Numéro", "Prénom", "Nom", "Licence", "Compte", "Droit à l'image"].map(echapper).join(";"),
+    ["Numéro", "Prénom", "Nom", "Téléphone parent", "Email parent", "Licence", "Compte", "Droit à l'image"].map(echapper).join(";"),
     ...roster.map((p) =>
       [
         p.shirtNumber,
         p.firstName,
         p.lastName,
+        p.parentPhone,
+        p.parentEmail,
         p.licenseNumber,
         ACCOUNT_STATUS_LABEL[p.accountStatus] ?? p.accountStatus,
         AUTHORIZATION_STATUS_LABELS[p.imageRightStatus] ?? p.imageRightStatus,

@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { formatDateLong, formatEUR } from "@/lib/prestations/format";
 import { gradientFor } from "@/lib/avatarGradients";
 import { ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR } from "@/lib/supabase/particulier";
+
+const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
 
 export interface AthleteDetail {
   kind: "linked" | "managed" | "club";
@@ -105,6 +108,15 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
+  // Photo de profil (29/09/2026, décision Fouka) : posée par le parent, réservée aux enfants
+  // réellement affiliés à un club (kind='club') — parent_set_child_photo n'écrit que
+  // player_profiles, qui n'existe pas pour 'managed'/'linked'. player_profiles.photo_url existe
+  // depuis longtemps mais n'était lu ni écrit nulle part.
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   const isManaged = detail.kind === "managed";
   // 'club' (migration-connect-v79, 02/09/2026) — enfant réellement affilié via
   // parent_player_relationships confirmé, vérifié côté serveur. Pas de flux de retrait construit
@@ -129,6 +141,68 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
         : "limite";
   const statusLabel = ATHLETE_STATUS_LABEL[derivedStatus];
   const statusColor = ATHLETE_STATUS_COLOR[derivedStatus];
+
+  useEffect(() => {
+    if (!isClub) return;
+    let vivant = true;
+    const supabase = createClient();
+    supabase
+      .from("player_profiles")
+      .select("photo_url")
+      .eq("id", detail.ref_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (vivant) setPhotoUrl((data as { photo_url: string | null } | null)?.photo_url ?? null);
+      });
+    return () => {
+      vivant = false;
+    };
+  }, [isClub, detail.ref_id]);
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError(null);
+    if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
+      setPhotoError("Format non pris en charge (JPEG, PNG ou WebP).");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError("Photo trop lourde (4 Mo maximum).");
+      return;
+    }
+    setUploadingPhoto(true);
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setUploadingPhoto(false);
+      setPhotoError("Session expirée, reconnectez-vous.");
+      return;
+    }
+    const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const path = `avatars/${user.id}/child-${detail.ref_id}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("portail-media").upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadError) {
+      setUploadingPhoto(false);
+      setPhotoError("Envoi impossible pour le moment.");
+      return;
+    }
+    const { data: pub } = supabase.storage.from("portail-media").getPublicUrl(path);
+    const publicUrl = `${pub.publicUrl}?v=${Date.now()}`;
+    const { data: ok, error: rpcError } = await supabase.rpc("parent_set_child_photo", {
+      p_player_id: detail.ref_id,
+      p_photo_url: publicUrl,
+    });
+    setUploadingPhoto(false);
+    if (rpcError || !ok) {
+      setPhotoError("Enregistrement impossible pour le moment.");
+      return;
+    }
+    setPhotoUrl(publicUrl);
+  }
 
   async function removeAthlete() {
     setRemoving(true);
@@ -168,12 +242,33 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
       <div className="rounded-sv-card p-px" style={{ background: "linear-gradient(130deg,rgba(34,211,238,.5),rgba(168,85,247,.22) 60%,transparent)" }}>
         <div className="flex flex-col gap-4 rounded-[calc(theme(borderRadius.sv-card)-1px)] bg-bg-elevated p-5">
           <div className="flex flex-wrap items-center gap-4">
-            <span
-              className="flex h-[62px] w-[62px] flex-none items-center justify-center rounded-sv font-sora text-[20px] font-semibold text-white"
-              style={{ background: gradientFor(sportifKey) }}
-            >
-              {(detail.first_name[0] || "?").toUpperCase()}
-            </span>
+            <div className="relative h-[62px] w-[62px] flex-none">
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- storage public, pas un domaine autorisé pour next/image
+                <img src={photoUrl} alt="" className="h-full w-full rounded-sv object-cover" />
+              ) : (
+                <span
+                  className="flex h-full w-full items-center justify-center rounded-sv font-sora text-[20px] font-semibold text-white"
+                  style={{ background: gradientFor(sportifKey) }}
+                >
+                  {(detail.first_name[0] || "?").toUpperCase()}
+                </span>
+              )}
+              {isClub && (
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  aria-label="Changer la photo"
+                  className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-tertiary hover:text-text disabled:opacity-60"
+                >
+                  <span className="material-symbols-rounded !text-[14px]" aria-hidden="true">
+                    {uploadingPhoto ? "hourglass_top" : "photo_camera"}
+                  </span>
+                </button>
+              )}
+              <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhotoChange} />
+            </div>
             <div className="flex min-w-0 flex-col gap-1.5">
               <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">{fullName}</h1>
               <span className="text-[14px] text-text-tertiary">{[detail.sport, detail.categorie].filter(Boolean).join(" · ") || "—"}</span>
@@ -188,6 +283,8 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
               Vous êtes : {detail.relation_label}
             </span>
           </div>
+
+          {photoError && <span className="text-[13px] text-danger">{photoError}</span>}
 
           <div className="flex flex-wrap gap-2.5">
             {rights.reserver && (
