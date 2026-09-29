@@ -1,19 +1,34 @@
-// Les espaces Club+ et production, en attendant leur version native (22/09/2026).
+// L'espace club et l'espace production, avec une VRAIE coque native (29/09/2026).
 //
-// Ils s'ouvrent ici dans l'application, avec une vraie barre : un titre, un retour qui suit
-// l'historique de la page, et surtout la sortie vers le choix d'espace. Une page plein écran sans
-// barre, c'est exactement l'impasse qu'on veut éviter.
+// CE QUI CHANGEAIT TOUT POUR FOUKA. « J'ai l'impression que tu as juste foutu la page web dans
+// l'app, alors que je veux une vraie refonte comme Connect. » C'était exact : Club+ arrivait dans
+// un cadre nu — une barre, un titre, rien d'autre — et toute la navigation restait celle d'un site
+// vu dans une fenêtre. Ce qu'on touche pour se déplacer doit être natif ; c'est ça qui fait la
+// différence entre une application et un site encadré.
 //
-// Le contenu lui-même vient de src/ui/VueWeb, qui a deux versions : la vue web sur téléphone, un
-// écran d'explication sur le web. C'est ce qui évite le message technique vu en relecture.
+// CE QUE CET ÉCRAN APPORTE
+//   - une barre d'onglets en bas, comme dans l'espace personnel : Accueil, Calendrier, Équipes ;
+//   - un menu NATIF pour tout le reste, rangé comme dans Club+, qui s'ouvre d'un geste ;
+//   - un profil NATIF, où l'on change d'espace et où l'on se déconnecte — plus de bouton
+//     « Changer » posé en haut à droite, que Fouka trouvait à juste titre inélégant ;
+//   - UNE SEULE vue web, dont on change l'adresse. Quatre vues superposées garderaient chacune sa
+//     session et son ferraillage en mémoire, sur un téléphone qui n'en a pas besoin.
+//
+// CE QUI RESTE SERVI PAR LE SITE : le contenu, et les droits. Une section ouverte sans
+// autorisation affiche son propre cadenas, décidé par Club+. L'application ne juge rien : elle
+// propose, et c'est le site qui tranche. Refaire cette règle ici, ce serait en entretenir deux.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VueConnect, type PoigneeVueConnect } from "../src/ui/VueConnect";
 import { sourceClubPlus, type SourceConnect } from "../src/lib/connect";
 import { ADRESSES, oublierPorte, type Porte } from "../src/lib/espaces";
+import { useSession } from "../src/lib/session";
+import { MENU_CLUB, ONGLETS_CLUB, libelleDuChemin } from "../src/lib/sections-club";
 import { C, E, R, TOUCHE } from "../src/theme/couleurs";
 import { P } from "../src/theme/polices";
 
@@ -27,16 +42,29 @@ export default function EspaceWeb() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const vue = useRef<PoigneeVueConnect>(null);
-  // LA SESSION EST TRANSPORTEE (25/09/2026). Un coach qui ouvrait l'espace club devait ressaisir
-  // son mot de passe alors que l'application connaissait deja sa session. Au bord d'un terrain,
-  // personne ne retape un mot de passe : on referme et on appelle le club.
+  const { profil, deconnexion } = useSession();
+
+  const cle: Exclude<Porte, "personnel"> = porte === "sportvision" ? "sportvision" : "club";
+  // La coque à onglets est celle de Club+. L'espace de production garde la vue simple : ses écrans
+  // n'ont pas la même charpente, et lui inventer une navigation qui ne colle pas serait pire.
+  const avecOnglets = cle === "club";
+  const racine = `${ADRESSES[cle]}/clubplus`;
+
   const [source, setSource] = useState<SourceConnect | null>(null);
   const [sansSession, setSansSession] = useState(false);
-  /** La page n'a pas répondu. Distinct de « pas de session » : deux causes, deux réponses. */
   const [panne, setPanne] = useState(false);
+  const [charge, setCharge] = useState(false);
+  const [peutReculer, setPeutReculer] = useState(false);
+  /** Le chemin affiché, pour savoir quel onglet allumer et quoi écrire dans la barre. */
+  const [chemin, setChemin] = useState("/dashboard");
+  const [menuOuvert, setMenuOuvert] = useState(false);
+  const [profilOuvert, setProfilOuvert] = useState(false);
 
-  // La page qui transporte la session est fabriquee a l'ouverture de l'ecran, pas plus tot : elle
-  // contient les jetons, et un jeton fabrique d'avance est un jeton qui vieillit en memoire.
+  const changerEspace = useCallback(async () => {
+    await oublierPorte();
+    router.replace("/bienvenue");
+  }, [router]);
+
   const preparer = useCallback(async () => {
     setPanne(false); setCharge(false); setSource(null);
     const s = await sourceClubPlus();
@@ -47,60 +75,75 @@ export default function EspaceWeb() {
 
   useEffect(() => { preparer(); }, [preparer]);
 
-  /**
-   * CLUB+ RENVOIE VERS SA PAGE DE CONNEXION QUAND IL NE RECONNAIT PLUS LA SESSION (29/09/2026).
-   *
-   * L'écran Connect refait le pont dans ce cas depuis le 28/09. Celui-ci ne le faisait pas : un
-   * coach dont les cookies avaient expiré tombait sur un formulaire de connexion à l'intérieur de
-   * l'application, sans rien pour en sortir. Au bord d'un terrain, on referme et on appelle le club.
-   */
+  // CLUB+ RENVOIE VERS SA PAGE DE CONNEXION QUAND IL NE RECONNAÎT PLUS LA SESSION. Premier renvoi :
+  // les cookies ont expiré, on refait le pont. Second : c'est une déconnexion voulue — on oublie
+  // l'espace mémorisé et on ramène au choix, sinon l'application rouvrirait Club+ au lancement
+  // suivant et le pont l'y reconnecterait, ce qui rendrait la déconnexion impossible.
   const dejaRefait = useRef(false);
   const surAdresse = useCallback((url: string) => {
+    const apresRacine = url.startsWith(racine) ? url.slice(racine.length) : "";
+    if (apresRacine) setChemin(apresRacine.split("?")[0] || "/dashboard");
     if (!url.includes("/auth/login") && !url.includes("/clubplus/login")) return;
-    if (dejaRefait.current) { setSansSession(true); return; }
+    if (dejaRefait.current) { changerEspace(); return; }
     dejaRefait.current = true;
     preparer();
-  }, [preparer]);
-  const [peutReculer, setPeutReculer] = useState(false);
-  const [charge, setCharge] = useState(false);
+  }, [preparer, changerEspace, racine]);
 
-  const cle: Exclude<Porte, "personnel"> = porte === "sportvision" ? "sportvision" : "club";
+  const aller = useCallback((c: string) => {
+    setChemin(c);
+    setMenuOuvert(false);
+    vue.current?.allerA(`${racine}${c}`);
+  }, [racine]);
 
-  async function changerEspace() {
-    await oublierPorte();
-    router.replace("/bienvenue");
-  }
+  const ongletActif = ONGLETS_CLUB.find((o) => chemin.startsWith(o.chemin))?.cle;
 
   return (
     <View style={{ flex: 1, backgroundColor: C.fond }}>
       <View style={[s.barre, { paddingTop: insets.top + 6 }]}>
-        {/* UN BOUTON GRISE N'EST PAS UNE SORTIE (29/09/2026). Quand la page n'a plus d'historique,
-            le retour etait desactive : l'ecran n'avait plus qu'une issue, « Changer », qui fait
-            sortir de l'espace entier. On revient a l'accueil de Club+ plutot que de ne rien faire. */}
+        {/* LE RETOUR SUIT LA PAGE, PUIS RAMÈNE À L'ACCUEIL. Un bouton grisé n'est pas une sortie :
+            quand la page n'a plus d'historique, il ramène au tableau de bord du club. */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={peutReculer ? "Retour" : "Revenir à l'accueil du club"}
-          onPress={() => (peutReculer ? vue.current?.reculer() : vue.current?.allerA(`${ADRESSES[cle]}/clubplus/dashboard`))}
+          onPress={() => (peutReculer ? vue.current?.reculer() : aller("/dashboard"))}
           hitSlop={10}
           style={s.boutonBarre}
         >
           <Ionicons name="chevron-back" size={20} color={C.texte} />
         </Pressable>
 
-        <Text style={s.titre} numberOfLines={1}>{TITRES[cle]}</Text>
+        <Text style={s.titre} numberOfLines={1}>
+          {avecOnglets ? libelleDuChemin(chemin) : TITRES[cle]}
+        </Text>
 
-        <Pressable onPress={changerEspace} accessibilityRole="button" accessibilityLabel="Changer d'espace" hitSlop={10} style={s.changer}>
-          <Ionicons name="swap-horizontal" size={15} color={C.accentClair} />
-          <Text style={s.changerTexte}>Changer</Text>
-        </Pressable>
+        {/* PLUS DE BOUTON « CHANGER » EN HAUT (décision de Fouka, 29/09) : « pour changer, il faut
+            que tu ailles dans profil, se déconnecter ». On sort d'un espace par là où l'on sort. */}
+        {avecOnglets ? (
+          <Pressable
+            accessibilityRole="button" accessibilityLabel="Mon compte"
+            onPress={() => setProfilOuvert(true)} hitSlop={10} style={s.boutonBarre}
+          >
+            <Ionicons name="person-circle-outline" size={23} color={C.texteDoux} />
+          </Pressable>
+        ) : (
+          <View style={{ width: TOUCHE }} />
+        )}
       </View>
 
       {sansSession ? (
-        <View style={s.attente}>
-          <Text style={s.titre}>Vous n'êtes plus connecté</Text>
+        <View style={s.centre}>
+          <Text style={s.grosTexte}>Vous n'êtes plus connecté</Text>
+          <Text style={s.petitTexte}>Reconnectez-vous et cet espace s'ouvrira sans rien redemander.</Text>
+          <Pressable
+            accessibilityRole="button" accessibilityLabel="Choisir mon espace"
+            onPress={changerEspace}
+            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
+          >
+            <Text style={s.actionTexte}>Choisir mon espace</Text>
+          </Pressable>
         </View>
       ) : panne ? (
-        <View style={s.attente}>
+        <View style={s.centre}>
           <Text style={s.grosTexte}>La page n'a pas répondu</Text>
           <Text style={s.petitTexte}>
             Vérifiez votre connexion. Rien n'est perdu, vos données sont sur nos serveurs.
@@ -108,9 +151,9 @@ export default function EspaceWeb() {
           <Pressable
             accessibilityRole="button" accessibilityLabel="Réessayer"
             onPress={() => { dejaRefait.current = false; preparer(); }}
-            style={({ pressed }) => [s.reessayer, pressed ? { opacity: 0.85 } : null]}
+            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
           >
-            <Text style={s.reessayerTexte}>Réessayer</Text>
+            <Text style={s.actionTexte}>Réessayer</Text>
           </Pressable>
         </View>
       ) : source ? (
@@ -124,11 +167,97 @@ export default function EspaceWeb() {
         />
       ) : null}
 
-      {!charge ? (
-        <View style={s.attente} pointerEvents="none">
-          <ActivityIndicator color={C.accent} />
+      {!charge && !sansSession && !panne ? (
+        <View style={s.attente} pointerEvents="none"><ActivityIndicator color={C.accent} /></View>
+      ) : null}
+
+      {/* LA BARRE D'ONGLETS. Trois destinations quotidiennes et un menu : au-delà, les libellés se
+          coupent et l'onglet actif devient difficile à lire — même règle que l'espace personnel. */}
+      {avecOnglets ? (
+        <View style={[s.onglets, { paddingBottom: insets.bottom || E.s }]}>
+          {ONGLETS_CLUB.map((o) => {
+            const actif = ongletActif === o.cle;
+            return (
+              <Pressable
+                key={o.cle}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: actif }}
+                accessibilityLabel={o.libelle}
+                onPress={() => aller(o.chemin)}
+                style={s.onglet}
+              >
+                <Ionicons name={o.icone as never} size={21} color={actif ? C.accentClair : C.texteDoux} />
+                <Text style={[s.ongletTexte, actif ? { color: C.accentClair } : null]}>{o.libelle}</Text>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            accessibilityRole="button" accessibilityLabel="Ouvrir le menu"
+            onPress={() => setMenuOuvert(true)} style={s.onglet}
+          >
+            <Ionicons name="grid-outline" size={21} color={menuOuvert ? C.accentClair : C.texteDoux} />
+            <Text style={[s.ongletTexte, menuOuvert ? { color: C.accentClair } : null]}>Menu</Text>
+          </Pressable>
         </View>
       ) : null}
+
+      {/* LE MENU, rangé comme dans Club+ : mêmes titres, même ordre. Une famille de coachs qui
+          passe de l'ordinateur au téléphone doit retrouver les mêmes mots au même endroit. */}
+      <Modal visible={menuOuvert} animationType="slide" transparent onRequestClose={() => setMenuOuvert(false)}>
+        <Pressable style={s.voile} onPress={() => setMenuOuvert(false)} accessibilityLabel="Fermer le menu" />
+        <View style={[s.feuille, { paddingBottom: insets.bottom + E.m }]}>
+          <View style={s.poignee} />
+          <ScrollView contentContainerStyle={{ paddingBottom: E.l }} showsVerticalScrollIndicator={false}>
+            {MENU_CLUB.map((groupe) => (
+              <View key={groupe.titre} style={{ marginTop: E.m }}>
+                <Text style={s.groupeTitre}>{groupe.titre}</Text>
+                {groupe.entrees.map((e) => (
+                  <Pressable
+                    key={e.cle}
+                    accessibilityRole="button" accessibilityLabel={e.libelle}
+                    onPress={() => aller(e.chemin)}
+                    style={({ pressed }) => [s.ligne, pressed ? { backgroundColor: "rgba(255,255,255,.05)" } : null]}
+                  >
+                    <View style={s.rond}><Ionicons name={e.icone as never} size={17} color={C.texteDoux} /></View>
+                    <Text style={s.ligneTexte}>{e.libelle}</Text>
+                    <Ionicons name="chevron-forward" size={16} color={C.texteFaible} />
+                  </Pressable>
+                ))}
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* LE PROFIL. C'est ici qu'on change d'espace et qu'on se déconnecte — et nulle part
+          ailleurs, pour que le geste soit délibéré. */}
+      <Modal visible={profilOuvert} animationType="slide" transparent onRequestClose={() => setProfilOuvert(false)}>
+        <Pressable style={s.voile} onPress={() => setProfilOuvert(false)} accessibilityLabel="Fermer" />
+        <View style={[s.feuille, { paddingBottom: insets.bottom + E.m }]}>
+          <View style={s.poignee} />
+          <View style={{ gap: 3, paddingTop: E.s, paddingBottom: E.m }}>
+            <Text style={s.grosTexte}>{profil?.prenom || "Mon compte"}</Text>
+            <Text style={s.petitTexte}>{profil?.clubNom || TITRES[cle]}</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button" accessibilityLabel="Changer d'espace"
+            onPress={() => { setProfilOuvert(false); changerEspace(); }}
+            style={({ pressed }) => [s.ligne, pressed ? { backgroundColor: "rgba(255,255,255,.05)" } : null]}
+          >
+            <View style={s.rond}><Ionicons name="swap-horizontal" size={17} color={C.texteDoux} /></View>
+            <Text style={s.ligneTexte}>Changer d'espace</Text>
+            <Ionicons name="chevron-forward" size={16} color={C.texteFaible} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button" accessibilityLabel="Se déconnecter"
+            onPress={async () => { setProfilOuvert(false); await oublierPorte(); await deconnexion(); }}
+            style={({ pressed }) => [s.ligne, pressed ? { backgroundColor: "rgba(255,255,255,.05)" } : null]}
+          >
+            <View style={s.rond}><Ionicons name="log-out-outline" size={17} color={C.alerteTexte} /></View>
+            <Text style={[s.ligneTexte, { color: C.alerteTexte }]}>Se déconnecter</Text>
+          </Pressable>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -136,28 +265,49 @@ export default function EspaceWeb() {
 const s = StyleSheet.create({
   barre: {
     flexDirection: "row", alignItems: "center", gap: E.s,
-    paddingHorizontal: E.m, paddingBottom: E.s,
+    paddingHorizontal: E.s, paddingBottom: E.s,
     backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.bordure,
   },
-  boutonBarre: { width: TOUCHE, height: TOUCHE, alignItems: "center", justifyContent: "center", marginLeft: -10 },
-  titre: { flex: 1, color: C.texte, fontFamily: P.titreFort, fontSize: 16.5 },
-  changer: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: E.m, minHeight: 36, borderRadius: R.pill,
-    backgroundColor: "rgba(36,84,255,.16)", borderWidth: 1, borderColor: "rgba(36,84,255,.35)",
-    justifyContent: "center",
-  },
-  changerTexte: { color: C.accentClair, fontFamily: P.texteFort, fontSize: 13 },
+  boutonBarre: { width: TOUCHE, height: TOUCHE, alignItems: "center", justifyContent: "center" },
+  titre: { flex: 1, color: C.texte, fontFamily: P.titreFort, fontSize: 16.5, textAlign: "center" },
+  centre: { flex: 1, alignItems: "center", justifyContent: "center", padding: E.xl, gap: E.s },
   grosTexte: { color: C.texte, fontFamily: P.titreFort, fontSize: 18, textAlign: "center" },
-  petitTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 14.5, lineHeight: 21, textAlign: "center", maxWidth: 320, marginTop: 6 },
-  reessayer: {
+  petitTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 14.5, lineHeight: 21, textAlign: "center", maxWidth: 320 },
+  action: {
     marginTop: E.m, paddingHorizontal: E.xl, minHeight: TOUCHE, borderRadius: R.m,
     alignItems: "center", justifyContent: "center",
     backgroundColor: "rgba(255,255,255,.06)", borderWidth: 1, borderColor: C.bordure,
   },
-  reessayerTexte: { color: C.texte, fontFamily: P.texteFort, fontSize: 15 },
+  actionTexte: { color: C.texte, fontFamily: P.texteFort, fontSize: 15 },
   attente: {
     position: "absolute", left: 0, right: 0, bottom: 0, top: 96,
     alignItems: "center", justifyContent: "center", backgroundColor: C.fond,
   },
+  onglets: {
+    flexDirection: "row", paddingTop: E.xs,
+    backgroundColor: C.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.bordure,
+  },
+  onglet: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 4, minHeight: TOUCHE },
+  ongletTexte: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 11 },
+  voile: { ...(StyleSheet.absoluteFill as object), backgroundColor: "rgba(0,0,0,.55)" },
+  feuille: {
+    position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "82%",
+    backgroundColor: C.surface, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl,
+    paddingHorizontal: E.l, paddingTop: E.s,
+    borderTopWidth: 1, borderTopColor: C.bordure,
+  },
+  poignee: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, backgroundColor: C.bordure, marginBottom: E.s },
+  groupeTitre: {
+    color: C.texteFaible, fontFamily: P.texteFort, fontSize: 11.5,
+    textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4, marginTop: E.xs,
+  },
+  ligne: {
+    flexDirection: "row", alignItems: "center", gap: E.m,
+    minHeight: TOUCHE, borderRadius: R.m, paddingHorizontal: E.s,
+  },
+  rond: {
+    width: 32, height: 32, borderRadius: R.m, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,.05)", borderWidth: 1, borderColor: C.bordure,
+  },
+  ligneTexte: { flex: 1, color: C.texte, fontFamily: P.texte, fontSize: 15 },
 });
