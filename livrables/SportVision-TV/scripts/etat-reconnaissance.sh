@@ -24,16 +24,34 @@ else
   dire "  etat" "ARRETE — bash livrables/SportVision-TV/scripts/installer-service-reconnaissance.sh"
 fi
 
-# La veille : c'est elle qui arrete tout sans rien dire.
-if pmset -g assertions 2>/dev/null | grep -q "caffeinate"; then
-  dire "  veille du Mac" "empechee tant que le moteur tourne"
-else
-  dire "  veille du Mac" "NON EMPECHEE — le Mac peut s'endormir et tout s'arrete"
-fi
-if pmset -g batt 2>/dev/null | grep -q "AC Power"; then
+# LA VEILLE : c'est elle qui arrete tout sans rien dire. Deux regimes, et il faut dire lequel.
+#   sur secteur  : le service tient l'assertion en permanence, meme file vide
+#   sur batterie : le moteur la tient LUI-MEME, seulement pendant qu'il traite une galerie, et
+#                  seulement au-dessus du plancher de batterie. File vide, le Mac dort : il n'y a
+#                  aucune raison de tenir un portable eveille pour interroger une file vide.
+# ON LIT UNE FOIS, PUIS ON CHERCHE DANS LA VARIABLE. `commande | grep -q` ferme le tuyau des la
+# premiere correspondance : la commande de gauche meurt d'un SIGPIPE, et avec `pipefail` le test
+# echoue ALORS QUE LA RECHERCHE A REUSSI. Ce script annoncait « veille NON EMPECHEE » pendant que
+# l'assertion etait bien la.
+ASSERTIONS="$(pmset -g assertions 2>/dev/null || true)"
+ALIM="$(pmset -g batt 2>/dev/null || true)"
+TENUE="non"
+case "$ASSERTIONS" in *caffeinate*) TENUE="oui" ;; esac
+if [ "${ALIM#*AC Power}" != "$ALIM" ]; then
   dire "  alimentation" "sur secteur"
+  if [ "$TENUE" = "oui" ]; then
+    dire "  veille du Mac" "empechee en permanence"
+  else
+    dire "  veille du Mac" "NON EMPECHEE — le Mac peut s'endormir et tout s'arrete"
+  fi
 else
-  dire "  alimentation" "SUR BATTERIE — la veille n'est pas empechee dans ce cas"
+  NIVEAU="$(printf '%s' "$ALIM" | grep -o '[0-9]*%' | head -1 || true)"
+  dire "  alimentation" "sur batterie (${NIVEAU:-?})"
+  if [ "$TENUE" = "oui" ]; then
+    dire "  veille du Mac" "empechee : une galerie est en cours de traitement"
+  else
+    dire "  veille du Mac" "libre — normal file vide ; sous 30 % de batterie, le moteur laisse dormir"
+  fi
 fi
 
 echo

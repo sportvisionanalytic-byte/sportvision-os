@@ -29,7 +29,9 @@
 //   node moteur.mjs --boucle       # attend la file et la vide, sans fin
 //   node moteur.mjs --album <id>   # une galerie précise, même hors file
 
+import { execFile, spawn } from "node:child_process";
 import { readFileSync, writeSync } from "node:fs";
+import { promisify } from "node:util";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { visagesDe, detecterFin, distance, MODELE, preparer } from "./visages.mjs";
@@ -125,6 +127,58 @@ const CFG = {
   // la famille d'un autre.
   lireLesDossards: true,
 };
+
+// ── TENIR LE MAC ÉVEILLÉ PENDANT QU'ON TRAVAILLE ────────────────────────────────────────────────
+//
+// Fouka, le 29/09 : « il faut que le moteur tourne même quand mon Mac est sur batterie, parce qu'il
+// ne sera pas tout le temps branché. »
+//
+// CE QUE FAIT DÉJÀ LE SERVICE. Le fichier launchd l'enveloppe dans `caffeinate -s`, qui empêche la
+// veille SUR SECTEUR. Sur batterie, rien : le Mac s'endort au bout d'une minute, et le passage en
+// cours se met en pause jusqu'au réveil. Rien n'est perdu — le processus est gelé, pas tué — mais
+// une galerie peut rester à moitié traitée pendant des heures.
+//
+// CE QU'ON AJOUTE. Le moteur tient lui-même l'assertion, mais SEULEMENT pendant qu'il traite une
+// galerie. Quand la file est vide, il la relâche et le Mac dort comme il veut : il n'y a aucune
+// raison de tenir un portable éveillé pour interroger une file vide toutes les vingt secondes.
+//
+// ET UN PLANCHER DE BATTERIE. En dessous, on laisse le Mac dormir : un portable à plat ne traite
+// aucune photo, et le travail reprend tout seul au rebranchement. Le moteur n'a pas à décider que
+// la machine de quelqu'un doit mourir debout.
+const PLANCHER_BATTERIE = 30;
+
+/** L'alimentation, lue au moment où on en a besoin : elle change sans prévenir. */
+async function alimentation() {
+  try {
+    const { stdout } = await promisify(execFile)("/usr/bin/pmset", ["-g", "batt"]);
+    return {
+      secteur: /'AC Power'/.test(stdout),
+      pourcent: Number((stdout.match(/(\d+)%/) || [])[1] ?? 100),
+    };
+  } catch {
+    // Sans réponse, on suppose le secteur : le pire cas est de ne pas empêcher une veille.
+    return { secteur: true, pourcent: 100 };
+  }
+}
+
+/**
+ * Empêche la veille le temps d'un traitement. Rend la fonction qui relâche.
+ *
+ * L'assertion vit dans un processus fils : s'il meurt, ou si le moteur meurt, elle disparaît. On
+ * ne laisse jamais un Mac éveillé derrière soi.
+ */
+async function tenirEveille() {
+  const { secteur, pourcent } = await alimentation();
+  if (secteur) return () => {};              // déjà tenu par le service lui-même
+  if (pourcent < PLANCHER_BATTERIE) {
+    dire(`   batterie à ${pourcent} % : on laisse le Mac dormir s'il le veut`);
+    return () => {};
+  }
+  let fils = null;
+  try { fils = spawn("/usr/bin/caffeinate", ["-i", "-w", String(process.pid)], { stdio: "ignore" }); }
+  catch { return () => {}; }
+  return () => { try { fils.kill(); } catch { /* deja parti */ } };
+}
 
 // ── LA MÉMOIRE DU SERVICE, ET CE QU'ELLE N'EST PAS ──────────────────────────────────────────────
 //
@@ -225,6 +279,15 @@ function accumuler(references, photosConfirmees, visagesParPhoto) {
 
 // ── Une galerie ─────────────────────────────────────────────────────────────────────────────────
 async function traiterGalerie(album, lignes) {
+  const relacher = await tenirEveille();
+  try {
+    return await traiterGalerieVraiment(album, lignes);
+  } finally {
+    relacher();
+  }
+}
+
+async function traiterGalerieVraiment(album, lignes) {
   const { d: infos } = await rest(`media_albums?select=title&id=eq.${album}`);
   dire(`\n▸ ${infos?.[0]?.title ?? album}`);
 
