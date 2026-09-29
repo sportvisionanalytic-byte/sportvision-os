@@ -1,0 +1,12 @@
+{
+  "name": "sportvision-moteur-reconnaissance",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Le moteur de reconnaissance : detection, empreintes et silhouettes, sans navigateur.",
+  "dependencies": {
+    "onnxruntime-node": "^1.20.0",
+    "sharp": "^0.34.0",
+    "tesseract.js": "^5.1.1"
+  }
+}

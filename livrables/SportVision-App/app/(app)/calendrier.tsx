@@ -11,6 +11,7 @@ import { useSession } from "../../src/lib/session";
 import { lireCalendrierFamille, useFamille } from "../../src/lib/famille";
 import { lireEvenements, separer, type Evenement } from "../../src/lib/donnees";
 import { dateDuJourParis, versDate } from "../../src/lib/dates";
+import { useDonnees, cleEvenements } from "../../src/lib/cache";
 import { Ecran, Probleme, Vide } from "../../src/ui/Ecran";
 import { CarteEvenement } from "../../src/ui/Cartes";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
@@ -45,9 +46,23 @@ export default function Calendrier() {
   // appeler son club pour un probleme qui n'existe pas.
   const affilie = parent ? famille.choisi?.enAttente === false : !!profil?.affilie;
 
-  const [evenements, setEvenements] = useState<Evenement[]>([]);
-  const [chargement, setChargement] = useState(true);
-  const [panne, setPanne] = useState(false);
+  // 29/09/2026 — MEME CLE QUE L'ACCUEIL, donc le calendrier s'ouvre deja rempli quand on y arrive
+  // depuis l'accueil : c'est la meme question, elle n'est posee qu'une fois.
+  const { donnees, chargement, erreur: souci, relire: charger } = useDonnees<Evenement[]>(
+    profil ? cleEvenements(parent, profil.clubId, famille.choisi?.refId) : null,
+    async () => {
+      if (parent) {
+        const tout = await lireCalendrierFamille();
+        const ref = famille.choisi?.refId;
+        return ref ? tout.filter((e) => e.sportifRef === ref) : tout;
+      }
+      if (profil?.clubId) return lireEvenements(profil.clubId);
+      return [];
+    },
+    [parent, profil?.clubId, famille.choisi?.refId],
+  );
+  const evenements = donnees ?? [];
+  const panne = !!souci && donnees === undefined;
   const [vue, setVue] = useState<"planning" | "mois">("planning");
   const [filtre, setFiltre] = useState<Filtre>(
     FILTRES.some((f) => f.cle === filtreDemande) ? (filtreDemande as Filtre) : "tout",
@@ -55,26 +70,6 @@ export default function Calendrier() {
   const [mois, setMois] = useState<string | null>(null);
   const [jourChoisi, setJourChoisi] = useState<string | null>(null);
 
-  const charger = useCallback(async () => {
-    setChargement(true);
-    setPanne(false);
-    try {
-      if (parent) {
-        const tout = await lireCalendrierFamille();
-        const ref = famille.choisi?.refId;
-        setEvenements(ref ? tout.filter((e) => e.sportifRef === ref) : tout);
-      } else if (profil?.clubId) {
-        setEvenements(await lireEvenements(profil.clubId));
-      } else {
-        setEvenements([]);
-      }
-    } catch {
-      setPanne(true);
-      setEvenements([]);
-    } finally { setChargement(false); }
-  }, [parent, profil?.clubId, famille.choisi?.refId]);
-
-  useEffect(() => { charger(); }, [charger]);
 
   /** Les mois qui contiennent vraiment quelque chose : un mois vide n'a pas à être proposé. */
   const moisDisponibles = useMemo(() => {

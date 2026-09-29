@@ -6,7 +6,7 @@
 //
 // Le parent voit la même chose, pour l'enfant qu'il a choisi. Ce ne sont pas deux écrans écrits en
 // parallèle : ce sont les mêmes blocs, nourris par la fonction de la base qui connaît ses droits.
-import React, { useCallback, useEffect, useState } from "react";
+import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -18,6 +18,7 @@ import {
   type Evenement, type Galerie,
 } from "../../src/lib/donnees";
 import { dateLongue } from "../../src/lib/dates";
+import { useDonnees, cleEvenements, cleGaleries } from "../../src/lib/cache";
 import { FOND_MATCH_DEMO, MODE_DEMO } from "../../src/lib/demonstration";
 import { Ecran, Probleme, Section, Vide } from "../../src/ui/Ecran";
 import { oublierPorte } from "../../src/lib/espaces";
@@ -34,11 +35,6 @@ export default function Accueil() {
   const famille = useFamille();
   const router = useRouter();
   const parent = profil?.espace === "parent";
-
-  const [evenements, setEvenements] = useState<Evenement[]>([]);
-  const [galerie, setGalerie] = useState<Galerie | null>(null);
-  const [chargement, setChargement] = useState(true);
-  const [panne, setPanne] = useState(false);
 
   const clubId = parent ? famille.detail?.clubId : profil?.clubId;
   const clubNom = parent ? (famille.detail?.clubNom ?? famille.choisi?.clubNom) : profil?.clubNom;
@@ -60,38 +56,43 @@ export default function Accueil() {
     router.replace("/bienvenue");
   }
 
-  const charger = useCallback(async () => {
-    setChargement(true);
-    setPanne(false);
-    try {
+  // 29/09/2026 — ON N'OUBLIE PLUS ENTRE DEUX VISITES. L'accueil rechargeait tout a chaque retour
+  // d'onglet : roue, une a deux secondes, puis le meme contenu qu'a la seconde d'avant. On garde
+  // la derniere reponse, on l'affiche tout de suite, on relit derriere.
+  //
+  // DEUX LECTURES SEPAREES, ET C'EST VOULU. Les evenements portent la meme cle que l'onglet
+  // Calendrier, les galeries la meme que l'onglet Photos : ouvrir l'un apres l'autre ne coute
+  // plus rien. Et une galerie qui ne repond pas n'empeche plus le prochain match de s'afficher —
+  // l'ancienne version perdait les deux d'un coup.
+  const evs = useDonnees<Evenement[]>(
+    profil ? cleEvenements(parent, profil.clubId, famille.choisi?.refId) : null,
+    async () => {
       if (parent) {
         // Le calendrier du parent passe par la fonction de la base, qui ne lui rend que les
-        // enfants dont le lien est confirmé. On filtre ensuite sur l'enfant regardé.
+        // enfants dont le lien est confirme. On filtre ensuite sur l'enfant regarde.
         const tout = await lireCalendrierFamille();
         const ref = famille.choisi?.refId;
-        setEvenements(ref ? tout.filter((e) => e.sportifRef === ref) : tout);
-      } else if (profil?.clubId) {
-        setEvenements(await lireEvenements(profil.clubId));
-      } else {
-        setEvenements([]);
+        return ref ? tout.filter((e) => e.sportifRef === ref) : tout;
       }
+      if (profil?.clubId) return lireEvenements(profil.clubId);
+      return [];
+    },
+    [parent, profil?.clubId, famille.choisi?.refId],
+  );
+  const gals = useDonnees<Galerie[]>(
+    cleGaleries(clubId, equipeId, saisonId, playerId),
+    () => lireGaleries(clubId as string, equipeId as string, saisonId, playerId),
+    [clubId, equipeId, saisonId, playerId],
+  );
 
-      // La dernière galerie publiée, une seule : l'accueil annonce, l'onglet Photos détaille.
-      if (clubId && equipeId) {
-        const galeries = await lireGaleries(clubId, equipeId, saisonId, playerId);
-        setGalerie(galeries[0] ?? null);
-      } else {
-        setGalerie(null);
-      }
-    } catch {
-      // On ne compose pas un écran à moitié vrai : la personne saura que rien n'a pu être chargé.
-      setPanne(true);
-      setEvenements([]);
-      setGalerie(null);
-    } finally { setChargement(false); }
-  }, [parent, profil?.clubId, famille.choisi?.refId, clubId, equipeId, saisonId, playerId]);
-
-  useEffect(() => { charger(); }, [charger]);
+  const evenements = evs.donnees ?? [];
+  // La derniere galerie publiee, une seule : l'accueil annonce, l'onglet Photos detaille.
+  const galerie = gals.donnees?.[0] ?? null;
+  const chargement = evs.chargement || gals.chargement;
+  // Une panne n'en est une que si l'ecran n'a RIEN a montrer. Tant qu'il reste quelque chose de
+  // vrai a afficher, une relecture ratee ne l'efface pas.
+  const panne = (!!evs.erreur || !!gals.erreur) && !evenements.length && !galerie;
+  const charger = () => { evs.relire(); gals.relire(); };
 
   const suivant = prochain(evenements);
   const resultats = derniersResultats(evenements, 2);

@@ -2,7 +2,7 @@
 //
 // Une galerie ouverte s'ouvre. Une galerie verrouillee le dit, et dit pourquoi. Le compteur
 // « vos photos » vient de la reconnaissance : il ne s'affiche que s'il est vrai.
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
 import { useFamille } from "../../src/lib/famille";
 import { lireGaleries, type Galerie } from "../../src/lib/donnees";
+import { useDonnees, cleGaleries } from "../../src/lib/cache";
 import { dateLongue } from "../../src/lib/dates";
 import { Ecran, Probleme, Vide } from "../../src/ui/Ecran";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
@@ -32,22 +33,24 @@ export default function Photos() {
     ? (famille.choisi?.kind === "club" ? famille.choisi.refId : undefined)
     : profil?.playerId;
   const equipeNom = parent ? famille.detail?.categorie : profil?.equipeNom;
-  const [galeries, setGaleries] = useState<Galerie[]>([]);
-  const [chargement, setChargement] = useState(true);
   const [filtre, setFiltre] = useState<"tout" | "ouvertes" | "verrouillees">("tout");
-  const [panne, setPanne] = useState(false);
-  const [erreur, setErreur] = useState<string | null>(null);
 
-  const charger = useCallback(async () => {
-    if (!clubId || !equipeId) { setGaleries([]); setChargement(false); return; }
-    setChargement(true);
-    setPanne(false);
-    try { setGaleries(await lireGaleries(clubId, equipeId, saisonId, playerId)); }
-    catch { setPanne(true); setGaleries([]); }
-    finally { setChargement(false); }
-  }, [clubId, equipeId, saisonId, playerId]);
-
-  useEffect(() => { charger(); }, [charger]);
+  // 29/09/2026 — LA LATENCE N'ETAIT PAS LE RESEAU, C'ETAIT L'ABSENCE DE MEMOIRE. Cet ecran repartait
+  // de zero a chaque visite : roue, une a deux secondes, puis les galeries. On garde la derniere
+  // reponse, on l'affiche tout de suite au retour, et on relit derriere sans clignoter.
+  const cle = cleGaleries(clubId, equipeId, saisonId, playerId);
+  const { donnees, chargement, erreur: souci, relire: charger } = useDonnees<Galerie[]>(
+    cle,
+    () => lireGaleries(clubId as string, equipeId as string, saisonId, playerId),
+    [clubId, equipeId, saisonId, playerId],
+  );
+  const galeries = donnees ?? [];
+  // Une panne n'en est une que si on n'a RIEN a montrer. Si on affiche une liste un peu ancienne
+  // parce que la relecture a echoue, on le dit sans effacer l'ecran.
+  const panne = !!souci && donnees === undefined;
+  const erreur = souci && donnees !== undefined
+    ? "Liste affichée telle qu'à la dernière ouverture : la mise à jour n'a pas abouti."
+    : null;
 
 
 

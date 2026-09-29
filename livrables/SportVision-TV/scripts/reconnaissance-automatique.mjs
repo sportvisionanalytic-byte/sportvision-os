@@ -607,16 +607,15 @@ async function vider() {
         // LES NUMEROS RELEVES. `media_assets.numeros_visibles` se saisissait a la main depuis l'OS,
         // et AUCUNE des 6 288 photos reelles ne l'avait jamais ete : le geste « j'etais le numero 7 »
         // etait vide par construction. On les releve donc ici.
-        if (r.numeros && r.numeros.length) {
-          numerosVus += r.numeros.length;
-          if (!SIMULER) {
-            const rep = await rest(`media_assets?id=eq.${photos[i].id}`, {
-              method: "PATCH", body: JSON.stringify({ numeros_visibles: r.numeros }),
-              headers: { Prefer: "return=minimal" },
-            });
-            if (!rep.ok) motifs.set("numeros non enregistres", (motifs.get("numeros non enregistres") || 0) + 1);
-          }
-        }
+        // 29/09/2026 — ON NE LES ECRIT PLUS. Trois des 59 photos annotees ont ete ouvertes et
+        // regardees : aucune ne montre de numero. Ce lecteur lisait les plis de maillot et les
+        // sponsors. Fouka a declare le n°7 le 28/09, et six photos d'autres enfants lui ont ete
+        // proposees dans la foulee. La v338 ferme la porte cote base ; on l'enleve aussi ici, pour
+        // que personne ne croie en relisant ce fichier que le chiffre releve vaut quelque chose.
+        //
+        // On continue de COMPTER ce qu'on croit lire : c'est la mesure qui dira, le jour ou un
+        // vrai lecteur existera, s'il fait mieux que celui-ci.
+        if (r.numeros && r.numeros.length) numerosVus += r.numeros.length;
         for (const sil of (r.silhouettes || [])) {
           const [sx, sy, sw, sh] = sil.boite;
           const dedans = r.visages.find((v) => {

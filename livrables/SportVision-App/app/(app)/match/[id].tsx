@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { issueDuMatch, lireMatch, MOT_ISSUE, type Evenement } from "../../../src/lib/donnees";
+import { useDonnees } from "../../../src/lib/cache";
 import { dateLongue, dateDuJourParis, heureCourte } from "../../../src/lib/dates";
 import { useSession } from "../../../src/lib/session";
 import { FOND_MATCH_DEMO, MODE_DEMO } from "../../../src/lib/demonstration";
@@ -27,20 +28,15 @@ export default function FicheMatch() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { profil } = useSession();
-  const [match, setMatch] = useState<Evenement | null>(null);
-  const [chargement, setChargement] = useState(true);
-  const [panne, setPanne] = useState(false);
-
-  const charger = useCallback(async () => {
-    if (!id) { setChargement(false); return; }
-    setChargement(true);
-    setPanne(false);
-    try { setMatch(await lireMatch(id)); }
-    catch { setPanne(true); setMatch(null); }
-    finally { setChargement(false); }
-  }, [id]);
-
-  useEffect(() => { charger(); }, [charger]);
+  // 29/09/2026 — On ouvre un match depuis le calendrier, on revient, on le rouvre : c'etait une
+  // roue a chaque fois pour la meme feuille de match. On garde la derniere reponse.
+  const { donnees, chargement, erreur: souci, relire: charger } = useDonnees<Evenement | null>(
+    id ? `match:${id}` : null,
+    () => lireMatch(id as string),
+    [id],
+  );
+  const match = donnees ?? null;
+  const panne = !!souci && donnees === undefined;
 
   const issue = issueDuMatch(match?.score);
   const joue = !!match?.score;

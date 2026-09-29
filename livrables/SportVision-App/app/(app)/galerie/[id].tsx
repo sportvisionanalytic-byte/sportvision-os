@@ -6,6 +6,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Dimensions, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Image } from "expo-image";
+import { useDonnees, oublier } from "../../../src/lib/cache";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -37,14 +38,13 @@ export default function Galerie() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [photos, setPhotos] = useState<PhotoDuJoueur[]>([]);
-  const [total, setTotal] = useState(0);
+
   // 27/09/2026 (v299) — CE QUE L'ECRAN MONTRE N'EST PAS TOUJOURS « VOS PHOTOS ». Tant que la famille
   // n'a ni Pass ni photo marquee, la base rend quatre photos de la galerie, filigranees, pour qu'il
   // y ait une raison d'acheter : en production, 3 399 photos en ligne et ZERO marquage, donc l'ecran
   // etait vide et ne vendait rien. Annoncer « vos photos » devant ces quatre-la ferait chercher son
   // enfant dans des photos d'ambiance.
-  const [apercuGalerie, setApercuGalerie] = useState(false);
+
   // « A ce match-la, j'etais le numero 7 » (27/09/2026, demande de Fouka). Un moteur de visages ne
   // rend rien sur une photo de dos : le dossard y est lisible, mais lui seul ne dit pas QUI portait
   // ce numero. La famille le sait, et comme le numero change d'un match a l'autre en jeunes, il se
@@ -52,12 +52,10 @@ export default function Galerie() {
   const [numero, setNumero] = useState("");
   const [numeroEnCours, setNumeroEnCours] = useState(false);
   const [numeroDit, setNumeroDit] = useState<string | null>(null);
-  const [chargement, setChargement] = useState(true);
   const [agrandie, setAgrandie] = useState<PhotoDuJoueur | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   /** Un message de reussite, distinct de l'erreur : « photo enregistree » n'est pas un probleme. */
   const [message, setMessage] = useState<string | null>(null);
-  const [panne, setPanne] = useState(false);
   const [etatPass, setEtatPass] = useState<EtatPass | null>(null);
   // Le produit du magasin, quand il y en a un a vendre. Extrait pour alleger les conditions.
   const pass: PassProposable | null =
@@ -68,19 +66,25 @@ export default function Galerie() {
   const [aTrancher, setATrancher] = useState<PhotoAIdentifier[]>([]);
   const [enCours, setEnCours] = useState<string | null>(null);
 
-  const charger = useCallback(async () => {
-    if (!id || !joueur) { setChargement(false); return; }
-    setChargement(true);
-    setPanne(false);
-    try {
-      const r = await lirePhotosDuJoueur(id, joueur);
-      setPhotos(r.photos); setTotal(r.total); setApercuGalerie(r.apercuGalerie);
-    }
-    catch { setPanne(true); setPhotos([]); setTotal(0); }
-    finally { setChargement(false); }
-  }, [id, joueur]);
-
-  useEffect(() => { charger(); }, [charger]);
+  // 29/09/2026 — L'ECRAN NE REPART PLUS DE ZERO. Revenir sur une galerie deja vue affichait un
+  // vide et une roue pendant une a deux secondes avant de remontrer exactement les memes photos.
+  // On garde la derniere reponse et on l'affiche tout de suite ; la relecture se fait derriere.
+  const { donnees, chargement, erreur: souci, relire: charger } = useDonnees<{
+    photos: PhotoDuJoueur[]; total: number; apercuGalerie: boolean;
+  }>(
+    id && joueur ? `photos-joueur:${id}:${joueur}` : null,
+    () => lirePhotosDuJoueur(id as string, joueur as string),
+    [id, joueur],
+  );
+  const photos = donnees?.photos ?? [];
+  const total = donnees?.total ?? 0;
+  // 27/09/2026 (v299) — CE QUE L'ECRAN MONTRE N'EST PAS TOUJOURS « VOS PHOTOS ». Tant que la famille
+  // n'a ni Pass ni photo marquee, la base rend quatre photos de la galerie, filigranees, pour qu'il
+  // y ait une raison d'acheter : en production, 3 399 photos en ligne et ZERO marquage, donc l'ecran
+  // etait vide et ne vendait rien. Annoncer « vos photos » devant ces quatre-la ferait chercher son
+  // enfant dans des photos d'ambiance.
+  const apercuGalerie = donnees?.apercuGalerie ?? false;
+  const panne = !!souci && donnees === undefined;
 
   // Deux choses au chargement, et dans cet ordre : rattraper un achat deja paye dont l'acces ne
   // s'est jamais ouvert (reseau coupe au mauvais moment), PUIS seulement regarder s'il reste
@@ -107,7 +111,7 @@ export default function Galerie() {
       if (await reprendreAchatsEnAttente(club, joueur, enfant)) {
         if (!vivant) return;
         setOuvertMaintenant(true);
-        charger();
+        toutRelire();
         return;
       }
       const [p, e, t] = await Promise.all([
@@ -151,6 +155,26 @@ export default function Galerie() {
     else setErreur(r.message);
   }
 
+  /**
+   * CE QU'ON CROIT SAVOIR VIENT DE DEVENIR FAUX (29/09/2026).
+   *
+   * Acheter le Pass, confirmer des photos ou declarer un numero change le compteur de la galerie ET
+   * la liste des galeries de l'onglet Photos. Depuis qu'on garde les reponses en memoire, il faut
+   * les oublier a ces moments-la : un cache qui survit a l'action qu'il contredit est pire que
+   * pas de cache, parce qu'on croit l'ecran a jour.
+   *
+   * On oublie par prefixe, d'un seul appel : les oublier un par un se serait oublie un jour.
+   */
+  function toutRelire() {
+    oublier("galeries:");
+    oublier("photos-joueur:");
+    charger();
+    // ET LA LISTE DES PHOTOS A TRANCHER AVEC. Declarer un numero fait apparaitre des propositions :
+    // sans ce tour de plus, la personne lisait « 4 photos vous sont proposees ci-dessous » sans
+    // voir une seule photo. C'est exactement le « j'ai mis le numero 7 et il n'y a rien » du 28/09.
+    setTour((n) => n + 1);
+  }
+
   /** Ce que la personne a designe dans la grille, avant de valider. */
   const [choisies, setChoisies] = useState<Set<string>>(new Set());
   function basculerChoix(id: string) {
@@ -172,7 +196,7 @@ export default function Galerie() {
     setATrancher((l) => l.filter((x) => !faites.includes(x.id)));
     setChoisies(new Set());
     if (rate) setErreur(`${rate} photo${rate > 1 ? "s n'ont" : " n'a"} pas pu être enregistrée${rate > 1 ? "s" : ""}. Réessayez.`);
-    charger();
+    toutRelire();
   }
 
   /** « Aucune » : on refuse tout ce qui est affiche. Un refus est conserve, donc la machine ne les
@@ -196,7 +220,7 @@ export default function Galerie() {
     const r = await acheterPass(pass, enfant);
     setAchatEnCours(false);
     if (r.etat === "ouvert") {
-      setEtatPass({ etat: "acquis" }); setOuvertMaintenant(true); charger();
+      setEtatPass({ etat: "acquis" }); setOuvertMaintenant(true); toutRelire();
       // Acheter change la marche suivante : on relit l'etat pour la nommer tout de suite.
       if (joueur) lireEtatReconnaissance(joueur).then(setReco);
     }
@@ -228,7 +252,7 @@ export default function Galerie() {
               ? `Le n°${r.numero} est enregistré. Aucun numéro n'a encore été relevé sur ces photos : dès que ce sera fait, les vôtres apparaîtront.`
               : `Le n°${r.numero} est enregistré, mais vous avez déjà répondu sur ces photos.`,
       );
-      await charger();
+      toutRelire();
     } catch {
       setNumeroDit("Le numéro n'a pas pu être enregistré. Réessayez.");
     } finally {

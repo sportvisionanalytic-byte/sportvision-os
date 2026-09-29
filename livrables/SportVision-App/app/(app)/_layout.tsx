@@ -17,6 +17,7 @@ import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useSession } from "../../src/lib/session";
+import { PrechauffageConnect } from "../../src/ui/PrechauffageConnect";
 import { C, E } from "../../src/theme/couleurs";
 import { P } from "../../src/theme/polices";
 
@@ -36,6 +37,10 @@ export default function OngletsEspace() {
   if (!session) return <Redirect href="/connexion" />;
 
   return (
+    <>
+    {/* 29/09/2026 — On pose la session de Connect pendant que l'accueil s'affiche, pour que la
+        premiere page web ouverte (« Prestations », « Mes commandes ») n'ait plus a la poser. */}
+    <PrechauffageConnect />
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -97,7 +102,6 @@ export default function OngletsEspace() {
           reconnaissance, aide) et la reservation : atteignables depuis le profil et les
           raccourcis, jamais un onglet. Au-dela de quatre onglets, les libelles se coupent. */}
       <Tabs.Screen name="connect/[page]" options={{ href: null }} />
-      <Tabs.Screen name="reserver" options={{ href: null }} />
       <Tabs.Screen
         name="profil"
         options={{
@@ -106,5 +110,6 @@ export default function OngletsEspace() {
         }}
       />
     </Tabs>
+    </>
   );
 }

@@ -10,6 +10,7 @@ import { supabase } from "./supabase";
 import { rejouerInscription } from "./inscription";
 import { MODE_DEMO, PROFIL_DEMO } from "./demonstration";
 import { oublierCookiesConnect } from "./connect";
+import { viderCache } from "./cache";
 
 export type Espace = "joueur" | "parent" | "aucun";
 
@@ -157,6 +158,11 @@ export function FournisseurSession({ children }: { children: React.ReactNode }) 
       // ferme.
       if (evenement === "SIGNED_OUT" || evenement === "SIGNED_IN" || evenement === "USER_UPDATED") {
         oublierCookiesConnect();
+        // ET LA MEMOIRE DES ECRANS MEURT AVEC ELLE (29/09/2026). Depuis qu'on garde la derniere
+        // reponse de chaque ecran pour l'afficher sans attente, elle doit disparaitre au
+        // changement de personne : deux comptes sur le meme telephone — ce qui arrive tous les
+        // jours dans une famille — et le second verrait les photos de l'enfant du premier.
+        viderCache();
       }
       charger(s);
     });

@@ -1,0 +1,8 @@
+# Les poids des modeles : 190 Mo, telecharges une fois, jamais modifies. Un depot Git n'est pas
+# un entrepot de fichiers binaires — voir README pour d'ou ils viennent.
+modeles/
+node_modules/
+# Le dictionnaire de Tesseract, telecharge au premier lancement.
+*.traineddata
+# Les scripts de calibration gardent des traces de mesure.
+mesures/
