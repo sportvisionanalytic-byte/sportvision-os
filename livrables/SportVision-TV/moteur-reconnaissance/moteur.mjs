@@ -222,10 +222,33 @@ function retenir(assetId, empreintes) {
 }
 
 const entetes = { apikey: CLE, Authorization: `Bearer ${CLE}`, "Content-Type": "application/json" };
+// LA MÊME ENDURANCE QUE `charger` (29/09/2026). Une coupure réseau ici levait aussi, et comme ces
+// appels vivent dans la boucle par photo (`media_numeros_lus`) et dans l'apprentissage, la galerie
+// entière tombait. On réessaie trois fois, puis on rend un échec LISIBLE — `{ok:false}` — au lieu
+// de lever : chaque appelant sait déjà quoi faire d'un échec, aucun ne sait quoi faire d'une
+// exception.
+//
+// ON RÉESSAIE AUSSI LES ÉCRITURES, et c'est un choix. Une exception de `fetch` veut dire qu'aucune
+// réponse n'est revenue : l'écriture a peut-être eu lieu. Toutes celles du moteur sont refaisables
+// sans dégât — elles portent sur un couple (photo, sportif) et remplacent au lieu d'empiler. La
+// seule dont un doublon compterait est `reconnaissance_commencer`, qui incrémente les essais ; et
+// depuis v349 un travail qui avance remet ce compteur à zéro, donc même là c'est sans conséquence.
 const rest = async (chemin, init = {}) => {
-  const r = await fetch(`${URL_SB}/rest/v1/${chemin}`, { ...init, headers: { ...entetes, ...(init.headers || {}) } });
-  const t = await r.text();
-  try { return { ok: r.ok, d: t ? JSON.parse(t) : null }; } catch { return { ok: r.ok, d: t }; }
+  for (let essai = 1; essai <= 3; essai++) {
+    try {
+      const r = await fetch(`${URL_SB}/rest/v1/${chemin}`, { ...init, headers: { ...entetes, ...(init.headers || {}) } });
+      const t = await r.text();
+      try { return { ok: r.ok, d: t ? JSON.parse(t) : null }; } catch { return { ok: r.ok, d: t }; }
+    } catch (e) {
+      if (essai === 3) {
+        const m = String(e && e.message || e).slice(0, 70);
+        dire(`   base injoignable après 3 essais (${chemin.split("?")[0]}) : ${m}`);
+        return { ok: false, d: { reseau: m } };
+      }
+      await new Promise((r) => setTimeout(r, 1500 * essai));
+    }
+  }
+  return { ok: false, d: null };
 };
 const rpc = (nom, corps) => rest(`rpc/${nom}`, { method: "POST", body: JSON.stringify(corps) });
 
@@ -234,16 +257,37 @@ const rpc = (nom, corps) => rest(`rpc/${nom}`, { method: "POST", body: JSON.stri
  *  filigrane, toujours disponible, et déjà à la bonne taille. */
 async function charger(chemin) {
   if (!chemin) return null;
-  const r = await fetch(`${URL_SB}/storage/v1/object/sign/${encodeURI("sportvision-media-prive/" + chemin)}`, {
-    method: "POST", headers: entetes, body: JSON.stringify({ expiresIn: 900 }),
-  });
-  if (!r.ok) return null;
-  const j = await r.json().catch(() => ({}));
-  const p = j.signedURL || j.signedUrl;
-  if (!p) return null;
-  const rep = await fetch(`${URL_SB}/storage/v1${p.startsWith("/") ? "" : "/"}${p}`);
-  if (!rep.ok) return null;
-  return Buffer.from(await rep.arrayBuffer());
+  // UNE COUPURE RÉSEAU NE DOIT PAS EMPORTER LA GALERIE ENTIÈRE (29/09/2026).
+  //
+  // Mesuré ce soir, et c'est la panne la plus probable du moteur : « RCPF VS PSG U16 », 110 photos,
+  // est morte à la photo 61 sur un seul `fetch failed`. Vingt-cinq minutes de calcul perdues, et
+  // pas une photo écrite — l'erreur remontait hors de `traiterGalerie`, qui abandonnait tout.
+  //
+  // Le moteur tourne sur le Mac de Fouka, en Wi-Fi, en permanence. Une micro-coupure par heure est
+  // normale ; perdre une galerie à chaque fois ne l'est pas. Trois essais avec une pause qui
+  // double, puis on rend null : la photo compte comme illisible, une seule, et les 109 autres
+  // restent faites. Un échec total remplacé par un trou d'une photo.
+  //
+  // C'est `charger` qui réessaie, et pas l'appelant : c'est ici qu'on sait que l'erreur est un
+  // transport, pas un refus. Un 404 ou un 403 ne se réessaient pas, ils sont rendus tout de suite.
+  for (let essai = 1; essai <= 3; essai++) {
+    try {
+      const r = await fetch(`${URL_SB}/storage/v1/object/sign/${encodeURI("sportvision-media-prive/" + chemin)}`, {
+        method: "POST", headers: entetes, body: JSON.stringify({ expiresIn: 900 }),
+      });
+      if (!r.ok) return null;
+      const j = await r.json().catch(() => ({}));
+      const p = j.signedURL || j.signedUrl;
+      if (!p) return null;
+      const rep = await fetch(`${URL_SB}/storage/v1${p.startsWith("/") ? "" : "/"}${p}`);
+      if (!rep.ok) return null;
+      return Buffer.from(await rep.arrayBuffer());
+    } catch (e) {
+      if (essai === 3) { dire(`   téléchargement abandonné après 3 essais : ${String(e && e.message || e).slice(0, 70)}`); return null; }
+      await new Promise((r) => setTimeout(r, 1500 * essai));
+    }
+  }
+  return null;
 }
 
 /**
