@@ -37,6 +37,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Le document vit a part pour pouvoir etre rendu et RELU sans demarrer ce serveur. Voir document.ts.
 import { rendreRecapitulatif, moisEnClair, type LigneRecap, type Recap } from "./document.ts";
+// La piece que le collaborateur garde et transmet a son comptable. Voir pdf.ts.
+import { rendreRecapitulatifPdf, nomFichierPdf } from "./pdf.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,7 +114,28 @@ serve(async (req) => {
     // `prenom` et `nomComplet` appartiennent au document, qui les echappe lui-meme. Ici on n'a
     // besoin que de la periode, pour l'objet de l'e-mail.
     const periode = moisEnClair(r.mois as string);
-    const html = rendreRecapitulatif(r as unknown as Recap, toutes as unknown as LigneRecap[]);
+    const recap = r as unknown as Recap;
+    // `lignesRecap` et non `lignes` : ce nom est deja pris plus haut par la reponse brute de la base.
+    const lignesRecap = toutes as unknown as LigneRecap[];
+    const html = rendreRecapitulatif(recap, lignesRecap);
+
+    // LE PDF, ET POURQUOI IL S'AJOUTE AU LIEU DE REMPLACER. Fouka voulait « vraiment un PDF, avec le
+    // logo », et a ajoute « dans l'ensemble c'est a peu pres ca » du contenu de l'e-mail. On joint
+    // donc la piece SANS vider le message : un PDF qui ne s'ouvre pas sur un telephone laisserait
+    // quelqu'un devant une annonce de virement sans le detail qui la justifie.
+    //
+    // ET UN ECHEC DE PDF N'EMPECHE PAS L'ENVOI. Le message porte deja tout ce qu'il faut ; refuser
+    // de prevenir quelqu'un de son virement parce qu'une piece jointe n'a pas pu etre fabriquee
+    // serait une panne de confort transformee en panne de paiement.
+    let piece: { filename: string; content: string } | null = null;
+    try {
+      const octets = await rendreRecapitulatifPdf(recap, lignesRecap);
+      let binaire = "";
+      for (const o of octets) binaire += String.fromCharCode(o);
+      piece = { filename: nomFichierPdf(recap), content: btoa(binaire) };
+    } catch (e) {
+      console.error("PDF non genere, l'e-mail part sans piece jointe :", String((e as Error)?.message ?? e));
+    }
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <contact@sportvision-an.fr>";
@@ -126,6 +149,7 @@ serve(async (req) => {
         to: [destinataire],
         subject: `Votre récapitulatif de prestations — ${periode}`,
         html,
+        ...(piece ? { attachments: [piece] } : {}),
       }),
     });
     const reponse = await envoi.json().catch(() => ({}));
@@ -153,7 +177,13 @@ serve(async (req) => {
       }, 200);
     }
 
-    return json({ envoye: true, confirme: marque !== false, destinataire, reference: reponse?.id ?? null });
+    return json({
+      envoye: true, confirme: marque !== false, destinataire,
+      reference: reponse?.id ?? null,
+      // On le DIT quand la piece a manque : l'e-mail est parti, mais pas le document, et c'est une
+      // difference que l'ecran doit pouvoir montrer.
+      pdf_joint: piece !== null,
+    });
   } catch (e) {
     return json({ error: String((e as Error)?.message ?? e) }, 500);
   }
