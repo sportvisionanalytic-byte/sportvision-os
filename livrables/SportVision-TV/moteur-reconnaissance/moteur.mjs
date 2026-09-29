@@ -105,6 +105,37 @@ const CFG = {
   visagesPourGroupe: 5,
 };
 
+// ── LA MÉMOIRE DU SERVICE, ET CE QU'ELLE N'EST PAS ──────────────────────────────────────────────
+//
+// LE PROBLÈME. Un travail, c'est un couple (galerie, sportif). Chaque fois qu'une famille dépose sa
+// photo de référence ou déclare quelque chose, la galerie ENTIÈRE était relue : 110 photos en 305
+// secondes. Sur une galerie réelle de 3 000 photos, c'est plus de deux heures — à chaque demande,
+// et il y en a une par famille.
+//
+// CE QU'ON NE FAIT PAS, ET C'EST LA DÉCISION DU 14/09 (v225, v325). On ne conserve AUCUNE empreinte
+// de visage de galerie, nulle part. Le texte signé par les parents promet noir sur blanc que « les
+// visages des autres enfants présents sur une photo ne sont jamais enregistrés ». La v225 a
+// justement supprimé la table qui les gardait, avec cette phrase : une table de biométrie qui
+// existe finit par être remplie. Écrire ces empreintes dans un fichier sur le Mac reviendrait au
+// même, sur un autre disque.
+//
+// CE QU'ON FAIT. On les garde en MÉMOIRE VIVE, le temps que le service tourne, exactement comme le
+// navigateur les gardait le temps d'une comparaison. Rien n'est écrit, rien ne survit à l'arrêt du
+// service, et la deuxième demande sur la même galerie ne coûte plus que la comparaison.
+//
+// BORNÉE, parce qu'une mémoire sans limite finit par tuer le processus qui la tient : au-delà de
+// 20 000 photos retenues, on oublie les plus anciennes. À trois visages par photo, cela représente
+// environ 120 Mo.
+const MEMOIRE = new Map();
+const MEMOIRE_MAX = 20000;
+function retenir(assetId, empreintes) {
+  if (MEMOIRE.size >= MEMOIRE_MAX) {
+    // Les clés d'une Map sortent dans leur ordre d'insertion : la première est la plus ancienne.
+    for (const vieille of MEMOIRE.keys()) { MEMOIRE.delete(vieille); if (MEMOIRE.size < MEMOIRE_MAX) break; }
+  }
+  MEMOIRE.set(assetId, empreintes);
+}
+
 const entetes = { apikey: CLE, Authorization: `Bearer ${CLE}`, "Content-Type": "application/json" };
 const rest = async (chemin, init = {}) => {
   const r = await fetch(`${URL_SB}/rest/v1/${chemin}`, { ...init, headers: { ...entetes, ...(init.headers || {}) } });
@@ -221,18 +252,29 @@ async function traiterGalerie(album, lignes) {
   }
 
   const visagesParPhoto = new Map();
-  let nVisages = 0, sansVisage = 0, illisibles = 0;
+  let nVisages = 0, sansVisage = 0, illisibles = 0, relus = 0;
   const motifs = new Map();
   const t0 = Date.now();
   for (let i = 0; i < photos.length; i++) {
-    if (i % 20 === 0) process.stdout.write(`   lecture ${i + 1}/${photos.length}…\r`);
+    if (i % 20 === 0) dire(`   lecture ${i + 1}/${photos.length}…`);
+    // DÉJÀ LU DANS CE PASSAGE DE SERVICE ? On ne relit pas. Voir MEMOIRE plus bas : rien n'est
+    // écrit nulle part, c'est la mémoire vive du service et elle meurt avec lui.
+    const connu = MEMOIRE.get(photos[i].id);
+    if (connu !== undefined) {
+      relus++;
+      if (connu.length) { nVisages += connu.length; visagesParPhoto.set(photos[i].id, connu); }
+      else sansVisage++;
+      continue;
+    }
     try {
       const octets = await charger(photos[i].preview_clair_path);
       if (!octets) { illisibles++; continue; }
       const v = await visagesDe(octets, { seuil: CFG.scoreMin, cote: CFG.cote });
-      if (!v.length) { sansVisage++; continue; }
-      nVisages += v.length;
-      visagesParPhoto.set(photos[i].id, v.map((x) => x.empreinte));
+      const empreintes = v.map((x) => x.empreinte);
+      retenir(photos[i].id, empreintes);
+      if (!empreintes.length) { sansVisage++; continue; }
+      nVisages += empreintes.length;
+      visagesParPhoto.set(photos[i].id, empreintes);
     } catch (e) {
       const m = String(e && e.message || e).slice(0, 80);
       motifs.set(m, (motifs.get(m) || 0) + 1);
@@ -255,7 +297,8 @@ async function traiterGalerie(album, lignes) {
   }
   dire(`   ${nVisages} visage(s) sur ${photos.length} photo(s) en ${Math.round((Date.now() - t0) / 1000)} s`
      + (deGroupe.size ? `, dont ${deGroupe.size} photo(s) de groupe` : "")
-     + (sansVisage ? `, ${sansVisage} sans visage` : "") + (illisibles ? `, ${illisibles} illisible(s)` : ""));
+     + (sansVisage ? `, ${sansVisage} sans visage` : "") + (illisibles ? `, ${illisibles} illisible(s)` : "")
+     + (relus ? `, dont ${relus} déjà en mémoire` : ""));
   for (const [m, n] of [...motifs].sort((a, b) => b[1] - a[1])) dire(`   ${n} photo(s) en échec : ${m}`);
 
   // 4. ON REGROUPE AVANT DE NOMMER.

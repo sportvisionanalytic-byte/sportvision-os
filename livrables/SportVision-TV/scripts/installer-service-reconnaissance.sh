@@ -82,8 +82,13 @@ cat > "$PLIST" <<PLISTFIN
   <!-- Dix secondes entre deux relances : sans ce delai, une erreur au demarrage ferait boucler
        launchd a pleine vitesse. -->
   <key>ThrottleInterval</key><integer>10</integer>
-  <!-- En tache de fond : la reconnaissance ne doit jamais ralentir le Mac pendant qu'on s'en sert. -->
-  <key>ProcessType</key><string>Background</string>
+  <!-- ADAPTATIF, ET NON « ARRIERE-PLAN » (29/09/2026). « Background » envoie le processus sur les
+       coeurs lents en permanence : mesure sur la meme galerie, 110 photos en 305 s lance a la main
+       contre plus de 25 minutes en service. La reconnaissance est ce qui fait vendre le Pass, elle
+       ne peut pas etre quatre fois plus lente juste parce qu'elle tourne toute seule.
+       « Adaptive » laisse macOS lui donner les coeurs rapides quand personne ne se sert du Mac, et
+       la brider des que Fouka revient dessus. C'est exactement ce qu'on veut. -->
+  <key>ProcessType</key><string>Adaptive</string>
   <key>LowPriorityIO</key><true/>
   <key>StandardOutPath</key><string>$JOURNAL</string>
   <key>StandardErrorPath</key><string>$JOURNAL</string>
@@ -91,8 +96,26 @@ cat > "$PLIST" <<PLISTFIN
 </plist>
 PLISTFIN
 
+# ARRETER PUIS REDEMARRER DEMANDE D'ATTENDRE (29/09/2026). launchd rend la main avant d'avoir fini
+# de decharger le service : le bootstrap qui suit immediatement echoue avec « Input/output error 5 »,
+# le service reste eteint, et le script dit pourtant « installe et demarre ». On attend qu'il ait
+# vraiment disparu, et on reessaie plutot que d'annoncer un succes qu'on n'a pas verifie.
 launchctl bootout "gui/$(id -u)/$ETIQUETTE" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
+for _ in $(seq 1 20); do
+  launchctl print "gui/$(id -u)/$ETIQUETTE" >/dev/null 2>&1 || break
+  sleep 0.5
+done
+
+pose=""
+for _ in $(seq 1 10); do
+  if launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null; then pose="oui"; break; fi
+  sleep 1
+done
+[ -n "$pose" ] || { echo "launchd a refuse de demarrer le service. Journal : $JOURNAL"; exit 1; }
+
+# ET ON VERIFIE QU'IL TOURNE VRAIMENT : un service pose n'est pas un service vivant.
+launchctl list | grep -q "$ETIQUETTE" || { echo "Le service est pose mais ne tourne pas. Journal : $JOURNAL"; exit 1; }
+
 echo "Service installe et demarre."
 echo "  ce qu'il fait  : tail -f $JOURNAL"
 echo "  l'arreter      : bash scripts/installer-service-reconnaissance.sh --retirer"
