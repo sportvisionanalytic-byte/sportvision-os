@@ -42,7 +42,17 @@ export async function preparer() {
   if (detecteur && encodeur) return;
   // Un seul fil : le moteur tourne en tâche de fond, à priorité basse, et ne doit jamais prendre
   // tout le processeur pendant que quelqu'un se sert du Mac.
-  const options = { executionProviders: ["cpu"], intraOpNumThreads: 2, graphOptimizationLevel: "all" };
+  //
+  // ET ON FAIT TAIRE LES AVERTISSEMENTS DE FORME (29/09/2026). SCRFD est exporté pour une entrée de
+  // 640 pixels ; on le fait tourner à 1920, ce qui est parfaitement licite — les dimensions sont
+  // dynamiques — mais onnxruntime prévient à chaque sortie qu'elle n'a pas la taille inscrite dans
+  // le fichier. Neuf avertissements par photo, mille par galerie : le journal du service n'était
+  // plus lisible, et un journal illisible est un journal que personne ne lit le jour où il dit
+  // quelque chose. Niveau 3 : les erreurs, rien d'autre.
+  const options = {
+    executionProviders: ["cpu"], intraOpNumThreads: 2, graphOptimizationLevel: "all",
+    logSeverityLevel: 3,
+  };
   detecteur = await ort.InferenceSession.create(join(ICI, "modeles", "detection.onnx"), options);
   encodeur = await ort.InferenceSession.create(join(ICI, "modeles", "reconnaissance.onnx"), options);
 }

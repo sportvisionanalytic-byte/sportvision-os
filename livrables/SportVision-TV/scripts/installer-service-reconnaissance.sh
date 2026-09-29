@@ -10,10 +10,24 @@
 # la session et le relance s'il s'arrete. Le moteur reste immobile tant que la file est vide : une
 # requete toutes les vingt secondes, rien de plus. Des qu'un travail arrive, il le traite.
 #
+# QUEL MOTEUR (29/09/2026). Le service lance desormais moteur-reconnaissance/moteur.mjs, et non
+# plus scripts/reconnaissance-automatique.mjs. L'ancien tournait dans un Chromium avec face-api
+# (descripteur de 128 dimensions, 2017) et trouvait 9 visages sur 110 photos reelles ; le nouveau
+# tourne en Node avec SCRFD et ArcFace (512 dimensions) et en trouve 283. Il repere aussi les
+# photos de groupe, qui vont a toute l'equipe.
+#
+# CE QUE LE NOUVEAU NE FAIT PAS ENCORE, et il faut le savoir en lisant ce fichier :
+#   - il ne lit pas les dossards. L'ancien croyait le faire : la v338 a montre que ses 59 releves
+#     etaient des plis de maillot et des sponsors, et les a effaces. Le portage est ecrit
+#     (moteur-reconnaissance/dossards.mjs) et volontairement debranche tant qu'il n'est pas prouve.
+#   - il ne decrit pas les silhouettes. Reconnaitre quelqu'un de dos demande un modele de corps,
+#     qui reste a ajouter.
+#
 # CE QUE CA NE FAIT PAS. Ca ne remplace pas la reconnaissance AU DEPOT : l'OS reconnait deja chaque
-# photo pendant que l'operateur la verse, et c'est ce qui rend le resultat immediat. Ce service
-# s'occupe du reste — l'expansion, la silhouette, les dossards, et les galeries deja publiees quand
-# une famille depose sa photo de reference apres coup.
+# photo pendant que l'operateur la verse, et c'est ce qui rend le resultat immediat. Attention, l'OS
+# utilise encore l'ANCIEN modele dans le navigateur : les deux cohabitent sans se melanger (une
+# empreinte appartient a un modele depuis la v337), mais le resultat immediat reste le moins bon
+# des deux tant que l'OS n'est pas repris.
 #
 #   bash scripts/installer-service-reconnaissance.sh            installe et demarre
 #   bash scripts/installer-service-reconnaissance.sh --retirer  arrete et desinstalle
@@ -24,7 +38,8 @@ ETIQUETTE="fr.sportvision.reconnaissance"
 PLIST="$HOME/Library/LaunchAgents/$ETIQUETTE.plist"
 JOURNAL="$HOME/Library/Logs/sportvision-reconnaissance.log"
 RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-MOTEUR="$RACINE/livrables/SportVision-TV/scripts/reconnaissance-automatique.mjs"
+MOTEUR="$RACINE/livrables/SportVision-TV/moteur-reconnaissance/moteur.mjs"
+MODELES="$RACINE/livrables/SportVision-TV/moteur-reconnaissance/modeles"
 
 if [ "${1:-}" = "--retirer" ]; then
   launchctl bootout "gui/$(id -u)/$ETIQUETTE" 2>/dev/null || true
@@ -34,6 +49,13 @@ if [ "${1:-}" = "--retirer" ]; then
 fi
 
 [ -f "$MOTEUR" ] || { echo "Moteur introuvable a $MOTEUR"; exit 1; }
+# Les poids ne sont pas dans Git (190 Mo) : sans eux le service demarrerait pour echouer en boucle,
+# toutes les dix secondes, sans que personne le voie.
+[ -f "$MODELES/detection.onnx" ] && [ -f "$MODELES/reconnaissance.onnx" ] || {
+  echo "Les modeles manquent dans $MODELES."
+  echo "Voir livrables/SportVision-TV/moteur-reconnaissance/LISEZMOI.md pour les recuperer."
+  exit 1
+}
 [ -f "$RACINE/.env" ] || { echo "Il manque le .env a la racine ($RACINE)."; exit 1; }
 
 NODE="$(command -v node)"
