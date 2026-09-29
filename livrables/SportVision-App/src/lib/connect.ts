@@ -197,6 +197,28 @@ export function cheminReconnaissanceEnfant(kind: string, refId: string): string 
  * Même mécanique que pour Connect, sur l'autre domaine : une page qui se soumet toute seule,
  * parce que le composant natif d'iOS n'envoie jamais le corps d'une requête POST.
  */
+/**
+ * LE RACCOURCI DE CLUB+, SUR SON PROPRE DOMAINE (29/09/2026).
+ *
+ * Connect a le sien depuis le 28/09 : une fois les cookies posés, les pages suivantes s'ouvrent
+ * directement, en un aller-retour au lieu de trois. Club+ ne l'avait pas, et refaisait donc le
+ * pont complet À CHAQUE OUVERTURE de l'espace club — la première impression d'un coach, chaque
+ * fois qu'il ouvre l'application.
+ *
+ * Un drapeau à part, et non celui de Connect : ce sont deux domaines, et leurs cookies ne se
+ * partagent pas. Les confondre ferait croire au raccourci là où il n'y a rien de posé, et un
+ * coach tomberait sur l'écran de connexion de Club+ sans rien pour en sortir.
+ */
+let cookiesClubPlusPoses = false;
+export function cookiesClubPlusDisponibles(): boolean { return cookiesClubPlusPoses; }
+export function marquerCookiesClubPlusPoses(): void { cookiesClubPlusPoses = true; }
+export function oublierCookiesClubPlus(): void { cookiesClubPlusPoses = false; }
+
+/** La page demandée, sans passer par le pont. À n'utiliser que si les cookies sont posés. */
+export function sourceClubPlusDirecte(chemin = "/dashboard"): SourceConnect {
+  return { uri: `${CLUBPLUS}${chemin}` };
+}
+
 export async function sourceClubPlus(chemin = "/dashboard"): Promise<SourceConnect | null> {
   // ON RAFRAICHIT AVANT DE TRANSMETTRE (28/09/2026).
   //

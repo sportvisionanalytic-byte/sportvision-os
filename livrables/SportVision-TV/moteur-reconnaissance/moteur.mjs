@@ -652,8 +652,37 @@ async function vider() {
 
   let albums = 0, photos = 0, marques = 0;
   for (const [album, lignes] of parAlbum) {
-    const r = await traiterGalerie(album, lignes.filter((l) => l.id));
-    albums++; photos += r.photos; marques += r.marques;
+    const aFaire = lignes.filter((l) => l.id);
+
+    // ON ANNONCE QU'ON COMMENCE, ET ON COMPTE L'ESSAI AVANT DE TRAVAILLER (v348, 29/09/2026).
+    //
+    // `traiterGalerie` tournait sans filet : une photo corrompue, une réponse inattendue, un
+    // plantage d'onnxruntime, et tout le passage tombait. launchd relançait dix secondes plus
+    // tard, reprenait LA MÊME galerie, retombait au même endroit. Une boucle infinie et
+    // silencieuse, qui bloquait tout ce qui attendait derrière — familles comprises. Le service
+    // aurait eu l'air vivant : il tourne, il consomme, il écrit. Et plus rien n'avancerait.
+    //
+    // Compter après coup n'aurait rien donné : un plantage ne revient jamais écrire son échec.
+    let recevables = aFaire;
+    if (!SIMULER && aFaire.length) {
+      const { d } = await rpc("reconnaissance_commencer", { p_ids: aFaire.map((l) => l.id) });
+      if (Array.isArray(d)) {
+        const gardes = new Set(d.map((x) => x.id));
+        const abandonnes = aFaire.length - gardes.size;
+        if (abandonnes) dire(`   ${abandonnes} travail(aux) abandonné(s) après trois échecs`);
+        recevables = aFaire.filter((l) => gardes.has(l.id));
+      }
+    }
+    if (!recevables.length) continue;
+
+    // ET LE FILET LUI-MÊME. Un échec sur une galerie ne doit pas emporter les suivantes : on le
+    // dit, on passe, et le compteur fera le reste si ça se reproduit.
+    try {
+      const r = await traiterGalerie(album, recevables);
+      albums++; photos += r.photos; marques += r.marques;
+    } catch (e) {
+      dire(`   échec sur cette galerie : ${String(e && e.message || e).slice(0, 160)}`);
+    }
   }
   return { albums, photos, marques };
 }

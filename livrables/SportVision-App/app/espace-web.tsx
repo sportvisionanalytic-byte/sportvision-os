@@ -25,7 +25,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VueConnect, type PoigneeVueConnect } from "../src/ui/VueConnect";
-import { sourceClubPlus, type SourceConnect } from "../src/lib/connect";
+import {
+  cookiesClubPlusDisponibles, marquerCookiesClubPlusPoses, oublierCookiesClubPlus,
+  sourceClubPlus, sourceClubPlusDirecte, type SourceConnect,
+} from "../src/lib/connect";
 import { ADRESSES, oublierPorte, type Porte } from "../src/lib/espaces";
 import { useSession } from "../src/lib/session";
 import { MENU_CLUB, ONGLETS_CLUB, libelleDuChemin } from "../src/lib/sections-club";
@@ -65,12 +68,22 @@ export default function EspaceWeb() {
     router.replace("/bienvenue");
   }, [router]);
 
-  const preparer = useCallback(async () => {
+  // LE CHEMIN COURT, ET SON REPLI. Une fois les cookies posés, la page s'ouvre directement : un
+  // aller-retour au lieu de trois. On ne devine pas s'ils tiennent encore — si Club+ renvoie vers
+  // sa page de connexion, on refait le pont (voir surAdresse). Le pire cas est l'ancien
+  // comportement, jamais une impasse.
+  const preparer = useCallback(async (forcerLePont = false) => {
     setPanne(false); setCharge(false); setSource(null);
+    if (!forcerLePont && cookiesClubPlusDisponibles()) {
+      setSansSession(false);
+      setSource(sourceClubPlusDirecte(chemin));
+      return;
+    }
     const s = await sourceClubPlus();
     if (!s) { setSansSession(true); return; }
     setSansSession(false);
     setSource(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { preparer(); }, [preparer]);
@@ -83,10 +96,15 @@ export default function EspaceWeb() {
   const surAdresse = useCallback((url: string) => {
     const apresRacine = url.startsWith(racine) ? url.slice(racine.length) : "";
     if (apresRacine) setChemin(apresRacine.split("?")[0] || "/dashboard");
-    if (!url.includes("/auth/login") && !url.includes("/clubplus/login")) return;
+    if (!url.includes("/auth/login") && !url.includes("/clubplus/login")) {
+      // Une page de Club+ atteinte hors de /auth/ : les cookies sont posés, le raccourci vaut.
+      if (url.startsWith(ADRESSES[cle]) && !url.includes("/auth/")) marquerCookiesClubPlusPoses();
+      return;
+    }
+    oublierCookiesClubPlus();
     if (dejaRefait.current) { changerEspace(); return; }
     dejaRefait.current = true;
-    preparer();
+    preparer(true);
   }, [preparer, changerEspace, racine]);
 
   const aller = useCallback((c: string) => {
