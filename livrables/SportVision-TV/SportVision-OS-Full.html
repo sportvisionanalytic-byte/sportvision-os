@@ -920,67 +920,102 @@ const NAV={
     {id:'prodhub',lb:'Production',ic:'pre'},
     {id:'kits',lb:'Kits',ic:'kits'},
     {id:'incidents',lb:'Incidents',ic:'alert'},
-    {type:'sep',lb:'Finances & Documents'},
-    // Refonte Finance (28/08, nuit) : le hub "Finances" (grille de 22 raccourcis) laisse
-    // place à 4 pages réelles + 1 secondaire, même esprit que la refonte Équipe & RH du
-    // même soir (3 pages réelles au lieu d'un hub de raccourcis). 'fin' devient
-    // "Vue d'ensemble" (KPI + liens), 'finrevenus'/'findepenses'/'finequipe' fusionnent les
-    // écrans dispersés (factures/acomptes/impayés/avoirs/encaissements → Revenus ;
-    // dépenses+générateur de charges récurrentes → Dépenses ; rémunérations/frais/
-    // commissions équipe → Équipe), 'finrapports' regroupe ce qui reste (analyse, clôtures,
-    // exports, rapprochement bancaire — cf. VIEWS['admin.finrapports']). Tous les anciens id
-    // restent définis avec hidden:true (mécanisme du 22/08 inchangé) : rien n'est supprimé,
-    // juste sorti de la sidebar — VIEWS/fonctions/CTA continuent de fonctionner à l'identique
-    // pour quiconque y accède encore par ancien lien direct.
-    {id:'fin',lb:"Vue d'ensemble",ic:'fin'},
-    {id:'finrevenus',lb:'Revenus',ic:'fin'},
-    {id:'findepenses',lb:'Dépenses',ic:'fin'},
-    {id:'finequipe',lb:'Équipe',ic:'col'},
-    // Clôture du mois (v358→v361, 29/09/2026) : envoi des récapitulatifs de prestations aux
-    // freelances. Admin seul dans la nav, parce que recap_envoyer est réservée à admin côté
-    // serveur : la comptabilité peut lire recap_a_payer et marquer un virement, mais lui ouvrir
-    // cet écran lui montrerait des boutons « Envoyer » qui échoueraient tous en 42501.
+    // ══ LA SECTION FINANCE, RANGEE EN QUATRE (30/09/2026) ════════════════════════════════════════
+    //
+    // POURQUOI. Un seul intitule « Finances & Documents » portait 32 entrees, quand « Operations »
+    // en porte 4. Mais le vrai brouillon n'etait pas le nombre : quatre ecrans font un travail
+    // voisin (recapmois, rem, finequipe, paiements) et deux libelles etaient identiques pour deux
+    // ecrans differents (« Depenses » pour findepenses ET depenses ; « Clotures mensuelles », qui
+    // est la cloture COMPTABLE, juste a cote de « Cloture du mois », qui est la paie). On regroupe
+    // par QUESTION POSEE : payer mon equipe, encaisser, tenir la comptabilite, lire les chiffres.
+    //
+    // CE QUI N'A PAS CHANGE, ET C'EST VOLONTAIRE :
+    //   - aucun ecran n'est ajoute, supprime ni fusionne, les 32 id sont tous encore la ;
+    //   - les `hidden:true` sont conserves a l'identique. 22 des 32 entrees sont masquees depuis la
+    //     refonte du 28/08 : la barre laterale en montre 10, pas 32. Les demasquer rendrait le menu
+    //     ILLISIBLE au lieu de le ranger. Leur libelle compte quand meme, parce que switchView()
+    //     s'en sert comme titre de page quand on arrive par un ancien lien direct.
+    //   - les titres A L'INTERIEUR des ecrans ne sont pas touches, seuls les libelles du menu.
+    //
+    // Mecanisme du 22/08 inchange (hidden:true sort de la sidebar sans rien casser) : VIEWS,
+    // fonctions et CTA continuent de fonctionner a l'identique pour ces id.
+    //
+    // QUATRE LIBELLES PROPOSES N'ONT PAS ETE APPLIQUES parce que l'ecran ne fait pas ce qu'ils
+    // annoncent. Verifie gabarit par gabarit, pas au titre :
+    //   rem        : « Heures & presences » refuse. L'ecran lit prestations_equipe_display
+    //                (remuneration, statut_paiement) et affiche Total a payer / Payes / En attente.
+    //                Il n'y a ni heure ni presence nulle part.
+    //   finequipe  : « A payer, par personne » refuse. Il a aussi « Payes » et « Historique
+    //                complet », et il est organise par TYPE (missions, salaires, remboursements,
+    //                commissions), pas par personne.
+    //   paiements  : « Historique des paiements » refuse. C'est une ligne PAR COLLABORATEUR dont la
+    //                colonne s'appelle « Rem. prevue » : du previsionnel, pas un historique.
+    //   finrevenus : « Revenus encaisses » refuse. L'ecran a un onglet « A encaisser » : dire
+    //                « encaisses » ferait croire que ce qui reste du n'y est pas.
+    {type:'sep',lb:'Payer mon équipe'},
+    // Clôture du mois (v358→v364, 29/09/2026) : envoi des récapitulatifs de prestations aux
+    // freelances. La comptabilité a sa propre entrée dans NAV.compta (décision du 30/09) ;
+    // l'écran y masque les champs et le bouton d'envoi, parce que recap_envoyer est réservée à
+    // admin côté serveur et qu'un bouton qui répond 42501 ne vaut pas mieux qu'aucun bouton.
     // Volontairement PAS intitulé « Paie » : les collaborateurs sont des indépendants, et le
     // vocabulaire de la paie sur un document qui leur part fabriquerait la preuve d'un lien de
     // subordination (décision de Fouka du 29/09, en-tête de v358).
     {id:'recapmois',lb:'Clôture du mois',ic:'check'},
-    // Rapport CA médias (master prompt Fouka §35-36, 02/09/2026) : media_orders est VOLONTAIREMENT
-    // séparé de factures/paiements (doctrine "dupliquer le pattern Stripe, jamais la fonction
-    // paiements", déjà établie pour Pass Photo/Agent — cf. commentaire de _finClassifySource plus
-    // bas) — ce rapport lit donc directement media_orders/media_products, jamais injecté dans
-    // finrevenus pour ne pas fausser les KPI factures existants.
-    {id:'finmedias',lb:'Ventes médias',ic:'med'},
+    {id:'rem',lb:'Rémunérations',ic:'col',hidden:true},
+    {id:'finequipe',lb:'Équipe',ic:'col'},
+    {id:'paiements',lb:'Paiements équipe',ic:'fin',hidden:true},
+    {id:'frais',lb:'Frais & kilomètres',ic:'fin',hidden:true},
+    {id:'finprod',lb:'Finance Production',ic:'fin'},
     // Lot 6 (31/08/2026, migration multi-pôles) : ventilation finance par pôle + grille de
-    // rémunération du Responsable de pôle. Admin uniquement — même périmètre que le reste du
+    // rémunération du Responsable de pôle. Admin uniquement, même périmètre que le reste du
     // module Finance (finrevenus/findepenses/finequipe n'ont eux non plus aucun équivalent
     // non-admin dans ce repo). Les fonctions RPC sous-jacentes (pole_finance_ventilation,
-    // pole_calculer_remuneration_responsable) acceptent déjà admin OU responsable du pôle — un
-    // futur accès en libre-service pour le/la responsable lui-même/elle-même n'exigerait donc
-    // aucun changement backend, seulement un point d'entrée UI supplémentaire.
-    {id:'finpoles',lb:'Finance par pôle',ic:'fin'},
-    {id:'polerem',lb:'Rémunération pôle',ic:'col'},
-    {id:'finprod',lb:'Finance Production',ic:'fin'},
-    {id:'finrapports',lb:'Rapports & exports',ic:'export'},
-    {id:'resultat',lb:'Compte de résultat',ic:'fin',hidden:true},
-    {id:'rentabilite',lb:'Rentabilité',ic:'fin',hidden:true},
+    // pole_calculer_remuneration_responsable) acceptent déjà admin OU responsable du pôle : un
+    // futur accès en libre-service pour le ou la responsable n'exigerait donc aucun changement
+    // backend, seulement un point d'entrée UI supplémentaire.
+    {id:'polerem',lb:'Rémunération responsable de pôle',ic:'col'},
     {id:'commissions',lb:'Commissions',ic:'fin',hidden:true},
-    {id:'immobilisations',lb:'Immobilisations',ic:'kits',hidden:true},
-    {id:'budgets',lb:'Budgets & prévisions',ic:'fin',hidden:true},
-    {id:'tva',lb:'TVA & provisions',ic:'fin',hidden:true},
-    {id:'rapprochement',lb:'Rapprochement',ic:'check',hidden:true},
+    {type:'sep',lb:'Encaisser'},
+    {id:'finrevenus',lb:'Revenus',ic:'fin'},
+    // Rapport CA médias (master prompt Fouka §35-36, 02/09/2026) : media_orders est VOLONTAIREMENT
+    // séparé de factures/paiements (doctrine « dupliquer le pattern Stripe, jamais la fonction
+    // paiements », déjà établie pour Pass Photo/Agent, cf. commentaire de _finClassifySource plus
+    // bas) : ce rapport lit donc directement media_orders/media_products, jamais injecté dans
+    // finrevenus pour ne pas fausser les KPI factures existants.
+    {id:'finmedias',lb:'Ventes médias',ic:'med'},
     {id:'factures',lb:'Factures',ic:'doc',hidden:true},
     {id:'acomptes',lb:'Acomptes',ic:'fin',hidden:true},
     {id:'impayes',lb:'Impayés',ic:'alert',hidden:true},
     {id:'avoirs',lb:'Avoirs & remises',ic:'doc',hidden:true},
     {id:'encaissements',lb:'Encaissements Stripe',ic:'fin',hidden:true},
-    {id:'depenses',lb:'Dépenses',ic:'fin',hidden:true},
-    {id:'frais',lb:'Frais & km',ic:'fin',hidden:true},
-    {id:'paiements',lb:'Paiements équipe',ic:'fin',hidden:true},
-    {id:'rem',lb:'Rémunérations',ic:'col',hidden:true},
-    {id:'clotures',lb:'Clôtures mensuelles',ic:'check',hidden:true},
+    {type:'sep',lb:'Comptabilité'},
+    // Les deux s'appelaient « Dépenses » dans ce menu. findepenses porte le générateur de charges
+    // récurrentes (KPI « Prochaine échéance à générer », bouton « Générer les échéances dues ») ;
+    // depenses est le seul à porter la carte « Fournisseurs ». Chaque libellé nomme donc ce qui
+    // n'existe que là.
+    {id:'findepenses',lb:'Dépenses & échéances',ic:'fin'},
+    {id:'depenses',lb:'Fournisseurs',ic:'fin',hidden:true},
+    {id:'tva',lb:'TVA & provisions',ic:'fin',hidden:true},
+    {id:'rapprochement',lb:'Rapprochement bancaire',ic:'check',hidden:true},
+    // « Clôture comptable » et non « Clôtures mensuelles » : à côté de « Clôture du mois », qui est
+    // la paie des freelances, l'ancien libellé faisait choisir au hasard entre les deux.
+    {id:'clotures',lb:'Clôture comptable',ic:'check',hidden:true},
+    {id:'immobilisations',lb:'Immobilisations',ic:'kits',hidden:true},
     {id:'export',lb:'Exports comptables',ic:'export',hidden:true},
     {id:'fec',lb:'Export FEC',ic:'export',hidden:true},
+    // Oublié de la liste de regroupement, et gardé : « Journal d'audit financier », la trace de qui
+    // a touché quoi sur les données financières. Sa place est dans la boîte à outils comptable.
     {id:'audit',lb:"Journal d'audit",ic:'check',hidden:true},
+    {type:'sep',lb:'Analyses & documents'},
+    // Oublié de la liste de regroupement, et gardé : c'est la page d'entrée de Finance (CA, charges,
+    // marge, encaissé, en attente) et le seul écran qui renvoie vers finrevenus, findepenses,
+    // finequipe et finmedias. Le supprimer du menu aurait coupé la seule vue d'ensemble.
+    {id:'fin',lb:"Vue d'ensemble",ic:'fin'},
+    {id:'resultat',lb:'Compte de résultat',ic:'fin',hidden:true},
+    {id:'rentabilite',lb:'Rentabilité',ic:'fin',hidden:true},
+    {id:'budgets',lb:'Budgets & prévisions',ic:'fin',hidden:true},
+    {id:'finpoles',lb:'Finance par pôle',ic:'fin'},
+    {id:'finrapports',lb:'Rapports & exports',ic:'export'},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin',hidden:true},
     {id:'documents',lb:'Centre documentaire',ic:'doc',hidden:true},
     {type:'sep',lb:'Secondaire'},
@@ -36137,6 +36172,17 @@ function _recapMoisView(){
       <button class="btn bg2 bs" style="height:36px" onclick="_recapDecalerMois(1)" title="Mois suivant">Mois suivant ›</button>
     </div>
     <div id="rec-totaux" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">${_finSkelKpi(3)}</div>
+    <!-- 30/09/2026, Fouka ne savait pas ou l'on pose une prime ou une retenue, et cet ecran est
+         justement celui ou l'on decouvre qu'il en manque une. On dit le chemin, on ne le propose
+         pas : y aller demande l'identifiant d'une mission, et un lien qui ne mene nulle part vaut
+         moins que rien. Les deux libelles sont cites tels qu'ils apparaissent sur la ligne de la
+         personne, sinon on cherche un bouton qui n'a pas ce nom. Reservee a la direction : le
+         panneau Equipe d'une mission n'ouvre que pour admin/sec/prod, pas pour la comptabilite, et
+         indiquer un chemin qu'on ne peut pas prendre est le meme faux chemin qu'un bouton qui
+         echoue. -->
+    ${peutEnvoyer?`<div style="font-size:11.5px;color:var(--t3);margin-bottom:16px;padding:10px 12px;background:var(--s1);border:1px solid var(--b1);border-radius:10px">
+      Les primes et les retenues se posent mission par mission : <strong style="color:var(--t2)">Prestations</strong> &rsaquo; la mission &rsaquo; <strong style="color:var(--t2)">Équipe</strong>, puis « Accorder une prime » ou « Retenir une pénalité » sur la ligne de la personne. Elles arrivent ici d'elles-mêmes, dans le montant dû du mois.
+    </div>`:''}
     <!-- Les retenues contestées, AVANT la liste des personnes : c'est à trancher avant de clôturer,
          pas après. Volontairement sans squelette de chargement, parce que la section est vide la
          plupart du temps : un bloc qui clignote puis disparaît est du bruit sur un écran qu'on
