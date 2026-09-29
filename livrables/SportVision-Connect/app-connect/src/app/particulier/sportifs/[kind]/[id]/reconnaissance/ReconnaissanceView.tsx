@@ -243,7 +243,7 @@ export function ReconnaissanceView({
             </h3>
             <p className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed text-text-secondary">
               Une photo récente de {lui}, visage bien visible et sans lunettes de soleil.
-              Format JPEG, PNG ou HEIC, 8 Mo maximum.
+              Format JPEG, PNG ou HEIC, 25 Mo maximum.
             </p>
             {/* CE CONSEIL N'EST PAS DU REMPLISSAGE : c'est la seule chose que la famille puisse
                 faire pour ameliorer nettement le resultat. Une photo de face et une de profil
