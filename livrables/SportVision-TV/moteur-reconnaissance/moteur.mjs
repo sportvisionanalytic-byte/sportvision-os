@@ -56,9 +56,18 @@ if (!URL_SB || !CLE) { console.error("SUPABASE_URL et SUPABASE_SECRET_KEY sont n
 
 // ── Les réglages, et d'où ils viennent ──────────────────────────────────────────────────────────
 const CFG = {
-  // DÉTECTION. Mesuré sur 8 photos : à 640 px on trouve 14 visages en 200 ms, à 1920 px on en
-  // trouve 16 en 1 650 ms. On prend la qualité : même au maximum, c'est trois fois plus rapide que
-  // l'ancien moteur, qui en trouvait 9.
+  // DÉTECTION, À DEUX ÉCHELLES (corrigé le 29/09/2026).
+  //
+  // La première mesure portait sur 8 photos et concluait « 1920 trouve plus que 640 ». Reprise sur
+  // 40 photos, elle dit autre chose : les deux tailles trouvent exactement 71 visages, et chacune
+  // en trouve 9 que l'autre rate. Réunies, 80 visages — 13 % de plus — pour 12 % de temps en plus,
+  // parce que 640 px ne coûte que 193 ms quand 1920 en coûte 1 669. Voir detecterFin().
+  //
+  // Une justification fausse dans une configuration, c'est le prochain réglage qui part de travers.
+  cotes: [1920, 640],
+  // La photo de référence, elle, ne montre qu'un visage et vaut la meilleure empreinte possible :
+  // une seule échelle, la plus fine. Mesuré : la même tête donne des empreintes distantes de 0,24
+  // selon la taille de détection, et une reconnaissance certaine se joue à 0,95.
   cote: 1920,
   scoreMin: 0.3,
   // Sur un portrait déposé exprès, il n'y a personne d'autre à confondre : on descend, pour ne pas
@@ -269,7 +278,7 @@ async function traiterGalerie(album, lignes) {
     try {
       const octets = await charger(photos[i].preview_clair_path);
       if (!octets) { illisibles++; continue; }
-      const v = await visagesDe(octets, { seuil: CFG.scoreMin, cote: CFG.cote });
+      const v = await visagesDe(octets, { seuil: CFG.scoreMin, cotes: CFG.cotes });
       const empreintes = v.map((x) => x.empreinte);
       retenir(photos[i].id, empreintes);
       if (!empreintes.length) { sansVisage++; continue; }

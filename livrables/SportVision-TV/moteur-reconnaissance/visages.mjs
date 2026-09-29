@@ -145,6 +145,42 @@ export async function detecter(imageBrute, { seuil = 0.5, cote = 640 } = {}) {
   }));
 }
 
+/**
+ * Les visages, vus à DEUX échelles (29/09/2026).
+ *
+ * MESURÉ SUR 40 PHOTOS RÉELLES, et ce n'est pas ce qu'on croyait. À 640 px comme à 1920 px, le
+ * détecteur trouve exactement le même NOMBRE de visages — 71 chacun. Mais pas les mêmes : chaque
+ * taille en trouve 9 que l'autre rate. Ce n'est donc pas « 1920 est meilleur », c'est « les deux
+ * regardent ailleurs ». SCRFD est un détecteur à ancres, calibré pour une entrée de 640 : agrandir
+ * l'image déplace les visages par rapport à ces ancres, ça en révèle certains et en cache d'autres.
+ *
+ * Les deux ensembles réunis font 80 visages, soit 13 % de plus, pour 12 % de temps en plus — 640 px
+ * ne coûte que 193 ms quand 1920 en coûte 1 669. C'est le meilleur rapport de toutes les
+ * combinaisons essayées (512, 640, 800, 960, 1280, 1600, 1920, seules et mélangées).
+ *
+ * L'ORDRE COMPTE, et c'est la raison pour laquelle on ne trie pas par score. Les repères d'un
+ * visage trouvé à 640 px sont trois fois moins fins, et l'alignement d'ArcFace en dépend : mesuré,
+ * la même tête donne des empreintes distantes de 0,24 en médiane selon la taille de détection —
+ * beaucoup, quand une reconnaissance certaine se joue à 0,95. On garde donc TOUJOURS la version
+ * 1920 d'un visage vu aux deux tailles, et on n'ajoute de 640 que ce qui manquait.
+ */
+export async function detecterFin(imageBrute, { seuil = 0.5, cotes = [1920, 640] } = {}) {
+  const gardes = [];
+  for (const cote of cotes) {
+    for (const v of await detecter(imageBrute, { seuil, cote })) {
+      const [x, y, w, h] = v.boite;
+      const double = gardes.some((g) => {
+        const [gx, gy, gw, gh] = g.boite;
+        const ix = Math.max(0, Math.min(gx + gw, x + w) - Math.max(gx, x));
+        const iy = Math.max(0, Math.min(gy + gh, y + h) - Math.max(gy, y));
+        return ix * iy > 0.4 * Math.min(gw * gh, w * h);
+      });
+      if (!double) gardes.push(v);
+    }
+  }
+  return gardes;
+}
+
 // ── L'empreinte ─────────────────────────────────────────────────────────────────────────────────
 //
 // ArcFace veut un visage ALIGNÉ : yeux, nez et bouche toujours aux mêmes endroits d'un carré de
@@ -240,7 +276,11 @@ export async function empreinte(imageBrute, reperes) {
 
 /** Les visages d'une image avec leur empreinte, en une fois. */
 export async function visagesDe(imageBrute, options = {}) {
-  const trouves = await detecter(imageBrute, options);
+  // `cote` reste accepté pour une détection à une seule échelle (la photo de référence, où il n'y a
+  // qu'un visage à trouver et où l'on veut la meilleure empreinte possible).
+  const trouves = options.cote
+    ? await detecter(imageBrute, options)
+    : await detecterFin(imageBrute, options);
   const sortie = [];
   for (const v of trouves) {
     sortie.push({ ...v, empreinte: await empreinte(imageBrute, v.reperes) });
