@@ -18,9 +18,10 @@ import { MOTIF_LISIBLE, acheterPass, dernierMotif, etatDuPass, reprendreAchatsEn
 import { cheminReconnaissanceEnfant } from "../../../src/lib/connect";
 import { Ecran, Probleme, Vide } from "../../../src/ui/Ecran";
 import { Erreur } from "../../../src/ui/Base";
-import { C, E, R } from "../../../src/theme/couleurs";
+import { C, E, R, TOUCHE } from "../../../src/theme/couleurs";
 import { retourner } from "../../../src/lib/retour";
 import { enregistrerPhoto, enregistrerToutes } from "../../../src/lib/enregistrer-photo";
+import { legende, partagerPhoto } from "../../../src/lib/partager-photo";
 
 // 26/09/2026 — LA COUPE N'EST PLUS FAITE ICI. La base ne rend que quatre photos a qui n'a pas pris
 // le Pass (v282), et le vrai total a cote. Couper une seconde fois dans l'ecran aurait masque des
@@ -145,6 +146,35 @@ export default function Galerie() {
     else setErreur(r.message);
   }
 
+  /** PARTAGER UNE PHOTO. La légende part dans le presse-papier : aucune application de partage
+   *  n'accepte qu'on lui impose un texte, et l'écran doit donc DIRE qu'elle est copiée — sinon
+   *  personne ne cite SportVision, faute de savoir qu'il y a quelque chose à coller. */
+  const [partage, setPartage] = useState(false);
+  async function partagerUne(photo: { url: string; id: string }) {
+    setErreur(null); setMessage(null); setPartage(true);
+    const r = await partagerPhoto(photo.url, `sportvision-${photo.id}.jpg`, titre);
+    setPartage(false);
+    if (r.etat === "partage") setMessage(`Légende copiée : « ${legende(titre)} ». Collez-la dans votre publication.`);
+    else if (r.etat === "indisponible") setErreur("Le partage n'est pas disponible sur cet appareil.");
+    else setErreur(r.message);
+  }
+
+  /** RETIRER UNE PHOTO DE SA GALERIE. Un refus n'efface rien et ne retire rien à personne
+   *  d'autre : les marquages sont par sportif, la même photo appartient à tous ceux qui y sont. */
+  async function retirerUne(photo: { id: string }) {
+    if (!joueur) return;
+    setEnCours("retrait"); setErreur(null); setMessage(null);
+    const ok = await repondreCestMoi(photo.id, joueur, false);
+    setEnCours(null);
+    if (!ok) {
+      setErreur("Cette photo a été identifiée par le club : demandez-lui de la retirer.");
+      return;
+    }
+    setAgrandie(null);
+    setMessage("Photo retirée de vos photos.");
+    toutRelire();
+  }
+
   async function enregistrerLot() {
     if (!photos.length) return;
     setErreur(null); setEnregistrement(`0 sur ${photos.length}`);
@@ -177,7 +207,11 @@ export default function Galerie() {
 
   /** Ce que la personne a designe dans la grille, avant de valider. */
   const [choisies, setChoisies] = useState<Set<string>>(new Set());
+  /** Le premier appui sur « Aucune » arme le geste, le second l'exécute. */
+  const [confirmeAucune, setConfirmeAucune] = useState(false);
   function basculerChoix(id: string) {
+    // Toucher une photo veut dire qu'on est en train de trier : le refus en bloc se désarme.
+    setConfirmeAucune(false);
     setChoisies((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }
 
@@ -211,6 +245,7 @@ export default function Galerie() {
     setEnCours(null);
     setATrancher((l) => l.filter((x) => !faites.includes(x.id)));
     setChoisies(new Set());
+    setConfirmeAucune(false);
   }
 
 
@@ -456,10 +491,18 @@ export default function Galerie() {
               <Pressable
                 accessibilityRole="button" accessibilityLabel="Aucune de ces photos n'est moi"
                 disabled={enCours !== null}
-                onPress={refuserTout}
+                onPress={() => (confirmeAucune ? refuserTout() : setConfirmeAucune(true))}
                 style={({ pressed }) => [s.action, s.actionCreuse, pressed ? { opacity: 0.85 } : null]}
               >
-                <Text style={[s.actionTexte, { color: C.texte }]}>Aucune</Text>
+                {/* DEUX GESTES POUR UN REFUS EN BLOC (29/09/2026).
+                    Fouka : « un joueur peut cliquer sans faire exprès ». Un refus n'est pas défait
+                    d'un revers : la photo refusée n'est plus jamais reproposée, c'est justement ce
+                    qui empêche de tourner en rond. Un seul doigt mal posé faisait donc disparaître
+                    toute la grille pour de bon. Le second appui coûte une seconde et rend le geste
+                    volontaire. */}
+                <Text style={[s.actionTexte, { color: confirmeAucune ? C.alerteTexte : C.texte }]}>
+                  {confirmeAucune ? "Confirmer : aucune n'est à moi" : "Aucune"}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -711,6 +754,45 @@ export default function Galerie() {
                 : <Ionicons name="arrow-down-circle-outline" size={22} color="#fff" />}
             </Pressable>
           ) : null}
+
+          {/* PARTAGER (29/09/2026). Fouka : « qu'il puisse flex avec ses photos, qu'il puisse être
+              fier, les partager, publier sur Instagram. » La feuille de partage du téléphone propose
+              déjà Instagram, les stories, WhatsApp et les messages : c'est là que les gens vont
+              déjà, et ça marche sans compte professionnel ni revue de Meta.
+              Placé entre les deux autres, avec le même écart : trois gestes distincts, aucun voisin
+              dangereux — fermer reste tout seul à droite. */}
+          {/* CE N'EST PAS MOI (29/09/2026). Depuis que les photos entrent dans la galerie sans
+              qu'on demande rien, il faut pouvoir en sortir une : c'est ce qui rend acceptable de
+              les mettre d'office. Ce qu'une machine a posé, la famille le défait (v343) ; ce qu'un
+              humain du club a posé ne bouge pas, et la base le dit alors elle-même.
+              En bas, loin des trois autres : ce geste-là ne se fait pas par mégarde. */}
+          {agrandie && !apercuGalerie ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Retirer cette photo : ce n'est pas moi"
+              onPress={() => retirerUne(agrandie)}
+              disabled={enCours === "retrait"}
+              style={[s.pasMoi, { bottom: insets.bottom + E.xl }]}
+              hitSlop={10}
+            >
+              {enCours === "retrait" ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={s.pasMoiTexte}>Ce n'est pas moi</Text>}
+            </Pressable>
+          ) : null}
+
+          {agrandie ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Partager cette photo"
+              onPress={() => partagerUne(agrandie)}
+              disabled={partage}
+              style={[s.fermer, { top: insets.top + E.s, right: undefined, left: E.l + TOUCHE + E.s }]}
+              hitSlop={12}
+            >
+              {partage ? <ActivityIndicator color="#fff" size="small" />
+                : <Ionicons name="share-outline" size={22} color="#fff" />}
+            </Pressable>
+          ) : null}
         </Pressable>
       </Modal>
     </>
@@ -719,6 +801,12 @@ export default function Galerie() {
 
 const s = StyleSheet.create({
   aide: { fontSize: 12, color: C.texteDoux, marginTop: -2 },
+  pasMoi: {
+    position: "absolute", alignSelf: "center",
+    paddingHorizontal: E.l, paddingVertical: E.s + 2, borderRadius: R.xl,
+    backgroundColor: "rgba(0,0,0,.55)", borderWidth: 1, borderColor: "rgba(255,255,255,.22)",
+  },
+  pasMoiTexte: { color: "#fff", fontWeight: "600", fontSize: 14 },
   reussite: {
     fontSize: 13, color: C.succesTexte, backgroundColor: C.surface,
     paddingHorizontal: E.m, paddingVertical: E.s, borderRadius: R.s, marginBottom: E.s,

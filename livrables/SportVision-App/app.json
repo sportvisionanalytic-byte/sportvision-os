@@ -58,7 +58,8 @@
         }
       ],
       "./plugins/signature-android",
-      "expo-iap"
+      "expo-iap",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true
