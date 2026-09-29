@@ -936,6 +936,14 @@ const NAV={
     {id:'finrevenus',lb:'Revenus',ic:'fin'},
     {id:'findepenses',lb:'Dépenses',ic:'fin'},
     {id:'finequipe',lb:'Équipe',ic:'col'},
+    // Clôture du mois (v358→v361, 29/09/2026) : envoi des récapitulatifs de prestations aux
+    // freelances. Admin seul dans la nav, parce que recap_envoyer est réservée à admin côté
+    // serveur : la comptabilité peut lire recap_a_payer et marquer un virement, mais lui ouvrir
+    // cet écran lui montrerait des boutons « Envoyer » qui échoueraient tous en 42501.
+    // Volontairement PAS intitulé « Paie » : les collaborateurs sont des indépendants, et le
+    // vocabulaire de la paie sur un document qui leur part fabriquerait la preuve d'un lien de
+    // subordination (décision de Fouka du 29/09, en-tête de v358).
+    {id:'recapmois',lb:'Clôture du mois',ic:'check'},
     // Rapport CA médias (master prompt Fouka §35-36, 02/09/2026) : media_orders est VOLONTAIREMENT
     // séparé de factures/paiements (doctrine "dupliquer le pattern Stripe, jamais la fonction
     // paiements", déjà établie pour Pass Photo/Agent — cf. commentaire de _finClassifySource plus
@@ -1986,6 +1994,7 @@ const VIEWS={
     <div class="sh" style="flex-wrap:wrap;gap:10px"><div><div class="sh-t">Mes finances</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Suivez vos primes, missions, frais et paiements.</div></div>
       <input type="month" class="l-inp" id="mf-mois" aria-label="Mois" style="height:36px;width:auto;flex:0 0 auto" onchange="loadMesFinances()"></div>
     <div id="mf-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+  'admin.recapmois':()=>_recapMoisView(),
   'admin.finprod':()=>_finProdView(),
   'compta.finprod':()=>_finProdView(),
   'sec.finprod':()=>_finProdView(),
@@ -5826,6 +5835,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='finmedias') await loadFinMedias();
   if(role==='admin'&&view==='findepenses') await loadFinDepenses();
   if(role==='admin'&&view==='finequipe') await loadFinEquipe();
+  if(role==='admin'&&view==='recapmois') await loadRecapMois();
   if(role==='admin'&&view==='finpoles') await loadFinPoles();
   if(role==='admin'&&view==='polerem') await loadPoleRem();
   if(role==='prod'&&view==='mesfinances') await loadMesFinances();
@@ -36050,6 +36060,343 @@ async function voirDetailFinProd(){
   const r=await sbFetch('rpc/production_mes_finances',{method:'POST',body:{p_mois:debut,p_user:_fpResp}});
   if(sbErr(r)||!r){el.innerHTML='<div style="color:var(--er)">'+esc(msgErreur(r,'Détail indisponible.'))+'</div>';return;}
   el.innerHTML=renderMesFinances(r);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ── Clôture du mois : les récapitulatifs de prestations (v358→v361, 29/09/2026) ──
+// ════════════════════════════════════════════════════════════════════════
+// LE VOCABULAIRE EST UNE DÉCISION, PAS UN DÉTAIL. Les collaborateurs sont des freelances : ni
+// « salaire » ni « fiche de paie » n'apparaissent dans cet écran, et encore moins dans ce qui part
+// chez eux. Envoyer un bulletin de paie à un indépendant, c'est fabriquer soi-même la preuve écrite
+// d'un lien de subordination, exactement la pièce qu'un contrôle URSSAF demande en premier
+// (décision de Fouka du 29/09, voir l'en-tête de la migration v358). On dit « récapitulatif de
+// prestations », « montant versé », « ajustement ».
+//
+// TROIS ÉTATS, ET C'EST TOUT L'INTÉRÊT DE L'ÉCRAN. v361 a séparé la préparation de l'envoi :
+//   aucun récapitulatif → « Envoyer le récapitulatif »
+//   statut 'brouillon'  → les lignes sont figées mais l'e-mail n'est jamais parti → « Réessayer »
+//   statut 'envoye'     → l'e-mail a été accepté : on affiche la date et le montant, plus de bouton
+// `recap_a_payer.deja_envoye` ne vaut vrai que pour 'envoye'. Un brouillon ne se voit donc QUE dans
+// `recapitulatifs_remuneration.statut`, et c'est pour cela que l'écran lit les deux sources : sans
+// la table, un brouillon resté en plan serait invisible et l'Admin croirait n'avoir rien commencé.
+//
+// CET ÉCRAN N'APPELLE JAMAIS `recap_marquer_envoye`. C'est l'edge function send-recapitulatif-email
+// qui le fait, après que le fournisseur d'e-mail a accepté le message. Le faire ici rendrait à
+// l'écran le pouvoir d'affirmer un envoi qui n'a pas eu lieu, le faux succès que v361 vient
+// justement de retirer, au pire endroit possible : le collaborateur attendrait un virement dont il
+// n'aurait jamais été prévenu.
+//
+// LE CONTRÔLE D'ACCÈS EST CÔTÉ SERVEUR, pas ici : recap_a_payer est réservée à admin/compta,
+// recap_envoyer à admin seul. L'absence de cet écran dans les NAV non-admin est un confort de
+// navigation, jamais la barrière.
+const RECAP_JOURS_VIREMENT=5;
+let _recapMois=null,_recapDocs=[],_recapNoms={};
+
+// DEUX DÉCIMALES, TOUJOURS, ET SEULEMENT ICI. _mfEur, le formateur des écrans Finance, rend
+// « 92,5 € » : sur un agrégat ça se lit, sur ce qu'une personne va recevoir un centime tronqué se
+// remarque et fait douter du reste du document. Volontairement LOCAL à cet écran : corriger _mfEur
+// reformaterait les huit écrans Finance qui s'en servent, ce qui n'est pas demandé et n'est pas le
+// moment (gel fonctionnel du 10/09).
+function _recapEur(n){return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
+
+// UN HORODATAGE SE LIT À PARIS, PAS EN UTC. _mfDate coupe les dix premiers caractères de la chaîne :
+// c'est juste pour une colonne `date` (virement_annonce_le, date_prestation) et FAUX pour un
+// `timestamptz`. Un virement marqué le 1er octobre à 0 h 30 heure française est stocké
+// « 2026-09-30T22:30Z » et s'afficherait « 30/09 ». Mesuré, pas supposé. Deux heures par nuit, et ce
+// sont précisément celles où l'on clôture un mois (leçon du 14/09, elle se rejoue partout où il y a
+// une date). D'où ce formateur pour `envoye_le` et `vire_le`, local comme _recapEur.
+function _recapInstant(ts){
+  if(!ts)return '\u2014';
+  const d=new Date(ts);
+  return isNaN(d.getTime())?'\u2014':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',timeZone:'Europe/Paris'});
+}
+
+function _recapMoisView(){
+  return `<div class="sh"><div><div class="sh-t">Clôture du mois</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Récapitulatifs de prestations des collaborateurs freelances : ce qui reste à payer sur le mois, le montant versé que vous décidez, et l'envoi.</div></div></div>
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn bg2 bs" style="height:36px" onclick="_recapDecalerMois(-1)" title="Mois précédent">‹ Mois précédent</button>
+      <div><label style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Mois</label>
+        <input type="month" class="l-inp" id="rec-mois" style="height:36px" onchange="loadRecapMois()"></div>
+      <button class="btn bg2 bs" style="height:36px" onclick="_recapDecalerMois(1)" title="Mois suivant">Mois suivant ›</button>
+    </div>
+    <div id="rec-totaux" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">${_finSkelKpi(3)}</div>
+    <div class="cd" style="margin-bottom:16px">
+      <div class="cd-h"><div class="cd-t">À payer sur ce mois</div></div>
+      <div style="font-size:11.5px;color:var(--t3);padding:0 16px 10px">Le montant versé est pré-rempli avec le montant dû, mais c'est vous qui tranchez : corrigez-le si besoin, et expliquez l'écart dans la note, qui part avec le récapitulatif.</div>
+      <div id="rec-real">${_finSkelRows(3,64)}</div>
+    </div>
+    <div class="cd">
+      <div class="cd-h"><div class="cd-t">Récapitulatifs du mois</div></div>
+      <div id="rec-envoyes">${_finSkelRows(2,44)}</div>
+    </div>`;
+}
+
+// « Septembre 2026 » plutôt que « 2026-09-01 » : le mois se lit dans les confirmations.
+function _recapLibelleMois(debut){
+  if(!debut)return '';
+  const d=new Date(String(debut).slice(0,10)+'T12:00:00');
+  return d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+}
+function _recapDecalerMois(delta){
+  const inp=document.getElementById('rec-mois');
+  if(!inp)return;
+  const [y,m]=(inp.value||ymdLocal(new Date()).slice(0,7)).split('-').map(Number);
+  // new Date(y, m-1+delta, 1) gère seul le passage d'année, dans les deux sens : rien à écrire
+  // en arithmétique modulo, donc rien à se tromper en décembre et en janvier.
+  inp.value=ymdLocal(new Date(y,(m-1)+delta,1)).slice(0,7);
+  loadRecapMois();
+}
+
+async function loadRecapMois(){
+  const el=document.getElementById('rec-real');
+  if(!el)return;
+  const {debut}=_monthBounds(_monthPickerDefault('rec-mois'));
+  _recapMois=debut;
+  el.innerHTML=_finSkelRows(3,64);
+  const [aPayer,docs]=await Promise.all([
+    sbFetch('rpc/recap_a_payer',{method:'POST',body:{p_mois:debut}}),
+    sbFetch('recapitulatifs_remuneration?select=id,collaborateur_id,mois,statut,nb_prestations,montant_prestations,montant_primes,montant_ajustements,montant_frais,montant_du,montant_verse,note,virement_annonce_le,envoye_le,destinataire_email,vire_le,vire_par&mois=eq.'+debut+'&statut=neq.annule&order=created_at.asc'),
+  ]);
+  if(sbErr(aPayer)){
+    el.innerHTML='<div style="padding:18px;color:var(--er);font-size:12.5px">'+esc(msgErreur(aPayer,"Impossible de lire ce qu'il y a à payer sur ce mois."))+'</div>';
+    document.getElementById('rec-totaux').innerHTML='';
+    document.getElementById('rec-envoyes').innerHTML='';
+    return;
+  }
+  const lignes=Array.isArray(aPayer)?aPayer:[];
+  // Une erreur sur la table est dite, jamais avalée : sans elle on ne distingue plus un brouillon
+  // d'un envoi réel, et l'écran proposerait « Envoyer » sur un récapitulatif déjà parti.
+  if(sbErr(docs)){
+    el.innerHTML='<div style="padding:18px;color:var(--er);font-size:12.5px">'+esc(msgErreur(docs,'Les récapitulatifs déjà préparés sont illisibles : rien ne peut être envoyé sans savoir ce qui est déjà parti.'))+'</div>';
+    document.getElementById('rec-totaux').innerHTML='';
+    document.getElementById('rec-envoyes').innerHTML='';
+    return;
+  }
+  _recapDocs=Array.isArray(docs)?docs:[];
+
+  // LES NOMS. recap_a_payer les rend pour les personnes encore à payer. Un récapitulatif dont le
+  // virement est parti n'y figure plus (ses affectations sont passées à « payé », donc filtrées) :
+  // sans ce complément, la section du bas n'afficherait qu'un identifiant technique.
+  _recapNoms={};
+  lignes.forEach(l=>{_recapNoms[l.collaborateur_id]=l.collaborateur;});
+  const manquants=[...new Set(_recapDocs.map(d=>d.collaborateur_id).filter(id=>!_recapNoms[id]))];
+  if(manquants.length){
+    const profs=await sbFetch('profiles?select=id,prenom,nom&id=in.('+manquants.join(',')+')').catch(()=>[]);
+    (Array.isArray(profs)?profs:[]).forEach(p=>{
+      _recapNoms[p.id]=[p.prenom,p.nom].filter(Boolean).join(' ')||'Collaborateur';
+    });
+  }
+
+  _recapRenderTotaux(lignes,_recapDocs);
+  _recapRenderApayer(lignes,_recapDocs);
+  _recapRenderDocs(_recapDocs);
+}
+
+function _recapRenderTotaux(lignes,documents){
+  const el=document.getElementById('rec-totaux');
+  if(!el)return;
+  const du=lignes.reduce((s,l)=>s+Number(l.montant_du||0),0);
+  const envoyes=documents.filter(d=>d.statut==='envoye');
+  const verse=envoyes.reduce((s,d)=>s+Number(d.montant_verse||0),0);
+  const brouillons=documents.filter(d=>d.statut==='brouillon').length;
+  el.innerHTML=`
+    <div class="fs"><div class="fs-l">Personnes à payer</div><div class="fs-v">${lignes.length}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:5px">${envoyes.length} récapitulatif${envoyes.length>1?'s':''} envoyé${envoyes.length>1?'s':''} sur le mois${brouillons?` · ${brouillons} brouillon${brouillons>1?'s':''} à renvoyer`:''}</div></div>
+    <div class="fs"><div class="fs-l">Total dû</div><div class="fs-v">${_recapEur(du)}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:5px">Prestations, primes, ajustements et frais</div></div>
+    <div class="fs"><div class="fs-l">Total versé</div><div class="fs-v" style="color:var(--acc)">${_recapEur(verse)}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:5px">Ce qui a été annoncé sur les récapitulatifs partis</div></div>`;
+}
+
+function _recapRenderApayer(lignes,documents){
+  const el=document.getElementById('rec-real');
+  if(!el)return;
+  if(!lignes.length){
+    el.innerHTML='<div style="padding:18px;color:var(--t3);font-size:12.5px">Aucune prestation à payer sur '+esc(_recapLibelleMois(_recapMois))+'. Une prestation entre ici quand l\'affectation est acceptée, le travail validé, et le règlement pas encore fait.</div>';
+    return;
+  }
+  el.innerHTML=lignes.map(l=>{
+    const doc=documents.find(d=>d.collaborateur_id===l.collaborateur_id);
+    const envoye=!!doc&&doc.statut==='envoye';
+    const brouillon=!!doc&&doc.statut==='brouillon';
+    const du=Number(l.montant_du||0);
+    // Pré-rempli avec le montant dû, mais MODIFIABLE : l'Admin décide de ce qu'il verse (v358).
+    // Sur un brouillon on repart de ce qu'il avait déjà décidé, jamais du dû, car un deuxième essai
+    // après un e-mail raté effacerait sinon silencieusement son arbitrage.
+    const prefill=brouillon?Number(doc.montant_verse||0):du;
+    const detail=[
+      ['Prestations',l.montant_prestations,false],
+      ['Primes',l.montant_primes,true],
+      ['Ajustements',l.montant_ajustements,true],
+      ['Frais et km',l.montant_frais,true],
+    ].filter(([,v,option])=>!option||Number(v||0)!==0)
+     .map(([lb,v])=>`<span style="white-space:nowrap"><span style="color:var(--t3)">${lb}</span> <span class="tm" style="font-weight:600">${_recapEur(v)}</span></span>`)
+     .join('<span style="color:var(--t3)">·</span>');
+    const cid=l.collaborateur_id;
+    const nomJs=escJs(l.collaborateur||'ce collaborateur');
+    const action=envoye
+      ? `<div style="text-align:right">
+           <span class="bd ba"><span class="bd-d"></span>Envoyé le ${_recapInstant(doc.envoye_le)}</span>
+           <div style="font-size:13px;font-weight:700;color:var(--t1);margin-top:6px">Montant versé ${_recapEur(doc.montant_verse)}</div>
+           <div style="font-size:11px;color:var(--t3);margin-top:2px">Virement annoncé pour le ${_mfDate(doc.virement_annonce_le)}</div>
+         </div>`
+      : `<div style="display:flex;flex-direction:column;gap:7px;min-width:250px">
+           ${brouillon?'<span class="bd bw"><span class="bd-d"></span>Brouillon prêt, l\'envoi n\'est pas parti</span>':''}
+           <label style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)">Montant versé
+             <input type="number" min="0" step="0.01" class="l-inp" id="rec-verse-${cid}" style="height:34px;width:120px;text-align:right" value="${prefill.toFixed(2)}"><span style="color:var(--t3)">€</span></label>
+           <input type="text" class="l-inp" id="rec-note-${cid}" style="height:34px" maxlength="400" placeholder="Note (facultative, part avec le récapitulatif)" value="${esc(brouillon?(doc.note||''):'')}">
+           <button class="btn bp bs" id="rec-btn-${cid}" onclick="envoyerRecapMois('${cid}','${nomJs}')">${brouillon?"Réessayer l'envoi":'Envoyer le récapitulatif'}</button>
+         </div>`;
+    return `<div style="display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;padding:14px 16px;border-top:1px solid var(--b1)">
+      <div style="min-width:240px;flex:1">
+        <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(l.collaborateur||'Collaborateur')}</div>
+        <div style="font-size:11.5px;color:var(--t3);margin-top:2px">${esc(l.fonction_principale||'Fonction non renseignée')} · ${l.nb_prestations} prestation${l.nb_prestations>1?'s':''} · ${esc(l.email||'pas d\'adresse e-mail')}</div>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;font-size:12px;margin-top:8px">${detail}</div>
+        <div style="font-size:15px;font-weight:700;color:var(--acc);margin-top:8px;font-variant-numeric:tabular-nums">Dû ${_recapEur(du)}</div>
+      </div>
+      ${action}
+    </div>`;
+  }).join('');
+}
+
+// LE VIREMENT SE LIT, IL NE SE DÉDUIT PLUS (v363). La version précédente concluait « viré » quand
+// toutes les affectations du récapitulatif étaient à « payé » : une seule ligne passée à « payé »
+// depuis un autre écran faisait alors disparaître le bouton, et le virement n'était jamais marqué
+// nulle part. `vire_le` dit ce qui s'est passé, en une requête au lieu de deux.
+function _recapRenderDocs(documents){
+  const el=document.getElementById('rec-envoyes');
+  if(!el)return;
+  if(!documents.length){
+    el.innerHTML='<div style="padding:16px;color:var(--t3);font-size:12.5px">Aucun récapitulatif préparé pour ce mois.</div>';
+    return;
+  }
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Collaborateur</th><th>État</th><th style="text-align:right">Dû</th><th style="text-align:right">Versé</th><th>Virement annoncé</th><th></th></tr></thead><tbody>'
+    +documents.map(d=>{
+      const nom=_recapNoms[d.collaborateur_id]||'Collaborateur';
+      const envoye=d.statut==='envoye';
+      const fait=!!d.vire_le;
+      const etat=envoye
+        ? `<span class="bd ba"><span class="bd-d"></span>Envoyé le ${_recapInstant(d.envoye_le)}</span>`
+        : `<span class="bd bw"><span class="bd-d"></span>Brouillon, rien n'est parti</span>`;
+      const action=!envoye
+        ? '<span style="font-size:11px;color:var(--t3)">Relancez l\'envoi dans la liste ci-dessus</span>'
+        : fait
+          ? `<span class="bd ba"><span class="bd-d"></span>Viré le ${_recapInstant(d.vire_le)}</span>`
+          : `<button class="btn bp bs" style="padding:3px 9px" onclick="recapVirementEffectue('${d.id}','${escJs(nom)}')">Virement effectué</button>`;
+      return `<tr>
+        <td class="tp">${esc(nom)}${d.note?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(d.note)}</div>`:''}</td>
+        <td>${etat}</td>
+        <td class="tm" style="text-align:right">${_recapEur(d.montant_du)}</td>
+        <td class="tm" style="text-align:right;font-weight:700">${_recapEur(d.montant_verse)}</td>
+        <td class="tm">${_mfDate(d.virement_annonce_le)}</td>
+        <td style="text-align:right">${action}</td></tr>`;
+    }).join('')+'</tbody></table></div>';
+}
+
+// ── L'ENVOI, EN DEUX TEMPS QUI NE MENTENT NI L'UN NI L'AUTRE ────────────────────────────────────
+async function envoyerRecapMois(collaborateurId,nom){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
+  const champ=document.getElementById('rec-verse-'+collaborateurId);
+  const noteEl=document.getElementById('rec-note-'+collaborateurId);
+  const btn=document.getElementById('rec-btn-'+collaborateurId);
+  if(!champ)return;
+  // La virgule décimale française passe : personne ne tape « 230.50 » sur un clavier français, et
+  // refuser la saisie plutôt que la lire serait une brimade.
+  const brut=String(champ.value||'').trim().replace(',','.');
+  const montant=Number(brut);
+  if(brut===''||!isFinite(montant)||montant<0){
+    toast('Saisissez un montant versé, positif ou nul.','er');champ.focus();return;
+  }
+  const note=(noteEl?.value||'').trim();
+  if(!await demanderConfirmation(
+      'Envoyer le récapitulatif de prestations de '+nom+' pour '+_recapLibelleMois(_recapMois)+' ?\n\n'
+      +'Montant versé annoncé : '+_recapEur(montant)+', virement annoncé sous '+RECAP_JOURS_VIREMENT+' jours.'
+      +(note?'\n\nNote transmise : « '+note+' »':''),
+      {action:'Envoyer'}))return;
+  if(btn){btn.disabled=true;btn.textContent='Envoi en cours…';}
+  // ÉTAPE 1, LE BROUILLON. recap_envoyer copie les lignes et fige les totaux, sans rien déclarer
+  // envoyé. Rejouable : un deuxième essai reprend le même récapitulatif au lieu d'en créer un
+  // second (v361), donc « Réessayer » ne risque pas d'annoncer deux paiements.
+  const id=await sbFetch('rpc/recap_envoyer',{method:'POST',body:{
+    p_collaborateur_id:collaborateurId,
+    p_montant_verse:montant,
+    p_mois:_recapMois,
+    p_note:note||null,
+    p_jours_virement:RECAP_JOURS_VIREMENT,
+  }});
+  if(sbErr(id)||typeof id!=='string'||!id){
+    toast(msgErreur(id,"Le récapitulatif n'a pas pu être préparé."),'er');
+    await loadRecapMois();
+    return;
+  }
+  // ÉTAPE 2, L'E-MAIL. Tant qu'il n'est pas accepté, rien n'est « envoyé » : c'est l'edge function
+  // qui appellera recap_marquer_envoye côté serveur. Cet écran ne la joue jamais lui-même.
+  try{
+    await _recapEnvoyerEmail(id);
+  }catch(e){
+    toast(e.message,'er');
+    await loadRecapMois();   // le brouillon existe : la liste doit proposer « Réessayer l'envoi »
+    return;
+  }
+  toast('Récapitulatif envoyé à '+nom+'.','ok');
+  await loadRecapMois();
+}
+
+async function _recapEnvoyerEmail(recapitulatifId){
+  const res=await fetch(SB_URL+'/functions/v1/send-recapitulatif-email',{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')},
+    body:JSON.stringify({recapitulatif_id:recapitulatifId})
+  });
+  let json={};
+  try{json=await res.json();}catch(e){}
+  if(!res.ok){
+    // LA FONCTION PARLE, ON LA CITE. send-recapitulatif-email répond {error:"…"} avec des phrases
+    // écrites pour un humain (« Ce collaborateur n'a pas d'adresse e-mail renseignée », « Le
+    // fournisseur d'e-mail a refusé l'envoi »). Les remplacer par un message maison ferait perdre
+    // la seule information qui permet de corriger, comme le 42501 du 13/09.
+    if(json&&(json.error||json.message))throw new Error(String(json.error||json.message));
+    // Un 404 SANS corps, c'est la fonction elle-même qui n'est pas déployée (elle rend un 404 avec
+    // corps quand c'est le récapitulatif qui manque). On dit alors ce qui est vrai : le brouillon
+    // est prêt, l'envoi reste à faire. Annoncer « envoyé » ici serait exactement le faux succès
+    // que v361 a retiré de la base.
+    if(res.status===404)throw new Error("Le moteur d'envoi n'est pas déployé. Le brouillon est prêt : l'envoi reste à refaire.");
+    throw new Error('Envoi refusé par le serveur ('+res.status+').');
+  }
+  return json;
+}
+
+async function recapVirementEffectue(recapitulatifId,nom){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
+  if(!await demanderConfirmation(
+      'Le virement de '+nom+' est bien parti ?\n\n'
+      +'Ses prestations de '+_recapLibelleMois(_recapMois)+' passeront à « payé ». Cet écran ne sait pas revenir en arrière.',
+      {action:'Le virement est parti'}))return;
+  // CE QU'ON CROYAIT AVANT DE CLIQUER. Le bouton ne s'affiche que si `vire_le` est vide, mais une
+  // autre session a pu marquer le virement entre l'affichage et le clic. Garder l'état d'avant est
+  // le seul moyen de distinguer ensuite « je viens de l'enregistrer » de « c'était déjà fait » :
+  // le nombre rendu par la fonction, lui, ne le dit pas (voir plus bas).
+  const avant=(_recapDocs.find(d=>d.id===recapitulatifId)||{}).vire_le||null;
+  const n=await sbFetch('rpc/recap_virement_effectue',{method:'POST',body:{p_recapitulatif_id:recapitulatifId}});
+  if(sbErr(n)){toast(msgErreur(n,"Le virement n'a pas pu être enregistré."),'er');return;}
+  const nb=Number(n)||0;
+  // ON RECHARGE AVANT DE PARLER, PARCE QUE C'EST `vire_le` QUI FAIT FOI, PAS LE NOMBRE RENDU.
+  // recap_virement_effectue rend le nombre de prestations passées à « payé », et ce nombre est
+  // ambigu depuis v363 : zéro veut dire « déjà viré » (retour anticipé) OU « viré à l'instant, mais
+  // les prestations étaient déjà à payé ». Lire la date après coup lève l'ambiguïté sans supposer.
+  await loadRecapMois();
+  const apres=(_recapDocs.find(d=>d.id===recapitulatifId)||{}).vire_le||null;
+  if(!apres){
+    // Aucune date après l'appel : rien n'a été enregistré. Ça ne devrait pas arriver, et si ça
+    // arrive on ne dit surtout pas « enregistré » (règle du 10/09).
+    toast("Le virement n'a pas été enregistré : rien n'a changé en base.",'er');
+  }else if(avant){
+    toast('Déjà marqué comme viré le '+_recapInstant(avant)+'.','ok');
+  }else{
+    toast('Virement enregistré. '+(nb
+      ?nb+' prestation'+(nb>1?'s':'')+' passée'+(nb>1?'s':'')+' à payé.'
+      :'Aucune prestation à basculer : elles étaient déjà à payé.'),'ok');
+  }
 }
 
 // ── Finance par pôle (ventilation revenus/charges) ──
