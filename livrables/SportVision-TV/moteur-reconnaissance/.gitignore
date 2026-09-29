@@ -7,3 +7,5 @@ node_modules/
 # Les planches d'etiquetage et les vignettes de diagnostic : des images, regenerables.
 mesures/*.jpg
 mesures/*.png
+# Le lecteur de texte compile : un binaire, et il se recompile en une seconde depuis le .swift.
+outils/lire-texte

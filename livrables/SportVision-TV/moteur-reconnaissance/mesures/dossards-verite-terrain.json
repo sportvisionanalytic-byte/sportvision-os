@@ -3,6 +3,33 @@
   "_pourquoi": "Sans cette liste, on ne peut pas dire si un lecteur de dossards marche. Les deux moteurs precedents se contredisaient, et ils inventaient tous les deux : c'est en regardant les photos qu'on l'a su, pas en comparant les moteurs entre eux.",
   "_comment_refaire": "node mesures/planches.mjs <dossier> genere trois planches numerotees. On les regarde, on note ce qu'on voit, on met a jour ce fichier. L'ordre des photos est celui de media_assets.position.",
   "_album": "5536bdea-34d8-47da-a889-82f3b3eef3af",
-  "_constat": "5 photos sur 36 portent un dossard lisible, soit 14 %. Toutes sont des vues de DOS, c'est-a-dire celles ou la reconnaissance du visage ne peut rien. La fonction vaut donc le coup.",
-  "8": [10], "17": [14], "27": [2, 10], "28": [4], "35": [10]
+  "_constat": "5 photos sur les 36 etiquetees portent un dossard lisible, soit 14 %. Toutes sont des vues de DOS, c'est-a-dire celles ou la reconnaissance du visage ne peut rien. La fonction vaut donc le coup.",
+  "dossards": {
+    "8": [
+      10
+    ],
+    "17": [
+      14
+    ],
+    "27": [
+      2,
+      10
+    ],
+    "28": [
+      4
+    ],
+    "35": [
+      10
+    ],
+    "60": [
+      5
+    ],
+    "79": [
+      5
+    ],
+    "96": [
+      5
+    ]
+  },
+  "_verifie_en_plus": "Les photos 60, 79 et 96 ne font pas partie des 36 etiquetees : elles ont ete ouvertes et regardees le 29/09/2026 pour verifier ce que le lecteur y annoncait. Les trois portent bien le n°5."
 }

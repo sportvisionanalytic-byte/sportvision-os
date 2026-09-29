@@ -17,11 +17,14 @@
 # photos de groupe, qui vont a toute l'equipe.
 #
 # CE QUE LE NOUVEAU NE FAIT PAS ENCORE, et il faut le savoir en lisant ce fichier :
-#   - il ne lit pas les dossards. L'ancien croyait le faire : la v338 a montre que ses 59 releves
-#     etaient des plis de maillot et des sponsors, et les a effaces. Le portage est ecrit
-#     (moteur-reconnaissance/dossards.mjs) et volontairement debranche tant qu'il n'est pas prouve.
-#   - il ne decrit pas les silhouettes. Reconnaitre quelqu'un de dos demande un modele de corps,
-#     qui reste a ajouter.
+#   - il ne reconnait pas quelqu'un a sa silhouette. Mesure le 29/09 sur 21 paires du meme joueur
+#     et 3 382 paires de joueurs differents : aucun seuil ne separe. La raison est structurelle —
+#     une equipe porte un maillot identique — et ce n'est pas un reglage a trouver.
+#
+# CE QU'IL SAIT FAIRE DEPUIS LE 29/09 : lire les numeros de maillot, sur les vues de DOS, la ou le
+# visage ne donne rien. 6 releves sur les 110 photos de la galerie, 6 exacts, 0 invente, chacun
+# verifie en ouvrant la photo. Il passe par Vision, le moteur de texte de macOS, et non par
+# Tesseract, qui lisait « 1 » sur un « 2 » de trente centimetres.
 #
 # CE QUE CA NE FAIT PAS. Ca ne remplace pas la reconnaissance AU DEPOT : l'OS reconnait deja chaque
 # photo pendant que l'operateur la verse, et c'est ce qui rend le resultat immediat. Attention, l'OS
@@ -57,6 +60,17 @@ fi
   exit 1
 }
 [ -f "$RACINE/.env" ] || { echo "Il manque le .env a la racine ($RACINE)."; exit 1; }
+
+# LE LECTEUR DE DOSSARDS. C'est un petit programme Swift qui appelle Vision, le moteur de texte de
+# macOS : il lit les numeros de maillot que Tesseract n'a jamais su lire. Il n'est pas dans Git —
+# un binaire n'y a pas sa place — et se recompile en une seconde.
+OUTILS="$RACINE/livrables/SportVision-TV/moteur-reconnaissance/outils"
+if [ ! -x "$OUTILS/lire-texte" ] || [ "$OUTILS/lire-texte.swift" -nt "$OUTILS/lire-texte" ]; then
+  echo "> Compilation du lecteur de dossards"
+  swiftc -O -o "$OUTILS/lire-texte" "$OUTILS/lire-texte.swift" || {
+    echo "La compilation a echoue. Le moteur tournera sans lecture des dossards."
+  }
+fi
 
 NODE="$(command -v node)"
 [ -n "$NODE" ] || { echo "node est introuvable dans le PATH."; exit 1; }

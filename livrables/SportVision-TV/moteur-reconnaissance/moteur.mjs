@@ -32,7 +32,9 @@
 import { readFileSync, writeSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { visagesDe, distance, MODELE, preparer } from "./visages.mjs";
+import { visagesDe, detecterFin, distance, MODELE, preparer } from "./visages.mjs";
+import { personnesDe, preparerPersonnes } from "./personnes.mjs";
+import { lireDossards, LECTEUR_DOSSARDS } from "./dossards.mjs";
 import { regrouper } from "./grappes.mjs";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
@@ -112,6 +114,16 @@ const CFG = {
   // AUCUNE des 6 288 photos ne l'avait jamais : le mécanisme attendait une donnée que personne ne
   // remplissait. Le moteur la remplit.
   visagesPourGroupe: 5,
+
+  // LES DOSSARDS (29/09/2026). Une photo de dos ne donne aucun visage, et c'est une part enorme des
+  // photos de match : le numero est la seule prise. Fouka : « quand on met les numeros, hop, ca
+  // retrouve automatiquement toutes les photos du numero 7 ».
+  //
+  // Mesure sur les 110 photos de la galerie : 6 numeros releves, 6 exacts, 0 invente, chacun
+  // verifie en ouvrant la photo. Il en rate — un 4 lointain, un 10 a l'arriere-plan — et c'est
+  // assume : rater coute une photo non proposee, inventer coute les photos d'un enfant envoyees a
+  // la famille d'un autre.
+  lireLesDossards: true,
 };
 
 // ── LA MÉMOIRE DU SERVICE, ET CE QU'ELLE N'EST PAS ──────────────────────────────────────────────
@@ -136,6 +148,8 @@ const CFG = {
 // 20 000 photos retenues, on oublie les plus anciennes. À trois visages par photo, cela représente
 // environ 120 Mo.
 const MEMOIRE = new Map();
+/** Les photos dont on a deja lu le dos dans ce passage de service : on ne recommence pas. */
+const dossardsVus = new Set();
 const MEMOIRE_MAX = 20000;
 function retenir(assetId, empreintes) {
   if (MEMOIRE.size >= MEMOIRE_MAX) {
@@ -261,7 +275,7 @@ async function traiterGalerie(album, lignes) {
   }
 
   const visagesParPhoto = new Map();
-  let nVisages = 0, sansVisage = 0, illisibles = 0, relus = 0;
+  let nVisages = 0, sansVisage = 0, illisibles = 0, relus = 0, numerosLus = 0;
   const motifs = new Map();
   const t0 = Date.now();
   for (let i = 0; i < photos.length; i++) {
@@ -281,6 +295,30 @@ async function traiterGalerie(album, lignes) {
       const v = await visagesDe(octets, { seuil: CFG.scoreMin, cotes: CFG.cotes });
       const empreintes = v.map((x) => x.empreinte);
       retenir(photos[i].id, empreintes);
+
+      // LES DOSSARDS, SUR LA MEME LECTURE D'IMAGE. On tient l'image en memoire : la relire plus
+      // tard couterait un second telechargement pour rien. Une photo sans personne de dos ne
+      // declenche aucun calcul.
+      if (CFG.lireLesDossards && !dossardsVus.has(photos[i].id)) {
+        try {
+          const corps = await personnesDe(octets);
+          const nums = corps.length ? await lireDossards(octets, corps, v) : [];
+          dossardsVus.add(photos[i].id);
+          if (nums.length) {
+            numerosLus += nums.length;
+            if (!SIMULER) {
+              const rep = await rpc("media_numeros_lus", {
+                p_asset_id: photos[i].id, p_numeros: nums, p_lecteur: LECTEUR_DOSSARDS,
+              });
+              if (!rep.ok) dire(`   numero non enregistre : ${JSON.stringify(rep.d).slice(0, 110)}`);
+            }
+          }
+        } catch (e) {
+          motifs.set(`dossards: ${String(e.message).slice(0, 60)}`,
+                     (motifs.get(`dossards: ${String(e.message).slice(0, 60)}`) || 0) + 1);
+        }
+      }
+
       if (!empreintes.length) { sansVisage++; continue; }
       nVisages += empreintes.length;
       visagesParPhoto.set(photos[i].id, empreintes);
@@ -308,6 +346,7 @@ async function traiterGalerie(album, lignes) {
      + (deGroupe.size ? `, dont ${deGroupe.size} photo(s) de groupe` : "")
      + (sansVisage ? `, ${sansVisage} sans visage` : "") + (illisibles ? `, ${illisibles} illisible(s)` : "")
      + (relus ? `, dont ${relus} déjà en mémoire` : ""));
+  if (numerosLus) dire(`   ${numerosLus} numéro(s) de maillot relevé(s)`);
   for (const [m, n] of [...motifs].sort((a, b) => b[1] - a[1])) dire(`   ${n} photo(s) en échec : ${m}`);
 
   // 4. ON REGROUPE AVANT DE NOMMER.
@@ -482,6 +521,7 @@ if (VOIR) {
 } else {
   dire("Chargement des modèles…");
   await preparer();
+  if (CFG.lireLesDossards) await preparerPersonnes();
   dire(`Modèle : ${MODELE}`);
   if (EN_BOUCLE) {
     dire(`En attente de travail (vérification toutes les ${ATTENTE / 1000} s).`);
