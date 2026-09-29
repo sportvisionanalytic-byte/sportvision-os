@@ -36340,6 +36340,12 @@ function _recapRenderApayer(lignes,documents){
          </div>`
       : `<div style="display:flex;flex-direction:column;gap:7px;min-width:250px">
            ${brouillon?'<span class="bd bw"><span class="bd-d"></span>Brouillon prêt, l\'envoi n\'est pas parti</span>':''}
+           ${/* UN MONTANT A ZERO SE DIT, IL NE SE BLOQUE PAS (29/09/2026). Fouka : « il est a zero
+                 parce qu'il a fait uniquement une prestation en essai. » Le cas est donc legitime et
+                 on n'empeche rien. Mais une ligne a 0,00 EUR ressemble a une ligne pas encore
+                 chargee, et envoyer par distraction un recapitulatif a zero a quelqu'un qui a
+                 travaille serait humiliant. On le nomme, une fois, a l'endroit ou le doigt va. */''}
+           ${du===0?'<span class="bd bw"><span class="bd-d"></span>Rien à payer ce mois-ci : vérifiez avant d\'envoyer</span>':''}
            <label style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)">Montant versé
              <input type="number" min="0" step="0.01" class="l-inp" id="rec-verse-${cid}" style="height:34px;width:120px;text-align:right" value="${prefill.toFixed(2)}"><span style="color:var(--t3)">€</span></label>
            <input type="text" class="l-inp" id="rec-note-${cid}" style="height:34px" maxlength="400" placeholder="Note (facultative, part avec le récapitulatif)" value="${esc(brouillon?(doc.note||''):'')}">
