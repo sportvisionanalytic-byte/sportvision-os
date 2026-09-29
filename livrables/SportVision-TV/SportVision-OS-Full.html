@@ -12858,6 +12858,17 @@ async function _accesOuvrir(playerId,nom){
 const PA_STATUT_LB={draft:'Brouillon',published:'En ligne',archived:'Archivée'};
 const PA_STATUT_CLR={draft:'var(--t3)',published:'var(--ok)',archived:'var(--t3)'};
 let _photoAlbums=[];
+// Qui a acces a chaque galerie (club_partenaire, equipe_adverse...) : sert uniquement au badge
+// affiche dans la liste, pour distinguer d'un coup d'oeil une galerie vendue au club d'une
+// galerie vendue a l'equipe adverse — la meme etiquette deja posee sur chaque lien
+// (media_album_links.audience, migration-galeries-v6), pas une nouvelle donnee.
+let _paAudienceByAlbum={};
+// Filtres de la liste (29/09/2026, demande Fouka : "beaucoup de galeries", retrouver ce qui existe
+// deja plutot que d'en recreer une par erreur). '' = tous les clubs, 'sans-club' = sans club,
+// sinon un club_id.
+let _paFiltreClub='';
+let _paFiltreTexte='';
+const PA_AUDIENCE_LB={club_partenaire:'Club',equipe_adverse:'Adversaire',public:'Public',evenementiel:'Événementiel',personnalise:'Personnalisé'};
 
 async function loadPhotoAlbums(el){
   el=el||document.getElementById('prod-media-real');
@@ -12867,11 +12878,39 @@ async function loadPhotoAlbums(el){
     const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,team_ids,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,match_id,event_id,watermark_previews,access_mode,cover_asset_id,clubs(nom),club_teams(name),saisons(label),prestations(reference)&order=created_at.desc&limit=200');
     if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(msgErreur(rows,'Impossible de charger les galeries.'))+'</div></div>';return;}
     _photoAlbums=Array.isArray(rows)?rows:[];
-    renderPhotoAlbumsList(_photoAlbums);
+    await _paChargerAudiences();
+    renderPhotoAlbumsList();
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
-function renderPhotoAlbumsList(albums){
+async function _paChargerAudiences(){
+  _paAudienceByAlbum={};
+  const ids=_photoAlbums.map(a=>a.id);
+  if(!ids.length)return;
+  const rows=await sbFetch('media_album_links?select=album_id,audience&album_id=in.('+ids.join(',')+')').catch(()=>[]);
+  for(const r of (Array.isArray(rows)?rows:[])){
+    if(!r.audience)continue;
+    (_paAudienceByAlbum[r.album_id]=_paAudienceByAlbum[r.album_id]||new Set()).add(r.audience);
+  }
+}
+
+function _paAlbumsFiltres(){
+  let list=_photoAlbums;
+  if(_paFiltreClub==='sans-club') list=list.filter(a=>!a.club_id);
+  else if(_paFiltreClub) list=list.filter(a=>a.club_id===_paFiltreClub);
+  if(_paFiltreTexte.trim()){
+    const q=_paFiltreTexte.trim().toLowerCase();
+    list=list.filter(a=>[a.title,a.clubs?.nom,a.club_teams?.name,a.structure_externe].filter(Boolean).join(' ').toLowerCase().includes(q));
+  }
+  return list;
+}
+
+// Re-rendent uniquement les lignes (#pa-galeries-lignes), jamais la barre de filtres elle-meme :
+// un input qui se recree a chaque frappe perd le curseur et le focus au milieu de la saisie.
+function _paChangerFiltreClub(v){ _paFiltreClub=v; _paRendreLignesGaleries(); }
+function _paChangerFiltreTexte(v){ _paFiltreTexte=v; _paRendreLignesGaleries(); }
+
+function renderPhotoAlbumsList(){
   const el=document.getElementById('prod-media-real');
   if(!el)return;
   // 09/09/2026, precision de Fouka : un operateur terrain ne cree pas de galerie. La base le
@@ -12882,11 +12921,37 @@ function renderPhotoAlbumsList(albums){
   const header=S.role==='photo'
     ? `<div style="margin-bottom:10px;font-size:12px;color:var(--t3)">Les galeries de vos prestations. Elles sont créées par la Production.</div>`
     : `<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bp bs" onclick="modalCreerAlbum()">+ Nouvelle galerie</button></div>`;
-  if(!albums.length){
+  if(!_photoAlbums.length){
     el.innerHTML=header+'<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3);text-align:center"><div style="font-size:36px;opacity:.2">📸</div><div style="font-size:13px">Aucune galerie pour le moment.</div><div style="font-size:12px;max-width:300px">Un nom suffit pour en créer une. Le club, l\'équipe et la saison sont facultatifs.</div></div>';
     return;
   }
-  el.innerHTML=header+'<div class="cd" style="padding:0;overflow:hidden">'+albums.map((a,i)=>{
+
+  const clubsVus=new Map();
+  for(const a of _photoAlbums){ if(a.club_id && a.clubs?.nom && !clubsVus.has(a.club_id)) clubsVus.set(a.club_id,a.clubs.nom); }
+  const clubsTries=[...clubsVus.entries()].sort((x,y)=>x[1].localeCompare(y[1],'fr'));
+  const sansClub=_photoAlbums.some(a=>!a.club_id);
+  const filtreBar=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <select onchange="_paChangerFiltreClub(this.value)" style="height:38px;padding:0 10px;font-size:12.5px;border:1px solid var(--b1);border-radius:var(--rp);background:var(--s1);color:var(--t1)">
+      <option value=""${_paFiltreClub===''?' selected':''}>Tous les clubs</option>
+      ${clubsTries.map(([id,nom])=>`<option value="${id}"${_paFiltreClub===id?' selected':''}>${esc(nom)}</option>`).join('')}
+      ${sansClub?`<option value="sans-club"${_paFiltreClub==='sans-club'?' selected':''}>Sans club</option>`:''}
+    </select>
+    <input value="${esc(_paFiltreTexte)}" oninput="_paChangerFiltreTexte(this.value)" placeholder="Rechercher un titre, un club, une équipe…" style="flex:1;min-width:200px;height:38px;padding:0 12px;font-size:12.5px;border:1px solid var(--b1);border-radius:var(--rp);background:var(--s1);color:var(--t1)">
+  </div>`;
+
+  el.innerHTML=header+filtreBar+'<div id="pa-galeries-lignes"></div>';
+  _paRendreLignesGaleries();
+}
+
+function _paRendreLignesGaleries(){
+  const zone=document.getElementById('pa-galeries-lignes');
+  if(!zone)return;
+  const albums=_paAlbumsFiltres();
+  if(!albums.length){
+    zone.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:8px;color:var(--t3);text-align:center"><div style="font-size:13px">Aucune galerie ne correspond à ce filtre.</div></div>';
+    return;
+  }
+  zone.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+albums.map((a,i)=>{
     const clr=PA_STATUT_CLR[a.status]||'var(--t3)';
     const lb=PA_STATUT_LB[a.status]||a.status;
     // Le contexte affiche ce qui EXISTE, sans aligner des tirets pour ce qui manque : une galerie
@@ -12899,6 +12964,8 @@ function renderPhotoAlbumsList(albums){
     const dt=a.event_date?dateFr(a.event_date):null;
     const n=a.photo_count||0;
     const meta=[contexte||null, dt, n?`${n} photo${n>1?'s':''}`:'aucune photo'].filter(Boolean).join(' · ');
+    const audiences=[...(_paAudienceByAlbum[a.id]||[])];
+    const badges=audiences.map(aud=>`<span style="flex-shrink:0;font-size:9.5px;font-weight:700;padding:2px 7px;background:var(--s2);border:1px solid var(--b1);border-radius:20px;color:var(--t3);white-space:nowrap">${esc(PA_AUDIENCE_LB[aud]||aud)}</span>`).join('');
     // Clic sur la ligne = ouvrir la galerie (photos, offres, mise en ligne), pas la modifier :
     // c'est ce qu'on vient y faire neuf fois sur dix.
     return`<div style="display:flex;align-items:center;${i<albums.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer;padding:11px 14px;gap:10px" onclick="modalMediasAlbum('${a.id}')" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
@@ -12907,6 +12974,7 @@ function renderPhotoAlbumsList(albums){
         <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.title)}</div>
         <div style="font-size:11px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${meta}</div>
       </div>
+      ${badges}
       <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:2px 8px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
       <button onclick="event.stopPropagation();galMenuLigne('${a.id}',event)" aria-label="Autres actions sur cette galerie" style="flex-shrink:0;width:32px;height:32px;background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;border-radius:var(--rp)">⋯</button>
     </div>`;
