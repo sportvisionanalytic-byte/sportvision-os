@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../src/lib/supabase";
 import { useSession } from "../src/lib/session";
-import { oublierPorte, porteMemorisee } from "../src/lib/espaces";
+import { oublierPorte, porteMemorisee, type Porte } from "../src/lib/espaces";
 import { MODE_DEMO } from "../src/lib/demonstration";
 import { Bouton, Champ, Erreur, SousTitre, Titre } from "../src/ui/Base";
 import { C, E, R } from "../src/theme/couleurs";
@@ -57,6 +57,20 @@ export default function Connexion() {
     }).catch(() => router.replace("/accueil"));
   }, [session, router]);
 
+  // L'ÉCRAN DOIT DIRE POUR QUEL ESPACE IL DEMANDE LE MOT DE PASSE (29/09/2026).
+  //
+  // Fouka, arrivant par « Espace club » : « j'ai l'impression que je me connecte sur Connect ».
+  // Il avait raison, et c'était pire que neutre. Cet écran annonçait « Vos photos, votre
+  // calendrier », le discours de l'espace personnel ; il proposait en bas « Vous êtes d'un club ?
+  // Changer d'espace », donc il lui disait qu'il s'était trompé d'endroit alors qu'il était
+  // exactement au bon ; et son « Créer mon compte » fabrique un compte PERSONNEL — un coach qui
+  // appuie là se crée le mauvais compte, et ne trouve ensuite rien dans son espace club.
+  //
+  // Un écran de connexion qui ne dit pas où il mène fait douter de l'adresse qu'on y tape.
+  const [porte, setPorte] = useState<Porte | null>(null);
+  useEffect(() => { porteMemorisee().then((p) => setPorte(p)); }, []);
+  const pourLeClub = porte === "club" || porte === "sportvision";
+
   /** Revenir au choix des trois espaces : le choix memorise ne doit jamais enfermer. */
   async function changerEspace() {
     await oublierPorte();
@@ -94,8 +108,14 @@ export default function Connexion() {
       >
         <View style={s.entete}>
           <Image source={require("../assets/splash-icon.png")} style={s.logo} contentFit="contain" />
-          <Titre>Bienvenue</Titre>
-          <SousTitre>Vos photos, votre calendrier et vos contenus de club, au même endroit.</SousTitre>
+          <Titre>{pourLeClub ? "Votre espace club" : "Bienvenue"}</Titre>
+          <SousTitre>
+            {porte === "sportvision"
+              ? "Connectez-vous avec votre compte SportVision."
+              : pourLeClub
+                ? "Connectez-vous avec l'accès qui vous a été donné."
+                : "Vos photos, votre calendrier et vos contenus de club, au même endroit."}
+          </SousTitre>
         </View>
 
         <View style={{ gap: E.m }}>
@@ -137,14 +157,33 @@ export default function Connexion() {
         </View>
 
         <View style={s.pied}>
-          <Text style={s.piedTexte}>Pas encore de compte ?</Text>
-          <Pressable onPress={() => router.push("/creer-compte")} accessibilityRole="link" accessibilityLabel="Créer mon compte" hitSlop={8}>
-            <Text style={s.lienTexte}>Créer mon compte</Text>
-          </Pressable>
+          {/* « CRÉER MON COMPTE » N'EXISTE PAS SUR LE CHEMIN DU CLUB : il fabrique un compte
+              personnel. On dit d'où vient un accès club au lieu d'offrir le mauvais bouton. */}
+          {pourLeClub ? (
+            <Text style={[s.piedTexte, { textAlign: "center" }]}>
+              {porte === "sportvision"
+                ? "Votre accès est créé par l'équipe SportVision."
+                /* LA RÈGLE, DITE PAR FOUKA LE 29/09/2026 : « tu ne peux pas créer un compte Club+.
+                   Pour avoir Club+, c'est nous qui devons te donner un accès ou un lien. » Ma
+                   première version disait « votre club vous envoie une invitation », ce qui laissait
+                   croire à un club non client qu'il pouvait démarrer seul. On nomme SportVision en
+                   premier, et le club ensuite, pour le coach que son président ajoute lui-même. */
+                : "Votre accès vous est donné par SportVision, ou par votre club s'il utilise déjà Club+."}
+            </Text>
+          ) : (
+            <>
+              <Text style={s.piedTexte}>Pas encore de compte ?</Text>
+              <Pressable onPress={() => router.push("/creer-compte")} accessibilityRole="link" accessibilityLabel="Créer mon compte" hitSlop={8}>
+                <Text style={s.lienTexte}>Créer mon compte</Text>
+              </Pressable>
+            </>
+          )}
 
-          <Pressable onPress={changerEspace} accessibilityRole="link" accessibilityLabel="Changer d'espace, si vous êtes d'un club ou de l'équipe SportVision" hitSlop={8} style={{ paddingTop: E.m }}>
+          <Pressable onPress={changerEspace} accessibilityRole="link" accessibilityLabel="Changer d'espace" hitSlop={8} style={{ paddingTop: E.m }}>
             <Text style={s.piedTexte}>
-              Vous êtes d'un club ou de l'équipe SportVision ? <Text style={s.lienTexte}>Changer d'espace</Text>
+              {pourLeClub
+                ? <>Ce n'est pas votre cas ? <Text style={s.lienTexte}>Changer d'espace</Text></>
+                : <>Vous êtes d'un club ou de l'équipe SportVision ? <Text style={s.lienTexte}>Changer d'espace</Text></>}
             </Text>
           </Pressable>
         </View>
