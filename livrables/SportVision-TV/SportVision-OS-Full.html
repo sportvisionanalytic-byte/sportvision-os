@@ -1010,7 +1010,12 @@ const NAV={
     // Oublié de la liste de regroupement, et gardé : c'est la page d'entrée de Finance (CA, charges,
     // marge, encaissé, en attente) et le seul écran qui renvoie vers finrevenus, findepenses,
     // finequipe et finmedias. Le supprimer du menu aurait coupé la seule vue d'ensemble.
-    {id:'fin',lb:"Vue d'ensemble",ic:'fin'},
+    // DEUX « VUE D'ENSEMBLE » DANS LA MEME BARRE LATERALE (30/09/2026). Celle-ci et celle
+    // d'Equipe & RH portaient le meme libelle : impossible de savoir laquelle on ouvre, et la
+    // collision se voit d'autant plus depuis que Finance est rangee en quatre sections. Le gabarit
+    // de cet ecran est bien un tableau de bord (CA HT du mois, charges, marge nette, CA encaisse
+    // de l'annee), et c'est la page d'entree de Finance : son nom le dit maintenant.
+    {id:'fin',lb:'Tableau de bord Finance',ic:'fin'},
     {id:'resultat',lb:'Compte de résultat',ic:'fin',hidden:true},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin',hidden:true},
     {id:'budgets',lb:'Budgets & prévisions',ic:'fin',hidden:true},
