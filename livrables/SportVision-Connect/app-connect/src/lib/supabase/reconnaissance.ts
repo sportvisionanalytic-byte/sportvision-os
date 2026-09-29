@@ -71,7 +71,12 @@ export async function lireEtatConsentement(
 
 // Une photo trop lourde ou dans un format exotique fait échouer le dépôt côté stockage sans message
 // utile : on tranche ici, avec une phrase que le parent comprend.
-export const TAILLE_MAX_PHOTO = 8 * 1024 * 1024;
+// 25 Mo DEPUIS LE 29/09/2026. La limite etait a 8, et Fouka s'est fait refuser ses propres photos :
+// un iPhone recent sort des cliches de 5 a 12 Mo, et une photo prise en gros plan depasse
+// allegrement. Refuser la photo qu'on vient de demander a quelqu'un, c'est perdre le depot — et
+// sans depot, aucune reconnaissance.
+// Le seau de stockage accepte 50 Mo : on reste sous sa limite, avec de la marge des deux cotes.
+export const TAILLE_MAX_PHOTO = 25 * 1024 * 1024;
 export const FORMATS_PHOTO = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
 export function refuserPhoto(fichier: File): string | null {
@@ -79,7 +84,7 @@ export function refuserPhoto(fichier: File): string | null {
     return "Format non accepté. Déposez une photo au format JPEG, PNG ou HEIC.";
   }
   if (fichier.size > TAILLE_MAX_PHOTO) {
-    return "Photo trop lourde (8 Mo maximum). Réduisez-la ou prenez-en une plus légère.";
+    return "Photo trop lourde (25 Mo maximum). Réduisez-la ou prenez-en une plus légère.";
   }
   return null;
 }
