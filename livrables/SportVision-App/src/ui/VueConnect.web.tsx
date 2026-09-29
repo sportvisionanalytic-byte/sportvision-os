@@ -14,7 +14,11 @@ import type { PoigneeVueConnect, ProprietesVueConnect } from "./VueConnect";
 export const VueConnect = forwardRef<PoigneeVueConnect, ProprietesVueConnect>(
   function VueConnectNavigateur({ source, surChargement, surHistorique }, ref) {
     useEffect(() => { surChargement(); surHistorique(false); }, [surChargement, surHistorique]);
-    useImperativeHandle(ref, () => ({ reculer: () => {} }), []);
+    // Sur le web, le navigateur EST la vue : reculer et naviguer lui appartiennent.
+    useImperativeHandle(ref, () => ({
+      reculer: () => {},
+      allerA: (url: string) => { if (typeof window !== "undefined") window.location.href = url; },
+    }), []);
 
     // On ouvre la page telle quelle, sans les jetons : dans un navigateur, la session est déjà
     // dans les cookies du site. Le transport de session ne sert qu'à l'application.

@@ -330,8 +330,35 @@ async function traiterGalerieVraiment(album, lignes) {
     let v = [];
     try { v = await visagesDe(octets, { seuil: CFG.scoreMinReference, cote: CFG.cote }); }
     catch (e) { dire(`   ${j.joueur} : ${String(e.message).slice(0, 90)}`); continue; }
-    // UNE photo de référence montre UN visage. Deux, et on ne sait pas lequel est l'enfant.
-    if (v.length !== 1) { dire(`   ${j.joueur} : ${v.length} visage(s) sur la référence, on ne devine pas`); continue; }
+    // LE SUJET DE LA PHOTO, PAS LE SEUL VISAGE DE LA PHOTO (29/09/2026).
+    //
+    // La règle était : un seul visage, sinon on ne devine pas. Elle a rejeté la photo de Fouka, qui
+    // était pourtant parfaite — un joueur net au premier plan. Les cinq autres « visages » étaient
+    // des SPECTATEURS derrière le grillage, de 70 pixels de haut, détectés entre 0,20 et 0,63.
+    //
+    // Sur un terrain il y a toujours du monde au fond. Exiger une photo sans personne derrière,
+    // c'est exiger une photo que personne n'a — et la famille ne le savait même pas : rien ne le
+    // lui disait, elle voyait juste qu'aucune photo n'arrivait.
+    //
+    // On prend donc le SUJET : le plus grand visage, à condition qu'il domine nettement. Deux fois
+    // plus haut que le suivant, c'est un premier plan devant un arrière-plan ; en dessous, ce sont
+    // deux personnes côte à côte et là, vraiment, on ne devine pas.
+    v.sort((a, b) => b.boite[3] - a.boite[3]);
+    const sujet = v[0], suivant = v[1];
+    const domine = !suivant || sujet.boite[3] >= 2 * suivant.boite[3];
+    if (!v.length) { dire(`   ${j.joueur} : aucun visage sur la référence`); continue; }
+    if (!domine) {
+      dire(`   ${j.joueur} : ${v.length} visages de taille voisine sur la référence, on ne devine pas lequel`);
+      continue;
+    }
+    if (sujet.score < 0.4) {
+      dire(`   ${j.joueur} : visage trop incertain sur la référence (${sujet.score})`);
+      continue;
+    }
+    if (suivant) {
+      dire(`   ${j.joueur} : sujet retenu, ${Math.round(sujet.boite[3])} px, devant ${v.length - 1} visage(s) d'arrière-plan`);
+    }
+    v = [sujet];
     if (SIMULER) { dire(`   ${j.joueur} : empreinte calculée (simulation)`); continue; }
     const rep = await rpc("visage_reference_ajouter", {
       p_player_id: j.player_id, p_empreinte: `[${v[0].empreinte.join(",")}]`,
@@ -590,7 +617,11 @@ async function vider() {
   if (ALBUM_FORCE) {
     travaux = [{ id: null, album_id: ALBUM_FORCE }];
   } else {
-    const { d: file } = await rest("reconnaissance_a_faire?select=id,album_id,player_id&traite_le=is.null&order=demande_le&limit=500");
+    // LA PRIORITE D'ABORD, L'ORDRE D'ARRIVEE ENSUITE (v345, 29/09/2026). Une famille qui vient de
+    // deposer sa photo attend devant son ecran ; un rattrapage de publication n'attend personne.
+    // Fouka a depose sa reference a 11 h 58 et n'a rien vu venir : son travail patientait derriere
+    // une galerie de 161 photos mise en file une heure plus tot.
+    const { d: file } = await rest("reconnaissance_a_faire?select=id,album_id,player_id,priorite&traite_le=is.null&order=priorite,demande_le&limit=500");
     if (!Array.isArray(file) || file.length === 0) {
       if (!EN_BOUCLE) dire("La file est vide. Rien à faire.");
       return { albums: 0, photos: 0, marques: 0 };

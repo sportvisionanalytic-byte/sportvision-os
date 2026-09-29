@@ -11,7 +11,8 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  declarerMonNumero, lireEtatReconnaissance, lirePhotosAIdentifier, lirePhotosDuJoueur, repondreCestMoi,
+  declarerMonNumero, lireEtatReconnaissance, lireMonNumero, lirePhotosAIdentifier, lirePhotosDuJoueur,
+  repondreCestMoi,
   type EtatReconnaissance, type PhotoAIdentifier, type PhotoDuJoueur,
 } from "../../../src/lib/donnees";
 import { MOTIF_LISIBLE, acheterPass, dernierMotif, etatDuPass, reprendreAchatsEnAttente, type EtatPass, type PassProposable } from "../../../src/lib/achat-pass";
@@ -53,6 +54,9 @@ export default function Galerie() {
   const [numero, setNumero] = useState("");
   const [numeroEnCours, setNumeroEnCours] = useState(false);
   const [numeroDit, setNumeroDit] = useState<string | null>(null);
+  /** Le numéro déjà déclaré pour ce match. Tant qu'il existe, on ne repose pas la question. */
+  const [numeroConnu, setNumeroConnu] = useState<number | null>(null);
+  const [modifierNumero, setModifierNumero] = useState(false);
   const [agrandie, setAgrandie] = useState<PhotoDuJoueur | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   /** Un message de reussite, distinct de l'erreur : « photo enregistree » n'est pas un probleme. */
@@ -123,6 +127,7 @@ export default function Galerie() {
       ]);
       if (vivant) {
         setEtatPass(p); setReco(e);
+        if (id && joueur) lireMonNumero(id, joueur).then((n) => { if (vivant) setNumeroConnu(n); });
         // On ne propose a trancher QUE ce que la machine a suggere. Faire defiler cent photos dont
         // on ne dit rien n'est pas une question, c'est une corvee.
         setATrancher(t.filter((x) => x.suggeree && !x.mienne));
@@ -302,6 +307,8 @@ export default function Galerie() {
                   ? `Le n°${r.numero} est enregistré, mais il n'apparaît sur aucune des photos lisibles de cette galerie. Sur une photo de face, le numéro ne se voit pas : c'est votre visage qui vous y retrouvera.`
                   : `Le n°${r.numero} est enregistré. Les photos qui le portent sont déjà dans vos photos.`),
       );
+      setNumeroConnu(n);
+      setModifierNumero(false);
       toutRelire();
     } catch {
       setNumeroDit("Le numéro n'a pas pu être enregistré. Réessayez.");
@@ -660,11 +667,30 @@ export default function Galerie() {
     une seconde, avant de se retracter. */}
         {etatPass && etatPass.etat !== "a_prendre" ? (
           <View style={s.numBloc}>
-            <Text style={s.numTitre}>Vous étiez quel numéro à ce match&nbsp;?</Text>
-            <Text style={s.numSous}>
-              Sur une photo de dos, votre visage ne se voit pas — votre numéro, si. Indiquez-le et nous
-              vous proposerons ces photos aussi.
+            <Text style={s.numTitre}>
+              {numeroConnu !== null && !modifierNumero
+                ? `Vous étiez le n°${numeroConnu} à ce match`
+                : "Vous étiez quel numéro à ce match\u00A0?"}
             </Text>
+            <Text style={s.numSous}>
+              {numeroConnu !== null && !modifierNumero
+                ? "Les photos où ce numéro est lisible sont dans vos photos. Corrigez-le si vous vous êtes trompé."
+                : "Sur une photo de dos, votre visage ne se voit pas — votre numéro, si. Indiquez-le et nous vous proposerons ces photos aussi."}
+            </Text>
+            {/* ON NE REPOSE PAS UNE QUESTION DEJA POSEE (29/09/2026).
+                Fouka : « il le met QUE UNE FOIS. Il peut modifier s'il s'est trompé, mais après tu
+                le remets pas encore une fois. » Un champ vide sous une réponse déjà donnée laisse
+                croire qu'elle n'a pas été prise en compte. */}
+            {numeroConnu !== null && !modifierNumero ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Corriger mon numéro, actuellement ${numeroConnu}`}
+                onPress={() => { setNumero(String(numeroConnu)); setModifierNumero(true); setNumeroDit(null); }}
+                style={({ pressed }) => [{ alignSelf: "flex-start", paddingVertical: 6 }, pressed ? { opacity: 0.7 } : null]}
+              >
+                <Text style={s.numCorriger}>Corriger mon numéro</Text>
+              </Pressable>
+            ) : (
             <View style={s.numLigne}>
               <TextInput
                 value={numero}
@@ -689,6 +715,7 @@ export default function Galerie() {
                 <Text style={s.numBoutonTexte}>{numeroEnCours ? "…" : "C'était moi"}</Text>
               </Pressable>
             </View>
+            )}
             {numeroDit ? <Text style={s.numDit}>{numeroDit}</Text> : null}
           </View>
         ) : null}
@@ -876,6 +903,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   numBoutonTexte: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  numCorriger: { color: C.accentClair, fontSize: 13.5, fontWeight: "600" },
   numDit: { color: C.texteDoux, fontSize: 13, lineHeight: 18 },
   bloqueRaison: { color: C.texteDoux, fontSize: 12, lineHeight: 17, marginTop: 6 },
 });

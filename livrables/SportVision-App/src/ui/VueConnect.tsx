@@ -8,12 +8,15 @@
 // corps de la requête. C'est ce qui évite de redemander un mot de passe à quelqu'un qui vient de
 // le saisir. Voir src/lib/connect.ts pour le pourquoi du POST.
 import React, { forwardRef, useImperativeHandle, useRef } from "react";
+import { Linking } from "react-native";
 import { WebView } from "react-native-webview";
 import { C } from "../theme/couleurs";
 import type { SourceConnect } from "../lib/connect";
 
 export interface PoigneeVueConnect {
   reculer: () => void;
+  /** Charger une adresse dans CETTE vue, sans en ouvrir une seconde. */
+  allerA: (url: string) => void;
 }
 
 export interface ProprietesVueConnect {
@@ -28,7 +31,12 @@ export interface ProprietesVueConnect {
 export const VueConnect = forwardRef<PoigneeVueConnect, ProprietesVueConnect>(
   function VueConnect({ source, surHistorique, surAdresse, surChargement, surPanne }, ref) {
     const vue = useRef<WebView>(null);
-    useImperativeHandle(ref, () => ({ reculer: () => vue.current?.goBack() }), []);
+    useImperativeHandle(ref, () => ({
+      reculer: () => vue.current?.goBack(),
+      // On passe par le JavaScript de la page : `injectJavaScript` garde les cookies et
+      // l'historique, la ou recharger la source repartirait du pont.
+      allerA: (url) => vue.current?.injectJavaScript(`location.href=${JSON.stringify(url)};true;`),
+    }), []);
 
     return (
       <WebView
@@ -71,9 +79,27 @@ export const VueConnect = forwardRef<PoigneeVueConnect, ProprietesVueConnect>(
         // Android composait la page en logiciel : le defilement accrochait et chaque retour
         // repeignait tout. La couche materielle est faite pour ca.
         androidLayerType="hardware"
-        // Aucune de ces pages n'ouvre de seconde fenetre. Le declarer evite au composant natif de
-        // tenir une machinerie de fenetres dont on ne se sert jamais.
-        setSupportMultipleWindows={false}
+        // LES LIENS QUI OUVRENT UNE NOUVELLE FENETRE (29/09/2026).
+        //
+        // C'etait faux : « aucune de ces pages n'ouvre de seconde fenetre ». Club+ en ouvre
+        // plusieurs — messages, galeries, documents, facturation — plus deux `window.open`. Avec
+        // `setSupportMultipleWindows={false}` et aucun gestionnaire, la vue web les IGNORE
+        // silencieusement : on appuie sur le lien, il ne se passe rien, et rien n'explique
+        // pourquoi. C'est exactement le « j'arrive pas a bien naviguer » de Fouka.
+        //
+        // On les accepte donc, et on decide quoi en faire : ce qui appartient a SportVision se
+        // charge DANS cette vue — la session y est deja, une seconde fenetre la perdrait — et le
+        // reste part dans le navigateur du telephone, ou l'on sait revenir en arriere.
+        setSupportMultipleWindows
+        onOpenWindow={(e) => {
+          const url = e?.nativeEvent?.targetUrl;
+          if (!url) return;
+          if (/^https:\/\/[a-z0-9-]*\.?sportvision-an\.fr/i.test(url)) {
+            vue.current?.injectJavaScript(`location.href=${JSON.stringify(url)};true;`);
+          } else {
+            Linking.openURL(url).catch(() => { /* une adresse qu'aucune application ne sait ouvrir */ });
+          }
+        }}
         allowsBackForwardNavigationGestures
         sharedCookiesEnabled
         thirdPartyCookiesEnabled

@@ -27,15 +27,50 @@ cd "$RACINE"
 # verrouille ou que le lien de confiance expire — et il repond alors par du vide, sans erreur, ce
 # qui se lit comme « aucun iPhone branche » alors qu'il est la. `devicectl` voit l'appareil dans
 # les deux cas, et c'est lui que xcodebuild utilisera de toute facon.
-UDID="$(xcrun devicectl list devices --json-output /tmp/sv-devices.json >/dev/null 2>&1 && python3 -c '
-import json
-d = json.load(open("/tmp/sv-devices.json"))
+#
+# ET ON CHOISIT CELUI QUI PEUT RECEVOIR L'APP (29/09/2026). Deux iPhone branches, on prenait le
+# premier de la liste : xcodebuild a tourne plusieurs minutes pour finir sur « Developer Mode
+# disabled » alors que l'AUTRE telephone, branche lui aussi, l'avait active. On filtre donc sur le
+# mode developpeur, et on ne dit « aucun appareil » que si aucun ne convient.
+#
+# UDID en argument pour trancher soi-meme :  bash scripts/construire-dev.sh [UDID]
+CHOISI="${1:-}"
+xcrun devicectl list devices --json-output /tmp/sv-devices.json >/dev/null 2>&1 || true
+LECTURE="$(python3 - "$CHOISI" <<'PYFIN'
+import json, sys
+vise = sys.argv[1] if len(sys.argv) > 1 else ""
+try:
+    d = json.load(open("/tmp/sv-devices.json"))
+except Exception:
+    print("|||"); raise SystemExit
+branches, prets = [], []
 for x in d.get("result", {}).get("devices", []):
-    if x.get("connectionProperties", {}).get("tunnelState") == "connected":
-        print(x.get("hardwareProperties", {}).get("udid", "")); break
-')"
-[ -n "$UDID" ] || { echo "Aucun iPhone connecte. Debranche et rebranche, et deverrouille l'ecran."; exit 1; }
-echo "▸ Appareil : $UDID"
+    if x.get("connectionProperties", {}).get("tunnelState") != "connected":
+        continue
+    nom = x.get("deviceProperties", {}).get("name", "?")
+    udid = x.get("hardwareProperties", {}).get("udid", "")
+    mode = x.get("deviceProperties", {}).get("developerModeStatus", "")
+    branches.append(nom)
+    if mode == "enabled":
+        prets.append((nom, udid))
+if vise:
+    prets = [p for p in prets if p[1] == vise] or prets
+print("|".join([prets[0][1] if prets else "", prets[0][0] if prets else "", ", ".join(branches)]))
+PYFIN
+)"
+UDID="$(printf '%s' "$LECTURE" | cut -d'|' -f1)"
+NOM="$(printf '%s' "$LECTURE" | cut -d'|' -f2)"
+BRANCHES="$(printf '%s' "$LECTURE" | cut -d'|' -f3)"
+if [ -z "$UDID" ]; then
+  if [ -n "$BRANCHES" ]; then
+    echo "Aucun iPhone branche n'a le mode developpeur actif ($BRANCHES)."
+    echo "Sur le telephone : Reglages > Confidentialite et securite > Mode developpeur."
+  else
+    echo "Aucun iPhone connecte. Debranche et rebranche, et deverrouille l'ecran."
+  fi
+  exit 1
+fi
+echo "▸ Appareil : $NOM ($UDID)"
 
 # `-allowProvisioningUpdates` avec la cle d'API enregistre l'appareil et fabrique le profil de
 # developpement tout seul. Sans la cle, Xcode demande un compte Apple interactif — et sa session

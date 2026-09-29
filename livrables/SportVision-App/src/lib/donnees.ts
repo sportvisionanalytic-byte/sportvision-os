@@ -475,6 +475,26 @@ export interface NumeroDeclare {
   photosAvecCeNumero: number;
 }
 
+/**
+ * Le numéro déjà déclaré pour ce match, s'il y en a un.
+ *
+ * Fouka, 29/09 : « dans chaque match qu'il met son numéro, il le met QUE UNE FOIS. Il peut modifier
+ * s'il s'est trompé, mais après tu le remets pas encore une fois. » Une question à laquelle on a
+ * déjà répondu et qu'on repose, c'est une question qui fait douter de la réponse.
+ */
+export async function lireMonNumero(albumId: string, playerId: string): Promise<number | null> {
+  if (MODE_DEMO) return null;
+  const { data, error } = await supabase
+    .from("media_numeros_de_match")
+    .select("numero")
+    .eq("album_id", albumId)
+    .eq("player_id", playerId)
+    .maybeSingle();
+  if (error) return null;
+  const n = Number((data as { numero?: number } | null)?.numero);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export async function declarerMonNumero(
   albumId: string, playerId: string, numero: number,
 ): Promise<NumeroDeclare> {
