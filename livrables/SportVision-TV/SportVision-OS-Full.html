@@ -19834,6 +19834,15 @@ const MAINT_ST_CFG={
 let _kitsCache=[];
 let _kitsTab2='kits'; // 'kits'|'materiels'|'controles'|'incidents'|'maintenance'
 let _matCache=[];
+// LES SORTIES EN COURS, PAR KIT (30/09/2026). kits.statut est une colonne posee a la main : rien
+// ne la remet a jour quand une mission se termine. Mesure ce jour : les DEUX kits de SportVision
+// se declarent « Disponible » alors qu'une reservation non rendue les tient depuis le 12 septembre,
+// l'un chez Antoine Blin, l'autre chez Mikael. Une carte verte « Disponible » sur un kit qui est
+// dans le coffre de quelqu'un, c'est le meme kit promis a deux operateurs un samedi matin.
+// On ne corrige pas la colonne — un retour de materiel est un fait physique, personne ici ne peut
+// le constater depuis un navigateur. On affiche la reservation, qui elle est vraie.
+// La base, depuis la v369, refuse la deuxieme reservation ; ceci est ce qu'on VOIT avant d'essayer.
+let _kitsSorties=new Map();
 
 // ── Affectation pôle (31/08/2026, migration-poles-v6-materiel-scoping) ────
 // Un kit/matériel est Commun (pole_id null, comportement historique — visible
@@ -19982,17 +19991,32 @@ async function kitsLoadAll(){
   if(!el)return;
   el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Chargement…</div>';
   try{
-    const [kitsRaw,matsRaw,incRaw,maintRaw]=await Promise.all([
+    const [kitsRaw,matsRaw,incRaw,maintRaw,resaRaw]=await Promise.all([
       sbFetch('kits?select=id,nom,type_kit,statut,valeur,description,localisation,responsable_id,num_interne,notes,pole_id,pole_exclusif&order=type_kit.asc,nom.asc'),
       sbFetch('materiels?select=id,nom,categorie,marque,modele,statut,kit_id,num_interne,num_serie,valeur,pole_id,pole_exclusif&order=categorie.asc,nom.asc'),
       sbFetch('materiel_incidents?select=id,gravite,statut&statut=in.(ouvert,en_cours)').catch(()=>[]),
       sbFetch('materiel_maintenances?select=id,statut&statut=not.in.(remis_en_service,non_reparable,remplace,archive)').catch(()=>[]),
+      // Les memes conditions que la garde de la base (v369), mot pour mot : une reservation
+      // ACTIVE dont aucun retour n'est enregistre. Si l'ecran et la base ne s'accordaient pas,
+      // on retomberait sur un bouton qui mene a un refus.
+      sbFetch('kit_reservations?select=id,kit_id,statut,date_sortie,heure_sortie,collaborateur_id,responsable_id,prestations(reference)&statut=in.(pré_réservé,réservé,sorti,en_prestation,à_récupérer,à_retourner)&date_retour_effective=is.null&heure_retour_reelle=is.null').catch(()=>[]),
     ]);
     _kitsCache=Array.isArray(kitsRaw)?kitsRaw:[];
     _matCache=Array.isArray(matsRaw)?matsRaw:[];
-    // KPIs
-    const dispo=_kitsCache.filter(k=>k.statut==='disponible').length;
-    const deployed=_kitsCache.filter(k=>['sorti','en_prestation','à_récupérer','à_retourner','réservé','pré_réservé'].includes(k.statut)).length;
+    _kitsSorties=new Map();
+    (Array.isArray(resaRaw)?resaRaw:[]).forEach(r=>{
+      if(!r.kit_id)return;
+      const d=r.heure_sortie||r.date_sortie||null;
+      const avant=_kitsSorties.get(r.kit_id);
+      // La PLUS ANCIENNE sortie non rendue : c'est celle qui explique ou est le kit.
+      if(avant&&avant.depuis&&d&&avant.depuis<=d)return;
+      _kitsSorties.set(r.kit_id,{depuis:d,ref:r.prestations?.reference||null,qui:r.collaborateur_id||r.responsable_id||null});
+    });
+    // KPIs — un kit tenu par une reservation non rendue n'est PAS disponible, quoi qu'en dise sa
+    // fiche. Compter sa fiche, c'est annoncer « 2 kits disponibles » a quelqu'un qui doit en
+    // trouver un pour samedi.
+    const dispo=_kitsCache.filter(k=>k.statut==='disponible'&&!_kitsSorties.has(k.id)).length;
+    const deployed=_kitsCache.filter(k=>_kitsSorties.has(k.id)||['sorti','en_prestation','à_récupérer','à_retourner','réservé','pré_réservé'].includes(k.statut)).length;
     const incN=(Array.isArray(incRaw)?incRaw:[]).length;
     const maintN=(Array.isArray(maintRaw)?maintRaw:[]).length;
     const setKpi=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -20027,10 +20051,17 @@ function kitsRenderKitsGrid(){
   if(!list.length)return`<div style="padding:60px;text-align:center;color:var(--t3)"><div style="font-size:40px;opacity:.15;margin-bottom:12px">📦</div><div>Aucun kit pour cette affectation.</div></div>`;
   return`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
     ${list.map(k=>{
-      const st=KIT_ST_CFG[k.statut]||KIT_ST_CFG.disponible;
+      // LA RESERVATION L'EMPORTE SUR LA FICHE. Une fiche est une etiquette qu'on pose a la main
+      // et qu'on oublie ; une reservation non rendue est un fait. Les etats de MAINTENANCE, eux,
+      // ne se derivent d'aucune reservation : on ne les ecrase jamais, sinon un kit casse
+      // redeviendrait « Sorti » et donc reutilisable.
+      const sortie=_kitsSorties.get(k.id);
+      const enPanne=['endommagé','en_maintenance','indisponible','en_contrôle'].includes(k.statut);
+      const stCle=(sortie&&!enPanne&&k.statut==='disponible')?'sorti':k.statut;
+      const st=KIT_ST_CFG[stCle]||KIT_ST_CFG.disponible;
       const pb=_kitPoleBadge(k.pole_id,k.pole_exclusif);
       const matsInKit=_matCache.filter(m=>m.kit_id===k.id);
-      const isDeployed=['sorti','en_prestation','à_retourner','réservé','pré_réservé','à_récupérer'].includes(k.statut);
+      const isDeployed=(sortie&&!enPanne)||['sorti','en_prestation','à_retourner','réservé','pré_réservé','à_récupérer'].includes(k.statut);
       return`<div class="kit-card" style="${isDeployed?'border-color:'+st.br:''}" onclick="kitsOpenFiche('${k.id}')">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(k.nom)}</div>
@@ -20043,6 +20074,7 @@ function kitsRenderKitsGrid(){
           ${k.valeur?`<span style="font-size:11px;color:var(--t3)">${k.valeur.toLocaleString('fr-FR')} €</span>`:''}
         </div>
         ${k.localisation?`<div style="font-size:11px;color:var(--t3)">📍 ${esc(k.localisation)}</div>`:''}
+        ${(sortie&&!enPanne)?`<div style="font-size:11px;color:var(--wa);line-height:1.45">Sorti${sortie.depuis?` depuis le ${new Date(sortie.depuis).toLocaleDateString('fr-FR')}`:''}${sortie.ref?` · mission ${esc(sortie.ref)}`:''}, retour non enregistré.${k.statut==='disponible'?` La fiche dit « Disponible » : c'est la fiche qui a tort.`:''}</div>`:''}
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button onclick="event.stopPropagation();kitsOpenFiche('${k.id}')" style="flex:1;padding:6px 0;font-size:11.5px;font-weight:600;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-family:var(--ff)">Voir la fiche</button>
           ${isAdmin?`<button onclick="event.stopPropagation();kitsModalChangerStatut('${k.id}','${k.statut}')" style="padding:6px 10px;font-size:11.5px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff)">Statut ▾</button>`:''}
