@@ -422,7 +422,7 @@ export default function EspaceWeb() {
       {/* == LES SECTIONS NATIVES, hors onglets ============================================ */}
       {sectionNative === "/galeries" && club ? (
         <View style={{ flex: 1 }}>
-          <GaleriesClub clubId={club.id} clubNom={club.nom} surWeb={ouvrirDansClubPlus} />
+          <GaleriesClub clubId={club.id} clubNom={club.nom} perimetre={club.equipes} surWeb={ouvrirDansClubPlus} />
         </View>
       ) : null}
 

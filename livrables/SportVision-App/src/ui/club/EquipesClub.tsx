@@ -59,27 +59,44 @@ export function EquipesClub({
 }) {
   const [recherche, setRecherche] = useState("");
 
+  /**
+   * UN PÉRIMÈTRE BORNE LA LISTE, IL NE LA RANGE PAS (30/09/2026, décision de Fouka).
+   *
+   * « Faut pas que le coach voie tout. Faut qu'il voie uniquement ce qu'il a besoin de voir : son
+   * équipe, ses effectifs, ses galeries à lui, ses matchs à lui. »
+   *
+   * Cet écran montrait « Mes équipes » puis « Tout le club », les vingt-six. C'était exactement le
+   * mélange qu'il refuse. Quand la personne a un périmètre, la liste EST son périmètre ; les rôles
+   * qui administrent — président, secrétaire, community manager, direction — n'en ont pas, et
+   * voient donc tout, ce qui est leur métier.
+   *
+   * La base, elle, lui laisse lire les trente équipes du club : c'est l'écran qui borne ici, pas
+   * la RLS. Signalé à Fouka, parce que ce n'est pas au téléphone de tenir cette frontière seul.
+   */
+  const miennes = useMemo(() => mesEquipes(club, equipes), [club, equipes]);
+  const aUnPerimetre = club.equipes.length > 0;
+  const visibles = aUnPerimetre ? miennes : equipes;
+
   const filtrees = useMemo(() => {
     const q = recherche.trim().toLowerCase();
-    if (!q) return equipes;
-    return equipes.filter((e) =>
+    if (!q) return visibles;
+    return visibles.filter((e) =>
       `${e.nom} ${e.categorie ?? ""} ${e.coach ?? ""}`.toLowerCase().includes(q));
-  }, [equipes, recherche]);
+  }, [visibles, recherche]);
 
   // Le total des joueurs ne s'affiche que s'il veut dire quelque chose : voir l'en-tête du fichier,
   // `members` est à zéro sur toutes les lignes en base aujourd'hui.
-  const joueurs = equipes.reduce((total, e) => total + (e.effectif ?? 0), 0);
-  const categories = new Set(equipes.map((e) => pastille(e).cle)).size;
-  const miennes = useMemo(() => mesEquipes(club, equipes), [club, equipes]);
+  const joueurs = visibles.reduce((total, e) => total + (e.effectif ?? 0), 0);
+  const categories = new Set(visibles.map((e) => pastille(e).cle)).size;
 
   return (
     <Ecran enCours={chargement} teinte="violet" rafraichir={surRecharger}>
       <View style={{ gap: 4 }}>
         <Text style={s.titre} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{titre}</Text>
         <Text style={s.sous} numberOfLines={1}>
-          {equipes.length
+          {visibles.length
             ? [
-                `${equipes.length} ${equipes.length > 1 ? "équipes" : "équipe"}`,
+                `${visibles.length} ${visibles.length > 1 ? "équipes" : "équipe"}`,
                 categories > 1 ? `${categories} catégories` : null,
                 joueurs ? `${joueurs} joueurs` : null,
               ].filter(Boolean).join(" · ")
@@ -87,7 +104,9 @@ export function EquipesClub({
         </Text>
       </View>
 
-      {equipes.length > SEUIL_RECHERCHE ? (
+      {/* Le seuil compte ce qu'on VOIT, pas ce que la base rend : un coach avait un champ de
+          recherche au-dessus d'une seule équipe, parce que le club en compte trente. */}
+      {visibles.length > SEUIL_RECHERCHE ? (
         <View style={s.recherche}>
           <Ionicons name="search" size={17} color={C.texteFaible} />
           <TextInput
@@ -116,46 +135,35 @@ export function EquipesClub({
       ) : panne ? (
         <Probleme surReessayer={surRecharger} />
       ) : filtrees.length ? (
-        <View style={{ gap: E.l }}>
-          {/* MES ÉQUIPES D'ABORD, et c'est tout l'objet de la demande de Fouka : « il faut que le
-              coach voie quelle catégorie il a ». Un coach ouvrait cet écran sur vingt-six équipes
-              sans que rien ne désigne la sienne. La section disparaît d'elle-même pour qui n'a pas
-              de périmètre — un président, un secrétaire : chez eux, tout le club est à eux. */}
-          {!recherche.trim() && miennes.length ? (
-            <View style={{ gap: E.s }}>
-              <View style={s.enteteSection}>
-                <Text style={s.libelleSection}>Mes équipes</Text>
-                <Text style={s.compte}>{miennes.length}</Text>
-              </View>
-              {miennes.map((e) => (
-                <CarteEquipe key={`mienne-${e.id}`} e={e} mienne onPress={() => surWeb(`/teams/${e.id}`)} surInviter={surInviter ? () => surInviter(e) : undefined} />
-              ))}
-            </View>
-          ) : null}
-
-          <View style={{ gap: E.s }}>
-            {!recherche.trim() && miennes.length ? (
-              <View style={s.enteteSection}>
-                <Text style={s.libelleSection}>Tout le club</Text>
-                <Text style={s.compte}>{filtrees.length}</Text>
-              </View>
-            ) : null}
-            {filtrees.map((e) => (
-              <CarteEquipe key={e.id} e={e} onPress={() => surWeb(`/teams/${e.id}`)} />
-            ))}
-          </View>
+        <View style={{ gap: E.s }}>
+          {filtrees.map((e) => (
+            <CarteEquipe
+              key={e.id}
+              e={e}
+              mienne={aUnPerimetre}
+              onPress={() => surWeb(`/teams/${e.id}`)}
+              surInviter={surInviter ? () => surInviter(e) : undefined}
+            />
+          ))}
         </View>
       ) : (
         <Vide
-          titre={equipes.length ? "Aucune équipe trouvée" : "Aucune équipe"}
+          titre={visibles.length ? "Aucune équipe trouvée" : aUnPerimetre ? "Aucune équipe pour vous" : "Aucune équipe"}
           texte={
-            equipes.length
+            visibles.length
               ? "Aucune équipe ne correspond à cette recherche. Essayez une catégorie, comme « U11 », ou le nom d'un coach."
-              : "Créez les équipes du club dans Club+ : le calendrier, les effectifs et les galeries s'y rattachent ensuite."
+              : aUnPerimetre
+                // Le périmètre est un tableau de NOMS : une équipe renommée cesse d'y correspondre,
+                // et l'écran se viderait sans rien dire. On nomme la cause, et qui la corrige.
+                ? `Votre club vous a rattaché à ${club.equipes.join(", ")}, mais aucune équipe de ce nom n'existe aujourd'hui. Demandez-lui de mettre votre périmètre à jour.`
+                : "Créez les équipes du club dans Club+ : le calendrier, les effectifs et les galeries s'y rattachent ensuite."
           }
         />
       )}
 
+      {/* Créer ou renommer une équipe relève de la direction du club : on ne le propose pas à qui
+          n'a qu'un périmètre. */}
+      {aUnPerimetre ? null : (
       <Pressable
         onPress={() => surWeb("/teams")}
         accessibilityRole="button"
@@ -166,6 +174,7 @@ export function EquipesClub({
         <Text style={s.lienWebTexte}>Créer ou modifier une équipe</Text>
         <Ionicons name="chevron-forward" size={15} color={C.texteFaible} />
       </Pressable>
+      )}
     </Ecran>
   );
 }

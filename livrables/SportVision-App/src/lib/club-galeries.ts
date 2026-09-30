@@ -38,7 +38,21 @@ export interface GalerieClub {
   nbLiens: number;
 }
 
-export async function lireGaleriesClub(clubId: string): Promise<GalerieClub[]> {
+/**
+ * Les galeries que CETTE PERSONNE a le droit de regarder.
+ *
+ * `perimetre` est son `club_members.teams`. Vide, elle voit tout le club — c'est le cas de la
+ * direction, du secrétariat, du community manager. Non vide, elle ne voit QUE les galeries
+ * rattachées à ses équipes : décision de Fouka le 30/09, « ses galeries à lui, pas tout ».
+ *
+ * MESURÉ AVANT DE FILTRER, et c'est important : sur les six galeries de RCP Fontainebleau, UNE
+ * SEULE porte une équipe. Les cinq autres (Séniors, deux plateaux, LIEUSAINT) n'en ont aucune, et
+ * un coach les lisait toutes. Le filtre les lui retire — c'est ce qui est demandé — mais il faut
+ * savoir que la cause est en amont : une galerie sans équipe vient d'une mission qui n'en a pas
+ * rattaché. L'écran le dit en une ligne, pour qu'un coach sache quoi demander plutôt que de croire
+ * que l'application a perdu ses photos.
+ */
+export async function lireGaleriesClub(clubId: string, perimetre: string[] = []): Promise<GalerieClub[]> {
   const { data, error } = await supabase.rpc("media_club_galleries", { p_club_id: clubId });
   if (error) {
     await refermerSiPerdue(error);
@@ -49,7 +63,8 @@ export async function lireGaleriesClub(clubId: string): Promise<GalerieClub[]> {
     cover_url: string | null; cover_path: string | null; photos: number | null;
     publie: boolean | null; liens: { is_enabled?: boolean }[] | null;
   };
-  return ((data ?? []) as Ligne[]).map((r) => ({
+  const voulues = new Set(perimetre.map((n) => n.trim().toLowerCase()));
+  const toutes = ((data ?? []) as Ligne[]).map((r) => ({
     id: String(r.album_id),
     titre: r.titre ?? "Galerie",
     equipe: r.equipe ?? null,
@@ -59,6 +74,16 @@ export async function lireGaleriesClub(clubId: string): Promise<GalerieClub[]> {
     publiee: r.publie === true,
     nbLiens: Array.isArray(r.liens) ? r.liens.filter((l) => l?.is_enabled !== false).length : 0,
   }));
+
+  if (!voulues.size) return toutes;
+  return toutes.filter((g) => !!g.equipe && voulues.has(g.equipe.trim().toLowerCase()));
+}
+
+/** Combien de galeries du club le périmètre a écartées. Sert à l'expliquer, pas à les montrer. */
+export async function compterGaleriesDuClub(clubId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("media_club_galleries", { p_club_id: clubId });
+  if (error) return 0;
+  return Array.isArray(data) ? data.length : 0;
 }
 
 export interface PhotoGalerie {

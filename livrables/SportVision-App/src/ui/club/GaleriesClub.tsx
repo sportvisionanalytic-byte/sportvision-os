@@ -16,27 +16,34 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Ecran, Probleme, Vide } from "../Ecran";
 import { Pastille } from "../Base";
-import { lireGaleriesClub, lirePhotosGalerie, type GalerieClub, type PhotoGalerie } from "../../lib/club-galeries";
+import { compterGaleriesDuClub, lireGaleriesClub, lirePhotosGalerie, type GalerieClub, type PhotoGalerie } from "../../lib/club-galeries";
 import { dateLongue } from "../../lib/dates";
 import { C, E, R, TOUCHE } from "../../theme/couleurs";
 import { P } from "../../theme/polices";
 
 export function GaleriesClub({
-  clubId, clubNom, surWeb,
+  clubId, clubNom, perimetre, surWeb,
 }: {
   clubId: string;
   clubNom: string;
+  /** Les équipes de la personne. Vide = elle voit tout le club. */
+  perimetre: string[];
   surWeb: (chemin: string) => void;
 }) {
   const [galeries, setGaleries] = useState<GalerieClub[] | null>(null);
   const [panne, setPanne] = useState(false);
   const [ouverte, setOuverte] = useState<GalerieClub | null>(null);
+  /** Le total du club, pour dire combien le périmètre écarte. */
+  const [totalClub, setTotalClub] = useState<number | null>(null);
 
   const charger = useCallback(async () => {
     setPanne(false);
-    try { setGaleries(await lireGaleriesClub(clubId)); }
-    catch { setPanne(true); }
-  }, [clubId]);
+    try {
+      setGaleries(await lireGaleriesClub(clubId, perimetre));
+      if (perimetre.length) setTotalClub(await compterGaleriesDuClub(clubId));
+    } catch { setPanne(true); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clubId, perimetre.join("|")]);
 
   useEffect(() => { charger(); }, [charger]);
 
@@ -88,7 +95,11 @@ export function GaleriesClub({
                       qu'on vient lire était précisément celui qui disparaissait. */}
                   <View style={s.ligneDetail}>
                     <Text style={s.detail} numberOfLines={1}>
-                      {[g.date ? dateLongue(g.date) : null, g.equipe].filter(Boolean).join(" · ")}
+                      {/* L'équipe n'est répétée que pour qui en voit plusieurs : dans une liste
+                          bornée au périmètre, elle est la même sur toutes les lignes et ne fait
+                          que pousser la date hors de l'écran. */}
+                      {[g.date ? dateLongue(g.date) : null, perimetre.length ? null : g.equipe]
+                        .filter(Boolean).join(" · ")}
                     </Text>
                     <View style={s.compteur}>
                       <Ionicons name="images" size={11} color={C.texteDoux} />
@@ -106,10 +117,26 @@ export function GaleriesClub({
           </View>
         ) : (
           <Vide
-            titre="Aucune galerie"
-            texte="Les galeries de vos matchs apparaîtront ici dès que SportVision les publie."
+            titre={perimetre.length ? "Aucune galerie pour vos équipes" : "Aucune galerie"}
+            texte={
+              perimetre.length
+                ? `Les galeries de ${perimetre.join(", ")} apparaîtront ici dès qu'elles seront publiées et rattachées à l'équipe.`
+                : "Les galeries de vos matchs apparaîtront ici dès que SportVision les publie."
+            }
           />
         )}
+
+        {/* CE QUE LE PÉRIMÈTRE ÉCARTE, DIT EN UNE LIGNE. Sur les six galeries de RCP Fontainebleau,
+            une seule porte une équipe : sans cette phrase, un coach verrait « 1 galerie » et
+            croirait que l'application a perdu les autres. On dit le nombre, jamais les titres. */}
+        {perimetre.length && totalClub !== null && totalClub > liste.length ? (
+          <Text style={s.note}>
+            {totalClub - liste.length} autre{totalClub - liste.length > 1 ? "s" : ""} galerie
+            {totalClub - liste.length > 1 ? "s" : ""} du club ne {totalClub - liste.length > 1 ? "sont" : "est"} pas
+            rattachée{totalClub - liste.length > 1 ? "s" : ""} à vos équipes. Demandez à votre club
+            de les rattacher si elles vous concernent.
+          </Text>
+        ) : null}
 
         <Pressable
           onPress={() => surWeb("/galeries")}
@@ -248,6 +275,7 @@ const s = StyleSheet.create({
   barreTitre: { color: C.texte, fontFamily: P.titreFort, fontSize: 16 },
   barreSous: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5 },
   grille: { flexDirection: "row", flexWrap: "wrap", gap: E.xs },
+  note: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5, lineHeight: 18 },
   fin: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5, textAlign: "center", paddingTop: E.m },
   reessayer: {
     alignSelf: "center", minHeight: 40, justifyContent: "center", paddingHorizontal: E.m,

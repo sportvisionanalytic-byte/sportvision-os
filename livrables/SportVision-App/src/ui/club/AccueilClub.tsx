@@ -143,27 +143,19 @@ export function AccueilClub({
         />
       ) : null}
 
-      {/* MES ÉQUIPES, ET C'EST LA PREMIÈRE CHOSE QU'UN COACH VIENT CHERCHER (30/09/2026).
-          Fouka : « il faut que sur l'app le coach voie quelle catégorie il a, genre coach des U16,
-          coach de ci, coach de ça ». Avant, il ouvrait l'application sur les vingt-six équipes du
-          club sans que rien ne désigne la sienne.
+      {/* MES ÉQUIPES, ET RIEN QUE LES SIENNES (30/09/2026).
+          Fouka, d'abord : « il faut que le coach voie quelle catégorie il a ». Puis, en voyant
+          l'écran : « faut pas que le coach voie tout, faut qu'il voie uniquement ce qu'il a besoin
+          de voir — son équipe, ses effectifs, ses galeries à lui, ses matchs à lui ».
 
-          C'EST AUSSI LÀ QUE SES INVITATIONS VIVENT. Fouka, juste après : « que le coach puisse
-          inviter ses joueurs, parents ». Dans Club+, « Ajouter un joueur » est sur la fiche de
-          l'équipe, et un coach y a le droit — seuls `viewer` et `sponsor_manager` en sont exclus.
-          On l'écrit sur la carte plutôt que d'ajouter un second bouton qui mènerait au même endroit.
+          Cette section portait un lien « Tout le club » vers les vingt-six équipes. Il est retiré :
+          l'onglet Équipes ne montre plus que le périmètre de la personne, et un raccourci vers le
+          reste contredirait exactement ce qu'on vient de fermer.
 
-          La section ne s'affiche pas pour qui n'a pas de périmètre : un président, un secrétaire
-          ont TOUT le club, et « Mes équipes : 26 » ne leur apprendrait rien. */}
+          Elle ne s'affiche pas pour qui n'a PAS de périmètre — direction, secrétariat, community
+          manager : eux ont tout le club, et « Mes équipes : 26 » ne leur apprendrait rien. */}
       {miennes.length ? (
-        <Section
-          titre="Mes équipes"
-          action={
-            <Pressable onPress={() => surOnglet("/teams")} accessibilityRole="link" accessibilityLabel="Voir toutes les équipes du club" hitSlop={10}>
-              <Text style={s.lien}>Tout le club</Text>
-            </Pressable>
-          }
-        >
+        <Section titre="Mes équipes">
           <View style={{ gap: E.s }}>
             {miennes.map((e) => (
               <CarteEquipe key={e.id} e={e} mienne onPress={() => surWeb(`/teams/${e.id}`)} surInviter={surInviter ? () => surInviter(e) : undefined} />
