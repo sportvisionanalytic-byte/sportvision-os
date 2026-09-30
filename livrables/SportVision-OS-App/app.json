@@ -13,7 +13,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "fr.sportvision.os.beta",
-      "buildNumber": "1",
+      "buildNumber": "2",
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "CFBundleDisplayName": "SV OS bêta",
         "ITSAppUsesNonExemptEncryption": false
@@ -32,6 +35,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       "expo-status-bar",
       "expo-image",
       "expo-secure-store",

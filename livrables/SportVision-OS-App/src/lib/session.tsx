@@ -11,6 +11,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { viderCache } from "./cache";
+import { activerPush, desactiverPush } from "./push";
 
 /** Les rôles réels de `profiles`, mesurés en base le 30/09/2026. */
 export type RoleOS = "admin" | "prod" | "photo" | "cm" | "com" | "sec" | "compta";
@@ -105,6 +106,15 @@ export function FournisseurSession({ children }: { children: React.ReactNode }) 
       if (evenement === "SIGNED_OUT" || evenement === "SIGNED_IN" || evenement === "USER_UPDATED") {
         viderCache();
       }
+      // LE PUSH S'ACTIVE UNE FOIS CONNECTE, ET PAS AVANT. Une application qui reclame les
+      // notifications sur son premier ecran se fait refuser, et iOS ne redemande jamais : le refus
+      // est definitif jusqu'a ce que la personne aille le changer dans les Reglages. Ici, on sait
+      // qui on est et a quoi ca sert.
+      //
+      // On n'attend PAS le resultat : l'autorisation ouvre une boite de dialogue systeme, et faire
+      // dependre l'affichage des ecrans d'un doigt sur « Autoriser » bloquerait l'application
+      // derriere une roue tant que la personne n'a pas repondu.
+      if (evenement === "SIGNED_IN") void activerPush();
       charger(s);
     });
     return () => sub.subscription.unsubscribe();
@@ -116,7 +126,13 @@ export function FournisseurSession({ children }: { children: React.ReactNode }) 
       const { data } = await supabase.auth.getSession();
       await charger(data.session);
     },
-    deconnexion: async () => { await supabase.auth.signOut(); },
+    deconnexion: async () => {
+      // ETEINDRE L'APPAREIL AVANT DE PARTIR. Sans ca, un telephone rendu ou pret a un collegue
+      // continue de recevoir les missions de son ancien proprietaire, sur son ecran verrouille.
+      // On l'eteint d'abord : apres `signOut`, la RLS refuserait l'ecriture.
+      await desactiverPush();
+      await supabase.auth.signOut();
+    },
   }), [session, moi, chargement]);
 
   return <Ctx.Provider value={valeur}>{children}</Ctx.Provider>;
