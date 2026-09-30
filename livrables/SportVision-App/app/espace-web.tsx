@@ -63,6 +63,7 @@ import { CalendrierClub } from "../src/ui/club/CalendrierClub";
 import { EquipesClub } from "../src/ui/club/EquipesClub";
 import { ResultatMatch } from "../src/ui/club/ResultatMatch";
 import { MonProfil } from "../src/ui/club/MonProfil";
+import { GaleriesClub } from "../src/ui/club/GaleriesClub";
 import { lireMonProfil, type MonProfil as Profil } from "../src/lib/club-profil";
 import { C, E, R, TOUCHE } from "../src/theme/couleurs";
 import { P } from "../src/theme/polices";
@@ -95,6 +96,13 @@ export default function EspaceWeb() {
   const [matchOuvert, setMatchOuvert] = useState<string | null>(null);
   /** L'édition de son profil, en natif. */
   const [profilEdition, setProfilEdition] = useState(false);
+  /**
+   * Une SECTION du menu que l'application sait dessiner elle-même, hors des trois onglets.
+   *
+   * « Galeries » en est une : elle est dans le menu de cinq rôles, jamais dans les onglets, et
+   * c'est l'écran le plus visuel de l'espace club. Une page web encadrée y perd le plus.
+   */
+  const [sectionNative, setSectionNative] = useState<string | null>(null);
 
   /**
    * La section web affichée, ou `null` quand on est sur un écran natif.
@@ -160,7 +168,7 @@ export default function EspaceWeb() {
    */
   const clubsConnus = mesClubs.donnees !== undefined || !!mesClubs.erreur;
   const natifPossible = avecOnglets && !!club;
-  const afficheNatif = natifPossible && cheminWeb === null;
+  const afficheNatif = natifPossible && cheminWeb === null && sectionNative === null;
   /**
    * ON NE SAIT PAS ENCORE, ET ON NE FAIT PAS SEMBLANT (30/09/2026).
    *
@@ -257,19 +265,33 @@ export default function EspaceWeb() {
   }, [preparer, changerEspace, racine, cle]);
 
   /**
-   * Ouvrir une section servie par le site — sauf celles que l'application sait faire elle-même.
+   * Ouvrir une page DANS CLUB+, sans discuter.
    *
-   * « Mon profil » est dans le menu de sept rôles sur huit : l'intercepter ici, c'est le rendre
-   * natif partout d'un coup, sans toucher aux tables de navigation, qui doivent rester la copie
-   * exacte de Club+.
+   * Elle existe séparément d'`allerWeb` à cause d'un piège que je me suis tendu : l'écran natif des
+   * galeries porte un lien « identifier les joueurs sur les photos », qui vise `/galeries`. Passé
+   * par `allerWeb`, ce chemin est intercepté et rouvre… l'écran natif. Le bouton n'aurait rien
+   * fait, sans erreur, sans trace. Une fonction qui intercepte et une fonction qui obéit, ce ne
+   * sont pas les mêmes, et les confondre se paie toujours.
    */
-  const allerWeb = useCallback((c: string) => {
+  const ouvrirDansClubPlus = useCallback((c: string) => {
     setMenuOuvert(false);
-    if (c === "/settings/profile") { setProfilEdition(true); return; }
+    setSectionNative(null);
     setCheminWeb(c);
     if (source) vue.current?.allerA(`${racine}${c}`);
     else preparer(c);
   }, [racine, source, preparer]);
+
+  /**
+   * Ouvrir une destination du menu — en natif quand l'application sait la dessiner, sinon dans
+   * Club+. C'est ici, et nulle part ailleurs, qu'un écran devient natif : les tables de navigation
+   * restent la copie exacte de celles du site.
+   */
+  const allerWeb = useCallback((c: string) => {
+    setMenuOuvert(false);
+    if (c === "/settings/profile") { setProfilEdition(true); return; }
+    if (natifPossible && c === "/galeries") { setCheminWeb(null); setSectionNative("/galeries"); return; }
+    ouvrirDansClubPlus(c);
+  }, [natifPossible, ouvrirDansClubPlus]);
 
   /**
    * Ouvrir une destination : en natif quand l'application sait la dessiner, sinon dans Club+.
@@ -281,6 +303,7 @@ export default function EspaceWeb() {
   const allerOnglet = useCallback((chemin: string) => {
     if (natifPossible && CHEMINS_NATIFS.has(chemin)) {
       setMenuOuvert(false);
+      setSectionNative(null);
       setOngletNatif(chemin);
       setCheminWeb(null);
       return;
@@ -347,6 +370,7 @@ export default function EspaceWeb() {
             accessibilityRole="button"
             accessibilityLabel={peutReculer ? "Retour" : natifPossible ? "Revenir à mon club" : "Revenir à l'accueil du club"}
             onPress={() => {
+              if (sectionNative) { setSectionNative(null); return; }
               if (peutReculer) { vue.current?.reculer(); return; }
               if (natifPossible) { setCheminWeb(null); return; }
               allerWeb("/dashboard");
@@ -357,8 +381,12 @@ export default function EspaceWeb() {
             <Ionicons name="chevron-back" size={20} color={C.texte} />
           </Pressable>
 
+          {/* PAS DE TITRE EN DOUBLE (30/09/2026). Un écran natif porte son grand titre lui-même,
+              comme tous ceux de l'espace personnel ; la barre n'a alors qu'à porter la sortie. Vu
+              sur le simulateur : « Galeries » était écrit deux fois, à dix pixels l'un de l'autre.
+              Pour une page web, la barre reste le seul endroit qui peut nommer ce qu'on regarde. */}
           <Text style={s.titre} numberOfLines={1}>
-            {avecOnglets ? libelleDuChemin(nav, cheminWeb ?? "/dashboard") : TITRES[cle]}
+            {sectionNative ? "" : avecOnglets ? libelleDuChemin(nav, cheminWeb ?? "/dashboard") : TITRES[cle]}
           </Text>
 
           {/* La sortie de l'espace, présente DANS TOUS LES CAS (leçon du 30/09 : elle ne
@@ -370,6 +398,13 @@ export default function EspaceWeb() {
           >
             <Ionicons name="person-circle-outline" size={23} color={C.texteDoux} />
           </Pressable>
+        </View>
+      ) : null}
+
+      {/* == LES SECTIONS NATIVES, hors onglets ============================================ */}
+      {sectionNative === "/galeries" && club ? (
+        <View style={{ flex: 1 }}>
+          <GaleriesClub clubId={club.id} clubNom={club.nom} surWeb={ouvrirDansClubPlus} />
         </View>
       ) : null}
 
@@ -455,7 +490,11 @@ export default function EspaceWeb() {
 
       {enAttenteDeClub ? (
         <View style={[s.attente, { top: 0 }]} pointerEvents="none"><ActivityIndicator color={C.accent} /></View>
-      ) : !afficheNatif && !charge && !panne ? (
+      ) : !afficheNatif && !sectionNative && !charge && !panne ? (
+        /* LE VOILE D'ATTENTE EST CELUI DE LA VUE WEB, ET DE RIEN D'AUTRE (30/09/2026). Sans
+           `!sectionNative`, il se posait par-dessus l'écran natif des galeries : la barre disait
+           « Galeries », et dessous une roue tournait indéfiniment sur un écran qui, lui, était
+           déjà chargé. Vu sur le simulateur, invisible en relisant le code. */
         <View style={s.attente} pointerEvents="none"><ActivityIndicator color={C.accent} /></View>
       ) : null}
 
