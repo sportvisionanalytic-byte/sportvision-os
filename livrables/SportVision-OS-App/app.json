@@ -1,6 +1,7 @@
 {
   "expo": {
-    "name": "SV OS bêta",
+    "_note_nom": "`name` sert à NOMMER LE PROJET XCODE, pas l'icône. Mis à « SV OS bêta » le 30/09, prebuild a produit un projet « SVOSbta » : l'accent est simplement tombé. Le nom affiché sous l'icône vient de ios.infoPlist.CFBundleDisplayName, que prebuild dit lui-même préférer. On garde donc ici un nom stable et sans accent — il ne changera pas non plus le jour de la bascule vers la Custom App, ce qui évite de renommer le projet natif.",
+    "name": "SportVision OS",
     "slug": "sportvision-os",
     "version": "1.0.0",
     "orientation": "portrait",
