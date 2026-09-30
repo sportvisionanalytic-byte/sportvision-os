@@ -25,7 +25,15 @@ export function moisCourt(iso: string): string { return MOIS_COURT[versDate(iso)
 /** « samedi 27 septembre » */
 export function dateLongue(iso: string): string {
   const d = versDate(iso);
-  return `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]}`;
+  const base = `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]}`;
+  // L'ANNÉE N'APPARAÎT QUE SI CE N'EST PAS CELLE-CI (30/09/2026). Vu sur le simulateur, sur la
+  // saisie du résultat : un match du 30 mai 2027 s'annonçait « dimanche 30 mai », comme s'il avait
+  // lieu dans huit mois OU il y a quatre mois — on ne pouvait pas trancher. Une saison de football
+  // court sur deux années civiles, et un calendrier de club en porte les deux.
+  // L'année courante se compte À PARIS, comme tout « aujourd'hui » de cette application : un
+  // téléphone réglé sur un autre fuseau aurait changé d'année avant ou après les familles.
+  const anneeCourante = dateDuJourParis().slice(0, 4);
+  return String(d.getFullYear()) === anneeCourante ? base : `${base} ${d.getFullYear()}`;
 }
 
 /** L'heure sans les secondes : « 15:00:00 » devient « 15h00 ». */

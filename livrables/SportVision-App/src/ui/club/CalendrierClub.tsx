@@ -35,7 +35,7 @@ const FILTRES = [
 type Filtre = (typeof FILTRES)[number]["cle"];
 
 export function CalendrierClub({
-  club, evenements, chargement, panne, surRecharger, surWeb,
+  club, evenements, chargement, panne, surRecharger, surWeb, surMatch,
 }: {
   club: MonClub;
   evenements: Evenement[];
@@ -43,6 +43,13 @@ export function CalendrierClub({
   panne: boolean;
   surRecharger: () => void;
   surWeb: (chemin: string) => void;
+  /**
+   * Ouvrir un match pour en saisir le résultat.
+   *
+   * SEULS LES MATCHS SONT CLIQUABLES. Un entraînement ou une réunion n'ont pas de résultat, et une
+   * carte qui s'enfonce pour ne rien ouvrir est pire qu'une carte qui ne bouge pas.
+   */
+  surMatch: (e: Evenement) => void;
 }) {
   const [vue, setVue] = useState<"planning" | "mois">("planning");
   const [filtre, setFiltre] = useState<Filtre>("tout");
@@ -219,6 +226,7 @@ export function CalendrierClub({
           jourChoisi={jourChoisi}
           surJour={setJourChoisi}
           ecussonClub={club.logoUrl}
+          surEvenement={(e) => { if (e.genre === "match") surMatch(e); }}
         />
       ) : duMois.length ? (
         <View style={{ gap: E.l }}>
@@ -226,13 +234,13 @@ export function CalendrierClub({
               les puces juste au-dessus, et l'y répéter deux fois de suite n'apprenait rien. */}
           {separerLieu ? (
             <>
-              <Groupe titre="À domicile" liste={domicile} ecusson={club.logoUrl} aujourdhui={aujourdhui} />
-              <Groupe titre="À l'extérieur" liste={exterieur} ecusson={club.logoUrl} aujourdhui={aujourdhui} />
+              <Groupe titre="À domicile" liste={domicile} ecusson={club.logoUrl} aujourdhui={aujourdhui} surMatch={surMatch} />
+              <Groupe titre="À l'extérieur" liste={exterieur} ecusson={club.logoUrl} aujourdhui={aujourdhui} surMatch={surMatch} />
             </>
           ) : (
-            <Groupe titre="À venir" liste={aVenir} ecusson={club.logoUrl} aujourdhui={aujourdhui} />
+            <Groupe titre="À venir" liste={aVenir} ecusson={club.logoUrl} aujourdhui={aujourdhui} surMatch={surMatch} />
           )}
-          <Groupe titre="Terminés" liste={termines} ecusson={club.logoUrl} aujourdhui={aujourdhui} />
+          <Groupe titre="Terminés" liste={termines} ecusson={club.logoUrl} aujourdhui={aujourdhui} surMatch={surMatch} />
         </View>
       ) : (
         <Vide
@@ -252,7 +260,7 @@ export function CalendrierClub({
         style={({ pressed }) => [s.lienWeb, pressed ? { opacity: 0.85 } : null]}
       >
         <Ionicons name="create-outline" size={16} color={C.texteDoux} />
-        <Text style={s.lienWebTexte}>Ajouter ou modifier un match</Text>
+        <Text style={s.lienWebTexte}>Ajouter un match, changer une date</Text>
         <Ionicons name="chevron-forward" size={15} color={C.texteFaible} />
       </Pressable>
     </Ecran>
@@ -261,9 +269,10 @@ export function CalendrierClub({
 
 /** Une section de la liste. Une section vide ne s'affiche pas : un titre suivi de rien inquiète. */
 function Groupe({
-  titre, liste, ecusson, aujourdhui,
+  titre, liste, ecusson, aujourdhui, surMatch,
 }: {
   titre: string; liste: Evenement[]; ecusson?: string | null; aujourdhui: string;
+  surMatch: (e: Evenement) => void;
 }) {
   if (!liste.length) return null;
   return (
@@ -275,7 +284,7 @@ function Groupe({
       {liste.map((e) => (
         <View key={e.id} style={{ gap: 4 }}>
           {e.date === aujourdhui ? <Text style={s.marqueur}>Aujourd'hui</Text> : null}
-          <CarteEvenement e={e} ecussonClub={ecusson} />
+          <CarteEvenement e={e} ecussonClub={ecusson} onPress={e.genre === "match" ? () => surMatch(e) : undefined} />
         </View>
       ))}
     </View>

@@ -57,10 +57,11 @@ import {
   type EquipeDuClub, type MembreDuClub, type MonClub,
 } from "../src/lib/club";
 import { lireEvenements, type Evenement } from "../src/lib/donnees";
-import { cleEvenements, useDonnees } from "../src/lib/cache";
+import { cleEvenements, oublier, useDonnees } from "../src/lib/cache";
 import { AccueilClub } from "../src/ui/club/AccueilClub";
 import { CalendrierClub } from "../src/ui/club/CalendrierClub";
 import { EquipesClub } from "../src/ui/club/EquipesClub";
+import { ResultatMatch } from "../src/ui/club/ResultatMatch";
 import { C, E, R, TOUCHE } from "../src/theme/couleurs";
 import { P } from "../src/theme/polices";
 
@@ -88,6 +89,8 @@ export default function EspaceWeb() {
   const [peutReculer, setPeutReculer] = useState(false);
   const [menuOuvert, setMenuOuvert] = useState(false);
   const [profilOuvert, setProfilOuvert] = useState(false);
+  /** Le match dont on regarde ou saisit le résultat. `null` : la feuille est fermée. */
+  const [matchOuvert, setMatchOuvert] = useState<string | null>(null);
 
   /**
    * La section web affichée, ou `null` quand on est sur un écran natif.
@@ -359,6 +362,7 @@ export default function EspaceWeb() {
               panne={!!evs.erreur && evs.donnees === undefined}
               surRecharger={rechargerClub}
               surWeb={allerWeb}
+              surMatch={(e) => setMatchOuvert(e.id)}
             />
           ) : ongletNatif === "/teams" ? (
             <EquipesClub
@@ -467,6 +471,20 @@ export default function EspaceWeb() {
             <Text style={[s.ongletTexte, menuOuvert ? { color: C.accentClair } : null]}>Menu</Text>
           </Pressable>
         </View>
+      ) : null}
+
+      {/* LA SAISIE DU RÉSULTAT. Elle vit ici et pas dans une route à part : l'espace club est un
+          seul écran, avec une seule session et une seule vue web. Une route de plus repartirait de
+          zéro sur les deux. */}
+      {club ? (
+        <ResultatMatch
+          matchId={matchOuvert}
+          clubNom={club.nom}
+          clubLogoUrl={club.logoUrl}
+          surFermer={() => setMatchOuvert(null)}
+          surEnregistre={() => { oublier("evenements:"); rechargerClub(); }}
+          surWeb={allerWeb}
+        />
       ) : null}
 
       {/* LE MENU, rangé comme dans Club+ : mêmes titres, même ordre. Une famille de coachs qui
