@@ -21,7 +21,7 @@
 -- LA SYNCHRO NE DÉFERA PAS CE TRAVAIL. Vérifié dans `federation-sync-matchs/index.ts` : à la mise à
 -- jour, `team_id` ne fait jamais partie des champs réécrits. Rien à verrouiller.
 --
--- CE QUI RESTE OUVERT, ET POURQUOI ON N'A PAS TRANCHÉ
+-- TRANCHÉ PAR FOUKA LE 30/09, ET APPLIQUÉ (voir le bas du fichier)
 --
 -- · RCPF U13A porte 7 matchs de « Critérium Régional U12 Espoir P1 » EN PLUS de ses 16 de
 --   « Criterium Régional U13 ». Six dates portent deux matchs : ce sont deux équipes. Le club a
@@ -33,7 +33,10 @@
 --   dix-huit dates à deux matchs. Et l'équipe « U15 D2 » du club est à zéro match. Les adversaires
 --   de « U15 D1 » sont pourtant tous des « U14 1 ».
 --
--- · Le match amical « U15 » du 05/09 contre CO Vincennes dépend de la même réponse.
+-- · Le match amical « U15 » du 05/09 contre CO Vincennes dépendait de la même réponse.
+--
+-- Réponses : les 7 matchs vont à U12A. Pour Villemomble, une équipe U15 neuve, les 22 matchs et
+-- l'amical dedans, et l'ancienne fiche « U15 D2 » laissée à Fouka pour suppression.
 
 -- 1. La troisième équipe U16 de Fontainebleau.
 insert into club_teams (club_id, name, categorie)
@@ -54,3 +57,42 @@ update club_matches m set team_id = (
 where m.team_id is null and m.team = 'U18 F 1'
   and m.club_id = (select id from clubs where nom ilike '%Villemomble%' limit 1);
 -- 1 ligne.
+
+
+-- ── TRANCHÉ PAR FOUKA, APPLIQUÉ LE 30/09 ─────────────────────────────────────────────────────
+
+-- 3. Les 7 matchs du Critérium Régional U12 Espoir P1 appartiennent à U12A, pas à U13A.
+update club_matches set team_id = (
+  select ct.id from club_teams ct join clubs c on c.id = ct.club_id
+  where c.nom ilike '%Fontainebleau%' and ct.name = 'U12A')
+where competition = 'Critérium Régional U12 Espoir P1'
+  and club_id = (select id from clubs where nom ilike '%Fontainebleau%' limit 1);
+-- 7 lignes.
+
+-- 4. Villemomble : une équipe U15 neuve. Le club nomme ses équipes par division (U14 C, U16 D1,
+--    U18 R3, Séniors R2), la nouvelle prend donc le nom de la sienne.
+insert into club_teams (club_id, name, categorie)
+select id, 'U15 D1', 'U15' from clubs where nom ilike '%Villemomble%'
+on conflict do nothing;
+
+update club_matches set team_id = (
+  select ct.id from club_teams ct join clubs c on c.id = ct.club_id
+  where c.nom ilike '%Villemomble%' and ct.name = 'U15 D1')
+where club_id = (select id from clubs where nom ilike '%Villemomble%' limit 1)
+  and (competition = 'U15 D1' or (team_id is null and team = 'U15'));
+-- 22 + 1 lignes.
+
+-- RESTE À FAIRE PAR FOUKA : l'ancienne fiche « U15 D2 » de Villemomble ne porte plus aucun match.
+-- Elle n'est pas supprimée ici — supprimer une équipe touche les affiliations et les périmètres de
+-- coach, et ça se fait depuis Club+, pas en SQL.
+
+-- ── ÉTAT FINAL MESURÉ ────────────────────────────────────────────────────────────────────────
+--   RCP Fontainebleau  U12A     7  Critérium Régional U12 Espoir P1
+--   RCP Fontainebleau  U13A    16  Criterium Régional U13
+--   RCP Fontainebleau  U16C     3  U16 D3  +  1  Coupe Comité U16
+--   SF Villemomble     U14 D2  18  U14 D2  +  3  amicaux
+--   SF Villemomble     U15 D1  22  U15 D1  +  1  amical
+--   SF Villemomble     U18 F   18  U18F D1 +  1  Coupe Nike  +  1 sans compétition
+--   SF Villemomble     U15 D2   0  (fiche morte, à supprimer depuis Club+)
+--
+--   Matchs sans équipe dans les deux clubs : 0. Il y en avait 6 ce matin.
