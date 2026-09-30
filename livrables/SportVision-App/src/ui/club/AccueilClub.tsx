@@ -30,12 +30,14 @@ import { C, E, R, TOUCHE } from "../../theme/couleurs";
 import { P } from "../../theme/polices";
 
 export function AccueilClub({
-  club, clubs, nav, evenements, equipes, membres, chargement, panne,
+  club, clubs, nav, prenom, evenements, equipes, membres, chargement, panne,
   surRecharger, surChangerDeClub, surOnglet, surWeb, surProfil,
 }: {
   club: MonClub;
   /** La navigation de son rôle : elle décide des raccourcis et de ce qui a le droit d'être proposé. */
   nav: NavigationClub;
+  /** Le prénom qu'ELLE a écrit dans son profil, sinon celui que le club a saisi. */
+  prenom: string;
   /** Tous les clubs de la personne : la barre de choix n'apparaît qu'à partir de deux. */
   clubs: MonClub[];
   evenements: Evenement[];
@@ -63,7 +65,7 @@ export function AccueilClub({
         <Ecusson url={club.logoUrl} nom={club.nom} taille={48} />
         <View style={{ flex: 1, gap: 3 }}>
           <Text style={s.bonjour} numberOfLines={1}>
-            {club.monPrenom ? `Bonjour ${club.monPrenom}` : "Espace club"}
+            {prenom ? `Bonjour ${prenom}` : "Espace club"}
           </Text>
           <Text style={s.sous} numberOfLines={1}>
             {[club.nom, libelleRole(club.role, club.fonction)].filter(Boolean).join(" · ")}

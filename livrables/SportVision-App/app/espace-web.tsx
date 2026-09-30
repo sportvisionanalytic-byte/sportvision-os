@@ -62,6 +62,8 @@ import { AccueilClub } from "../src/ui/club/AccueilClub";
 import { CalendrierClub } from "../src/ui/club/CalendrierClub";
 import { EquipesClub } from "../src/ui/club/EquipesClub";
 import { ResultatMatch } from "../src/ui/club/ResultatMatch";
+import { MonProfil } from "../src/ui/club/MonProfil";
+import { lireMonProfil, type MonProfil as Profil } from "../src/lib/club-profil";
 import { C, E, R, TOUCHE } from "../src/theme/couleurs";
 import { P } from "../src/theme/polices";
 
@@ -91,6 +93,8 @@ export default function EspaceWeb() {
   const [profilOuvert, setProfilOuvert] = useState(false);
   /** Le match dont on regarde ou saisit le résultat. `null` : la feuille est fermée. */
   const [matchOuvert, setMatchOuvert] = useState<string | null>(null);
+  /** L'édition de son profil, en natif. */
+  const [profilEdition, setProfilEdition] = useState(false);
 
   /**
    * La section web affichée, ou `null` quand on est sur un écran natif.
@@ -131,10 +135,21 @@ export default function EspaceWeb() {
     [club?.id],
   );
 
+  /**
+   * Le profil du compte, pour le « Bonjour ». Il prime sur ce que le club a saisi : quelqu'un qui
+   * corrige son prénom doit le voir changer, sinon il croit que rien n'a marché.
+   */
+  const moi = useDonnees<Profil | null>(
+    session ? `club:profil:${session.user?.id}` : null,
+    () => lireMonProfil({ prenom: club?.monPrenom, nom: null }),
+    [session?.user?.id, club?.monPrenom],
+  );
+  const monPrenom = (moi.donnees?.prenom || club?.monPrenom || "").trim();
+
   const rechargerClub = useCallback(() => {
-    mesClubs.relire(); evs.relire(); eqs.relire(); mbs.relire();
+    mesClubs.relire(); evs.relire(); eqs.relire(); mbs.relire(); moi.relire();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mesClubs.relire, evs.relire, eqs.relire, mbs.relire]);
+  }, [mesClubs.relire, evs.relire, eqs.relire, mbs.relire, moi.relire]);
 
   /**
    * On sert du natif quand on a un club à montrer, et seulement là.
@@ -241,9 +256,16 @@ export default function EspaceWeb() {
     preparer(cheminWebRef.current ?? "/dashboard", true);
   }, [preparer, changerEspace, racine, cle]);
 
-  /** Ouvrir une section servie par le site. */
+  /**
+   * Ouvrir une section servie par le site — sauf celles que l'application sait faire elle-même.
+   *
+   * « Mon profil » est dans le menu de sept rôles sur huit : l'intercepter ici, c'est le rendre
+   * natif partout d'un coup, sans toucher aux tables de navigation, qui doivent rester la copie
+   * exacte de Club+.
+   */
   const allerWeb = useCallback((c: string) => {
     setMenuOuvert(false);
+    if (c === "/settings/profile") { setProfilEdition(true); return; }
     setCheminWeb(c);
     if (source) vue.current?.allerA(`${racine}${c}`);
     else preparer(c);
@@ -379,6 +401,7 @@ export default function EspaceWeb() {
               club={club}
               clubs={clubs}
               nav={nav}
+              prenom={monPrenom}
               evenements={evs.donnees ?? []}
               equipes={eqs.donnees ?? []}
               membres={mbs.donnees ?? []}
@@ -487,6 +510,15 @@ export default function EspaceWeb() {
         />
       ) : null}
 
+      <MonProfil
+        visible={profilEdition}
+        secours={{ prenom: club?.monPrenom, nom: null }}
+        roleLibelle={club ? libelleRole(club.role, club.fonction) : null}
+        clubNom={club?.nom ?? null}
+        surFermer={() => setProfilEdition(false)}
+        surEnregistre={() => moi.relire()}
+      />
+
       {/* LE MENU, rangé comme dans Club+ : mêmes titres, même ordre. Une famille de coachs qui
           passe de l'ordinateur au téléphone doit retrouver les mêmes mots au même endroit. */}
       <Modal visible={menuOuvert} animationType="slide" transparent onRequestClose={() => setMenuOuvert(false)}>
@@ -543,7 +575,7 @@ export default function EspaceWeb() {
               était écrit nulle part, et le périmètre d'équipes non plus : un coach ne pouvait pas
               vérifier sous quelle casquette le club l'a enregistré. */}
           <View style={{ gap: 3, paddingTop: E.s, paddingBottom: E.m }}>
-            <Text style={s.grosTexte}>{club?.monPrenom || profil?.prenom || "Mon compte"}</Text>
+            <Text style={s.grosTexte}>{monPrenom || profil?.prenom || "Mon compte"}</Text>
             <Text style={s.petitTexte}>
               {club
                 ? [club.nom, libelleRole(club.role, club.fonction)].filter(Boolean).join(" · ")
@@ -558,7 +590,7 @@ export default function EspaceWeb() {
               formulaires pour un seul enregistrement. */}
           <Pressable
             accessibilityRole="button" accessibilityLabel="Modifier mon profil"
-            onPress={() => { setProfilOuvert(false); allerWeb("/settings/profile"); }}
+            onPress={() => { setProfilOuvert(false); setProfilEdition(true); }}
             style={({ pressed }) => [s.ligne, pressed ? { backgroundColor: "rgba(255,255,255,.05)" } : null]}
           >
             <View style={s.rond}><Ionicons name="person-outline" size={17} color={C.texteDoux} /></View>
