@@ -1,6 +1,12 @@
 -- v375 — UN OPERATEUR NE VALIDE PAS SA PROPRE LIVRAISON (01/10/2026)
 --
--- ⚠️  ECRITE, EXPLIQUEE, **NON APPLIQUEE**. Elle touche `media_liens`, qui porte la chaîne de
+-- ✅  APPLIQUEE LE 01/10/2026 en production. Test rouge avant / vert apres, joue avec le jeton
+--     d'Antoine dans une transaction annulee : 1/4 puis 4/4. Verifie aussi que la Production
+--     garde tout — Mikael valide et demande une correction, les deux passent. Perimetre du §4
+--     relu avant d'appliquer : aucun `cm` n'a jamais cree de lien, le seul lien sans mission
+--     est celui de Fouka (admin).
+--
+-- Historique de la redaction : Elle touche `media_liens`, qui porte la chaîne de
 --     paiement des freelances. Elle attend une décision de Fouka, et la V1 est sous gel
 --     fonctionnel : seuls les P0/P1 passent. Le §1 ci-dessous EST un P0.
 --

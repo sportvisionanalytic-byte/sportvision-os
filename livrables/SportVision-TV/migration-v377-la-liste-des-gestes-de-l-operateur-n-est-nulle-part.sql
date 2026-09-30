@@ -1,6 +1,8 @@
 -- v377 — LA LISTE DES GESTES DE L'OPÉRATEUR SORT DU CORPS DU DÉCLENCHEUR (01/10/2026)
 --
--- ⚠️ ÉCRITE, EXPLIQUÉE, **NON APPLIQUÉE**. Elle attend une décision de Fouka.
+-- ✅ APPLIQUÉE LE 01/10/2026 en production. 16 transitions en table, le déclencheur les lit.
+--    Vérifié sur SV-2026-3121, bloquée en `arrivée_sur_place` depuis douze jours : la base
+--    propose « Démarrer la production » à Antoine, et rien à quelqu'un d'autre.
 --
 -- ═══ LE PROBLÈME, ET CE QU'IL A DÉJÀ COÛTÉ ════════════════════════════════════════════════════
 --

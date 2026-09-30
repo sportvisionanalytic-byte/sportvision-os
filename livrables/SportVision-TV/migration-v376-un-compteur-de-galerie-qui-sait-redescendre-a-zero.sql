@@ -1,6 +1,10 @@
 -- v376 — UN COMPTEUR DE GALERIE QUI SAIT REDESCENDRE À ZÉRO
 --
--- NON APPLIQUÉE. Écrite le 01/10/2026 en construisant l'écran « Galeries photo » de l'application
+-- ✅ APPLIQUÉE LE 01/10/2026 en production. Test rouge avant (galerie vidée de ses 2 photos,
+--    annonce toujours 2) / vert après (0), en transaction annulée. La seule galerie qui dérivait
+--    est remise d'aplomb : plus aucune ne ment.
+--
+-- Écrite le 01/10/2026 en construisant l'écran « Galeries photo » de l'application
 -- OS. Le gel fonctionnel est en vigueur : elle attend une décision de Fouka.
 --
 -- ── CE QUI A ÉTÉ MESURÉ ─────────────────────────────────────────────────────────────────────
