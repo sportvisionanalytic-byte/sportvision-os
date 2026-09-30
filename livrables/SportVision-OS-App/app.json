@@ -13,7 +13,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "fr.sportvision.os.beta",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "entitlements": {
         "aps-environment": "production"
       },
