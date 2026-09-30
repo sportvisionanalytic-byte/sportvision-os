@@ -32798,6 +32798,8 @@ async function loadProdResume(){
   const aVerif   = n(m=>m.groupe==='a_verifier');
   const correc   = n(m=>m.groupe==='corrections');
   const attente  = n(m=>m.groupe==='attente_acceptation');
+  // Vendues, pas encore planifiees : rien ne bougera tant que la Production ne s'en saisit pas.
+  const aPlanif  = n(m=>m.groupe==='a_planifier');
   // « Kit a recuperer » cote Production : un retour deja echu sur une mission encore ouverte.
   const kits     = n(m=>actives(m)&&m.kit_retour_prevu&&new Date(m.kit_retour_prevu)<=new Date());
   const retard   = n(m=>actives(m)&&m.livraison_en_retard);
@@ -32815,7 +32817,8 @@ async function loadProdResume(){
       +_resLigne(aVenir>1?'à venir':'à venir',aVenir,'a_venir'),
       'Rien de prévu aujourd’hui.')
     +carte('À traiter',
-      _resLigne(aVerif>1?'livraisons à vérifier':'livraison à vérifier',aVerif,'a_verifier','var(--ok)')
+      _resLigne(aPlanif>1?'missions à planifier':'mission à planifier',aPlanif,'a_planifier','var(--wa)')
+      +_resLigne(aVerif>1?'livraisons à vérifier':'livraison à vérifier',aVerif,'a_verifier','var(--ok)')
       +_resLigne(correc>1?'corrections en attente':'correction en attente',correc,'corrections','#7C4DFF')
       +_resLigne(attente>1?'opérateurs n’ont pas accepté':'opérateur n’a pas accepté',attente,'attente_acceptation','var(--wa)')
       +_resLigne(kits>1?'kits à récupérer':'kit à récupérer',kits,'a_verifier','var(--wa)'),
@@ -32839,7 +32842,17 @@ async function loadProdResume(){
 // Production n'a rien à vérifier encore) n'entraient dans aucune des six vues demandées. Les
 // noyer dans « À vérifier » aurait gonflé un compteur d'actions à faire avec des missions où il
 // n'y a rien à faire — le défaut que le §5 demande justement d'éviter.
+// 30/09/2026 — HUIT GROUPES, ET LE PREMIER MANQUAIT DEPUIS TOUJOURS. Fouka : « j'ai ecrit une
+// mission, et mon responsable production ne voit pas la prestation qui a ete prise, pour qu'il
+// puisse affecter ». Ce n'etait PAS un probleme de droits — mesure avec son identite, `is_staff()`
+// vrai, `pole_scope_ok()` vrai, et la mission bien presente dans la vue. Le defaut etait dans le
+// rangement : le CASE de v_production_missions ne nommait que dix-neuf statuts sur trente-trois,
+// les quatorze autres tombaient dans « autres », et ce groupe n'etait dessine NULLE PART ici.
+// Une prestation vendue et pas encore planifiee — c'est-a-dire le moment ou la Production doit
+// s'en saisir — n'apparaissait donc sur aucun ecran, sans erreur, sans compteur, sans rien a
+// comprendre. La v368 les range dans « a_planifier », et cet onglet les montre.
 const COCKPIT_GROUPES=[
+  {k:'a_planifier',        lb:'À planifier',             ic:'🗂️'},
   {k:'attente_acceptation',lb:'En attente d’acceptation',ic:'📬'},
   {k:'a_venir',            lb:'À venir',                 ic:'📅'},
   {k:'terrain',            lb:'Sur le terrain',          ic:'🔴'},
@@ -32965,7 +32978,7 @@ function renderCockpitProduction(){
       ligne2=`${esc(m.operateurs||'Aucun opérateur accepté')}${m.kit_nom?' · 🎒 '+esc(m.kit_nom):''}${m.mission_prete?' · ✅ Prête':''}`;
     }
     // §K rendu lisible : ce qui empêche encore de clôturer, dit en clair plutôt que deviné.
-    const bloc=(m.cloture_manquant&&m.cloture_manquant.length&&m.groupe!=='terminees'&&m.groupe!=='a_venir'&&m.groupe!=='attente_acceptation')
+    const bloc=(m.cloture_manquant&&m.cloture_manquant.length&&m.groupe!=='terminees'&&m.groupe!=='a_venir'&&m.groupe!=='a_planifier'&&m.groupe!=='attente_acceptation')
       ?`<div style="font-size:11px;color:var(--t3);margin-top:6px">Reste : ${esc(m.cloture_manquant.join(' · '))}</div>`:'';
     return `<div class="cd" style="margin-bottom:9px;cursor:pointer" onclick="modalDetailById('${m.prestation_id}')">
       <div style="padding:13px 16px">
