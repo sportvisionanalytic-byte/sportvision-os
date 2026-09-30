@@ -36,7 +36,7 @@ import {
   type CleConversation, type Conversation, type Correspondant, type Message, type Messagerie,
 } from "../../src/lib/os-messagerie";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
-import { P } from "../../src/theme/polices";
+import { P, T } from "../../src/theme/polices";
 
 export default function MessagerieEcran() {
   const { moi } = useSession();
@@ -107,8 +107,13 @@ export default function MessagerieEcran() {
 
       {donnees && !nouvelle ? (
         <>
+          {/* « CONVERSATIONS » ET PAS « MESSAGES » (01/10/2026, vu à l'écran). Le titre de l'écran
+              dit déjà « Messagerie », et la section juste dessous disait « Messages » : deux
+              titres empilés qui nomment la même chose, à vingt points l'un de l'autre. Le mot
+              juste est celui de ce que la section contient, et c'est celui de l'OS : ce sont des
+              conversations, l'écran vide en dessous les appelle déjà comme ça. */}
           <Section
-            titre="Messages"
+            titre="Conversations"
             action={
               <Pressable
                 onPress={() => setNouvelle(true)}
@@ -135,6 +140,7 @@ export default function MessagerieEcran() {
 
           {donnees.conversations.length <= 1 ? (
             <Vide
+              icone="chatbubbles-outline"
               titre="Aucune conversation privée"
               texte={
                 "Vous n'avez encore échangé avec personne. Touchez « + Nouveau » pour choisir un " +
@@ -490,8 +496,8 @@ function Bulle({ m, jour, equipe }: { m: Message; jour: string | null; equipe: b
 }
 
 const s = StyleSheet.create({
-  titre: { color: C.texte, fontFamily: P.titre, fontSize: 27, letterSpacing: -0.6 },
-  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 14.5, lineHeight: 21 },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: T.titreEcran, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: T.sousEcran, lineHeight: T.sousEcranHauteur },
   attente: { color: C.texteFaible, fontFamily: P.texte, fontSize: 13.5 },
   consigne: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13 },
 

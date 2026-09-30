@@ -164,6 +164,22 @@ export async function lireMesMissions(): Promise<MaMission[]> {
  *
  * `.select("id")` : sans lui, un refus de la RLS rend zéro ligne ET zéro erreur, et l'écran
  * annoncerait « accepté » alors que rien n'a bougé.
+ *
+ * UNE RÉPONSE EST DÉFINITIVE, DANS LES DEUX SENS, ET C'EST MESURÉ (01/10/2026).
+ * `protect_sensitive_affectation_fields` n'autorise l'opérateur que si
+ * `old.statut in ('invitation_envoyée','en_attente')`. Donc :
+ *
+ *   invitation_envoyée → acceptée   PASSE   (et la base fait suivre la mission en « équipe_affectée »)
+ *   invitation_envoyée → refusée    PASSE   (`notes_refus` s'écrit au même moment, vérifié relu)
+ *   refusée → acceptée              REFUSÉ  « seule l'acceptation ou le refus de votre propre invitation… »
+ *   acceptée → refusée              REFUSÉ  pour la même raison
+ *
+ * Vérifié aussi : un responsable de production PEUT remettre l'affectation en
+ * « invitation_envoyée ». La phrase affichée à l'opérateur dit donc exactement ça, et rien de plus.
+ *
+ * LE MOTIF EXISTAIT DÉJÀ ICI ET PERSONNE NE LE PASSAIT. Résultat mesuré : `notes_refus` est NULL
+ * sur les 10 affectations. Un refus sans un mot laisse la Production réaffecter à l'aveugle — elle
+ * ne sait pas si c'est une indisponibilité d'un jour ou un problème de fond.
  */
 export async function repondre(affectationId: string, accepte: boolean, motif?: string): Promise<void> {
   const maj: Record<string, unknown> = {
@@ -178,5 +194,16 @@ export async function repondre(affectationId: string, accepte: boolean, motif?: 
     .eq("id", affectationId)
     .select("id");
   if (error) throw new Error(error.message);
-  if (!data || !data.length) throw new Error("Réponse refusée : cette mission n'est pas la vôtre.");
+  // ZÉRO LIGNE SANS ERREUR A PLUSIEURS CAUSES, et l'ancienne phrase n'en nommait qu'une.
+  // `equipe_update` laisse passer toute ligne dont `collaborateur_id = auth.uid()` : si l'écran est
+  // arrivé jusqu'ici, la mission EST la sienne. Ce qui reste : la Production a repris l'affectation
+  // entre-temps (statut revenu à `a_envoyer`, ou ligne supprimée), ou le compte OS a été désactivé
+  // (`compte_os_desactive`, une policy qui ferme la table entière). Dire « ce n'est pas la vôtre »
+  // envoyait l'opérateur chercher au mauvais endroit.
+  if (!data || !data.length) {
+    throw new Error(
+      "Votre réponse n'a pas été enregistrée : la production a peut-être repris l'affectation. "
+      + "Tirez l'écran vers le bas pour le relire, puis réessayez.",
+    );
+  }
 }

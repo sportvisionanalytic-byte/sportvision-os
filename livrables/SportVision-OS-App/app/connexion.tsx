@@ -7,11 +7,11 @@
 // devons te donner un accès ».
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { supabase } from "../src/lib/supabase";
 import { Bouton, Champ, Erreur, SousTitre, Titre } from "../src/ui/Base";
-import { C, E } from "../src/theme/couleurs";
+import { Marque } from "../src/ui/Marque";
+import { C, E, R } from "../src/theme/couleurs";
 import { P } from "../src/theme/polices";
 
 export default function Connexion() {
@@ -56,7 +56,11 @@ export default function Connexion() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.fond }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
-        <Image source={require("../assets/icon.png")} style={s.logo} contentFit="contain" />
+        {/* LE MÊME LOGO QUE LES ÉTATS VIDES (01/10/2026). Cet écran dessinait le sien : une
+            `Image` avec son rayon à 18 écrit en dur, quand le thème n'a ni 18 ni de brique
+            pour ça. `Marque` est cette brique, et elle sert maintenant aussi dans `Vide` :
+            une seule façon de poser le logo dans toute l'application. */}
+        <Marque taille={76} />
         <View style={{ gap: E.xs }}>
           <Titre>SportVision OS</Titre>
           <SousTitre>L'espace de l'équipe : vos missions, vos livraisons, votre planning.</SousTitre>
@@ -98,7 +102,7 @@ export default function Connexion() {
             style={({ pressed }) => [s.lien, pressed ? { opacity: 0.8 } : null]}
           >
             <Text style={s.lienTexte}>
-              {envoiLien ? "Envoi…" : "Je n'ai pas de mot de passe — m'envoyer un lien"}
+              {envoiLien ? "Envoi…" : "Je n'ai pas de mot de passe, m'envoyer un lien"}
             </Text>
           </Pressable>
         </View>
@@ -124,11 +128,10 @@ function lisible(brut: string): string {
 
 const s = StyleSheet.create({
   page: { flexGrow: 1, justifyContent: "center", padding: E.l, gap: E.xl },
-  logo: { width: 76, height: 76, borderRadius: 18 },
   lien: { alignSelf: "center", paddingVertical: E.s, paddingHorizontal: E.m, minHeight: 44, justifyContent: "center" },
   lienTexte: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 13.5, textAlign: "center" },
   envoye: {
-    padding: E.m, borderRadius: 14,
+    padding: E.m, borderRadius: R.m,
     backgroundColor: "rgba(0,199,255,.10)", borderWidth: 1, borderColor: "rgba(0,199,255,.32)",
   },
   envoyeTexte: { color: C.texte, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },

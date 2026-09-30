@@ -9,10 +9,12 @@
 // l'OS a rendu invisibles toutes les prestations vendues et pas encore planifiées. La leçon n'est
 // pas d'ajouter un second classement ici, c'est qu'il ne doit y en avoir qu'un.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router, useRouter } from "expo-router";
 import { Ecran, Probleme, Section, Vide } from "../../src/ui/Ecran";
-import { Pastille } from "../../src/ui/Base";
+import { Bouton, Champ, Erreur, Pastille } from "../../src/ui/Base";
 import { estProduction, useSession } from "../../src/lib/session";
 import { libelleCouverture } from "../../src/lib/os-missions";
 import {
@@ -21,7 +23,7 @@ import {
 } from "../../src/lib/os-missions";
 import { dateLongue, heureCourte } from "../../src/lib/dates";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
-import { P } from "../../src/theme/polices";
+import { P, T } from "../../src/theme/polices";
 
 /** Les groupes du cockpit, dans l'ordre du travail réel. Mêmes libellés que l'OS. */
 const GROUPES: { cle: string; libelle: string }[] = [
@@ -127,6 +129,7 @@ function Cockpit() {
         </View>
       ) : (
         <Vide
+          icone="funnel-outline"
           titre="Rien dans ce groupe"
           texte="Les missions arrivent ici au fur et à mesure qu'elles changent d'état. Touchez un autre groupe ci-dessus."
         />
@@ -149,9 +152,26 @@ function MesMissions() {
   }, []);
   useEffect(() => { charger(); }, [charger]);
 
-  async function agir(m: MaMission, accepte: boolean) {
+  // UNE RÉPONSE NE PART PLUS AU PREMIER APPUI (01/10/2026).
+  //
+  // Mesuré dans `protect_sensitive_affectation_fields` puis vérifié par le chemin réel avec le
+  // jeton d'un opérateur : une fois la réponse envoyée, la base REFUSE de revenir dessus, dans les
+  // deux sens — `refusée → acceptée` et `acceptée → refusée` lèvent la même exception. Seule la
+  // Production peut remettre l'affectation en « invitation_envoyée » (vérifié aussi).
+  //
+  // Or l'écran posait « Refuser » et « Accepter » côte à côte, en pleine largeur, et exécutait au
+  // premier contact. Un pouce qui glisse au bord d'un terrain coûtait la mission, sans retour
+  // possible et sans que la Production sache pourquoi. C'est le geste le plus irréversible de
+  // l'application : il demande une seconde intention.
+  const [aConfirmer, setAConfirmer] = useState<{ m: MaMission; accepte: boolean } | null>(null);
+
+  async function repondreVraiment(m: MaMission, accepte: boolean, motif: string) {
     setEnCours(m.affectationId); setSouci(null);
-    try { await repondre(m.affectationId, accepte); await charger(); }
+    try {
+      await repondre(m.affectationId, accepte, motif);
+      setAConfirmer(null);
+      await charger();
+    }
     catch (e) { setSouci(e instanceof Error ? e.message : "La réponse n'est pas partie."); }
     finally { setEnCours(null); }
   }
@@ -162,14 +182,20 @@ function MesMissions() {
 
   return (
     <Ecran enCours={missions === null} teinte="cyan" rafraichir={charger}>
+      {/* « MES MISSIONS », ET PAS UNE SECONDE FOIS « BONJOUR » (01/10/2026, vu à l'écran).
+          L'Accueil et cet écran portaient le MÊME titre, au caractère près : « Bonjour Apple ».
+          On passe de l'un à l'autre sans que rien ne change en haut, et on doute d'avoir changé
+          d'écran. Le titre d'un écran le nomme ; le bonjour appartient à l'Accueil, qui est le
+          seul à s'ouvrir sur quelqu'un. « Mes missions » est le nom de l'OS, et celui de
+          l'onglet. */}
       <View style={{ gap: 4 }}>
-        <Text style={s.titre}>Bonjour {moi?.prenom || ""}</Text>
+        <Text style={s.titre}>Mes missions</Text>
         <Text style={s.sous}>{moi?.metier ?? "SportVision"}</Text>
       </View>
 
-      {souci ? (
-        <View style={s.erreur}><Text style={s.erreurTexte}>{souci}</Text></View>
-      ) : null}
+      {/* La brique commune, et non un bloc d'erreur maison : c'est exactement le « huitième cadre
+          légèrement différent » que le contrat interdit (règle 1). */}
+      <Erreur message={souci} />
 
       {missions === null ? (
         <View style={s.attente}><ActivityIndicator color={C.accent} /></View>
@@ -187,8 +213,8 @@ function MesMissions() {
                     key={m.affectationId}
                     m={m}
                     enCours={enCours === m.affectationId}
-                    surAccepter={() => agir(m, true)}
-                    surRefuser={() => agir(m, false)}
+                    surAccepter={() => { setSouci(null); setAConfirmer({ m, accepte: true }); }}
+                    surRefuser={() => { setSouci(null); setAConfirmer({ m, accepte: false }); }}
                   />
                 ))}
               </View>
@@ -203,15 +229,112 @@ function MesMissions() {
             </Section>
           ) : null}
 
+          {aConfirmer ? (
+            <Confirmation
+              m={aConfirmer.m}
+              accepte={aConfirmer.accepte}
+              enCours={enCours === aConfirmer.m.affectationId}
+              surAnnuler={() => setAConfirmer(null)}
+              surValider={(motif) => repondreVraiment(aConfirmer.m, aConfirmer.accepte, motif)}
+            />
+          ) : null}
+
           {!aRepondre.length && !acceptees.length ? (
             <Vide
+              icone="calendar-outline"
               titre="Aucune mission pour l'instant"
               texte="Vos missions apparaîtront ici dès que la production vous en affecte une. Vous recevrez une invitation à accepter."
+              action={{ libelle: "Ouvrir la messagerie", surPression: () => router.push("/messagerie") }}
             />
           ) : null}
         </>
       )}
     </Ecran>
+  );
+}
+
+// ── La confirmation d'une réponse ───────────────────────────────────────────────────────────────
+//
+// Une feuille qui monte du bas, et qui BLOQUE : c'est la seule forme qui empêche un second appui
+// réflexe d'aller au bout. Elle dit, en une phrase, ce que la base fait réellement — accepter fait
+// passer la mission en « Équipe affectée », refuser la renvoie en attribution, et dans les deux cas
+// on ne revient pas dessus soi-même.
+//
+// LE MOTIF EST DEMANDÉ SUR UN REFUS, ET IL N'EST PAS OBLIGATOIRE. Il part dans
+// `prestations_equipe.notes_refus`, que l'opérateur a le droit d'écrire (vérifié par le chemin
+// réel, valeur relue). Le rendre obligatoire aurait fait échouer un refus légitime au moment où la
+// personne est pressée — c'est exactement la leçon du 25/09 sur le motif d'ajustement de
+// rémunération, retiré par Fouka pour la même raison.
+function Confirmation({
+  m, accepte, enCours, surAnnuler, surValider,
+}: {
+  m: MaMission;
+  accepte: boolean;
+  enCours: boolean;
+  surAnnuler: () => void;
+  surValider: (motif: string) => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const [motif, setMotif] = useState("");
+  const quoi = [m.client ?? "Mission SportVision", m.date ? dateLongue(m.date) : null]
+    .filter(Boolean).join(" · ");
+
+  return (
+    <Modal
+      visible
+      transparent
+      animationType="slide"
+      // Le bouton retour d'Android ferme la feuille au lieu de quitter l'écran : sans ça, il
+      // traverse et l'opérateur se retrouve ailleurs avec sa réponse non envoyée.
+      onRequestClose={surAnnuler}
+    >
+      <View style={s.voile}>
+        {/* Toucher à côté annule. Un voile inerte donne l'impression d'un écran figé. */}
+        <Pressable
+          style={{ flex: 1 }}
+          onPress={surAnnuler}
+          accessibilityRole="button"
+          accessibilityLabel="Annuler et revenir à mes missions"
+        />
+        <View style={[s.feuille, { paddingBottom: insets.bottom + E.l }]}>
+          <Text style={s.feuilleTitre}>
+            {accepte ? "Accepter cette mission ?" : "Refuser cette mission ?"}
+          </Text>
+          <Text style={s.feuilleQuoi}>{quoi}</Text>
+          <Text style={s.feuilleTexte}>
+            {accepte
+              ? "La production sera prévenue et la mission passera en « Équipe affectée ». "
+                + "Vous ne pourrez plus la refuser vous-même : il faudra lui demander de vous renvoyer l'invitation."
+              : "La mission repartira en attribution et la production sera prévenue. "
+                + "Vous ne pourrez plus l'accepter vous-même : il faudra lui demander de vous renvoyer l'invitation."}
+          </Text>
+
+          {!accepte ? (
+            <Champ
+              label="Pourquoi (facultatif, mais ça aide la production)"
+              value={motif}
+              onChangeText={setMotif}
+              multiline
+              hauteur={84}
+              placeholder="Ex : indisponible ce jour-là, trop loin, déjà sur une autre mission…"
+            />
+          ) : null}
+
+          <View style={s.feuilleActions}>
+            <View style={{ flex: 1 }}>
+              <Bouton titre="Annuler" onPress={surAnnuler} secondaire />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Bouton
+                titre={accepte ? "J'accepte" : "Je refuse"}
+                onPress={() => surValider(motif)}
+                enCours={enCours}
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -223,6 +346,7 @@ function CarteMission({
   surAccepter?: () => void;
   surRefuser?: () => void;
 }) {
+  const router = useRouter();
   return (
     <View style={s.carte}>
       <View style={s.ligne}>
@@ -252,6 +376,21 @@ function CarteMission({
           <Text style={s.remu}>{m.remuneration} €</Text>
         ) : null}
       </View>
+
+      {/* LE MODE JOUR J EST SUR LA CARTE D'UNE MISSION ACCEPTÉE, et c'est le seul endroit où il a
+          un sens : l'OS l'ouvre lui aussi depuis la carte d'une prestation, jamais depuis un menu.
+          Sur une invitation en attente il n'y est pas — on répond d'abord, on part ensuite. */}
+      {!surAccepter ? (
+        <Pressable
+          onPress={() => router.push({ pathname: "/terrain", params: { prestation: m.prestationId } })}
+          accessibilityRole="button"
+          accessibilityLabel={`Ouvrir le Mode Jour J de la mission ${m.client ?? "SportVision"}`}
+          style={({ pressed }) => [s.jourj, pressed ? { opacity: 0.85 } : null]}
+        >
+          <Ionicons name="radio-button-on" size={17} color={C.dangerTexte} />
+          <Text style={s.jourjTexte}>Mode Jour J</Text>
+        </Pressable>
+      ) : null}
 
       {surAccepter && surRefuser ? (
         <View style={s.actions}>
@@ -285,8 +424,8 @@ function CarteMission({
 }
 
 const s = StyleSheet.create({
-  titre: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
-  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: T.titreEcran, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: T.sousEcran, lineHeight: T.sousEcranHauteur },
   attente: { paddingVertical: E.xl * 2, alignItems: "center" },
 
   puce: {
@@ -323,6 +462,15 @@ const s = StyleSheet.create({
   bas: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: E.s },
   remu: { color: C.texte, fontFamily: P.titreFort, fontSize: 15 },
 
+  // Le rouge du Mode Jour J, celui de l'OS (`var(--er)`) : le seul rouge de l'application qui ne
+  // signale pas une erreur. Il dit « en direct », et il est identique sur l'accueil.
+  jourj: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: E.xs,
+    minHeight: TOUCHE, borderRadius: R.m,
+    backgroundColor: "rgba(240,68,94,.12)", borderWidth: 1, borderColor: "rgba(240,68,94,.34)",
+  },
+  jourjTexte: { color: C.dangerTexte, fontFamily: P.texteFort, fontSize: 14.5 },
+
   actions: { flexDirection: "row", gap: E.s },
   bouton: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
@@ -332,6 +480,16 @@ const s = StyleSheet.create({
   accepterTexte: { color: C.succes, fontFamily: P.texteFort, fontSize: 14 },
   refuser: { backgroundColor: "rgba(255,255,255,.05)", borderColor: C.bordureForte },
   refuserTexte: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 14 },
+
+  voile: { flex: 1, backgroundColor: "rgba(3,5,12,.72)", justifyContent: "flex-end" },
+  feuille: {
+    gap: E.m, padding: E.l, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl,
+    backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.bordureForte,
+  },
+  feuilleTitre: { color: C.texte, fontFamily: P.titre, fontSize: 21, letterSpacing: -0.4 },
+  feuilleQuoi: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 13.5, marginTop: -E.s },
+  feuilleTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
+  feuilleActions: { flexDirection: "row", gap: E.s },
 
   erreur: {
     padding: E.m, borderRadius: R.l,

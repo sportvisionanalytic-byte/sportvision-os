@@ -18,14 +18,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Ecran, Section } from "../../src/ui/Ecran";
 import { Ecusson } from "../../src/ui/Ecusson";
-import { estProduction, useSession } from "../../src/lib/session";
+import { estOperateur, estProduction, useSession } from "../../src/lib/session";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
-import { P } from "../../src/theme/polices";
+import { P, T } from "../../src/theme/polices";
 
 export default function Profil() {
   const { moi, deconnexion, session } = useSession();
   const nom = `${moi?.prenom ?? ""} ${moi?.nom ?? ""}`.trim();
   const production = estProduction(moi?.role ?? null);
+  // Qui va sur le terrain, encadrant compris : c'est la population qui dépose des livrables.
+  const operateurOuProduction = estOperateur(moi?.role ?? null) || production;
 
   return (
     <Ecran teinte="violet">
@@ -48,6 +50,24 @@ export default function Profil() {
               icone="list"
               titre="Mon planning"
               sous="Mes propres prestations, celles où je suis sur le terrain"
+            />
+          ) : null}
+          {/* MES LIVRABLES N'EST PAS POUR TOUT LE MONDE, ET LE MOT « TERRAIN » DIT POURQUOI.
+              On y dépose le lien de ses photos ou de son montage sur une mission où l'on est
+              affecté. Mesuré : seuls les rôles `photo`, `prod` et `admin` ont des affectations, et
+              seuls Antoine (photo), Mikael (prod) et Fouka (admin) ont déjà déposé un lien. Un
+              community manager ou la comptabilité n'y trouverait qu'un écran vide, à jamais.
+
+              LA PRODUCTION Y A DROIT AUSSI, ET C'EST UNE LEÇON DU 27/09 : Mikael encadre le pôle
+              Football ET porte quatre missions sur le terrain ; il ne pouvait pas livrer ses
+              propres photos parce qu'aucun écran ne le lui offrait, alors que la base l'acceptait.
+              Le même écran sert les deux, il ne montre que SES missions à lui. */}
+          {operateurOuProduction ? (
+            <Acces
+              chemin="/livrables"
+              icone="cloud-upload-outline"
+              titre="Mes livrables"
+              sous="Déposer mes liens, suivre ce que la production en dit"
             />
           ) : null}
           <Acces
@@ -80,8 +100,12 @@ export default function Profil() {
 
       <Section titre="Mon compte">
         <View style={s.bloc}>
-          <Ligne libelle="Adresse e-mail" valeur={session?.user?.email ?? "—"} />
-          <Ligne libelle="Rôle" valeur={moi?.metier ?? "—"} />
+          {/* PAS DE TIRET EN GUISE DE VALEUR (01/10/2026). Un « — » dans une colonne de valeurs ne se
+              lit pas : on ne sait pas si la donnée manque, si elle se charge, ou si l'écran est
+              cassé. Ces deux lignes ont toujours une valeur pour quelqu'un de connecté ; le
+              repli dit ce qui se passe le jour où elle manque. */}
+          <Ligne libelle="Adresse e-mail" valeur={session?.user?.email ?? "Non renseignée"} />
+          <Ligne libelle="Rôle" valeur={moi?.metier ?? "Non renseigné"} />
         </View>
       </Section>
 
@@ -135,15 +159,19 @@ function Ligne({ libelle, valeur }: { libelle: string; valeur: string }) {
   return (
     <View style={s.ligne}>
       <Text style={s.libelle}>{libelle}</Text>
-      <Text style={s.valeur} numberOfLines={1}>{valeur}</Text>
+      {/* PAS DE `numberOfLines={1}` SUR UNE ADRESSE (01/10/2026). Celle du compte de recette
+          tient tout juste sur la largeur d'un iPhone 17 ; une adresse plus longue, et elle se
+          coupait au milieu. Un texte tronqué est un bug, pas une mise en page : on laisse la
+          valeur passer à la ligne, la rangée grandit. */}
+      <Text style={s.valeur} numberOfLines={2}>{valeur}</Text>
     </View>
   );
 }
 
 const s = StyleSheet.create({
   entete: { flexDirection: "row", alignItems: "center", gap: E.m },
-  titre: { color: C.texte, fontFamily: P.titre, fontSize: 24, letterSpacing: -0.5 },
-  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: T.titreEcran, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: T.sousEcran, lineHeight: T.sousEcranHauteur },
   bloc: { borderRadius: R.l, backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure, overflow: "hidden" },
   ligne: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: E.m,

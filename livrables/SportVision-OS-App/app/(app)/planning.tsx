@@ -29,6 +29,8 @@
 // s'appellent donc « À venir » et « Passées » — une date, pas un état.
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { Ecran, Probleme, Vide } from "../../src/ui/Ecran";
 import { Pastille } from "../../src/ui/Base";
 import { estProduction, useSession } from "../../src/lib/session";
@@ -40,7 +42,7 @@ import {
 import { useDonnees } from "../../src/lib/cache";
 import { dateDuJourParis, heureCourte, quand } from "../../src/lib/dates";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
-import { P } from "../../src/theme/polices";
+import { P, T } from "../../src/theme/polices";
 
 export default function Planning() {
   const { moi } = useSession();
@@ -131,11 +133,13 @@ export default function Planning() {
         <Probleme surReessayer={relire} />
       ) : !missions.length ? (
         <Vide
+          icone="calendar-outline"
           titre="Aucune mission pour l'instant"
           texte="Vos missions apparaîtront ici dès que la production vous en affecte une. Vous recevrez une invitation à accepter."
         />
       ) : !duMois.length ? (
         <Vide
+          icone="calendar-clear-outline"
           titre="Rien ce mois-ci"
           texte="Changez de mois ci-dessus pour retrouver vos autres missions."
         />
@@ -175,19 +179,24 @@ function Bloc({ titre, jours: liste, aujourdhui }: { titre: string; jours: JourD
 }
 
 function CarteJour({ m }: { m: MaMission }) {
+  const router = useRouter();
   const rdv = heureCourte(m.heureRdv);
   const debut = heureCourte(m.heureDebut);
   const couverture = libelleCouverture(m.couverture);
   const enAttente = m.reponse === "invitation_envoyée" || m.reponse === "en_attente";
 
-  return (
-    <View style={s.carte}>
+  const contenu = (
+    <>
       <View style={s.ligne}>
         {/* L'heure à gauche, en colonne fixe : on balaie une journée à l'heure, pas au client.
             « Rendez-vous » n'est écrit que si la base en donne un — 5 affectations sur 10 n'en ont
             pas, et annoncer l'heure de début comme une heure de rendez-vous fait arriver en retard. */}
         <View style={s.colonneHeure}>
-          <Text style={s.heure}>{rdv ?? debut ?? "—"}</Text>
+          {/* « Heure à venir » et pas un tiret : la colonne est étroite, mais un tiret laisse croire
+              à une heure illisible plutôt qu'à une heure pas encore posée. */}
+          <Text style={s.heure} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+            {rdv ?? debut ?? "à venir"}
+          </Text>
           <Text style={s.heureLibelle}>{rdv ? "rdv" : debut ? "début" : ""}</Text>
         </View>
         <View style={{ flex: 1, gap: 3 }}>
@@ -195,6 +204,9 @@ function CarteJour({ m }: { m: MaMission }) {
           {m.lieu ? <Text style={s.detail} numberOfLines={2}>{m.lieu}</Text> : null}
           {m.fonction ? <Text style={s.fonction} numberOfLines={1}>{m.fonction}</Text> : null}
         </View>
+        {/* Le chevron n'apparaît que si la carte mène quelque part : une flèche qui ne s'ouvre pas
+            est la promesse cassée de la règle 5, en plus petit. */}
+        {enAttente ? null : <Ionicons name="chevron-forward" size={17} color={C.texteFaible} />}
       </View>
 
       <View style={s.bas}>
@@ -205,13 +217,33 @@ function CarteJour({ m }: { m: MaMission }) {
         </View>
         {m.remuneration !== null ? <Text style={s.remu}>{m.remuneration} €</Text> : null}
       </View>
-    </View>
+    </>
+  );
+
+  // TOUTE LA CARTE OUVRE LE MODE JOUR J (01/10/2026), et non un bouton posé dessus : c'est la
+  // grammaire du calendrier des familles, où la carte d'un événement est elle-même la cible.
+  //
+  // UNE MISSION ENCORE EN ATTENTE DE MA RÉPONSE RESTE INERTE, et ce n'est pas une barrière de
+  // sécurité : `operateur_affecte_prestation` ne regarde que l'existence de l'affectation, pas sa
+  // réponse. C'est une règle de pertinence — on répond d'abord, on part ensuite — et elle est dite
+  // en clair sur la carte de l'accueil plutôt que laissée à deviner.
+  if (enAttente) return <View style={s.carte}>{contenu}</View>;
+
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: "/terrain", params: { prestation: m.prestationId } })}
+      accessibilityRole="button"
+      accessibilityLabel={`Ouvrir le Mode Jour J de la mission ${m.client ?? "SportVision"}`}
+      style={({ pressed }) => [s.carte, pressed ? { opacity: 0.85 } : null]}
+    >
+      {contenu}
+    </Pressable>
   );
 }
 
 const s = StyleSheet.create({
-  titre: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
-  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: T.titreEcran, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: T.sousEcran, lineHeight: T.sousEcranHauteur },
   attente: { paddingVertical: E.xl * 2, alignItems: "center" },
 
   puce: {

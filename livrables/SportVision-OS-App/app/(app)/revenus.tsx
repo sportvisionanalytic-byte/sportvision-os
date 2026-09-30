@@ -37,8 +37,9 @@ import {
   type Ajustement, type MesRevenus, type Prestation, type StatutVersement,
 } from "../../src/lib/os-revenus";
 import { dateDuJourParis, dateLongue, versDate } from "../../src/lib/dates";
+import { Barre } from "../../src/ui/Barre";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
-import { P } from "../../src/theme/polices";
+import { P, T } from "../../src/theme/polices";
 
 /** Les trois périodes de l'OS, dans son ordre et avec ses libellés. */
 const PERIODES = [
@@ -102,23 +103,17 @@ export default function Revenus() {
 
       {/* Les trois périodes restent affichées même vides : leur absence ferait croire que l'écran
           ne sait pas remonter plus loin. */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: E.s, paddingRight: E.l }}>
-        {PERIODES.map((p) => {
-          const actif = p.cle === periode;
-          return (
-            <Pressable
-              key={p.cle}
-              onPress={() => setPeriode(p.cle)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: actif }}
-              accessibilityLabel={p.libelle}
-              style={[s.puce, actif && s.puceActive]}
-            >
-              <Text style={[s.puceTexte, actif && s.puceTexteActif]}>{p.libelle}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      {/* `Barre` DE `src/ui/`, ET PLUS UNE COPIE (01/10/2026). Cet écran redessinait à la main la
+          rangée de puces que `src/ui/Barre.tsx` dessine déjà, avec les mêmes vingt lignes et les
+          mêmes valeurs : même hauteur, même bleu actif. Deux dessins identiques tenus à deux
+          endroits finissent par diverger d'un point ou d'une nuance, et c'est ce qui donne
+          l'impression de deux applications recollées (règle 1 du contrat). En prime, `Barre` ramène
+          la puce active dans le champ de vision, ce que cette copie ne faisait pas. */}
+      <Barre
+        choix={PERIODES.map((p) => ({ cle: p.cle, libelle: p.libelle }))}
+        actif={periode}
+        surChoix={(cle: string) => setPeriode(cle as Periode)}
+      />
 
       {chargement ? (
         <View style={s.attente}><ActivityIndicator color={C.accent} /></View>
@@ -189,11 +184,13 @@ export default function Revenus() {
             </Section>
           ) : toutes.length ? (
             <Vide
+              icone="cash-outline"
               titre="Rien sur cette période"
               texte="Vos prestations plus anciennes sont là : touchez « Tout » ci-dessus pour les voir."
             />
           ) : (
             <Vide
+              icone="cash-outline"
               titre="Aucune prestation pour l'instant"
               texte={
                 "Une prestation apparaît ici dès que vous acceptez une mission. Son montant est fixé "
@@ -360,17 +357,9 @@ function LigneAjustement({ a, surChangement }: { a: Ajustement; surChangement: (
 }
 
 const s = StyleSheet.create({
-  titre: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
-  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: T.titreEcran, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: T.sousEcran, lineHeight: T.sousEcranHauteur },
   attente: { paddingVertical: E.xl * 2, alignItems: "center" },
-
-  puce: {
-    justifyContent: "center", paddingHorizontal: E.m, height: TOUCHE - 6, borderRadius: R.pill,
-    backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
-  },
-  puceActive: { backgroundColor: "rgba(36,84,255,.20)", borderColor: "rgba(36,84,255,.55)" },
-  puceTexte: { color: C.texteDoux, fontFamily: P.texteMoyen, fontSize: 13 },
-  puceTexteActif: { color: C.texte, fontFamily: P.texteFort },
 
   total: {
     gap: 4, padding: E.l, borderRadius: R.xl,

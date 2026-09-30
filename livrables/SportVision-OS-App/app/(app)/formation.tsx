@@ -31,7 +31,7 @@ import {
   type MaCertification, type MaFormation, type Parcours,
 } from "../../src/lib/os-formation";
 import { C, E, R } from "../../src/theme/couleurs";
-import { P } from "../../src/theme/polices";
+import { P, T } from "../../src/theme/polices";
 
 /** Les deux onglets que l'application sait dessiner. Mêmes libellés que l'OS. */
 type Onglet = "mes-formations" | "certifications";
@@ -141,6 +141,7 @@ function MesFormations({ parcours }: { parcours: Parcours }) {
   if (!parcours.formations.length) {
     return (
       <Vide
+        icone="school-outline"
         titre="Aucune formation commencée"
         texte={
           "Les formations s'ouvrent depuis le Centre de formation de l'OS, sur un ordinateur : " +
@@ -234,6 +235,7 @@ function Certifications({ parcours }: { parcours: Parcours }) {
   if (!parcours.certifications.length) {
     return (
       <Vide
+        icone="ribbon-outline"
         titre="Aucune certification"
         texte={
           "Une certification s'obtient en terminant une formation qui en délivre une. Elle est " +
@@ -306,14 +308,19 @@ function Stat({ libelle, valeur, teinte }: { libelle: string; valeur: string; te
 function Jauge({ avancement, couleur }: { avancement: number; couleur: string }) {
   return (
     <View style={s.barre} accessibilityRole="progressbar" accessibilityValue={{ now: avancement, min: 0, max: 100 }}>
-      <View style={[s.barreRemplie, { width: `${Math.max(0, Math.min(100, avancement))}%`, backgroundColor: couleur }]} />
+      {/* UNE JAUGE À ZÉRO DOIT QUAND MÊME SE LIRE COMME UNE JAUGE (01/10/2026, vu à l'écran).
+          Avec 0 % de remplissage, il ne restait qu'un filet gris sur toute la largeur : on le lit
+          comme un trait de séparation, pas comme « il reste tout à faire ». Deux pour cent de
+          couleur au départ suffisent à dire que c'est une barre qui se remplit. La valeur
+          annoncée à la lecture vocale, elle, reste le vrai avancement, juste au-dessus. */}
+      <View style={[s.barreRemplie, { width: `${Math.max(2, Math.min(100, avancement))}%`, backgroundColor: couleur }]} />
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  titre: { color: C.texte, fontFamily: P.titre, fontSize: 27, letterSpacing: -0.6 },
-  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 14.5, lineHeight: 21 },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: T.titreEcran, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: T.sousEcran, lineHeight: T.sousEcranHauteur },
   attente: { color: C.texteFaible, fontFamily: P.texte, fontSize: 13.5 },
 
   grade: {

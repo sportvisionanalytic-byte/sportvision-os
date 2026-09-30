@@ -21,7 +21,7 @@ import { Ecran, Vide } from "../../../src/ui/Ecran";
 import { Barre } from "../../../src/ui/Barre";
 import { estProduction, useSession } from "../../../src/lib/session";
 import { C } from "../../../src/theme/couleurs";
-import { P } from "../../../src/theme/polices";
+import { P, T } from "../../../src/theme/polices";
 
 export const unstable_settings = { initialRouteName: "affectation" };
 
@@ -113,6 +113,6 @@ export function EcranProd({
 }
 
 const s = StyleSheet.create({
-  titre: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
-  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: T.titreEcran, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: T.sousEcran, lineHeight: T.sousEcranHauteur },
 });

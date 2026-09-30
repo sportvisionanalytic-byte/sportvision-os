@@ -100,6 +100,15 @@ export default function Onglets() {
         name="missions"
         options={{
           title: production ? "Production" : "Mes missions",
+          // « MES MISSI… » ÉTAIT AFFICHÉ SUR LE TÉLÉPHONE (01/10/2026, vu à l'écran). Cinq onglets
+          // sur 402 points laissent 80 points par libellé : « Mes missions » n'y tient pas et iOS
+          // le coupe. Un mot tronqué dans une barre d'onglets est un bug, pas une mise en page — on
+          // ne sait plus si on lit un libellé rogné ou un écran mal chargé.
+          //
+          // `title` reste « Mes missions » : c'est le nom de l'écran, celui que la lecture vocale
+          // annonce et celui de l'OS. Seule l'étiquette de la barre raccourcit, et elle garde le
+          // mot de l'OS.
+          tabBarLabel: production ? "Production" : "Missions",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name={production ? "grid" : "calendar"} color={color} size={size} />
           ),
@@ -153,6 +162,30 @@ export default function Onglets() {
       <Tabs.Screen name="formation" options={masque} />
       <Tabs.Screen name="galeries" options={masque} />
       <Tabs.Screen name="centre" options={masque} />
+
+      {/* LE MODE JOUR J N'EST NI UN ONGLET NI UNE ENTRÉE DE « MON ESPACE » (01/10/2026).
+          C'est l'écran d'UNE mission : il n'a aucun sens sans savoir laquelle. L'OS fait le même
+          choix — son Mode Jour J s'ouvre depuis la carte d'une prestation (`enterJourJ(p.id)`),
+          jamais depuis un menu. On y entre donc depuis l'accueil, le planning ou « Mes missions »,
+          et il porte sa propre barre de retour : ce n'est pas un onglet, il n'en a pas besoin.
+
+          ET LA BARRE DU BAS DISPARAÎT DESSUS. Deux raisons, et la seconde est un défaut évité :
+
+          · L'OS en fait un OVERLAY PLEIN ÉCRAN (`#mob-jourj`, `position:fixed; inset:0;
+            z-index:9999`) qui recouvre sa navigation. Sur le terrain on ne navigue pas, on agit.
+          · Cet écran pose son geste dans un pied de page fixe, comme l'OS (`.jj-m-foot`). Sans
+            cette ligne, la barre d'onglets — elle aussi en position absolue, elle aussi collée en
+            bas — passerait PAR-DESSUS le bouton : le seul bouton de l'écran, et le seul qui
+            compte, serait à moitié sous « Accueil » et « Mes missions ». */}
+      <Tabs.Screen name="terrain" options={{ href: null, tabBarStyle: { display: "none" } }} />
+      {/* « MES LIVRABLES » EST HORS DE LA BARRE, ET C'EST UN ARBITRAGE (01/10/2026).
+          C'est le geste qui déclenche le paiement d'un opérateur, donc le plus important de sa
+          semaine — mais il le fait UNE FOIS par mission, assis, au retour du terrain, une fois les
+          fichiers copiés sur son disque. La barre porte ce qu'on ouvre debout plusieurs fois par
+          jour. Faire passer un onglet à la trappe pour celui-ci aurait coûté « Mon planning » ou la
+          messagerie, qu'on ouvre l'un et l'autre au bord d'un terrain. Il est donc dans « Mon
+          espace », comme les cinq autres, et il porte sa flèche de retour. */}
+      <Tabs.Screen name="livrables" options={masque} />
     </Tabs>
   );
 }

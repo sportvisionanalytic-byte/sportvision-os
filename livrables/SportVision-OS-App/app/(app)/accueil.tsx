@@ -40,6 +40,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Ecran, Probleme, Section, Vide } from "../../src/ui/Ecran";
 import { Pastille } from "../../src/ui/Base";
+import { Marque } from "../../src/ui/Marque";
 import { estProduction, useSession } from "../../src/lib/session";
 import { lireCockpit, type MaMission, type MissionProduction } from "../../src/lib/os-missions";
 import {
@@ -47,10 +48,13 @@ import {
   libelleCouverture, lireEtatCloture, lireMesCorrections, lireMonPlanning, prochaine,
   type CorrectionDemandee, type EtatCloture,
 } from "../../src/lib/os-planning";
+import { lireParcours, type Parcours } from "../../src/lib/os-formation";
+import { lireResumeOperateur, type ResumeOperateur } from "../../src/lib/os-accueil";
+import { BandeauParcours, CarteKit } from "../../src/ui/Parcours";
 import { useDonnees } from "../../src/lib/cache";
 import { dateDuJourParis, dateLongue, heureCourte, quand } from "../../src/lib/dates";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
-import { P } from "../../src/theme/polices";
+import { P, T } from "../../src/theme/polices";
 
 export default function Accueil() {
   const { moi } = useSession();
@@ -83,9 +87,25 @@ function AccueilOperateur() {
     [moiId],
   );
 
+  // LE PARCOURS ET LE KIT, PARCE QUE L'ACCUEIL ÉTAIT VIDE POUR TOUT LE MONDE. Mesuré le 30/09 :
+  // aucun des dix opérateurs n'a de mission à venir. Le grade, l'XP et ce qui a été fait, eux,
+  // existent pour six d'entre eux — et pour les quatre autres, le bandeau invite au lieu de juger.
+  //
+  // MÊME CLÉ QUE L'ONGLET FORMATION : arriver ici le remplit, et l'ouvrir ensuite ne recharge rien.
+  const parcours = useDonnees<Parcours>(
+    moiId ? `os:parcours:${moiId}` : null,
+    () => lireParcours(moiId as string, moi?.role ?? null),
+    [moiId, moi?.role],
+  );
+  const resume = useDonnees<ResumeOperateur>(
+    moiId ? `os:resume:${moiId}` : null,
+    () => lireResumeOperateur(moiId as string),
+    [moiId],
+  );
+
   const relireTout = useCallback(() => {
-    plan.relire(); cloture.relire(); corrections.relire();
-  }, [plan.relire, cloture.relire, corrections.relire]);
+    plan.relire(); cloture.relire(); corrections.relire(); parcours.relire(); resume.relire();
+  }, [plan.relire, cloture.relire, corrections.relire, parcours.relire, resume.relire]);
 
   const missions = plan.donnees ?? [];
   // Une panne de chargement n'est pas un écran vide (règle 7 du contrat) : tant qu'on a la réponse
@@ -130,9 +150,15 @@ function AccueilOperateur() {
 
   return (
     <Ecran enCours={plan.rafraichissement} teinte="cyan" rafraichir={relireTout}>
-      <View style={{ gap: 4 }}>
-        <Text style={s.titre}>Bonjour {moi?.prenom || ""}</Text>
-        <Text style={s.sous}>{sousTitre}</Text>
+      {/* LE LOGO DANS L'EN-TÊTE (01/10/2026). Une fois passé l'écran de connexion, l'application
+          ne redisait plus jamais son nom : dix écrans d'un titre blanc sur du noir. Il est ici,
+          discret, à la taille d'une ligne de texte, et ne revient sur aucun autre écran. */}
+      <View style={s.entete}>
+        <Marque taille={38} />
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={s.titre} numberOfLines={1}>Bonjour {moi?.prenom || ""}</Text>
+          <Text style={s.sous}>{sousTitre}</Text>
+        </View>
       </View>
 
       {plan.chargement ? (
@@ -143,10 +169,25 @@ function AccueilOperateur() {
         <>
           {suivante ? <CarteProchaine m={suivante} /> : (
             <Vide
+              icone="calendar-outline"
               titre="Aucune prestation à venir"
-              texte="Tu seras notifié(e) dès qu'une mission te sera assignée."
+              texte="Vous serez prévenu dès qu'une mission vous sera proposée, sur cet écran et par une notification."
+              action={{ libelle: "Voir mes missions", surPression: () => router.push("/missions") }}
             />
           )}
+
+          {/* LE KIT AVANT LE PARCOURS : c'est le seul des deux qui demande un geste. Un kit non
+              rendu bloque sa réservation pour tout le monde. */}
+          {resume.donnees?.kitEnMain ? <CarteKit {...resume.donnees.kitEnMain} /> : null}
+
+          {/* Le bandeau ne s'affiche qu'une fois lu : un cadre vide qui se remplit une seconde
+              plus tard fait sauter tout l'écran sous le doigt. */}
+          {parcours.donnees ? (
+            <BandeauParcours
+              parcours={parcours.donnees}
+              missionsRealisees={resume.donnees?.missionsRealisees ?? 0}
+            />
+          ) : null}
 
           {/* On n'affiche la section que s'il y a vraiment quelque chose à répondre. Un bloc
               « 0 invitation » occuperait le haut de l'écran pour dire qu'il n'y a rien à faire. */}
@@ -220,14 +261,74 @@ function AccueilOperateur() {
               Ce qu'il vous reste à rendre n'a pas pu être chargé. Tirez vers le bas pour réessayer.
             </Text>
           ) : null}
+
+          {/* ══ LES RACCOURCIS, ET SEULEMENT LES JOURS SANS MISSION ═══════════════════════════
+              Fouka, en installant l'application : « l'accueil il fait trop trop vide ». Vu à
+              l'écran avec le compte de recette : sous le bandeau de parcours, six cents points de
+              noir jusqu'à la barre d'onglets, et rien dedans. Ce n'est pas un cas limite —
+              aucun des dix opérateurs n'a de mission à venir.
+
+              CE QU'ON N'A PAS FAIT : inventer un chiffre pour remplir. Pas de graphique, pas de
+              « votre semaine en un coup d'œil » construit sur zéro donnée. Ces quatre entrées ne
+              mènent qu'à des écrans qui existent déjà dans l'application et que ce rôle peut
+              ouvrir : c'est de la navigation, pas du contenu.
+
+              POURQUOI SEULEMENT QUAND IL N'Y A RIEN. L'en-tête de ce fichier pose que le reste de
+              l'OS « n'est pas une question qu'on se pose au bord d'un terrain », et c'est vrai le
+              jour où l'on a une prestation à lire : ce jour-là, `suivante` existe et ces tuiles
+              n'apparaissent pas. Elles ne prennent la place que du vide. */}
+          {!suivante ? (
+            <Section titre="En attendant">
+              <View style={{ gap: E.s }}>
+                <View style={s.grille}>
+                  <Tuile chemin="/centre" icone="book-outline" titre="Le Centre" sous="Check-lists et fiches" />
+                  <Tuile chemin="/messagerie" icone="chatbubbles-outline" titre="Messages" sous="Joindre la production" />
+                </View>
+                <View style={s.grille}>
+                  <Tuile chemin="/livrables" icone="cloud-upload-outline" titre="Mes livrables" sous="Ce que j'ai déposé" />
+                  <Tuile chemin="/revenus" icone="cash-outline" titre="Mes revenus" sous="Montants versés" />
+                </View>
+              </View>
+            </Section>
+          ) : null}
         </>
       )}
     </Ecran>
   );
 }
 
+/**
+ * Une tuile de raccourci. Elle ne porte aucun chiffre : un compteur ici voudrait dire une lecture
+ * de plus au chargement de l'Accueil, pour une information qu'on lit sur l'écran d'à côté.
+ */
+function Tuile({
+  chemin, icone, titre, sous,
+}: {
+  chemin: string;
+  icone: keyof typeof Ionicons.glyphMap;
+  titre: string;
+  sous: string;
+}) {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push(chemin as never)}
+      accessibilityRole="button"
+      accessibilityLabel={`${titre}. ${sous}`}
+      style={({ pressed }) => [s.tuile, pressed ? { opacity: 0.8 } : null]}
+    >
+      <Ionicons name={icone} size={19} color={C.accentClair} />
+      {/* `alignSelf: stretch` : sans lui, un texte mesuré hors de sa colonne se tronque trop tôt,
+          et le parent est justement une colonne centrée. Défaut déjà payé deux fois. */}
+      <Text style={s.tuileTitre} numberOfLines={1}>{titre}</Text>
+      <Text style={s.tuileSous} numberOfLines={2}>{sous}</Text>
+    </Pressable>
+  );
+}
+
 /** La prochaine prestation. Même intitulé que l'OS, qui l'appelle « Prochaine prestation ». */
 function CarteProchaine({ m }: { m: MaMission }) {
+  const router = useRouter();
   const rdv = heureCourte(m.heureRdv);
   const debut = heureCourte(m.heureDebut);
   const couverture = libelleCouverture(m.couverture);
@@ -271,6 +372,28 @@ function CarteProchaine({ m }: { m: MaMission }) {
         {couverture ? <Pastille texte={couverture} /> : null}
         {m.remuneration !== null ? <Text style={s.remu}>{m.remuneration} €</Text> : null}
       </View>
+
+      {/* LE MODE JOUR J S'OUVRE D'ICI (01/10/2026), comme dans l'OS, où le bouton est sur la carte
+          de la prochaine prestation et sur celles du jour (`enterJourJ(p.id)`).
+
+          PAS SUR UNE MISSION QU'ON N'A PAS ENCORE ACCEPTÉE, et ce n'est pas une barrière de
+          sécurité : `operateur_affecte_prestation` ne regarde QUE l'existence de l'affectation, pas
+          sa réponse — la base laisserait donc quelqu'un se déclarer « en route » sur une invitation
+          qu'il n'a pas acceptée. C'est une règle de pertinence : on répond d'abord, on part ensuite.
+          Elle est dite, plutôt que de laisser un bouton inexpliqué. */}
+      {enAttente ? (
+        <Text style={s.heroNote}>Répondez à l'invitation pour ouvrir le Mode Jour J.</Text>
+      ) : (
+        <Pressable
+          onPress={() => router.push({ pathname: "/terrain", params: { prestation: m.prestationId } })}
+          accessibilityRole="button"
+          accessibilityLabel={`Ouvrir le Mode Jour J de la mission ${m.client ?? "SportVision"}`}
+          style={({ pressed }) => [s.jourj, pressed ? { opacity: 0.85 } : null]}
+        >
+          <Ionicons name="radio-button-on" size={17} color={C.dangerTexte} />
+          <Text style={s.jourjTexte}>Mode Jour J</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -500,9 +623,18 @@ function CarteJournee({ m }: { m: MissionProduction }) {
 }
 
 const s = StyleSheet.create({
-  titre: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
-  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
+  entete: { flexDirection: "row", alignItems: "center", gap: E.m },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: T.titreEcran, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: T.sousEcran, lineHeight: T.sousEcranHauteur },
   attente: { paddingVertical: E.xl * 2, alignItems: "center" },
+
+  grille: { flexDirection: "row", gap: E.s },
+  tuile: {
+    flex: 1, gap: E.xs, padding: E.m, minHeight: TOUCHE * 2, borderRadius: R.l,
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
+  },
+  tuileTitre: { alignSelf: "stretch", color: C.texte, fontFamily: P.texteFort, fontSize: T.detail },
+  tuileSous: { alignSelf: "stretch", color: C.texteFaible, fontFamily: P.texte, fontSize: T.note, lineHeight: T.noteHauteur },
 
   hero: {
     gap: E.s, padding: E.m, borderRadius: R.xl,
@@ -536,6 +668,16 @@ const s = StyleSheet.create({
   briefTitre: { color: C.cyan, fontFamily: P.texteFort, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.8 },
   briefTexte: { color: C.texte, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
   remu: { color: C.texte, fontFamily: P.titreFort, fontSize: 15 },
+
+  // Le rouge du Mode Jour J, celui de l'OS (`var(--er)` sur ses deux boutons « 🔴 Mode Jour J »).
+  // C'est le seul rouge de l'application qui ne signale pas une erreur : il dit « en direct ».
+  jourj: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: E.xs,
+    minHeight: TOUCHE, borderRadius: R.m,
+    backgroundColor: "rgba(240,68,94,.12)", borderWidth: 1, borderColor: "rgba(240,68,94,.34)",
+  },
+  jourjTexte: { color: C.dangerTexte, fontFamily: P.texteFort, fontSize: 14.5 },
+  heroNote: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5, lineHeight: 18 },
 
   correction: {
     gap: 3, padding: E.s, borderRadius: R.m,

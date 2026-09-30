@@ -28,7 +28,7 @@ import {
   type Centre as DonneesCentre, type Contact, type Ressource,
 } from "../../src/lib/os-centre";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
-import { P } from "../../src/theme/polices";
+import { P, T } from "../../src/theme/polices";
 
 export default function CentreSportVision() {
   const { moi } = useSession();
@@ -85,10 +85,11 @@ export default function CentreSportVision() {
 
       {rienTrouve ? (
         <Vide
+          icone="search-outline"
           titre={`Rien pour « ${q} »`}
           texte={
             "Aucune fiche, aucun chapitre ni aucun contact ne porte ce mot. Essayez un mot plus " +
-            "court — « drone », « veo », « batterie » — ou effacez la recherche pour revoir tout le Centre."
+            "court, « drone », « veo » ou « batterie », ou effacez la recherche pour revoir tout le Centre."
           }
         />
       ) : null}
@@ -109,6 +110,7 @@ export default function CentreSportVision() {
       {donnees && !q && !donnees.ressources.length ? (
         <Section titre="Ressources">
           <Vide
+            icone="book-outline"
             titre="Aucune ressource publiée pour le moment"
             texte={
               "Les check-lists et les fiches de terrain se publient depuis l'OS, par " +
@@ -265,8 +267,8 @@ function CarteContact({ contact }: { contact: Contact }) {
 }
 
 const s = StyleSheet.create({
-  titre: { color: C.texte, fontFamily: P.titre, fontSize: 27, letterSpacing: -0.6 },
-  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 14.5, lineHeight: 21 },
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: T.titreEcran, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: T.sousEcran, lineHeight: T.sousEcranHauteur },
   attente: { color: C.texteFaible, fontFamily: P.texte, fontSize: 13.5 },
   compteur: { color: C.texteFaible, fontFamily: P.texteFort, fontSize: 13 },
   carte: {

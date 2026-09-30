@@ -29,6 +29,7 @@ import { Barre } from "../../../src/ui/Barre";
 import { EcranProd } from "./_layout";
 import { useDonnees } from "../../../src/lib/cache";
 import { libelleCouverture } from "../../../src/lib/os-missions";
+import { LIBELLE_CATEGORIE } from "../../../src/lib/os-livrables";
 import { quand } from "../../../src/lib/dates";
 import {
   lireLiensATraiter, lireMissions, type Lien, type MissionProd,
@@ -48,13 +49,16 @@ const LIBELLE_GROUPE: Record<string, string> = {
   autres: "Autres",
 };
 
-/** Les mots de l'OS pour ce qu'un lien contient. */
-const LIBELLE_CATEGORIE: Record<string, string> = {
-  final: "Livrable final",
-  livraison: "Livraison",
-  rushs: "Rushs",
-  depot: "Dépôt",
-};
+// LE VOCABULAIRE DES LIENS A DEMENAGE DANS `os-livrables.ts` (01/10/2026).
+//
+// Il vivait ici, en quatre entrées sur les sept que porte `media_liens_categorie_check` : un lien en
+// `travail`, `previsualisation` ou `bibliotheque` s'affichait donc avec sa valeur brute. L'écran des
+// livrables de l'opérateur a besoin des mêmes mots, et une copie partielle d'un vocabulaire est un
+// second vocabulaire qui dit moins. Les trois tables complètes — statuts, catégories, types de média
+// — sont maintenant auprès du type qui porte les champs, et importées des deux côtés.
+//
+// Un mot a changé au passage : `final` se lisait « Livrable final » ici et « Final » dans l'OS.
+// C'est l'OS qui fait foi (règle 9).
 
 interface Donnees {
   missions: MissionProd[];
