@@ -39,20 +39,37 @@ export interface GalerieClub {
 }
 
 /**
- * Les galeries que CETTE PERSONNE a le droit de regarder.
+ * Les galeries du club, telles que la base les laisse voir.
  *
- * `perimetre` est son `club_members.teams`. Vide, elle voit tout le club — c'est le cas de la
- * direction, du secrétariat, du community manager. Non vide, elle ne voit QUE les galeries
- * rattachées à ses équipes : décision de Fouka le 30/09, « ses galeries à lui, pas tout ».
+ * == POURQUOI IL N'Y A PAS DE FILTRE ICI, ET POURQUOI IL Y EN A EU UN (30/09/2026) ============
  *
- * MESURÉ AVANT DE FILTRER, et c'est important : sur les six galeries de RCP Fontainebleau, UNE
- * SEULE porte une équipe. Les cinq autres (Séniors, deux plateaux, LIEUSAINT) n'en ont aucune, et
- * un coach les lisait toutes. Le filtre les lui retire — c'est ce qui est demandé — mais il faut
- * savoir que la cause est en amont : une galerie sans équipe vient d'une mission qui n'en a pas
- * rattaché. L'écran le dit en une ligne, pour qu'un coach sache quoi demander plutôt que de croire
- * que l'application a perdu ses photos.
+ * J'en avais ajouté un le matin même, sur le périmètre d'équipes, après que Fouka a dit « faut pas
+ * que le coach voie tout ». Il était REDONDANT et FAUX, et c'est en cherchant d'où venaient les
+ * galeries sans équipe que ça s'est vu.
+ *
+ * `media_club_voit_la_galerie` (v155, affinée en v280 et v303) porte déjà exactement la règle
+ * demandée, et la porte mieux :
+ *   · une galerie rattachée à une ou plusieurs équipes n'est visible que des éducateurs de ces
+ *     équipes — les autres rôles du club voient tout ;
+ *   · une galerie rattachée à AUCUNE équipe est visible de tous, délibérément : un plateau de
+ *     l'école de foot concerne plusieurs catégories à la fois.
+ *
+ * Mesuré : sur les 15 galeries publiées de RCP Fontainebleau, le coach de U16A en reçoit 6 — la
+ * sienne, plus les 5 qui n'ont aucune équipe. La base lui cache déjà les U9, U10, U11, U12A, U14A,
+ * U14B et Séniors, sans que l'application ait à s'en mêler.
+ *
+ * MON FILTRE SE TROMPAIT DEUX FOIS. Il cachait les galeries sans équipe, que la base montre
+ * exprès. Et il ne regardait que `team_id`, jamais `team_ids` — le champ des galeries à plusieurs
+ * catégories, que la base, elle, prend en compte depuis la v280 : une galerie rattachée à son
+ * équipe par ce champ-là aurait disparu de l'écran d'un coach. Aucune n'est dans ce cas
+ * aujourd'hui ; ça n'en reste pas moins la divergence qu'une règle recopiée finit toujours par
+ * produire. C'est la troisième fois de la journée, et la règle est simple : quand la base tient
+ * déjà une frontière, on ne la retient pas une seconde fois ailleurs.
+ *
+ * LE VRAI DÉFAUT EST EN AMONT : cinq galeries ont été créées sans équipe. Rattachées, elles
+ * disparaissent d'elles-mêmes de l'écran des coachs qu'elles ne concernent pas.
  */
-export async function lireGaleriesClub(clubId: string, perimetre: string[] = []): Promise<GalerieClub[]> {
+export async function lireGaleriesClub(clubId: string): Promise<GalerieClub[]> {
   const { data, error } = await supabase.rpc("media_club_galleries", { p_club_id: clubId });
   if (error) {
     await refermerSiPerdue(error);
@@ -63,8 +80,7 @@ export async function lireGaleriesClub(clubId: string, perimetre: string[] = [])
     cover_url: string | null; cover_path: string | null; photos: number | null;
     publie: boolean | null; liens: { is_enabled?: boolean }[] | null;
   };
-  const voulues = new Set(perimetre.map((n) => n.trim().toLowerCase()));
-  const toutes = ((data ?? []) as Ligne[]).map((r) => ({
+  return ((data ?? []) as Ligne[]).map((r) => ({
     id: String(r.album_id),
     titre: r.titre ?? "Galerie",
     equipe: r.equipe ?? null,
@@ -74,16 +90,6 @@ export async function lireGaleriesClub(clubId: string, perimetre: string[] = [])
     publiee: r.publie === true,
     nbLiens: Array.isArray(r.liens) ? r.liens.filter((l) => l?.is_enabled !== false).length : 0,
   }));
-
-  if (!voulues.size) return toutes;
-  return toutes.filter((g) => !!g.equipe && voulues.has(g.equipe.trim().toLowerCase()));
-}
-
-/** Combien de galeries du club le périmètre a écartées. Sert à l'expliquer, pas à les montrer. */
-export async function compterGaleriesDuClub(clubId: string): Promise<number> {
-  const { data, error } = await supabase.rpc("media_club_galleries", { p_club_id: clubId });
-  if (error) return 0;
-  return Array.isArray(data) ? data.length : 0;
 }
 
 export interface PhotoGalerie {

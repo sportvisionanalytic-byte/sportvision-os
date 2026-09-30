@@ -16,36 +16,29 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Ecran, Probleme, Vide } from "../Ecran";
 import { Pastille } from "../Base";
-import { compterGaleriesDuClub, lireGaleriesClub, lirePhotosGalerie, type GalerieClub, type PhotoGalerie } from "../../lib/club-galeries";
+import { lireGaleriesClub, lirePhotosGalerie, type GalerieClub, type PhotoGalerie } from "../../lib/club-galeries";
 import { dateLongue } from "../../lib/dates";
 import { C, E, R, TOUCHE } from "../../theme/couleurs";
 import { P } from "../../theme/polices";
 
 export function GaleriesClub({
-  clubId, clubNom, perimetre, surWeb,
+  clubId, clubNom, surWeb,
 }: {
   clubId: string;
   clubNom: string;
-  /** Les équipes de la personne. Vide = elle voit tout le club. */
-  perimetre: string[];
   surWeb: (chemin: string) => void;
 }) {
   const [galeries, setGaleries] = useState<GalerieClub[] | null>(null);
   const [panne, setPanne] = useState(false);
   const [ouverte, setOuverte] = useState<GalerieClub | null>(null);
-  /** Le total du club, pour dire combien le périmètre écarte. */
-  const [totalClub, setTotalClub] = useState<number | null>(null);
   /** L'équipe sur laquelle on filtre, ou `null` pour toutes. Sans objet quand on a un périmètre. */
   const [equipe, setEquipe] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     setPanne(false);
-    try {
-      setGaleries(await lireGaleriesClub(clubId, perimetre));
-      if (perimetre.length) setTotalClub(await compterGaleriesDuClub(clubId));
-    } catch { setPanne(true); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clubId, perimetre.join("|")]);
+    try { setGaleries(await lireGaleriesClub(clubId)); }
+    catch { setPanne(true); }
+  }, [clubId]);
 
   useEffect(() => { charger(); }, [charger]);
 
@@ -115,7 +108,9 @@ export function GaleriesClub({
           <View style={{ gap: E.l }}>
             {/* Le filtre par équipe n'a de sens que pour qui en voit plusieurs : avec un périmètre,
                 toutes les lignes portent la même. */}
-            {!perimetre.length && equipesPresentes.length > 1 ? (
+            {/* Les puces servent aussi à un coach : il voit ses équipes ET les galeries sans
+                catégorie, donc au moins deux groupes dès qu'il y a un plateau. */}
+            {equipesPresentes.length > 1 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: E.s, paddingRight: E.l }}>
                 <Pressable
                   onPress={() => setEquipe(null)}
@@ -176,7 +171,7 @@ export function GaleriesClub({
                         <Text style={s.detail} numberOfLines={1}>
                           {/* Le mois est déjà en en-tête : la ligne porte le jour, et l'équipe
                               seulement quand la liste en mélange plusieurs. */}
-                          {[g.date ? dateLongue(g.date) : null, equipe || perimetre.length ? null : g.equipe]
+                          {[g.date ? dateLongue(g.date) : null, equipe ? null : g.equipe]
                             .filter(Boolean).join(" · ")}
                         </Text>
                         <View style={s.compteur}>
@@ -197,26 +192,11 @@ export function GaleriesClub({
           </View>
         ) : (
           <Vide
-            titre={perimetre.length ? "Aucune galerie pour vos équipes" : "Aucune galerie"}
-            texte={
-              perimetre.length
-                ? `Les galeries de ${perimetre.join(", ")} apparaîtront ici dès qu'elles seront publiées et rattachées à l'équipe.`
-                : "Les galeries de vos matchs apparaîtront ici dès que SportVision les publie."
-            }
+            titre="Aucune galerie"
+            texte="Les galeries de vos matchs apparaîtront ici dès que SportVision les publie."
           />
         )}
 
-        {/* CE QUE LE PÉRIMÈTRE ÉCARTE, DIT EN UNE LIGNE. Sur les six galeries de RCP Fontainebleau,
-            une seule porte une équipe : sans cette phrase, un coach verrait « 1 galerie » et
-            croirait que l'application a perdu les autres. On dit le nombre, jamais les titres. */}
-        {perimetre.length && totalClub !== null && totalClub > liste.length ? (
-          <Text style={s.note}>
-            {totalClub - liste.length} autre{totalClub - liste.length > 1 ? "s" : ""} galerie
-            {totalClub - liste.length > 1 ? "s" : ""} du club ne {totalClub - liste.length > 1 ? "sont" : "est"} pas
-            rattachée{totalClub - liste.length > 1 ? "s" : ""} à vos équipes. Demandez à votre club
-            de les rattacher si elles vous concernent.
-          </Text>
-        ) : null}
 
         <Pressable
           onPress={() => surWeb("/galeries")}
