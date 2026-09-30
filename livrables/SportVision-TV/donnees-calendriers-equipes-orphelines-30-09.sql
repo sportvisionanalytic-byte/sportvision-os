@@ -96,3 +96,27 @@ where club_id = (select id from clubs where nom ilike '%Villemomble%' limit 1)
 --   SF Villemomble     U15 D2   0  (fiche morte, à supprimer depuis Club+)
 --
 --   Matchs sans équipe dans les deux clubs : 0. Il y en avait 6 ce matin.
+
+-- ── 5. LA FICHE MORTE « U15 D2 » SUPPRIMÉE (30/09, demandé par Fouka) ────────────────────────
+--
+-- Elle ne portait plus aucun match, aucun joueur, aucun éducateur. Mais elle portait DEUX
+-- CRÉNEAUX D'ENTRAÎNEMENT, mardi 19h00 et mercredi 18h30, attribués par la ville. Ils ne
+-- disparaissent pas avec un nom périmé : ils suivent l'équipe.
+--
+-- Et ces créneaux confirment la décision prise plus haut. Leurs propres notes, écrites par la
+-- mairie, disent « U16D3-U15D1 (Mimoun) » et « U16D1-U15D1 (Mimoun) » : la ville nomme elle-même
+-- cette équipe U15D1. Le nom « U15 D2 » datait d'une division précédente.
+
+update club_team_training_slots set team_id = (
+  select ct.id from club_teams ct join clubs c on c.id = ct.club_id
+  where c.nom ilike '%Villemomble%' and ct.name = 'U15 D1')
+where team_id = (
+  select ct.id from club_teams ct join clubs c on c.id = ct.club_id
+  where c.nom ilike '%Villemomble%' and ct.name = 'U15 D2');
+-- 2 lignes.
+
+delete from club_teams ct using clubs c
+where c.id = ct.club_id and c.nom ilike '%Villemomble%' and ct.name = 'U15 D2';
+-- 1 ligne.
+
+-- Vérifié après : Villemomble a U15 D1 (23 matchs, 2 créneaux) et U15 F (20 matchs, 2 créneaux).
