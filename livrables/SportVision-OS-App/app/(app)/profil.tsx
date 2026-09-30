@@ -41,8 +41,8 @@ export default function Profil() {
       </Pressable>
 
       <Text style={s.pied}>
-        Votre nom, votre téléphone et vos coordonnées bancaires se modifient dans l'OS, onglet
-        « L'OS » : c'est là qu'ils vivent, et il n'y en a qu'un.
+        Vos coordonnées bancaires et vos documents restent sur l'OS, depuis un ordinateur : ce
+        sont des démarches qu'on ne fait pas debout, et l'application ne fait pas semblant.
       </Text>
     </Ecran>
   );

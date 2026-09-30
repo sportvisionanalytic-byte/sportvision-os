@@ -5,8 +5,16 @@
 // qui viennent voir CELLES DE TOUS. Le même onglet, deux écrans — plutôt que quatre onglets dont
 // la moitié serait vide pour chacun.
 //
-// « L'OS » est l'application complète, dans une vue web, déjà connectée. Tout ce que le natif ne
-// sait pas encore faire y vit, et c'est elle qui reste l'autorité : on n'y réécrit aucune règle.
+// AUCUNE VUE WEB, ET C'EST LA CONSIGNE. Fouka, le 30/09 : « je ne veux pas une vue web,
+// justement. Je veux vraiment une application de l'OS. » L'application ne montre donc QUE ce
+// qu'elle sait dessiner elle-même. Ce qu'elle ne couvre pas n'y est pas — plutôt qu'un onglet qui
+// ouvre un site dans un cadre et qui trahit la promesse dès qu'on le touche.
+//
+// CE CHOIX EST TENABLE PARCE QUE L'OS N'EST PAS UN BLOC. Mesuré dans sa table `ROLES` : un
+// opérateur y voit NEUF écrans, un responsable de production seize, un community manager neuf.
+// Le secrétariat en voit vingt-six et la comptabilité vingt-huit — mais personne ne fait un
+// rapprochement bancaire sur un téléphone. L'application couvre les métiers qui travaillent
+// debout ; les autres restent sur un ordinateur, et c'est le bon outil.
 import React from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Redirect, Tabs } from "expo-router";
@@ -64,13 +72,6 @@ export default function Onglets() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name={production ? "grid" : "calendar"} color={color} size={size} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="os"
-        options={{
-          title: "L'OS",
-          tabBarIcon: ({ color, size }) => <Ionicons name="apps" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
