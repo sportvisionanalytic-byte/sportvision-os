@@ -64,6 +64,8 @@ import { EquipesClub } from "../src/ui/club/EquipesClub";
 import { ResultatMatch } from "../src/ui/club/ResultatMatch";
 import { MonProfil } from "../src/ui/club/MonProfil";
 import { GaleriesClub } from "../src/ui/club/GaleriesClub";
+import { InviterFamille } from "../src/ui/club/InviterFamille";
+import { peutInviter } from "../src/lib/club-inviter";
 import { lireMonProfil, type MonProfil as Profil } from "../src/lib/club-profil";
 import { C, E, R, TOUCHE } from "../src/theme/couleurs";
 import { P } from "../src/theme/polices";
@@ -103,6 +105,8 @@ export default function EspaceWeb() {
    * c'est l'écran le plus visuel de l'espace club. Une page web encadrée y perd le plus.
    */
   const [sectionNative, setSectionNative] = useState<string | null>(null);
+  /** L'équipe dans laquelle on invite. `null` : la feuille est fermée. */
+  const [equipeAInviter, setEquipeAInviter] = useState<EquipeDuClub | null>(null);
 
   /**
    * La section web affichée, ou `null` quand on est sur un écran natif.
@@ -153,6 +157,20 @@ export default function EspaceWeb() {
     [session?.user?.id, club?.monPrenom],
   );
   const monPrenom = (moi.donnees?.prenom || club?.monPrenom || "").trim();
+
+  /**
+   * Le droit d'inviter, demandé à la base une fois par club.
+   *
+   * On ne le devine pas depuis le rôle : `peut_operer_club` couvre l'administrateur, le président,
+   * la délégation d'agence et le super-accès CM, et c'est cette fonction-là que l'edge function
+   * d'invitation exige. Tant qu'elle n'a pas répondu, aucun bouton d'invitation n'est proposé.
+   */
+  const droit = useDonnees<boolean>(
+    club ? `club:peut-inviter:${club.id}` : null,
+    () => peutInviter(club!.id),
+    [club?.id],
+  );
+  const peutInviterIci = droit.donnees === true;
 
   const rechargerClub = useCallback(() => {
     mesClubs.relire(); evs.relire(); eqs.relire(); mbs.relire(); moi.relire();
@@ -425,6 +443,7 @@ export default function EspaceWeb() {
             <EquipesClub
               club={club}
               titre={nav.onglets.find((o) => o.chemin === "/teams")?.libelle ?? "Équipes"}
+              surInviter={peutInviterIci ? setEquipeAInviter : undefined}
               equipes={eqs.donnees ?? []}
               chargement={eqs.chargement}
               panne={!!eqs.erreur && eqs.donnees === undefined}
@@ -447,6 +466,7 @@ export default function EspaceWeb() {
               surOnglet={allerOnglet}
               surWeb={allerWeb}
               surProfil={() => setProfilOuvert(true)}
+              surInviter={peutInviterIci ? setEquipeAInviter : undefined}
             />
           )}
         </View>
@@ -546,6 +566,14 @@ export default function EspaceWeb() {
           surFermer={() => setMatchOuvert(null)}
           surEnregistre={() => { oublier("evenements:"); rechargerClub(); }}
           surWeb={allerWeb}
+        />
+      ) : null}
+
+      {club ? (
+        <InviterFamille
+          clubId={club.id}
+          equipe={equipeAInviter}
+          surFermer={() => setEquipeAInviter(null)}
         />
       ) : null}
 

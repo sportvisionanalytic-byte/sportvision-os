@@ -38,7 +38,7 @@ import { P } from "../../theme/polices";
 const SEUIL_RECHERCHE = 8;
 
 export function EquipesClub({
-  club, titre, equipes, chargement, panne, surRecharger, surWeb,
+  club, titre, equipes, chargement, panne, surRecharger, surWeb, surInviter,
 }: {
   club: MonClub;
   /**
@@ -54,6 +54,8 @@ export function EquipesClub({
   panne: boolean;
   surRecharger: () => void;
   surWeb: (chemin: string) => void;
+  /** Inviter dans une équipe, ou `undefined` si la base ne lui en donne pas le droit. */
+  surInviter?: (e: EquipeDuClub) => void;
 }) {
   const [recherche, setRecherche] = useState("");
 
@@ -126,7 +128,7 @@ export function EquipesClub({
                 <Text style={s.compte}>{miennes.length}</Text>
               </View>
               {miennes.map((e) => (
-                <CarteEquipe key={`mienne-${e.id}`} e={e} mienne onPress={() => surWeb(`/teams/${e.id}`)} />
+                <CarteEquipe key={`mienne-${e.id}`} e={e} mienne onPress={() => surWeb(`/teams/${e.id}`)} surInviter={surInviter ? () => surInviter(e) : undefined} />
               ))}
             </View>
           ) : null}

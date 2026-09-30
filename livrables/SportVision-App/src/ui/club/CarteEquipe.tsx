@@ -19,12 +19,18 @@ import { P } from "../../theme/polices";
 const TEINTES = [C.accent, C.cyan, C.violet];
 
 export function CarteEquipe({
-  e, onPress, mienne,
+  e, onPress, mienne, surInviter,
 }: {
   e: EquipeDuClub;
   onPress: () => void;
-  /** Une équipe dont la personne a la charge : on lui dit alors où inviter ses joueurs. */
+  /** Une équipe dont la personne a la charge. */
   mienne?: boolean;
+  /**
+   * Inviter dans CETTE équipe, en natif — ou `undefined` quand la base ne lui en donne pas le
+   * droit. Mesuré, pas devine : `peut_operer_club` rend faux pour un coach, et l'edge function
+   * d'invitation l'exige. Un bouton qui finit sur « non autorisé » est pire que pas de bouton.
+   */
+  surInviter?: () => void;
 }) {
   const p = pastille(e);
   // La catégorie ne se répète pas quand le nom la porte déjà : « U10 » sous une pastille « U10 ».
@@ -34,7 +40,7 @@ export function CarteEquipe({
   // le droit (canCreate : seuls `viewer` et `sponsor_manager` en sont exclus). On ne double donc pas
   // le bouton : on nomme ce que la carte ouvre, ce qui vaut mieux que deux cibles au même endroit.
   const detail = mienne
-    ? "Effectif, calendrier, inviter un joueur"
+    ? "Effectif, calendrier, résultats"
     : (e.coach ? `Coach ${e.coach}` : categorieUtile);
 
   return (
@@ -43,7 +49,6 @@ export function CarteEquipe({
       accessibilityRole="button"
       accessibilityLabel={[
         e.nom,
-        mienne ? "ouvrir la fiche pour inviter un joueur" : "",
         e.coach && !mienne ? `coach ${e.coach}` : "",
         e.effectif ? `${e.effectif} joueurs` : "",
       ].filter(Boolean).join(", ")}
@@ -63,6 +68,19 @@ export function CarteEquipe({
         <Text style={s.nom} numberOfLines={1}>{e.nom}</Text>
         {detail ? <Text style={s.detail} numberOfLines={1}>{detail}</Text> : null}
       </View>
+      {/* INVITER : UNE CIBLE À PART, parce que la destination n'est pas la même. La carte ouvre
+          la fiche de l'équipe dans Club+ ; ce bouton ouvre la feuille d'invitation, native. */}
+      {surInviter ? (
+        <Pressable
+          onPress={surInviter}
+          accessibilityRole="button"
+          accessibilityLabel={`Inviter un joueur ou un parent dans ${e.nom}`}
+          hitSlop={6}
+          style={({ pressed }) => [s.inviter, pressed ? { opacity: 0.7 } : null]}
+        >
+          <Ionicons name="person-add-outline" size={17} color={C.accentClair} />
+        </Pressable>
+      ) : null}
       {e.effectif ? (
         <View style={s.compteur}>
           <Ionicons name="people" size={12} color={C.texteDoux} />
@@ -116,4 +134,8 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,.05)", borderWidth: 1, borderColor: C.bordure,
   },
   compteurTexte: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 12 },
+  inviter: {
+    width: 38, height: 38, borderRadius: R.m, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(36,84,255,.14)", borderWidth: 1, borderColor: "rgba(36,84,255,.35)",
+  },
 });

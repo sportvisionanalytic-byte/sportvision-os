@@ -31,7 +31,7 @@ import { P } from "../../theme/polices";
 
 export function AccueilClub({
   club, clubs, nav, prenom, evenements, equipes, membres, chargement, panne,
-  surRecharger, surChangerDeClub, surOnglet, surWeb, surProfil,
+  surRecharger, surChangerDeClub, surOnglet, surWeb, surProfil, surInviter,
 }: {
   club: MonClub;
   /** La navigation de son rôle : elle décide des raccourcis et de ce qui a le droit d'être proposé. */
@@ -51,6 +51,8 @@ export function AccueilClub({
   surOnglet: (chemin: string) => void;
   surWeb: (chemin: string) => void;
   surProfil: () => void;
+  /** Inviter dans une équipe, ou `undefined` si la base ne lui en donne pas le droit. */
+  surInviter?: (e: EquipeDuClub) => void;
 }) {
   const suivant = prochain(evenements);
   const resultats = derniersResultats(evenements, 2);
@@ -164,7 +166,7 @@ export function AccueilClub({
         >
           <View style={{ gap: E.s }}>
             {miennes.map((e) => (
-              <CarteEquipe key={e.id} e={e} mienne onPress={() => surWeb(`/teams/${e.id}`)} />
+              <CarteEquipe key={e.id} e={e} mienne onPress={() => surWeb(`/teams/${e.id}`)} surInviter={surInviter ? () => surInviter(e) : undefined} />
             ))}
           </View>
         </Section>
