@@ -38,9 +38,17 @@ import { P } from "../../theme/polices";
 const SEUIL_RECHERCHE = 8;
 
 export function EquipesClub({
-  club, equipes, chargement, panne, surRecharger, surWeb,
+  club, titre, equipes, chargement, panne, surRecharger, surWeb,
 }: {
   club: MonClub;
+  /**
+   * Le titre de l'écran, qui est celui de l'onglet.
+   *
+   * Vu sur le simulateur : l'onglet disait « Mon équipe » et l'écran « Équipes ». Deux noms pour
+   * la même destination, c'est déjà une hésitation ; ici c'est en plus le nom que Club+ donne au
+   * coach (« Mon équipe U16A »), donc le seul juste.
+   */
+  titre: string;
   equipes: EquipeDuClub[];
   chargement: boolean;
   panne: boolean;
@@ -65,7 +73,7 @@ export function EquipesClub({
   return (
     <Ecran enCours={chargement} teinte="violet" rafraichir={surRecharger}>
       <View style={{ gap: 4 }}>
-        <Text style={s.titre}>Équipes</Text>
+        <Text style={s.titre} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{titre}</Text>
         <Text style={s.sous} numberOfLines={1}>
           {equipes.length
             ? [

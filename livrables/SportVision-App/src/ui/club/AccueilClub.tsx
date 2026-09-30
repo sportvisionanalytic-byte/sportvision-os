@@ -25,14 +25,17 @@ import { Raccourcis } from "../Raccourcis";
 import { derniersResultats, prochain, type Evenement } from "../../lib/donnees";
 import { CarteEquipe } from "./CarteEquipe";
 import { libelleRole, mesEquipes, type EquipeDuClub, type MembreDuClub, type MonClub } from "../../lib/club";
+import { type NavigationClub } from "../../lib/navigation-club";
 import { C, E, R, TOUCHE } from "../../theme/couleurs";
 import { P } from "../../theme/polices";
 
 export function AccueilClub({
-  club, clubs, evenements, equipes, membres, chargement, panne,
+  club, clubs, nav, evenements, equipes, membres, chargement, panne,
   surRecharger, surChangerDeClub, surOnglet, surWeb, surProfil,
 }: {
   club: MonClub;
+  /** La navigation de son rôle : elle décide des raccourcis et de ce qui a le droit d'être proposé. */
+  nav: NavigationClub;
   /** Tous les clubs de la personne : la barre de choix n'apparaît qu'à partir de deux. */
   clubs: MonClub[];
   evenements: Evenement[];
@@ -42,13 +45,17 @@ export function AccueilClub({
   panne: boolean;
   surRecharger: () => void;
   surChangerDeClub: (id: string) => void;
-  surOnglet: (cle: string) => void;
+  /** Ouvrir une destination par son chemin Club+ : natif quand on sait, web sinon. */
+  surOnglet: (chemin: string) => void;
   surWeb: (chemin: string) => void;
   surProfil: () => void;
 }) {
   const suivant = prochain(evenements);
   const resultats = derniersResultats(evenements, 2);
   const miennes = mesEquipes(club, equipes);
+  const cheminsDuRole = new Set([...nav.onglets, ...nav.menu.flatMap((g) => g.entrees)].map((e) => e.chemin));
+  const membresVisibles = cheminsDuRole.has("/users");
+  const prestationsOuvertes = cheminsDuRole.has("/services");
 
   return (
     <Ecran enCours={chargement} teinte="bleu" rafraichir={surRecharger}>
@@ -98,7 +105,7 @@ export function AccueilClub({
       <Section
         titre="Prochainement"
         action={
-          <Pressable onPress={() => surOnglet("calendar")} accessibilityRole="link" accessibilityLabel="Voir tout le calendrier" hitSlop={10}>
+          <Pressable onPress={() => surOnglet("/calendar")} accessibilityRole="link" accessibilityLabel="Voir tout le calendrier" hitSlop={10}>
             <Text style={s.lien}>Calendrier</Text>
           </Pressable>
         }
@@ -108,7 +115,7 @@ export function AccueilClub({
         ) : panne ? (
           <Probleme surReessayer={surRecharger} />
         ) : suivant ? (
-          <Prochain e={suivant} clubNom={club.nom} clubLogoUrl={club.logoUrl} onPress={() => surOnglet("calendar")} />
+          <Prochain e={suivant} clubNom={club.nom} clubLogoUrl={club.logoUrl} onPress={() => surOnglet("/calendar")} />
         ) : (
           <Vide
             titre="Rien de prévu pour l'instant"
@@ -117,13 +124,20 @@ export function AccueilClub({
         )}
       </Section>
 
-      <Raccourcis
-        elements={[
-          { icone: "albums", libelle: "Galeries", teinte: C.cyan, onPress: () => surWeb("/galeries") },
-          { icone: "create", libelle: "Demandes", teinte: C.accentClair, onPress: () => surWeb("/requests") },
-          { icone: "megaphone", libelle: "Communication", teinte: C.violet, onPress: () => surWeb("/communication") },
-        ]}
-      />
+      {/* LES RACCOURCIS SONT LES TROIS PREMIÈRES ENTRÉES DU MENU DE SON RÔLE (30/09/2026).
+          Avant, c'était Galeries / Demandes / Communication pour tout le monde — trois destinations
+          qu'un trésorier n'a pas dans son menu. Les prendre dans sa navigation, c'est la garantie
+          qu'un raccourci ne mène jamais là où son rôle n'a rien à faire. */}
+      {nav.raccourcis.length ? (
+        <Raccourcis
+          elements={nav.raccourcis.map((r, k) => ({
+            icone: r.icone as never,
+            libelle: r.libelle,
+            teinte: [C.cyan, C.accentClair, C.violet][k % 3],
+            onPress: () => surOnglet(r.chemin),
+          }))}
+        />
+      ) : null}
 
       {/* MES ÉQUIPES, ET C'EST LA PREMIÈRE CHOSE QU'UN COACH VIENT CHERCHER (30/09/2026).
           Fouka : « il faut que sur l'app le coach voie quelle catégorie il a, genre coach des U16,
@@ -141,7 +155,7 @@ export function AccueilClub({
         <Section
           titre="Mes équipes"
           action={
-            <Pressable onPress={() => surOnglet("teams")} accessibilityRole="link" accessibilityLabel="Voir toutes les équipes du club" hitSlop={10}>
+            <Pressable onPress={() => surOnglet("/teams")} accessibilityRole="link" accessibilityLabel="Voir toutes les équipes du club" hitSlop={10}>
               <Text style={s.lien}>Tout le club</Text>
             </Pressable>
           }
@@ -154,34 +168,40 @@ export function AccueilClub({
         </Section>
       ) : null}
 
-      {/* LE CLUB EN DEUX CHIFFRES. Deux, et pas six : un tableau de bord qui empile des compteurs
-          ne dit plus lequel regarder. Ceux-là mènent quelque part, ce qui les justifie. */}
-      <View style={s.chiffres}>
-        <Pressable
-          onPress={() => surOnglet("teams")}
-          accessibilityRole="button"
-          accessibilityLabel={`${equipes.length} équipes, voir la liste`}
-          style={({ pressed }) => [s.chiffre, pressed ? { opacity: 0.85 } : null]}
-        >
-          <Text style={s.chiffreValeur}>{equipes.length}</Text>
-          <Text style={s.chiffreLibelle}>{equipes.length > 1 ? "Équipes" : "Équipe"}</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => surWeb("/users")}
-          accessibilityRole="button"
-          accessibilityLabel={`${membres.length} coachs et dirigeants, ouvrir la liste`}
-          style={({ pressed }) => [s.chiffre, pressed ? { opacity: 0.85 } : null]}
-        >
-          <Text style={s.chiffreValeur}>{membres.length}</Text>
-          <Text style={s.chiffreLibelle}>Coachs & dirigeants</Text>
-        </Pressable>
-      </View>
+      {/* LE CLUB EN DEUX CHIFFRES, OU EN AUCUN (30/09/2026).
+          Ils ne s'affichent que pour un rôle qui a « Coachs & dirigeants » dans son menu, c'est-à-
+          dire qui administre le club. Vu sur le simulateur avec la session d'un coach : sans la
+          seconde tuile, « 26 Équipes » s'étalait seule sur toute la largeur, et ce chiffre ne lui
+          apprend rien — son équipe est juste au-dessus, nommée. Un compteur qui ne sert pas à
+          celui qui le lit vaut mieux absent que large. */}
+      {membresVisibles ? (
+        <View style={s.chiffres}>
+          <Pressable
+            onPress={() => surOnglet("/teams")}
+            accessibilityRole="button"
+            accessibilityLabel={`${equipes.length} équipes, voir la liste`}
+            style={({ pressed }) => [s.chiffre, pressed ? { opacity: 0.85 } : null]}
+          >
+            <Text style={s.chiffreValeur}>{equipes.length}</Text>
+            <Text style={s.chiffreLibelle}>{equipes.length > 1 ? "Équipes" : "Équipe"}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => surWeb("/users")}
+            accessibilityRole="button"
+            accessibilityLabel={`${membres.length} coachs et dirigeants, ouvrir la liste`}
+            style={({ pressed }) => [s.chiffre, pressed ? { opacity: 0.85 } : null]}
+          >
+            <Text style={s.chiffreValeur}>{membres.length}</Text>
+            <Text style={s.chiffreLibelle}>Coachs & dirigeants</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {resultats.length ? (
         <Section
           titre="Derniers résultats"
           action={
-            <Pressable onPress={() => surOnglet("calendar")} accessibilityRole="link" accessibilityLabel="Voir tous les résultats" hitSlop={10}>
+            <Pressable onPress={() => surOnglet("/calendar")} accessibilityRole="link" accessibilityLabel="Voir tous les résultats" hitSlop={10}>
               <Text style={s.lien}>Tout voir</Text>
             </Pressable>
           }
@@ -193,21 +213,24 @@ export function AccueilClub({
       ) : null}
 
       {/* LA PORTE VERS SPORTVISION, et elle est assumée : c'est le seul endroit de cet écran qui
-          parle d'argent et de prestations. L'enfouir dans le menu, c'est en faire une page que
-          personne n'ouvre. */}
-      <Pressable
-        onPress={() => surWeb("/services")}
-        accessibilityRole="button"
-        accessibilityLabel="Demander une prestation SportVision"
-        style={({ pressed }) => [s.carteAction, pressed ? { opacity: 0.88 } : null]}
-      >
-        <View style={s.rondAction}><Ionicons name="camera" size={19} color={C.cyan} /></View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={s.actionTitre}>Demander une prestation</Text>
-          <Text style={s.actionTexte}>Photo, vidéo, drone : réservez une captation pour un match.</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={C.texteFaible} />
-      </Pressable>
+          parle de prestations. L'enfouir dans le menu, c'est en faire une page que personne
+          n'ouvre. Elle disparaît pour un rôle qui n'a pas « Prestations » — un trésorier, un
+          responsable sponsors : chez eux, commander une captation n'est pas le sujet. */}
+      {prestationsOuvertes ? (
+        <Pressable
+          onPress={() => surWeb("/services")}
+          accessibilityRole="button"
+          accessibilityLabel="Demander une prestation SportVision"
+          style={({ pressed }) => [s.carteAction, pressed ? { opacity: 0.88 } : null]}
+        >
+          <View style={s.rondAction}><Ionicons name="camera" size={19} color={C.cyan} /></View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={s.actionTitre}>Demander une prestation</Text>
+            <Text style={s.actionTexte}>Photo, vidéo, drone : réservez une captation pour un match.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={C.texteFaible} />
+        </Pressable>
+      ) : null}
     </Ecran>
   );
 }

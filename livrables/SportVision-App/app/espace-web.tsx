@@ -37,7 +37,7 @@
 // n'auraient rien à montrer. Dans ce cas on sert Club+ dans la vue web, exactement comme avant :
 // c'est le comportement connu, qui marche. Un écran natif vide serait une régression déguisée en
 // modernisation.
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View,
 } from "react-native";
@@ -51,7 +51,7 @@ import {
 } from "../src/lib/connect";
 import { ADRESSES, oublierPorte, type Porte } from "../src/lib/espaces";
 import { useSession } from "../src/lib/session";
-import { MENU_CLUB, ONGLETS_CLUB, libelleDuChemin } from "../src/lib/sections-club";
+import { CHEMINS_NATIFS, libelleDuChemin, navigationDuClub } from "../src/lib/navigation-club";
 import {
   libelleRole, lireEquipes, lireMembres, lireMesClubs,
   type EquipeDuClub, type MembreDuClub, type MonClub,
@@ -68,9 +68,6 @@ const TITRES: Record<Exclude<Porte, "personnel">, string> = {
   club: "Espace club",
   sportvision: "Équipe de production",
 };
-
-/** Les trois onglets servis en natif. Le reste passe par la vue web. */
-const CLES_NATIVES = new Set(["dashboard", "calendar", "teams"]);
 
 export default function EspaceWeb() {
   const { porte } = useLocalSearchParams<{ porte?: string }>();
@@ -102,8 +99,8 @@ export default function EspaceWeb() {
   const cheminWebRef = useRef<string | null>(null);
   useEffect(() => { cheminWebRef.current = cheminWeb; }, [cheminWeb]);
 
-  /** L'onglet natif ouvert, parmi les trois. */
-  const [ongletNatif, setOngletNatif] = useState("dashboard");
+  /** L'écran natif ouvert, par son chemin Club+ : « /dashboard », « /calendar » ou « /teams ». */
+  const [ongletNatif, setOngletNatif] = useState("/dashboard");
 
   // == LES DONNÉES DU CLUB ====================================================================
   const mesClubs = useDonnees<MonClub[]>(
@@ -157,6 +154,21 @@ export default function EspaceWeb() {
    * Tant qu'on ne sait pas, on ne montre ni l'un ni l'autre : une roue sur le fond, et rien de plus.
    */
   const enAttenteDeClub = avecOnglets && !!session && !sessionEnCours && !clubsConnus;
+
+  /**
+   * LA NAVIGATION DE CETTE PERSONNE, ET PAS CELLE DE L'ADMINISTRATEUR (30/09/2026).
+   *
+   * Avant, tout le monde recevait les dix-neuf entrées du menu admin. Un coach y voyait Factures,
+   * Contrats, Paramètres, Sponsors, Invitations — que Club+ ne lui montre jamais — et il lui
+   * manquait Matchs & résultats, Notifications et Mon profil, qui sont dans le sien.
+   *
+   * Tant que le club n'a pas répondu, `club` est nul et la fonction rend le menu complet. Ce n'est
+   * jamais visible : l'écran affiche une roue tant que `clubsConnus` est faux.
+   */
+  const nav = useMemo(
+    () => navigationDuClub(club?.role ?? null, club?.equipes ?? []),
+    [club?.role, club?.equipes],
+  );
 
   const changerEspace = useCallback(async () => {
     await oublierPorte();
@@ -234,21 +246,30 @@ export default function EspaceWeb() {
     else preparer(c);
   }, [racine, source, preparer]);
 
-  /** Ouvrir un onglet : natif si on sait le faire, sinon la page du site. */
-  const allerOnglet = useCallback((cleOnglet: string) => {
-    const chemin = ONGLETS_CLUB.find((o) => o.cle === cleOnglet)?.chemin ?? "/dashboard";
-    if (natifPossible && CLES_NATIVES.has(cleOnglet)) {
+  /**
+   * Ouvrir une destination : en natif quand l'application sait la dessiner, sinon dans Club+.
+   *
+   * Un onglet de trésorier — « Factures », « Contrats » — passe donc par la vue web, et c'est
+   * exactement ce que Fouka a choisi le 30/09 : la barre du bas suit le rôle, même quand deux de
+   * ses trois entrées sont servies par le site.
+   */
+  const allerOnglet = useCallback((chemin: string) => {
+    if (natifPossible && CHEMINS_NATIFS.has(chemin)) {
       setMenuOuvert(false);
-      setOngletNatif(cleOnglet);
+      setOngletNatif(chemin);
       setCheminWeb(null);
       return;
     }
     allerWeb(chemin);
   }, [natifPossible, allerWeb]);
 
+  // L'onglet allumé. Sur le web, on prend le chemin le PLUS LONG qui corresponde : « /teams/12 »
+  // allume « Mon équipe », et pas « Accueil » au prétexte que les deux commencent par « / ».
   const ongletActif = afficheNatif
     ? ongletNatif
-    : ONGLETS_CLUB.find((o) => (cheminWeb ?? "").startsWith(o.chemin))?.cle;
+    : nav.onglets
+        .filter((o) => (cheminWeb ?? "").startsWith(o.chemin))
+        .sort((a, b) => b.chemin.length - a.chemin.length)[0]?.chemin;
 
   // == PAS DE SESSION ========================================================================
   if (sessionEnCours) {
@@ -312,7 +333,7 @@ export default function EspaceWeb() {
           </Pressable>
 
           <Text style={s.titre} numberOfLines={1}>
-            {avecOnglets ? libelleDuChemin(cheminWeb ?? "/dashboard") : TITRES[cle]}
+            {avecOnglets ? libelleDuChemin(nav, cheminWeb ?? "/dashboard") : TITRES[cle]}
           </Text>
 
           {/* La sortie de l'espace, présente DANS TOUS LES CAS (leçon du 30/09 : elle ne
@@ -330,7 +351,7 @@ export default function EspaceWeb() {
       {/* == LES ÉCRANS NATIFS ============================================================== */}
       {afficheNatif && club ? (
         <View style={{ flex: 1 }}>
-          {ongletNatif === "calendar" ? (
+          {ongletNatif === "/calendar" ? (
             <CalendrierClub
               club={club}
               evenements={evs.donnees ?? []}
@@ -339,9 +360,10 @@ export default function EspaceWeb() {
               surRecharger={rechargerClub}
               surWeb={allerWeb}
             />
-          ) : ongletNatif === "teams" ? (
+          ) : ongletNatif === "/teams" ? (
             <EquipesClub
               club={club}
+              titre={nav.onglets.find((o) => o.chemin === "/teams")?.libelle ?? "Équipes"}
               equipes={eqs.donnees ?? []}
               chargement={eqs.chargement}
               panne={!!eqs.erreur && eqs.donnees === undefined}
@@ -352,6 +374,7 @@ export default function EspaceWeb() {
             <AccueilClub
               club={club}
               clubs={clubs}
+              nav={nav}
               evenements={evs.donnees ?? []}
               equipes={eqs.donnees ?? []}
               membres={mbs.donnees ?? []}
@@ -413,19 +436,26 @@ export default function EspaceWeb() {
           coupent et l'onglet actif devient difficile à lire — même règle que l'espace personnel. */}
       {avecOnglets ? (
         <View style={[s.onglets, { paddingBottom: insets.bottom || E.s }]}>
-          {ONGLETS_CLUB.map((o) => {
-            const actif = ongletActif === o.cle;
+          {nav.onglets.map((o) => {
+            const actif = ongletActif === o.chemin;
             return (
               <Pressable
-                key={o.cle}
+                key={o.chemin}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: actif }}
                 accessibilityLabel={o.libelle}
-                onPress={() => allerOnglet(o.cle)}
+                onPress={() => allerOnglet(o.chemin)}
                 style={s.onglet}
               >
                 <Ionicons name={o.icone as never} size={21} color={actif ? C.accentClair : C.texteDoux} />
-                <Text style={[s.ongletTexte, actif ? { color: C.accentClair } : null]}>{o.libelle}</Text>
+                <Text
+                  style={[s.ongletTexte, actif ? { color: C.accentClair } : null]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.82}
+                >
+                  {o.court ?? o.libelle}
+                </Text>
               </Pressable>
             );
           })}
@@ -446,7 +476,7 @@ export default function EspaceWeb() {
         <View style={[s.feuille, { paddingBottom: insets.bottom + E.m }]}>
           <View style={s.poignee} />
           <ScrollView contentContainerStyle={{ paddingBottom: E.l }} showsVerticalScrollIndicator={false}>
-            {MENU_CLUB.map((groupe) => (
+            {nav.menu.map((groupe) => (
               <View key={groupe.titre} style={{ marginTop: E.m }}>
                 <Text style={s.groupeTitre}>{groupe.titre}</Text>
                 {groupe.entrees.map((e) => (
@@ -463,18 +493,24 @@ export default function EspaceWeb() {
                 ))}
               </View>
             ))}
-            <View style={{ marginTop: E.m }}>
-              <Text style={s.groupeTitre}>Mon compte</Text>
-              <Pressable
-                accessibilityRole="button" accessibilityLabel="Mon compte"
-                onPress={() => { setMenuOuvert(false); setProfilOuvert(true); }}
-                style={({ pressed }) => [s.ligne, pressed ? { backgroundColor: "rgba(255,255,255,.05)" } : null]}
-              >
-                <View style={s.rond}><Ionicons name="person-circle-outline" size={17} color={C.texteDoux} /></View>
-                <Text style={s.ligneTexte}>{club?.monPrenom || profil?.prenom || "Mon compte"}</Text>
-                <Ionicons name="chevron-forward" size={16} color={C.texteFaible} />
-              </Pressable>
-            </View>
+            {/* LA SORTIE DE L'ESPACE, ACCESSIBLE DE N'IMPORTE QUEL ONGLET (30/09/2026).
+                Une seule ligne, et pas un groupe « Mon compte » avec le prénom : vu sur le
+                simulateur avec la session d'un coach, le menu affichait « Mon profil » (le
+                formulaire de Club+) puis, juste en dessous, « Marc » — deux lignes qui ont l'air
+                de mener au même endroit alors qu'elles ne font pas la même chose.
+
+                Changer d'espace et se déconnecter restent DANS le profil, jamais ailleurs :
+                décision de Fouka le 29/09, « pour changer, il faut que tu ailles dans profil, se
+                déconnecter ». Cette ligne ouvre donc le profil, elle n'agit pas elle-même. */}
+            <Pressable
+              accessibilityRole="button" accessibilityLabel="Compte et déconnexion"
+              onPress={() => { setMenuOuvert(false); setProfilOuvert(true); }}
+              style={({ pressed }) => [s.ligne, { marginTop: E.l }, pressed ? { backgroundColor: "rgba(255,255,255,.05)" } : null]}
+            >
+              <View style={s.rond}><Ionicons name="log-out-outline" size={17} color={C.texteDoux} /></View>
+              <Text style={s.ligneTexte}>Compte et déconnexion</Text>
+              <Ionicons name="chevron-forward" size={16} color={C.texteFaible} />
+            </Pressable>
           </ScrollView>
         </View>
       </Modal>
@@ -562,7 +598,7 @@ const s = StyleSheet.create({
     backgroundColor: C.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.bordure,
   },
   onglet: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 4, minHeight: TOUCHE },
-  ongletTexte: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 11 },
+  ongletTexte: { alignSelf: "stretch", textAlign: "center", color: C.texteDoux, fontFamily: P.texteFort, fontSize: 11 },
   voile: { ...(StyleSheet.absoluteFill as object), backgroundColor: "rgba(0,0,0,.55)" },
   feuille: {
     position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "82%",
