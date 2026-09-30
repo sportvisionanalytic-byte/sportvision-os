@@ -1,19 +1,31 @@
 // INVITER UN JOUEUR OU UN PARENT (30/09/2026).
 //
-// == CE QUE LA BASE AUTORISE, ET QUI N'EST PAS CE QUE L'ON CROIT =============================
+// == CE QUE LA BASE AUTORISE, ET CE QUE J'AVAIS MAL LU ======================================
 //
-// Fouka : « que le coach puisse inviter ses joueurs, parents ». Mesuré avant d'écrire une ligne
-// d'interface, avec le jeton d'un vrai coach : `peut_operer_club` rend FALSE pour lui. Or c'est
-// exactement ce que l'edge function `clubplus-family-invite` exige — « une seule autorité, celle
-// de la base », dit son propre commentaire. Un coach ne peut donc PAS inviter aujourd'hui, et
-// aucun écran ne peut lui donner ce droit : il se décide en base, pas ici.
+// Fouka : « il faut qu'un coach puisse inviter uniquement ses joueurs et ses parents, mais
+// uniquement pour sa catégorie ».
 //
-// Club+ lui montre pourtant un bouton « Ajouter un joueur » actif (`canCreate` n'exclut que
-// `viewer` et `sponsor_manager`). C'est une promesse cassée, signalée à Fouka.
+// C'EST DÉJÀ LE CAS, ET J'AI DIT LE CONTRAIRE. J'avais mesuré `peut_operer_club` — faux pour un
+// coach — et lu l'en-tête de l'edge function, qui annonce « une seule autorité, celle de la base :
+// peut_operer_club ». J'en ai conclu qu'un coach ne pouvait pas inviter, je l'ai écrit dans le
+// code, dans un commit et à Fouka. En lisant le bloc d'autorisation EN ENTIER, il y a un repli
+// explicite juste en dessous : si `peut_operer_club` est faux, la fonction exige un `team_id` et
+// vérifie `is_team_educateur(team_id)`. Un coach peut donc inviter, pour ses équipes seulement —
+// exactement ce que Fouka demande.
 //
-// CET ÉCRAN NE MENT PAS. On demande le droit à la base AVANT de proposer quoi que ce soit, et la
-// carte d'équipe change de sous-titre en conséquence. Le jour où la décision est prise d'ouvrir
-// l'invitation aux coachs, elle se prendra par une migration, et cet écran s'ouvrira tout seul.
+// La leçon est la même que d'habitude, et elle se répète : un en-tête décrit une intention, le
+// corps décrit le comportement. J'ai cru l'en-tête.
+//
+// LE DROIT SE DEMANDE DONC PAR ÉQUIPE, PAS PAR CLUB :
+//   `peut_operer_club(club)`  — direction, président, délégation d'agence, super-accès CM ;
+//   OU `is_team_educateur(equipe)` — coach, responsable d'équipe, directeur sportif, et seulement
+//   pour une équipe présente dans son `club_members.teams`.
+//
+// POUR UN PARENT AUSSI, ON ENVOIE L'ÉQUIPE. Sans `team_id`, un coach reçoit « Vous ne pouvez
+// inviter que pour vos propres équipes : précisez laquelle ». Vérifié dans la fonction : sur le
+// chemin « parent », `teamId` ne sert QU'À l'autorisation — l'invitation est créée avec le
+// `player_id`, et l'e-mail part avec `teamId: null` écrit en dur. L'envoyer n'a donc aucun autre
+// effet, et c'est ce qui permet au coach d'inviter le parent d'un enfant de son équipe.
 //
 // ON N'APPELLE QUE L'EDGE FUNCTION, jamais les tables. Elle crée le compte (ou réutilise
 // l'existant) et la ligne `player_invitations` / `parent_invitations` ; c'est l'invité qui crée sa
@@ -23,11 +35,23 @@ import { ErreurChargement, refermerSiPerdue } from "./donnees";
 
 export type CibleInvitation = "joueur" | "parent";
 
-/** Le droit d'inviter, demandé à la base. En cas de doute, on dit non. */
-export async function peutInviter(clubId: string): Promise<boolean> {
+/**
+ * Le droit d'inviter DANS CETTE ÉQUIPE, demandé à la base. En cas de doute, on dit non.
+ *
+ * Les deux questions sont posées dans l'ordre de la fonction : d'abord le club, puis l'équipe.
+ * Recopier la règle ici, ce serait la voir diverger au premier changement.
+ */
+export async function peutOpererClub(clubId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc("peut_operer_club", { p_club_id: clubId });
-  if (error) return false;
-  return data === true;
+  return !error && data === true;
+}
+
+export async function peutInviterDansEquipe(clubId: string, equipeId: string): Promise<boolean> {
+  const club = await supabase.rpc("peut_operer_club", { p_club_id: clubId });
+  if (!club.error && club.data === true) return true;
+  const equipe = await supabase.rpc("is_team_educateur", { p_team_id: equipeId });
+  if (equipe.error) return false;
+  return equipe.data === true;
 }
 
 export interface JoueurDeLEquipe {
@@ -87,7 +111,9 @@ export async function inviter(d: DemandeInvitation): Promise<{ dejaInvitee: bool
       prenom: d.prenom.trim(),
       nom: d.nom.trim(),
       club_id: d.clubId,
-      team_id: d.cible === "joueur" ? d.equipeId ?? null : null,
+      // L'équipe part DANS LES DEUX CAS : sur le chemin « parent » elle ne sert qu'à
+      // l'autorisation d'un éducateur, et n'est écrite nulle part.
+      team_id: d.equipeId ?? null,
       date_naissance: d.cible === "joueur" ? d.dateNaissance || null : null,
       player_id: d.cible === "parent" ? d.joueurId ?? null : null,
     },

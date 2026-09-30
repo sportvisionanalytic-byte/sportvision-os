@@ -3,11 +3,11 @@
 // Quatrième et dernier des écrans choisis par Fouka. Il en a donné l'intention ainsi : « que le
 // coach puisse inviter ses joueurs, parents ».
 //
-// CE QUE LA BASE DIT AUJOURD'HUI, ET QU'IL FAUT DIRE AUSSI : un coach n'a PAS ce droit —
-// `peut_operer_club` rend faux pour lui, et c'est ce que l'edge function exige. L'écran demande
-// donc le droit AVANT de proposer le formulaire, et explique à qui s'adresser plutôt que de faire
-// échouer un envoi. Ouvrir l'invitation aux coachs est une décision de droits, elle se prend en
-// base ; le jour où elle est prise, cet écran s'ouvre tout seul.
+// LE DROIT SE DEMANDE PAR ÉQUIPE, ET LA BASE RÉPOND. `peut_operer_club(club)` pour la direction,
+// sinon `is_team_educateur(equipe)` pour un coach, un responsable d'équipe ou un directeur
+// sportif — et seulement pour une équipe de son `club_members.teams`. C'est exactement ce que
+// Fouka demande : « uniquement ses joueurs et ses parents, mais uniquement pour sa catégorie ».
+// L'écran pose la question AVANT de proposer le formulaire, plutôt que de faire échouer un envoi.
 //
 // DEUX INVITATIONS, DEUX FORMES. Un JOUEUR rejoint une équipe et on lui connaît une date de
 // naissance ; un PARENT suit un enfant, et sans cet enfant désigné aucun lien parent/enfant n'est
@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Bouton, Champ, Erreur } from "../Base";
 import {
-  inviter, lireEffectif, peutInviter,
+  inviter, lireEffectif, peutInviterDansEquipe,
   type CibleInvitation, type JoueurDeLEquipe,
 } from "../../lib/club-inviter";
 import { type EquipeDuClub } from "../../lib/club";
@@ -50,10 +50,9 @@ export function InviterFamille({
   const preparer = useCallback(async () => {
     setDroit(null); setSouci(null); setReussite(null);
     setPrenom(""); setNom(""); setEmail(""); setNaissance(""); setEnfant(null); setCible("joueur");
-    setDroit(await peutInviter(clubId));
-    if (equipe) {
-      try { setEffectif(await lireEffectif(equipe.id)); } catch { setEffectif([]); }
-    }
+    if (!equipe) { setDroit(false); return; }
+    setDroit(await peutInviterDansEquipe(clubId, equipe.id));
+    try { setEffectif(await lireEffectif(equipe.id)); } catch { setEffectif([]); }
   }, [clubId, equipe]);
 
   useEffect(() => { if (equipe) preparer(); }, [equipe, preparer]);
@@ -114,11 +113,11 @@ export function InviterFamille({
             <View style={s.avis}>
               <View style={s.rondAvis}><Ionicons name="lock-closed" size={18} color={C.alerteTexte} /></View>
               <View style={{ flex: 1, gap: E.xs }}>
-                <Text style={s.avisTitre}>Les invitations passent par la direction du club</Text>
+                <Text style={s.avisTitre}>Cette équipe n'est pas dans votre périmètre</Text>
                 <Text style={s.avisTexte}>
-                  Faire entrer un joueur ou un parent dans le club est réservé à son administrateur,
-                  à son président et à votre Community Manager SportVision. Demandez-leur : ils
-                  reçoivent le nom et l'adresse, l'invitation part dans la foulée.
+                  On invite dans les équipes dont on a la charge. Si celle-ci devrait être la
+                  vôtre, demandez à la direction du club de vous y rattacher — elle peut aussi
+                  envoyer l'invitation elle-même.
                 </Text>
               </View>
             </View>

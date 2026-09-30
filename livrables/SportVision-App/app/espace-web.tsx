@@ -65,7 +65,8 @@ import { ResultatMatch } from "../src/ui/club/ResultatMatch";
 import { MonProfil } from "../src/ui/club/MonProfil";
 import { GaleriesClub } from "../src/ui/club/GaleriesClub";
 import { InviterFamille } from "../src/ui/club/InviterFamille";
-import { peutInviter } from "../src/lib/club-inviter";
+import { AffiliationsClub } from "../src/ui/club/AffiliationsClub";
+import { peutOpererClub } from "../src/lib/club-inviter";
 import { lireMonProfil, type MonProfil as Profil } from "../src/lib/club-profil";
 import { C, E, R, TOUCHE } from "../src/theme/couleurs";
 import { P } from "../src/theme/polices";
@@ -159,18 +160,26 @@ export default function EspaceWeb() {
   const monPrenom = (moi.donnees?.prenom || club?.monPrenom || "").trim();
 
   /**
-   * Le droit d'inviter, demandé à la base une fois par club.
+   * QUI PEUT INVITER, ET DANS QUELLE ÉQUIPE (corrigé le 30/09/2026).
    *
-   * On ne le devine pas depuis le rôle : `peut_operer_club` couvre l'administrateur, le président,
-   * la délégation d'agence et le super-accès CM, et c'est cette fonction-là que l'edge function
-   * d'invitation exige. Tant qu'elle n'a pas répondu, aucun bouton d'invitation n'est proposé.
+   * J'avais bâti ce droit sur `peut_operer_club` seul, après avoir lu l'en-tête de l'edge function
+   * d'invitation et pas son bloc d'autorisation complet. Résultat : le bouton était CACHÉ à tout
+   * coach, alors que la fonction l'autorise sur ses propres équipes — l'inverse exact de ce que
+   * Fouka demande.
+   *
+   * Le droit est donc PAR ÉQUIPE : la direction peut partout, un éducateur sur les siennes. Le
+   * bouton s'affiche quand l'une ou l'autre condition est plausible, et la feuille repose la
+   * question à la base avant d'ouvrir le formulaire — c'est elle qui tranche.
    */
   const droit = useDonnees<boolean>(
-    club ? `club:peut-inviter:${club.id}` : null,
-    () => peutInviter(club!.id),
+    club ? `club:peut-operer:${club.id}` : null,
+    () => peutOpererClub(club!.id),
     [club?.id],
   );
-  const peutInviterIci = droit.donnees === true;
+  /** Ses équipes au sens de `is_team_educateur` : celles de son périmètre. */
+  const siennes = new Set((club?.equipes ?? []).map((n) => n.trim().toLowerCase()));
+  const peutInviterDans = (e: EquipeDuClub) =>
+    droit.donnees === true || siennes.has(e.nom.trim().toLowerCase());
 
   const rechargerClub = useCallback(() => {
     mesClubs.relire(); evs.relire(); eqs.relire(); mbs.relire(); moi.relire();
@@ -307,7 +316,9 @@ export default function EspaceWeb() {
   const allerWeb = useCallback((c: string) => {
     setMenuOuvert(false);
     if (c === "/settings/profile") { setProfilEdition(true); return; }
-    if (natifPossible && c === "/galeries") { setCheminWeb(null); setSectionNative("/galeries"); return; }
+    if (natifPossible && (c === "/galeries" || c === "/team-requests")) {
+      setCheminWeb(null); setSectionNative(c); return;
+    }
     ouvrirDansClubPlus(c);
   }, [natifPossible, ouvrirDansClubPlus]);
 
@@ -424,6 +435,10 @@ export default function EspaceWeb() {
         <View style={{ flex: 1 }}>
           <GaleriesClub clubId={club.id} clubNom={club.nom} perimetre={club.equipes} surWeb={ouvrirDansClubPlus} />
         </View>
+      ) : sectionNative === "/team-requests" && club ? (
+        <View style={{ flex: 1 }}>
+          <AffiliationsClub clubId={club.id} perimetre={club.equipes} />
+        </View>
       ) : null}
 
       {/* == LES ÉCRANS NATIFS ============================================================== */}
@@ -443,7 +458,8 @@ export default function EspaceWeb() {
             <EquipesClub
               club={club}
               titre={nav.onglets.find((o) => o.chemin === "/teams")?.libelle ?? "Équipes"}
-              surInviter={peutInviterIci ? setEquipeAInviter : undefined}
+              surInviter={setEquipeAInviter}
+              inviteAutorisee={peutInviterDans}
               equipes={eqs.donnees ?? []}
               chargement={eqs.chargement}
               panne={!!eqs.erreur && eqs.donnees === undefined}
@@ -466,7 +482,8 @@ export default function EspaceWeb() {
               surOnglet={allerOnglet}
               surWeb={allerWeb}
               surProfil={() => setProfilOuvert(true)}
-              surInviter={peutInviterIci ? setEquipeAInviter : undefined}
+              surInviter={setEquipeAInviter}
+              inviteAutorisee={peutInviterDans}
             />
           )}
         </View>

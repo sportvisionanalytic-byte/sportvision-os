@@ -38,7 +38,7 @@ import { P } from "../../theme/polices";
 const SEUIL_RECHERCHE = 8;
 
 export function EquipesClub({
-  club, titre, equipes, chargement, panne, surRecharger, surWeb, surInviter,
+  club, titre, equipes, chargement, panne, surRecharger, surWeb, surInviter, inviteAutorisee,
 }: {
   club: MonClub;
   /**
@@ -56,6 +56,8 @@ export function EquipesClub({
   surWeb: (chemin: string) => void;
   /** Inviter dans une équipe, ou `undefined` si la base ne lui en donne pas le droit. */
   surInviter?: (e: EquipeDuClub) => void;
+  /** Le droit d'inviter dans CETTE équipe. Absent : on ne propose rien. */
+  inviteAutorisee?: (e: EquipeDuClub) => boolean;
 }) {
   const [recherche, setRecherche] = useState("");
 
@@ -142,7 +144,7 @@ export function EquipesClub({
               e={e}
               mienne={aUnPerimetre}
               onPress={() => surWeb(`/teams/${e.id}`)}
-              surInviter={surInviter ? () => surInviter(e) : undefined}
+              surInviter={surInviter && inviteAutorisee?.(e) ? () => surInviter(e) : undefined}
             />
           ))}
         </View>
