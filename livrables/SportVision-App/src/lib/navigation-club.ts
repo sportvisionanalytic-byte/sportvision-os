@@ -109,7 +109,16 @@ const i = (cle: string, libelle: string, chemin: string): Ligne => ({
   cle, libelle, chemin, icone: ICONES[chemin] ?? "ellipse-outline",
 });
 
-/** Club Full Communication : le menu de l'administrateur, du président et des dirigeants. */
+/**
+ * Club Full Communication : le menu de l'administrateur, du président et des dirigeants.
+ *
+ * SEPT ENTRÉES Y SONT REVENUES LE 30/09/2026, et c'est ce portage qui les a fait trouver. Fouka :
+ * « il faut que l'administrateur, lui, il voie tout, tout, tout, toutes les galeries, tous les
+ * trucs, mais bien classés. » Galeries, Matchs & résultats, Contrats, Aide, Studio,
+ * Accompagnement, Notifications et Mon profil existaient dans le menu d'AUTRES rôles — un coach
+ * pouvait ouvrir les galeries de son club, son président non. Le correctif est posé des deux
+ * côtés en même temps, ici et dans `navigation.ts` du site, et le test de dérive le vérifie.
+ */
 const CLUB: Ligne[] = [
   i("dashboard", "Accueil", "/dashboard"),
   t("Communication"),
@@ -118,10 +127,12 @@ const CLUB: Ligne[] = [
   i("publications", "Publications", "/publications"),
   i("newsroom", "Actualités", "/newsroom"),
   i("requests", "Demandes", "/requests"),
+  i("studio", "Studio", "/studio"),
   t("Production"),
   i("services", "Prestations", "/services"),
   i("presences", "Présences", "/presences"),
   i("content", "Contenus", "/content"),
+  i("galeries", "Galeries", "/galeries"),
   t("Performance"),
   i("analytics", "Statistiques", "/analytics"),
   i("reports", "Rapports", "/reports"),
@@ -129,16 +140,25 @@ const CLUB: Ligne[] = [
   i("calendar", "Calendrier", "/calendar"),
   i("teams", "Équipes", "/teams"),
   i("team-requests", "Affiliations", "/team-requests"),
+  i("matchcenter", "Matchs & résultats", "/matchcenter"),
   i("sponsors", "Sponsors", "/sponsors"),
   i("users", "Coachs & dirigeants", "/users"),
   i("invitations", "Invitations", "/invitations"),
   t("SportVision"),
   i("mycm", "Mon CM", "/mycm"),
+  i("accompagnement", "Accompagnement", "/accompagnement"),
   i("messages", "Messages", "/messages"),
   i("documents", "Documents", "/documents"),
+  i("support", "Aide", "/support"),
+  t("Gestion"),
   i("billing", "Factures", "/billing"),
-  i("settings", "Paramètres", "/settings"),
+  i("contracts", "Contrats", "/contracts"),
+  i("settings-club", "Paramètres", "/settings"),
+  t("Compte"),
+  i("notifications", "Notifications", "/notifications"),
+  i("settings", "Mon profil", "/settings/profile"),
 ];
+
 
 /** Coach : périmètre strict sur son ou ses équipes, saisie du résultat, zéro finance. */
 const COACH: Ligne[] = [

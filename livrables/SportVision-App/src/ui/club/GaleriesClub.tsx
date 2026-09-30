@@ -9,7 +9,7 @@
 // Club+ a supprimé son bouton « copier » le même jour, et Fouka l'a demandé — « il faut que ce lien
 // ne soit pas envoyable ». On affiche donc ce qui existe, jamais une adresse. La carte dit combien
 // de liens SportVision a confiés au club, pas comment les diffuser.
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,6 +35,8 @@ export function GaleriesClub({
   const [ouverte, setOuverte] = useState<GalerieClub | null>(null);
   /** Le total du club, pour dire combien le périmètre écarte. */
   const [totalClub, setTotalClub] = useState<number | null>(null);
+  /** L'équipe sur laquelle on filtre, ou `null` pour toutes. Sans objet quand on a un périmètre. */
+  const [equipe, setEquipe] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     setPanne(false);
@@ -49,6 +51,44 @@ export function GaleriesClub({
 
   const liste = galeries ?? [];
   const photos = liste.reduce((t, g) => t + g.nbPhotos, 0);
+
+  /**
+   * « TOUT, TOUT, TOUT, MAIS BIEN CLASSÉ » (Fouka, 30/09/2026).
+   *
+   * Une direction voit toutes les galeries du club — six aujourd'hui, une centaine sur une saison.
+   * Sans rangement, c'est un mur. Deux axes, et pas trois : l'ÉQUIPE pour filtrer, le MOIS pour
+   * parcourir. Ce sont exactement ceux du calendrier, et réutiliser la même grammaire vaut mieux
+   * que d'en inventer une seconde pour le même club.
+   *
+   * SANS ÉQUIPE EST UNE ÉQUIPE COMME UNE AUTRE dans ce filtre : cinq galeries sur six sont dans ce
+   * cas, et les noyer dans « Toutes » les rendrait introuvables.
+   */
+  const SANS = "__sans__";
+  const equipesPresentes = useMemo(() => {
+    const vues = new Set<string>();
+    for (const g of liste) vues.add(g.equipe ?? SANS);
+    return [...vues].sort((a, b) => {
+      if (a === SANS) return 1;
+      if (b === SANS) return -1;
+      return rangEquipe(a) - rangEquipe(b) || a.localeCompare(b, "fr");
+    });
+  }, [liste]);
+
+  const filtrees = useMemo(
+    () => (equipe ? liste.filter((g) => (g.equipe ?? SANS) === equipe) : liste),
+    [liste, equipe],
+  );
+
+  /** Les galeries par mois, la plus récente d'abord. Une galerie sans date ferme la marche. */
+  const parMois = useMemo(() => {
+    const groupes = new Map<string, GalerieClub[]>();
+    const triees = [...filtrees].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+    for (const g of triees) {
+      const cle = g.date ? g.date.slice(0, 7) : "";
+      (groupes.get(cle) ?? groupes.set(cle, []).get(cle)!).push(g);
+    }
+    return [...groupes.entries()];
+  }, [filtrees]);
 
   return (
     <>
@@ -72,47 +112,87 @@ export function GaleriesClub({
         ) : panne ? (
           <Probleme surReessayer={charger} />
         ) : liste.length ? (
-          <View style={{ gap: E.s }}>
-            {liste.map((g) => (
-              <Pressable
-                key={g.id}
-                onPress={() => setOuverte(g)}
-                accessibilityRole="button"
-                accessibilityLabel={`${g.titre}, ${g.nbPhotos} photos`}
-                style={({ pressed }) => [s.carte, pressed ? { opacity: 0.85 } : null]}
-              >
-                {g.couvertureUrl ? (
-                  <Image source={{ uri: g.couvertureUrl }} style={s.vignette} contentFit="cover" transition={160} />
-                ) : (
-                  <View style={[s.vignette, s.vignetteVide]}>
-                    <Ionicons name="images-outline" size={20} color={C.texteFaible} />
-                  </View>
-                )}
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={s.nom} numberOfLines={2}>{g.titre}</Text>
-                  {/* LE NOMBRE DE PHOTOS A SA PROPRE PASTILLE. Sur une seule ligne avec la date,
-                      « dimanche 27 septembre · 85 photos » se coupait à « 85 pho… » — le chiffre
-                      qu'on vient lire était précisément celui qui disparaissait. */}
-                  <View style={s.ligneDetail}>
-                    <Text style={s.detail} numberOfLines={1}>
-                      {/* L'équipe n'est répétée que pour qui en voit plusieurs : dans une liste
-                          bornée au périmètre, elle est la même sur toutes les lignes et ne fait
-                          que pousser la date hors de l'écran. */}
-                      {[g.date ? dateLongue(g.date) : null, perimetre.length ? null : g.equipe]
-                        .filter(Boolean).join(" · ")}
-                    </Text>
-                    <View style={s.compteur}>
-                      <Ionicons name="images" size={11} color={C.texteDoux} />
-                      <Text style={s.compteurTexte}>{g.nbPhotos}</Text>
-                    </View>
-                  </View>
-                  {/* Une galerie non publiée existe mais n'est visible de personne d'autre : le
-                      dire évite d'appeler SportVision pour demander pourquoi les familles ne la
-                      trouvent pas. */}
-                  {!g.publiee ? <Pastille ton="alerte" texte="Pas encore publiée" /> : null}
+          <View style={{ gap: E.l }}>
+            {/* Le filtre par équipe n'a de sens que pour qui en voit plusieurs : avec un périmètre,
+                toutes les lignes portent la même. */}
+            {!perimetre.length && equipesPresentes.length > 1 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: E.s, paddingRight: E.l }}>
+                <Pressable
+                  onPress={() => setEquipe(null)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: !equipe }}
+                  accessibilityLabel="Toutes les équipes"
+                  style={[s.puce, !equipe && s.puceActive]}
+                >
+                  <Text style={[s.puceTexte, !equipe && s.puceTexteActif]}>Toutes</Text>
+                </Pressable>
+                {equipesPresentes.map((nom) => {
+                  const actif = nom === equipe;
+                  return (
+                    <Pressable
+                      key={nom}
+                      onPress={() => setEquipe(actif ? null : nom)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: actif }}
+                      accessibilityLabel={nom === SANS ? "Galeries sans équipe" : `Galeries de ${nom}`}
+                      style={[s.puce, actif && s.puceActive]}
+                    >
+                      <Text style={[s.puceTexte, actif && s.puceTexteActif]}>
+                        {nom === SANS ? "Sans équipe" : nom}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            ) : null}
+
+            {parMois.map(([mois, dedans]) => (
+              <View key={mois || "sans-date"} style={{ gap: E.s }}>
+                <View style={s.enteteSection}>
+                  <Text style={s.libelleSection}>{mois ? libelleMois(mois) : "Sans date"}</Text>
+                  <Text style={s.compte}>{dedans.length}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={C.texteFaible} />
-              </Pressable>
+                {dedans.map((g) => (
+                  <Pressable
+                    key={g.id}
+                    onPress={() => setOuverte(g)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${g.titre}, ${g.nbPhotos} photos`}
+                    style={({ pressed }) => [s.carte, pressed ? { opacity: 0.85 } : null]}
+                  >
+                    {g.couvertureUrl ? (
+                      <Image source={{ uri: g.couvertureUrl }} style={s.vignette} contentFit="cover" transition={160} />
+                    ) : (
+                      <View style={[s.vignette, s.vignetteVide]}>
+                        <Ionicons name="images-outline" size={20} color={C.texteFaible} />
+                      </View>
+                    )}
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text style={s.nom} numberOfLines={2}>{g.titre}</Text>
+                      {/* LE NOMBRE DE PHOTOS A SA PROPRE PASTILLE. Sur une seule ligne avec la
+                          date, « dimanche 27 septembre · 85 photos » se coupait à « 85 pho… » —
+                          le chiffre qu'on vient lire était précisément celui qui disparaissait. */}
+                      <View style={s.ligneDetail}>
+                        <Text style={s.detail} numberOfLines={1}>
+                          {/* Le mois est déjà en en-tête : la ligne porte le jour, et l'équipe
+                              seulement quand la liste en mélange plusieurs. */}
+                          {[g.date ? dateLongue(g.date) : null, equipe || perimetre.length ? null : g.equipe]
+                            .filter(Boolean).join(" · ")}
+                        </Text>
+                        <View style={s.compteur}>
+                          <Ionicons name="images" size={11} color={C.texteDoux} />
+                          <Text style={s.compteurTexte}>{g.nbPhotos}</Text>
+                        </View>
+                      </View>
+                      {/* Une galerie non publiée existe mais n'est visible de personne d'autre :
+                          le dire évite d'appeler SportVision pour demander pourquoi les familles
+                          ne la trouvent pas. */}
+                      {!g.publiee ? <Pastille ton="alerte" texte="Pas encore publiée" /> : null}
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={C.texteFaible} />
+                  </Pressable>
+                ))}
+              </View>
             ))}
           </View>
         ) : (
@@ -240,6 +320,19 @@ function GrilleGalerie({ galerie, surFermer }: { galerie: GalerieClub | null; su
   );
 }
 
+const MOIS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
+/** « 2026-09 » devient « Septembre 2026 ». */
+function libelleMois(cle: string): string {
+  return `${MOIS[Number(cle.slice(5, 7)) - 1] ?? ""} ${cle.slice(0, 4)}`.trim();
+}
+
+/** L'ordre d'un club : les jeunes par âge croissant, les séniors après. Même règle qu'ailleurs. */
+function rangEquipe(nom: string): number {
+  const age = nom.match(/\bU\s?(\d{1,2})\b/i);
+  return age ? Number(age[1]) : 100;
+}
+
 const s = StyleSheet.create({
   titre: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
   sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
@@ -275,6 +368,16 @@ const s = StyleSheet.create({
   barreTitre: { color: C.texte, fontFamily: P.titreFort, fontSize: 16 },
   barreSous: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5 },
   grille: { flexDirection: "row", flexWrap: "wrap", gap: E.xs },
+  enteteSection: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: E.s },
+  libelleSection: { color: C.texte, fontFamily: P.titre, fontSize: 15, textTransform: "uppercase", letterSpacing: 0.9 },
+  compte: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5 },
+  puce: {
+    paddingHorizontal: E.m, height: TOUCHE - 6, borderRadius: R.pill, justifyContent: "center",
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
+  },
+  puceActive: { backgroundColor: "rgba(36,84,255,.20)", borderColor: "rgba(36,84,255,.55)" },
+  puceTexte: { color: C.texteDoux, fontFamily: P.texteMoyen, fontSize: 13 },
+  puceTexteActif: { color: C.texte, fontFamily: P.texteFort },
   note: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5, lineHeight: 18 },
   fin: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5, textAlign: "center", paddingTop: E.m },
   reessayer: {

@@ -57,6 +57,40 @@ const NAV_CLUB_PLUS: NavEntry[] = [
 ];
 
 // Club Full Communication.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// CE QUI MANQUAIT AU MENU DE L'ADMINISTRATEUR, ET QUI Y REVIENT (30/09/2026)
+//
+// Fouka : « il faut que l'administrateur, lui, il voie tout. Il voit tout, tout, tout, toutes les
+// galeries, tous les trucs, mais bien classés. »
+//
+// Trouvé en portant cette table dans l'application mobile, role par role : SEPT entrées que
+// d'autres rôles ont et que l'administrateur n'avait pas. Chacune mène à une page qui existe, dont
+// le module est dans READY_MODULES, et que canAccess ouvre à un club :
+//
+//   · GALERIES        — le coach, le CM du club et le CM SportVision l'ont. Pas le président, qui
+//                       n'avait donc aucun moyen d'ouvrir les galeries de SON club.
+//   · MATCHS & RÉSULTATS — même chose : c'est lui qui arbitre les scores litigieux, et l'écran ne
+//                       lui était atteignable qu'en tapant l'URL.
+//   · CONTRATS        — le trésorier l'a. Le président signe les contrats.
+//   · AIDE            — présente dans NAV_CLUB_PLUS, jamais portée ici.
+//   · STUDIO          — idem. 47 modèles, une vraie page, atteignable par personne.
+//   · ACCOMPAGNEMENT  — idem.
+//   · NOTIFICATIONS et MON PROFIL — le coach a les deux depuis le 12/09 (« il recevait des
+//                       notifications sans aucune entrée pour les lire »). L'administrateur en
+//                       reçoit davantage.
+//
+// C'est le quatrième épisode du même défaut, après « Membres & accès » (23/08), « Actualités et
+// Demandes » (12/09) et « Calendrier » (14/09) : cette table a été écrite pour un club Full
+// Communication accompagné, et chaque fois qu'un rôle gagnait une page, elle n'était pas reportée
+// ici. Depuis le 21/09, TOUS les clubs sont en Full Communication — cette table est donc le menu
+// de tous les présidents et de tous les administrateurs de SportVision, et NAV_CLUB_PLUS n'est
+// plus atteignable par personne.
+//
+// « BIEN CLASSÉS » : les groupes disent ce qu'on y fait. Communication (ce qu'on publie),
+// Production (ce que SportVision fabrique), Performance (ce qu'on mesure), Club (qui joue et
+// quand), SportVision (la relation), Gestion (l'argent et les réglages), Compte (soi). L'argent
+// est ensemble, le compte est à la fin, et aucune entrée n'apparaît deux fois.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
 const NAV_CLUB_FULLCOM: NavEntry[] = [
   item("dashboard", "Accueil", "dashboard"),
   section("Communication"),
@@ -69,10 +103,15 @@ const NAV_CLUB_FULLCOM: NavEntry[] = [
   // y arriver qu'en tapant l'URL, alors que son coach et sa secrétaire, eux, avaient l'entrée.
   item("newsroom", "Actualités", "newsroom"),
   item("visual_requests" as ModuleKey, "Demandes", "requests"),
+  // "Studio" (30/09/2026) : voir le bloc « CE QUI MANQUAIT » en tête de cette table.
+  item("studio", "Studio", "studio"),
   section("Production"),
   item("services", "Prestations", "services"),
   item("presences", "Présences", "presences"),
   item("content", "Contenus", "content"),
+  // Même clé de module que Contenus : les galeries de production (SportVision-TV) sont un autre
+  // format de contenu du même club, pas un droit distinct à provisionner à part.
+  item("content", "Galeries", "galeries"),
   section("Performance"),
   item("analytics", "Statistiques", "analytics"),
   item("reports", "Rapports", "reports"),
@@ -86,6 +125,7 @@ const NAV_CLUB_FULLCOM: NavEntry[] = [
   item("calendar", "Calendrier", "calendar"),
   item("teams", "Équipes", "teams"),
   item("teams", "Affiliations", "team-requests"),
+  item("matchcenter", "Matchs & résultats", "matchcenter"),
   item("sponsors", "Sponsors", "sponsors"),
   // "Membres & accès" (23/08/2026, retour Fouka) : absente de NAV_CLUB_FULLCOM alors que
   // NAV_CLUB_PLUS et NAV_ACADEMY_FULLCOM l'ont toutes les deux — un club Full Communication
@@ -95,11 +135,19 @@ const NAV_CLUB_FULLCOM: NavEntry[] = [
   item("users", "Invitations", "invitations"),
   section("SportVision"),
   item("mycm", "Mon CM", "mycm"),
+  item("accompagnement", "Accompagnement", "accompagnement"),
   item("messages", "Messages", "messages"),
   item("documents", "Documents", "documents"),
+  item("support", "Aide", "support"),
+  section("Gestion"),
   item("billing", "Factures", "billing"),
+  item("contracts", "Contrats", "contracts"),
   item("settings", "Paramètres", "settings"),
+  section("Compte"),
+  item("dashboard", "Notifications", "notifications"),
+  item("settings", "Mon profil", "settings/profile"),
 ];
+
 
 // Coach Full Communication.
 const NAV_COACH_FULLCOM: NavEntry[] = [
