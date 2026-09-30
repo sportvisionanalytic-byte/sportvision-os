@@ -1,25 +1,25 @@
 {
   "expo": {
-    "name": "SportVision OS",
+    "name": "SV OS bêta",
     "slug": "sportvision-os",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "sportvisionos",
+    "scheme": "sportvisionosbeta",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#070B18",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "fr.sportvision.os",
+      "bundleIdentifier": "fr.sportvision.os.beta",
       "buildNumber": "1",
       "infoPlist": {
-        "CFBundleDisplayName": "SportVision OS",
+        "CFBundleDisplayName": "SV OS bêta",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "fr.sportvision.os",
+      "package": "fr.sportvision.os.beta",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#070B18",
@@ -49,6 +49,7 @@
       "typedRoutes": true
     },
     "owner": "sportvision-an",
+    "_note_bundle": "fr.sportvision.os.beta, et PAS fr.sportvision.os (30/09/2026). L'OS finira en Custom App via Apple Business Manager : c'est la seule façon de distribuer durablement un outil interne à 18 personnes, TestFlight expirant tous les 90 jours. Or le mode de distribution se choisit À LA CRÉATION de la fiche App Store Connect et ne se change jamais. Créer aujourd'hui une fiche TestFlight ordinaire sur fr.sportvision.os brûlerait cet identifiant pour toujours. Vérifié le 30/09 auprès d'App Store Connect : aucun des deux identifiants n'est encore enregistré, rien n'est perdu. La bêta part donc sur un identifiant jetable, fr.sportvision.os reste intact pour la Custom App. Coût du choix : une réinstallation le jour de la bascule, et les sessions ne suivent pas (le trousseau est propre à l'identifiant). Le nom affiché et le schéma d'URL sont distincts pour que les deux applications puissent coexister sur un même téléphone pendant la transition.",
     "_note_extra": "supabaseUrl et supabaseCle ont été RETIRÉS d'ici le 30/09/2026. Ils vivaient à la fois ici et dans src/lib/config.ts : deux sources pour une même valeur finissent par diverger, et celle-ci n'arrivait déjà plus à l'application (Constants.expoConfig était vide, l'application s'arrêtait au lancement sans .env). La seule source est désormais src/lib/config.ts, que l'environnement peut surcharger.",
     "extra": {
       "router": {}
