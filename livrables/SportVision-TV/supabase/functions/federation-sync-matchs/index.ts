@@ -54,6 +54,95 @@ const corsHeaders = {
 // que la saison démarre au 1er juillet en base et que ce n'est pas la question posée.
 const DEBUT_COMPETITION = "2026-09-01";
 
+const BUCKET_ECUSSONS = "federation-logos";
+
+/**
+ * L'ECUSSON D'UN NOUVEL ADVERSAIRE, RAMENE AU PASSAGE (30/09/2026).
+ *
+ * LE DEFAUT. Cette synchronisation enregistre `opponent_club_slug` sur chaque match, et l'ecusson
+ * est « resolu a l'affichage » depuis `federation_clubs`. Mais elle ne remplit JAMAIS cet annuaire :
+ * il est peuple a la main, par `importer-ecussons-federaux.py`, quand on charge une saison. Un
+ * adversaire qui apparait en cours de saison n'a donc jamais d'ecusson — et deux matchs voisins
+ * s'affichent differemment sans que personne comprenne pourquoi.
+ *
+ * Mesure du 30/09 : « arnouville-f-as », rencontre une fois, sans ecusson chez nous. Or l'API donne
+ * son `logo_filename` quand on le lui demande. On recevait la reponse et on la jetait.
+ *
+ * ON COPIE L'IMAGE, ON NE POINTE PAS DESSUS. C'est la regle posee par le script d'import : un
+ * visuel matchday publie doit continuer de s'afficher dans six mois, et pointer vers le stockage
+ * d'un tiers revient a accepter qu'il casse le jour ou celui-ci reorganise ses fichiers.
+ *
+ * BORNEE ET SANS CONSEQUENCE EN CAS D'ECHEC. Au plus huit clubs par passage — c'est un rattrapage,
+ * pas un import de masse — et toute erreur est avalee : un ecusson manquant ne doit jamais empecher
+ * un calendrier de se synchroniser.
+ */
+// Le type du client varie selon la facon dont il a ete cree ; on ne decrit ici que ce qu'on en
+// utilise, plutot que de recopier une signature qui bougera au prochain changement de version.
+// deno-lint-ignore no-explicit-any
+async function ramenerEcussons(admin: any, slugs: string[]): Promise<number> {
+  const aVoir = [...new Set(slugs.filter(Boolean))];
+  if (!aVoir.length) return 0;
+
+  const { data: connus } = await admin
+    .from("federation_clubs").select("slug").in("slug", aVoir).not("logo_url", "is", null);
+  const deja = new Set((connus ?? []).map((c: { slug: string }) => c.slug));
+  const manquants = aVoir.filter((s) => !deja.has(s)).slice(0, 8);
+
+  let ramenes = 0;
+  for (const slug of manquants) {
+    try {
+      const rep = await fetch(`${API}/${slug}`, { headers: { Accept: "application/json" } });
+      if (!rep.ok) continue;
+      const club = (await rep.json())?.club;
+      const source = club?.logo_filename;
+      if (!source) continue;
+
+      const img = await fetch(source);
+      if (!img.ok) continue;
+      const octets = new Uint8Array(await img.arrayBuffer());
+      // On garde l'extension de l'origine : le navigateur doit savoir ce qu'il recoit.
+      const ext = (source.split("?")[0].match(/\.([a-z0-9]{2,4})$/i)?.[1] ?? "png").toLowerCase();
+      const chemin = `${slug}.${ext}`;
+      const envoi = await admin.storage.from(BUCKET_ECUSSONS)
+        .upload(chemin, octets, { contentType: img.headers.get("content-type") ?? "image/png", upsert: true });
+      if (envoi.error) continue;
+
+      const { data: publique } = admin.storage.from(BUCKET_ECUSSONS).getPublicUrl(chemin);
+      // Le client sans schema type infere `never[]` sur un upsert : on decrit la ligne a part.
+      const ligne: Record<string, unknown> = {
+        // « SPORTCORICO », EN MAJUSCULES : c'est la valeur des 34 583 fiches existantes et la
+        // valeur par defaut de la colonne. Ecrit en minuscules, l'upsert sur (source, slug) ne
+        // reconnait pas la fiche existante et en CREE UNE SECONDE — verifie, ca m'est arrive.
+        source: "SPORTCORICO",
+        slug,
+        // `recherche` EST OBLIGATOIRE, et je l'avais oubliee : premier essai refuse en 23502.
+        // C'est la forme comparable du nom — accents retires, tout ce qui n'est pas lettre ni
+        // chiffre supprime — celle que produit `norm()` dans importer-ecussons-federaux.py. Sans
+        // elle, la recherche d'un club par son nom ne retrouverait pas cette fiche.
+        recherche: slug.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase().replace(/[^a-z0-9]+/g, ""),
+        // `nom` ne s'ecrase pas : une fiche deja nommee a pu l'etre a la main, mieux que la source.
+        nom: club?.name ?? null,
+        logo_url: publique.publicUrl,
+        logo_source_url: source,
+      };
+      const { error: eEcriture } = await admin.from("federation_clubs")
+        .upsert(ligne as never, { onConflict: "source,slug", ignoreDuplicates: false });
+      // ON LE DIT QUAND CA RATE. Premiere version : l'erreur etait avalee, et l'ecriture echouait
+      // en silence sur une colonne obligatoire manquante — le fichier partait dans le seau, la
+      // fiche n'etait jamais ecrite, et rien ne l'aurait signale. Un `catch` muet transforme un
+      // defaut en mystere.
+      if (eEcriture) { console.error(`ecusson ${slug} : fiche non ecrite —`, eEcriture.message); continue; }
+      ramenes++;
+    } catch (e) {
+      // Un adversaire sans ecusson n'est pas une panne de synchronisation : on continue. Mais on
+      // laisse une trace, sinon personne ne saura jamais que ca n'a pas marche.
+      console.error(`ecusson ${slug} :`, String((e as Error)?.message ?? e).slice(0, 120));
+    }
+  }
+  return ramenes;
+}
+
 function json(corps: unknown, status = 200): Response {
   return new Response(JSON.stringify(corps), {
     status,
@@ -148,6 +237,9 @@ serve(async (req) => {
     // `scores` : combien de scores officiels recopies. C'est la seule ecriture nouvelle de cette
     // fonction, elle merite sa ligne au journal.
     let creees = 0, majs = 0, inchanges = 0, scores = 0, ignores = 0;
+    // Les adversaires croises pendant ce passage : on ira chercher l'ecusson de ceux qu'on ne
+    // connait pas encore. Un ensemble, parce qu'une equipe rencontre souvent le meme club deux fois.
+    const adversairesVus = new Set<string>();
     const erreurs: string[] = [];
     let statut = "success";
 
@@ -183,6 +275,8 @@ serve(async (req) => {
         const domicile = clubDomicile === slug;
         const adversaire = domicile ? m.outside_team_name : m.home_team_name;
         if (!adversaire) continue;
+        const adversaireSlug = (domicile ? m.outside_club_slug : m.home_club_slug) ?? null;
+        if (adversaireSlug) adversairesVus.add(adversaireSlug);
 
         const externalId = String(m.id);
         if (exclus.has(`${s.club_id}:${externalId}`)) {
@@ -233,7 +327,7 @@ serve(async (req) => {
           // L'identifiant du club adverse, d'ou l'ecusson est resolu a l'affichage. Sans lui, un
           // match cree par la synchro quotidienne n'aurait jamais d'ecusson, la ou ceux de
           // l'import de saison en ont un : deux matchs voisins, deux rendus differents.
-          opponent_club_slug: domicile ? m.outside_club_slug ?? null : m.home_club_slug ?? null,
+          opponent_club_slug: adversaireSlug,
           sport_status: m.postponed ? "postponed" : "scheduled",
           last_synced_at: new Date().toISOString(),
         };
@@ -377,6 +471,11 @@ serve(async (req) => {
       source_label: s.external_club_name ?? s.external_club_id,
     });
 
+    // LES ECUSSONS MANQUANTS, APRES LES MATCHS et jamais avant : si cette etape echoue, le
+    // calendrier a deja ete enregistre. Un ecusson est un confort, un calendrier est le service.
+    const ecussons = await ramenerEcussons(admin, [...adversairesVus])
+      .catch(() => 0);
+
     await admin.from("club_calendar_sources").update({
       last_sync_at: new Date().toISOString(),
       sync_status: statut === "success" ? "ok" : statut === "partial" ? "partial" : "error",
@@ -386,6 +485,7 @@ serve(async (req) => {
     rapport.push({
       club: s.external_club_name ?? s.external_club_id,
       statut, creees, majs, inchanges, scores, ignores, erreurs: erreurs.length,
+      ecussons,
     });
   }
 
