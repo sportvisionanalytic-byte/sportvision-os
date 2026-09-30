@@ -49,9 +49,8 @@
       "typedRoutes": true
     },
     "owner": "sportvision-an",
+    "_note_extra": "supabaseUrl et supabaseCle ont été RETIRÉS d'ici le 30/09/2026. Ils vivaient à la fois ici et dans src/lib/config.ts : deux sources pour une même valeur finissent par diverger, et celle-ci n'arrivait déjà plus à l'application (Constants.expoConfig était vide, l'application s'arrêtait au lancement sans .env). La seule source est désormais src/lib/config.ts, que l'environnement peut surcharger.",
     "extra": {
-      "supabaseUrl": "https://lulgezzpvrlbftbykzrc.supabase.co",
-      "supabaseCle": "sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4",
       "router": {}
     }
   }
