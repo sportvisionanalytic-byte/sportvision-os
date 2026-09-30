@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "SportVision OS",
+    "slug": "sportvision-os",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "sportvisionos",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#070B18",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "fr.sportvision.os",
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleDisplayName": "SportVision OS",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "fr.sportvision.os",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#070B18",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-image",
+      "expo-secure-store",
+      "expo-system-ui",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#070B18"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "owner": "sportvision-an",
+    "extra": {
+      "supabaseUrl": "https://lulgezzpvrlbftbykzrc.supabase.co",
+      "supabaseCle": "sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4",
+      "router": {}
+    }
+  }
+}
