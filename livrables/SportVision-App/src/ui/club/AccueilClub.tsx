@@ -23,7 +23,8 @@ import { CarteEvenement, Ecusson } from "../Cartes";
 import { Prochain } from "../Prochain";
 import { Raccourcis } from "../Raccourcis";
 import { derniersResultats, prochain, type Evenement } from "../../lib/donnees";
-import { libelleRole, type EquipeDuClub, type MembreDuClub, type MonClub } from "../../lib/club";
+import { CarteEquipe } from "./CarteEquipe";
+import { libelleRole, mesEquipes, type EquipeDuClub, type MembreDuClub, type MonClub } from "../../lib/club";
 import { C, E, R, TOUCHE } from "../../theme/couleurs";
 import { P } from "../../theme/polices";
 
@@ -47,6 +48,7 @@ export function AccueilClub({
 }) {
   const suivant = prochain(evenements);
   const resultats = derniersResultats(evenements, 2);
+  const miennes = mesEquipes(club, equipes);
 
   return (
     <Ecran enCours={chargement} teinte="bleu" rafraichir={surRecharger}>
@@ -122,6 +124,35 @@ export function AccueilClub({
           { icone: "megaphone", libelle: "Communication", teinte: C.violet, onPress: () => surWeb("/communication") },
         ]}
       />
+
+      {/* MES ÉQUIPES, ET C'EST LA PREMIÈRE CHOSE QU'UN COACH VIENT CHERCHER (30/09/2026).
+          Fouka : « il faut que sur l'app le coach voie quelle catégorie il a, genre coach des U16,
+          coach de ci, coach de ça ». Avant, il ouvrait l'application sur les vingt-six équipes du
+          club sans que rien ne désigne la sienne.
+
+          C'EST AUSSI LÀ QUE SES INVITATIONS VIVENT. Fouka, juste après : « que le coach puisse
+          inviter ses joueurs, parents ». Dans Club+, « Ajouter un joueur » est sur la fiche de
+          l'équipe, et un coach y a le droit — seuls `viewer` et `sponsor_manager` en sont exclus.
+          On l'écrit sur la carte plutôt que d'ajouter un second bouton qui mènerait au même endroit.
+
+          La section ne s'affiche pas pour qui n'a pas de périmètre : un président, un secrétaire
+          ont TOUT le club, et « Mes équipes : 26 » ne leur apprendrait rien. */}
+      {miennes.length ? (
+        <Section
+          titre="Mes équipes"
+          action={
+            <Pressable onPress={() => surOnglet("teams")} accessibilityRole="link" accessibilityLabel="Voir toutes les équipes du club" hitSlop={10}>
+              <Text style={s.lien}>Tout le club</Text>
+            </Pressable>
+          }
+        >
+          <View style={{ gap: E.s }}>
+            {miennes.map((e) => (
+              <CarteEquipe key={e.id} e={e} mienne onPress={() => surWeb(`/teams/${e.id}`)} />
+            ))}
+          </View>
+        </Section>
+      ) : null}
 
       {/* LE CLUB EN DEUX CHIFFRES. Deux, et pas six : un tableau de bord qui empile des compteurs
           ne dit plus lequel regarder. Ceux-là mènent quelque part, ce qui les justifie. */}

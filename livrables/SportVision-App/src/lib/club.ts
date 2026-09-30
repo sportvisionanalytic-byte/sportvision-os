@@ -252,3 +252,25 @@ export function libelleRole(role: string | null, fonction: string | null): strin
   // que « cette personne est du club ».
   return LIBELLES[cle] ?? "Membre du club";
 }
+
+/**
+ * LES ÉQUIPES DE LA PERSONNE, dans son club (30/09/2026).
+ *
+ * Fouka : « il faut que sur l'app le coach voie quelle catégorie il a, genre coach des U16, coach
+ * de ci, coach de ça, ou son rôle ». C'est juste, et ça manquait : un coach ouvrait l'application
+ * sur les vingt-six équipes du club sans que rien ne dise laquelle est la sienne.
+ *
+ * `club_members.teams` est un tableau JSON de NOMS d'équipes, pas d'identifiants — vérifié en base
+ * le 30/09 : les quatre membres qui ont un périmètre pointent tous vers un `club_teams.name` qui
+ * existe (« U16A », « U18 R3 », « Séniors R2 »…). On rapproche donc par le nom, et on ignore en
+ * silence un nom qui ne correspond plus : une équipe renommée ne doit pas faire disparaître l'écran.
+ *
+ * PÉRIMÈTRE VIDE = TOUT LE CLUB, et c'est la règle de Club+ (`club_members.teams` pilote
+ * `is_team_educateur`, v97). On rend donc une liste vide, et c'est à l'écran de dire « tout le
+ * club » plutôt que « aucune équipe ».
+ */
+export function mesEquipes(club: MonClub, equipes: EquipeDuClub[]): EquipeDuClub[] {
+  if (!club.equipes.length) return [];
+  const voulues = new Set(club.equipes.map((n) => n.trim().toLowerCase()));
+  return equipes.filter((e) => voulues.has(e.nom.trim().toLowerCase()));
+}

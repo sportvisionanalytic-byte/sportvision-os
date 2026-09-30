@@ -52,7 +52,10 @@ import {
 import { ADRESSES, oublierPorte, type Porte } from "../src/lib/espaces";
 import { useSession } from "../src/lib/session";
 import { MENU_CLUB, ONGLETS_CLUB, libelleDuChemin } from "../src/lib/sections-club";
-import { lireEquipes, lireMembres, lireMesClubs, type EquipeDuClub, type MembreDuClub, type MonClub } from "../src/lib/club";
+import {
+  libelleRole, lireEquipes, lireMembres, lireMesClubs,
+  type EquipeDuClub, type MembreDuClub, type MonClub,
+} from "../src/lib/club";
 import { lireEvenements, type Evenement } from "../src/lib/donnees";
 import { cleEvenements, useDonnees } from "../src/lib/cache";
 import { AccueilClub } from "../src/ui/club/AccueilClub";
@@ -143,6 +146,17 @@ export default function EspaceWeb() {
   const clubsConnus = mesClubs.donnees !== undefined || !!mesClubs.erreur;
   const natifPossible = avecOnglets && !!club;
   const afficheNatif = natifPossible && cheminWeb === null;
+  /**
+   * ON NE SAIT PAS ENCORE, ET ON NE FAIT PAS SEMBLANT (30/09/2026).
+   *
+   * Vu sur le simulateur avec une vraie session de coach : pendant la seconde où la liste des clubs
+   * arrive, l'écran affichait la barre du haut de la vue web — chevron, « Espace club », roue —
+   * puis elle disparaissait d'un coup quand l'accueil natif prenait la main. C'est-à-dire qu'on
+   * montrait exactement le site encadré que toute cette refonte enlève, à chaque ouverture.
+   *
+   * Tant qu'on ne sait pas, on ne montre ni l'un ni l'autre : une roue sur le fond, et rien de plus.
+   */
+  const enAttenteDeClub = avecOnglets && !!session && !sessionEnCours && !clubsConnus;
 
   const changerEspace = useCallback(async () => {
     await oublierPorte();
@@ -278,7 +292,7 @@ export default function EspaceWeb() {
       {/* LA BARRE DU HAUT N'EXISTE QUE POUR LE WEB. Les écrans natifs portent leur propre titre,
           comme dans l'espace personnel : un bandeau au-dessus d'un écran natif, c'est exactement
           l'empilement qui donnait l'impression d'un site encadré. */}
-      {!afficheNatif ? (
+      {!afficheNatif && !enAttenteDeClub ? (
         <View style={[s.barre, { paddingTop: insets.top + 6 }]}>
           {/* Le retour suit la page ; quand elle n'a plus d'historique, il ramène là d'où l'on vient
               — l'écran natif si on en a un, l'accueil du club sinon. Un bouton grisé n'est pas une
@@ -389,7 +403,9 @@ export default function EspaceWeb() {
         </View>
       ) : null}
 
-      {!afficheNatif && !charge && !panne ? (
+      {enAttenteDeClub ? (
+        <View style={[s.attente, { top: 0 }]} pointerEvents="none"><ActivityIndicator color={C.accent} /></View>
+      ) : !afficheNatif && !charge && !panne ? (
         <View style={s.attente} pointerEvents="none"><ActivityIndicator color={C.accent} /></View>
       ) : null}
 
@@ -469,10 +485,32 @@ export default function EspaceWeb() {
         <Pressable style={s.voile} onPress={() => setProfilOuvert(false)} accessibilityLabel="Fermer" />
         <View style={[s.feuille, { paddingBottom: insets.bottom + E.m }]}>
           <View style={s.poignee} />
+          {/* QUI JE SUIS, EN TROIS LIGNES. Fouka : « il faut que le coach voie son rôle ». Le rôle
+              était écrit nulle part, et le périmètre d'équipes non plus : un coach ne pouvait pas
+              vérifier sous quelle casquette le club l'a enregistré. */}
           <View style={{ gap: 3, paddingTop: E.s, paddingBottom: E.m }}>
             <Text style={s.grosTexte}>{club?.monPrenom || profil?.prenom || "Mon compte"}</Text>
-            <Text style={s.petitTexte}>{club?.nom || profil?.clubNom || TITRES[cle]}</Text>
+            <Text style={s.petitTexte}>
+              {club
+                ? [club.nom, libelleRole(club.role, club.fonction)].filter(Boolean).join(" · ")
+                : (profil?.clubNom || TITRES[cle])}
+            </Text>
+            {club?.equipes.length ? (
+              <Text style={s.petitTexte}>{club.equipes.join(" · ")}</Text>
+            ) : null}
           </View>
+          {/* Modifier son profil : photo, nom, téléphone, e-mail. La page existe dans Club+
+              (/settings/profile) et n'est fermée à personne ; la refaire ici, ce serait deux
+              formulaires pour un seul enregistrement. */}
+          <Pressable
+            accessibilityRole="button" accessibilityLabel="Modifier mon profil"
+            onPress={() => { setProfilOuvert(false); allerWeb("/settings/profile"); }}
+            style={({ pressed }) => [s.ligne, pressed ? { backgroundColor: "rgba(255,255,255,.05)" } : null]}
+          >
+            <View style={s.rond}><Ionicons name="person-outline" size={17} color={C.texteDoux} /></View>
+            <Text style={s.ligneTexte}>Modifier mon profil</Text>
+            <Ionicons name="chevron-forward" size={16} color={C.texteFaible} />
+          </Pressable>
           <Pressable
             accessibilityRole="button" accessibilityLabel="Changer d'espace"
             onPress={() => { setProfilOuvert(false); changerEspace(); }}
