@@ -1,0 +1,220 @@
+// L'ACCUEIL DE L'ESPACE CLUB, EN NATIF (30/09/2026).
+//
+// POURQUOI CET ÉCRAN EXISTE. Fouka, trois fois : « on dirait trop encore le site web collé sur
+// l'app, alors que par rapport à Connect, je veux la même fluidité, la même DA ». La cause était
+// structurelle, pas cosmétique : tous les écrans de Connect sont natifs et lisent la base
+// directement, là où Club+ était une page web dans un cadre. Aucune retouche de la coque ne
+// rattrape ça — il fallait des écrans.
+//
+// LA MÊME CHARTE, ET PAS UNE VARIANTE. Rien n'est redéfini ici : `Ecran`, `Section`, `Prochain`,
+// `Raccourcis`, `CarteEvenement`, `Ecusson`, et les jetons `C` / `E` / `R` / `P` sont ceux de
+// l'espace personnel, aux mêmes valeurs. C'est exactement ce que Fouka a demandé quand je lui ai
+// posé la question : « les couleurs, la typo, l'espacement ». Deux palettes proches mais pas
+// identiques, c'est précisément ce qui donne l'impression de deux applications recollées.
+//
+// LIRE ICI, MODIFIER DANS CLUB+. L'application affiche ; la création et la modification restent
+// dans Club+, qui porte les règles et les droits. Refaire ces règles ici, ce serait en entretenir
+// deux, et le jour où elles divergent personne ne sait laquelle fait foi.
+import React from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Ecran, Probleme, Section, Vide } from "../Ecran";
+import { CarteEvenement, Ecusson } from "../Cartes";
+import { Prochain } from "../Prochain";
+import { Raccourcis } from "../Raccourcis";
+import { derniersResultats, prochain, type Evenement } from "../../lib/donnees";
+import { libelleRole, type EquipeDuClub, type MembreDuClub, type MonClub } from "../../lib/club";
+import { C, E, R, TOUCHE } from "../../theme/couleurs";
+import { P } from "../../theme/polices";
+
+export function AccueilClub({
+  club, clubs, evenements, equipes, membres, chargement, panne,
+  surRecharger, surChangerDeClub, surOnglet, surWeb, surProfil,
+}: {
+  club: MonClub;
+  /** Tous les clubs de la personne : la barre de choix n'apparaît qu'à partir de deux. */
+  clubs: MonClub[];
+  evenements: Evenement[];
+  equipes: EquipeDuClub[];
+  membres: MembreDuClub[];
+  chargement: boolean;
+  panne: boolean;
+  surRecharger: () => void;
+  surChangerDeClub: (id: string) => void;
+  surOnglet: (cle: string) => void;
+  surWeb: (chemin: string) => void;
+  surProfil: () => void;
+}) {
+  const suivant = prochain(evenements);
+  const resultats = derniersResultats(evenements, 2);
+
+  return (
+    <Ecran enCours={chargement} teinte="bleu" rafraichir={surRecharger}>
+      <View style={s.entete}>
+        <Ecusson url={club.logoUrl} nom={club.nom} taille={48} />
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={s.bonjour} numberOfLines={1}>
+            {club.monPrenom ? `Bonjour ${club.monPrenom}` : "Espace club"}
+          </Text>
+          <Text style={s.sous} numberOfLines={1}>
+            {[club.nom, libelleRole(club.role, club.fonction)].filter(Boolean).join(" · ")}
+          </Text>
+        </View>
+        <Pressable
+          onPress={surProfil}
+          accessibilityRole="button"
+          accessibilityLabel="Mon compte"
+          hitSlop={8}
+          style={({ pressed }) => [s.rondBarre, pressed ? { opacity: 0.8 } : null]}
+        >
+          <Ionicons name="person-circle-outline" size={24} color={C.texteDoux} />
+        </Pressable>
+      </View>
+
+      {/* Une personne peut tenir un rôle dans deux clubs — un coach qui aide un club voisin, un CM
+          affilié. La barre ne s'affiche qu'alors : à un seul club, elle n'apprend rien. */}
+      {clubs.length > 1 ? (
+        <View style={s.choixClubs}>
+          {clubs.map((c) => {
+            const actif = c.id === club.id;
+            return (
+              <Pressable
+                key={c.id}
+                onPress={() => surChangerDeClub(c.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: actif }}
+                accessibilityLabel={`Travailler pour ${c.nom}`}
+                style={[s.puce, actif && s.puceActive]}
+              >
+                <Text style={[s.puceTexte, actif && s.puceTexteActif]} numberOfLines={1}>{c.nom}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      <Section
+        titre="Prochainement"
+        action={
+          <Pressable onPress={() => surOnglet("calendar")} accessibilityRole="link" accessibilityLabel="Voir tout le calendrier" hitSlop={10}>
+            <Text style={s.lien}>Calendrier</Text>
+          </Pressable>
+        }
+      >
+        {chargement && !evenements.length ? (
+          <View style={s.attente}><ActivityIndicator color={C.accent} /></View>
+        ) : panne ? (
+          <Probleme surReessayer={surRecharger} />
+        ) : suivant ? (
+          <Prochain e={suivant} clubNom={club.nom} clubLogoUrl={club.logoUrl} onPress={() => surOnglet("calendar")} />
+        ) : (
+          <Vide
+            titre="Rien de prévu pour l'instant"
+            texte="Les matchs et les entraînements apparaîtront ici dès qu'ils seront publiés dans Club+."
+          />
+        )}
+      </Section>
+
+      <Raccourcis
+        elements={[
+          { icone: "albums", libelle: "Galeries", teinte: C.cyan, onPress: () => surWeb("/galeries") },
+          { icone: "create", libelle: "Demandes", teinte: C.accentClair, onPress: () => surWeb("/requests") },
+          { icone: "megaphone", libelle: "Communication", teinte: C.violet, onPress: () => surWeb("/communication") },
+        ]}
+      />
+
+      {/* LE CLUB EN DEUX CHIFFRES. Deux, et pas six : un tableau de bord qui empile des compteurs
+          ne dit plus lequel regarder. Ceux-là mènent quelque part, ce qui les justifie. */}
+      <View style={s.chiffres}>
+        <Pressable
+          onPress={() => surOnglet("teams")}
+          accessibilityRole="button"
+          accessibilityLabel={`${equipes.length} équipes, voir la liste`}
+          style={({ pressed }) => [s.chiffre, pressed ? { opacity: 0.85 } : null]}
+        >
+          <Text style={s.chiffreValeur}>{equipes.length}</Text>
+          <Text style={s.chiffreLibelle}>{equipes.length > 1 ? "Équipes" : "Équipe"}</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => surWeb("/users")}
+          accessibilityRole="button"
+          accessibilityLabel={`${membres.length} coachs et dirigeants, ouvrir la liste`}
+          style={({ pressed }) => [s.chiffre, pressed ? { opacity: 0.85 } : null]}
+        >
+          <Text style={s.chiffreValeur}>{membres.length}</Text>
+          <Text style={s.chiffreLibelle}>Coachs & dirigeants</Text>
+        </Pressable>
+      </View>
+
+      {resultats.length ? (
+        <Section
+          titre="Derniers résultats"
+          action={
+            <Pressable onPress={() => surOnglet("calendar")} accessibilityRole="link" accessibilityLabel="Voir tous les résultats" hitSlop={10}>
+              <Text style={s.lien}>Tout voir</Text>
+            </Pressable>
+          }
+        >
+          <View style={{ gap: E.s }}>
+            {resultats.map((e) => <CarteEvenement key={e.id} e={e} ecussonClub={club.logoUrl} />)}
+          </View>
+        </Section>
+      ) : null}
+
+      {/* LA PORTE VERS SPORTVISION, et elle est assumée : c'est le seul endroit de cet écran qui
+          parle d'argent et de prestations. L'enfouir dans le menu, c'est en faire une page que
+          personne n'ouvre. */}
+      <Pressable
+        onPress={() => surWeb("/services")}
+        accessibilityRole="button"
+        accessibilityLabel="Demander une prestation SportVision"
+        style={({ pressed }) => [s.carteAction, pressed ? { opacity: 0.88 } : null]}
+      >
+        <View style={s.rondAction}><Ionicons name="camera" size={19} color={C.cyan} /></View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={s.actionTitre}>Demander une prestation</Text>
+          <Text style={s.actionTexte}>Photo, vidéo, drone : réservez une captation pour un match.</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={C.texteFaible} />
+      </Pressable>
+    </Ecran>
+  );
+}
+
+const s = StyleSheet.create({
+  entete: { flexDirection: "row", alignItems: "center", gap: E.m },
+  bonjour: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
+  rondBarre: { width: TOUCHE - 6, height: TOUCHE - 6, alignItems: "center", justifyContent: "center" },
+
+  choixClubs: { flexDirection: "row", flexWrap: "wrap", gap: E.s },
+  puce: {
+    paddingHorizontal: E.m, height: TOUCHE - 6, borderRadius: R.pill, justifyContent: "center",
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure, maxWidth: "100%",
+  },
+  puceActive: { backgroundColor: "rgba(36,84,255,.20)", borderColor: "rgba(36,84,255,.55)" },
+  puceTexte: { color: C.texteDoux, fontFamily: P.texteMoyen, fontSize: 13 },
+  puceTexteActif: { color: C.texte, fontFamily: P.texteFort },
+
+  lien: { color: C.accentClair, fontFamily: P.texteFort, fontSize: 13.5, minHeight: 20 },
+  attente: { paddingVertical: E.xl, alignItems: "center" },
+
+  chiffres: { flexDirection: "row", gap: E.s },
+  chiffre: {
+    flex: 1, gap: 2, padding: E.m, borderRadius: R.l,
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
+  },
+  chiffreValeur: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.8 },
+  chiffreLibelle: { color: C.texteDoux, fontFamily: P.texteMoyen, fontSize: 12.5 },
+
+  carteAction: {
+    flexDirection: "row", alignItems: "center", gap: E.m, padding: E.m,
+    borderRadius: R.l, backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
+  },
+  rondAction: {
+    width: 40, height: 40, borderRadius: R.m, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(0,199,255,.13)",
+  },
+  actionTitre: { color: C.texte, fontFamily: P.titreFort, fontSize: 15.5 },
+  actionTexte: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13, lineHeight: 18 },
+});

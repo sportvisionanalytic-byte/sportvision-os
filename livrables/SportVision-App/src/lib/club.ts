@@ -40,6 +40,14 @@ export interface MonClub {
   fonction: string | null;
   /** Les équipes sur lesquelles cette personne a un périmètre. Vide = tout le club. */
   equipes: string[];
+  /**
+   * Le prénom que LE CLUB a enregistré pour cette personne.
+   *
+   * Il vient d'ici et pas de `session.profil` : `chargerProfil` ne connaît que les joueurs et les
+   * parents, et rend `prenom: ""` pour un coach ou un président. L'accueil du club aurait donc
+   * affiché « Bonjour » suivi de rien.
+   */
+  monPrenom: string;
 }
 
 /**
@@ -60,7 +68,7 @@ export async function lireMesClubs(): Promise<MonClub[]> {
 
   const { data, error } = await supabase
     .from("club_members")
-    .select("role, fonction, teams, club_id, clubs(id, nom, ville, logo_url)")
+    .select("role, fonction, teams, prenom, club_id, clubs(id, nom, ville, logo_url)")
     .eq("user_id", uid)
     .eq("status", STATUT_ACTIF);
 
@@ -71,7 +79,8 @@ export async function lireMesClubs(): Promise<MonClub[]> {
 
   const liste: MonClub[] = [];
   for (const r of (data ?? []) as unknown as {
-    role: string | null; fonction: string | null; teams: string[] | null; club_id: string;
+    role: string | null; fonction: string | null; teams: string[] | null; prenom: string | null;
+    club_id: string;
     clubs: { id: string; nom: string | null; ville: string | null; logo_url: string | null } | null;
   }[]) {
     const c = r.clubs;
@@ -84,6 +93,7 @@ export async function lireMesClubs(): Promise<MonClub[]> {
       role: r.role ?? null,
       fonction: r.fonction ?? null,
       equipes: Array.isArray(r.teams) ? r.teams : [],
+      monPrenom: (r.prenom ?? "").trim(),
     });
   }
   return liste;
@@ -169,23 +179,76 @@ export async function lireMembres(clubId: string): Promise<MembreDuClub[]> {
 
   return (data ?? []).map((r) => ({
     id: String(r.id),
-    nom: `${r.prenom ?? ""} ${r.nom ?? ""}`.trim() || "Membre",
+    nom: nomComplet(r.prenom, r.nom),
     role: r.role ?? null,
     fonction: r.fonction ?? null,
   }));
 }
 
-/** Le libellé qu'on montre à la place du rôle technique de la base. */
+/**
+ * Le nom affichable d'un membre, SANS RÉPÉTER LE PRÉNOM (30/09/2026).
+ *
+ * `club_members.nom` devrait porter le nom de famille, et le porte presque toujours. Mesuré sur les
+ * cinq membres réels de RCP Fontainebleau : une ligne contient « David SEMBO » en face d'un prénom
+ * « David ». Le simple `prenom + " " + nom` donnait donc « David David SEMBO ».
+ *
+ * On ne corrige pas la donnée depuis ici — ce serait écrire dans le dos du club. On l'affiche
+ * proprement, et c'est tout.
+ */
+function nomComplet(prenom: string | null, nom: string | null): string {
+  const p = (prenom ?? "").trim();
+  const n = (nom ?? "").trim();
+  if (!n) return p || "Membre";
+  if (!p) return n;
+  // Le nom porte déjà le prénom : on garde le nom seul.
+  if (n.toLowerCase().startsWith(p.toLowerCase())) return n;
+  return `${p} ${n}`;
+}
+
+/**
+ * LE LIBELLÉ D'UN RÔLE, AVEC LES MOTS DE CLUB+ ET PAS D'AUTRES (corrigé le 30/09/2026).
+ *
+ * DEUX DÉFAUTS DANS MA PREMIÈRE VERSION, tous deux trouvés en lisant la contrainte de la table
+ * plutôt que mon propre code :
+ *
+ *   1. `fonction` N'EST PAS UN INTITULÉ LIBRE. La contrainte ne laisse passer que 'principal' ou
+ *      'adjoint' : c'est un qualificatif de coach (v124, décision de Fouka du 10/09 : « un libellé,
+ *      pas un rôle »). Je le rendais tel quel en priorité sur le rôle, donc un coach adjoint se
+ *      serait vu annoncer, en gros, sous le titre « adjoint ».
+ *
+ *   2. LA MOITIÉ DES RÔLES RÉELS MANQUAIT. J'avais écrit « communication », « tresorier »,
+ *      « owner » — des valeurs qui n'existent pas dans la contrainte — et j'avais oublié `comm`,
+ *      `membre_bureau`, `cm_externe`, `resp_equipe`, `directeur_sportif`, `administratif`,
+ *      `sponsor_mgr`, `lecture_seule`, qui, eux, existent. Deux des sept membres réels en base
+ *      (`comm` et `membre_bureau`) seraient donc tombés sur « Membre du club ».
+ *
+ * LES MOTS SONT CEUX DE CLUB+, repris de `ROLE_LABELS` et `CLUB_ROLE_MAP`. Une personne qui passe
+ * de l'ordinateur au téléphone doit lire le même titre au même endroit ; deux vocabulaires pour
+ * les mêmes rôles, c'est deux vérités.
+ */
+const LIBELLES: Record<string, string> = {
+  admin: "Administrateur du club",
+  president: "Président",
+  secretaire: "Secrétaire",
+  comm: "Community manager du club",
+  cm_externe: "Community manager externe",
+  coach: "Coach",
+  resp_equipe: "Responsable d'équipe",
+  directeur_sportif: "Directeur sportif",
+  administratif: "Administratif",
+  sponsor_mgr: "Responsable sponsors",
+  tresorier: "Trésorier",
+  membre_bureau: "Membre du bureau",
+  lecture_seule: "Lecture seule",
+};
+
 export function libelleRole(role: string | null, fonction: string | null): string {
-  const propre = (fonction ?? "").trim();
-  if (propre) return propre;
-  switch ((role ?? "").toLowerCase()) {
-    case "president": return "Président";
-    case "admin": case "owner": return "Direction du club";
-    case "coach": return "Coach";
-    case "communication": return "Communication";
-    case "secretaire": return "Secrétariat";
-    case "tresorier": return "Trésorerie";
-    default: return "Membre du club";
-  }
+  const cle = (role ?? "").toLowerCase();
+  // La règle exacte de Club+ (`TeamStaffCard`) : seul un coach adjoint change de libellé. Un coach
+  // principal reste « Coach » — ajouter « principal » laisserait croire à un grade supérieur là où
+  // il n'y en a pas.
+  if (cle === "coach" && fonction === "adjoint") return "Coach adjoint";
+  // Un rôle inconnu ne se traduit pas en droit : on dit ce qu'on sait, c'est-à-dire rien de plus
+  // que « cette personne est du club ».
+  return LIBELLES[cle] ?? "Membre du club";
 }

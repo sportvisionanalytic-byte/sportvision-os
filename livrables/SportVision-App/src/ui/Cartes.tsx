@@ -134,16 +134,24 @@ export function CarteEvenement({
         >
           {e.genre === "match" && e.adversaire ? e.adversaire : e.titre}
         </Text>
+        {/* L'HEURE DISPARAIT UNE FOIS LE MATCH JOUE (30/09/2026). Le coup d'envoi ne sert qu'avant :
+            apres, on vient lire le score. La garder coutait la fin de la ligne — « dimanche 27
+            septembre · 10… » sur le simulateur. */}
         <Text style={s.detail} numberOfLines={1}>
-          {[quand(e.date), heure].filter(Boolean).join(" · ")}
+          {[quand(e.date), e.score ? null : heure].filter(Boolean).join(" · ")}
         </Text>
         {e.lieu ? <Text style={s.detail} numberOfLines={1}>{e.lieu}</Text> : null}
         {e.genre === "match" && e.equipe ? <Text style={s.equipe}>{e.equipe}</Text> : null}
       </View>
 
-      {/* Les deux blasons, sur un match seulement. Petits : ils identifient, ils ne decorent pas,
-          et la ligne doit rester lisible sur un telephone tenu d'une main. */}
-      {e.genre === "match" ? (
+      {/* Les deux blasons, sur un match A VENIR seulement. Petits : ils identifient, ils ne
+          decorent pas, et la ligne doit rester lisible sur un telephone tenu d'une main.
+          ILS DISPARAISSENT DES QUE LE SCORE EST LA (30/09/2026). Constate sur le simulateur : avec
+          la pastille de date, les deux blasons ET le score, la colonne du milieu tombait a environ
+          150 points et affichait « dimanche 27 s… », « Stade Lucien B… ». Sur un match joue, on
+          vient lire le score, et l'adversaire est deja nomme en gras juste au-dessus : les blasons
+          n'ajoutent rien et coutent la lisibilite de la date et du lieu. */}
+      {e.genre === "match" && !e.score ? (
         <View style={s.affiche}>
           <Ecusson url={ecussonClub} nom={e.equipe} taille={26} />
           <Text style={s.contre}>{e.domicile === false ? "@" : "vs"}</Text>

@@ -1,22 +1,42 @@
-// L'espace club et l'espace production, avec une VRAIE coque native (29/09/2026).
+// L'ESPACE CLUB : TROIS ÉCRANS NATIFS, ET LE WEB POUR LE RESTE (30/09/2026).
 //
-// CE QUI CHANGEAIT TOUT POUR FOUKA. « J'ai l'impression que tu as juste foutu la page web dans
-// l'app, alors que je veux une vraie refonte comme Connect. » C'était exact : Club+ arrivait dans
-// un cadre nu — une barre, un titre, rien d'autre — et toute la navigation restait celle d'un site
-// vu dans une fenêtre. Ce qu'on touche pour se déplacer doit être natif ; c'est ça qui fait la
-// différence entre une application et un site encadré.
+// == CE QUI A CHANGÉ, ET POURQUOI =============================================================
 //
-// CE QUE CET ÉCRAN APPORTE
-//   - une barre d'onglets en bas, comme dans l'espace personnel : Accueil, Calendrier, Équipes ;
-//   - un menu NATIF pour tout le reste, rangé comme dans Club+, qui s'ouvre d'un geste ;
-//   - un profil NATIF, où l'on change d'espace et où l'on se déconnecte — plus de bouton
-//     « Changer » posé en haut à droite, que Fouka trouvait à juste titre inélégant ;
-//   - UNE SEULE vue web, dont on change l'adresse. Quatre vues superposées garderaient chacune sa
-//     session et son ferraillage en mémoire, sur un téléphone qui n'en a pas besoin.
+// Fouka, trois fois, la dernière en insistant : « on dirait trop encore le site web collé sur
+// l'app, alors que par rapport à Connect, je veux la même fluidité, la même DA. Il faut que ce soit
+// beau visuellement, bien propre, bien construit, bien calé. » Puis, quand je lui ai demandé ce qui
+// comptait : « les couleurs, la typo, l'espacement ».
 //
-// CE QUI RESTE SERVI PAR LE SITE : le contenu, et les droits. Une section ouverte sans
-// autorisation affiche son propre cadenas, décidé par Club+. L'application ne juge rien : elle
-// propose, et c'est le site qui tranche. Refaire cette règle ici, ce serait en entretenir deux.
+// LE 29/09, J'AI TRAITÉ ÇA COMME UN PROBLÈME DE COQUE : une barre d'onglets native, un menu natif,
+// un profil natif autour d'une vue web. C'était mieux, et ça n'a pas suffi — normal : ce qu'on
+// REGARDE restait une page web. La cause est structurelle, pas cosmétique. Tous les écrans de
+// Connect sont natifs et lisent la base directement ; Club+ arrivait dans une fenêtre. Aucune
+// retouche du cadre ne rattrape ça.
+//
+// DONC : les trois destinations quotidiennes — Accueil, Calendrier, Équipes, celles que Fouka a
+// choisies lui-même — sont maintenant des écrans natifs, écrits avec les MÊMES briques et les MÊMES
+// jetons que l'espace personnel (`Ecran`, `Section`, `Prochain`, `CarteEvenement`, `MoisGrille`,
+// `C` / `E` / `R` / `P`). Le reste — Communication, Galeries, Contrats, Factures, Paramètres — reste
+// servi par Club+ dans la vue web.
+//
+// == CE QU'ON NE REFAIT PAS ICI ===============================================================
+//
+// Les DROITS. Qui peut voir quoi, selon le plan, le type d'organisation et le rôle : ça reste dans
+// Club+ et dans les policies de la base. Les écrans natifs lisent les mêmes tables que le site avec
+// la session de la personne : c'est la RLS qui tranche, ici comme là-bas. Rien n'est réinterprété,
+// et une section web ouverte sans droit affiche son propre cadenas, décidé par le site.
+//
+// L'ÉCRITURE. On lit en natif, on modifie dans Club+. Chaque écran porte un lien explicite vers la
+// page qui permet de créer et de corriger. Refaire les formulaires ici, ce serait entretenir deux
+// versions de chaque règle métier, et le jour où elles divergent personne ne sait laquelle fait foi.
+//
+// == LE REPLI, ET IL COMPTE ===================================================================
+//
+// Un CM SportVision affilié n'a PAS forcément de ligne dans `club_members` : son périmètre passe par
+// `cm_clubs_autorises()`. `lireMesClubs()` lui rend donc une liste vide, et les écrans natifs
+// n'auraient rien à montrer. Dans ce cas on sert Club+ dans la vue web, exactement comme avant :
+// c'est le comportement connu, qui marche. Un écran natif vide serait une régression déguisée en
+// modernisation.
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View,
@@ -32,6 +52,12 @@ import {
 import { ADRESSES, oublierPorte, type Porte } from "../src/lib/espaces";
 import { useSession } from "../src/lib/session";
 import { MENU_CLUB, ONGLETS_CLUB, libelleDuChemin } from "../src/lib/sections-club";
+import { lireEquipes, lireMembres, lireMesClubs, type EquipeDuClub, type MembreDuClub, type MonClub } from "../src/lib/club";
+import { lireEvenements, type Evenement } from "../src/lib/donnees";
+import { cleEvenements, useDonnees } from "../src/lib/cache";
+import { AccueilClub } from "../src/ui/club/AccueilClub";
+import { CalendrierClub } from "../src/ui/club/CalendrierClub";
+import { EquipesClub } from "../src/ui/club/EquipesClub";
 import { C, E, R, TOUCHE } from "../src/theme/couleurs";
 import { P } from "../src/theme/polices";
 
@@ -40,12 +66,15 @@ const TITRES: Record<Exclude<Porte, "personnel">, string> = {
   sportvision: "Équipe de production",
 };
 
+/** Les trois onglets servis en natif. Le reste passe par la vue web. */
+const CLES_NATIVES = new Set(["dashboard", "calendar", "teams"]);
+
 export default function EspaceWeb() {
   const { porte } = useLocalSearchParams<{ porte?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const vue = useRef<PoigneeVueConnect>(null);
-  const { profil, deconnexion, chargement: sessionEnCours } = useSession();
+  const { session, profil, deconnexion, chargement: sessionEnCours } = useSession();
 
   const cle: Exclude<Porte, "personnel"> = porte === "sportvision" ? "sportvision" : "club";
   // La coque à onglets est celle de Club+. L'espace de production garde la vue simple : ses écrans
@@ -54,14 +83,66 @@ export default function EspaceWeb() {
   const racine = `${ADRESSES[cle]}/clubplus`;
 
   const [source, setSource] = useState<SourceConnect | null>(null);
-  const [sansSession, setSansSession] = useState(false);
   const [panne, setPanne] = useState(false);
   const [charge, setCharge] = useState(false);
   const [peutReculer, setPeutReculer] = useState(false);
-  /** Le chemin affiché, pour savoir quel onglet allumer et quoi écrire dans la barre. */
-  const [chemin, setChemin] = useState("/dashboard");
   const [menuOuvert, setMenuOuvert] = useState(false);
   const [profilOuvert, setProfilOuvert] = useState(false);
+
+  /**
+   * La section web affichée, ou `null` quand on est sur un écran natif.
+   *
+   * En ref AUSSI, parce que `surAdresse` est appelée par la vue web : elle doit savoir si le web est
+   * visible sans se recréer à chaque changement, sinon on repose un écouteur à chaque navigation.
+   */
+  const [cheminWeb, setCheminWeb] = useState<string | null>(null);
+  const cheminWebRef = useRef<string | null>(null);
+  useEffect(() => { cheminWebRef.current = cheminWeb; }, [cheminWeb]);
+
+  /** L'onglet natif ouvert, parmi les trois. */
+  const [ongletNatif, setOngletNatif] = useState("dashboard");
+
+  // == LES DONNÉES DU CLUB ====================================================================
+  const mesClubs = useDonnees<MonClub[]>(
+    session && avecOnglets ? "club:mes-clubs" : null,
+    lireMesClubs,
+    [session?.user?.id, avecOnglets],
+  );
+  const clubs = mesClubs.donnees ?? [];
+  const [clubChoisi, setClubChoisi] = useState<string | null>(null);
+  const club = clubs.find((c) => c.id === clubChoisi) ?? clubs[0] ?? null;
+
+  const evs = useDonnees<Evenement[]>(
+    club ? cleEvenements(false, club.id) : null,
+    () => lireEvenements(club!.id),
+    [club?.id],
+  );
+  const eqs = useDonnees<EquipeDuClub[]>(
+    club ? `club:equipes:${club.id}` : null,
+    () => lireEquipes(club!.id),
+    [club?.id],
+  );
+  const mbs = useDonnees<MembreDuClub[]>(
+    club ? `club:membres:${club.id}` : null,
+    () => lireMembres(club!.id),
+    [club?.id],
+  );
+
+  const rechargerClub = useCallback(() => {
+    mesClubs.relire(); evs.relire(); eqs.relire(); mbs.relire();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesClubs.relire, evs.relire, eqs.relire, mbs.relire]);
+
+  /**
+   * On sert du natif quand on a un club à montrer, et seulement là.
+   *
+   * Tant que la liste des clubs n'a pas répondu, on ne décide rien : ouvrir la vue web pour la
+   * refermer 150 ms plus tard ferait clignoter l'écran au lancement, et poserait la session de
+   * Club+ pour rien.
+   */
+  const clubsConnus = mesClubs.donnees !== undefined || !!mesClubs.erreur;
+  const natifPossible = avecOnglets && !!club;
+  const afficheNatif = natifPossible && cheminWeb === null;
 
   const changerEspace = useCallback(async () => {
     await oublierPorte();
@@ -72,33 +153,34 @@ export default function EspaceWeb() {
   // aller-retour au lieu de trois. On ne devine pas s'ils tiennent encore — si Club+ renvoie vers
   // sa page de connexion, on refait le pont (voir surAdresse). Le pire cas est l'ancien
   // comportement, jamais une impasse.
-  const preparer = useCallback(async (forcerLePont = false) => {
+  const preparer = useCallback(async (cheminVoulu: string, forcerLePont = false) => {
     setPanne(false); setCharge(false); setSource(null);
     if (!forcerLePont && cookiesClubPlusDisponibles()) {
-      setSansSession(false);
-      setSource(sourceClubPlusDirecte(chemin));
+      setSource(sourceClubPlusDirecte(cheminVoulu));
       return;
     }
-    const s = await sourceClubPlus();
-    if (!s) { setSansSession(true); return; }
-    setSansSession(false);
-    setSource(s);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const s = await sourceClubPlus(cheminVoulu);
+    if (s) setSource(s);
+    // Pas de source : c'est que la session n'est pas lisible. L'écran de reconnexion est piloté par
+    // `session`, plus par un état local — voir plus bas.
   }, []);
 
-  // ON ATTEND QUE LA SESSION SOIT LUE AVANT DE DÉCIDER QU'IL N'Y EN A PAS (29/09/2026).
-  //
-  // CE N'EST PAS LA CAUSE DU DÉFAUT DE FOUKA, et il faut le dire ici pour que personne ne croie
-  // l'avoir réglé en lisant cette ligne. J'ai d'abord accusé une course au démarrage ; c'était
-  // faux : app/index.tsx attend déjà `chargement` avant d'envoyer ici. Le vrai défaut était dans
-  // bienvenue.tsx, qui ouvrait l'espace club sans session et sans moyen d'en obtenir une.
-  //
-  // La garde reste, parce qu'elle est juste : cet écran vit à la racine, hors du groupe
-  // (app)/_layout.tsx qui, lui, attend `chargement`. Tout futur chemin qui mènerait ici sans
-  // passer par l'aiguillage afficherait « plus connecté » à quelqu'un de connecté, et
-  // DÉFINITIVEMENT — rien ne relance la préparation quand la session arrive une fraction de
-  // seconde plus tard. Une garde à l'endroit où la décision se prend, pas chez ceux qui appellent.
-  useEffect(() => { if (!sessionEnCours) preparer(); }, [preparer, sessionEnCours]);
+  /**
+   * ON N'OUVRE PLUS LA VUE WEB AU LANCEMENT (30/09/2026).
+   *
+   * Avant, `preparer()` partait au montage : la vue web était donc toujours créée, même pour
+   * quelqu'un qui n'allait consulter que son calendrier. On la crée maintenant au premier besoin
+   * réel. Le seul cas qui l'exige d'emblée : quand le natif n'a rien à montrer (espace de
+   * production, ou compte sans ligne `club_members`).
+   */
+  useEffect(() => {
+    if (sessionEnCours || !session) return;
+    if (avecOnglets && !clubsConnus) return;      // on attend de savoir
+    if (natifPossible) return;                     // le natif prend la main
+    if (source || cheminWeb !== null) return;      // déjà fait
+    setCheminWeb("/dashboard");
+    preparer("/dashboard");
+  }, [sessionEnCours, session, avecOnglets, clubsConnus, natifPossible, source, cheminWeb, preparer]);
 
   // CLUB+ RENVOIE VERS SA PAGE DE CONNEXION QUAND IL NE RECONNAÎT PLUS LA SESSION. Premier renvoi :
   // les cookies ont expiré, on refait le pont. Second : c'est une déconnexion voulue — on oublie
@@ -107,71 +189,71 @@ export default function EspaceWeb() {
   const dejaRefait = useRef(false);
   const surAdresse = useCallback((url: string) => {
     const apresRacine = url.startsWith(racine) ? url.slice(racine.length) : "";
-    if (apresRacine) setChemin(apresRacine.split("?")[0] || "/dashboard");
+    // On suit la navigation interne au site pour le titre de la barre — mais JAMAIS au point de
+    // ramener quelqu'un sur le web alors qu'il regarde un écran natif.
+    if (apresRacine) {
+      const propre = apresRacine.split("?")[0] || "/dashboard";
+      setCheminWeb((avant) => (avant === null ? null : propre));
+    }
     if (!url.includes("/auth/login") && !url.includes("/clubplus/login")) {
       // Une page de Club+ atteinte hors de /auth/ : les cookies sont posés, le raccourci vaut.
       if (url.startsWith(ADRESSES[cle]) && !url.includes("/auth/")) marquerCookiesClubPlusPoses();
       return;
     }
     oublierCookiesClubPlus();
-    if (dejaRefait.current) { changerEspace(); return; }
+    if (dejaRefait.current) {
+      // Deux renvois d'affilée : la session ne vaut plus rien côté site. On ne jette dehors que si
+      // la personne REGARDE le web. Sinon la vue est cachée derrière un écran natif parfaitement
+      // valide, et la sortir de là serait incompréhensible.
+      if (cheminWebRef.current !== null) changerEspace();
+      return;
+    }
     dejaRefait.current = true;
-    preparer(true);
-  }, [preparer, changerEspace, racine]);
+    preparer(cheminWebRef.current ?? "/dashboard", true);
+  }, [preparer, changerEspace, racine, cle]);
 
-  const aller = useCallback((c: string) => {
-    setChemin(c);
+  /** Ouvrir une section servie par le site. */
+  const allerWeb = useCallback((c: string) => {
     setMenuOuvert(false);
-    vue.current?.allerA(`${racine}${c}`);
-  }, [racine]);
+    setCheminWeb(c);
+    if (source) vue.current?.allerA(`${racine}${c}`);
+    else preparer(c);
+  }, [racine, source, preparer]);
 
-  const ongletActif = ONGLETS_CLUB.find((o) => chemin.startsWith(o.chemin))?.cle;
+  /** Ouvrir un onglet : natif si on sait le faire, sinon la page du site. */
+  const allerOnglet = useCallback((cleOnglet: string) => {
+    const chemin = ONGLETS_CLUB.find((o) => o.cle === cleOnglet)?.chemin ?? "/dashboard";
+    if (natifPossible && CLES_NATIVES.has(cleOnglet)) {
+      setMenuOuvert(false);
+      setOngletNatif(cleOnglet);
+      setCheminWeb(null);
+      return;
+    }
+    allerWeb(chemin);
+  }, [natifPossible, allerWeb]);
 
-  return (
-    <View style={{ flex: 1, backgroundColor: C.fond }}>
-      <View style={[s.barre, { paddingTop: insets.top + 6 }]}>
-        {/* LE RETOUR SUIT LA PAGE, PUIS RAMÈNE À L'ACCUEIL. Un bouton grisé n'est pas une sortie :
-            quand la page n'a plus d'historique, il ramène au tableau de bord du club. */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={peutReculer ? "Retour" : "Revenir à l'accueil du club"}
-          onPress={() => (peutReculer ? vue.current?.reculer() : aller("/dashboard"))}
-          hitSlop={10}
-          style={s.boutonBarre}
-        >
-          <Ionicons name="chevron-back" size={20} color={C.texte} />
-        </Pressable>
+  const ongletActif = afficheNatif
+    ? ongletNatif
+    : ONGLETS_CLUB.find((o) => (cheminWeb ?? "").startsWith(o.chemin))?.cle;
 
-        <Text style={s.titre} numberOfLines={1}>
-          {avecOnglets ? libelleDuChemin(chemin) : TITRES[cle]}
-        </Text>
-
-        {/* PLUS DE BOUTON « CHANGER » EN HAUT (décision de Fouka, 29/09) : « pour changer, il faut
-            que tu ailles dans profil, se déconnecter ». On sort d'un espace par là où l'on sort.
-            Et ce bouton EST cette sortie, donc il est là dans TOUS LES CAS (30/09/2026). Il ne
-            s'affichait qu'avec la barre d'onglets, c'est-à-dire pour l'espace club seulement.
-            L'espace de production, lui, n'avait alors AUCUNE sortie : pas d'onglets, pas de menu,
-            pas de profil, et une flèche de retour qui ne fait que reculer dans la page web. Un
-            écran fermé, et il est encore atteignable — l'espace n'est plus proposé dans l'accueil
-            depuis le 25/09, mais le choix mémorisé sur un téléphone d'avant y renvoie à chaque
-            lancement. Aucun écran de cette application ne se garde sans issue. */}
-        <Pressable
-          accessibilityRole="button" accessibilityLabel="Mon compte"
-          onPress={() => setProfilOuvert(true)} hitSlop={10} style={s.boutonBarre}
-        >
-          <Ionicons name="person-circle-outline" size={23} color={C.texteDoux} />
-        </Pressable>
+  // == PAS DE SESSION ========================================================================
+  if (sessionEnCours) {
+    return (
+      <View style={[s.centre, { backgroundColor: C.fond }]}>
+        <ActivityIndicator color={C.accent} />
       </View>
-
-      {sansSession ? (
-        <View style={s.centre}>
+    );
+  }
+  if (!session) {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.fond }}>
+        <View style={[s.centre, { paddingTop: insets.top }]}>
           <Text style={s.grosTexte}>Vous n'êtes plus connecté</Text>
           <Text style={s.petitTexte}>Reconnectez-vous et cet espace s'ouvrira sans rien redemander.</Text>
-          {/* SE CONNECTER, ET C'EST LA SORTIE QUI MANQUAIT. Le seul bouton proposé ramenait au
-              choix d'espace, d'où « Espace club » renvoyait ici : une boucle fermée, sans aucun
-              endroit pour saisir son mot de passe. Un écran qui dit « reconnectez-vous » doit
-              porter le moyen de le faire. Après la connexion, on revient dans cet espace-ci :
-              le choix est mémorisé et connexion.tsx le relit. */}
+          {/* SE CONNECTER, ET C'EST LA SORTIE QUI MANQUAIT LE 29/09. Le seul bouton proposé ramenait
+              au choix d'espace, d'où « Espace club » renvoyait ici : une boucle fermée, sans aucun
+              endroit pour saisir son mot de passe. Un écran qui dit « reconnectez-vous » doit porter
+              le moyen de le faire. */}
           <Pressable
             accessibilityRole="button" accessibilityLabel="Se connecter"
             onPress={() => router.replace("/connexion")}
@@ -187,32 +269,127 @@ export default function EspaceWeb() {
             <Text style={s.lienTexte}>Choisir mon espace</Text>
           </Pressable>
         </View>
-      ) : panne ? (
-        <View style={s.centre}>
-          <Text style={s.grosTexte}>La page n'a pas répondu</Text>
-          <Text style={s.petitTexte}>
-            Vérifiez votre connexion. Rien n'est perdu, vos données sont sur nos serveurs.
-          </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: C.fond }}>
+      {/* LA BARRE DU HAUT N'EXISTE QUE POUR LE WEB. Les écrans natifs portent leur propre titre,
+          comme dans l'espace personnel : un bandeau au-dessus d'un écran natif, c'est exactement
+          l'empilement qui donnait l'impression d'un site encadré. */}
+      {!afficheNatif ? (
+        <View style={[s.barre, { paddingTop: insets.top + 6 }]}>
+          {/* Le retour suit la page ; quand elle n'a plus d'historique, il ramène là d'où l'on vient
+              — l'écran natif si on en a un, l'accueil du club sinon. Un bouton grisé n'est pas une
+              sortie. */}
           <Pressable
-            accessibilityRole="button" accessibilityLabel="Réessayer"
-            onPress={() => { dejaRefait.current = false; preparer(); }}
-            style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
+            accessibilityRole="button"
+            accessibilityLabel={peutReculer ? "Retour" : natifPossible ? "Revenir à mon club" : "Revenir à l'accueil du club"}
+            onPress={() => {
+              if (peutReculer) { vue.current?.reculer(); return; }
+              if (natifPossible) { setCheminWeb(null); return; }
+              allerWeb("/dashboard");
+            }}
+            hitSlop={10}
+            style={s.boutonBarre}
           >
-            <Text style={s.actionTexte}>Réessayer</Text>
+            <Ionicons name="chevron-back" size={20} color={C.texte} />
+          </Pressable>
+
+          <Text style={s.titre} numberOfLines={1}>
+            {avecOnglets ? libelleDuChemin(cheminWeb ?? "/dashboard") : TITRES[cle]}
+          </Text>
+
+          {/* La sortie de l'espace, présente DANS TOUS LES CAS (leçon du 30/09 : elle ne
+              s'affichait qu'avec la barre d'onglets, et l'espace de production n'avait donc aucune
+              issue). Aucun écran de cette application ne se garde sans sortie. */}
+          <Pressable
+            accessibilityRole="button" accessibilityLabel="Mon compte"
+            onPress={() => setProfilOuvert(true)} hitSlop={10} style={s.boutonBarre}
+          >
+            <Ionicons name="person-circle-outline" size={23} color={C.texteDoux} />
           </Pressable>
         </View>
-      ) : source ? (
-        <VueConnect
-          ref={vue}
-          source={source}
-          surHistorique={setPeutReculer}
-          surAdresse={surAdresse}
-          surChargement={() => setCharge(true)}
-          surPanne={() => { setCharge(true); setPanne(true); }}
-        />
       ) : null}
 
-      {!charge && !sansSession && !panne ? (
+      {/* == LES ÉCRANS NATIFS ============================================================== */}
+      {afficheNatif && club ? (
+        <View style={{ flex: 1 }}>
+          {ongletNatif === "calendar" ? (
+            <CalendrierClub
+              club={club}
+              evenements={evs.donnees ?? []}
+              chargement={evs.chargement}
+              panne={!!evs.erreur && evs.donnees === undefined}
+              surRecharger={rechargerClub}
+              surWeb={allerWeb}
+            />
+          ) : ongletNatif === "teams" ? (
+            <EquipesClub
+              club={club}
+              equipes={eqs.donnees ?? []}
+              chargement={eqs.chargement}
+              panne={!!eqs.erreur && eqs.donnees === undefined}
+              surRecharger={rechargerClub}
+              surWeb={allerWeb}
+            />
+          ) : (
+            <AccueilClub
+              club={club}
+              clubs={clubs}
+              evenements={evs.donnees ?? []}
+              equipes={eqs.donnees ?? []}
+              membres={mbs.donnees ?? []}
+              chargement={evs.chargement || eqs.chargement}
+              panne={!!evs.erreur && evs.donnees === undefined}
+              surRecharger={rechargerClub}
+              surChangerDeClub={setClubChoisi}
+              surOnglet={allerOnglet}
+              surWeb={allerWeb}
+              surProfil={() => setProfilOuvert(true)}
+            />
+          )}
+        </View>
+      ) : null}
+
+      {/* == LA VUE WEB ====================================================================
+          Elle n'est créée qu'au premier besoin, puis on la GARDE : la masquer coûte zéro et évite
+          de recharger la page à chaque aller-retour avec un écran natif. `pointerEvents` bloque les
+          touches d'une vue cachée, qui sinon captent les gestes par-dessus l'écran natif. */}
+      {source ? (
+        <View
+          style={{ flex: afficheNatif ? 0 : 1, display: afficheNatif ? "none" : "flex" }}
+          pointerEvents={afficheNatif ? "none" : "auto"}
+        >
+          {panne ? (
+            <View style={s.centre}>
+              <Text style={s.grosTexte}>La page n'a pas répondu</Text>
+              <Text style={s.petitTexte}>
+                Vérifiez votre connexion. Rien n'est perdu, vos données sont sur nos serveurs.
+              </Text>
+              <Pressable
+                accessibilityRole="button" accessibilityLabel="Réessayer"
+                onPress={() => { dejaRefait.current = false; preparer(cheminWeb ?? "/dashboard"); }}
+                style={({ pressed }) => [s.action, pressed ? { opacity: 0.85 } : null]}
+              >
+                <Text style={s.actionTexte}>Réessayer</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <VueConnect
+              ref={vue}
+              source={source}
+              surHistorique={setPeutReculer}
+              surAdresse={surAdresse}
+              surChargement={() => setCharge(true)}
+              surPanne={() => { setCharge(true); setPanne(true); }}
+            />
+          )}
+        </View>
+      ) : null}
+
+      {!afficheNatif && !charge && !panne ? (
         <View style={s.attente} pointerEvents="none"><ActivityIndicator color={C.accent} /></View>
       ) : null}
 
@@ -228,7 +405,7 @@ export default function EspaceWeb() {
                 accessibilityRole="tab"
                 accessibilityState={{ selected: actif }}
                 accessibilityLabel={o.libelle}
-                onPress={() => aller(o.chemin)}
+                onPress={() => allerOnglet(o.cle)}
                 style={s.onglet}
               >
                 <Ionicons name={o.icone as never} size={21} color={actif ? C.accentClair : C.texteDoux} />
@@ -260,7 +437,7 @@ export default function EspaceWeb() {
                   <Pressable
                     key={e.cle}
                     accessibilityRole="button" accessibilityLabel={e.libelle}
-                    onPress={() => aller(e.chemin)}
+                    onPress={() => allerWeb(e.chemin)}
                     style={({ pressed }) => [s.ligne, pressed ? { backgroundColor: "rgba(255,255,255,.05)" } : null]}
                   >
                     <View style={s.rond}><Ionicons name={e.icone as never} size={17} color={C.texteDoux} /></View>
@@ -270,6 +447,18 @@ export default function EspaceWeb() {
                 ))}
               </View>
             ))}
+            <View style={{ marginTop: E.m }}>
+              <Text style={s.groupeTitre}>Mon compte</Text>
+              <Pressable
+                accessibilityRole="button" accessibilityLabel="Mon compte"
+                onPress={() => { setMenuOuvert(false); setProfilOuvert(true); }}
+                style={({ pressed }) => [s.ligne, pressed ? { backgroundColor: "rgba(255,255,255,.05)" } : null]}
+              >
+                <View style={s.rond}><Ionicons name="person-circle-outline" size={17} color={C.texteDoux} /></View>
+                <Text style={s.ligneTexte}>{club?.monPrenom || profil?.prenom || "Mon compte"}</Text>
+                <Ionicons name="chevron-forward" size={16} color={C.texteFaible} />
+              </Pressable>
+            </View>
           </ScrollView>
         </View>
       </Modal>
@@ -281,8 +470,8 @@ export default function EspaceWeb() {
         <View style={[s.feuille, { paddingBottom: insets.bottom + E.m }]}>
           <View style={s.poignee} />
           <View style={{ gap: 3, paddingTop: E.s, paddingBottom: E.m }}>
-            <Text style={s.grosTexte}>{profil?.prenom || "Mon compte"}</Text>
-            <Text style={s.petitTexte}>{profil?.clubNom || TITRES[cle]}</Text>
+            <Text style={s.grosTexte}>{club?.monPrenom || profil?.prenom || "Mon compte"}</Text>
+            <Text style={s.petitTexte}>{club?.nom || profil?.clubNom || TITRES[cle]}</Text>
           </View>
           <Pressable
             accessibilityRole="button" accessibilityLabel="Changer d'espace"

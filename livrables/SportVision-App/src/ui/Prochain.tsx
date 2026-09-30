@@ -121,7 +121,12 @@ const s = StyleSheet.create({
   competition: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: 11.5, flexShrink: 1 },
   affiche: { flexDirection: "row", alignItems: "flex-start", gap: E.s },
   camp: { flex: 1, alignItems: "center", gap: E.s },
-  campNom: { color: C.texte, fontFamily: P.titreFort, fontSize: 14, textAlign: "center", lineHeight: 18 },
+  // `alignSelf: stretch` N'EST PAS DECORATIF (30/09/2026). Sans lui, dans un parent en
+  // `alignItems: "center"`, le texte est mesure hors du cadre de sa colonne : « AS Melun »
+  // s'affichait « AS Mel… » sur une carte qui avait pourtant la place de l'ecrire en entier, et
+  // les deux lignes autorisees ne servaient a rien. Meme cause, meme jour, sur les raccourcis de
+  // l'accueil.
+  campNom: { alignSelf: "stretch", color: C.texte, fontFamily: P.titreFort, fontSize: 14, textAlign: "center", lineHeight: 18 },
   milieu: { alignItems: "center", gap: 2, paddingTop: 10, minWidth: 72 },
   versus: { color: C.texte, fontFamily: P.titre, fontSize: 25, fontVariant: ["tabular-nums"] },
   lieuType: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: 11.5 },

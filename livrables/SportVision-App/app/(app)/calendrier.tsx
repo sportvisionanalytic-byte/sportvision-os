@@ -10,16 +10,16 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSession } from "../../src/lib/session";
 import { lireCalendrierFamille, useFamille } from "../../src/lib/famille";
 import { lireEvenements, separer, type Evenement } from "../../src/lib/donnees";
-import { dateDuJourParis, versDate } from "../../src/lib/dates";
+import { dateDuJourParis } from "../../src/lib/dates";
 import { useDonnees, cleEvenements } from "../../src/lib/cache";
 import { Ecran, Probleme, Vide } from "../../src/ui/Ecran";
 import { CarteEvenement } from "../../src/ui/Cartes";
+import { MoisGrille } from "../../src/ui/MoisGrille";
 import { BandeauEnfant, SelecteurEnfant } from "../../src/ui/Enfants";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
 import { P } from "../../src/theme/polices";
 
 const MOIS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-const JOURS_COURTS = ["L", "M", "M", "J", "V", "S", "D"];
 
 const FILTRES = [
   { cle: "tout", libelle: "Tout" },
@@ -28,10 +28,6 @@ const FILTRES = [
   { cle: "evenement", libelle: "Événements" },
 ] as const;
 type Filtre = (typeof FILTRES)[number]["cle"];
-
-const COULEUR_GENRE: Record<string, string> = {
-  match: C.accentClair, entrainement: C.cyan, evenement: C.violet, rendez_vous: C.alerte,
-};
 
 export default function Calendrier() {
   const { profil } = useSession();
@@ -222,7 +218,7 @@ export default function Calendrier() {
       ) : panne ? (
         <Probleme surReessayer={charger} />
       ) : vue === "mois" && mois ? (
-        <VueMois
+        <MoisGrille
           mois={mois}
           evenements={duMois}
           aujourdhui={aujourdhui}
@@ -278,97 +274,6 @@ export default function Calendrier() {
   );
 }
 
-/** La grille du mois : une pastille par genre d'événement, et le détail du jour touché en dessous. */
-function VueMois({
-  mois, evenements, aujourdhui, jourChoisi, surJour, surEvenement, ecussonClub,
-}: {
-  mois: string;
-  evenements: Evenement[];
-  aujourdhui: string;
-  jourChoisi: string | null;
-  surJour: (jour: string | null) => void;
-  surEvenement: (e: Evenement) => void;
-  /** L'ecusson du club, pour les cartes de match de la journee ouverte. */
-  ecussonClub?: string | null;
-}) {
-  const annee = Number(mois.slice(0, 4));
-  const numeroMois = Number(mois.slice(5, 7));
-  const premier = new Date(annee, numeroMois - 1, 1);
-  const nbJours = new Date(annee, numeroMois, 0).getDate();
-  // getDay() rend 0 pour dimanche : la semaine française commence le lundi.
-  const decalage = (premier.getDay() + 6) % 7;
-
-  const parJour = useMemo(() => {
-    const carte = new Map<string, Evenement[]>();
-    for (const e of evenements) {
-      const liste = carte.get(e.date) ?? [];
-      liste.push(e);
-      carte.set(e.date, liste);
-    }
-    return carte;
-  }, [evenements]);
-
-  const cases: (string | null)[] = [
-    ...Array.from({ length: decalage }, () => null),
-    ...Array.from({ length: nbJours }, (_, i) =>
-      `${annee}-${String(numeroMois).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`),
-  ];
-
-  const jour = jourChoisi && parJour.has(jourChoisi) ? jourChoisi : null;
-  const duJour = jour ? parJour.get(jour) ?? [] : [];
-
-  return (
-    <View style={{ gap: E.m }}>
-      <View style={s.grille}>
-        {JOURS_COURTS.map((j, i) => (
-          <Text key={`${j}-${i}`} style={s.enteteJour}>{j}</Text>
-        ))}
-        {cases.map((date, i) => {
-          if (!date) return <View key={`vide-${i}`} style={s.caseJour} />;
-          const dedans = parJour.get(date) ?? [];
-          const actif = date === jour;
-          return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: actif, disabled: dedans.length === 0 }}
-              // Un jour vide se dit « rien de prevu » : sans ca, la lecture vocale annonce
-              // un numero seul et on ne sait pas s'il se passe quelque chose.
-              accessibilityLabel={
-                dedans.length
-                  ? `${Number(date.slice(8, 10))}, ${dedans.length} ${dedans.length > 1 ? "evenements" : "evenement"}`
-                  : `${Number(date.slice(8, 10))}, rien de prevu`
-              }
-              key={date}
-              onPress={() => surJour(dedans.length ? (actif ? null : date) : null)}
-              style={[s.caseJour, actif && s.caseActive, date === aujourdhui && !actif && s.caseAujourdhui]}
-            >
-              <Text style={[s.numeroJour, actif && { color: C.texte }, !dedans.length && { color: C.texteFaible }]}>
-                {Number(date.slice(8, 10))}
-              </Text>
-              <View style={s.points}>
-                {dedans.slice(0, 3).map((e, k) => (
-                  <View key={k} style={[s.point, { backgroundColor: COULEUR_GENRE[e.genre] ?? C.texteFaible }]} />
-                ))}
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {jour ? (
-        <View style={{ gap: E.s }}>
-          <Text style={s.libelleSection}>
-            {versDate(jour).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
-          </Text>
-          {duJour.map((e) => <CarteEvenement key={e.id} e={e} ecussonClub={ecussonClub} onPress={() => surEvenement(e)} />)}
-        </View>
-      ) : (
-        <Text style={s.aide}>Touchez un jour marqué pour voir ce qu'il contient.</Text>
-      )}
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
   entete: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: E.s },
   titre: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
@@ -397,13 +302,4 @@ const s = StyleSheet.create({
   compte: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5 },
   marqueur: { color: C.cyan, fontFamily: P.texteFort, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.9 },
 
-  grille: { flexDirection: "row", flexWrap: "wrap", backgroundColor: C.surface, borderRadius: R.xl, borderWidth: 1, borderColor: C.bordure, padding: E.s },
-  enteteJour: { width: `${100 / 7}%`, textAlign: "center", color: C.texteFaible, fontFamily: P.texteFort, fontSize: 11, paddingBottom: E.xs },
-  caseJour: { width: `${100 / 7}%`, height: 48, alignItems: "center", justifyContent: "center", gap: 3, borderRadius: R.m },
-  caseActive: { backgroundColor: "rgba(36,84,255,.22)" },
-  caseAujourdhui: { borderWidth: 1, borderColor: "rgba(0,199,255,.45)" },
-  numeroJour: { color: C.texteDoux, fontFamily: P.texteMoyen, fontSize: 14 },
-  points: { flexDirection: "row", gap: 3, height: 5 },
-  point: { width: 5, height: 5, borderRadius: 3 },
-  aide: { color: C.texteFaible, fontFamily: P.texte, fontSize: 13, textAlign: "center" },
 });

@@ -29,7 +29,19 @@ export function Raccourcis({ elements }: { elements: Raccourci[] }) {
           <View style={[s.rond, { backgroundColor: r.teinte + "22" }]}>
             <Ionicons name={r.icone} size={19} color={r.teinte} />
           </View>
-          <Text style={s.libelle} numberOfLines={1}>{r.libelle}</Text>
+          {/* LE LIBELLÉ PREND TOUTE LA CASE, ET SE RÉDUIT PLUTÔT QUE DE SE COUPER (30/09/2026).
+              Constaté sur le simulateur, écran d'accueil du club : « Galeries » s'affichait
+              « Galeri… » et « Communication » « Communicat… ». Sans `alignSelf: stretch`, le texte
+              est mesuré hors du cadre de la case et se coupe bien avant d'en atteindre le bord. Un
+              mot tronqué au milieu n'est pas une étiquette, c'est une énigme. */}
+          <Text
+            style={s.libelle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.82}
+          >
+            {r.libelle}
+          </Text>
         </Pressable>
       ))}
     </View>
@@ -43,5 +55,5 @@ const s = StyleSheet.create({
     backgroundColor: C.surface, borderRadius: R.l, borderWidth: 1, borderColor: C.bordure,
   },
   rond: { width: 40, height: 40, borderRadius: R.m, alignItems: "center", justifyContent: "center" },
-  libelle: { color: C.texte, fontFamily: P.texteFort, fontSize: 12.5 },
+  libelle: { alignSelf: "stretch", textAlign: "center", paddingHorizontal: 2, color: C.texte, fontFamily: P.texteFort, fontSize: 12.5 },
 });
