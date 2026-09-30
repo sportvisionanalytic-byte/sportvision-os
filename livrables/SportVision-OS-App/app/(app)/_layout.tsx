@@ -1,9 +1,27 @@
 // LES ONGLETS DE L'OS (30/09/2026).
 //
-// TROIS, ET LE PREMIER CHANGE DE MÉTIER. L'application sert deux populations très différentes :
-// dix opérateurs terrain, qui viennent voir LEURS missions, et deux responsables de production,
-// qui viennent voir CELLES DE TOUS. Le même onglet, deux écrans — plutôt que quatre onglets dont
-// la moitié serait vide pour chacun.
+// CINQ ONGLETS, JAMAIS SIX, ET LE DEUXIÈME CHANGE DE MÉTIER. L'application sert deux populations
+// très différentes : dix opérateurs terrain, qui viennent voir LEURS missions, et deux responsables
+// de production, qui viennent voir CELLES DE TOUS. Le même emplacement, deux écrans — plutôt que
+// dix onglets dont huit seraient vides pour chacun.
+//
+// POURQUOI CINQ ET PAS DIX. L'application compte dix écrans. Une barre à dix entrées sur un
+// téléphone donne 39 points par onglet : le libellé y tient sur quatre lettres et la cible de
+// l'index tombe sous les 44 points d'Apple. Cinq écrans sont donc DANS la barre, cinq derrière
+// « Mon espace », et le partage n'est pas arbitraire : est dans la barre ce qu'on ouvre debout,
+// plusieurs fois par jour. Les autres — mes revenus, le catalogue de formation, les galeries, les
+// fiches du Centre — se consultent une fois par semaine, assis.
+//
+// LA RÉPARTITION DÉPEND DU MÉTIER, ET DE LUI SEUL. Un responsable de production n'a pas « Mon
+// planning » dans sa barre : il a « Pilotage », les quatre écrans avec lesquels il affecte, suit
+// les livraisons, son équipe et son matériel. Son propre planning est derrière « Mon espace », où
+// il le consulte comme n'importe qui — mesuré : il porte 4 missions acceptées, l'écran lui sert.
+// Un opérateur, lui, n'a pas « Pilotage » : la base le lui refuserait, et un onglet qui mène à un
+// refus est un onglet de trop (règle 5 du contrat).
+//
+// CE QUI EST MASQUÉ RESTE JOIGNABLE, ET ON EN SORT. `href: null` retire l'entrée de la barre, pas
+// la route : « Mon espace » y mène, et ces écrans portent la flèche de retour d'`Ecran`. Un écran
+// qu'on atteint par un chemin et dont on ne sort que par un autre, c'est le piège du 28/09.
 //
 // AUCUNE VUE WEB, ET C'EST LA CONSIGNE. Fouka, le 30/09 : « je ne veux pas une vue web,
 // justement. Je veux vraiment une application de l'OS. » L'application ne montre donc QUE ce
@@ -39,6 +57,9 @@ export default function Onglets() {
   if (!session) return <Redirect href="/connexion" />;
 
   const production = estProduction(moi?.role ?? null);
+  // Une valeur, pas deux : masquer un onglet et le lister dans « Mon espace » sont les deux faces
+  // du même choix. `profil.tsx` relit `estProduction` pour la même raison.
+  const masque = { href: null as null };
 
   return (
     <Tabs
@@ -65,6 +86,16 @@ export default function Onglets() {
         sceneStyle: { backgroundColor: C.fond },
       }}
     >
+      {/* L'ACCUEIL EN PREMIER, ET SOUS SON NOM DE L'OS. C'est `dash`, que l'OS intitule « Accueil »
+          pour l'opérateur comme pour la production — et non « Tableau de bord », qui est le mot des
+          rôles de bureau. L'onglet est le même pour les deux métiers, l'écran change dedans. */}
+      <Tabs.Screen
+        name="accueil"
+        options={{
+          title: "Accueil",
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
+        }}
+      />
       <Tabs.Screen
         name="missions"
         options={{
@@ -74,13 +105,54 @@ export default function Onglets() {
           ),
         }}
       />
+      {/* LA TROISIÈME PLACE SE PARTAGE ENTRE DEUX MÉTIERS.
+
+          Pour qui va sur le terrain : « Mon planning », l'écran `planning` du rôle photo. C'est le
+          seul endroit où l'on lit l'heure de rendez-vous et l'adresse d'une prestation à venir.
+
+          Pour qui pilote : « Pilotage », les quatre écrans du responsable de production. L'onglet
+          ne s'appelle pas « Production », qui est déjà le libellé du cockpit juste avant. */}
+      <Tabs.Screen
+        name="planning"
+        options={{
+          title: "Planning",
+          tabBarIcon: ({ color, size }) => <Ionicons name="list" color={color} size={size} />,
+          ...(production ? masque : null),
+        }}
+      />
+      <Tabs.Screen
+        name="prod"
+        options={{
+          title: "Pilotage",
+          tabBarIcon: ({ color, size }) => <Ionicons name="options" color={color} size={size} />,
+          ...(production ? null : masque),
+        }}
+      />
+      {/* LA MESSAGERIE EST DANS LA BARRE POUR TOUT LE MONDE, et c'est le seul écran dont on peut
+          dire ça sans réserve : cinq métiers sur six l'ont dans l'OS, et c'est le seul endroit où
+          un opérateur au bord d'un terrain joint le responsable de production. Un message qu'on
+          reçoit et qu'on met deux gestes à trouver, c'est un message auquel on ne répond pas. */}
+      <Tabs.Screen
+        name="messagerie"
+        options={{
+          title: "Messages",
+          tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles" color={color} size={size} />,
+        }}
+      />
       <Tabs.Screen
         name="profil"
         options={{
-          title: "Profil",
+          title: "Mon espace",
           tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
         }}
       />
+
+      {/* LES QUATRE ÉCRANS DE « MON ESPACE ». Hors de la barre pour tout le monde, joignables par
+          `profil.tsx`, et chacun porte sa flèche de retour. */}
+      <Tabs.Screen name="revenus" options={masque} />
+      <Tabs.Screen name="formation" options={masque} />
+      <Tabs.Screen name="galeries" options={masque} />
+      <Tabs.Screen name="centre" options={masque} />
     </Tabs>
   );
 }

@@ -1,0 +1,428 @@
+// MES REVENUS (30/09/2026). L'écran `revenus` de l'OS, mot pour mot son titre.
+//
+// == LE VOCABULAIRE EST UNE RÈGLE, PAS UN STYLE =================================================
+//
+// Les collaborateurs sont des FREELANCES. « Salaire », « fiche de paie » et « pénalité » ne
+// figurent nulle part dans ce fichier, et ne doivent jamais y entrer : envoyer un bulletin de paie
+// à un indépendant, c'est fabriquer la preuve écrite d'un lien de subordination (décision de Fouka
+// du 29/09). On dit « montant versé », « récapitulatif de prestations », « ajustement ».
+//
+// == TROIS CHIFFRES, ET C'EST TOUT CE QU'ON VIENT CHERCHER ======================================
+//
+// Combien j'ai gagné, combien on me doit encore, et pourquoi c'est moins que prévu quand ça l'est.
+// Tout le reste est du décor. L'OS y ajoute un graphique sur six mois, des XP et un grade : le
+// graphique n'a rien à dire ici — les cinq prestations d'Antoine tiennent toutes dans septembre,
+// ce serait une barre et cinq creux — et les XP appartiennent à l'écran Formation.
+//
+// == AUCUN CALCUL D'ARGENT N'EST FAIT ICI ======================================================
+//
+// `net_a_payer` vient de la base (`mission_net_a_payer` = montant + primes − ajustements, plancher
+// à 0). L'écran ne fait que des SOMMES de ces nets. Refaire la soustraction côté téléphone, c'est
+// se préparer à afficher un total différent du récapitulatif qui part chez la personne — et sur de
+// l'argent, deux chiffres qui divergent, c'est un appel téléphonique.
+//
+// Mesuré avec le jeton d'Antoine Blin : 5 prestations, 240 €, 95 € en attente, 145 € à verser,
+// 0 € versé, et `date_paiement` NULL sur 10 lignes sur 10 dans toute la base. L'écran n'annonce
+// donc jamais une date de virement : il dit la règle, qui est vraie et que Fouka a posée lui-même
+// le 25/09 — « à la fin du mois le photographe reçoit son virement ».
+import React, { useCallback, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Ecran, Probleme, Section, Vide } from "../../src/ui/Ecran";
+import { Bouton, Erreur, Pastille } from "../../src/ui/Base";
+import { useDonnees, oublier } from "../../src/lib/cache";
+import { libelleCouverture } from "../../src/lib/os-missions";
+import {
+  contesterAjustement, lireMesRevenus, LIBELLE_VERSEMENT,
+  type Ajustement, type MesRevenus, type Prestation, type StatutVersement,
+} from "../../src/lib/os-revenus";
+import { dateDuJourParis, dateLongue, versDate } from "../../src/lib/dates";
+import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
+import { P } from "../../src/theme/polices";
+
+/** Les trois périodes de l'OS, dans son ordre et avec ses libellés. */
+const PERIODES = [
+  { cle: "mois", libelle: "Ce mois" },
+  { cle: "annee", libelle: "Cette année" },
+  { cle: "tout", libelle: "Tout" },
+] as const;
+type Periode = typeof PERIODES[number]["cle"];
+
+/** « 92,50 € ». DEUX DÉCIMALES, TOUJOURS : sur ce qu'une personne va recevoir, un centime tronqué
+ *  se remarque et fait douter du reste. Même choix que l'écran des récapitulatifs de l'OS. */
+function eur(n: number): string {
+  return n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+}
+
+/** « septembre 2026 », compté à Paris comme tout repère de date de cette application. */
+function mois(iso: string): string {
+  return new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", month: "long", year: "numeric" })
+    .format(versDate(iso));
+}
+
+const TON: Record<StatutVersement, "neutre" | "succes" | "alerte" | "info"> = {
+  en_attente: "alerte",
+  "validé": "info",
+  transmis_compta: "info",
+  "payé": "succes",
+};
+
+export default function Revenus() {
+  const [periode, setPeriode] = useState<Periode>("mois");
+  const { donnees, chargement, rafraichissement, erreur, relire } =
+    useDonnees<MesRevenus>("os:revenus", lireMesRevenus);
+
+  const toutes = donnees?.prestations ?? [];
+  const recaps = donnees?.recapitulatifs ?? [];
+
+  // Le filtre de période se calcule à Paris : un téléphone réglé sur un autre fuseau aurait changé
+  // de mois avant ou après la personne, et son total du mois avec.
+  const depuis = useMemo(() => {
+    const aujourdhui = dateDuJourParis();
+    if (periode === "mois") return `${aujourdhui.slice(0, 7)}-01`;
+    if (periode === "annee") return `${aujourdhui.slice(0, 4)}-01-01`;
+    return "";
+  }, [periode]);
+
+  const liste = useMemo(
+    () => (depuis ? toutes.filter((p) => (p.date ?? "") >= depuis) : toutes),
+    [toutes, depuis],
+  );
+
+  const total = liste.reduce((s, p) => s + p.net, 0);
+  const verse = liste.filter((p) => p.statutVersement === "payé").reduce((s, p) => s + p.net, 0);
+  const attendu = total - verse;
+
+  return (
+    <Ecran enCours={!!donnees && rafraichissement} teinte="bleu" rafraichir={relire} retour="/profil">
+      <View style={{ gap: 4 }}>
+        <Text style={s.titre}>Mes revenus</Text>
+        <Text style={s.sous}>Prestation par prestation, et ce qui reste dû</Text>
+      </View>
+
+      {/* Les trois périodes restent affichées même vides : leur absence ferait croire que l'écran
+          ne sait pas remonter plus loin. */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: E.s, paddingRight: E.l }}>
+        {PERIODES.map((p) => {
+          const actif = p.cle === periode;
+          return (
+            <Pressable
+              key={p.cle}
+              onPress={() => setPeriode(p.cle)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: actif }}
+              accessibilityLabel={p.libelle}
+              style={[s.puce, actif && s.puceActive]}
+            >
+              <Text style={[s.puceTexte, actif && s.puceTexteActif]}>{p.libelle}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {chargement ? (
+        <View style={s.attente}><ActivityIndicator color={C.accent} /></View>
+      ) : erreur && !donnees ? (
+        <Probleme surReessayer={relire} />
+      ) : (
+        <>
+          <View style={s.total}>
+            <Text style={s.totalEtiquette}>
+              {periode === "mois" ? "CE MOIS" : periode === "annee" ? "CETTE ANNÉE" : "DEPUIS LE DÉBUT"}
+            </Text>
+            <Text style={s.totalValeur}>{eur(total)}</Text>
+            <Text style={s.totalSous}>
+              {liste.length
+                ? `${liste.length} prestation${liste.length > 1 ? "s" : ""}`
+                : "Aucune prestation sur cette période"}
+            </Text>
+          </View>
+
+          <View style={s.tuiles}>
+            <View style={[s.tuile, { borderColor: C.alerte + "4D" }]}>
+              <Text style={s.tuileEtiquette}>À verser</Text>
+              <Text style={[s.tuileValeur, { color: C.alerteTexte }]}>{eur(attendu)}</Text>
+            </View>
+            <View style={[s.tuile, { borderColor: C.succes + "4D" }]}>
+              <Text style={s.tuileEtiquette}>Versé</Text>
+              <Text style={[s.tuileValeur, { color: C.succesTexte }]}>{eur(verse)}</Text>
+            </View>
+          </View>
+
+          {/* LA RÈGLE, PAS UNE DATE INVENTÉE. `date_paiement` n'est renseignée sur aucune ligne de
+              la base : promettre « virement le 5 » serait une invention. Ceci est la règle telle
+              que Fouka l'a énoncée le 25/09, et elle répond à la seule question qu'on se pose
+              devant un montant en attente. */}
+          <Text style={s.regle}>
+            Une prestation validée entre dans le récapitulatif du mois. En fin de mois, vous recevez
+            par e-mail votre récapitulatif de prestations et l'annonce du virement.
+          </Text>
+
+          {recaps.length ? (
+            <Section titre="Récapitulatifs de prestations">
+              <View style={{ gap: E.s }}>
+                {recaps.map((r) => (
+                  <View key={r.id} style={s.carte}>
+                    <View style={s.ligne}>
+                      <Text style={s.nom}>{mois(r.mois)}</Text>
+                      <Text style={s.montant}>{eur(r.montantVerse)}</Text>
+                    </View>
+                    <Text style={s.detail}>
+                      {[
+                        `${r.nbPrestations} prestation${r.nbPrestations > 1 ? "s" : ""}`,
+                        r.vireLe ? `virement fait le ${dateLongue(r.vireLe.slice(0, 10))}` : null,
+                        !r.vireLe && r.virementAnnonceLe ? `virement annoncé pour le ${dateLongue(r.virementAnnonceLe)}` : null,
+                      ].filter(Boolean).join(" · ")}
+                    </Text>
+                    {r.note ? <Text style={s.detail}>{r.note}</Text> : null}
+                  </View>
+                ))}
+              </View>
+            </Section>
+          ) : null}
+
+          {liste.length ? (
+            <Section titre="Mes prestations">
+              <View style={{ gap: E.s }}>
+                {liste.map((p) => <CartePrestation key={p.affectationId} p={p} surChangement={relire} />)}
+              </View>
+            </Section>
+          ) : toutes.length ? (
+            <Vide
+              titre="Rien sur cette période"
+              texte="Vos prestations plus anciennes sont là : touchez « Tout » ci-dessus pour les voir."
+            />
+          ) : (
+            <Vide
+              titre="Aucune prestation pour l'instant"
+              texte={
+                "Une prestation apparaît ici dès que vous acceptez une mission. Son montant est fixé "
+                + "par la production, et vous le voyez sur la mission comme ici."
+              }
+            />
+          )}
+        </>
+      )}
+    </Ecran>
+  );
+}
+
+function CartePrestation({ p, surChangement }: { p: Prestation; surChangement: () => void }) {
+  const detail = [p.date ? dateLongue(p.date) : null, p.reference].filter(Boolean).join(" · ");
+  const declare = [
+    p.heures !== null ? `${p.heures.toLocaleString("fr-FR")} h déclarées` : null,
+    p.km !== null ? `${p.km.toLocaleString("fr-FR")} km déclarés` : null,
+    p.frais !== null ? `${eur(p.frais)} de frais déclarés` : null,
+  ].filter(Boolean).join(" · ");
+
+  return (
+    <View style={s.carte}>
+      <View style={s.ligne}>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={s.nom} numberOfLines={2}>{p.client ?? "Mission SportVision"}</Text>
+          {detail ? <Text style={s.detail} numberOfLines={2}>{detail}</Text> : null}
+        </View>
+        <View style={{ alignItems: "flex-end", gap: 4 }}>
+          <Text style={s.montant}>{eur(p.net)}</Text>
+          <Pastille ton={TON[p.statutVersement]} texte={LIBELLE_VERSEMENT[p.statutVersement]} />
+        </View>
+      </View>
+
+      {/* POURQUOI LE NET N'EST PAS LE MONTANT CONVENU. Un chiffre plus petit que prévu, sans un mot
+          pour l'expliquer, c'est l'écran qui fait téléphoner. On n'affiche cette décomposition que
+          quand il y a vraiment un écart : sinon, c'est la même somme écrite deux fois. */}
+      {p.primes.length || p.ajustements.length ? (
+        <View style={s.decompte}>
+          <View style={s.ligneDecompte}>
+            <Text style={s.decompteTexte}>Prestation</Text>
+            <Text style={s.decompteTexte}>{eur(p.montant)}</Text>
+          </View>
+          {p.primes.map((pr) => (
+            <View key={pr.id} style={s.ligneDecompte}>
+              <Text style={s.decompteTexte} numberOfLines={2}>Prime · {pr.detail || pr.motif}</Text>
+              <Text style={[s.decompteTexte, { color: C.succesTexte }]}>+ {eur(pr.montant)}</Text>
+            </View>
+          ))}
+          {p.ajustements.map((a) => (
+            <LigneAjustement key={a.id} a={a} surChangement={surChangement} />
+          ))}
+        </View>
+      ) : null}
+
+      <View style={s.bas}>
+        {libelleCouverture(p.couverture) ? <Pastille texte={libelleCouverture(p.couverture)!} /> : null}
+        {p.responsable ? <Pastille ton="info" texte="Responsable" /> : null}
+      </View>
+
+      {/* Ni « 0 h », ni « non déclaré » : mesuré, 2 lignes sur 10 portent des heures et des
+          kilomètres. Huit mentions « non déclaré » n'apprendraient rien à personne. */}
+      {declare ? <Text style={s.declare}>{declare}</Text> : null}
+
+      {/* Une date de versement ne s'affiche que si elle existe. Elle n'existe nulle part
+          aujourd'hui : cette ligne attend le jour où la comptabilité la remplira. */}
+      {p.statutVersement === "payé" && p.dateVersement ? (
+        <Text style={s.declare}>Versé le {dateLongue(p.dateVersement.slice(0, 10))}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Un ajustement, et la seule action de cet écran.
+ *
+ * LE BOUTON N'APPARAÎT QUE SI LA BASE DIRA OUI. `contestable` reprend les trois conditions de
+ * `mission_penalite_contester` : la retenue est appliquée, elle n'est pas annulée, et le versement
+ * n'est pas parti — « le récapitulatif est parti, rouvrir le montant après coup ne rendrait pas
+ * l'argent, ça rendrait le document faux », dit la fonction elle-même. Un bouton qui mène à un
+ * refus est une promesse cassée ; quand on ne peut plus contester, on dit à qui s'adresser.
+ */
+function LigneAjustement({ a, surChangement }: { a: Ajustement; surChangement: () => void }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [texte, setTexte] = useState("");
+  const [enCours, setEnCours] = useState(false);
+  const [souci, setSouci] = useState<string | null>(null);
+
+  const envoyer = useCallback(async () => {
+    setEnCours(true); setSouci(null);
+    try {
+      await contesterAjustement(a.id, texte);
+      // Le montant dû change, et il est lu par cet écran ET par l'accueil : on oublie tout ce qui
+      // commence par « os:revenus » plutôt que de raccommoder l'objet en mémoire.
+      oublier("os:revenus");
+      setOuvert(false);
+      surChangement();
+    } catch (e) {
+      setSouci(e instanceof Error ? e.message : "La contestation n'est pas partie.");
+    } finally { setEnCours(false); }
+  }, [a.id, texte, surChangement]);
+
+  return (
+    <View style={{ gap: E.xs }}>
+      <View style={s.ligneDecompte}>
+        <Text style={s.decompteTexte} numberOfLines={2}>Ajustement · {a.detail || a.motif}</Text>
+        <Text style={[s.decompteTexte, { color: a.statut === "contestee" ? C.texteFaible : C.dangerTexte }]}>
+          − {eur(a.montant)}
+        </Text>
+      </View>
+
+      {a.statut === "contestee" ? (
+        <Text style={s.suspendu}>
+          Vous avez contesté cet ajustement. Il est suspendu et n'entrera pas dans votre
+          récapitulatif tant que la direction n'a pas tranché.
+        </Text>
+      ) : a.contestable ? (
+        ouvert ? (
+          <View style={{ gap: E.s }}>
+            <TextInput
+              value={texte}
+              onChangeText={setTexte}
+              placeholder="Dites ce que vous contestez"
+              placeholderTextColor={C.texteFaible}
+              multiline
+              maxLength={400}
+              accessibilityLabel="Votre contestation"
+              style={s.champ}
+            />
+            <Erreur message={souci} />
+            <View style={{ flexDirection: "row", gap: E.s }}>
+              <View style={{ flex: 1 }}>
+                <Bouton titre="Annuler" secondaire onPress={() => { setOuvert(false); setSouci(null); }} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Bouton
+                  titre="Envoyer"
+                  onPress={envoyer}
+                  enCours={enCours}
+                  desactive={!texte.trim()}
+                />
+              </View>
+            </View>
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setOuvert(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Contester cet ajustement"
+            style={({ pressed }) => [s.contester, pressed ? { opacity: 0.8 } : null]}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={15} color={C.texteDoux} />
+            <Text style={s.contesterTexte}>Contester cet ajustement</Text>
+          </Pressable>
+        )
+      ) : (
+        <Text style={s.suspendu}>
+          Cet ajustement est parti sur un récapitulatif : il ne se conteste plus ici. Adressez-vous
+          à la direction.
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  titre: { color: C.texte, fontFamily: P.titre, fontSize: 26, letterSpacing: -0.6 },
+  sous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5 },
+  attente: { paddingVertical: E.xl * 2, alignItems: "center" },
+
+  puce: {
+    justifyContent: "center", paddingHorizontal: E.m, height: TOUCHE - 6, borderRadius: R.pill,
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
+  },
+  puceActive: { backgroundColor: "rgba(36,84,255,.20)", borderColor: "rgba(36,84,255,.55)" },
+  puceTexte: { color: C.texteDoux, fontFamily: P.texteMoyen, fontSize: 13 },
+  puceTexteActif: { color: C.texte, fontFamily: P.texteFort },
+
+  total: {
+    gap: 4, padding: E.l, borderRadius: R.xl,
+    backgroundColor: "rgba(36,84,255,.14)", borderWidth: 1, borderColor: "rgba(36,84,255,.32)",
+  },
+  totalEtiquette: {
+    color: C.cyanTexte, fontFamily: P.texteFort, fontSize: 10.5,
+    textTransform: "uppercase", letterSpacing: 1,
+  },
+  // `tabular-nums` : sans lui, les chiffres n'ont pas la même largeur et les montants dansent d'un
+  // rafraîchissement à l'autre.
+  totalValeur: { color: C.texte, fontFamily: P.titre, fontSize: 32, letterSpacing: -1, fontVariant: ["tabular-nums"] },
+  totalSous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13 },
+
+  tuiles: { flexDirection: "row", gap: E.s },
+  tuile: {
+    flex: 1, gap: 4, padding: E.m, borderRadius: R.l,
+    backgroundColor: C.surface, borderWidth: 1,
+  },
+  tuileEtiquette: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 11.5 },
+  tuileValeur: { fontFamily: P.titreFort, fontSize: 19, fontVariant: ["tabular-nums"] },
+
+  regle: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5, lineHeight: 18 },
+
+  carte: {
+    gap: E.s, padding: E.m, borderRadius: R.l,
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
+  },
+  ligne: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: E.s },
+  nom: { color: C.texte, fontFamily: P.titreFort, fontSize: 16, flexShrink: 1 },
+  detail: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
+  montant: { color: C.texte, fontFamily: P.titreFort, fontSize: 17, fontVariant: ["tabular-nums"] },
+  declare: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12, lineHeight: 17 },
+  bas: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: E.xs },
+
+  decompte: {
+    gap: E.xs, padding: E.s, borderRadius: R.m,
+    backgroundColor: "rgba(255,255,255,.04)", borderWidth: 1, borderColor: C.bordure,
+  },
+  ligneDecompte: { flexDirection: "row", justifyContent: "space-between", gap: E.s },
+  decompteTexte: { color: C.texteDoux, fontFamily: P.texteMoyen, fontSize: 12.5, flexShrink: 1 },
+  suspendu: { color: C.alerteTexte, fontFamily: P.texte, fontSize: 12.5, lineHeight: 18 },
+
+  contester: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    minHeight: TOUCHE, borderRadius: R.m,
+    borderWidth: 1, borderColor: C.bordureForte, backgroundColor: "rgba(255,255,255,.05)",
+  },
+  contesterTexte: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 13.5 },
+  champ: {
+    minHeight: 84, borderRadius: R.m, padding: E.s, textAlignVertical: "top",
+    backgroundColor: C.fond, borderWidth: 1, borderColor: C.bordureForte,
+    color: C.texte, fontFamily: P.texte, fontSize: 15,
+  },
+});

@@ -15,5 +15,7 @@ export default function Aiguillage() {
       </View>
     );
   }
-  return <Redirect href={session ? "/missions" : "/connexion"} />;
+  // On atterrit sur l'Accueil, pas sur Missions : c'est le premier onglet de la barre, et deux
+  // endroits differents pour « ou l'application s'ouvre » finissent toujours par diverger.
+  return <Redirect href={session ? "/accueil" : "/connexion"} />;
 }

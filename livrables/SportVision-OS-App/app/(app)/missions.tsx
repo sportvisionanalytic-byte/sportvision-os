@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Ecran, Probleme, Section, Vide } from "../../src/ui/Ecran";
 import { Pastille } from "../../src/ui/Base";
 import { estProduction, useSession } from "../../src/lib/session";
+import { libelleCouverture } from "../../src/lib/os-missions";
 import {
   lireCockpit, lireMesMissions, repondre,
   type MaMission, type MissionProduction,
@@ -246,7 +247,7 @@ function CarteMission({
       ) : null}
 
       <View style={s.bas}>
-        {m.couverture ? <Pastille texte={m.couverture} /> : null}
+        {libelleCouverture(m.couverture) ? <Pastille texte={libelleCouverture(m.couverture)!} /> : null}
         {m.remuneration !== null ? (
           <Text style={s.remu}>{m.remuneration} €</Text>
         ) : null}

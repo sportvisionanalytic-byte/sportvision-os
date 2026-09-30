@@ -2,18 +2,33 @@
 import React from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { Lueur } from "./Fond";
+import { retourner } from "../lib/retour";
 import { C, E, R } from "../theme/couleurs";
 import { P } from "../theme/polices";
 
 export function Ecran({
-  children, rafraichir, enCours, style, teinte,
+  children, rafraichir, enCours, style, teinte, retour, retourLibelle,
 }: {
   children: React.ReactNode;
   rafraichir?: () => void;
   enCours?: boolean;
   style?: ViewStyle;
   teinte?: "violet" | "cyan" | "bleu";
+  /**
+   * LA SORTIE D'UN ÉCRAN QUI N'EST PAS UN ONGLET (30/09/2026).
+   *
+   * Cinq écrans de l'OS ne tiennent pas dans la barre du bas — elle en porte cinq, l'application
+   * en compte dix. On les atteint depuis « Mon espace », et sans cette flèche on n'en sortirait
+   * QUE par un onglet : un écran dont la sortie n'est pas là où on est entré.
+   *
+   * La valeur est le REPLI, pas la destination : `retourner` recule d'un cran quand il y a un
+   * cran, et ne se rabat sur ce chemin que si la pile est vide (notification, lien, application
+   * relancée sur son dernier écran). La règle vit dans `src/lib/retour.ts`, pas ici.
+   */
+  retour?: string;
+  retourLibelle?: string;
 }) {
   const insets = useSafeAreaInsets();
   return (
@@ -39,6 +54,19 @@ export function Ecran({
           : undefined
       }
     >
+      {retour ? (
+        <Pressable
+          onPress={() => retourner(retour)}
+          accessibilityRole="button"
+          accessibilityLabel={`Revenir à ${retourLibelle ?? "Mon espace"}`}
+          hitSlop={8}
+          style={({ pressed }) => [s.retour, pressed ? { opacity: 0.7 } : null]}
+        >
+          <Ionicons name="chevron-back" size={18} color={C.texteDoux} />
+          <Text style={s.retourTexte}>{retourLibelle ?? "Mon espace"}</Text>
+        </Pressable>
+      ) : null}
+
       {children}
     </ScrollView>
     </View>
@@ -89,6 +117,9 @@ export function Vide({ titre, texte }: { titre: string; texte: string }) {
 }
 
 const s = StyleSheet.create({
+  // La meme rangee que le retour d'une galerie : une seule facon de reculer dans toute l'app.
+  retour: { flexDirection: "row", alignItems: "center", gap: 2, alignSelf: "flex-start", marginBottom: -E.s },
+  retourTexte: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 14 },
   demo: {
     alignSelf: "flex-start", paddingHorizontal: E.s, paddingVertical: 5, borderRadius: R.pill,
     backgroundColor: "rgba(232,163,61,.14)", borderWidth: 1, borderColor: "rgba(232,163,61,.3)",

@@ -14,6 +14,24 @@
 // c'est qu'il ne doit y en avoir qu'un.
 import { supabase } from "./supabase";
 
+/** Les libellés de couverture de l'OS, mot pour mot (`PM_COUVERTURE_LB`). La base stocke
+ *  `photo_video` : posé tel quel dans une pastille, le souligné se voit — vu à l'écran le 30/09 sur
+ *  trois écrans à la fois. Mesuré : 9 prestations sur 10 en `photo_video`, la dixième à NULL.
+ *
+ *  UN SEUL ENDROIT, ET C'EST ICI, auprès du type qui porte le champ. La valeur inconnue ressort
+ *  telle quelle plutôt que vide : un libellé qu'on n'a pas prévu doit se voir, pas disparaître. */
+const COUVERTURE: Record<string, string> = {
+  photo: "Photo",
+  video: "Vidéo",
+  photo_video: "Photo + Vidéo",
+};
+
+export function libelleCouverture(brut?: string | null): string | null {
+  if (!brut) return null;
+  return COUVERTURE[brut] ?? brut;
+}
+
+
 export type GroupeMission =
   | "a_planifier" | "attente_acceptation" | "a_venir" | "terrain"
   | "post_production" | "a_verifier" | "corrections" | "terminees" | "annulees" | "autres";

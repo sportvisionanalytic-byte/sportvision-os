@@ -1,17 +1,31 @@
-// MON COMPTE (30/09/2026). Qui je suis, et la sortie. Rien de plus pour l'instant : tout ce qui
-// se règle se règle dans l'OS, et dupliquer des formulaires ici en ferait deux à tenir à jour.
+// MON ESPACE (30/09/2026). Qui je suis, ce que la barre du bas ne porte pas, et la sortie.
+//
+// CET ÉCRAN EST DEVENU LA PORTE DES CINQ AUTRES. La barre du bas tient cinq onglets, l'application
+// compte dix écrans : ceux qu'on ouvre debout sont dans la barre, ceux qu'on consulte assis sont
+// ici. Le raisonnement complet est dans l'en-tête de `_layout.tsx` ; ce fichier n'en est que la
+// conséquence, et il ne décide rien de son côté.
+//
+// AUCUN FORMULAIRE, ET C'EST INCHANGÉ. Tout ce qui se règle se règle dans l'OS : dupliquer un
+// formulaire ici en ferait deux à tenir à jour, et deux copies d'une règle finissent par diverger.
+//
+// LES ENTRÉES DÉPENDENT DU MÉTIER, PAS DE CE QUE LA BASE ACCEPTERA. « Mon planning » n'apparaît
+// que pour la production, parce que c'est le seul métier pour qui il n'est pas déjà un onglet. Les
+// quatre autres entrées sont là pour tout le monde : la RLS décide de leur contenu, et chacun de
+// ces écrans explique son propre vide plutôt que de s'afficher blanc (règle 7 du contrat).
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { Ecran, Section } from "../../src/ui/Ecran";
 import { Ecusson } from "../../src/ui/Ecusson";
-import { useSession } from "../../src/lib/session";
+import { estProduction, useSession } from "../../src/lib/session";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
 import { P } from "../../src/theme/polices";
 
 export default function Profil() {
   const { moi, deconnexion, session } = useSession();
   const nom = `${moi?.prenom ?? ""} ${moi?.nom ?? ""}`.trim();
+  const production = estProduction(moi?.role ?? null);
 
   return (
     <Ecran teinte="violet">
@@ -22,6 +36,47 @@ export default function Profil() {
           <Text style={s.sous} numberOfLines={1}>{moi?.metier ?? "SportVision"}</Text>
         </View>
       </View>
+
+      <Section titre="Mes écrans">
+        <View style={s.bloc}>
+          {/* Le planning n'est ici QUE pour la production : pour tous les autres métiers, c'est
+              déjà le troisième onglet de la barre. Deux chemins vers le même écran, dont un
+              masqué, c'est un doute sur lequel est le vrai. */}
+          {production ? (
+            <Acces
+              chemin="/planning"
+              icone="list"
+              titre="Mon planning"
+              sous="Mes propres prestations, celles où je suis sur le terrain"
+            />
+          ) : null}
+          <Acces
+            chemin="/revenus"
+            icone="cash-outline"
+            titre="Mes revenus"
+            sous="Montants versés, reste à verser, ajustements"
+          />
+          <Acces
+            chemin="/galeries"
+            icone="images-outline"
+            titre="Galeries photo"
+            sous="Les albums des missions"
+          />
+          <Acces
+            chemin="/formation"
+            icone="school-outline"
+            titre="Centre de formation"
+            sous="Mes formations suivies et mes certifications"
+          />
+          <Acces
+            chemin="/centre"
+            icone="book-outline"
+            titre="Le Centre SportVision"
+            sous="Check-lists et fiches, cherchables sur le terrain"
+            dernier
+          />
+        </View>
+      </Section>
 
       <Section titre="Mon compte">
         <View style={s.bloc}>
@@ -48,6 +103,34 @@ export default function Profil() {
   );
 }
 
+/** Une entrée vers un écran hors de la barre. `push` et pas `replace` : la flèche d'`Ecran` doit
+ *  avoir un cran où reculer, sinon elle se rabat sur le repli et on perd d'où l'on venait. */
+function Acces({
+  chemin, icone, titre, sous, dernier,
+}: {
+  chemin: string;
+  icone: keyof typeof Ionicons.glyphMap;
+  titre: string;
+  sous: string;
+  dernier?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={() => router.push(chemin as never)}
+      accessibilityRole="button"
+      accessibilityLabel={titre}
+      style={({ pressed }) => [s.acces, dernier ? { borderBottomWidth: 0 } : null, pressed ? { backgroundColor: "rgba(255,255,255,.05)" } : null]}
+    >
+      <View style={s.rond}><Ionicons name={icone} size={17} color={C.accentClair} /></View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={s.accesTitre}>{titre}</Text>
+        <Text style={s.accesSous}>{sous}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={C.texteFaible} />
+    </Pressable>
+  );
+}
+
 function Ligne({ libelle, valeur }: { libelle: string; valeur: string }) {
   return (
     <View style={s.ligne}>
@@ -67,6 +150,15 @@ const s = StyleSheet.create({
     paddingHorizontal: E.m, minHeight: TOUCHE + 6,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.bordure,
   },
+  acces: {
+    flexDirection: "row", alignItems: "center", gap: E.m,
+    paddingHorizontal: E.m, paddingVertical: E.s, minHeight: TOUCHE + 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.bordure,
+  },
+  // `alignSelf: stretch` : sans lui, un titre mesuré hors de sa colonne se tronque trop tôt.
+  // Défaut payé deux fois dans l'application des familles, le 29/09.
+  accesTitre: { alignSelf: "stretch", color: C.texte, fontFamily: P.texteFort, fontSize: 15 },
+  accesSous: { alignSelf: "stretch", color: C.texteDoux, fontFamily: P.texte, fontSize: 12.5, lineHeight: 17 },
   libelle: { color: C.texteDoux, fontFamily: P.texteMoyen, fontSize: 13.5 },
   valeur: { flexShrink: 1, color: C.texte, fontFamily: P.texteFort, fontSize: 13.5, textAlign: "right" },
   sortie: {
