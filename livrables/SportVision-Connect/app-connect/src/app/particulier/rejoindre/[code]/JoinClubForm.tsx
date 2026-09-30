@@ -17,6 +17,7 @@ export function JoinClubForm({ code, athletes }: { code: string; athletes: Athle
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<"done" | "ambigu" | null>(null);
+  const [resolvedPlayerId, setResolvedPlayerId] = useState<string | null>(null);
 
   const choices: Choice[] = [
     { kind: "self", refId: null, label: "Moi-même" },
@@ -82,8 +83,13 @@ export function JoinClubForm({ code, athletes }: { code: string; athletes: Athle
       return;
     }
     const row = Array.isArray(data) ? data[0] : data;
+    setResolvedPlayerId(row?.resolved_player_id ?? null);
     setResult(row?.match_ambigu ? "ambigu" : "done");
   }
+
+  // Nom à afficher dans l'écran de bienvenue qui suit : le libellé du choix pour un profil déjà
+  // suivi (club/managed), le prénom saisi pour un nouveau profil ou soi-même.
+  const displayName = choice && (choice.kind === "club" || choice.kind === "managed") ? choice.label : firstName.trim();
 
   if (result === "done") {
     return (
@@ -94,8 +100,15 @@ export function JoinClubForm({ code, athletes }: { code: string; athletes: Athle
           Un coach ou un responsable du club doit encore valider cette affiliation. Vous retrouverez son statut dans
           Mes sportifs.
         </p>
-        <Link href="/particulier/sportifs" className="self-start rounded-sv bg-sv-gradient px-5 py-3 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]">
-          Mes sportifs
+        <Link
+          href={
+            resolvedPlayerId
+              ? `/particulier/rejoindre/${code}/bienvenue?playerId=${resolvedPlayerId}&nom=${encodeURIComponent(displayName || "votre sportif")}`
+              : "/particulier/sportifs"
+          }
+          className="self-start rounded-sv bg-sv-gradient px-5 py-3 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
+        >
+          Continuer
         </Link>
       </div>
     );

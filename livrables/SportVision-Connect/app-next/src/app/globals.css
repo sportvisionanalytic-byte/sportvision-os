@@ -137,15 +137,18 @@ body {
   }
 }
 
-/* ── Ouvert depuis l'application mobile (25/09/2026) ─────────────────────────────────────────
-   Meme mecanique que sur Connect. La marque data-app est posee sur <html> par le layout racine,
-   depuis le cookie sv_app que /auth/app depose quand la session vient de l'application native.
+/* ── Ouvert depuis l'application mobile ──────────────────────────────────────────────────────
+   CORRIGE LE 29/09/2026, ET C'ETAIT BLOQUANT. La regle masquait `.sv-decor`, qui contient A LA
+   FOIS la barre laterale ET l'EN-TETE. Or c'est l'en-tete qui porte le bouton hamburger, seul
+   moyen d'ouvrir le menu sur un telephone. Resultat : ouvert depuis l'application, Club+ n'avait
+   plus aucune navigation. Fouka : « je ne peux meme pas naviguer, je n'ai pas la barre laterale ».
 
-   Sans elle, Club+ arrive dans la fenetre avec sa barre laterale et son en-tete par-dessus la
-   barre d'onglets de l'application : deux navigations empilees. Le contenu, lui, ne bouge pas —
-   seules les marges reservees aux barres disparaissent, sinon la page garderait un vide. */
-html[data-app="1"] .sv-decor { display: none !important; }
-/* Un conteneur en « contents » n'a pas de boite a lui : on masque aussi ses enfants directs,
-   sinon la barre laterale resterait visible a l'interieur. */
-html[data-app="1"] .sv-decor > * { display: none !important; }
+   Le raisonnement d'origine etait juste pour CONNECT, ou l'application affiche ses propres
+   onglets en bas : deux navigations empilees n'ont pas de sens. Mais Club+ s'ouvre dans un ecran
+   SANS onglets — une simple barre avec un retour et un titre. Masquer sa navigation ne retirait
+   donc pas un doublon : elle retirait la seule qui existait.
+
+   On garde uniquement ce qui fait vraiment doublon : la barre laterale FIXE des grands ecrans,
+   qui n'a pas sa place dans une fenetre de telephone. L'en-tete reste, son hamburger aussi, et
+   le menu s'ouvre en tiroir comme sur n'importe quel telephone. */
 html[data-app="1"] main { padding-top: 0 !important; padding-bottom: 0 !important; }

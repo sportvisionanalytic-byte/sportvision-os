@@ -23,6 +23,12 @@ function formatPrice(cents: number, currency: string): string {
   return (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: currency.toUpperCase() });
 }
 
+// Statuts de mes_autorisations() qui valent "la famille s'est déjà positionnée" — inutile de
+// redemander à chaque achat. Tout le reste (jamais transmis, refusé, retiré, expiré...) déclenche
+// la demande au moment d'acheter, pas avant : rien n'oblige à y passer avant d'avoir une raison
+// concrète de le faire (achat = le moment où le droit à l'image devient réellement utile).
+const DROIT_IMAGE_DEJA_TRAITE = new Set(["valide", "transmise", "a_verifier"]);
+
 export function PhotosViewClub({
   detail,
   albums: initialAlbums,
@@ -50,6 +56,15 @@ export function PhotosViewClub({
   const [shippingPostalCode, setShippingPostalCode] = useState("");
   const [shippingCity, setShippingCity] = useState("");
 
+  // Droit à l'image (29/09/2026, décision Fouka) : demandé au moment d'acheter, pas avant. Statut
+  // chargé une fois au montage ; tant qu'il n'est pas connu on laisse passer (mieux vaut un achat
+  // sans avoir redemandé que bloquer sur un chargement lent).
+  const [droitImageStatut, setDroitImageStatut] = useState<string | null>(null);
+  const [droitImageCharge, setDroitImageCharge] = useState(false);
+  const [consentProduct, setConsentProduct] = useState<AvailableMediaProduct | null>(null);
+  const [consentBusy, setConsentBusy] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
+
   const hasAlbums = albums.length > 0;
   // BUGFIX (audit mobile/desktop 02/09/2026) : voir le commentaire équivalent dans
   // PhotosView.tsx (Espace joueur) — même bug, même correctif. Le bloc d'achat doit apparaître
@@ -69,6 +84,23 @@ export function PhotosViewClub({
     return () => clearTimeout(t);
   }, [returnStatus, detail.club_id, detail.team_id, detail.saison_id, detail.ref_id, router]);
 
+  useEffect(() => {
+    let vivant = true;
+    const supabase = createClient();
+    supabase
+      .rpc("mes_autorisations", { p_player_id: detail.ref_id })
+      .then(({ data }: { data: unknown }) => {
+        if (!vivant) return;
+        const rows = Array.isArray(data) ? (data as { code?: string; statut?: string }[]) : [];
+        const droitImage = rows.find((r) => r.code === "droit_image");
+        setDroitImageStatut(droitImage?.statut ?? "non_transmise");
+        setDroitImageCharge(true);
+      });
+    return () => {
+      vivant = false;
+    };
+  }, [detail.ref_id]);
+
   async function acheterProduit(productId: string, shipping?: { name: string; addressLine: string; postalCode: string; city: string }) {
     setBusyProductId(productId);
     setError(null);
@@ -86,12 +118,42 @@ export function PhotosViewClub({
     }
   }
 
-  function handleObtenir(p: AvailableMediaProduct) {
+  function poursuivreAchat(p: AvailableMediaProduct) {
     if (p.physicalProduct) {
       setShippingProductId(p.id);
       return;
     }
     acheterProduit(p.id);
+  }
+
+  function handleObtenir(p: AvailableMediaProduct) {
+    if (droitImageCharge && droitImageStatut && !DROIT_IMAGE_DEJA_TRAITE.has(droitImageStatut)) {
+      setConsentError(null);
+      setConsentProduct(p);
+      return;
+    }
+    poursuivreAchat(p);
+  }
+
+  async function accorderDroitImageEtContinuer() {
+    if (!consentProduct) return;
+    setConsentBusy(true);
+    setConsentError(null);
+    const supabase = createClient();
+    const { data, error: rpcError } = await supabase.rpc("signer_autorisation", {
+      p_player_id: detail.ref_id,
+      p_code: "droit_image",
+      p_accepte: true,
+    });
+    setConsentBusy(false);
+    if (rpcError || !data) {
+      setConsentError("Impossible d'enregistrer votre accord pour le moment.");
+      return;
+    }
+    setDroitImageStatut("valide");
+    const p = consentProduct;
+    setConsentProduct(null);
+    poursuivreAchat(p);
   }
 
   function submitShipping() {
@@ -220,6 +282,46 @@ export function PhotosViewClub({
             ))}
           </div>
         </>
+      )}
+
+      {consentProduct && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+          onClick={() => !consentBusy && setConsentProduct(null)}
+        >
+          <div
+            className="flex w-full max-w-[440px] flex-col gap-4 rounded-sv-card border border-border bg-surface p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="material-symbols-rounded !text-[28px] text-contenus" aria-hidden="true">photo_camera</span>
+            <h2 className="font-sora text-[18px] font-bold tracking-tight">Droit à l&apos;image de {detail.first_name}</h2>
+            <p className="text-[14px] leading-relaxed text-text-tertiary">
+              Avant d&apos;acheter des photos de {detail.first_name}, confirmez que vous autorisez SportVision à les
+              traiter (identification, retouche, livraison). Sans cet accord, les photos où {detail.first_name} est
+              identifié·e restent masquées, y compris pour vous.
+            </p>
+            {consentError && <span className="text-[13px] text-danger">{consentError}</span>}
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={accorderDroitImageEtContinuer} loading={consentBusy}>
+                J&apos;accorde et je continue
+              </Button>
+              <button
+                type="button"
+                onClick={() => setConsentProduct(null)}
+                disabled={consentBusy}
+                className="rounded-sv border border-border-strong bg-white/[.06] px-5 py-3 font-sora text-[15px] font-semibold text-text-secondary hover:bg-white/[.1] disabled:opacity-60"
+              >
+                Pas maintenant
+              </button>
+            </div>
+            <Link
+              href={`/particulier/sportifs/${detail.kind}/${detail.ref_id}/autorisations`}
+              className="text-[13px] font-semibold text-contenus hover:underline"
+            >
+              Voir toutes les autorisations
+            </Link>
+          </div>
+        </div>
       )}
     </div>
   );

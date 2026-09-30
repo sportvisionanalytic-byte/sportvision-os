@@ -13,6 +13,12 @@ export interface TeamRosterPlayer {
   licenseNumber: string | null;
   accountStatus: string;
   imageRightStatus: string;
+  /** Photo posée par le parent (parent_set_child_photo, v337) — null tant que non renseignée. */
+  photoUrl: string | null;
+  /** Contact du premier parent confirmé (equipe_roster_contacts, v337) — visible du coach/CM de
+   * l'équipe uniquement, jamais du club entier. Absents si aucun parent confirmé. */
+  parentPhone: string | null;
+  parentEmail: string | null;
 }
 
 interface TeamMembershipRow {
@@ -24,12 +30,31 @@ interface TeamMembershipRow {
     numero_licence: string | null;
     numero_maillot: string | null;
     account_status: string;
+    photo_url: string | null;
   } | null;
 }
 
 interface AuthorizationJoinRow {
   player_id: string;
   statut: string;
+}
+
+interface RosterContactRow {
+  player_id: string;
+  telephone: string | null;
+  email: string | null;
+}
+
+/** equipe_roster_contacts (v337) : gardée par is_team_educateur côté serveur — un coach hors
+ * périmètre reçoit simplement 0 ligne, jamais une erreur (même logique que fetchImageRightStatuses
+ * ci-dessus, aucun contrôle de droits à dupliquer ici). */
+async function fetchRosterContacts(supabase: SupabaseClient, teamId: string): Promise<Map<string, { phone: string | null; email: string | null }>> {
+  const { data } = await supabase.rpc("equipe_roster_contacts", { p_team_id: teamId });
+  const map = new Map<string, { phone: string | null; email: string | null }>();
+  for (const row of (data ?? []) as RosterContactRow[]) {
+    map.set(row.player_id, { phone: row.telephone, email: row.email });
+  }
+  return map;
 }
 
 async function fetchImageRightStatuses(supabase: SupabaseClient, playerIds: string[]): Promise<Map<string, string>> {
@@ -50,20 +75,24 @@ async function fetchImageRightStatuses(supabase: SupabaseClient, playerIds: stri
 export async function fetchTeamRoster(supabase: SupabaseClient, teamId: string): Promise<TeamRosterPlayer[]> {
   const { data, error } = await supabase
     .from("team_memberships")
-    .select("player_id, player_profiles(id, prenom, nom, numero_licence, numero_maillot, account_status)")
+    .select("player_id, player_profiles(id, prenom, nom, numero_licence, numero_maillot, account_status, photo_url)")
     .eq("team_id", teamId)
     .eq("statut", "active");
   if (error) throw error;
 
   const rows = ((data ?? []) as unknown as TeamMembershipRow[]).filter((row) => row.player_profiles);
-  const imageRightByPlayer = await fetchImageRightStatuses(
-    supabase,
-    rows.map((row) => row.player_profiles!.id),
-  );
+  const [imageRightByPlayer, contactByPlayer] = await Promise.all([
+    fetchImageRightStatuses(
+      supabase,
+      rows.map((row) => row.player_profiles!.id),
+    ),
+    fetchRosterContacts(supabase, teamId),
+  ]);
 
   return rows
     .map((row) => {
       const p = row.player_profiles!;
+      const contact = contactByPlayer.get(p.id);
       return {
         id: p.id,
         firstName: p.prenom,
@@ -72,6 +101,9 @@ export async function fetchTeamRoster(supabase: SupabaseClient, teamId: string):
         licenseNumber: p.numero_licence,
         accountStatus: p.account_status,
         imageRightStatus: imageRightByPlayer.get(p.id) ?? "non_transmise",
+        photoUrl: p.photo_url,
+        parentPhone: contact?.phone ?? null,
+        parentEmail: contact?.email ?? null,
       };
     })
     .sort((a, b) => `${a.lastName}${a.firstName}`.localeCompare(`${b.lastName}${b.firstName}`, "fr"));
