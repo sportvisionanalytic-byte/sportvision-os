@@ -465,6 +465,19 @@ export async function sInscrire(formationId: string, moiId: string): Promise<str
       if (e2) throw new Error(e2.message);
       if (deja?.id) return String(deja.id);
     }
+    // LA v440 REFUSE L'INSCRIPTION HORS PÉRIMÈTRE, ET LE REFUS ARRIVE EN LANGAGE DE BASE.
+    // `new row violates row-level security policy for table "formation_inscriptions"` n'apprend
+    // rien à un photographe au bord d'un terrain. Mesuré par le chemin réel avec le jeton
+    // d'Antoine : c'est exactement ce texte, en 42501, sur une formation réservée au secrétariat
+    // ou verrouillée au-dessus de son grade. On le traduit sans rien affirmer de plus que ce que
+    // la règle dit : rôle, ou grade.
+    if (error.code === "42501" || /row-level security/i.test(error.message)) {
+      throw new Error(
+        "Cette formation ne vous est pas ouverte : elle est réservée à un autre rôle, ou elle "
+        + "attend un grade supérieur au vôtre. Demandez-la à l'administration si elle devrait "
+        + "l'être.",
+      );
+    }
     throw new Error(error.message);
   }
   if (!data || !data.length) {

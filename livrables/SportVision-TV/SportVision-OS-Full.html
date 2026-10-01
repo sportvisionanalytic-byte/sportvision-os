@@ -11595,8 +11595,8 @@ async function loadProdMesInvitations(){
             <div style="font-size:11.5px;color:var(--t3)">${quand}${p.heure_debut?' · '+String(p.heure_debut).slice(0,5):''}${p.lieu?' · '+esc(p.lieu):''}${r.fonction?' · '+esc(r.fonction):''}</div>
           </div>
           <div style="display:flex;gap:7px;flex-shrink:0">
-            <button onclick="repondreInvitation('${r.id}','acceptée').then(loadProdMesInvitations)" class="btn bp bs" style="min-height:38px">Accepter</button>
-            <button onclick="repondreInvitation('${r.id}','refusée').then(loadProdMesInvitations)" class="btn bg2 bs" style="min-height:38px">Refuser</button>
+            <button onclick="modalAccepterInvitation('${r.id}','${escJs(p.clients?.nom||p.reference||'')}','loadProdMesInvitations')" class="btn bp bs" style="min-height:38px">Accepter</button>
+            <button onclick="modalRefuserInvitation('${r.id}','${escJs(p.clients?.nom||p.reference||'')}','loadProdMesInvitations')" class="btn bg2 bs" style="min-height:38px">Refuser</button>
           </div>
         </div>`;}).join('')}</div>
     </div>`;
@@ -17803,7 +17803,7 @@ async function loadPhotoDash(){
               <div style="font-size:11px;color:var(--t3);margin-top:2px">${p.reference||'—'} · ${d} · ${esc(p.lieu||'Lieu TBD')}</div>
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0">
-              <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rc);color:var(--ok);cursor:pointer;font-weight:600;min-height:40px">✓ Accepter</button>
+              <button onclick="modalAccepterInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rc);color:var(--ok);cursor:pointer;font-weight:600;min-height:40px">✓ Accepter</button>
               <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rc);color:var(--er);cursor:pointer;min-height:40px">✗ Refuser</button>
             </div>
           </div>`;
@@ -17967,7 +17967,7 @@ function renderPhotoPre(){
             </div>
           </div>
           ${row.statut==='invitation_envoyée'?`<div style="display:flex;flex-direction:column;gap:5px" onclick="event.stopPropagation()">
-            <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rc);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px">✓ Accepter</button>
+            <button onclick="modalAccepterInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rc);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px">✓ Accepter</button>
             <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rc);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
           </div>`:(p.date_prestation===today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();switchView('jourj')" style="padding:10px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rc);color:var(--er);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">🔴 Jour J</button>`:(p.date_prestation<today&&!['livrée','clôturée','payée'].includes(p.statut))?`<button onclick="event.stopPropagation();modalSauvegarde('${p.id}')" style="padding:10px 14px;font-size:12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rc);color:var(--t2);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px;flex-shrink:0">📦 Livrer</button>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
         </div>
@@ -18029,7 +18029,37 @@ async function repondreInvitation(equipeId,statut,motif){
   }catch(e){toast('Erreur lors de la réponse.');}
 }
 
-function modalRefuserInvitation(equipeId,nomPrestation){
+// ── ACCEPTER OU REFUSER DEMANDE UNE SECONDE INTENTION, PARTOUT (01/10/2026) ──────────────────
+//
+// MESURÉ dans `protect_sensitive_affectation_fields`, puis vérifié par le chemin réel avec le
+// jeton d'un opérateur : une fois la réponse envoyée, la base REFUSE de revenir dessus, dans les
+// deux sens. `refusée → acceptée` et `acceptée → refusée` lèvent la même exception — seule la
+// Production peut remettre l'affectation en « invitation_envoyée ». C'est le geste le plus
+// irréversible de l'OS côté opérateur.
+//
+// Or quatre écrans le posaient en un seul appui : le panneau « Vos missions à accepter » du
+// Responsable Production (deux boutons de 38 px), le tableau de bord mobile (deux pastilles « ✗ »
+// et « ✓ » de 44 px, sans un mot), et deux écrans photographe où seul le REFUS passait par une
+// modale. Un pouce qui glisse au bord d'un terrain coûtait la mission, sans retour possible.
+// L'application native a été corrigée le matin même pour exactement cette raison ; les deux
+// produits disent maintenant la même phrase, celle que la base applique vraiment.
+//
+// `apres` : le nom d'une fonction globale de rafraîchissement, quand l'écran appelant en a une
+// qui lui est propre (le panneau de la Production). Vide ailleurs : `repondreInvitation` recharge
+// déjà l'écran photographe.
+function modalAccepterInvitation(equipeId,nomPrestation,apres){
+  openModal(`<div class="mh"><div class="mt">Accepter cette mission ?</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:13px;font-weight:600;color:var(--t1)">${nomPrestation||'Cette mission'}</div>
+      <div style="font-size:12.5px;color:var(--t2);line-height:1.55">La production sera prévenue et la mission passera en « Équipe affectée ». Vous ne pourrez plus la refuser vous-même : il faudra lui demander de vous renvoyer l'invitation.</div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="(function(){closeModal();repondreInvitation('${equipeId}','acceptée')${apres?`.then(()=>{if(typeof ${apres}==='function')${apres}();})`:''};})()">J'accepte</button>
+    </div>`);
+}
+
+function modalRefuserInvitation(equipeId,nomPrestation,apres){
   openModal(`<div class="mh"><div class="mt">Refuser la mission</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:12px">
       <div style="font-size:13px;color:var(--t2)">${nomPrestation||'Cette mission'}</div>
@@ -18050,7 +18080,7 @@ function modalRefuserInvitation(equipeId,nomPrestation){
     </div>
     <div class="mf">
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
-      <button class="btn" style="background:rgba(240,68,94,.15);border:1px solid rgba(240,68,94,.3);color:var(--er)" onclick="(function(){const m=document.getElementById('ref-motif').value;const c=document.getElementById('ref-comment').value;closeModal();repondreInvitation('${equipeId}','refusée',m+(c?' — '+c:''));})()">Confirmer le refus</button>
+      <button class="btn" style="background:rgba(240,68,94,.15);border:1px solid rgba(240,68,94,.3);color:var(--er)" onclick="(function(){const m=document.getElementById('ref-motif').value;const c=document.getElementById('ref-comment').value;closeModal();repondreInvitation('${equipeId}','refusée',m+(c?' — '+c:''))${apres?`.then(()=>{if(typeof ${apres}==='function')${apres}();})`:''};})()">Confirmer le refus</button>
     </div>`);
 }
 
@@ -42922,17 +42952,42 @@ async function mobSearch(q){
 
 // ── Mode Jour J (terrain) ─────────────────────────────────────────────────
 let _jjData=null;
-const JJ_STATUT_ACTION={
-  'confirmée':{label:'Je prends la route',next:'équipe_en_route',ic:'🚗'},
-  'équipe_affectée':{label:'Je prends la route',next:'équipe_en_route',ic:'🚗'},
-  'planifiée':{label:'Je prends la route',next:'équipe_en_route',ic:'🚗'},
-  'équipe_en_route':{label:'Je suis arrivé',next:'arrivée_sur_place',ic:'📍'},
-  'arrivée_sur_place':{label:'Démarrer la prestation',next:'production_démarrée',ic:'▶️'},
-  'prête':{label:'Démarrer la prestation',next:'production_démarrée',ic:'▶️'},
-  'production_démarrée':{label:'Terminer la prestation',next:'production_terminée',ic:'✅'},
-  'production_terminée':{label:'Médias prêts à transférer',next:'médias_à_transférer',ic:'📤'},
-  'médias_à_transférer':{label:'Médias transférés',next:'médias_complets',ic:'✓'},
-};
+// ── LE PARCOURS DU MODE JOUR J EST CELUI D'`OPERATEUR_ACTIONS`, ET PLUS UNE COPIE (01/10/2026) ──
+//
+// Cet objet était la CINQUIÈME liste des gestes de l'opérateur (avec `OPERATEUR_ACTIONS`,
+// `JOURJ_BTNS`, `_NEXT_ST` et le `PARCOURS` de l'application native), et la seule qui
+// CONTREDISAIT les autres :
+//
+//   'équipe_affectée' → 'équipe_en_route'    au lieu de → 'prête'   : le geste « Kit prêt, je peux
+//                                            partir » n'existait pas, et `kit_prepare_at` ne se
+//                                            posait jamais depuis ce écran.
+//   'prête'           → 'production_démarrée' au lieu de → 'équipe_en_route' : DEUX étapes sautées.
+//
+// La seconde coûtait cher et c'est mesuré : `arrivée_sur_place` est l'étape qui déclenche
+// `signaler_arrivee_sur_place`, le seul endroit qui horodate `arrivee_sur_place_at`, calcule le
+// retard sur l'heure de rendez-vous et PRÉVIENT LA PRODUCTION. Un opérateur partant de « Prête »
+// depuis ce écran arrivait sur le terrain sans que personne ne le sache, et sans `parti_at` ni
+// `arrive_at` dans `mission_suivi_operateur`. La base ne s'y opposait pas : les onze transitions
+// du parcours ont été tentées une par une avec le jeton d'Antoine Blin, transaction annulée, le
+// 01/10 — les onze PASSENT. Ce n'était donc pas un bouton qui échouait, c'était un bouton qui
+// réussissait à sauter l'étape.
+//
+// LA LISTE N'EST PLUS RECOPIÉE : elle est DÉRIVÉE d'`OPERATEUR_ACTIONS`, le module « Procédure
+// terrain » du 09/09 qui est la référence. Seules les icônes de cet écran et les deux départs
+// courts (une mission qui n'est jamais passée par « Équipe affectée ») lui sont ajoutés.
+const _JJ_IC={'prête':'✅','équipe_en_route':'🚗','arrivée_sur_place':'📍','production_démarrée':'▶️','production_terminée':'✅','médias_à_transférer':'📤','médias_complets':'✓'};
+const JJ_STATUT_ACTION=(()=>{
+  const m={};
+  Object.keys(OPERATEUR_ACTIONS).forEach(st=>{
+    const a=OPERATEUR_ACTIONS[st];
+    // Le libellé d'`OPERATEUR_ACTIONS` porte déjà son émoji ; cet écran dessine l'icône à part.
+    m[st]={label:a.lb.replace(/^[^\p{L}]+/u,'').trim(),next:a.ns,ic:_JJ_IC[a.ns]||'▶️'};
+  });
+  // Les deux départs courts, mesurés légaux et proposés par l'application native.
+  m['planifiée']={label:'Je suis en route',next:'équipe_en_route',ic:'🚗'};
+  m['confirmée']={label:'Je suis en route',next:'équipe_en_route',ic:'🚗'};
+  return m;
+})();
 async function enterJourJ(prestationId){
   const el=document.getElementById('mob-jourj');
   if(!el)return;
@@ -43033,11 +43088,34 @@ function toggleJJCheck(prestationId,i){
 }
 async function jourJAction(prestationId,newStatut,btn){
   btn.disabled=true;btn.textContent='…';
+  // ── CE CHEMIN N'APPLIQUAIT AUCUN EFFET DE BORD (01/10/2026) ──────────────────────────────
+  //
+  // Il y a quatre endroits où l'opérateur fait avancer sa mission : `avancerParcours`
+  // (« Ma mission »), `avanJourJ` (le panneau Jour J), celui-ci (le Mode Jour J plein écran du
+  // téléphone) et l'application native. Les deux premiers appellent
+  // `appliquerEffetsStatutPrestation` ; celui-ci ne l'appelait pas, et n'écrivait aucun
+  // horodatage personnel ni la bascule d'après-match.
+  //
+  // CE QUE ÇA COÛTAIT, sur le seul geste « Prestation terminée » : pas de facture créée
+  // (`getOrCreateFacture`), pas de contrôle de retour du kit (`kit_controles` type `apres`, donc
+  // l'écran Matériel reste bloqué sur « le contrôle de retour sera disponible une fois la
+  // prestation terminée » et l'opérateur ne peut pas rendre son kit), pas d'événement
+  // `prestation.completed`, pas de tâche automatique, et pas la modale qui dit que le match est
+  // fini mais pas la mission. C'est le trou que le 12/09 avait fermé sur les trois AUTRES
+  // chemins. Vérifié : aucun déclencheur de la base ne fait ce travail — il n'existe que dans ce
+  // fichier, ce qui est aussi la raison pour laquelle l'application native ne l'a pas.
+  //
+  // ON NE RECOPIE PAS LA SUITE ICI : on appelle `avanJourJ`, qui la porte déjà en entier
+  // (effets de bord, horodatage, bascule, messages). Un cinquième chemin d'avancement aurait
+  // juste repoussé la prochaine dérive.
   try{
-    const r=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:newStatut}});
-    if(sbErr(r)){toast('Erreur : '+(msgErreur(r,'mise à jour impossible.')),'er');btn.disabled=false;return;}
-    toast('Statut mis à jour.','ok');
-    await enterJourJ(prestationId);
+    if(typeof avanJourJ!=='function'){toast('Mise à jour indisponible.','er');btn.disabled=false;return;}
+    await avanJourJ(prestationId,newStatut);
+    // `avanJourJ` a déjà dit ce que le geste a déclenché. On relit la fiche pour que l'écran
+    // montre le nouvel état — sauf sur `production_terminée`, où la bascule d'après-match est
+    // ouverte par-dessus et où recharger la ferait disparaître.
+    if(newStatut!=='production_terminée') await enterJourJ(prestationId);
+    else btn.disabled=false;
   }catch(e){toast('Erreur mise à jour.','er');btn.disabled=false;}
 }
 // Liste les kits actuellement attribués à cette prestation (via kit_reservations)
@@ -43157,8 +43235,8 @@ async function loadMobilePhotoDash(ct){
                  à 6px l'un de l'autre étaient trouvés à risque de mauvaise manipulation à
                  l'audit mobile 375-430px (cf. version desktop loadPhotoDash, déjà en min-height:40px). -->
             <div style="display:flex;gap:10px">
-              <button onclick="repondreInvitation('${inv.id}','refusée')" aria-label="Refuser l'invitation" style="padding:8px 14px;min-height:44px;min-width:44px;border-radius:var(--rp);background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);color:var(--er);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--ff)">✗</button>
-              <button onclick="repondreInvitation('${inv.id}','acceptée')" aria-label="Accepter l'invitation" style="padding:8px 14px;min-height:44px;min-width:44px;border-radius:var(--rp);background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);color:var(--ok);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓</button>
+              <button onclick="modalRefuserInvitation('${inv.id}','${escJs(p.clients?.nom||'')}')" aria-label="Refuser l'invitation" style="padding:8px 14px;min-height:44px;min-width:44px;border-radius:var(--rp);background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);color:var(--er);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--ff)">✗</button>
+              <button onclick="modalAccepterInvitation('${inv.id}','${escJs(p.clients?.nom||'')}')" aria-label="Accepter l'invitation" style="padding:8px 14px;min-height:44px;min-width:44px;border-radius:var(--rp);background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);color:var(--ok);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓</button>
             </div>
           </div>`;}).join('')}
         </div>

@@ -183,6 +183,24 @@ export default function Revenus() {
                 ? `${liste.length} prestation${liste.length > 1 ? "s" : ""}`
                 : "Aucune prestation sur cette période"}
             </Text>
+            {/* LE 1ER DU MOIS, « CE MOIS » MONTRE 0,00 € À TOUT LE MONDE, ET C'EST MESURÉ :
+                10 prestations sur 11 sont datées de septembre, une seule d'octobre. Le jour où le
+                mois tourne, l'écran s'ouvre donc sur un zéro, et un zéro sur de l'argent gagné se
+                lit « on ne m'a rien compté », pas « ce mois commence ». On ne change PAS la
+                période par défaut — c'est à Fouka de dire sur quoi cet écran doit s'ouvrir — mais
+                on ne laisse pas la personne devant un cul-de-sac : le pas suivant est là, et il
+                est à un doigt. */}
+            {!liste.length && periode === "mois" ? (
+              <Pressable
+                onPress={() => setPeriode("annee")}
+                accessibilityRole="button"
+                accessibilityLabel="Voir cette année"
+                style={({ pressed }) => [s.totalLien, pressed ? { opacity: 0.7 } : null]}
+              >
+                <Text style={s.totalLienTexte}>Voir cette année</Text>
+                <Ionicons name="arrow-forward" size={14} color={C.accentClair} />
+              </Pressable>
+            ) : null}
           </View>
 
           {/* LES TROIS ÉTAPES RESTENT AFFICHÉES MÊME À ZÉRO. Leur absence ferait croire que
@@ -598,6 +616,12 @@ const s = StyleSheet.create({
   // rafraîchissement à l'autre.
   totalValeur: { color: C.texte, fontFamily: P.titre, fontSize: 32, letterSpacing: -1, fontVariant: ["tabular-nums"] },
   totalSous: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13 },
+  // La cible fait TOUCHE de haut : c'est un bouton, pas un lien de page web.
+  totalLien: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    minHeight: TOUCHE, marginTop: 2, alignSelf: "flex-start",
+  },
+  totalLienTexte: { color: C.accentClair, fontFamily: P.texteFort, fontSize: 13.5 },
 
   tuiles: { flexDirection: "row", gap: E.s },
   tuile: {

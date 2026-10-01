@@ -103,9 +103,11 @@ import { Bouton, Champ, Erreur, Pastille } from "../../src/ui/Base";
 import { Barre } from "../../src/ui/Barre";
 import { Jauge } from "../../src/ui/Jauge";
 import {
-  creerGaleriesMission, lireEquipesDeMission, lireEquipesDuClub, lireGaleriesDeMission,
+  creerGaleriesMission, definirTypeEvenement, libelleTypeEvenement, lireEquipesDeMission,
+  lireEquipesDuClub, lireGaleriesDeMission,
   lireGaleriesParMission, lireOriginauxGalerie,
-  lireMesGaleries, lirePhotosGalerie, rattacherEquipe, renommerGalerie,
+  lireMesGaleries, lirePhotosGalerie, numeroUtileDeLaGalerie, rattacherEquipe, renommerGalerie,
+  TYPES_EVENEMENT,
   type EquipeDeMission, type EquipeDuClub, type Galerie, type PhotoGalerie,
 } from "../../src/lib/os-galeries";
 import {
@@ -232,6 +234,9 @@ function ListeGaleries({ surOuvrir }: { surOuvrir: (g: Galerie) => void }) {
 
   const liste = donnees ?? [];
   const total = useMemo(() => liste.reduce((s, g) => s + g.nbPhotos, 0), [liste]);
+  // Compté sur la liste qu'on a vraiment reçue, jamais sur un chiffre écrit en dur : un opérateur
+  // en voit zéro, la production en voit 57, et la phrase doit être vraie pour les deux.
+  const sansType = useMemo(() => liste.filter((g) => !g.typeEvenement).length, [liste]);
   const missions = mission.donnees?.missions ?? [];
   const parMission = mission.donnees?.parMission ?? new Map<string, number>();
   const sansGalerie = useMemo(
@@ -377,6 +382,23 @@ function ListeGaleries({ surOuvrir }: { surOuvrir: (g: Galerie) => void }) {
               {clubs.length > 2 ? (
                 <Barre choix={clubs} actif={clubActif} surChoix={setClub} />
               ) : null}
+            </View>
+          ) : null}
+
+          {/* LES GALERIES SANS TYPE, DITES UNE FOIS ET AU BON ENDROIT.
+              Mesuré ce soir : 57 sur 57. Écrire « type non renseigné » sur chaque carte aurait
+              répété la même ligne cinquante-sept fois sans rien apprendre ; ne rien dire aurait
+              laissé un champ de la base vide pour toujours. Un seul compte, en tête, et il
+              disparaît tout seul à mesure que la production renseigne les galeries. */}
+          {sansType > 0 && production ? (
+            <View style={s.rappel}>
+              <Text style={s.rappelTexte}>
+                {sansType === liste.length
+                  ? `Aucune des ${liste.length} galeries ne porte de type d'événement.`
+                  : `${sansType} galerie${sansType > 1 ? "s" : ""} sans type d'événement.`}
+                {" "}Ouvrez une galerie, « Modifier la galerie », pour le choisir. Sans type, la base
+                la traite comme un événement à dossards.
+              </Text>
             </View>
           ) : null}
 
@@ -696,6 +718,12 @@ function CarteGalerie({ g, surOuvrir }: { g: Galerie; surOuvrir: () => void }) {
           <Pastille ton={TON_STATUT[g.statut] ?? "neutre"} texte={LIBELLE_STATUT[g.statut]} />
         ) : g.statut ? <Pastille texte={g.statut} /> : null}
         {g.categorie ? <Pastille texte={g.categorie} /> : null}
+        {/* LE TYPE D'ÉVÉNEMENT, QUAND IL EST RENSEIGNÉ. Mesuré ce soir : il l'est sur 0 galerie
+            sur 57. On n'écrit donc PAS « type non renseigné » cinquante-sept fois de suite — le
+            compte manquant est dit une seule fois, en tête de liste, là où il se corrige. */}
+        {libelleTypeEvenement(g.typeEvenement)
+          ? <Pastille ton="info" texte={libelleTypeEvenement(g.typeEvenement)!} />
+          : null}
       </View>
     </Pressable>
   );
@@ -952,6 +980,12 @@ function VentesDeLaGalerie({ albumId }: { albumId: string }) {
 const PAR_PAGE = 60;
 
 function UneGalerie({ galerie, surRetour }: { galerie: Galerie; surRetour: () => void }) {
+  const { moi } = useSession();
+  // « Type non renseigné » ne s'affiche qu'à qui peut le renseigner. Mesuré : un opérateur ne peut
+  // RIEN écrire sur une galerie (`malbums_photographe_perimetre` porte
+  // `with_check (NOT est_operateur_terrain())`), et son UPDATE rend zéro ligne sans erreur. Lui
+  // montrer un manque qu'il ne peut pas combler, c'est un reproche sans bouton.
+  const production = estProduction(moi?.role ?? null);
   const [photos, setPhotos] = useState<PhotoGalerie[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [page, setPage] = useState(0);
@@ -971,6 +1005,9 @@ function UneGalerie({ galerie, surRetour }: { galerie: Galerie; surRetour: () =>
   // l'ancien nom, c'est croire que l'enregistrement a échoué.
   const [titre, setTitre] = useState(galerie.titre);
   const [categorie, setCategorie] = useState(galerie.categorie);
+  // Le type suit la même règle que le titre : il se change dans le panneau, et la pastille au-dessus
+  // doit bouger tout de suite, sinon on croit que ça n'a pas pris.
+  const [type, setType] = useState(galerie.typeEvenement);
 
   const { width } = useWindowDimensions();
   // Trois colonnes, gouttières comprises. `Ecran` pose E.l de marge de chaque côté.
@@ -1102,7 +1139,12 @@ function UneGalerie({ galerie, surRetour }: { galerie: Galerie; surRetour: () =>
           <Pastille ton={TON_STATUT[galerie.statut] ?? "neutre"} texte={LIBELLE_STATUT[galerie.statut]} />
         ) : null}
         {categorie ? <Pastille texte={categorie} /> : null}
+        {libelleTypeEvenement(type)
+          ? <Pastille ton="info" texte={libelleTypeEvenement(type)!} />
+          : production ? <Pastille ton="alerte" texte="Type non renseigné" /> : null}
       </View>
+
+      <LeNumeroDeDossard albumId={galerie.id} type={type} />
 
       {/* LES ORIGINAUX, AU-DESSUS DE LA GRILLE ET PAS EN BAS DE PAGE. C'est ce qu'un opérateur vient
           chercher : sur 431 photos, un bouton posé sous la grille demande huit « voir plus » avant
@@ -1168,6 +1210,7 @@ function UneGalerie({ galerie, surRetour }: { galerie: Galerie; surRetour: () =>
         galerie={galerie}
         surRenommee={setTitre}
         surEquipe={setCategorie}
+        surType={setType}
       />
 
       {panne && !photos.length ? (
@@ -1329,6 +1372,46 @@ function UnOriginal({ photo, surFermer }: { photo: PhotoGalerie; surFermer: () =
   );
 }
 
+/**
+ * LE DOSSARD SERT-IL ICI ? C'EST LA BASE QUI RÉPOND (01/10/2026, soir).
+ *
+ * `galerie_numero_utile(id)` est une fonction de la base, et c'est elle qui décide : un
+ * entraînement et un stage se jouent sans numéro, tout le reste avec. La règle est écrite UNE
+ * fois, là-bas ; la recopier ici donnerait deux versions de la même décision, et le jour où Fouka
+ * ajoute un type, c'est la copie qui aurait tort (la leçon du filtre recopié, 30/09).
+ *
+ * CE N'EST PAS UNE DÉCORATION. Ce booléen commande la recherche par dossard que les familles
+ * utilisent dans Connect : sur une galerie marquée « entraînement », le champ disparaît. La
+ * production doit donc voir, au moment où elle choisit le type, ce que ce choix fait dehors.
+ *
+ * UN APPEL, ET SEULEMENT SUR LA GALERIE OUVERTE. La poser sur les 57 lignes de la liste, ce serait
+ * 57 allers-retours pour une phrase. Un échec ne casse rien : on n'écrit pas la ligne, plutôt que
+ * d'affirmer une réponse qu'on n'a pas.
+ */
+function LeNumeroDeDossard({ albumId, type }: { albumId: string; type: string | null }) {
+  const [utile, setUtile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let vivant = true;
+    // `type` est dans les dépendances exprès : le choix du type change la réponse, et la phrase
+    // doit suivre le même geste que la pastille.
+    numeroUtileDeLaGalerie(albumId)
+      .then((r) => { if (vivant) setUtile(r); })
+      .catch(() => { if (vivant) setUtile(null); });
+    return () => { vivant = false; };
+  }, [albumId, type]);
+
+  if (utile === null) return null;
+  return (
+    <Text style={s.explication}>
+      {utile
+        ? "Les familles peuvent chercher par numéro de dossard dans cette galerie."
+        : "La recherche par numéro de dossard est fermée sur cette galerie : on ne porte pas de "
+          + "numéro à ce genre d'événement."}
+    </Text>
+  );
+}
+
 // ── Ce qu'on peut changer sur une galerie, et ce qui ne se fera jamais d'ici ────────────────
 
 /**
@@ -1346,11 +1429,12 @@ function UnOriginal({ photo, surFermer }: { photo: PhotoGalerie; surFermer: () =
  * photos ». Un manque expliqué ne fait pas téléphoner (règle 7).
  */
 function PanneauGalerie({
-  galerie, surRenommee, surEquipe,
+  galerie, surRenommee, surEquipe, surType,
 }: {
   galerie: Galerie;
   surRenommee: (titre: string) => void;
   surEquipe: (nom: string | null) => void;
+  surType: (type: string | null) => void;
 }) {
   const { moi } = useSession();
   const production = estProduction(moi?.role ?? null);
@@ -1358,6 +1442,7 @@ function PanneauGalerie({
   const [nom, setNom] = useState(galerie.titre);
   const [equipes, setEquipes] = useState<EquipeDuClub[] | null>(null);
   const [equipeId, setEquipeId] = useState(galerie.equipeId);
+  const [typeChoisi, setTypeChoisi] = useState(galerie.typeEvenement);
   const [lecture, setLecture] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [souci, setSouci] = useState<string | null>(null);
@@ -1400,6 +1485,26 @@ function PanneauGalerie({
     } catch (err) { setSouci((err as Error)?.message ?? "Rattachement impossible."); }
     finally { setEnCours(false); }
   }, [galerie.id, surEquipe]);
+
+  /**
+   * CHOISIR LE TYPE, OU LE RETIRER.
+   *
+   * On n'écrit RIEN avant d'avoir la réponse de la base, et `definirTypeEvenement` relit la valeur
+   * écrite : l'état de l'écran ne bouge donc qu'après une écriture confirmée. L'ordre inverse —
+   * colorer la pastille puis écrire — est exactement le « Chapitre accepté (local) » qu'on vient
+   * de retirer du Centre : un vert qui ne prouve rien.
+   */
+  const choisirType = useCallback(async (cle: string | null) => {
+    setEnCours(true); setSouci(null); setFait(null);
+    try {
+      await definirTypeEvenement(galerie.id, cle);
+      oublier("os:galeries");
+      setTypeChoisi(cle);
+      surType(cle);
+      setFait(cle ? `Type enregistré : ${libelleTypeEvenement(cle)}.` : "Type retiré.");
+    } catch (err) { setSouci((err as Error)?.message ?? "Enregistrement impossible."); }
+    finally { setEnCours(false); }
+  }, [galerie.id, surType]);
 
   if (!production) {
     return (
@@ -1448,6 +1553,47 @@ function PanneauGalerie({
             // Un bouton qui n'a rien à enregistrer ne doit pas donner l'impression d'avoir agi.
             desactive={!nom.trim() || nom.trim() === galerie.titre}
           />
+
+          {/* LE TYPE D'ÉVÉNEMENT, ET POURQUOI IL EST ICI PLUTÔT QUE DANS UN SCRIPT.
+              Mesuré : `type_evenement` est NULL sur 57 galeries sur 57. Un script de rattrapage
+              existe et n'a jamais tourné — et c'est heureux : il aurait écrit « match » partout, y
+              compris sur les plateaux d'école de foot, qui ne sont pas des matchs. Le type n'est
+              pas une étiquette, il ferme ou ouvre la recherche par dossard des familles. Il se
+              choisit donc là où quelqu'un sait, sur la galerie qu'il a sous les yeux. */}
+          <Text style={s.sousTitreBloc}>Type d'événement</Text>
+          <Text style={s.explication}>
+            Il commande la recherche par numéro de dossard dans Connect : elle reste ouverte partout,
+            sauf sur un entraînement et un stage, où personne ne porte de numéro.
+          </Text>
+          <View style={s.typesRangee}>
+            {TYPES_EVENEMENT.map((t) => (
+              <Pressable
+                key={t.cle}
+                disabled={enCours}
+                onPress={() => choisirType(t.cle === typeChoisi ? null : t.cle)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: t.cle === typeChoisi, disabled: enCours }}
+                accessibilityLabel={
+                  t.cle === typeChoisi ? `Retirer le type ${t.libelle}` : `Type ${t.libelle}`
+                }
+                style={({ pressed }) => [
+                  s.typePuce,
+                  t.cle === typeChoisi ? s.typePuceChoisie : null,
+                  pressed ? { opacity: 0.8 } : null,
+                ]}
+              >
+                <Text style={[s.typeTexte, t.cle === typeChoisi ? s.typeTexteChoisi : null]}>
+                  {t.libelle}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {!typeChoisi ? (
+            <Text style={s.explication}>
+              Aucun type n'est encore choisi sur cette galerie. Tant qu'il manque, la base traite la
+              galerie comme un événement à dossards.
+            </Text>
+          ) : null}
 
           <Text style={s.sousTitreBloc}>Catégorie couverte</Text>
           {!galerie.clubId ? (
@@ -1560,6 +1706,14 @@ const s = StyleSheet.create({
   },
   okTexte: { color: C.succesTexte, fontFamily: P.texteFort, fontSize: 13 },
 
+  // Un rappel, pas une alarme : il dit un travail à faire, pas une panne. D'où le ton d'alerte
+  // discret plutôt que le rouge de `Erreur`, qui annoncerait que quelque chose est cassé.
+  rappel: {
+    borderRadius: R.m, paddingVertical: E.s, paddingHorizontal: E.m,
+    backgroundColor: "rgba(247,144,9,.10)", borderWidth: 1, borderColor: "rgba(247,144,9,.30)",
+  },
+  rappelTexte: { color: C.alerte, fontFamily: P.texte, fontSize: 12.5, lineHeight: 18 },
+
   equipeLigne: {
     flexDirection: "row", alignItems: "center", gap: E.s,
     paddingVertical: E.xs, paddingHorizontal: E.s,
@@ -1574,6 +1728,18 @@ const s = StyleSheet.create({
     backgroundColor: C.surfaceHaute, borderWidth: 1, borderColor: C.bordure,
   },
   equipeChoisie: { backgroundColor: "rgba(36,84,255,.20)", borderColor: "rgba(36,84,255,.55)" },
+
+  // Six types tiennent sur deux rangées d'un téléphone : on les pose tous, plutôt qu'un menu
+  // déroulant qui cacherait le choix derrière un geste de plus.
+  typesRangee: { flexDirection: "row", flexWrap: "wrap", gap: E.xs },
+  typePuce: {
+    // La même cible que les équipes : TOUCHE de haut, parce que c'est le même doigt.
+    minHeight: TOUCHE, justifyContent: "center", paddingHorizontal: E.m, borderRadius: R.m,
+    backgroundColor: C.surfaceHaute, borderWidth: 1, borderColor: C.bordure,
+  },
+  typePuceChoisie: { backgroundColor: "rgba(36,84,255,.20)", borderColor: "rgba(36,84,255,.55)" },
+  typeTexte: { color: C.texteDoux, fontFamily: P.texteFort, fontSize: 13.5 },
+  typeTexteChoisi: { color: C.texte },
 
   grille: { flexDirection: "row", flexWrap: "wrap", gap: E.xs },
   vignette: { width: "100%", height: "100%", borderRadius: R.s, backgroundColor: C.surfaceHaute },

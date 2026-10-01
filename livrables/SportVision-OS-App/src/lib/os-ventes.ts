@@ -46,19 +46,25 @@
 // et les écarte ; la liste, elle, les montre. L'OS affiche déjà les deux côte à côte de la même
 // façon : on ne « corrige » pas un chiffre pour qu'il colle à l'autre, on montre ce que la base dit.
 //
-// == UNE FUITE TROUVÉE EN MESURANT, ET QUI N'EST PAS EXPLOITÉE ICI ==============================
+// == UNE FUITE TROUVÉE EN MESURANT — ET FERMÉE DEPUIS (relu le 01/10 au soir) ===================
 //
-// `media_stats_ventes` et `media_performance_galeries` sont gardées par `is_staff()`, qui est VRAI
-// pour un opérateur terrain. Mesuré avec le jeton d'Antoine : 12 lignes de ventes (nom de
-// l'acheteur, montant, galerie) et les 57 galeries avec leur chiffre d'affaires. Les autres
-// fonctions de la même famille sont, elles, correctement bornées : leur périmètre passe par
-// `_media_stats_albums`, qui n'ouvre qu'à admin/prod/sec/compta et au responsable de pôle — Antoine
-// y reçoit 0 galerie, 0 € et 0 commande.
+// Ce paragraphe disait, le 01/10 au matin : « `media_stats_ventes` et `media_performance_galeries`
+// sont gardées par `is_staff()`, qui est VRAI pour un opérateur terrain [...] la fuite reste à
+// fermer en base ». ELLE EST FERMÉE, et le laisser écrit aurait fait chercher un trou qui n'existe
+// plus : un commentaire qui ment sur l'état de la base coûte autant qu'un écran qui ment.
 //
-// CET ÉCRAN N'APPELLE DONC RIEN SANS AVOIR DEMANDÉ `media_revenus_visibles()` D'ABORD. La fuite
-// reste à fermer en base ; elle est signalée à Fouka avec la migration qui la ferme. On ne
-// s'appuie jamais sur un contrôle d'écran pour tenir un droit — mais on ne fabrique pas non plus
-// l'appel qui exploiterait le trou.
+// La v383 a remplacé les deux gardes par `media_stats_access()`, et le code de la base le dit avec
+// ses mots : « `is_staff()` ouvrait cette liste à un opérateur terrain, à un CM, à la communication
+// et [...] ». Revérifié par le chemin réel, en transaction annulée :
+//   · Antoine Blin (photo) → `media_stats_access()` = false, `media_revenus_visibles()` = false,
+//     et 0 ligne partout : `media_stats_ventes` 0, `media_performance_galeries` 0, `media_orders`
+//     0, `media_albums` 0 ;
+//   · Mikael (prod)        → true / true, 12 ventes, 57 galeries, 15 commandes, 57 galeries.
+//
+// CET ÉCRAN DEMANDE QUAND MÊME `media_revenus_visibles()` D'ABORD, et ce n'est pas une ceinture de
+// trop : sans elle, un opérateur verrait l'onglet, les quatre cadres et « 0,00 € » — une
+// affirmation fausse là où il n'y a pas d'absence mais un refus. On ne s'appuie jamais sur un
+// contrôle d'écran pour TENIR un droit ; on s'en sert pour ne pas mentir sur ce qu'on n'a pas.
 import { supabase } from "./supabase";
 import { dateDuJourParis } from "./dates";
 

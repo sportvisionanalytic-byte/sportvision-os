@@ -199,6 +199,42 @@ export interface Galerie {
    * changement de titre les effaçait silencieusement avant le 12/09. On ne refait pas ce défaut.
    */
   equipesEnPlus: string[];
+  /**
+   * LE TYPE D'ÉVÉNEMENT (01/10/2026, soir).
+   *
+   * `media_albums.type_evenement` : `match`, `entrainement`, `plateau`, `tournoi`, `stage` ou
+   * `autre`. La contrainte `media_albums_type_evenement_valide` porte cette liste, et elle autorise
+   * aussi NULL — mesuré, c'est le cas des 57 galeries sur 57 : la colonne existe depuis ce matin et
+   * personne n'a encore rempli une seule ligne.
+   *
+   * ON NE DEVINE PAS. Un script de rattrapage aurait écrit « match » partout, et une galerie d'école
+   * de foot n'est pas un match : le type commande `galerie_numero_utile`, donc la recherche par
+   * dossard que les familles utilisent. Le type se choisit ici, galerie par galerie, par la
+   * production qui l'a tournée. `null` se lit « type non renseigné », et c'est une vérité.
+   */
+  typeEvenement: string | null;
+}
+
+/**
+ * Les six types que la base accepte, avec leurs mots à l'écran.
+ *
+ * LA LISTE N'EST PAS UNE INVENTION : c'est exactement la contrainte CHECK
+ * `media_albums_type_evenement_valide`, relue en base. En écrire un septième ici fabriquerait un
+ * bouton qui lève une 23514 au moment où on appuie dessus (règle 5).
+ */
+export const TYPES_EVENEMENT: { cle: string; libelle: string }[] = [
+  { cle: "match", libelle: "Match" },
+  { cle: "plateau", libelle: "Plateau" },
+  { cle: "tournoi", libelle: "Tournoi" },
+  { cle: "entrainement", libelle: "Entraînement" },
+  { cle: "stage", libelle: "Stage" },
+  { cle: "autre", libelle: "Autre" },
+];
+
+/** Le mot de l'OS pour un type, ou null quand la galerie n'en porte pas. */
+export function libelleTypeEvenement(type: string | null): string | null {
+  if (!type) return null;
+  return TYPES_EVENEMENT.find((t) => t.cle === type)?.libelle ?? type;
 }
 
 /**
@@ -218,7 +254,7 @@ export async function lireMesGaleries(): Promise<Galerie[]> {
     // `media_albums` et `media_assets` sont liées DEUX FOIS (album_id, et cover_asset_id) : sans
     // lui, PostgREST répond 300 et demande de choisir.
     .select(`id, title, event_date, status, photo_count, structure_externe, mission_id, club_id,
-             team_id, team_ids, club_teams ( name ), clubs ( nom ),
+             team_id, team_ids, type_evenement, club_teams ( name ), clubs ( nom ),
              prestations ( reference, clients ( nom ) ),
              prets:media_assets!media_assets_album_id_fkey ( count )`)
     // Le même filtre que l'écran d'une galerie : 6 photos sont en `failed` et 1 en `hidden`, et ce
@@ -236,7 +272,7 @@ export async function lireMesGaleries(): Promise<Galerie[]> {
     id: string; title: string | null; event_date: string | null; status: string | null;
     photo_count: number | null; structure_externe: string | null;
     mission_id: string | null; club_id: string | null; team_id: string | null;
-    team_ids: string[] | null;
+    team_ids: string[] | null; type_evenement: string | null;
     club_teams: { name: string | null } | null;
     clubs: { nom: string | null } | null;
     prestations: { reference: string | null; clients: { nom: string | null } | null } | null;
@@ -271,7 +307,65 @@ export async function lireMesGaleries(): Promise<Galerie[]> {
     equipeNom: (r.club_teams?.name ?? "").trim() || null,
     equipeId: r.team_id ?? null,
     equipesEnPlus: Array.isArray(r.team_ids) ? r.team_ids.map(String) : [],
+    // NULL RESTE NULL. Le remplacer ici par « match » serait la même faute que le script de
+    // rattrapage qu'on n'a pas lancé, mais invisible : l'écran afficherait un type que la base
+    // n'a pas, et la recherche par dossard s'ouvrirait sur un entraînement.
+    typeEvenement: (r.type_evenement ?? "").trim() || null,
   }));
+}
+
+/**
+ * Choisir le type d'un événement, ou le retirer.
+ *
+ * ON RELIT LA VALEUR, PAS UN IDENTIFIANT (leçon du 01/10). `.select("id")` suffit à distinguer un
+ * refus d'un succès, mais pas une écriture annulée d'une écriture faite : la colonne porte une
+ * contrainte CHECK, et la liste de l'écran vient de cette contrainte — si les deux divergent un
+ * jour, c'est la valeur relue qui le dira, pas le nombre de lignes.
+ *
+ * MESURÉ PAR LE CHEMIN RÉEL, en transaction annulée, sur « RCPF U14 B VS Mormant » :
+ *   · Mikael (prod)    → la valeur relue est `plateau`, `galerie_numero_utile` passe à `true` ;
+ *   · Antoine (photo)  → l'UPDATE rend ZÉRO LIGNE ET AUCUNE ERREUR, et la relecture ne rend
+ *     même pas la galerie. C'est le faux succès de la règle 4, en entier : sans cette relecture,
+ *     l'écran aurait annoncé « Type enregistré » sur une galerie qu'il n'a pas le droit de voir.
+ */
+export async function definirTypeEvenement(albumId: string, type: string | null): Promise<void> {
+  if (type !== null && !TYPES_EVENEMENT.some((t) => t.cle === type)) {
+    throw new Error("Ce type d'événement n'existe pas dans la base.");
+  }
+  const { data, error } = await supabase
+    .from("media_albums")
+    .update({ type_evenement: type })
+    .eq("id", albumId)
+    .select("type_evenement");
+  if (error) throw new Error(error.message);
+  if (!data || !data.length) {
+    throw new Error(
+      "Type non enregistré : seules l'Administration et la Production modifient une galerie.",
+    );
+  }
+  const relu = ((data[0] as { type_evenement: string | null }).type_evenement ?? "").trim() || null;
+  if (relu !== type) {
+    throw new Error(
+      `Type non enregistré : la base a gardé « ${relu ?? "non renseigné"} ». Rechargez l'écran.`,
+    );
+  }
+}
+
+/**
+ * Le dossard sert-il à retrouver une photo dans cette galerie ?
+ *
+ * ON DEMANDE À LA BASE, ON NE RECOPIE PAS SA RÈGLE. `galerie_numero_utile(id)` dit
+ * `type_evenement is null or type_evenement not in ('entrainement','stage')`. La réécrire ici
+ * donnerait deux versions de la même décision, et le jour où Fouka ajoute un type, c'est la copie
+ * qui aurait tort — exactement le filtre recopié de la leçon du 30/09.
+ *
+ * UN SEUL APPEL, ET SEULEMENT SUR LA GALERIE OUVERTE : la poser sur les 57 lignes de la liste,
+ * c'est 57 allers-retours pour une pastille.
+ */
+export async function numeroUtileDeLaGalerie(albumId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("galerie_numero_utile", { p_album_id: albumId });
+  if (error) throw new Error(error.message);
+  return data === true;
 }
 
 export interface PhotoGalerie {
