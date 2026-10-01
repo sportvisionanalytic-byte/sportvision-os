@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   fetchGalleryPhotos,
   fetchGalleryProducts,
+  libelleTypeEvenement,
   trackGalleryView,
   type GalleryHeader,
   type GalleryPhoto,
@@ -289,7 +290,7 @@ export function GalleryView({
               {header.titre}
             </h1>
             <p className="mt-1 text-[12.5px] leading-snug text-text-tertiary">
-              {[header.clubNom ?? header.structure, header.equipe, dateLabel, `${header.photoCount} photos`].filter(Boolean).join(" · ")}
+              {[header.clubNom ?? header.structure, header.equipe, libelleTypeEvenement(header.typeEvenement), dateLabel, `${header.photoCount} photos`].filter(Boolean).join(" · ")}
             </p>
             {vendable && selected.length === 0 && (
               <p className="mt-0.5 text-[12px] text-text-faint">

@@ -31,6 +31,34 @@ export interface GalleryHeader {
    * tournoi, un parent doit pouvoir parcourir les 500 photos pour retrouver son enfant. Le
    * plafond ne sert qu'aux liens qu'on ne veut pas exposer entièrement. */
   apercuLimite: number | null;
+  /** « match », « entrainement », « plateau », « tournoi », « stage », « autre » ou null (v390). */
+  typeEvenement: string | null;
+  /** Porte-t-on un numéro à ce genre d'événement (`galerie_numero_utile`, v391) ? La page publique
+   *  ne pose aucune question de numéro ; le champ est transmis pour que la seule règle vive en
+   *  base, et qu'un écran qui en poserait une un jour la lise ici et pas ailleurs. */
+  numeroUtile: boolean;
+}
+
+/**
+ * LE TYPE D'EVENEMENT EN FRANCAIS (01/10/2026).
+ *
+ * `media_albums.type_evenement` existe depuis la v390 et les quatre fonctions de galerie le
+ * rendaient déjà — aucun écran ne le lisait. « Entraînement » ou « Plateau » à côté de la date dit
+ * tout de suite de quoi il s'agit, et c'est aussi ce qui explique, sans phrase, pourquoi
+ * l'application ne demandera pas de numéro de maillot sur cette galerie-là.
+ *
+ * Rien ne s'affiche quand le type n'est pas renseigné : c'est le cas des 57 galeries actuellement
+ * en base, et « Non précisé » n'apprendrait rien à personne.
+ */
+export function libelleTypeEvenement(type: string | null | undefined): string | null {
+  switch (type) {
+    case "match": return "Match";
+    case "entrainement": return "Entraînement";
+    case "plateau": return "Plateau";
+    case "tournoi": return "Tournoi";
+    case "stage": return "Stage";
+    default: return null;
+  }
 }
 
 export type GalleryDenial =
@@ -96,6 +124,9 @@ export async function openGallery(
       watermark: row.watermark !== false,
       offres: parseOffers(row.offres),
       apercuLimite: row.apercu_limite === null || row.apercu_limite === undefined ? null : Number(row.apercu_limite),
+      typeEvenement: (row.type_evenement as string) ?? null,
+      // `!== false` et non `=== true` : une base qui ne répond rien laisse le comportement d'avant.
+      numeroUtile: row.numero_utile !== false,
     },
   };
 }
@@ -423,6 +454,8 @@ export interface MyGallery {
   accesPermanent: boolean;
   expiresAt: string | null;
   commandes: number;
+  /** Le type d'événement (v390), pour que la liste dise de quoi il s'agit. */
+  typeEvenement: string | null;
 }
 
 export async function fetchMyGalleries(supabase: SupabaseClient): Promise<MyGallery[]> {
@@ -441,6 +474,7 @@ export async function fetchMyGalleries(supabase: SupabaseClient): Promise<MyGall
     accesPermanent: r.acces_permanent === true,
     expiresAt: (r.expires_at as string) ?? null,
     commandes: Number(r.commandes ?? 0),
+    typeEvenement: (r.type_evenement as string) ?? null,
   }));
 }
 

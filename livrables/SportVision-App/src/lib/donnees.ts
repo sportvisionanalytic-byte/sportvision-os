@@ -303,6 +303,34 @@ export interface Galerie {
   videoUrl?: string | null;
   /** Combien de photos portent le visage de ce joueur. Zero : on n'affiche pas de compteur. */
   mesPhotos?: number;
+  /** « match », « entrainement », « plateau », « tournoi », « stage », « autre », ou null quand
+   *  personne ne l'a precise. Sert a DIRE de quoi il s'agit sur la carte. */
+  typeEvenement?: string | null;
+  /**
+   * EST-CE QU'ON PORTE UN NUMERO A CE GENRE D'EVENEMENT (v391, lu depuis le 01/10/2026).
+   *
+   * A un entrainement ou un stage, personne n'a de dossard : demander « vous etiez quel numero ? »
+   * est une question sans reponse possible, et une question sans reponse fait douter du reste de
+   * l'ecran. La base tranche (`galerie_numero_utile`), l'application obeit.
+   *
+   * `true` PAR DEFAUT, y compris quand la base ne dit rien : c'est le comportement d'avant, et se
+   * taire par defaut retirerait la question a des familles qui en ont besoin sans que personne ne
+   * le voie.
+   */
+  numeroUtile?: boolean;
+}
+
+/** Le type d'evenement en francais. `null` quand personne ne l'a precise : la carte n'affiche alors
+ *  rien du tout, plutot qu'un « Non precise » qui ne renseigne personne. */
+export function libelleTypeEvenement(type: string | null | undefined): string | null {
+  switch (type) {
+    case "match": return "Match";
+    case "entrainement": return "Entraînement";
+    case "plateau": return "Plateau";
+    case "tournoi": return "Tournoi";
+    case "stage": return "Stage";
+    default: return null;
+  }
 }
 
 export async function lireGaleries(
@@ -333,6 +361,10 @@ export async function lireGaleries(
       ?? (r.cover_path ? urlApercu(r.cover_path as string) : null),
     nbPhotos: Number(r.photo_count ?? 0),
     ouverte: r.unlocked === true,
+    typeEvenement: (r.type_evenement as string | null) ?? null,
+    // `!== false` ET NON `=== true` : une base qui ne rend rien doit laisser le comportement
+    // d'avant, c'est-a-dire poser la question. Le piege est le meme que `not null` qui vaut null.
+    numeroUtile: r.numero_utile !== false,
   }));
   if (!galeries.length) return galeries;
 
@@ -486,6 +518,25 @@ export interface NumeroDeclare {
   rechercheEnCours: boolean;
   photosAExaminer: number;
   photosAvecCeNumero: number;
+}
+
+/**
+ * FAUT-IL DEMANDER UN NUMERO POUR CETTE GALERIE ? (01/10/2026)
+ *
+ * La liste des galeries rend déjà la réponse (`media_album_list`), et l'écran la reçoit en
+ * paramètre. On la REDEMANDE quand même ici, pour une seule raison : l'écran d'une galerie s'ouvre
+ * aussi sans passer par la liste — un lien, une notification, un retour depuis Connect. Sans cette
+ * vérification, la question du numéro réapparaîtrait sur un entraînement par le premier chemin qui
+ * ne transmet pas le paramètre.
+ *
+ * `true` dès que la base ne répond pas : c'est le comportement d'avant, et c'est le seul défaut qui
+ * se voie. Se taire par erreur, personne ne le remarquerait.
+ */
+export async function lireNumeroUtile(albumId: string): Promise<boolean> {
+  if (MODE_DEMO) return true;
+  const { data, error } = await supabase.rpc("galerie_numero_utile", { p_album_id: albumId });
+  if (error) return true;
+  return data !== false;
 }
 
 /**
@@ -663,14 +714,22 @@ export async function lirePhotosAIdentifier(
 /**
  * Répondre « c'est moi » ou « ce n'est pas moi » sur une photo.
  *
- * Rend `false` sans lever : un refus se dit à l'écran, il ne fait pas tomber la grille de photos que
- * la personne était en train de trier.
+ * Ne lève pas : un refus se dit à l'écran, il ne fait pas tomber la grille de photos que la personne
+ * était en train de trier.
+ *
+ * ON REND LE MESSAGE DE LA BASE, ET PAS SEULEMENT UN NON (01/10/2026). La v431 distingue désormais
+ * trois refus — « ce marquage vient du club », « cette photo ne vous a pas été proposée », « cette
+ * photo n'est pas dans vos photos » — et l'écran affichait la première phrase pour les trois. Un
+ * message qui explique le mauvais problème coûte un message de support.
  */
 export async function repondreCestMoi(
   assetId: string, playerId: string, cestMoi: boolean,
-): Promise<boolean> {
+): Promise<{ ok: boolean; message?: string }> {
   const { error } = await supabase.rpc("media_famille_marque", {
     p_asset_id: assetId, p_player_id: playerId, p_cest_lui: cestMoi,
   });
-  return !error;
+  if (!error) return { ok: true };
+  // `message` est la phrase écrite dans la base, en français, pour cette personne. On ne la
+  // réécrit pas ici : elle y est plus juste que n'importe quelle traduction côté écran.
+  return { ok: false, message: error.message || undefined };
 }

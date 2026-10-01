@@ -10,7 +10,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../src/lib/session";
 import { useFamille } from "../../src/lib/famille";
-import { lireGaleries, type Galerie } from "../../src/lib/donnees";
+import { libelleTypeEvenement, lireGaleries, type Galerie } from "../../src/lib/donnees";
 import { useDonnees, cleGaleries } from "../../src/lib/cache";
 import { dateLongue } from "../../src/lib/dates";
 import { Ecran, Probleme, Vide } from "../../src/ui/Ecran";
@@ -146,6 +146,11 @@ export default function Photos() {
                   // galerie est deverrouillee » ne dit rien de ce qui reste a vendre, puisqu'en Full
                   // Communication elle l'est pour toutes les familles du club.
                   id: g.id, titre: g.titre, joueur: playerId,
+                  // DEJA SU, DONC TRANSMIS (01/10/2026). La liste connait la reponse de la base
+                  // sur le numero de maillot : la passer evite que l'ecran suivant affiche la
+                  // question pendant une seconde avant de se retracter, comme c'est arrive le
+                  // 28/09 avec l'etat du Pass. L'ecran la revérifie quand meme en base.
+                  numeroUtile: g.numeroUtile === false ? "0" : "1",
                   // Le club sert a retrouver le Pass vendu par CE club, et `pourEnfant` dit au
                   // serveur pour qui l'acces s'ouvre : un parent achete au nom de son enfant, et
                   // cette distinction se decide ici, pas cote serveur, qui la revérifie ensuite.
@@ -189,7 +194,13 @@ export default function Photos() {
                 <View style={s.surVisuel}>
                   <Text style={s.titreGalerie} numberOfLines={2}>{g.titre}</Text>
                   <Text style={s.sousClair}>
-                    {[g.date ? dateLongue(g.date) : null, `${g.nbPhotos} photo${g.nbPhotos > 1 ? "s" : ""}`]
+                    {/* LE TYPE D'EVENEMENT S'AFFICHE QUAND IL EST CONNU (01/10/2026). La base le
+                        rend depuis la v391 et personne ne le lisait. « Entrainement » ou
+                        « Plateau » devant la date dit tout de suite de quoi il s'agit — et c'est
+                        aussi ce qui explique, sans phrase, pourquoi l'ecran suivant ne demandera
+                        pas de numero de maillot. Rien ne s'affiche quand le type n'est pas
+                        renseigne : « Non precise » n'apprend rien a personne. */}
+                    {[libelleTypeEvenement(g.typeEvenement), g.date ? dateLongue(g.date) : null, `${g.nbPhotos} photo${g.nbPhotos > 1 ? "s" : ""}`]
                       .filter(Boolean).join(" · ")}
                   </Text>
                 </View>

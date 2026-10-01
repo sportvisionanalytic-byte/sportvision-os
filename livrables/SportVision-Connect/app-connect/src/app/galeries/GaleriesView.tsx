@@ -4,6 +4,7 @@
 
 import Link from "next/link";
 import { formatMontant } from "@/lib/gallery/pricing";
+import { libelleTypeEvenement } from "@/lib/gallery/data";
 import type { MyGallery, MyOrder } from "@/lib/gallery/data";
 
 // Même univers que la galerie publique : mêmes typographies, même dégradé, mêmes arrondis. Le
@@ -58,7 +59,7 @@ export function GaleriesView({
               <div className="min-w-0 flex-1">
                 <div className="truncate font-sora text-[15px] font-bold tracking-tight">{g.titre}</div>
                 <div className="mt-0.5 truncate text-[12px] text-text-tertiary">
-                  {[g.clubNom, g.equipe, date(g.eventDate)].filter(Boolean).join(" · ")}
+                  {[g.clubNom, g.equipe, libelleTypeEvenement(g.typeEvenement), date(g.eventDate)].filter(Boolean).join(" · ")}
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   {/* Ce qu'il possède VRAIMENT, jamais le quota vendu : un pack de 17 dont il n'a

@@ -11,7 +11,8 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  declarerMonNumero, lireEtatReconnaissance, lireMonNumero, lirePhotosAIdentifier, lirePhotosDuJoueur,
+  declarerMonNumero, lireEtatReconnaissance, lireMonNumero, lireNumeroUtile,
+  lirePhotosAIdentifier, lirePhotosDuJoueur,
   repondreCestMoi,
   type EtatReconnaissance, type PhotoAIdentifier, type PhotoDuJoueur,
 } from "../../../src/lib/donnees";
@@ -33,10 +34,11 @@ export default function Galerie() {
   // `ouverte` n'est plus lu (26/09/2026) : « la galerie est deverrouillee » ne dit RIEN de ce qui
   // se vend ici. En Full Communication elle l'est pour toutes les familles du club, et le Pass reste
   // pourtant a prendre — il n'ouvre pas l'acces, il retire le filigrane et rend toutes les photos.
-  const { id, titre, joueur, club, pourEnfant } = useLocalSearchParams<{
-    id: string; titre?: string; joueur?: string;
-    club?: string; pourEnfant?: string;
-  }>();
+  const { id, titre, joueur, club, pourEnfant, numeroUtile: numeroUtileParam } =
+    useLocalSearchParams<{
+      id: string; titre?: string; joueur?: string;
+      club?: string; pourEnfant?: string; numeroUtile?: string;
+    }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -57,6 +59,18 @@ export default function Galerie() {
   /** Le numéro déjà déclaré pour ce match. Tant qu'il existe, on ne repose pas la question. */
   const [numeroConnu, setNumeroConnu] = useState<number | null>(null);
   const [modifierNumero, setModifierNumero] = useState(false);
+  /**
+   * ON NE DEMANDE PAS DE NUMERO A UN ENTRAINEMENT (01/10/2026, v391 lue enfin).
+   *
+   * La base sait depuis ce matin si la galerie est un match ou un entrainement, et elle répond
+   * « est-ce qu'on porte un numéro ici ». Personne ne l'écoutait. À un entraînement ou un stage,
+   * personne n'a de dossard : la question n'a pas de réponse, et on la posait quand même.
+   *
+   * Deux sources, dans cet ordre : le paramètre de navigation (la liste l'a déjà, l'écran ne
+   * clignote donc pas), puis la base (l'écran s'ouvre aussi par un lien, qui ne transmet rien).
+   * Les deux valent `true` par défaut — poser la question en trop se voit, la retirer à tort non.
+   */
+  const [numeroUtile, setNumeroUtile] = useState(numeroUtileParam !== "0");
   const [agrandie, setAgrandie] = useState<PhotoDuJoueur | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   /** Un message de reussite, distinct de l'erreur : « photo enregistree » n'est pas un probleme. */
@@ -142,15 +156,19 @@ export default function Galerie() {
         }
         if (!vivant) return;
       }
-      const [p, e, t] = await Promise.all([
+      const [p, e, t, utile] = await Promise.all([
         etatDuPass(club, joueur),
         lireEtatReconnaissance(joueur),
         // Ne rend rien tant que le Pass n'est pas pris (v287) : inutile de conditionner ici.
         lirePhotosAIdentifier(id, joueur),
+        // Le verdict de la base sur le numero : il fait foi, meme quand la liste a dit autre chose.
+        id ? lireNumeroUtile(id) : Promise.resolve(true),
       ]);
       if (vivant) {
-        setEtatPass(p); setReco(e);
-        if (id && joueur) lireMonNumero(id, joueur).then((n) => { if (vivant) setNumeroConnu(n); });
+        setEtatPass(p); setReco(e); setNumeroUtile(utile);
+        // On ne va chercher le numero deja declare que s'il y en a un a declarer : sur un
+        // entrainement, cette lecture ne servirait a rien et le bloc ne s'affiche pas.
+        if (id && joueur && utile) lireMonNumero(id, joueur).then((n) => { if (vivant) setNumeroConnu(n); });
         // On ne propose a trancher QUE ce que la machine a suggere. Faire defiler cent photos dont
         // on ne dit rien n'est pas une question, c'est une corvee.
         setATrancher(t.filter((x) => x.suggeree && !x.mienne));
@@ -195,10 +213,14 @@ export default function Galerie() {
   async function retirerUne(photo: { id: string }) {
     if (!joueur) return;
     setEnCours("retrait"); setErreur(null); setMessage(null);
-    const ok = await repondreCestMoi(photo.id, joueur, false);
+    const r = await repondreCestMoi(photo.id, joueur, false);
     setEnCours(null);
-    if (!ok) {
-      setErreur("Cette photo a été identifiée par le club : demandez-lui de la retirer.");
+    if (!r.ok) {
+      // LA PHRASE VIENT DE LA BASE (01/10/2026). Il y a desormais trois raisons de refuser un
+      // retrait — un marquage pose par le club, une photo qu'on ne lui a pas proposee, une photo
+      // qui n'est pas dans ses photos — et l'ecran affichait la premiere pour les trois.
+      setErreur(r.message
+        ?? "Cette photo a été identifiée par le club : demandez-lui de la retirer.");
       return;
     }
     setAgrandie(null);
@@ -255,7 +277,7 @@ export default function Galerie() {
     let rate = 0;
     for (const photo of aTrancher) {
       if (!choisies.has(photo.id)) continue;
-      if (await repondreCestMoi(photo.id, joueur, true)) faites.push(photo.id); else rate++;
+      if ((await repondreCestMoi(photo.id, joueur, true)).ok) faites.push(photo.id); else rate++;
     }
     setEnCours(null);
     setATrancher((l) => l.filter((x) => !faites.includes(x.id)));
@@ -272,7 +294,7 @@ export default function Galerie() {
     const faites: string[] = [];
     let rate = 0;
     for (const photo of aTrancher) {
-      if (await repondreCestMoi(photo.id, joueur, false)) faites.push(photo.id); else rate++;
+      if ((await repondreCestMoi(photo.id, joueur, false)).ok) faites.push(photo.id); else rate++;
     }
     setEnCours(null);
     setATrancher((l) => l.filter((x) => !faites.includes(x.id)));
@@ -699,7 +721,12 @@ export default function Galerie() {
     Fouka : « ca ne met pas tout de suite debloquer mon pass photo, avant ca met c'est bien vos
     numeros ». On demandait son numero de maillot a quelqu'un qui n'a pas encore paye, pendant
     une seconde, avant de se retracter. */}
-        {etatPass && etatPass.etat !== "a_prendre" ? (
+        {/* `numeroUtile` EST LA SECONDE CONDITION (01/10/2026). Sur un entrainement ou un stage,
+    personne ne porte de dossard : la question n'a aucune reponse possible. La base le dit
+    (`galerie_numero_utile`, v391) et l'ecran l'ecoute enfin. Elle repond `true` pour une galerie
+    dont le type n'est pas renseigne — c'est-a-dire les 57 galeries actuellement en base : rien ne
+    change pour elles, et c'est voulu. */}
+        {etatPass && etatPass.etat !== "a_prendre" && numeroUtile ? (
           <View style={s.numBloc}>
             <Text style={s.numTitre}>
               {numeroConnu !== null && !modifierNumero
