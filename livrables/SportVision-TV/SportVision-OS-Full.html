@@ -12914,6 +12914,31 @@ async function _accesOuvrir(playerId,nom){
 // _media_gallery_resolve applique pourtant bien (refus « non_publie »).
 const PA_STATUT_LB={draft:'Brouillon',published:'En ligne',archived:'Archivée'};
 const PA_STATUT_CLR={draft:'var(--t3)',published:'var(--ok)',archived:'var(--t3)'};
+// CE QUI A ETE PHOTOGRAPHIE (v390, 01/10/2026).
+//
+// Fouka : « quand on fait une galerie de club, il faut preciser match ou entrainement. Comme ca ces
+// entrainements, il n'y a pas de numero affilie a la galerie. »
+//
+// Il n'a nomme que deux types. Les titres des 57 galeries en base en nomment trois de plus, et ils
+// pesent 40 % du parc : 13 tournois (« Cup »), 9 plateaux, 1 ecole de foot. Les ranger dans « match »
+// ferait mentir l'ecran de la famille. L'ordre de la liste suit le volume mesure.
+//
+// CE QUE CHAQUE TYPE CHANGE, et c'est la base qui en decide — `galerie_numero_utile()` — pas cette
+// liste : un entrainement et un stage ne demandent aucun numero de maillot, parce qu'il n'y a pas de
+// rencontre, donc pas de feuille de match. Mesure du lecteur de dossards sur 3 618 photos reelles :
+// 7,0 % des photos de match portent un numero lisible, 0,8 % sur un plateau, 0,0 % a l'ecole de foot.
+const PA_TYPE_LB={match:'Match',entrainement:'Entraînement',plateau:'Plateau',tournoi:'Tournoi',stage:'Stage',autre:'Autre'};
+const PA_TYPE_AIDE={
+  match:'Les familles peuvent déclarer leur numéro de maillot : la reconnaissance s’en sert pour les photos de dos.',
+  entrainement:'Pas de numéro de maillot à l’entraînement. La reconnaissance se fait par le visage seul.',
+  plateau:'Plusieurs catégories sur le même terrain. Le numéro reste proposé, même s’il est rare avant U12.',
+  tournoi:'Plusieurs équipes, souvent non clientes. Le numéro reste proposé.',
+  stage:'Pas de rencontre, donc pas de numéro. Reconnaissance par le visage seul.',
+  autre:'Portes ouvertes, photo d’équipe, reportage. Le numéro reste proposé.',
+};
+/** Faut-il demander un numéro de maillot sur ce type de galerie ? La base tranche
+ *  (`galerie_numero_utile`) ; ceci sert uniquement à l’écrire à l’écran avant d’avoir enregistré. */
+const paNumeroUtile=(t)=>!(t==='entrainement'||t==='stage');
 let _photoAlbums=[];
 // Qui a acces a chaque galerie (club_partenaire, equipe_adverse...) : sert uniquement au badge
 // affiche dans la liste, pour distinguer d'un coup d'oeil une galerie vendue au club d'une
@@ -12932,7 +12957,7 @@ async function loadPhotoAlbums(el){
   if(!el)return;
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const rows=await sbFetch('media_albums?select=id,title,event_date,club_id,team_id,team_ids,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,match_id,event_id,watermark_previews,access_mode,cover_asset_id,clubs(nom),club_teams(name),saisons(label),prestations(reference)&order=created_at.desc&limit=200');
+    const rows=await sbFetch('media_albums?select=id,title,event_date,type_evenement,club_id,team_id,team_ids,saison_id,pole_id,structure_externe,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,match_id,event_id,watermark_previews,access_mode,cover_asset_id,clubs(nom),club_teams(name),saisons(label),prestations(reference)&order=created_at.desc&limit=200');
     if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Erreur de chargement</div><div style="font-size:12px;text-align:center;max-width:320px">'+esc(msgErreur(rows,'Impossible de charger les galeries.'))+'</div></div>';return;}
     _photoAlbums=Array.isArray(rows)?rows:[];
     await _paChargerAudiences();
@@ -13020,7 +13045,10 @@ function _paRendreLignesGaleries(){
       .filter(Boolean).map(esc).join(' · ');
     const dt=a.event_date?dateFr(a.event_date):null;
     const n=a.photo_count||0;
-    const meta=[contexte||null, dt, n?`${n} photo${n>1?'s':''}`:'aucune photo'].filter(Boolean).join(' · ');
+    // Le type en premier (v390) : c'est ce qui change le parcours de la famille, et on doit voir
+    // d'un coup d'oeil les galeries qu'on a oublie de preciser.
+    const typeLb=a.type_evenement?PA_TYPE_LB[a.type_evenement]||a.type_evenement:null;
+    const meta=[typeLb, contexte||null, dt, n?`${n} photo${n>1?'s':''}`:'aucune photo'].filter(Boolean).join(' · ');
     const audiences=[...(_paAudienceByAlbum[a.id]||[])];
     const badges=audiences.map(aud=>`<span style="flex-shrink:0;font-size:9.5px;font-weight:700;padding:2px 7px;background:var(--s2);border:1px solid var(--b1);border-radius:20px;color:var(--t3);white-space:nowrap">${esc(PA_AUDIENCE_LB[aud]||aud)}</span>`).join('');
     // Clic sur la ligne = ouvrir la galerie (photos, offres, mise en ligne), pas la modifier :
@@ -13108,6 +13136,19 @@ function modalCreerAlbum(albumId){
       <div><label style="${L}">Nom de la galerie *</label>
         <input id="pa-title" type="text" class="l-inp" style="height:38px" placeholder="Tournoi U12 — Sens" value="${esc(existing?.title||'')}" autofocus></div>
 
+      <!-- CE QUI A ETE PHOTOGRAPHIE (v390, 01/10/2026). Fouka : « quand on fait une galerie de club,
+           il faut preciser match ou entrainement ». Le champ est OBLIGATOIRE a la creation, et il
+           n'a PAS de valeur par defaut : preselectionner « Match » ferait qu'un entrainement cree
+           vite serait etiquete match, et on redemanderait un numero de maillot aux familles pour un
+           entrainement — exactement ce qu'on vient d'enlever. Une galerie deja en base garde « Non
+           precise » tant que personne ne tranche : c'est le comportement d'avant la v390. -->
+      <div><label style="${L}">Type de galerie ${existing?'':'*'}</label>
+        <select id="pa-type" class="l-inp" style="height:38px" onchange="_paTypeChoisi()">
+          <option value=""${existing?.type_evenement?'':' selected'}>${existing?'Non précisé':'À préciser'}</option>
+          ${Object.keys(PA_TYPE_LB).map(k=>`<option value="${k}"${existing?.type_evenement===k?' selected':''}>${esc(PA_TYPE_LB[k])}</option>`).join('')}
+        </select>
+        <div id="pa-type-aide" style="font-size:11px;color:var(--t3);margin-top:4px">${existing?.type_evenement?esc(PA_TYPE_AIDE[existing.type_evenement]||''):'Les familles le voient, et c’est lui qui décide si on leur demande un numéro de maillot.'}</div></div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Date</label>
           <input id="pa-date" type="date" class="l-inp" style="height:38px" value="${esc(existing?.event_date||ymdLocal())}"></div>
@@ -13192,6 +13233,18 @@ function modalCreerAlbum(albumId){
   _paLoadRattachements(existing?.club_id||'', lienExistant);
 }
 
+/** L'aide sous le type, et ce qu'elle dit du numero de maillot (v390). Le but est qu'on sache, AVANT
+ *  d'enregistrer, ce qu'on vient de decider pour les familles. */
+function _paTypeChoisi(){
+  const t=document.getElementById('pa-type')?.value||'';
+  const aide=document.getElementById('pa-type-aide');
+  if(!aide)return;
+  aide.textContent=t
+    ? PA_TYPE_AIDE[t]||''
+    : 'Les familles le voient, et c’est lui qui décide si on leur demande un numéro de maillot.';
+  aide.style.color=t&&!paNumeroUtile(t)?'var(--ok)':'var(--t3)';
+}
+
 // Ce a quoi la galerie peut se rattacher : les matchs, entrainements et prestations recents du
 // club (v247). Une seule liste, parce qu'au moment de creer une galerie on ne se demande pas si on
 // photographie « un evenement de calendrier » ou « une prestation » : on photographie le match de
@@ -13242,6 +13295,15 @@ function _paChoisirRattachement(){
   if(titre&&!titre.value.trim())titre.value=x.libelle||'';
   const date=document.getElementById('pa-date');
   if(date&&x.date_evenement)date.value=x.date_evenement;
+  // LE TYPE SE DEDUIT DU RATTACHEMENT, QUAND IL Y EN A UN (v390). `galerie_rattachements` rend deja
+  // un `genre` : match, entrainement, evenement, prestation. Choisir « le match de samedi » dit donc
+  // que c'est un match, et on ne le fait pas retaper. On n'ECRASE PAS un type deja choisi a la main :
+  // meme regle que pour le titre et les categories.
+  const selType=document.getElementById('pa-type');
+  if(selType&&!selType.value){
+    const deduit=genre==='match'?'match':genre==='entrainement'?'entrainement':'';
+    if(deduit){selType.value=deduit;_paTypeChoisi();}
+  }
   // Cocher les equipes du rattachement choisi. Un match en a une, un plateau en a plusieurs : on
   // coche tout ce qu'il couvre plutot que de faire deviner. On n'en DECOCHE aucune : quelqu'un qui
   // avait deja coche des categories a la main ne doit pas les voir disparaitre.
@@ -13353,6 +13415,17 @@ async function sauvegarderAlbum(albumId){
   // un club non client, une equipe adverse, un tournoi ou un joueur seul. La base ne les exige
   // plus non plus depuis la migration v31.
   if(!title){err.textContent='Donnez un nom à cette galerie.';return;}
+  // LE TYPE EST OBLIGATOIRE A LA CREATION (v390, 01/10/2026). C'est la seule chose qu'on exige en
+  // plus du nom, et pour une raison precise : c'est lui qui decide si on demande un numero de
+  // maillot aux familles. Laisse vide, il ne coute rien a personne aujourd'hui — il coute une
+  // question de trop a chaque parent d'un entrainement, et ca, on ne le verrait pas.
+  // On ne l'exige PAS sur une galerie deja en base : les 57 d'avant la v390 n'en ont pas, et bloquer
+  // un simple changement de titre derriere une devinette serait le meilleur moyen d'en faire une.
+  const typeEvt=v('pa-type')||null;
+  if(!albumId&&!typeEvt){
+    err.textContent='Précisez ce qui a été photographié : match, entraînement, plateau, tournoi, stage.';
+    return;
+  }
   err.textContent='Enregistrement…';
   try{
     const clubId=v('pa-club')||null;
@@ -13407,6 +13480,7 @@ async function sauvegarderAlbum(albumId){
       pole_id:v('pa-pole')||null,
       structure_externe:v('pa-structure')||null,
       event_date:v('pa-date')||null,
+      type_evenement:typeEvt,   // v390
       mission_id:genreLien==='prestation'?idLien:missionId,
       match_id:genreLien==='match'?idLien:null,
       event_id:(genreLien==='entrainement'||genreLien==='evenement')?idLien:null,
@@ -14395,7 +14469,11 @@ function galQuiEstSurLaPhoto(assetId){
          Le travail se partage : ici on releve le numero SANS savoir a qui il appartient — un chiffre a
          taper, bien plus rapide que choisir un nom dans une liste de vingt — et la famille declare de
          son cote « j'etais le 7 a ce match ». La jointure PROPOSE la photo, la famille confirme.
-         Un enfant de dos n'a pas de visage a reconnaitre : c'est le seul signal disponible. -->
+         Un enfant de dos n'a pas de visage a reconnaitre : c'est le seul signal disponible.
+         v390, 01/10/2026 : SUR UN ENTRAINEMENT, CE BLOC DISPARAIT. Il n'y a pas de dossard a relever,
+         et le laisser la ferait perdre du temps a chercher un numero qui n'existe pas. Mesure a
+         l'appui : 0 numero lisible sur les 96 photos de « RCPF AMIENS Ecole de foot ». -->
+    ${!paNumeroUtile(_galAlbum&&_galAlbum.type_evenement)?'':`
     <div style="border:1px solid var(--b1);border-radius:var(--rp);padding:10px 11px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:3px">Numéros lisibles sur la photo</div>
       <div style="font-size:11px;color:var(--t3);margin-bottom:8px">Séparés par un espace. Inutile de savoir qui c'est : la famille déclare son numéro de son côté.</div>
@@ -14406,7 +14484,7 @@ function galQuiEstSurLaPhoto(assetId){
         <button class="btn bp bs" style="min-height:40px" onclick="galEnregistrerNumeros('${assetId}')">Enregistrer</button>
       </div>
       <div id="gal-nums-msg" style="font-size:11.5px;color:var(--t3);margin-top:7px"></div>
-    </div>
+    </div>`}
     <div id="gqp-err" style="font-size:11.5px;color:var(--er);margin-bottom:8px"></div>
     <div style="display:flex;flex-direction:column;gap:2px;max-height:320px;overflow-y:auto">
       ${_galJoueurs.map(j=>{
@@ -14506,7 +14584,9 @@ async function ouvrirGalerie(albumId){
   const fullCom=await _galClubFullCom(album.club_id);
   const clr=PA_STATUT_CLR[album.status]||'var(--t3)';
   const pole=(S.allPoles||[]).find(x=>x.id===album.pole_id);
-  const contexte=[PA_STATUT_LB[album.status]||album.status, pole?pole.nom:null,
+  const contexte=[PA_STATUT_LB[album.status]||album.status,
+                  album.type_evenement?PA_TYPE_LB[album.type_evenement]||album.type_evenement:null,  // v390
+                  pole?pole.nom:null,
                   album.clubs?.nom, album.club_teams?.name, album.structure_externe,
                   album.event_date?dateFr(album.event_date):null].filter(Boolean).map(esc).join(' · ');
   const T='font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t2);display:flex;align-items:baseline;gap:9px;margin:0 0 12px';
@@ -14528,6 +14608,22 @@ async function ouvrirGalerie(albumId){
         <button class="btn bg2 bs" style="min-height:40px" onclick="galMenuLigne('${album.id}',event)">⋯</button>
       </div>
     </div>
+
+    <!-- CE QU'ON N'A PAS PRECISE SE VOIT ICI (v390, 01/10/2026). Les 57 galeries d'avant la v390
+         n'ont pas de type, et elles se comportent comme avant : on demande un numero de maillot aux
+         familles. Pour un entrainement, c'est une question de trop. Un bandeau, et le bouton qui
+         corrige — pas un avertissement qu'on ne peut pas suivre. -->
+    ${album.type_evenement?(paNumeroUtile(album.type_evenement)?'':`
+      <div style="font-size:12px;color:var(--t2);line-height:1.55;padding:10px 12px;margin-bottom:14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.22);border-radius:8px">
+        <b>${esc(PA_TYPE_LB[album.type_evenement])}.</b> On ne demande aucun numéro de maillot aux
+        familles, et le moteur n'en cherche aucun sur les photos : la reconnaissance se fait par le
+        visage seul.
+      </div>`):`
+      <div style="font-size:12px;color:var(--t2);line-height:1.55;padding:10px 12px;margin-bottom:14px;background:rgba(255,183,77,.08);border:1px solid rgba(255,183,77,.28);border-radius:8px">
+        <b>Type de galerie non précisé.</b> Les familles ne savent pas si c'est un match ou un
+        entraînement, et on leur demande un numéro de maillot dans les deux cas.
+        <button class="btn bg2 bs" style="min-height:34px;margin-left:8px" onclick="modalCreerAlbum('${album.id}')">Préciser</button>
+      </div>`}
 
     <section style="margin-bottom:34px">
       <div style="${T}"><span style="${N}">1</span> Photos <span id="gal-count" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3);font-size:12.5px">…</span></div>

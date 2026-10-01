@@ -136,6 +136,13 @@ const CFG = {
   lireLesDossards: true,
 };
 
+// Les libellés des types de galerie (v390), pour le journal du service seulement. La règle « ce type
+// porte-t-il des numéros ? » n'est PAS ici : elle est dans `galerie_numero_utile()`, côté base.
+const TYPE_LB = {
+  match: "match", entrainement: "entraînement", plateau: "plateau",
+  tournoi: "tournoi", stage: "stage", autre: "autre",
+};
+
 // ── TENIR LE MAC ÉVEILLÉ PENDANT QU'ON TRAVAILLE ────────────────────────────────────────────────
 //
 // Fouka, le 29/09 : « il faut que le moteur tourne même quand mon Mac est sur batterie, parce qu'il
@@ -401,8 +408,33 @@ async function traiterGalerie(album, lignes) {
 }
 
 async function traiterGalerieVraiment(album, lignes) {
-  const { d: infos } = await rest(`media_albums?select=title&id=eq.${album}`);
-  dire(`\n▸ ${infos?.[0]?.title ?? album}`);
+  const { d: infos } = await rest(`media_albums?select=title,type_evenement&id=eq.${album}`);
+  const typeGalerie = infos?.[0]?.type_evenement ?? null;
+  dire(`\n▸ ${infos?.[0]?.title ?? album}${typeGalerie ? ` (${TYPE_LB[typeGalerie] ?? typeGalerie})` : ""}`);
+
+  // UN ENTRAÎNEMENT N'A PAS DE DOSSARD (v390, 01/10/2026).
+  //
+  // Fouka : « ces entraînements, il n'y a pas de numéro affilié à la galerie. Donc la reconnaissance
+  // ce sera un peu plus compliqué, mais il y aura une reconnaissance à faire, mais pas de numéro. »
+  //
+  // ET LA RÈGLE N'EST PAS ÉCRITE ICI. Le moteur ne tient aucune règle métier, c'est tout son
+  // principe : il demande à la base, qui répond par `galerie_numero_utile()`. Une seconde liste des
+  // types sans dossard, posée dans ce fichier, divergerait de celle de l'écran de la famille le jour
+  // où Fouka en ajoute un — et personne ne le verrait, parce que les deux auraient l'air de marcher.
+  //
+  // CE QUE ÇA CHANGE, MESURÉ. Le lecteur de dossards coûte `personnesDe` + quatre préparations
+  // d'image + Vision, sur chaque photo où quelqu'un est vu de dos. Sur les 96 photos de « RCPF
+  // AMIENS Ecole de foot » — la galerie la plus proche d'un entraînement en base — il relève ZÉRO
+  // numéro, parce qu'il n'y en a aucun à relever. C'était du temps dépensé pour rien, et surtout un
+  // bilan qui annonçait « 0 numéro(s) relevé(s) » : un échec, là où il n'y avait rien à trouver.
+  const { d: numeroUtileRep, ok: numeroUtileOk } = await rpc("galerie_numero_utile", { p_album_id: album });
+  // UN REFUS OU UNE PANNE NE DOIT PAS SILENCIEUSEMENT ÉTEINDRE LES DOSSARDS. Si la base ne répond
+  // pas, on fait ce qu'on faisait avant la v390 : on lit. Rater un dossard coûte une photo non
+  // proposée ; ne plus jamais en lire coûterait 7 % des photos de tous les matchs, sans rien dire.
+  const numeroUtile = numeroUtileOk ? numeroUtileRep !== false : true;
+  if (!numeroUtileOk) dire("   la base n'a pas dit si cette galerie porte des numéros : on les lit, comme avant.");
+  const lireIciLesDossards = CFG.lireLesDossards && numeroUtile;
+  if (!numeroUtile) dire("   pas de numéro de maillot sur ce genre de galerie : reconnaissance par le visage seul.");
 
   // 1. QUI PEUT ÊTRE RECONNU. La base seule le sait : consentement, équipes de la galerie, photos
   //    de référence déposées. Le moteur ne rejoue pas cette règle.
@@ -434,9 +466,40 @@ async function traiterGalerieVraiment(album, lignes) {
   // accord. Ce qui suit — empreintes de référence, grappes, marquages — reste derrière la porte.
   const reconnaissanceDesVisages = joueurs.length > 0;
   if (preparationSeule) {
-    dire("   préparation de la galerie : numéros de maillot et photos d'équipe, aucun visage reconnu");
+    dire(lireIciLesDossards
+      ? "   préparation de la galerie : numéros de maillot et photos d'équipe, aucun visage reconnu"
+      : "   préparation de la galerie : photos d'équipe seulement, aucun numéro à lire, aucun visage reconnu");
   } else if (!reconnaissanceDesVisages) {
-    dire("   aucun sportif n'a autorisé la reconnaissance des visages : on lit les dossards seulement");
+    dire(lireIciLesDossards
+      ? "   aucun sportif n'a autorisé la reconnaissance des visages : on lit les dossards seulement"
+      : "   aucun sportif n'a autorisé la reconnaissance des visages, et pas de numéro sur ce genre de galerie");
+  }
+
+  // RIEN À FAIRE N'EST PAS UN ÉCHEC, ET NE DOIT PAS COÛTER VINGT MINUTES (v390, 01/10/2026).
+  //
+  // Sur une galerie d'entraînement dont aucune famille n'a encore donné son accord, il ne reste NI
+  // visage à reconnaître NI numéro à lire. Le moteur, lui, téléchargeait quand même les 300 photos
+  // et faisait tourner le détecteur sur chacune — à seule fin de savoir qui était de dos, pour une
+  // lecture de dossard qui n'aurait jamais lieu. Mesuré : 431 photos sur la plus grosse galerie en
+  // base, à une à deux secondes chacune, soit de dix à quinze minutes de calcul pour zéro écriture.
+  //
+  // ET ON NE PERD RIEN EN S'ARRÊTANT. Le marquage des photos d'équipe dépend du NOMBRE de visages
+  // par photo, qui n'est rempli que lorsque la reconnaissance des visages est autorisée : sans
+  // accord, aucune photo de groupe n'était marquée avant la v390 non plus. On ne retire donc rien,
+  // on arrête seulement de calculer ce que personne ne lisait.
+  //
+  // On le dit et on s'arrête. Le travail reste ouvert ? Non : il est marqué fait, avec la raison.
+  // Le jour où une famille donne son accord, `reconnaissance_mettre_en_file` crée un NOUVEAU travail
+  // en priorité 1, et c'est ce chemin-là qui doit déclencher la passe — pas une ligne qui dort.
+  if (!reconnaissanceDesVisages && !lireIciLesDossards) {
+    dire("   rien à chercher pour l'instant : ni visage autorisé, ni numéro à lire.");
+    if (!SIMULER) for (const l of lignes) {
+      await rpc("reconnaissance_fait", {
+        p_id: l.id,
+        p_resultat: "entraînement sans accord de reconnaissance : rien à chercher pour l'instant",
+      });
+    }
+    return { photos: 0, marques: 0 };
   }
 
   // 2. LES EMPREINTES DE RÉFÉRENCE MANQUANTES, une par photo déposée.
@@ -558,7 +621,10 @@ async function traiterGalerieVraiment(album, lignes) {
       // DEJA EXAMINEE PAR CE LECTEUR-CI ? On ne recommence pas. Et si c'est une version plus
       // ancienne qui est passee, on repasse : c'est ce qui fait qu'un meilleur lecteur rattrape
       // tout seul les galeries deja traitees.
-      if (CFG.lireLesDossards && !dossardsVus.has(photos[i].id)
+      // `lireIciLesDossards`, PAS `CFG.lireLesDossards` (v390) : la question se pose galerie par
+      // galerie, parce qu'un entraînement n'a pas de dossard. Le réglage global reste l'interrupteur
+      // général, la galerie dit si ça a un sens ici.
+      if (lireIciLesDossards && !dossardsVus.has(photos[i].id)
           && photos[i].numeros_lus_par !== LECTEUR_DOSSARDS) {
         try {
           const tCorps = Date.now();
@@ -630,12 +696,18 @@ async function traiterGalerieVraiment(album, lignes) {
   }
   if (dossardsVus.size) {
     dire(`   ${dossardsVus.size} dos examiné(s), ${numerosLus} numéro(s) de maillot relevé(s)`);
+  } else if (!lireIciLesDossards) {
+    dire("   aucun dos examiné : il n'y a pas de numéro à lire sur ce genre de galerie.");
   }
   for (const [m, n] of [...motifs].sort((a, b) => b[1] - a[1])) dire(`   ${n} photo(s) en échec : ${m}`);
 
   if (!reconnaissanceDesVisages) {
     if (!SIMULER) for (const l of lignes) {
-      await rpc("reconnaissance_fait", { p_id: l.id, p_resultat: `${numerosLus} numéro(s) relevé(s), visages non autorisés` });
+      // PAS DE FAUX ÉCHEC (v390). « 0 numéro(s) relevé(s) » sur une galerie qui n'en porte pas se
+      // lit comme un échec du moteur, dans l'OS comme dans le journal. On dit ce qui s'est passé.
+      await rpc("reconnaissance_fait", { p_id: l.id, p_resultat: lireIciLesDossards
+        ? `${numerosLus} numéro(s) relevé(s), visages non autorisés`
+        : "aucun numéro sur ce genre de galerie, visages non autorisés" });
     }
     return { photos: photos.length, marques: 0 };
   }
@@ -889,7 +961,18 @@ async function vider() {
         recevables = aFaire.filter((l) => gardes.has(l.id));
       }
     }
-    if (!recevables.length) continue;
+    // `--album=<id>` NE FAISAIT PLUS RIEN, EN SILENCE (trouvé le 01/10/2026).
+    //
+    // La galerie forcée à la main n'a pas de ligne de file : `vider()` lui en fabrique une avec
+    // `id: null`, et `aFaire` — qui ne garde que les lignes AYANT un identifiant — est donc vide.
+    // `recevables` l'était aussi, et ce `continue` sautait la galerie. Le journal disait « 1
+    // travail en attente, sur 1 galerie » puis « 0 galerie, 0 photo » : la commande documentée dans
+    // le LISEZMOI s'annonçait comme ayant travaillé, et n'avait rien fait. C'est exactement le faux
+    // succès que la règle du 10/09 interdit.
+    //
+    // Mesuré : `node moteur.mjs --simuler --album=218cde40…` sur une galerie de 18 photos, zéro
+    // téléchargement, zéro calcul, aucune erreur.
+    if (!recevables.length && !ALBUM_FORCE) continue;
 
     // ET LE FILET LUI-MÊME. Un échec sur une galerie ne doit pas emporter les suivantes : on le
     // dit, on passe, et le compteur fera le reste si ça se reproduit.

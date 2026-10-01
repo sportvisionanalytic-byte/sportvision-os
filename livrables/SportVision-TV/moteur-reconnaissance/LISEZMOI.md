@@ -17,7 +17,39 @@ Remplace `scripts/reconnaissance-automatique.mjs`, qui tournait dans un Chromium
 | `visages.mjs` | Détecter, aligner, calculer une empreinte |
 | `grappes.mjs` | Regrouper les visages d'une même personne dans une galerie |
 | `moteur.mjs` | Le passage complet : file d'attente, base, marquages |
-| `dossards.mjs` | Lire les numéros de maillot — **non branché**, voir l'en-tête du fichier |
+| `dossards.mjs` | Lire les numéros de maillot — voir l'en-tête du fichier |
+
+## Match ou entraînement
+
+Depuis la v390, une galerie dit ce qui a été photographié (`media_albums.type_evenement` : match,
+entrainement, plateau, tournoi, stage, autre). **Sur un entraînement et sur un stage, il n'y a pas de
+dossard** : le moteur ne cherche aucun numéro et travaille par le visage seul.
+
+La règle n'est pas écrite dans ce dossier. Le moteur demande à la base, une fois par galerie :
+
+```
+galerie_numero_utile(<galerie>)  ->  faux pour un entrainement ou un stage, vrai partout ailleurs
+```
+
+Une galerie dont le type n'est pas précisé répond **vrai** : c'est le comportement d'avant la v390,
+numéro compris. Si la base ne répond pas, le moteur lit les dossards comme avant et le dit dans son
+journal — rater un numéro coûte une photo non proposée, ne plus jamais en lire coûterait 7 % des
+photos de tous les matchs.
+
+### Ce que le visage seul coûte, mesuré le 01/10/2026
+
+Détection seule sur trois galeries réelles, sans aucune empreinte calculée ni conservée :
+
+| Galerie | Photos | Photos sans **aucun** visage | Personnes sans visage visible | Photos avec un numéro lu |
+|---|---|---|---|---|
+| RCPF VS PSG U16 (match) | 110 | **11,8 %** (13) | 19,1 % (48/251) | 5,5 % (6) |
+| Villemomble plateau U6-U7 | 150 | 3,3 % (5) | 14,0 % (31/222) | 0 % |
+| RCPF AMIENS Ecole de foot | 96 | **0 %** | 4,6 % (16/346) | 0 % |
+
+Lecture : sur un **match**, une photo sur huit ne montre aucun visage — le numéro est la seule prise,
+et il en rattrape 4 sur 13. Sur une séance d'**entraînement ou d'école de foot**, il n'y a pas de
+photo sans visage : on photographie de face, de près. Le visage seul n'y perd donc **rien**, et le
+numéro n'y apportait rien non plus (0 numéro lisible sur 96 photos).
 
 ## Les modèles
 
@@ -36,7 +68,7 @@ node moteur.mjs              # vide la file une fois
 node moteur.mjs --boucle     # attend et vide, sans fin (c'est le service)
 node moteur.mjs --simuler    # mesure sans rien écrire en base
 node moteur.mjs --voir       # détaille chaque photo
-node moteur.mjs --album=<id> # une galerie précise
+node moteur.mjs --album=<id> # une galerie précise, même hors file
 ```
 
 `--simuler` existe pour une raison précise : le 28/09, mesurer a détruit les marquages que Fouka

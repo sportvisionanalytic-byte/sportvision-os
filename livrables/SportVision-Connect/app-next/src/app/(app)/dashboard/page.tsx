@@ -14,6 +14,7 @@ import { PlayerDashboard } from "@/components/dashboard/PlayerDashboard";
 import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
 import { StripeReturnBanner } from "@/components/dashboard/StripeReturnBanner";
 import { CmClubOverview } from "@/components/dashboard/CmClubOverview";
+import { PhotoProfilProposeeCard } from "@/components/teams/PhotoProfilProposeeCard";
 
 // Aiguilleur — le tableau de bord n'a qu'une seule route mais trois familles de contenu très
 // différentes. Chaque variante vit dans son propre fichier sous src/components/dashboard/ pour
@@ -77,6 +78,12 @@ export default function DashboardPage() {
   return (
     <>
       <OnboardingOverlay />
+      {/* 01/10/2026 (v386) — « On lui PROPOSE sa photo de profil, il gère » (Fouka). Monté ici par
+          la même exception que l'overlay ci-dessus, et pour la même raison : la question se pose à
+          TOUTE personne du club, quel que soit le tableau de bord qu'elle voit. La placer dans une
+          variante, c'est ne jamais la poser aux autres. La carte ne rend rien quand il n'y a aucune
+          proposition en attente : aucun des écrans ne change tant que personne n'a proposé. */}
+      <PhotoProfilProposeeCard />
       {dashboard}
     </>
   );

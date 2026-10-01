@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchMyAthletes } from "@/lib/supabase/particulier";
 import { JoinClubForm } from "./JoinClubForm";
+import { RevendiquerFiche } from "@/components/revendication/RevendiquerFiche";
 
 interface InvitePreview {
   valide: boolean;
@@ -61,6 +62,11 @@ export default async function RejoindreClubPage({ params }: { params: Promise<{ 
         {preview.team_nom && <p className="text-[16px] font-bold text-text-secondary">{preview.team_nom}</p>}
         {preview.saison && <p className="text-[13px] text-text-faint">Saison {preview.saison}</p>}
       </div>
+      {/* 01/10/2026 (v387) — AVANT de demander de tout resaisir, on propose ce que le club a déjà
+          préparé. Fouka crée les fiches d'une catégorie entière, photos comprises : le parent n'a
+          plus qu'à reconnaître son enfant. La carte ne s'affiche que s'il y a quelque chose à
+          reconnaître, et déclarer « c'est mon enfant » ne rattache RIEN : le club confirme. */}
+      <RevendiquerFiche code={code} qualite="parent" />
       <JoinClubForm code={code} athletes={eligible} />
     </div>
   );

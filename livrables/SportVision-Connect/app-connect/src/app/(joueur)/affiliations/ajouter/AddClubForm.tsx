@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
 import { messageErreurFonction } from "@/lib/supabase/erreurs-serveur";
+import { RevendiquerFiche } from "@/components/revendication/RevendiquerFiche";
 
 type Choice = "search" | "declare" | "none" | "code" | null;
 interface ClubResult {
@@ -324,6 +325,25 @@ export function AddClubForm({
             Le code vous a été communiqué par votre club ou votre coach — il vous rattache
             directement à la bonne équipe.
           </p>
+        )}
+        {/* 01/10/2026 (v387) — « Est-ce bien vous Saiden ? » (Fouka). Le club crée les fiches de
+            toute une catégorie avant que les familles arrivent, photos de référence comprises. Dès
+            que le code est saisi, on propose donc la liste de SON équipe plutôt que de faire
+            resaisir une identité qui existe déjà — et probablement mal orthographiée, qu'il pourra
+            corriger ensuite.
+
+            Le code est la seule borne, et c'est volontaire : il ouvre UNE équipe et seulement les
+            fiches sans compte. Pas de recherche libre sur le fichier des enfants d'un club.
+
+            Déclarer « c'est moi » ne rattache RIEN : le club confirme. Sans ça, un nom plus une
+            date de naissance suffiraient à prendre la fiche d'un enfant — le trou fermé le
+            10/09/2026. */}
+        {inviteCode.trim().length >= 6 && (
+          <RevendiquerFiche
+            code={inviteCode.trim()}
+            qualite="joueur"
+            nomApproximatif={[firstName, lastName].filter(Boolean).join(" ") || undefined}
+          />
         )}
         <div className="flex flex-col gap-4 rounded-sv-card border border-border bg-surface p-4">
           <Field

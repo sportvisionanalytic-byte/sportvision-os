@@ -36,12 +36,16 @@ import type { LicenseStatus, Team } from "@/lib/types/teams";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { retirerJoueurEquipe } from "@/lib/data/club/team-detail";
-import { fetchLiensParentsADecider, deciderLienParent, type LienParentADecider } from "@/lib/data/club/parentLinks";
+import { fetchLiensParentsADecider, deciderLienParent, type LienParentADecider,
+  fetchRevendicationsADecider, deciderRevendication, type RevendicationADecider } from "@/lib/data/club/parentLinks";
 import { fetchClubTeams, renameClubTeam, setClubTeamArchived } from "@/lib/data/club/teams";
 import { ACCOUNT_STATUS_LABEL, fetchTeamRoster, type TeamRosterPlayer } from "@/lib/data/club/team-detail";
 import { fetchClubMembers } from "@/lib/data/club/users";
 import { peutOpererClub } from "@/lib/data/club/invitations";
 import type { OrgUser } from "@/lib/types/settings";
+import { ConstituerEffectifCard } from "@/components/teams/ConstituerEffectifCard";
+import { PhotoReferenceJoueur } from "@/components/teams/PhotoReferenceJoueur";
+import { peutConstituerEffectif } from "@/lib/data/club/effectif";
 import { TeamStaffCard } from "@/components/teams/TeamStaffCard";
 import { TeamInvitationsCard } from "@/components/teams/TeamInvitationsCard";
 import { RenommerEquipeModal } from "@/components/teams/RenommerEquipeModal";
@@ -445,6 +449,7 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
   const { ctx: sessionCtx } = useSession();
   // `null` tant que la base n'a pas répondu : ni actions offertes, ni actions retirées à tort.
   const [canManageMembers, setCanManageMembers] = useState(false);
+  const [peutConstituer, setPeutConstituer] = useState(false);
   const [tab, setTab] = useState<RealTabKey>("apercu");
   const [teams, setTeams] = useState<Team[] | null>(null);
   const [roster, setRoster] = useState<TeamRosterPlayer[] | null>(null);
@@ -522,6 +527,16 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
   useEffect(() => {
     peutOpererClub(createClient(), organizationId).then(setCanManageMembers);
   }, [organizationId]);
+
+  // CONSTITUER L'EFFECTIF (01/10/2026, v384) : le droit vient de la base, jamais du rôle affiché.
+  // Un coach peut le faire sur SES équipes et nulle part ailleurs, et `canManageMembers`
+  // (peut_operer_club) répondrait non pour lui alors que la base dit oui. Deux questions
+  // différentes, deux réponses, une seule autorité à chaque fois.
+  useEffect(() => {
+    peutConstituerEffectif(createClient(), teamId)
+      .then(setPeutConstituer)
+      .catch(() => setPeutConstituer(false));
+  }, [teamId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -658,10 +673,26 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
       {tab === "effectif" && (
         <>
           <RattachementsParents clubId={organizationId} equipe={team.name} />
+          {/* 01/10/2026 (v387) — Les sportifs qui se reconnaissent dans une fiche pré-créée. Placée
+              juste après les rattachements de parents : c'est la même décision, de même nature, et
+              elle se prend au même moment. */}
+          <RevendicationsDeFiche
+            clubId={organizationId}
+            equipe={team.name}
+            onDecide={() => setRechargement((n) => n + 1)}
+          />
+          {peutConstituer && (
+            <ConstituerEffectifCard
+              teamId={teamId}
+              nomEquipe={team.name}
+              onEffectifChange={() => setRechargement((n) => n + 1)}
+            />
+          )}
           <RealRosterTab
             roster={roster}
             teamId={teamId}
             peutRetirer={canManageMembers}
+            peutDeposerPhoto={peutConstituer}
             onRetire={() => setRechargement((n) => n + 1)}
           />
         </>
@@ -838,11 +869,15 @@ function RealRosterTab({
   roster,
   teamId,
   peutRetirer,
+  peutDeposerPhoto,
   onRetire,
 }: {
   roster: TeamRosterPlayer[];
   teamId: string;
   peutRetirer: boolean;
+  /** Déposer la photo de référence d'un sportif : même autorité que constituer l'effectif
+   *  (v385), donnée par la base. Elle n'est PAS la même que « retirer de l'équipe ». */
+  peutDeposerPhoto: boolean;
   onRetire: () => void;
 }) {
   // Retirer un joueur de l'équipe (12/09/2026) : aucun écran ne le permettait, et l'effectif
@@ -880,8 +915,9 @@ function RealRosterTab({
 
   return (
     <Card className="overflow-hidden">
-      <div className="hidden grid-cols-[1.8fr_1.3fr_1fr_1fr_1fr] gap-3 border-b border-divider bg-surface-alt px-5 py-3 text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint sm:grid">
+      <div className="hidden grid-cols-[1.8fr_1.2fr_1.2fr_.9fr_.9fr_1fr] gap-3 border-b border-divider bg-surface-alt px-5 py-3 text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint sm:grid">
         <span>Joueur</span>
+        <span>Photo de référence</span>
         <span>Contact parent</span>
         <span>Licence</span>
         <span>Compte</span>
@@ -890,7 +926,7 @@ function RealRosterTab({
       {roster.map((p) => (
         <div
           key={p.id}
-          className="grid grid-cols-2 gap-2.5 border-b border-divider px-5 py-3.5 last:border-0 sm:grid-cols-[1.8fr_1.3fr_1fr_1fr_1fr] sm:items-center sm:gap-3"
+          className="grid grid-cols-2 gap-2.5 border-b border-divider px-5 py-3.5 last:border-0 sm:grid-cols-[1.8fr_1.2fr_1.2fr_.9fr_.9fr_1fr] sm:items-center sm:gap-3"
         >
           <span className="flex items-center gap-2.5">
             {p.photoUrl ? (
@@ -905,6 +941,13 @@ function RealRosterTab({
               {p.firstName} {p.lastName}
             </span>
           </span>
+          {/* 01/10/2026 (v385) — Déposer la photo du sportif AVANT que sa famille s'inscrive.
+              Elle n'est pas encore une empreinte : elle attend l'accord, et la colonne le dit. */}
+          <PhotoReferenceJoueur
+            playerId={p.id}
+            nom={`${p.firstName} ${p.lastName}`}
+            peutDeposer={peutDeposerPhoto}
+          />
           <span className="flex flex-col text-[12px] text-text-soft">
             {p.parentPhone && <span>{p.parentPhone}</span>}
             {p.parentEmail && <span className="truncate">{p.parentEmail}</span>}
@@ -1196,3 +1239,90 @@ function RattachementsParents({ clubId, equipe }: { clubId: string; equipe: stri
     </Card>
   );
 }
+
+/** Les sportifs qui déclarent être ceux d'une fiche pré-créée (migration v387, 01/10/2026).
+ *
+ *  Fouka crée les fiches d'une catégorie entière avant que les familles arrivent, photos comprises.
+ *  Saiden crée ensuite son compte, se reconnaît dans la liste de son équipe et dit « c'est moi ».
+ *
+ *  RIEN N'EST RATTACHÉ TANT QUE VOUS N'AVEZ PAS CONFIRMÉ. C'est volontaire, et c'est le correctif du
+ *  10/09 : avant lui, un inconnu devenait parent confirmé d'un mineur avec le code d'équipe, un nom
+ *  et une date de naissance. Un nom et une date de naissance ne prouvent pas une identité. Confirmer
+ *  coûte un clic au coach, qui connaît ses joueurs ; ne pas confirmer coûte la fiche d'un enfant.
+ *
+ *  La carte ne s'affiche que s'il y a quelque chose à décider. */
+function RevendicationsDeFiche({
+  clubId,
+  equipe,
+  onDecide,
+}: {
+  clubId: string;
+  equipe: string;
+  onDecide: () => void;
+}) {
+  const [demandes, setDemandes] = useState<RevendicationADecider[] | null>(null);
+  const [enCours, setEnCours] = useState<string | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  const recharger = useCallback(() => {
+    fetchRevendicationsADecider(createClient(), clubId)
+      .then(setDemandes)
+      .catch(() => setDemandes([]));
+  }, [clubId]);
+
+  useEffect(() => recharger(), [recharger]);
+
+  const pourCetteEquipe = (demandes ?? []).filter((d) => !d.equipe || d.equipe === equipe);
+  if (!pourCetteEquipe.length) return null;
+
+  async function decider(id: string, decision: "confirme" | "refuse") {
+    setEnCours(id);
+    setErreur(null);
+    try {
+      await deciderRevendication(createClient(), id, decision);
+      recharger();
+      onDecide();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "La décision n'a pas pu être enregistrée.");
+    } finally {
+      setEnCours(null);
+    }
+  }
+
+  return (
+    <Card className="p-4.5">
+      <div className="text-[15px] font-extrabold">Sportifs à reconnaître</div>
+      <p className="mt-1 max-w-[560px] text-[12.5px] leading-relaxed text-text-soft">
+        Ces personnes ont créé un compte et déclarent être le sportif de la fiche indiquée. Tant que
+        vous ne confirmez pas, la fiche ne leur appartient pas et elles n&apos;y voient rien. Ne
+        confirmez que si vous reconnaissez la personne.
+      </p>
+      {erreur && <p className="mt-3 text-[12.5px] font-bold text-danger-fg">{erreur}</p>}
+      <div className="mt-3 flex flex-col gap-2">
+        {pourCetteEquipe.map((d) => (
+          <div key={d.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-surface-sunken px-3 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-[13.5px] font-bold">
+                <span className="font-semibold text-text-soft">se déclare être</span> {d.sportif}
+              </div>
+              <div className="text-[12px] text-text-soft">
+                {d.demandeurEmail ?? "adresse inconnue"} · demandé le{" "}
+                {new Date(d.demandeLe).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                {d.aUnePhoto && " · une photo de référence attend sur cette fiche"}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" disabled={enCours === d.id} onClick={() => decider(d.id, "refuse")}>
+                Refuser
+              </Button>
+              <Button disabled={enCours === d.id} onClick={() => decider(d.id, "confirme")}>
+                Confirmer
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
