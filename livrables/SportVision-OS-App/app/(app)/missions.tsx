@@ -25,6 +25,16 @@ import { dateLongue, heureCourte } from "../../src/lib/dates";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
 import { P, T } from "../../src/theme/polices";
 
+/** Les trois réponses d'affectation qui ferment la mission pour l'opérateur, et le mot qui le
+ *  dit. Les quatre autres valeurs de `statut_affectation` sont ailleurs : `invitation_envoyée` et
+ *  `en_attente` attendent une réponse, `acceptée` est une mission à faire, et `a_envoyer` n'est pas
+ *  lisible par lui (la RLS l'exclut — la Production ne l'a pas encore envoyée). */
+const REPONDUES_PASSEES: Record<string, string> = {
+  "refusée": "Vous avez refusé",
+  "remplacée": "Remplacé par la production",
+  "annulée": "Annulée par la production",
+};
+
 /** Les groupes du cockpit, dans l'ordre du travail réel. Mêmes libellés que l'OS. */
 const GROUPES: { cle: string; libelle: string }[] = [
   { cle: "a_planifier", libelle: "À planifier" },
@@ -186,6 +196,20 @@ function MesMissions() {
   const liste = missions ?? [];
   const aRepondre = liste.filter((m) => m.reponse === "invitation_envoyée" || m.reponse === "en_attente");
   const acceptees = liste.filter((m) => m.reponse === "acceptée");
+  // UN REFUS LAISSE UNE TRACE (01/10/2026).
+  //
+  // L'écran ne montrait QUE les invitations en attente et les missions acceptées. Un opérateur qui
+  // refusait voyait la carte s'évanouir, sans un mot : rien ne lui disait que sa réponse était
+  // partie, et rien ne lui permettait de la retrouver ensuite — alors que c'est la réponse sur
+  // laquelle il ne peut plus revenir. Même disparition pour une affectation « remplacée » ou
+  // « annulée » par la Production : la mission s'efface de son téléphone sans explication.
+  //
+  // L'OS WEB, LUI, LES MONTRE DEPUIS TOUJOURS (son `filterPhotoPre` a un onglet par statut
+  // d'affectation, « Refusée » comprise). Ce n'est donc pas un ajout : c'est l'alignement des deux
+  // produits sur la même vérité. La RLS les rend lisibles — `equipe_select` ouvre toute ligne dont
+  // `collaborateur_id = auth.uid()` sauf `a_envoyer`, celle que la Production n'a pas encore
+  // envoyée et qu'il n'a donc pas à voir.
+  const closes = liste.filter((m) => REPONDUES_PASSEES[m.reponse]);
 
   return (
     <Ecran enCours={missions === null} teinte="cyan" rafraichir={charger}>
@@ -236,6 +260,23 @@ function MesMissions() {
             </Section>
           ) : null}
 
+          {/* Derrière les missions à faire, parce que c'est du passé — mais présent, parce que
+              c'est la preuve de ce qu'on a répondu. Pas de Mode Jour J ici : `surAccepter` est
+              absent, donc la carte le propose… et il ne doit pas. On le coupe explicitement. */}
+          {closes.length ? (
+            <Section titre="Sans suite">
+              <View style={{ gap: E.s }}>
+                {closes.map((m) => (
+                  <CarteMission
+                    key={m.affectationId}
+                    m={m}
+                    close={REPONDUES_PASSEES[m.reponse]}
+                  />
+                ))}
+              </View>
+            </Section>
+          ) : null}
+
           {aConfirmer ? (
             <Confirmation
               m={aConfirmer.m}
@@ -246,7 +287,7 @@ function MesMissions() {
             />
           ) : null}
 
-          {!aRepondre.length && !acceptees.length ? (
+          {!aRepondre.length && !acceptees.length && !closes.length ? (
             <Vide
               icone="calendar-outline"
               titre="Aucune mission pour l'instant"
@@ -308,9 +349,29 @@ function Confirmation({
             {accepte ? "Accepter cette mission ?" : "Refuser cette mission ?"}
           </Text>
           <Text style={s.feuilleQuoi}>{quoi}</Text>
+          {/* CE QUE LA BASE FAIT VRAIMENT, ET RIEN DE PLUS (mesuré le 01/10/2026, deux fois, en
+              transaction annulée, avec le jeton d'Antoine Blin sur une invitation réelle) :
+
+                REFUS    → `prestations_equipe.statut` passe à « refusée », `notes_refus` s'écrit,
+                           `cascade_prestations_equipe_reponse` ramène la mission en « planifiée »
+                           s'il ne reste aucun autre opérateur accepté, et
+                           `notifier_mission_refusee` écrit DEUX notifications de priorité haute
+                           aux responsables de production, motif compris :
+                           « Antoine Blin ne peut pas assurer RCP Fontainebleau du 03/10 — « … » ».
+                           La promesse « la production sera prévenue » est donc vraie, à la lettre.
+
+                ACCEPTATION → la mission passe bien en « équipe_affectée », et PERSONNE N'EST
+                           NOTIFIÉ. Mesuré : zéro ligne dans `notifications` pour cette prestation.
+                           Aucun déclencheur ne le fait, et `trg_notify_prestation_stage` ne parle
+                           qu'au client. La phrase disait « la production sera prévenue » : c'était
+                           un faux succès, sur le geste le plus irréversible de l'application.
+
+              On dit donc ce qui se passe : la mission change d'état, et la Production la voit
+              changer d'état dans son cockpit. Qu'une acceptation mérite une notification comme un
+              refus en a une est une décision qui appartient à Fouka, pas une phrase à écrire ici. */}
           <Text style={s.feuilleTexte}>
             {accepte
-              ? "La production sera prévenue et la mission passera en « Équipe affectée ». "
+              ? "La mission passera en « Équipe affectée » et la production vous y verra. "
                 + "Vous ne pourrez plus la refuser vous-même : il faudra lui demander de vous renvoyer l'invitation."
               : "La mission repartira en attribution et la production sera prévenue. "
                 + "Vous ne pourrez plus l'accepter vous-même : il faudra lui demander de vous renvoyer l'invitation."}
@@ -346,12 +407,14 @@ function Confirmation({
 }
 
 function CarteMission({
-  m, enCours, surAccepter, surRefuser,
+  m, enCours, surAccepter, surRefuser, close,
 }: {
   m: MaMission;
   enCours?: boolean;
   surAccepter?: () => void;
   surRefuser?: () => void;
+  /** Le mot qui dit pourquoi cette mission n'est plus la sienne. Présent = aucune action. */
+  close?: string;
 }) {
   const router = useRouter();
   return (
@@ -365,7 +428,8 @@ function CarteMission({
           </Text>
           {m.lieu ? <Text style={s.detail} numberOfLines={2}>{m.lieu}</Text> : null}
         </View>
-        {m.responsable ? <Pastille ton="info" texte="Responsable" /> : null}
+        {close ? <Pastille ton="neutre" texte={close} />
+          : m.responsable ? <Pastille ton="info" texte="Responsable" /> : null}
       </View>
 
       {/* LE BRIEF EST CE QU'ON VIENT LIRE AU BORD DU TERRAIN. Il passe avant la rémunération, qui
@@ -387,7 +451,7 @@ function CarteMission({
       {/* LE MODE JOUR J EST SUR LA CARTE D'UNE MISSION ACCEPTÉE, et c'est le seul endroit où il a
           un sens : l'OS l'ouvre lui aussi depuis la carte d'une prestation, jamais depuis un menu.
           Sur une invitation en attente il n'y est pas — on répond d'abord, on part ensuite. */}
-      {!surAccepter ? (
+      {!surAccepter && !close ? (
         <Pressable
           onPress={() => router.push({ pathname: "/terrain", params: { prestation: m.prestationId } })}
           accessibilityRole="button"
