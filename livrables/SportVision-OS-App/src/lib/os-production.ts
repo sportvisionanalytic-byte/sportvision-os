@@ -641,3 +641,46 @@ export async function lireSuiviTerrain(): Promise<SuiviTerrain[]> {
     kitRestitueA: r.kit_restitue_at ?? null,
   }));
 }
+
+// ── L'ENCHAÎNEMENT DES STATUTS, LU EN BASE (01/10/2026) ────────────────────────────────────────
+
+export interface Transition {
+  depuis: string;
+  vers: string;
+  libelle: string;
+  /** Vrai pour la suite NORMALE du parcours. Les autres sont des raccourcis ou des retours. */
+  estLaSuite: boolean;
+  ordre: number;
+}
+
+/**
+ * CE QUE LA BASE AUTORISE APRÈS CHAQUE STATUT, DEMANDÉ À LA BASE.
+ *
+ * `prestation_transitions` (v412) remplace le grand `or` qui vivait dans
+ * `validate_prestation_statut_transition()` : le trigger consulte maintenant cette table, et
+ * l'écran lit la même. Un bouton ne peut donc plus proposer ce que la base refusera, et la liste ne
+ * peut plus diverger — c'est exactement ce que la v377 avait fait pour la moitié opérateur de la
+ * chaîne (`operateur_transitions`).
+ *
+ * L'OS web garde pour l'instant sa propre copie (`_NEXT_ST`). Elle est identique aujourd'hui, et la
+ * migration le prouve sur les 1 089 couples de l'énumération ; elle devrait lire la table aussi.
+ */
+export async function lireTransitions(): Promise<Transition[]> {
+  const { data, error } = await supabase
+    .from("prestation_transitions")
+    .select("statut_depuis, statut_vers, libelle, est_la_suite, ordre")
+    .order("ordre", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
+    depuis: String(r.statut_depuis),
+    vers: String(r.statut_vers),
+    libelle: String(r.libelle ?? ""),
+    estLaSuite: r.est_la_suite === true,
+    ordre: Number(r.ordre ?? 0),
+  }));
+}
+
+/** La suite normale d'un statut, telle que la base la range. Null : la chaîne s'arrête ici. */
+export function suiteDe(statut: string, transitions: Transition[]): Transition | null {
+  return transitions.find((t) => t.depuis === statut && t.estLaSuite) ?? null;
+}

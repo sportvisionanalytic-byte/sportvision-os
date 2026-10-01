@@ -17,23 +17,37 @@
 // (il doit cocher fichiers copies et verifies) ». On les affiche telles quelles : les reformuler
 // serait ouvrir un second vocabulaire pour la meme regle.
 //
-// AUCUN VERDICT DEPUIS CET ECRAN, ET C'EST UN CHOIX. Valider un lien ou demander une correction
-// declenche des triggers en base (`notifier_decision_livraison`) et engage la remuneration d'un
-// freelance. Ce sont des decisions, pas des consultations. L'ecran les MONTRE ; le verdict reste
-// dans l'OS jusqu'a ce que Fouka tranche.
+// LE VERDICT EST ICI DEPUIS LE 01/10, ET CET EN-TETE DISAIT LE CONTRAIRE. Il affirmait « aucun
+// verdict depuis cet ecran, et c'est un choix » : c'etait vrai le 30/09, ca ne l'est plus depuis que
+// `os-pilotage.ts` existe. Un commentaire qui decrit l'ecran d'hier est pire qu'un commentaire
+// absent : on le croit.
+//
+// CE QUE CET ECRAN SAIT FAIRE, AU 01/10 : valider un lien, demander une correction avec son motif,
+// AVANCER une mission d'une marche et la CLORE. Les deux derniers manquaient, et c'est ce qui
+// laissait quatre missions passees ouvertes — dont SV-2026-3121, bloquee en `arrivee_sur_place`
+// depuis le 19 septembre alors que ses huit liens etaient deposes depuis le 23.
+//
+// « A CLOTURER » NE MONTRAIT PAS LA SEULE MISSION CLOTURABLE. Le filtre etait
+// `clotureManquant.length` : une mission dont la base ne reproche RIEN — SV-2026-0274, au statut
+// `livree` depuis le 25 septembre, tableau vide — n'apparaissait nulle part. L'ecran ne listait que
+// les blocages, jamais les missions pretes. On liste donc toutes les missions PASSEES non closes, et
+// chacune porte soit ce qui la bloque, soit le bouton qui la fait avancer.
 import React, { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Probleme, Vide } from "../../../src/ui/Ecran";
 import { Bouton, Champ, Erreur, Pastille } from "../../../src/ui/Base";
-import { demanderCorrection, validerLien } from "../../../src/lib/os-pilotage";
+import {
+  avancerMission, cloturerMission, demanderCorrection, validerLien,
+} from "../../../src/lib/os-pilotage";
 import { Barre } from "../../../src/ui/Barre";
 import { EcranProd } from "./_layout";
 import { useDonnees } from "../../../src/lib/cache";
 import { libelleCouverture } from "../../../src/lib/os-missions";
 import { LIBELLE_CATEGORIE } from "../../../src/lib/os-livrables";
-import { quand } from "../../../src/lib/dates";
+import { dateDuJourParis, quand } from "../../../src/lib/dates";
 import {
-  lireLiensATraiter, lireMissions, type Lien, type MissionProd,
+  lireLiensATraiter, lireMissions, lireTransitions, suiteDe,
+  type Lien, type MissionProd, type Transition,
 } from "../../../src/lib/os-production";
 import { C, E, R } from "../../../src/theme/couleurs";
 import { P } from "../../../src/theme/polices";
@@ -64,6 +78,8 @@ const LIBELLE_GROUPE: Record<string, string> = {
 interface Donnees {
   missions: MissionProd[];
   liens: Lien[];
+  /** L'enchainement legal des statuts, lu en base (v412). Jamais ecrit ici. */
+  transitions: Transition[];
 }
 
 export default function EcranLivraisons() {
@@ -72,21 +88,30 @@ export default function EcranLivraisons() {
   const { donnees, chargement, rafraichissement, erreur, relire } = useDonnees<Donnees>(
     "prod:livraisons",
     async () => {
-      const [missions, liens] = await Promise.all([lireMissions(), lireLiensATraiter()]);
-      return { missions, liens };
+      const [missions, liens, transitions] = await Promise.all([
+        lireMissions(), lireLiensATraiter(), lireTransitions(),
+      ]);
+      return { missions, liens, transitions };
     },
   );
 
   const missions = donnees?.missions ?? [];
   const liens = donnees?.liens ?? [];
+  const transitions = donnees?.transitions ?? [];
 
   const aVerifier = useMemo(() => liens.filter((l) => l.statut === "a_verifier"), [liens]);
   const corrections = useMemo(() => liens.filter((l) => l.statut === "correction_demandee"), [liens]);
   const enRetard = useMemo(() => missions.filter((m) => m.enRetard), [missions]);
-  const aClore = useMemo(
-    () => missions.filter((m) => m.clotureManquant.length && m.groupe !== "terminees"),
-    [missions],
-  );
+  // TOUTES LES MISSIONS PASSEES NON CLOSES, et pas seulement celles qui ont un blocage. Une
+  // mission a qui la base ne reproche rien est justement celle qu'il faut clore : elle n'apparaissait
+  // nulle part. On ecarte les missions a venir, qui n'ont pas a etre closes, et les groupes
+  // `terminees` / `annulees`, qui le sont deja.
+  const aClore = useMemo(() => {
+    const aujourdhui = dateDuJourParis();
+    return missions.filter(
+      (m) => m.groupe !== "terminees" && m.groupe !== "annulees" && (!m.date || m.date < aujourdhui),
+    );
+  }, [missions]);
   const sansEcheance = useMemo(() => missions.filter((m) => m.echeanceManquante).length, [missions]);
 
   const sous = chargement
@@ -139,28 +164,16 @@ export default function EcranLivraisons() {
         aClore.length ? (
           <View style={{ gap: E.s }}>
             {aClore.map((m) => (
-              <View key={m.id} style={s.carte}>
-                <EnteteMission m={m} />
-                <View style={{ gap: E.xs }}>
-                  {/* Les phrases sont celles de `mission_cloture_manquant`, mot pour mot. */}
-                  {m.clotureManquant.map((p, i) => (
-                    <View key={`${m.id}-${i}`} style={s.puceManque}>
-                      <Text style={s.point}>•</Text>
-                      <Text style={s.manqueTexte}>{p}</Text>
-                    </View>
-                  ))}
-                </View>
-                <Text style={s.compteurs}>
-                  {`${m.nbPhotos} photo${m.nbPhotos > 1 ? "s" : ""} · ${m.nbMontages} montage${m.nbMontages > 1 ? "s" : ""} · ${m.nbRushs} rush${m.nbRushs > 1 ? "s" : ""}`}
-                  {m.transfertConfirme ? " · sauvegarde confirmée" : ""}
-                </Text>
-              </View>
+              <CarteCloture key={m.id} m={m} transitions={transitions} surChangement={relire} />
             ))}
           </View>
         ) : (
           <Vide
-            titre="Rien ne bloque une clôture"
-            texte="Dès qu'une mission garde quelque chose en travers, la raison s'affiche ici, phrase par phrase."
+            titre="Aucune mission passée n'est restée ouverte"
+            texte={
+              "Toute mission dont la date est passée est soit clôturée, soit annulée. Dès qu'une " +
+              "reste en route, elle s'affiche ici avec ce qui la bloque ou l'étape qui lui manque."
+            }
           />
         )
       ) : enRetard.length ? (
@@ -230,6 +243,143 @@ function ParMission({
           </View>
         );
       })}
+    </View>
+  );
+}
+
+/**
+ * UNE MISSION PASSEE QUI N'EST PAS CLOSE, ET LE GESTE QUI LA FAIT AVANCER (01/10/2026).
+ *
+ * DEUX REGLES DISTINCTES, ET IL FAUT SE GARDER DE LES CONFONDRE — la premiere version de cette
+ * carte les avait melangees, et SV-2026-3121 se retrouvait sans aucun bouton alors que c'est
+ * precisement la mission a debloquer.
+ *
+ *   · `mission_cloture_manquant` interdit LA CLOTURE, et elle seule. Ses phrases disent ce qui
+ *     empechera la derniere marche ; elles n'empechent pas les marches d'avant. Mesure, jeton de
+ *     Mikael, transaction annulee : `arrivee_sur_place -> production_demarree` PASSE sur
+ *     SV-2026-3121, dont le tableau de blocage contient pourtant deux phrases.
+ *   · `prestation_transitions` dit quelle marche est ouverte apres le statut courant. C'est la
+ *     table que le trigger consulte depuis la v412 : un bouton ne peut plus proposer ce que la base
+ *     refusera.
+ *
+ * D'OU : on propose TOUJOURS l'etape suivante quand elle existe, et on reserve le refus a la seule
+ * cloture. Les phrases de blocage restent affichees — elles disent ce qu'il faudra avoir leve en
+ * arrivant au bout — mais en information, pas en interdiction.
+ *
+ * ON N'ENCHAINE PAS LES ETAPES TOUT SEUL. SV-2026-3121 est a sept marches de la cloture : les
+ * franchir d'un appui serait ecrire sept lignes d'historique en une seconde, au nom de quelqu'un qui
+ * n'a vu passer qu'un ecran. Chaque marche est un appui, et l'ecran dit combien il en reste.
+ */
+function CarteCloture({
+  m, transitions, surChangement,
+}: { m: MissionProd; transitions: Transition[]; surChangement: () => void }) {
+  const [enCours, setEnCours] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [resultat, setResultat] = useState<string | null>(null);
+
+  const bloque = m.clotureManquant.length > 0;
+  const suite = suiteDe(m.statut, transitions);
+  // La derniere marche est `livrée → clôturée` : c'est la SEULE que les phrases de blocage
+  // interdisent. Partout ailleurs, elles informent.
+  const derniereMarche = suite?.vers === "clôturée";
+  const prete = derniereMarche && !bloque;
+
+  // Combien de marches avant `clôturée`, en suivant la suite normale. Le chiffre qui dit si on est
+  // a un appui ou a sept de la fin.
+  const restantes = useMemo(() => {
+    let courant = m.statut;
+    let n = 0;
+    // 40 : la chaine en compte 27, la borne est la pour qu'un cycle ne boucle jamais ici.
+    while (courant !== "clôturée" && n < 40) {
+      const t = transitions.find((x) => x.depuis === courant && x.estLaSuite);
+      if (!t) return null;
+      courant = t.vers;
+      n += 1;
+    }
+    return courant === "clôturée" ? n : null;
+  }, [m.statut, transitions]);
+
+  const agir = async () => {
+    setErreur(null);
+    setResultat(null);
+    setEnCours(true);
+    try {
+      if (prete) {
+        const r = await cloturerMission(m.id);
+        setResultat(
+          r.dejaClose
+            ? "Cette mission était déjà clôturée. Rien de nouveau n'a été enregistré."
+            : `Mission clôturée. ${r.payablesValides} rémunération${r.payablesValides > 1 ? "s" : ""} ` +
+              `passée${r.payablesValides > 1 ? "s" : ""} à « validé ».`,
+        );
+      } else if (suite) {
+        await avancerMission(m.id, suite.vers);
+      }
+      surChangement();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEnCours(false);
+    }
+  };
+
+  return (
+    <View style={s.carte}>
+      <EnteteMission m={m} />
+
+      {bloque ? (
+        <View style={{ gap: E.xs }}>
+          {/* Les phrases sont celles de `mission_cloture_manquant`, mot pour mot. */}
+          {m.clotureManquant.map((p, i) => (
+            <View key={`${m.id}-${i}`} style={s.puceManque}>
+              <Text style={s.point}>•</Text>
+              <Text style={s.manqueTexte}>{p}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      <Text style={s.compteurs}>
+        {`${m.nbPhotos} photo${m.nbPhotos > 1 ? "s" : ""} · ${m.nbMontages} montage${m.nbMontages > 1 ? "s" : ""} · ${m.nbRushs} rush${m.nbRushs > 1 ? "s" : ""}`}
+        {m.transfertConfirme ? " · sauvegarde confirmée" : ""}
+      </Text>
+
+      <Erreur message={erreur} />
+      {resultat ? <Text style={s.resultat}>{resultat}</Text> : null}
+
+      {prete ? (
+        <>
+          <Bouton titre="Clôturer la mission" onPress={agir} enCours={enCours} />
+          <Text style={s.note}>
+            {"La clôture marque les livrables « livré », pose la rétention à 90 jours pour un " +
+              "particulier, et fait passer la rémunération des opérateurs à « validé »."}
+          </Text>
+        </>
+      ) : derniereMarche ? (
+        <Text style={s.note}>
+          {"Il ne manque plus que la clôture, et la base la refuse tant qu'une des phrases " +
+            "ci-dessus reste. Elle ne se force pas depuis un écran : c'est l'opérateur, ou la " +
+            "vérification des liens, qui la lève."}
+        </Text>
+      ) : suite ? (
+        <>
+          <Bouton titre={`Étape suivante : ${suite.libelle}`} onPress={agir} enCours={enCours} />
+          <Text style={s.note}>
+            {(restantes === null
+              ? "Après cette étape, la suite se décide au cas par cas."
+              : restantes > 1
+                ? `${restantes} étapes avant la clôture, une par appui.`
+                : "Dernière étape avant la clôture.") +
+              (bloque
+                ? " Les phrases ci-dessus n'empêchent pas cette étape : elles empêcheront la clôture."
+                : "")}
+          </Text>
+        </>
+      ) : (
+        <Text style={s.note}>
+          {`Aucune étape n'est ouverte après « ${m.statut} ». Cette mission se reprend dans l'OS.`}
+        </Text>
+      )}
     </View>
   );
 }
@@ -389,6 +539,7 @@ const s = StyleSheet.create({
   detail: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
   reference: { color: C.texteFaible, fontFamily: P.texte, fontSize: 11.5 },
   compteurs: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12 },
+  resultat: { color: C.succesTexte, fontFamily: P.texte, fontSize: 13, lineHeight: 18 },
   note: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12, lineHeight: 17 },
 
   lien: {

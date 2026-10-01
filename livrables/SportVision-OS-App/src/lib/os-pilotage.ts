@@ -112,3 +112,87 @@ export async function appeler(numero: string | null | undefined): Promise<boolea
     return false;
   }
 }
+
+// ── AVANCER UNE MISSION, ET LA CLORE (01/10/2026) ──────────────────────────────────────────────
+//
+// POURQUOI CES DEUX GESTES ARRIVENT. Quatre missions passées ne se clôturent pas, et SV-2026-3121
+// est bloquée en `arrivée_sur_place` depuis le 19 septembre : Antoine Blin a tapé « Je suis arrivé »
+// à 11 h 07 ce jour-là, a déposé huit liens les 23 et 25, et le statut dit encore qu'il est au bord
+// du terrain. SV-2026-3843 et SV-2026-3957 sont garées sur `médias_complets` — la dernière marche
+// que l'opérateur franchit sans la Production.
+//
+// Le responsable de production n'avait AUCUN moyen d'avancer une mission depuis son téléphone :
+// mesuré, `prod/` ne contenait pas une seule écriture sur `prestations`. L'OS web a ce bouton depuis
+// toujours (« → », rôles admin/sec/prod). Le droit existait, le geste n'existait pas ici.
+//
+// MESURÉ AVANT D'ÉCRIRE, jeton de Mikael, transactions annulées : les quatre transitions dont ces
+// missions ont besoin passent (`arrivée_sur_place → production_démarrée`,
+// `médias_complets → à_monter`, `équipe_affectée → prête`, et `livrée → clôturée` depuis la v410).
+
+/**
+ * Avancer une mission d'une marche.
+ *
+ * ON NE CHOISIT PAS LA MARCHE ICI. `vers` vient de `prestation_transitions`, que l'écran a lue et
+ * que le trigger `validate_prestation_statut_transition` consulte lui aussi depuis la v412. Aucune
+ * liste de statuts n'est écrite dans cette application.
+ *
+ * ON RELIT LA VALEUR, PAS LE NOMBRE DE LIGNES (piège du 01/10). `prestations` porte quatorze
+ * déclencheurs, dont plusieurs écrivent ailleurs — un `.select("id")` aurait rendu une ligne même
+ * si le statut n'avait pas bougé.
+ */
+export async function avancerMission(prestationId: string, vers: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("prestations")
+    .update({ statut: vers })
+    .eq("id", prestationId)
+    .select("id, statut");
+  if (error) throw new Error(error.message);
+  if (!data?.length) {
+    throw new Error("La base n'a rien changé. Cette mission n'est peut-être plus dans votre pôle.");
+  }
+  const lu = String((data[0] as { statut?: unknown }).statut ?? "");
+  if (lu !== vers) {
+    throw new Error(`La base a gardé le statut « ${lu} ». L'étape n'a pas été enregistrée.`);
+  }
+}
+
+/**
+ * CLÔTURER UNE MISSION. C'est le geste qui débloque la rémunération.
+ *
+ * On passe par `validate_production()` et pas par un UPDATE : la RPC ne fait pas que changer le
+ * statut, elle marque les livrables « livré », pose la rétention à 90 jours pour un particulier,
+ * crée le brouillon du CM quand le club est en Full Communication, et fait passer
+ * `prestations_equipe.statut_paiement` de `en_attente` à `validé`. Un UPDATE nu ferait la moitié du
+ * travail en silence.
+ *
+ * ELLE REFUSE EN CLAIR, et il faut laisser passer son message : `proteger_cloture_mission` lève avec
+ * la liste de ce qui manque, phrase par phrase (« Sauvegarde non confirmée par l'opérateur… »).
+ * Traduire ce refus en « vous n'avez pas les droits » est l'erreur que l'OS web a corrigée le 10/09.
+ *
+ * ON RELIT LA VALEUR qu'elle rend : `statut` dans le jsonb de retour. Et `deja_clôturee_avant_appel`
+ * dit si la mission était déjà close — un rejeu n'est pas une clôture, et l'écran doit le dire
+ * autrement qu'en vert.
+ */
+export interface ResultatCloture {
+  dejaClose: boolean;
+  livrablesMarquesLivres: number;
+  payablesValides: number;
+  brouillonCmCree: boolean;
+}
+
+export async function cloturerMission(prestationId: string): Promise<ResultatCloture> {
+  const { data, error } = await supabase.rpc("validate_production", {
+    p_prestation_id: prestationId,
+  });
+  if (error) throw new Error(error.message);
+  const r = (data ?? {}) as Record<string, unknown>;
+  if (String(r.statut ?? "") !== "clôturée") {
+    throw new Error("La base n'a pas confirmé la clôture. Rien n'a été enregistré.");
+  }
+  return {
+    dejaClose: r["deja_clôturee_avant_appel"] === true,
+    livrablesMarquesLivres: Number(r.media_livrables_marques_livres ?? 0),
+    payablesValides: Number(r.payables_operateur_valides ?? 0),
+    brouillonCmCree: r.brouillon_cm_cree === true,
+  };
+}
