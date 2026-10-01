@@ -12,6 +12,13 @@
 // donne son accord, la photo passe toute seule du côté des références et le moteur calcule
 // l'empreinte. Avant cet accord, il n'y a rien à calculer et rien n'est calculé.
 //
+// ── ELLE ATTEND DEUX CHOSES, PAS UNE (v385 pour l'accord, v389 pour la date) ──
+// L'accord de la famille, ET la date de naissance — parce que c'est la date qui dit à QUI demander
+// l'accord (un parent avant 15 ans, le sportif ensuite). Depuis la v389/v420, Fouka crée les fiches
+// sans date, donc la date manquante est le cas NORMAL : le libellé nomme les deux conditions plutôt
+// que d'affirmer qu'il ne manque que l'accord. La v420 rejoue la promotion dès que la date arrive,
+// donc personne n'a de geste à refaire ici.
+//
 // C'est ce que dit le libellé affiché, mot pour mot, parce que c'est ce que la personne qui dépose
 // doit pouvoir expliquer à un parent qui le lui demande.
 
@@ -120,7 +127,9 @@ export function PhotoReferenceJoueur({
               </button>
             )}
             <span className="sr-only">
-              {p.promue ? "Photo de référence active" : "Photo en attente de l'accord de la famille"}
+              {p.promue
+                ? "Photo de référence active"
+                : "Photo en attente de l'accord de la famille et de la date de naissance"}
             </span>
           </div>
         ))}
@@ -155,9 +164,12 @@ export function PhotoReferenceJoueur({
               Référence active
             </Badge>
           ) : (
+            // Les DEUX conditions sont nommées : la famille peut avoir donné son accord et la date
+            // manquer encore. Dire « en attente de l'accord » serait alors faux, et laisserait
+            // chercher une réponse déjà donnée.
             <Badge tone="warning">
               <Clock className="mr-1 h-2.5 w-2.5" aria-hidden />
-              En attente de l&apos;accord de la famille
+              En attente de l&apos;accord et de la date de naissance
             </Badge>
           )}
         </div>

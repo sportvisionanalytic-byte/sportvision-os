@@ -9,6 +9,13 @@
 // Parce qu'il y a 27 catégories à Fontainebleau. Saisir une catégorie, c'est coller la colonne qu'on
 // a déjà dans un tableur, pas remplir trente fois le même écran.
 //
+// ── LA DATE DE NAISSANCE EST FACULTATIVE (v389, et v420 qui l'a rendue vraie) ──
+// Fouka ne saisit que ce qu'il a relevé sur le terrain : prénom, nom, catégorie, photo. La famille
+// renseigne la date en s'inscrivant. L'écran et la base disaient tous les deux l'inverse jusqu'à la
+// v420, et refusaient donc l'intégralité des 27 catégories de Fontainebleau.
+// Ce n'est pas un relâchement : tant que la date manque, la base refuse qu'une photo devienne une
+// empreinte, et `sv_age_bracket` rend 'inconnu' — donc les protections du mineur s'appliquent.
+//
 // ── CE QUE CET ÉCRAN NE PEUT PAS FAIRE, ET C'EST VOULU ──
 // Calculer une empreinte. Déposer une photo ne fait qu'enregistrer une PHOTO : elle attend dans une
 // table que la chaîne de reconnaissance ne lit nulle part. Elle ne devient une référence qu'au
@@ -35,9 +42,11 @@ import {
   type VerdictEffectif,
 } from "@/lib/data/club/effectif";
 
-const EXEMPLE = `Léa;Moreau;2017-03-04;7
-Noah;Diallo;14/09/2016;10
-Inès;Bernard;2017-11-22`;
+// La première ligne est la forme que Fouka colle le 01/10 : prénom et nom seuls. Les suivantes
+// montrent que la date reste acceptée quand on l'a, et qu'on peut la laisser vide avant un numéro.
+const EXEMPLE = `Léa;Moreau
+Noah;Diallo;;10
+Inès;Bernard;2017-11-22;4;F`;
 
 export function ConstituerEffectifCard({
   teamId,
@@ -108,9 +117,10 @@ export function ConstituerEffectifCard({
         <div>
           <div className="text-[14px] font-extrabold">Constituer l&apos;effectif de {nomEquipe}</div>
           <p className="mt-1 max-w-[620px] text-[12.5px] leading-relaxed text-text-soft">
-            Une ligne par sportif : <strong>prénom ; nom ; date de naissance</strong>, et si vous
-            l&apos;avez, le numéro de maillot puis M ou F. Le point-virgule, la virgule et la
-            tabulation font tous l&apos;affaire, donc un copier-coller de tableur passe directement.
+            Une ligne par sportif : <strong>prénom ; nom</strong> suffisent. Ensuite, si vous les
+            avez, la date de naissance, le numéro de maillot puis M ou F. Le point-virgule, la
+            virgule et la tabulation font tous l&apos;affaire, donc un copier-coller de tableur passe
+            directement.
           </p>
         </div>
         <Button
@@ -128,9 +138,12 @@ export function ConstituerEffectifCard({
       <div className="flex items-start gap-2.5 rounded-sv border border-border-strong/60 bg-surface-alt px-3.5 py-3">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-blue-electric" aria-hidden />
         <p className="text-[12px] leading-relaxed text-text-soft">
-          La date de naissance est obligatoire, et elle ne se déduit pas de la catégorie : c&apos;est
-          elle qui décide qui donnera l&apos;autorisation de reconnaissance, un parent avant 15 ans et
-          le sportif lui-même ensuite. Une ligne sans date est rendue, jamais devinée.
+          <strong>La date de naissance est facultative</strong> : si vous ne l&apos;avez pas, laissez-la
+          vide, la famille la renseignera en s&apos;inscrivant. Tant qu&apos;elle manque, une photo
+          déposée reste en attente et ne devient jamais une empreinte : c&apos;est elle qui décide à
+          qui demander l&apos;autorisation de reconnaissance, un parent avant 15 ans et le sportif
+          lui-même ensuite. Elle n&apos;est jamais déduite de la catégorie, et une date qu&apos;on
+          n&apos;arrive pas à lire est rendue plutôt que devinée.
         </p>
       </div>
 

@@ -48,7 +48,10 @@ export const VERDICT_TONE: Record<VerdictEffectif["verdict"], "success" | "warni
 export interface LigneSaisie {
   prenom: string;
   nom: string;
-  dateNaissance: string;
+  /** FACULTATIVE depuis la v389/v420 : Fouka saisit ce qu'il a sur le terrain (prénom, nom,
+   *  catégorie, photo) et la famille renseigne la date en s'inscrivant. Tant qu'elle manque, aucune
+   *  photo ne devient une empreinte — la base le tient, pas cet écran. */
+  dateNaissance?: string;
   numeroMaillot?: string;
   sexe?: "M" | "F";
 }
@@ -71,7 +74,9 @@ export async function constituerEffectif(
     p_lignes: lignes.map((l) => ({
       prenom: l.prenom,
       nom: l.nom,
-      date_naissance: l.dateNaissance,
+      // `null` et pas `""` : la fonction distingue ABSENTE (acceptée) d'ILLISIBLE (refusée), et une
+      // chaîne vide tomberait du bon côté par hasard plutôt que par décision.
+      date_naissance: l.dateNaissance ?? null,
       numero_maillot: l.numeroMaillot ?? null,
       sexe: l.sexe ?? null,
     })),
@@ -214,9 +219,24 @@ export async function signerPhotos(
  *  et en JJ/MM/AAAA : la seconde est celle que tout le monde écrit, et la refuser ferait recopier
  *  trente lignes à la main.
  *
- *  Ce qui n'est PAS deviné : rien. Une ligne incomplète est rendue telle quelle avec sa raison, et
- *  la date de naissance n'est jamais déduite de la catégorie — c'est elle qui décide qui donnera
- *  l'accord de reconnaissance (avant 15 ans un parent, de 15 à 17 ans le sportif). */
+ *  ── LA DATE PEUT MANQUER, ET C'EST LE CAS NORMAL (v389/v420) ──
+ *  Fouka saisit ce qu'il a relevé sur le terrain : prénom, nom, catégorie, photo. La famille
+ *  renseigne la date en s'inscrivant. Une ligne « Prénom;Nom » est donc complète, et une liste de
+ *  27 catégories se colle telle quelle. Tant que la date manque, la base empêche toute photo de
+ *  devenir une empreinte : la protection ne repose pas sur ce fichier.
+ *
+ *  ── CE QUI N'EST PAS DEVINÉ : RIEN ──
+ *  Un champ de date VIDE vaut « je ne l'ai pas » et passe. Un champ de date REMPLI qu'on n'arrive
+ *  pas à lire est RENDU avec sa raison, jamais avalé ni traité comme absent : sinon « 04/13/2017 »
+ *  créerait en silence une fiche muette au lieu d'une correction. Et la date n'est jamais déduite
+ *  de la catégorie — c'est elle qui décide qui donnera l'accord de reconnaissance (avant 15 ans un
+ *  parent, de 15 à 17 ans le sportif).
+ *
+ *  ── LA CONVERSION EN AAAA-MM-JJ SE FAIT ICI, ET ELLE N'EST PAS COSMÉTIQUE ──
+ *  La base tourne en `DateStyle = ISO, MDY` (mesuré). Envoyer « 04/03/2017 » tel quel y serait lu
+ *  comme le 3 AVRIL, pas le 4 mars, sans aucune erreur. `normaliserDate` lève cette ambiguïté avant
+ *  l'envoi, et la fonction refuse désormais tout ce qui n'est pas AAAA-MM-JJ : deux verrous, parce
+ *  qu'un mois pris pour un jour peut faire consentir un enfant de 14 ans à la place de son parent. */
 export function lireLignesCollees(texte: string): { lignes: LigneSaisie[]; erreurs: { ligne: number; texte: string; raison: string }[] } {
   const lignes: LigneSaisie[] = [];
   const erreurs: { ligne: number; texte: string; raison: string }[] = [];
@@ -229,20 +249,31 @@ export function lireLignesCollees(texte: string): { lignes: LigneSaisie[]; erreu
       erreurs.push({ ligne: i + 1, texte: brute, raison: "Prénom et nom attendus en premier." });
       return;
     }
-    const iso = normaliserDate(date ?? "");
-    if (!iso) {
-      erreurs.push({
-        ligne: i + 1,
-        texte: brute,
-        raison: "Date de naissance attendue (AAAA-MM-JJ ou JJ/MM/AAAA).",
-      });
-      return;
+
+    // VIDE N'EST PAS ILLISIBLE. Un champ de date absent ou laissé vide (« Léa;Moreau » comme
+    // « Léa;Moreau;;7 ») veut dire « je ne l'ai pas » : la ligne part sans date. Un champ REMPLI
+    // qu'on n'arrive pas à lire est rendu — le confondre avec une absence serait avaler une erreur
+    // de saisie et créer une fiche muette sans le dire.
+    const brut = (date ?? "").trim();
+    let iso: string | undefined;
+    if (brut !== "") {
+      const lue = normaliserDate(brut);
+      if (!lue) {
+        erreurs.push({
+          ligne: i + 1,
+          texte: brute,
+          raison: `Date de naissance illisible (« ${brut} »). Attendu AAAA-MM-JJ ou JJ/MM/AAAA, ou laissez-la vide.`,
+        });
+        return;
+      }
+      iso = lue;
     }
+
     const s = (sexe ?? "").toUpperCase();
     lignes.push({
       prenom,
       nom,
-      dateNaissance: iso,
+      ...(iso ? { dateNaissance: iso } : {}),
       numeroMaillot: maillot || undefined,
       sexe: s === "M" || s === "F" ? (s as "M" | "F") : undefined,
     });
