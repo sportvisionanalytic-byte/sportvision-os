@@ -26,7 +26,7 @@ export function BandeauParcours({
   missionsRealisees: number;
 }) {
   const g = parcours.grade;
-  const debut = parcours.xp === 0 && parcours.formations.length === 0;
+  const debut = parcours.xp === 0 && parcours.mesFormations.length === 0;
 
   return (
     <Pressable

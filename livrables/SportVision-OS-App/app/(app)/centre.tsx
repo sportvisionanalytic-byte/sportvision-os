@@ -10,22 +10,31 @@
 //   · LE TEXTE EST GRAND et les fiches s'ouvrent sur place : pas de sous-écran, pas d'aller-retour.
 //     Une main, un pouce, un écran mouillé.
 //
-// CE QU'IL N'Y A PAS, ET POURQUOI : le texte du règlement, les procédures, les rôles, la FAQ. Ces
-// pages du Centre sont écrites en dur dans le HTML de l'OS, pas en base (voir l'en-tête de
-// `src/lib/os-centre.ts`). L'application n'en garde pas de copie : un règlement qu'on accepte doit
-// être lu dans sa version en vigueur, et deux copies d'un texte qu'on signe finissent par diverger.
+// LE RÈGLEMENT SE LIT ET S'ACCEPTE ICI DEPUIS LE 01/10/2026. Jusqu'au 30/09 cet écran n'affichait
+// que l'état des neuf chapitres, sans leur texte et sans bouton, et l'en-tête de
+// `src/lib/os-centre.ts` expliquait pourquoi : le texte n'était pas en base, et garder une copie
+// dans l'application aurait fait accepter un texte qui n'est plus celui en vigueur. Fouka a résumé
+// le résultat ce matin : « on peut pas lire, accepter les trucs, on peut rien cliquer ».
+//
+// La migration v381 met le règlement en base, versionné : 9 chapitres, 27 sections, 116 points. Il
+// n'y a donc plus de copie, et le bouton existe. La version acceptée est celle que l'écran a
+// AFFICHÉE, et c'est la base qui refuse une version dépassée, avec son propre message.
+//
+// CE QU'IL N'Y A TOUJOURS PAS : les procédures détaillées, les rôles, le matériel, la FAQ. Ces
+// pages du Centre sont encore écrites en dur dans le HTML de l'OS. Ce sont de longues pages qu'on
+// lit assis, et elles n'ont pas été mises en base aujourd'hui.
 import React, { useMemo, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Ecran, Probleme, Section, Vide } from "../../src/ui/Ecran";
-import { Champ, Pastille } from "../../src/ui/Base";
+import { Bouton, Champ, Erreur, Pastille } from "../../src/ui/Base";
 import { Ecusson } from "../../src/ui/Ecusson";
 import { useSession } from "../../src/lib/session";
-import { useDonnees } from "../../src/lib/cache";
+import { oublier, useDonnees } from "../../src/lib/cache";
 import {
-  ESCALADE, ORIENTATION, lireCentre, normaliser, ressourceCorrespond,
-  type Centre as DonneesCentre, type Contact, type Ressource,
+  ESCALADE, ORIENTATION, accepterChapitre, lireCentre, normaliser, ressourceCorrespond,
+  type Centre as DonneesCentre, type Chapitre as UnChapitre, type Contact, type Ressource,
 } from "../../src/lib/os-centre";
 import { C, E, R, TOUCHE } from "../../src/theme/couleurs";
 import { P, T } from "../../src/theme/polices";
@@ -34,6 +43,11 @@ export default function CentreSportVision() {
   const { moi } = useSession();
   const [requete, setRequete] = useState("");
   const [ouverte, setOuverte] = useState<string | null>(null);
+  // UN SEUL CHAPITRE OUVERT À LA FOIS. Le plus long en porte 21 points sur 4 sections : les neuf
+  // dépliés donnent 116 puces à faire défiler d'un pouce pour retrouver une phrase.
+  const [chapitreOuvert, setChapitreOuvert] = useState<string | null>(null);
+  const [enCours, setEnCours] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const { donnees, chargement, rafraichissement, erreur, relire } = useDonnees<DonneesCentre>(
     moi ? `centre:${moi.id}` : null,
@@ -53,10 +67,18 @@ export default function CentreSportVision() {
       (c) => normaliser(`${c.sujet} ${c.titre} ${c.personnes.map((p) => p.nom).join(" ")}`).includes(n),
     );
   }, [donnees?.contacts, q]);
+  // ON CHERCHE DANS LE TEXTE DU RÈGLEMENT, PLUS SEULEMENT DANS LES TITRES. C'est possible depuis
+  // que les 116 points sont en base, et c'est tout l'intérêt : on tape « drone » ou « retard », pas
+  // « Chapitre 7 ». Aucun titre de chapitre ne contient le mot « retard » ; quatre points du
+  // chapitre 2 le contiennent.
   const chapitres = useMemo(() => {
     const n = normaliser(q);
     if (!n) return donnees?.chapitres ?? [];
-    return (donnees?.chapitres ?? []).filter((c) => normaliser(c.titre).includes(n));
+    return (donnees?.chapitres ?? []).filter((c) =>
+      normaliser(
+        `${c.numero} ${c.titre} ${c.sections.map((x) => `${x.titre} ${x.points.join(" ")}`).join(" ")}`,
+      ).includes(n),
+    );
   }, [donnees?.chapitres, q]);
 
   const rienTrouve = !!q && !fiches.length && !contacts.length && !chapitres.length;
@@ -122,32 +144,52 @@ export default function CentreSportVision() {
 
       {donnees && chapitres.length ? (
         <Section
-          titre="Règlement"
+          titre="Règlement intérieur"
           action={<Text style={s.compteur}>{donnees.chapitresAcceptes} / {donnees.chapitres.length}</Text>}
         >
-          <View style={s.bloc}>
-            {chapitres.map((c, i) => (
-              <View key={c.id} style={[s.ligneChapitre, i === chapitres.length - 1 && { borderBottomWidth: 0 }]}>
-                <Ionicons
-                  name={c.accepte ? "checkmark-circle" : "ellipse-outline"}
-                  size={19}
-                  color={c.accepte ? C.succesTexte : C.texteFaible}
-                />
-                <Text style={[s.chapitreTitre, !c.accepte && { color: C.texteDoux }]} numberOfLines={2}>
-                  {c.titre}
-                </Text>
-                {c.accepte ? null : <Pastille texte="À accepter" ton="alerte" />}
-              </View>
-            ))}
-          </View>
-          {/* LA RAISON D'ÊTRE DE CE PARAGRAPHE : sans lui, l'absence de bouton « Accepter »
-              ressemble à une panne. Avec lui, c'est une décision qu'on comprend. */}
+          <Erreur message={message} />
+          {donnees.chapitresARelire > 0 ? (
+            <Text style={s.aRelire}>
+              {donnees.chapitresARelire === 1
+                ? "Un chapitre a été republié depuis que vous l'avez accepté : relisez-le et acceptez la nouvelle version."
+                : `${donnees.chapitresARelire} chapitres ont été republiés depuis que vous les avez acceptés : relisez-les et acceptez la nouvelle version.`}
+            </Text>
+          ) : null}
+
+          {chapitres.map((c) => (
+            <Chapitre
+              key={c.id}
+              chapitre={c}
+              ouvert={chapitreOuvert === c.id}
+              enCours={enCours === c.id}
+              verrouille={!!enCours}
+              surAppui={() => setChapitreOuvert(chapitreOuvert === c.id ? null : c.id)}
+              surAccepter={async () => {
+                if (enCours) return;
+                setEnCours(c.id);
+                setMessage(null);
+                try {
+                  // ON ENVOIE LA VERSION AFFICHÉE, pas une valeur en dur : le déclencheur de la base
+                  // refuse toute autre version, et c'est ce refus qui fait qu'une acceptation en
+                  // base est une preuve.
+                  await accepterChapitre(moi!.id, c.id, c.version);
+                  oublier("centre:");
+                  relire();
+                } catch (e) {
+                  // Le message de la base dit déjà quoi faire (« Rechargez le règlement pour lire le
+                  // texte à jour »). Une phrase à nous en dirait moins.
+                  setMessage(e instanceof Error ? e.message : "L'acceptation n'a pas été enregistrée.");
+                } finally {
+                  setEnCours(null);
+                }
+              }}
+            />
+          ))}
+
           <Text style={s.note}>
-            {donnees.chapitresAcceptes === donnees.chapitres.length
-              ? "Vous avez accepté les neuf chapitres. Le texte se relit dans l'OS, sur un ordinateur."
-              : "Le texte des chapitres se lit et s'accepte dans l'OS, sur un ordinateur. " +
-                "L'application n'en garde pas de copie : un règlement qu'on accepte doit être lu " +
-                "dans sa version en vigueur."}
+            {donnees.chapitresAcceptes === donnees.chapitres.length && donnees.chapitresARelire === 0
+              ? "Vous avez accepté les neuf chapitres dans leur version en vigueur. Ils restent consultables ici à tout moment."
+              : "Ouvrez un chapitre pour le lire en entier, puis acceptez-le. La version acceptée est enregistrée avec la date : si le texte est republié, vous serez invité à relire le nouveau."}
           </Text>
         </Section>
       ) : null}
@@ -212,6 +254,95 @@ function Fiche({ fiche, ouverte, surAppui }: { fiche: Ressource; ouverte: boolea
       ) : null}
       {!fiche.contenu && !fiche.url ? (
         <Text style={s.ficheVide}>Cette fiche n'a pas encore de contenu dans l'OS.</Text>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * UN CHAPITRE DU RÈGLEMENT : SON TEXTE, ET SON ACCEPTATION.
+ *
+ * FERMÉ, C'EST UNE LIGNE AVEC SON ÉTAT. Ouvert, c'est le texte entier — ses sections et leurs
+ * points, tels que la base les rend. Le bouton « J'accepte ce chapitre » n'apparaît QUE quand le
+ * chapitre est ouvert : accepter un texte replié n'est pas un consentement, et c'était l'argument
+ * qui empêchait ce bouton d'exister avant que la v381 mette le texte en base.
+ *
+ * LE TEXTE EST À 15,5 POINTS, comme les check-lists de cet écran : c'est la taille à laquelle une
+ * règle se lit à bout de bras, au bord d'un terrain.
+ *
+ * AUCUN TIRET LONG N'EST AJOUTÉ PAR L'ÉCRAN. « Chapitre 1 · Respect et comportement » se compose du
+ * `numero` et du `titre`, deux colonnes séparées en base précisément pour ça. Les quatre tirets
+ * longs qui restent dans le texte des points du chapitre 3 sont ceux du règlement accepté en
+ * version 1.0 : les réécrire serait modifier un texte que neuf personnes ont accepté, et cela
+ * appartient à une version 1.1 que Fouka décide.
+ */
+function Chapitre({
+  chapitre, ouvert, enCours, verrouille, surAppui, surAccepter,
+}: {
+  chapitre: UnChapitre;
+  ouvert: boolean;
+  enCours: boolean;
+  verrouille: boolean;
+  surAppui: () => void;
+  surAccepter: () => void;
+}) {
+  const c = chapitre;
+  return (
+    <View style={[s.carte, c.accepte ? s.carteAcceptee : c.aRelire ? s.carteARelire : null]}>
+      <Pressable
+        onPress={surAppui}
+        accessibilityRole="button"
+        accessibilityLabel={`Chapitre ${c.numero}, ${c.titre}, ${c.accepte ? "accepté" : "à accepter"}. ${ouvert ? "Replier" : "Déplier pour lire"}.`}
+        accessibilityState={{ expanded: ouvert }}
+        style={({ pressed }) => [s.entetteFiche, pressed ? { opacity: 0.7 } : null]}
+      >
+        <Ionicons
+          name={c.accepte ? "checkmark-circle" : c.aRelire ? "refresh-circle" : "ellipse-outline"}
+          size={21}
+          color={c.accepte ? C.succesTexte : c.aRelire ? C.alerteTexte : C.texteFaible}
+        />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={s.chapitreNumero}>Chapitre {c.numero}</Text>
+          <Text style={s.ficheTitre}>{c.titre}</Text>
+        </View>
+        {c.accepte ? null : <Pastille texte={c.aRelire ? "À relire" : "À accepter"} ton="alerte" />}
+        <Ionicons name={ouvert ? "chevron-up" : "chevron-down"} size={18} color={C.texteFaible} />
+      </Pressable>
+
+      {ouvert ? (
+        <View style={s.texteChapitre}>
+          {c.sections.map((x) => (
+            <View key={x.id} style={{ gap: 4 }}>
+              <Text style={s.sectionTitre}>{x.titre}</Text>
+              {x.points.map((p, i) => (
+                <View key={i} style={s.point}>
+                  <Text style={s.pointPuce}>•</Text>
+                  <Text style={s.pointTexte} selectable>{p}</Text>
+                </View>
+              ))}
+            </View>
+          ))}
+
+          <Text style={s.version}>
+            {c.accepte
+              ? `Version ${c.version}, acceptée.`
+              : c.aRelire
+                ? `Version ${c.version} en vigueur. Vous aviez accepté la version ${c.versionAcceptee}.`
+                : `Version ${c.version} en vigueur.`}
+          </Text>
+
+          {/* RÈGLE 5 : pas de bouton quand il n'y a rien à faire. Un chapitre déjà accepté dans sa
+              version en vigueur ne se réaccepte pas, et l'index unique de la base le refuserait. */}
+          {!c.accepte ? (
+            <Bouton
+              titre={c.aRelire ? "J'accepte la nouvelle version" : "J'accepte ce chapitre"}
+              onPress={surAccepter}
+              enCours={enCours}
+              desactive={verrouille && !enCours}
+              icone={<Ionicons name="checkmark" size={16} color="#fff" />}
+            />
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -287,13 +418,24 @@ const s = StyleSheet.create({
   },
   ficheUrl: { color: C.cyanTexte, fontFamily: P.texte, fontSize: 13, lineHeight: 19 },
   ficheVide: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12.5, lineHeight: 18 },
-  bloc: { borderRadius: R.l, backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure, overflow: "hidden" },
-  ligneChapitre: {
-    flexDirection: "row", alignItems: "center", gap: E.s,
-    paddingHorizontal: E.m, paddingVertical: E.s, minHeight: TOUCHE,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.bordure,
+  carteAcceptee: { borderColor: "rgba(18,183,106,.24)" },
+  carteARelire: { backgroundColor: "rgba(232,163,61,.06)", borderColor: "rgba(232,163,61,.28)" },
+  chapitreNumero: {
+    color: C.cyan, fontFamily: P.texteFort, fontSize: T.etiquette,
+    textTransform: "uppercase", letterSpacing: 1,
   },
-  chapitreTitre: { flex: 1, color: C.texte, fontFamily: P.texteMoyen, fontSize: 13.5, lineHeight: 19 },
+  texteChapitre: {
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.bordure,
+    paddingTop: E.s, gap: E.m,
+  },
+  sectionTitre: { color: C.texte, fontFamily: P.titreFort, fontSize: T.corps, lineHeight: 20 },
+  point: { flexDirection: "row", gap: E.xs },
+  pointPuce: { color: C.cyan, fontFamily: P.texte, fontSize: 15.5, lineHeight: 23 },
+  // 15,5 points et une interligne de 23 : la meme que les check-lists de cet ecran. Une regle qu'on
+  // s'engage a respecter se lit dans les memes conditions qu'une check-list, au bord d'un terrain.
+  pointTexte: { flex: 1, color: C.texte, fontFamily: P.texte, fontSize: 15.5, lineHeight: 23 },
+  version: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: T.note, lineHeight: T.noteHauteur },
+  aRelire: { color: C.alerteTexte, fontFamily: P.texteMoyen, fontSize: T.detail, lineHeight: T.detailHauteur },
   note: { color: C.texteDoux, fontFamily: P.texte, fontSize: 13, lineHeight: 19 },
   sujet: { color: C.texteFaible, fontFamily: P.texteMoyen, fontSize: 12 },
   contactTitre: { color: C.texte, fontFamily: P.titreFort, fontSize: 16 },

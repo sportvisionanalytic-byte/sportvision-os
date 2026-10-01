@@ -41,6 +41,23 @@
       "expo-secure-store",
       "expo-system-ui",
       [
+        "expo-media-library",
+        {
+          "_note": "AJOUTE LE 01/10/2026 pour que l'operateur enregistre les ORIGINAUX de ses galeries dans sa photothèque. Seul `savePhotosPermission` (NSPhotoLibraryAddUsageDescription) est demande a l'execution : l'application ECRIT dans la photothèque et ne la LIT jamais. `isAccessMediaLocationEnabled` reste a false, on ne touche pas aux donnees de localisation des photos du telephone.",
+          "photosPermission": "SportVision OS ouvre vos photos pour que vous puissiez choisir votre photo de profil.",
+          "savePhotosPermission": "SportVision OS enregistre dans votre photothèque les photos originales des galeries de vos missions.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "_note": "AJOUTE LE 01/10/2026 pour la photo de profil. IL EST PLACE APRES expo-media-library A DESSEIN : les deux ecrivent NSPhotoLibraryUsageDescription et le dernier gagne. Mesure avant d'ecrire : l'operateur PEUT mettre a jour sa propre ligne de `profiles`, `avatar_url` comprise (1 ligne modifiee avec le jeton d'Antoine, transaction annulee). Ce qui manquait n'etait pas un droit, c'etait un moyen de choisir une image.",
+          "photosPermission": "SportVision OS ouvre vos photos pour que vous puissiez choisir votre photo de profil.",
+          "cameraPermission": "SportVision OS ouvre l'appareil photo pour que vous puissiez prendre votre photo de profil."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",

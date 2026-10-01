@@ -156,8 +156,13 @@ export default function Onglets() {
         }}
       />
 
-      {/* LES QUATRE ÉCRANS DE « MON ESPACE ». Hors de la barre pour tout le monde, joignables par
+      {/* LES ÉCRANS DE « MON ESPACE ». Hors de la barre pour tout le monde, joignables par
           `profil.tsx`, et chacun porte sa flèche de retour. */}
+      {/* « MON PROFIL » EST UN ÉCRAN À PART, PAS UN FORMULAIRE DANS LA PAGE (01/10/2026).
+          « Mon espace » est une PORTE : six entrées, deux lignes de compte, une sortie. Y coller
+          onze champs de saisie aurait enterré les six entrées sous un formulaire qu'on remplit une
+          fois par an. L'OS fait le même découpage : son « Mon profil » est une vue à lui. */}
+      <Tabs.Screen name="mon-profil" options={masque} />
       <Tabs.Screen name="revenus" options={masque} />
       <Tabs.Screen name="formation" options={masque} />
       <Tabs.Screen name="galeries" options={masque} />

@@ -105,6 +105,64 @@ export interface Prestation {
   frais: number | null;
   primes: Prime[];
   ajustements: Ajustement[];
+  /**
+   * LA RÉPONSE À « POURQUOI MA PRESTATION EST-ELLE ENCORE EN ATTENTE ? » (01/10/2026).
+   *
+   * La foire aux questions de l'OS le dit déjà, mot pour mot : « Soit vos heures et frais ne sont
+   * pas encore déclarés, soit la validation Production ou Comptable est en cours. » Mais l'écran
+   * ne montrait nulle part si cette validation avait eu lieu. Mesuré sur les 10 affectations :
+   * `travail_valide` vaut vrai sur 2, NULL sur 8, et la vue ne le masque à personne. C'est la
+   * seule information disponible qui explique l'attente au lieu de la subir.
+   *
+   * `null` n'est PAS `false` : personne n'a encore regardé. Un « refusé » affiché là où il n'y a
+   * eu aucune décision serait une accusation inventée.
+   */
+  travailValide: boolean | null;
+  travailDecideLe: string | null;
+  /** Le motif, quand la production en a posé un. NULL sur les 10 lignes mesurées. */
+  travailMotif: string | null;
+}
+
+/**
+ * UN MOIS, ET CE QU'IL PÈSE. Le « récapitulatif mensuel » que Fouka demande, construit à partir
+ * des prestations elles-mêmes, parce que `recapitulatifs_remuneration` est VIDE dans toute la base
+ * (0 ligne, mesuré) : aucun document n'est encore parti. Attendre qu'il en existe un pour montrer
+ * un mois reviendrait à ne rien montrer du tout.
+ *
+ * TOUS CES CHIFFRES SONT DES SOMMES DE `net`, ET RIEN D'AUTRE. Pas une soustraction, pas un
+ * pourcentage, pas un prorata : `net_a_payer` vient de la base, l'écran l'additionne. Refaire un
+ * calcul d'argent ici, c'est se préparer à afficher un total différent du récapitulatif qui part
+ * chez la personne.
+ */
+export interface MoisDeRevenus {
+  /** Le premier jour du mois, en ISO. Sert de clé et d'entrée pour la mise en forme. */
+  cle: string;
+  nbPrestations: number;
+  total: number;
+  /** Somme des nets encore dus : ni versés, ni partis en comptabilité. */
+  restant: number;
+  verse: number;
+}
+
+/**
+ * Regrouper mes prestations par mois, du plus récent au plus ancien.
+ *
+ * Une prestation sans date ne peut être rangée dans aucun mois : elle reste dans la liste
+ * détaillée et ne fausse aucun total mensuel. Mesuré : les 10 affectations en ont une.
+ */
+export function parMois(prestations: Prestation[]): MoisDeRevenus[] {
+  const table = new Map<string, MoisDeRevenus>();
+  for (const p of prestations) {
+    if (!p.date) continue;
+    const cle = `${p.date.slice(0, 7)}-01`;
+    const m = table.get(cle) ?? { cle, nbPrestations: 0, total: 0, restant: 0, verse: 0 };
+    m.nbPrestations += 1;
+    m.total += p.net;
+    if (p.statutVersement === "payé") m.verse += p.net;
+    else m.restant += p.net;
+    table.set(cle, m);
+  }
+  return [...table.values()].sort((a, b) => b.cle.localeCompare(a.cle));
 }
 
 /** Le document de fin de mois. « Récapitulatif de prestations », jamais « fiche de paie ». */
@@ -174,6 +232,7 @@ export async function lireMesRevenus(): Promise<MesRevenus> {
     .select(`id, prestation_id, statut, fonction, est_responsable, remuneration, net_a_payer,
              penalites_total, statut_paiement, date_paiement,
              heures_declarees, km_declares, frais_declares,
+             travail_valide, travail_decide_le, travail_motif,
              prestations ( reference, statut, date_prestation, couverture, clients ( nom ) )`)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -184,6 +243,7 @@ export async function lireMesRevenus(): Promise<MesRevenus> {
     est_responsable: boolean | null; remuneration: unknown; net_a_payer: unknown;
     penalites_total: unknown; statut_paiement: string | null; date_paiement: string | null;
     heures_declarees: unknown; km_declares: unknown; frais_declares: unknown;
+    travail_valide: boolean | null; travail_decide_le: string | null; travail_motif: string | null;
     prestations: {
       reference: string | null; statut: string | null; date_prestation: string | null;
       couverture: string | null; clients: { nom: string | null } | null;
@@ -270,6 +330,9 @@ export async function lireMesRevenus(): Promise<MesRevenus> {
       frais: nombreOuRien(r.frais_declares),
       primes: primesPar.get(cle) ?? [],
       ajustements: ajustementsPar.get(cle) ?? [],
+      travailValide: r.travail_valide === null || r.travail_valide === undefined ? null : r.travail_valide,
+      travailDecideLe: r.travail_decide_le ?? null,
+      travailMotif: (r.travail_motif ?? "").trim() || null,
     };
   })
     // Du plus récent au plus ancien : « ma dernière mission est-elle payée ? » est la question

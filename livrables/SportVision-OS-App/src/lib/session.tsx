@@ -23,6 +23,15 @@ export interface Moi {
   role: RoleOS | null;
   /** Le libellé qu'on montre. Jamais l'identifiant technique du rôle. */
   metier: string;
+  /**
+   * La photo de profil, au format que l'OS écrit : `data:image/jpeg;base64,…`.
+   *
+   * ELLE EST ICI PARCE QUE « MON ESPACE » L'AFFICHE DÈS L'OUVERTURE (01/10/2026). La lire depuis
+   * l'écran aurait montré les initiales une demi-seconde, puis la photo : un clignotement à
+   * chaque passage sur l'onglet. Mesuré : entre 4,5 et 10 kilo-octets par avatar, cinq profils
+   * sur dix-neuf en portent un. C'est une ligne déjà lue, pas une requête de plus.
+   */
+  avatarUrl: string | null;
 }
 
 const METIERS: Record<string, string> = {
@@ -66,7 +75,7 @@ export const useSession = () => useContext(Ctx);
 async function lireMoi(userId: string): Promise<Moi | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, prenom, nom, role")
+    .select("id, prenom, nom, role, avatar_url")
     .eq("id", userId)
     .maybeSingle();
   if (error || !data) return null;
@@ -76,6 +85,7 @@ async function lireMoi(userId: string): Promise<Moi | null> {
     prenom: (data.prenom ?? "").trim(),
     nom: (data.nom ?? "").trim(),
     role,
+    avatarUrl: ((data as { avatar_url?: string | null }).avatar_url ?? null) || null,
     // Un rôle absent de la table ne se traduit pas en métier inventé : on dit « SportVision », ce
     // qui est vrai de tout le monde ici, plutôt qu'un intitulé qui n'existe pas.
     metier: (role && METIERS[role]) || "SportVision",

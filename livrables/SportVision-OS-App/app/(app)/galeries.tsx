@@ -49,7 +49,50 @@
 // RPC de l'OS. C'est le geste qui ferme le trou des 57 galeries : mesuré deux fois en transaction
 // annulée, Antoine passe de 0 galerie visible à 6 dès que les galeries de sa mission existent, et un
 // opérateur non affecté reste à 0.
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+// == CE QUE LE 01/10/2026 (APRÈS-MIDI) A AJOUTÉ, ET CE QUE FOUKA A DIT EXACTEMENT ==============
+//
+// « Dans galerie photo, c'est encore trop brouillon. C'est pas trié par équipe, par club. Je peux
+// pas voir les statistiques, les galeries vendues sur l'app. Je peux même pas télécharger les
+// photos. »
+//
+// TROIS MANQUES, TROIS RÉPONSES, ET AUCUNE N'INVENTE DE RÈGLE.
+//
+// 1. LE TRI. Une recherche, un filtre par CLUB, et des sections par ÉQUIPE qui se replient. C'est
+//    le rangement de l'OS, repris avec ses mots : son écran « Médias & Ventes » porte déjà un
+//    sélecteur « Tous les clubs / … / Sans club » et un champ « Rechercher un titre, un club, une
+//    équipe… », posés le 29/09 pour la même raison (« beaucoup de galeries »). On ne réinvente
+//    donc pas un rangement : on porte celui-là sur un téléphone, où un menu déroulant devient une
+//    rangée de puces et où le classement par équipe devient une liste qu'on ouvre.
+//
+//    LE TAUX DE REMPLISSAGE A DÉCIDÉ DU DESSIN (règle 6). Mesuré sur les 57 galeries : 21 ont un
+//    club (15 RCP Fontainebleau, 6 SF Villemomble), 36 n'en ont pas ; 16 ont une équipe, 27 une
+//    structure externe, 24 n'ont NI l'une NI l'autre. « Sans club » est donc le plus gros groupe,
+//    pas un cas limite : le masquer aurait caché les deux tiers de la liste.
+//
+// 2. LES VENTES. Un onglet, et il N'EXISTE QUE SI LA BASE DIT OUI. On ne recopie aucune liste de
+//    rôles : `media_revenus_visibles()` porte la décision de Fouka du 29/09, on la lui demande.
+//    Mesuré : false pour Antoine (photo), true pour Mikael (prod) et Fouka (admin). Et ce que la
+//    base rend vraiment : `media_orders` = 15 lignes pour la production, 17 pour l'administration,
+//    ZÉRO pour un opérateur. Un opérateur ne voit donc pas un cadre à 0 €, il ne voit pas l'onglet.
+//
+// 3. LE TÉLÉCHARGEMENT DES ORIGINAUX. Décision de Fouka ce matin : un opérateur récupère les
+//    originaux des galeries de SES missions. Et le droit ne se reteste pas ici, parce qu'il est
+//    DÉJÀ répondu par le fait de voir la galerie :
+//
+//      · `malbums_staff_select` = `media_upload_staff()` → seuls admin, sec, prod et photo voient
+//        une galerie ; la policy RESTRICTIVE `malbums_photographe_perimetre` réduit le photo à ses
+//        propres missions ;
+//      · la policy de stockage `sv_media_prive_media_select` demande `can_access_media(galerie)`,
+//        qui commence par `if is_staff() then return not est_operateur_terrain()
+//        or photographe_voit_album(...)`.
+//
+//    Les deux ensembles coïncident exactement : SI UNE GALERIE EST DANS CETTE LISTE, SES ORIGINAUX
+//    SONT ACCESSIBLES. Le bouton ne peut donc pas mener à un refus (règle 5), et il n'y a aucun
+//    second filtre à écrire (règle 3). Vérifié par le chemin réel, en transaction annulée :
+//    Antoine affecté à la mission → 431 + 314 photos et 314 originaux lisibles dans le seau privé ;
+//    Erwan non affecté → zéro partout.
+//
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View,
 } from "react-native";
@@ -58,12 +101,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { Ecran, Probleme, Section, Vide } from "../../src/ui/Ecran";
 import { Bouton, Champ, Erreur, Pastille } from "../../src/ui/Base";
 import { Barre } from "../../src/ui/Barre";
+import { Jauge } from "../../src/ui/Jauge";
 import {
   creerGaleriesMission, lireEquipesDeMission, lireEquipesDuClub, lireGaleriesDeMission,
-  lireGaleriesParMission,
+  lireGaleriesParMission, lireOriginauxGalerie,
   lireMesGaleries, lirePhotosGalerie, rattacherEquipe, renommerGalerie,
   type EquipeDeMission, type EquipeDuClub, type Galerie, type PhotoGalerie,
 } from "../../src/lib/os-galeries";
+import {
+  bornes, euros, lireVentes, lireVentesDeLaGalerie, PERIODES, pourcent, puisVoirLesVentes,
+  quandVente, type LienVendeur, type Periode, type Ventes,
+} from "../../src/lib/os-ventes";
+import {
+  autoriserPhototheque, enregistrerLot, enregistrerOriginal, placeLibre, poids, poidsDuLot,
+  type AvancementLot,
+} from "../../src/lib/os-telechargement";
 import { lireMissions, type MissionProd } from "../../src/lib/os-production";
 import { oublier, useDonnees } from "../../src/lib/cache";
 import { dateLongue, quand } from "../../src/lib/dates";
@@ -105,6 +157,48 @@ interface DonneesMissions {
   parMission: Map<string, number>;
 }
 
+/** Les trois onglets possibles. Celui des ventes et celui des missions n'existent pas pour tous. */
+type Onglet = "galeries" | "ventes" | "missions";
+
+/** Le mot de l'OS pour les galeries qui ne sont rattachées à aucun club : 36 sur 57. */
+const SANS_CLUB = "sans-club";
+/** Idem pour les galeries sans équipe ni structure : 24 sur 57. */
+const SANS_EQUIPE = "sans-equipe";
+
+interface GroupeEquipe {
+  cle: string;
+  libelle: string;
+  galeries: Galerie[];
+}
+
+/**
+ * LES GROUPES, CALCULÉS À PARTIR DE CE QUE LA BASE A RENDU, JAMAIS D'UNE SECONDE REQUÊTE.
+ *
+ * Le club vient de `clubs.nom` ou, pour un opérateur qui n'a pas le droit de lire `clubs`, du
+ * client de la mission. L'équipe vient de `club_teams.name` ou, à défaut, de `structure_externe` —
+ * c'est exactement ce que porte déjà le champ `categorie`, et c'est le même repli que l'OS affiche
+ * dans sa colonne de contexte.
+ */
+function grouperParEquipe(liste: Galerie[]): GroupeEquipe[] {
+  const par = new Map<string, GroupeEquipe>();
+  for (const g of liste) {
+    const libelle = g.categorie ?? "Sans équipe";
+    // La CLÉ est l'identifiant d'équipe quand il y en a un, pas son nom : deux clubs peuvent avoir
+    // une équipe « U11 », et les fondre dans un seul groupe mélangerait deux clubs sous un mot.
+    const cle = g.equipeId ?? (g.categorie ? `s:${g.categorie}` : SANS_EQUIPE);
+    const deja = par.get(cle);
+    if (deja) deja.galeries.push(g);
+    else par.set(cle, { cle, libelle, galeries: [g] });
+  }
+  return [...par.values()].sort((a, b) => {
+    // « Sans équipe » EN DERNIER, toujours : c'est le fourre-tout, pas une catégorie. Alphabétique
+    // pour le reste, avec `numeric` pour que U6 passe avant U10 — sans lui, U10 arrive avant U6.
+    if (a.cle === SANS_EQUIPE) return 1;
+    if (b.cle === SANS_EQUIPE) return -1;
+    return a.libelle.localeCompare(b.libelle, "fr", { numeric: true });
+  });
+}
+
 function ListeGaleries({ surOuvrir }: { surOuvrir: (g: Galerie) => void }) {
   const { moi } = useSession();
   // LE SEUL TEST DE MÉTIER DE CET ÉCRAN, ET IL NE BORNE AUCUNE LECTURE. Il décide de l'existence
@@ -113,12 +207,18 @@ function ListeGaleries({ surOuvrir }: { surOuvrir: (g: Galerie) => void }) {
   // Le périmètre de pôle, lui, n'est pas retesté : `v_production_missions` se termine par
   // `WHERE is_staff() AND pole_scope_ok(p.pole_id)`, une mission lue est déjà dans le pôle.
   const production = estProduction(moi?.role ?? null);
-  const [onglet, setOnglet] = useState<"galeries" | "missions">("galeries");
+  const [onglet, setOnglet] = useState<Onglet>("galeries");
 
   // `useDonnees` et pas un `useState` : au retour d'une galerie, la liste est déjà là. Un écran
   // qu'on quitte et qu'on retrouve ne doit jamais remontrer sa roue.
   const { donnees, chargement, rafraichissement, erreur, relire } =
     useDonnees<Galerie[]>("os:galeries", lireMesGaleries);
+
+  // LE DROIT DE VOIR L'ARGENT SE DEMANDE À LA BASE, ET IL EST MIS EN CACHE COMME UNE DONNÉE. C'est
+  // `media_revenus_visibles()` qui répond, pas une liste de rôles recopiée ici : un responsable de
+  // pôle n'est ni `admin` ni `prod` et a pourtant le droit (décision de Fouka du 29/09).
+  const droit = useDonnees<boolean>("os:galeries:droit-ventes", puisVoirLesVentes);
+  const ventesVisibles = droit.donnees === true;
 
   // La clé vaut `null` pour qui n'est pas de la production : `useDonnees` ne charge alors rien du
   // tout. Un opérateur ne paye pas une lecture de missions qu'il ne verra jamais.
@@ -139,6 +239,67 @@ function ListeGaleries({ surOuvrir }: { surOuvrir: (g: Galerie) => void }) {
     [missions, parMission],
   );
 
+  // ── Le tri : un club, puis une recherche ────────────────────────────────────────────────────
+  const [club, setClub] = useState("tous");
+  const [recherche, setRecherche] = useState("");
+
+  /** Les clubs PRÉSENTS dans la liste, et eux seuls. Proposer un club sans galerie serait un
+   *  filtre qui ne rend jamais rien. « Sans club » n'apparaît que s'il y en a. */
+  const clubs = useMemo(() => {
+    const vus = new Map<string, { libelle: string; n: number }>();
+    let sans = 0;
+    for (const g of liste) {
+      if (!g.clubId) { sans += 1; continue; }
+      const ancien = vus.get(g.clubId);
+      // Un club rattaché dont la base ne nous donne pas le nom : on le DIT au lieu de le ranger
+      // dans « Sans club », ce qui serait faux. Le cas est réservé au lecteur dont la RLS ferme
+      // `clubs` et dont la galerie n'a pas de mission pour nommer son client.
+      const libelle = g.clubNom ?? "Club non nommé";
+      vus.set(g.clubId, { libelle, n: (ancien?.n ?? 0) + 1 });
+    }
+    const tries = [...vus.entries()]
+      .map(([cle, v]) => ({ cle, libelle: v.libelle, n: v.n }))
+      .sort((a, b) => a.libelle.localeCompare(b.libelle, "fr"));
+    const rangee = [{ cle: "tous", libelle: "Tous les clubs", n: liste.length }, ...tries];
+    if (sans) rangee.push({ cle: SANS_CLUB, libelle: "Sans club", n: sans });
+    return rangee;
+  }, [liste]);
+
+  // Un club choisi puis disparu de la liste (galerie rattachée ailleurs, rafraîchissement) laisserait
+  // un écran vide sans qu'on comprenne pourquoi : on retombe sur « Tous les clubs ».
+  const clubActif = clubs.some((c) => c.cle === club) ? club : "tous";
+
+  const filtrees = useMemo(() => {
+    let l = liste;
+    if (clubActif === SANS_CLUB) l = l.filter((g) => !g.clubId);
+    else if (clubActif !== "tous") l = l.filter((g) => g.clubId === clubActif);
+    const q = recherche.trim().toLowerCase();
+    if (q) {
+      // Les MÊMES champs que la recherche de l'OS, plus la référence de mission : sur un téléphone
+      // on cherche aussi « 3843 » parce qu'on l'a sous les yeux dans ses missions.
+      l = l.filter((g) => [g.titre, g.clubNom, g.equipeNom, g.categorie, g.reference]
+        .filter(Boolean).join(" ").toLowerCase().includes(q));
+    }
+    return l;
+  }, [liste, clubActif, recherche]);
+
+  const groupes = useMemo(() => grouperParEquipe(filtrees), [filtrees]);
+
+  // ── Les sections qu'on ouvre ────────────────────────────────────────────────────────────────
+  const [ouverts, setOuverts] = useState<Record<string, boolean>>({});
+  const basculer = useCallback((cle: string) => {
+    setOuverts((a) => ({ ...a, [cle]: !a[cle] }));
+  }, []);
+  /**
+   * OUVERT OU FERMÉ PAR DÉFAUT : ÇA SE DÉCIDE SUR LES CHIFFRES, PAS SUR UN GOÛT.
+   *
+   * Avec quatre groupes ou moins, tout replier fait faire quatre gestes pour voir ce qui tenait à
+   * l'écran. Au-delà, la liste des noms d'équipes EST l'index qu'on vient chercher : c'est elle qui
+   * évite le défilement dont Fouka se plaint. Et une recherche ouvre tout, sinon on chercherait un
+   * titre pour trouver un accordéon fermé.
+   */
+  const toutOuvert = groupes.length <= 4 || recherche.trim().length > 0;
+
   /** Après une création, la liste des galeries ET le compte par mission sont faux d'un coup. */
   const toutRelire = useCallback(() => {
     oublier("os:galeries");
@@ -149,11 +310,20 @@ function ListeGaleries({ surOuvrir }: { surOuvrir: (g: Galerie) => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [relire, mission.relire]);
 
+  // La rangée d'onglets se construit d'après les droits : une puce absente se lit « ça n'existe
+  // pas », une puce qui refuse est une promesse cassée.
+  const onglets = [
+    { cle: "galeries", libelle: "Galeries", n: liste.length },
+    ...(ventesVisibles ? [{ cle: "ventes", libelle: "Ventes" }] : []),
+    ...(production ? [{ cle: "missions", libelle: "Missions", n: sansGalerie }] : []),
+  ];
+  const ongletActif = onglets.some((o) => o.cle === onglet) ? onglet : "galeries";
+
   return (
     <Ecran
       enCours={!!donnees && rafraichissement}
       teinte="violet"
-      rafraichir={onglet === "missions" ? toutRelire : relire}
+      rafraichir={ongletActif === "missions" ? toutRelire : relire}
       retour="/profil"
     >
       <View style={{ gap: 4 }}>
@@ -167,18 +337,15 @@ function ListeGaleries({ surOuvrir }: { surOuvrir: (g: Galerie) => void }) {
 
       {/* La rangée n'existe QUE s'il y a deux choses à choisir. Une puce unique est un titre
           déguisé, et elle ferait croire à l'opérateur qu'un second onglet lui manque. */}
-      {production ? (
+      {onglets.length > 1 ? (
         <Barre
-          choix={[
-            { cle: "galeries", libelle: "Galeries", n: liste.length },
-            { cle: "missions", libelle: "Missions", n: sansGalerie },
-          ]}
-          actif={onglet}
-          surChoix={(c) => setOnglet(c as "galeries" | "missions")}
+          choix={onglets}
+          actif={ongletActif}
+          surChoix={(c) => setOnglet(c as Onglet)}
         />
       ) : null}
 
-      {onglet === "missions" ? (
+      {ongletActif === "missions" ? (
         <OngletMissions
           missions={missions}
           parMission={parMission}
@@ -186,13 +353,91 @@ function ListeGaleries({ surOuvrir }: { surOuvrir: (g: Galerie) => void }) {
           erreur={mission.erreur}
           relire={toutRelire}
         />
+      ) : ongletActif === "ventes" ? (
+        <OngletVentes />
       ) : chargement ? (
         <View style={s.attente}><ActivityIndicator color={C.accent} /></View>
       ) : erreur && !donnees ? (
         <Probleme surReessayer={relire} />
       ) : liste.length ? (
-        <View style={{ gap: E.s }}>
-          {liste.map((g) => <CarteGalerie key={g.id} g={g} surOuvrir={() => surOuvrir(g)} />)}
+        <View style={{ gap: E.m }}>
+          {/* LE TRI N'APPARAÎT QU'AU-DELÀ DE DIX GALERIES. En dessous, la liste tient sous le
+              pouce : un champ de recherche et une rangée de puces coûteraient alors plus de place
+              qu'ils n'en font gagner. Le seuil est bas exprès — la base en compte déjà 57. */}
+          {liste.length > 10 ? (
+            <View style={{ gap: E.s }}>
+              <Champ
+                label="Rechercher une galerie"
+                value={recherche}
+                onChangeText={setRecherche}
+                placeholder="Rechercher un titre, un club, une équipe…"
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+              />
+              {clubs.length > 2 ? (
+                <Barre choix={clubs} actif={clubActif} surChoix={setClub} />
+              ) : null}
+            </View>
+          ) : null}
+
+          {!filtrees.length ? (
+            <Vide
+              icone="search-outline"
+              titre="Aucune galerie ne correspond"
+              texte={
+                "Aucune galerie ne porte ce texte dans son nom, son club ou son équipe. Effacez la "
+                + "recherche pour revoir les "
+                + `${liste.length} galerie${liste.length > 1 ? "s" : ""} de la liste.`
+              }
+              action={{ libelle: "Effacer la recherche", surPression: () => { setRecherche(""); setClub("tous"); } }}
+            />
+          ) : groupes.length === 1 ? (
+            // UN SEUL GROUPE N'EST PAS UN GROUPE. Un accordéon unique demande un geste pour ouvrir
+            // ce qu'on venait lire, et son titre répète ce que la puce du club dit déjà.
+            <View style={{ gap: E.s }}>
+              {groupes[0].galeries.map((g) => (
+                <CarteGalerie key={g.id} g={g} surOuvrir={() => surOuvrir(g)} />
+              ))}
+            </View>
+          ) : (
+            <View style={{ gap: E.s }}>
+              {groupes.map((gr) => {
+                const ouvert = toutOuvert || ouverts[gr.cle] === true;
+                const n = gr.galeries.length;
+                const photos = gr.galeries.reduce((t, g) => t + g.nbPhotos, 0);
+                return (
+                  <View key={gr.cle} style={{ gap: E.s }}>
+                    <Pressable
+                      onPress={() => basculer(gr.cle)}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: ouvert }}
+                      accessibilityLabel={`${gr.libelle}, ${n} galerie${n > 1 ? "s" : ""}`}
+                      style={({ pressed }) => [s.groupe, pressed ? { opacity: 0.85 } : null]}
+                    >
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={s.groupeNom} numberOfLines={1}>{gr.libelle}</Text>
+                        <Text style={s.groupeDetail}>
+                          {n} galerie{n > 1 ? "s" : ""} · {photos.toLocaleString("fr-FR")} photo{photos > 1 ? "s" : ""}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={ouvert ? "chevron-up" : "chevron-down"}
+                        size={18}
+                        color={C.texteFaible}
+                      />
+                    </Pressable>
+                    {ouvert ? (
+                      <View style={{ gap: E.s, paddingLeft: E.s }}>
+                        {gr.galeries.map((g) => (
+                          <CarteGalerie key={g.id} g={g} surOuvrir={() => surOuvrir(g)} />
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
       ) : (
         <Vide
@@ -415,7 +660,14 @@ function CarteMission({
 }
 
 function CarteGalerie({ g, surOuvrir }: { g: Galerie; surOuvrir: () => void }) {
-  const detail = [g.date ? dateLongue(g.date) : null, g.reference].filter(Boolean).join(" · ");
+  // LE CLUB EN PREMIER, DEVANT LA DATE (01/10/2026). Depuis que la liste est rangée par équipe, le
+  // titre d'une carte ne dit plus à quel club elle appartient : dans « Tous les clubs », deux
+  // groupes « U11 » de deux clubs différents se suivent. Le nom du club le tranche d'un coup d'œil.
+  // Il ne se répète PAS quand il est déjà le nom de l'équipe ou de la structure — c'est la même
+  // règle que l'OS s'est donnée le 12/09 après avoir affiché « RCPF · U9 · U9 RCPF ».
+  const clubUtile = g.clubNom && g.clubNom !== g.categorie ? g.clubNom : null;
+  const detail = [clubUtile, g.date ? dateLongue(g.date) : null, g.reference]
+    .filter(Boolean).join(" · ");
   return (
     <Pressable
       onPress={surOuvrir}
@@ -449,6 +701,251 @@ function CarteGalerie({ g, surOuvrir }: { g: Galerie; surOuvrir: () => void }) {
   );
 }
 
+
+// ── L'ONGLET DES VENTES ─────────────────────────────────────────────────────────────────────
+
+/**
+ * LES VENTES, POUR QUI LA BASE LES OUVRE (01/10/2026).
+ *
+ * Fouka : « Je peux pas voir les statistiques, les galeries vendues sur l'app. »
+ *
+ * TROIS BLOCS, ET CE SONT CEUX DE L'OS, dans le même ordre : le résumé de la période, le classement
+ * des galeries, puis la liste des ventes une par une. Le troisième existe pour une raison que Fouka
+ * a dite mot pour mot devant l'écran de l'ordinateur le 21/09 : « je ne sais même pas quelle
+ * prestation a été payée, quelle galerie a été payée ». Un total de 144,90 € ne dit ni qui, ni quoi.
+ *
+ * ON N'INVENTE AUCUN CHIFFRE. Les trois viennent des mêmes fonctions que l'écran « Statistiques »
+ * de l'OS, avec les mêmes bornes, comptées à Paris. Un chiffre du téléphone qui différerait d'un
+ * centime de celui de l'ordinateur ferait perdre confiance aux deux.
+ *
+ * L'ÉCART ENTRE LE RÉSUMÉ ET LA LISTE EST RÉEL ET ASSUMÉ : mesuré, 10 commandes et 144,90 € au
+ * résumé contre 12 ventes dans la liste. Deux commandes n'ont AUCUNE galerie (`album_id` NULL : deux
+ * Pass Photo achetés dans l'application, source `apple`), et le résumé passe par le périmètre des
+ * galeries. L'OS affiche déjà les deux côte à côte ainsi. Corriger l'un pour qu'il colle à l'autre
+ * aurait fabriqué un chiffre.
+ */
+function OngletVentes() {
+  const [periode, setPeriode] = useState<Periode>("30j");
+  const { donnees, chargement, erreur, relire } = useDonnees<Ventes>(
+    `os:galeries:ventes:${periode}`,
+    () => lireVentes(periode),
+    [periode],
+  );
+
+  const plage = bornes(periode);
+  const r = donnees?.resume ?? null;
+
+  return (
+    <View style={{ gap: E.m }}>
+      <Barre choix={PERIODES.map((p) => ({ cle: p.cle, libelle: p.libelle }))} actif={periode} surChoix={(c) => setPeriode(c as Periode)} />
+      <Text style={s.explication}>
+        Du {dateLongue(plage.debut)} au {dateLongue(plage.fin)}. Les galeries d'essai sont écartées
+        de ces chiffres, comme sur l'ordinateur.
+      </Text>
+
+      {chargement ? (
+        <View style={s.attente}><ActivityIndicator color={C.accent} /></View>
+      ) : erreur && !donnees ? (
+        <Probleme surReessayer={relire} />
+      ) : !r ? (
+        <Vide
+          titre="Statistiques indisponibles"
+          texte={
+            "La base n'a rien renvoyé pour cette période. Réessayez dans un instant : si cela se "
+            + "reproduit, les ventes restent consultables sur l'ordinateur, écran Statistiques."
+          }
+        />
+      ) : (
+        <>
+          {/* QUATRE CHIFFRES, LES MÊMES QUE L'OS ET AVEC SES MOTS. Deux par ligne : sur 402 points
+              de large, quatre cases côte à côte tronquent « Chiffre d'affaires ». */}
+          <View style={s.tuiles}>
+            <Tuile
+              titre="Chiffre d'affaires"
+              valeur={euros(r.caCents)}
+              sous={r.rembourseCents > 0 ? `${euros(r.rembourseCents)} remboursés` : null}
+            />
+            <Tuile
+              titre="Commandes"
+              valeur={r.commandes.toLocaleString("fr-FR")}
+              sous={r.commandesGratuites > 0 ? `${r.commandesGratuites} offertes` : null}
+            />
+            <Tuile
+              titre="Panier moyen"
+              valeur={euros(r.panierMoyenCents)}
+              sous="commandes payantes"
+            />
+            <Tuile
+              titre="Conversion"
+              valeur={pourcent(r.conversion)}
+              sous="pour 100 visites"
+            />
+          </View>
+
+          {/* Les visites ne sont pas une tuile : c'est le dénominateur de la conversion, et le
+              mettre à côté d'elle évite de faire croire à deux mesures indépendantes. */}
+          <Text style={s.explication}>
+            {r.visites.toLocaleString("fr-FR")} visite{r.visites > 1 ? "s" : ""} de galerie sur la
+            période, {r.galeriesVendeuses} galerie{r.galeriesVendeuses > 1 ? "s" : ""} ayant vendu.
+          </Text>
+
+          {donnees?.galeries.length ? (
+            <Section titre="Les galeries qui ont bougé">
+              <View style={{ gap: E.xs }}>
+                {donnees.galeries.map((g) => (
+                  <View key={g.albumId} style={s.ligneVente}>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={s.venteNom} numberOfLines={1}>{g.titre}</Text>
+                      <Text style={s.venteDetail} numberOfLines={1}>
+                        {[g.club, `${g.visites} visite${g.visites > 1 ? "s" : ""}`,
+                          g.commandes ? `${g.commandes} commande${g.commandes > 1 ? "s" : ""}` : null]
+                          .filter(Boolean).join(" · ")}
+                      </Text>
+                    </View>
+                    {/* UNE GALERIE À 0 € N'EST PAS UNE ERREUR : elle peut être incluse dans un Pass
+                        Photo, ou vue et jugée trop chère. On affiche le zéro sans le peindre en
+                        vert, et la conversion dit le reste. */}
+                    <Text style={[s.venteMontant, g.caCents > 0 ? { color: C.succesTexte } : null]}>
+                      {euros(g.caCents)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </Section>
+          ) : (
+            <Vide
+              titre="Aucune galerie consultée ni vendue"
+              texte={
+                "Sur cette période, aucune galerie n'a reçu de visite ni de commande. Choisissez une "
+                + "période plus large, ou vérifiez qu'un lien de partage a bien été envoyé au club."
+              }
+            />
+          )}
+
+          {donnees?.ventes.length ? (
+            <Section titre="Ventes, qui a payé quoi">
+              <View style={{ gap: E.xs }}>
+                {donnees.ventes.map((v) => (
+                  <View key={v.id} style={s.ligneVente}>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={s.venteNom} numberOfLines={1}>{v.galerie}</Text>
+                      <Text style={s.venteDetail} numberOfLines={1}>
+                        {[quandVente(v.payeLe), v.club, v.formule].filter(Boolean).join(" · ")}
+                      </Text>
+                      {v.acheteur ? (
+                        <Text style={s.venteDetail} numberOfLines={1}>{v.acheteur}</Text>
+                      ) : null}
+                    </View>
+                    <View style={{ alignItems: "flex-end", gap: 3 }}>
+                      <Text
+                        style={[
+                          s.venteMontant,
+                          v.rembourse
+                            ? { color: C.texteFaible, textDecorationLine: "line-through" }
+                            : { color: C.succesTexte },
+                        ]}
+                      >
+                        {euros(v.montantCents)}
+                      </Text>
+                      {v.rembourse ? <Pastille texte="Remboursé" /> : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Section>
+          ) : null}
+        </>
+      )}
+    </View>
+  );
+}
+
+/** Un chiffre et son intitulé. Le dessin d'une carte, sans son bord : quatre cadres empilés font
+ *  un formulaire, quatre chiffres posés font un tableau de bord. */
+function Tuile({ titre, valeur, sous }: { titre: string; valeur: string; sous?: string | null }) {
+  return (
+    <View style={s.tuile}>
+      <Text style={s.tuileTitre} numberOfLines={1}>{titre}</Text>
+      <Text style={s.tuileValeur} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+        {valeur}
+      </Text>
+      {sous ? <Text style={s.tuileSous} numberOfLines={1}>{sous}</Text> : null}
+    </View>
+  );
+}
+
+/**
+ * CE QUE CETTE GALERIE A VENDU, LIEN PAR LIEN.
+ *
+ * `media_album_links_stats` est la fonction de la famille qui fait le garde-fou CORRECTEMENT : elle
+ * se termine par `where media_pricing_staff()` et n'écrit l'argent que
+ * `case when media_revenus_visibles() then … end`. Deux droits distincts, tenus par la base.
+ *
+ * ZÉRO LIGNE = AUCUN BLOC. Mesuré : Mikael (prod) reçoit 1 lien, 1 commande et 40,00 € sur la
+ * galerie la plus vendeuse ; Antoine (photo) reçoit ZÉRO LIGNE — pas une ligne à zéro euro. Un
+ * cadre « 0 € » serait une affirmation là où il n'y a qu'une absence de droit.
+ */
+function VentesDeLaGalerie({ albumId }: { albumId: string }) {
+  const { donnees } = useDonnees<LienVendeur[]>(
+    `os:galeries:liens:${albumId}`,
+    () => lireVentesDeLaGalerie(albumId),
+    [albumId],
+  );
+  const liens = donnees ?? [];
+  if (!liens.length) return null;
+
+  const commandes = liens.reduce((t, l) => t + (l.commandes ?? 0), 0);
+  // L'ARGENT NE S'ADDITIONNE QUE S'IL EST DONNÉ. `caCents` vaut `null` quand la base le masque (le
+  // Secrétariat fixe les prix sans voir les recettes) : sommer des null donnerait 0 €, c'est-à-dire
+  // « rien vendu » au lieu de « pas votre affaire ».
+  const argentVisible = liens.some((l) => l.caCents !== null);
+  const ca = liens.reduce((t, l) => t + (l.caCents ?? 0), 0);
+
+  return (
+    <Section titre="Ce que cette galerie a vendu">
+      <View style={{ gap: E.xs }}>
+        {liens.map((l) => (
+          <View key={l.id} style={s.ligneVente}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={s.venteNom} numberOfLines={1}>
+                {l.libelle ?? l.formule ?? "Lien de partage"}
+              </Text>
+              <Text style={s.venteDetail} numberOfLines={2}>
+                {[
+                  l.audience,
+                  l.formule && l.formule !== l.libelle ? l.formule : null,
+                  l.prixCents !== null ? euros(l.prixCents) : null,
+                  `${l.visiteurs} visiteur${l.visiteurs > 1 ? "s" : ""}`,
+                  l.commandes !== null
+                    ? `${l.commandes} commande${l.commandes > 1 ? "s" : ""}`
+                    : null,
+                ].filter(Boolean).join(" · ")}
+              </Text>
+            </View>
+            {l.caCents !== null ? (
+              <Text style={[s.venteMontant, l.caCents > 0 ? { color: C.succesTexte } : null]}>
+                {euros(l.caCents)}
+              </Text>
+            ) : null}
+            {!l.actif ? <Pastille texte="Désactivé" /> : null}
+          </View>
+        ))}
+      </View>
+      {argentVisible ? (
+        <Text style={s.explication}>
+          {commandes} commande{commandes > 1 ? "s" : ""} au total, {euros(ca)}. Les liens et leurs
+          tarifs se règlent depuis l'OS.
+        </Text>
+      ) : (
+        <Text style={s.explication}>
+          Les recettes de cette galerie ne vous sont pas ouvertes : seules la direction, la
+          production, la comptabilité et le responsable du pôle les voient.
+        </Text>
+      )}
+    </Section>
+  );
+}
+
 // ── Une galerie ─────────────────────────────────────────────────────────────────────────────
 
 /** Soixante par page : la plus grosse galerie réelle compte 431 photos. */
@@ -461,6 +958,14 @@ function UneGalerie({ galerie, surRetour }: { galerie: Galerie; surRetour: () =>
   const [enCours, setEnCours] = useState(true);
   const [panne, setPanne] = useState(false);
   const [agrandie, setAgrandie] = useState<PhotoGalerie | null>(null);
+  // LE LOT VIT DANS L'ÉCRAN DE LA GALERIE, PAS DANS UN `useDonnees`. Ce n'est pas une lecture qu'on
+  // met en cache : c'est un travail en cours, qui doit survivre au défilement et s'arrêter au geste.
+  const [lot, setLot] = useState<AvancementLot | null>(null);
+  const [bilan, setBilan] = useState<string | null>(null);
+  const [soucisLot, setSoucisLot] = useState<string | null>(null);
+  // UNE RÉFÉRENCE, PAS UN ÉTAT. La boucle du lot lit ce drapeau entre chaque photo : un `useState`
+  // lui aurait donné la valeur figée du rendu où elle a démarré, et « Arrêter » n'aurait rien fait.
+  const arret = useRef(false);
   // LE TITRE ET LA CATÉGORIE VIVENT ICI PENDANT LA VISITE. La liste derrière est en cache, et
   // revenir dessus la relira ; mais rester sur une galerie qu'on vient de renommer en lisant
   // l'ancien nom, c'est croire que l'enregistrement a échoué.
@@ -489,6 +994,71 @@ function UneGalerie({ galerie, surRetour }: { galerie: Galerie; surRetour: () =>
 
   const nets = photos.filter((p) => p.net).length;
   const reste = total !== null ? total - photos.length : 0;
+
+  /**
+   * ENREGISTRER TOUTE LA GALERIE DANS LA PHOTOTHÈQUE.
+   *
+   * ON LIT LA LISTE COMPLÈTE AVANT DE COMMENCER, et pas les 60 photos affichées : « les originaux
+   * de cette galerie » veut dire les 431, pas la première page. `lireOriginauxGalerie` ne demande
+   * aucun aperçu et ne signe rien : une requête, et le poids réel du lot.
+   *
+   * TROIS CONTRÔLES AVANT LE PREMIER OCTET, et chacun évite une promesse cassée :
+   *   · la permission d'écrire dans la photothèque — refusée, on le DIT et on ne télécharge rien ;
+   *   · la place libre — 431 photos pèsent jusqu'à 5,6 Go, et un lot qui s'arrête à mi-chemin après
+   *     un quart d'heure d'attente est pire que le lot qu'on n'a pas lancé. On garde 500 Mo de
+   *     marge : un téléphone à zéro octet libre cesse de fonctionner, pas seulement de télécharger ;
+   *   · une galerie sans aucun original — on ne lance pas une boucle vide en annonçant un travail.
+   */
+  const lancerLot = useCallback(async () => {
+    setBilan(null);
+    setSoucisLot(null);
+    arret.current = false;
+    setLot({ enregistrees: 0, echecs: 0, total: 0, octets: 0, enCours: null });
+    try {
+      const tous = await lireOriginauxGalerie(galerie.id);
+      if (!tous.length) {
+        setLot(null);
+        setSoucisLot("Cette galerie n'a aucun fichier original enregistré.");
+        return;
+      }
+      if (!(await autoriserPhototheque())) {
+        setLot(null);
+        setSoucisLot(
+          "La photothèque n'a pas été autorisée. Ouvrez Réglages, SV OS bêta, Photos, et "
+          + "autorisez l'ajout de photos.",
+        );
+        return;
+      }
+      const attendu = poidsDuLot(tous);
+      const libre = placeLibre();
+      if (libre !== null && attendu > 0 && attendu + 500 * 1048576 > libre) {
+        setLot(null);
+        setSoucisLot(
+          `Ces ${tous.length} photos pèsent ${poids(attendu)} et il reste ${poids(libre)} sur ce `
+          + "téléphone. Libérez de la place, ou enregistrez les photos une par une.",
+        );
+        return;
+      }
+      setLot({ enregistrees: 0, echecs: 0, total: tous.length, octets: 0, enCours: null });
+      const r = await enregistrerLot(tous, setLot, () => arret.current);
+      setLot(null);
+      // LE BILAN DIT LA VÉRITÉ, MÊME QUAND ELLE EST MOYENNE (règle 4). « Terminé » sur un lot qui a
+      // perdu trois photos, c'est un faux succès : on annonce ce qui est dans la photothèque, ce qui
+      // a échoué, et le fait que l'arrêt vient de la personne quand c'est le cas.
+      const debut = `${r.enregistrees} photo${r.enregistrees > 1 ? "s" : ""} enregistrée${r.enregistrees > 1 ? "s" : ""}`;
+      setBilan(
+        r.arrete
+          ? `${debut} sur ${r.total}, arrêté.`
+          : r.echecs
+            ? `${debut} sur ${r.total}. ${r.echecs} n'${r.echecs > 1 ? "ont" : "a"} pas pu être enregistrée${r.echecs > 1 ? "s" : ""} : relancez pour reprendre.`
+            : `${debut} dans votre photothèque.`,
+      );
+      if (r.premierSouci) setSoucisLot(r.premierSouci);
+    } catch (e) {
+      setLot(null);
+      setSoucisLot((e as Error)?.message ?? "Le téléchargement n'a pas pu démarrer.");
+    }
+  }, [galerie.id]);
 
   return (
     <Ecran teinte="violet" enCours={enCours && page === 0} rafraichir={() => charger(0)}>
@@ -533,6 +1103,66 @@ function UneGalerie({ galerie, surRetour }: { galerie: Galerie; surRetour: () =>
         ) : null}
         {categorie ? <Pastille texte={categorie} /> : null}
       </View>
+
+      {/* LES ORIGINAUX, AU-DESSUS DE LA GRILLE ET PAS EN BAS DE PAGE. C'est ce qu'un opérateur vient
+          chercher : sur 431 photos, un bouton posé sous la grille demande huit « voir plus » avant
+          d'exister. Le bloc n'apparaît que quand la galerie a des photos — proposer d'enregistrer
+          zéro photo est un bouton qui ne mène nulle part (règle 5). */}
+      {total ? (
+        <View style={s.carte}>
+          <Text style={s.sousTitreBloc}>Enregistrer les originaux</Text>
+          {lot ? (
+            <View style={{ gap: E.s }}>
+              <Text style={s.detail}>
+                {lot.total
+                  ? `${lot.enregistrees} sur ${lot.total} enregistrée${lot.enregistrees > 1 ? "s" : ""}`
+                  : "Préparation de la liste"}
+                {lot.octets > 0 ? ` · ${poids(lot.octets)}` : ""}
+                {lot.echecs ? ` · ${lot.echecs} échec${lot.echecs > 1 ? "s" : ""}` : ""}
+              </Text>
+              {lot.enCours ? (
+                <Text style={s.explication} numberOfLines={1}>{lot.enCours}</Text>
+              ) : null}
+              {/* `Jauge` ET PAS UNE BARRE À MOI : la brique existe dans `src/ui/`, écrite le même
+                  jour pour le centre de formation. Deux barres de progression légèrement
+                  différentes dans la même application, c'est le reproche numéro un de Fouka
+                  (règle 1). Elle n'avance que sur ce que la photothèque a confirmé. */}
+              <Jauge
+                avancement={lot.total ? Math.round((lot.enregistrees / lot.total) * 100) : 0}
+                couleur={C.accentClair}
+              />
+              {/* « Arrêter » ET PAS « Annuler » : ce qui est enregistré le reste, rien ne se défait.
+                  Annuler laisserait croire que la photothèque va être nettoyée. */}
+              <Bouton titre="Arrêter" onPress={() => { arret.current = true; }} secondaire />
+            </View>
+          ) : (
+            <>
+              <Text style={s.explication}>
+                Les fichiers du reflex, en pleine définition et sans filigrane, dans la photothèque
+                de ce téléphone. Un original pèse 13 Mo en moyenne : en 4G, une galerie entière prend
+                plusieurs minutes, et l'enregistrement s'arrête au geste.
+              </Text>
+              <Text style={s.explication}>
+                La photothèque d'iOS recompresse ce qu'elle reçoit : l'image garde sa définition
+                entière, le fichier est plus léger que celui du reflex. Pour livrer un fichier
+                d'origine à un client, passez par l'ordinateur.
+              </Text>
+              <Bouton
+                titre={`Enregistrer les ${total.toLocaleString("fr-FR")} originaux`}
+                onPress={lancerLot}
+                icone={<Ionicons name="download-outline" size={16} color="#fff" />}
+              />
+              <Text style={s.explication}>
+                Une seule photo : ouvrez-la d'une pression, puis « Enregistrer l'original ».
+              </Text>
+            </>
+          )}
+          {bilan ? <View style={s.ok}><Text style={s.okTexte}>{bilan}</Text></View> : null}
+          <Erreur message={soucisLot} />
+        </View>
+      ) : null}
+
+      <VentesDeLaGalerie albumId={galerie.id} />
 
       <PanneauGalerie
         galerie={galerie}
@@ -599,23 +1229,103 @@ function UneGalerie({ galerie, surRetour }: { galerie: Galerie; surRetour: () =>
         animationType="fade"
         onRequestClose={() => setAgrandie(null)}
       >
-        <Pressable
-          onPress={() => setAgrandie(null)}
-          accessibilityRole="button"
-          accessibilityLabel="Fermer la photo"
-          style={s.plein}
-        >
+        <View style={s.plein}>
+          {/* LE FOND FERME, ET C'EST UNE VUE À PART. Avant, TOUTE la surface fermait la photo : y
+              poser un bouton « Enregistrer » aurait fait fermer le modal au moindre raté du doigt,
+              juste avant de lancer un téléchargement. */}
+          <Pressable
+            onPress={() => setAgrandie(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Fermer la photo"
+            style={s.pleinFond}
+          />
           {agrandie ? (
-            <Image
-              source={{ uri: agrandie.url }}
-              style={{ width: "100%", aspectRatio: agrandie.ratio }}
-              contentFit="contain"
-              transition={120}
-            />
+            <>
+              <Image
+                source={{ uri: agrandie.url }}
+                style={{ width: "100%", aspectRatio: agrandie.ratio }}
+                contentFit="contain"
+                transition={120}
+              />
+              <UnOriginal photo={agrandie} surFermer={() => setAgrandie(null)} />
+            </>
           ) : null}
-        </Pressable>
+        </View>
       </Modal>
     </Ecran>
+  );
+}
+
+
+/**
+ * ENREGISTRER UNE SEULE PHOTO, DEPUIS LA PHOTO AGRANDIE (01/10/2026).
+ *
+ * C'est le geste du bord de terrain : le coach demande LA photo du but, on l'ouvre, on l'enregistre,
+ * on l'envoie. Treize mégaoctets, quelques secondes. Le lot, lui, se lance quand on rentre.
+ *
+ * ON ENREGISTRE L'ORIGINAL, PAS CE QUI EST À L'ÉCRAN, et la nuance vaut d'être dite : la grille
+ * montre un aperçu de 1 600 points, filigrané ou non ; le fichier enregistré est celui du reflex,
+ * 4 000 × 6 000, sans filigrane. Un écran qui enregistrerait l'aperçu affiché aurait l'air de
+ * marcher et livrerait une photo inutilisable.
+ */
+function UnOriginal({ photo, surFermer }: { photo: PhotoGalerie; surFermer: () => void }) {
+  const [enCours, setEnCours] = useState(false);
+  const [fait, setFait] = useState(false);
+  const [souci, setSouci] = useState<string | null>(null);
+
+  // La photo change quand on ouvre la suivante : sans ça, « Enregistrée » resterait affiché sur une
+  // autre photo, qui ne l'est pas.
+  useEffect(() => { setFait(false); setSouci(null); }, [photo.id]);
+
+  const enregistrer = useCallback(async () => {
+    setEnCours(true);
+    setSouci(null);
+    try {
+      if (!(await autoriserPhototheque())) {
+        setSouci(
+          "La photothèque n'a pas été autorisée. Ouvrez Réglages, SV OS bêta, Photos, et autorisez "
+          + "l'ajout de photos.",
+        );
+        return;
+      }
+      await enregistrerOriginal(photo);
+      // PAS DE FAUX SUCCÈS : `enregistrerOriginal` lève si la signature est refusée, si le fichier
+      // arrive vide, ou si la photothèque refuse. On n'arrive ici qu'une fois le fichier dedans.
+      setFait(true);
+    } catch (e) {
+      setSouci((e as Error)?.message ?? "Enregistrement impossible.");
+    } finally {
+      setEnCours(false);
+    }
+  }, [photo]);
+
+  return (
+    <View style={s.pleinBarre}>
+      {photo.chemin ? (
+        fait ? (
+          <View style={s.ok}>
+            <Text style={s.okTexte}>
+              Enregistrée dans votre photothèque{photo.nomFichier ? ` : ${photo.nomFichier}` : ""}.
+            </Text>
+          </View>
+        ) : (
+          <Bouton
+            titre={photo.octets ? `Enregistrer l'original (${poids(photo.octets)})` : "Enregistrer l'original"}
+            onPress={enregistrer}
+            enCours={enCours}
+            icone={<Ionicons name="download-outline" size={16} color="#fff" />}
+          />
+        )
+      ) : (
+        // Une photo sans fichier original : ça existe, et un bouton qui échouerait à coup sûr serait
+        // la promesse cassée de la règle 5.
+        <Text style={s.explication}>
+          Cette photo n'a pas de fichier original enregistré. Signalez-le à la production.
+        </Text>
+      )}
+      <Erreur message={souci} />
+      <Bouton titre="Fermer" onPress={surFermer} secondaire />
+    </View>
   );
 }
 
@@ -881,4 +1591,41 @@ const s = StyleSheet.create({
     // Le fond de la marque, opaque a 95 % : la photo se lit sans que l'ecran change de couleur.
     backgroundColor: C.fond + "F2", padding: E.m,
   },
+  // Le fond qui ferme, sous la photo et sous les boutons.
+  pleinFond: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
+  pleinBarre: { alignSelf: "stretch", gap: E.s, marginTop: E.m },
+
+  // ── Le tri par club et par equipe (01/10/2026) ──
+  groupe: {
+    flexDirection: "row", alignItems: "center", gap: E.s,
+    // La rangee entiere est la cible : on ouvre un groupe avec le pouce, pas avec le chevron.
+    minHeight: TOUCHE, paddingHorizontal: E.m, paddingVertical: E.xs,
+    borderRadius: R.m, backgroundColor: C.surfaceHaute, borderWidth: 1, borderColor: C.bordure,
+  },
+  groupeNom: { color: C.texte, fontFamily: P.titreFort, fontSize: 14.5 },
+  groupeDetail: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12 },
+
+  // ── Les ventes ──
+  tuiles: { flexDirection: "row", flexWrap: "wrap", gap: E.s },
+  tuile: {
+    // Deux par ligne sur 402 points : quatre cases cote a cote tronquent « Chiffre d'affaires ».
+    flexGrow: 1, flexBasis: "46%", gap: 3,
+    padding: E.m, borderRadius: R.m,
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
+  },
+  tuileTitre: {
+    color: C.texteFaible, fontFamily: P.texteFort, fontSize: T.etiquette,
+    textTransform: "uppercase", letterSpacing: 0.6,
+  },
+  tuileValeur: { color: C.texte, fontFamily: P.titre, fontSize: 21, letterSpacing: -0.4 },
+  tuileSous: { color: C.texteFaible, fontFamily: P.texte, fontSize: 11.5 },
+  ligneVente: {
+    flexDirection: "row", alignItems: "center", gap: E.s,
+    minHeight: TOUCHE, paddingVertical: E.xs, paddingHorizontal: E.m,
+    borderRadius: R.m, backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
+  },
+  venteNom: { color: C.texte, fontFamily: P.texteFort, fontSize: 13.5 },
+  venteDetail: { color: C.texteFaible, fontFamily: P.texte, fontSize: 12, lineHeight: 17 },
+  venteMontant: { color: C.texteDoux, fontFamily: P.titreFort, fontSize: 14 },
+
 });

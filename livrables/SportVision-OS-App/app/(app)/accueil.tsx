@@ -544,11 +544,25 @@ function AccueilProduction() {
               <View style={{ gap: E.s }}>
                 {visibles.map((b) => (
                   <View key={b.cle} style={s.carte}>
-                    <View style={s.ligne}>
-                      <View style={{ flex: 1, gap: 3 }}>
-                        <Text style={s.nom} numberOfLines={1}>{b.qui}</Text>
-                        {b.quand ? <Text style={s.detail}>{dateLongue(b.quand)}</Text> : null}
-                      </View>
+                    {/* LE NOM DU CLUB ÉTAIT COUPÉ PAR LA PASTILLE (01/10/2026, vu à l'écran).
+                        « RCP Fontai… » : la pastille « Correction en attente de l'opérateur »
+                        mesure 230 points sur les 354 d'une carte, et le nom n'avait plus que de
+                        quoi écrire sept lettres. Un nom de club tronqué, c'est la seule
+                        information de la carte qui devient inutilisable : on ne sait plus de
+                        quelle mission on parle.
+
+                        LA PASTILLE PASSE SOUS LE NOM, TOUJOURS, ET PAS SEULEMENT QUAND ELLE EST
+                        LONGUE. Essayé d'abord avec `flexWrap` pour ne la faire descendre qu'au
+                        besoin : la carte ne reprenait pas la hauteur de la seconde ligne et la
+                        pastille débordait PAR-DESSUS la carte suivante (vu à l'écran). Une
+                        disposition qui dépend de la longueur d'un libellé est de toute façon une
+                        disposition qui se cassera au prochain motif ajouté. Une colonne, elle, ne
+                        peut pas tronquer. */}
+                    <View style={{ gap: 3 }}>
+                      <Text style={s.nom} numberOfLines={2}>{b.qui}</Text>
+                      {b.quand ? <Text style={s.detail}>{dateLongue(b.quand)}</Text> : null}
+                    </View>
+                    <View style={s.motif}>
                       <Pastille ton={b.ton} texte={b.motif} />
                     </View>
                     {b.detail ? <Text style={s.manque}>{b.detail}</Text> : null}
@@ -653,6 +667,8 @@ const s = StyleSheet.create({
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.bordure,
   },
   ligne: { flexDirection: "row", alignItems: "flex-start", gap: E.s },
+  // La pastille de motif, sous le nom : voir le commentaire de « À traiter ».
+  motif: { alignSelf: "flex-start" },
   nom: { color: C.texte, fontFamily: P.titreFort, fontSize: 16 },
   detail: { flex: 1, color: C.texteDoux, fontFamily: P.texte, fontSize: 13.5, lineHeight: 19 },
   operateurs: { color: C.texteDoux, fontFamily: P.texteMoyen, fontSize: 13 },

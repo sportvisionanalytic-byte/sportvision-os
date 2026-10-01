@@ -106,7 +106,14 @@ function Cockpit() {
               <View style={s.ligne}>
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={s.nom} numberOfLines={1}>{m.client ?? "Sans client"}</Text>
-                  <Text style={s.detail} numberOfLines={1}>
+                  {/* DEUX LIGNES, PARCE QUE LE LIEU EST TOUJOURS LE DERNIER (01/10/2026, vu à
+                      l'écran). Sur une seule ligne, « samedi 12 septembre · 09h30 · Stade Claude
+                      Ripert Villemomble » s'arrêtait à « Stade Cl… » : la date et l'heure tiennent,
+                      le lieu jamais. Or c'est le lieu que la production vérifie quand elle cherche
+                      où quelqu'un doit aller. Les noms de stade de la base vont jusqu'à 48
+                      caractères (« Centre omnisport universitaire Carole Vergne ») : deux lignes
+                      les portent, une seule ne le pourra jamais. */}
+                  <Text style={s.detail} numberOfLines={2}>
                     {[m.date ? dateLongue(m.date) : null, heureCourte(m.heureDebut), m.lieu]
                       .filter(Boolean).join(" · ")}
                   </Text>

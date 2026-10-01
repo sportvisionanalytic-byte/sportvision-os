@@ -5,8 +5,13 @@
 // ici. Le raisonnement complet est dans l'en-tête de `_layout.tsx` ; ce fichier n'en est que la
 // conséquence, et il ne décide rien de son côté.
 //
-// AUCUN FORMULAIRE, ET C'EST INCHANGÉ. Tout ce qui se règle se règle dans l'OS : dupliquer un
-// formulaire ici en ferait deux à tenir à jour, et deux copies d'une règle finissent par diverger.
+// CET ÉCRAN RESTE SANS FORMULAIRE, MAIS IL EN OUVRE UN (01/10/2026). Fouka : « quand je vais dans
+// mon profil, je peux même pas modifier mon profil, je peux même pas modifier mes informations.
+// Ajouter une photo de profil. » La règle qui était écrite ici — dupliquer un formulaire en ferait
+// deux à tenir à jour — n'était pas fausse, elle était appliquée au mauvais endroit : elle interdit
+// d'INVENTER des champs, pas d'offrir ceux de l'OS. « Mon profil » est donc un écran à part,
+// `mon-profil.tsx`, qui porte exactement les champs de l'écran « Mon profil » de l'OS, dans son
+// ordre et avec ses mots. Celui-ci reste une porte.
 //
 // LES ENTRÉES DÉPENDENT DU MÉTIER, PAS DE CE QUE LA BASE ACCEPTERA. « Mon planning » n'apparaît
 // que pour la production, parce que c'est le seul métier pour qui il n'est pas déjà un onglet. Les
@@ -31,16 +36,35 @@ export default function Profil() {
 
   return (
     <Ecran teinte="violet">
-      <View style={s.entete}>
-        <Ecusson nom={nom || "Moi"} taille={52} />
+      {/* L'EN-TÊTE OUVRE « MON PROFIL », ET C'EST LE GESTE QU'ON FAIT SPONTANÉMENT. Toucher sa
+          propre photo pour la changer est la convention de toutes les applications ; l'entrée de
+          liste juste dessous existe quand même, parce qu'une zone cliquable sans flèche ni libellé
+          ne se devine pas. */}
+      <Pressable
+        onPress={() => router.push("/mon-profil" as never)}
+        accessibilityRole="button"
+        accessibilityLabel="Modifier mon profil"
+        style={({ pressed }) => [s.entete, pressed ? { opacity: 0.8 } : null]}
+      >
+        <Ecusson nom={nom || "Moi"} taille={52} photo={moi?.avatarUrl} />
         <View style={{ flex: 1, gap: 3 }}>
           <Text style={s.titre} numberOfLines={1}>{nom || "Mon compte"}</Text>
           <Text style={s.sous} numberOfLines={1}>{moi?.metier ?? "SportVision"}</Text>
         </View>
-      </View>
+        <Ionicons name="chevron-forward" size={16} color={C.texteFaible} />
+      </Pressable>
 
       <Section titre="Mes écrans">
         <View style={s.bloc}>
+          {/* EN PREMIER, PARCE QUE C'EST CE QU'ON VIENT CHERCHER ICI. Les cinq autres entrées sont
+              des écrans de travail ; celle-ci est la raison pour laquelle on touche « Mon
+              espace » quand on ne cherche pas une mission. */}
+          <Acces
+            chemin="/mon-profil"
+            icone="person-circle-outline"
+            titre="Mon profil"
+            sous="Ma photo, mes coordonnées, mes infos pratiques"
+          />
           {/* Le planning n'est ici QUE pour la production : pour tous les autres métiers, c'est
               déjà le troisième onglet de la barre. Deux chemins vers le même écran, dont un
               masqué, c'est un doute sur lequel est le vrai. */}

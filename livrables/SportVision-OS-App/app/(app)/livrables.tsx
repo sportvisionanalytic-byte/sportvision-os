@@ -74,7 +74,18 @@ type Ouvert =
 
 export default function MesLivrables() {
   const { moi } = useSession();
-  const [liste, setListe] = useState("corrections");
+  // L'ÉCRAN S'OUVRAIT SUR UNE LISTE VIDE (01/10/2026, vu à l'écran).
+  //
+  // Mesuré avec le compte d'un opérateur réel : « Corrections 0 », « À déposer 1 », « Validés 8 ».
+  // L'onglet de départ était « Corrections » quoi qu'il arrive, donc l'écran s'ouvrait sur
+  // « Aucune correction demandée » alors qu'une mission attendait son lien, deux onglets plus
+  // loin. C'est exactement le « ça fonctionne pas bien » : l'écran n'est pas cassé, il montre le
+  // seul endroit où il n'y a rien.
+  //
+  // `null` veut dire « je n'ai pas encore choisi ». Dès que la personne touche un onglet, son
+  // choix gagne et ne bouge plus — un écran qui se redéplace sous le doigt à chaque relecture
+  // serait pire que le défaut qu'on corrige.
+  const [liste, setListe] = useState<string | null>(null);
   const [ouvert, setOuvert] = useState<Ouvert>(null);
   const [souci, setSouci] = useState<string | null>(null);
 
@@ -137,6 +148,17 @@ export default function MesLivrables() {
   );
   const sansSauvegarde = useMemo(() => liens.filter((l) => !l.transfertConfirme).length, [liens]);
 
+  // L'ordre est celui de l'urgence, pas celui des onglets : une correction bloque une mission, une
+  // mission sans lien ne peut pas être payée, le reste se consulte.
+  const listeActive = liste ?? (
+    corrections.length ? "corrections"
+    : aDeposer.length ? "a_deposer"
+    : aVerifier.length ? "a_verifier"
+    : valides.length ? "valides"
+    : autres.length ? "autres"
+    : "corrections"
+  );
+
   const sous = chargement
     ? "Chargement"
     : [
@@ -182,11 +204,11 @@ export default function MesLivrables() {
               { cle: "valides", libelle: "Validés", n: valides.length },
               { cle: "autres", libelle: "Autres états", n: autres.length },
             ]}
-            actif={liste}
+            actif={listeActive}
             surChoix={(c) => { setListe(c); setOuvert(null); setSouci(null); }}
           />
 
-          {liste === "corrections" ? (
+          {listeActive === "corrections" ? (
             corrections.length ? (
               <View style={{ gap: E.s }}>
                 {corrections.map((l) => (
@@ -211,7 +233,7 @@ export default function MesLivrables() {
                 }
               />
             )
-          ) : liste === "a_deposer" ? (
+          ) : listeActive === "a_deposer" ? (
             aDeposer.length ? (
               <View style={{ gap: E.s }}>
                 {aDeposer.map((m) => (
@@ -235,7 +257,7 @@ export default function MesLivrables() {
                 }
               />
             )
-          ) : liste === "a_verifier" ? (
+          ) : listeActive === "a_verifier" ? (
             <ListeLiens
               liens={aVerifier}
               missions={missions}
@@ -249,7 +271,7 @@ export default function MesLivrables() {
                 + "compte comme « à vérifier », exactement comme en base."
               }
             />
-          ) : liste === "valides" ? (
+          ) : listeActive === "valides" ? (
             <ListeLiens
               liens={valides}
               missions={missions}

@@ -113,6 +113,40 @@
 //
 // LE TELEPHONE S'ARRETE DONC A LA GALERIE. Il la cree, la nomme, la rattache. Les photos montent
 // depuis le Mac, et l'ecran le dit au lieu de le laisser deviner.
+// == CE QUE LE 01/10/2026 (APRES-MIDI) A AJOUTE : LE CLUB, L'EQUIPE, ET LES ORIGINAUX ===========
+//
+// Fouka, ce matin : « Dans galerie photo, c'est encore trop brouillon. C'est pas trie par equipe,
+// par club. Je peux pas voir les statistiques, les galeries vendues sur l'app. Je peux meme pas
+// telecharger les photos. »
+//
+// LE NOM DU CLUB EST DESORMAIS DEMANDE, ET LE COMMENTAIRE CI-DESSUS QUI DISAIT LE CONTRAIRE ETAIT
+// JUSTE POUR SA RAISON, PAS POUR SA CONCLUSION. Mesure refaite : un profil `photo` voit 0 club sur
+// 2, un `prod` en voit 2. Ne pas embarquer `clubs(nom)` evitait bien « un ecran garni pour la
+// production et un tiret pour l'operateur » — mais sans club, il n'y a AUCUN tri par club, et c'est
+// le premier reproche de Fouka. On embarque donc, et on donne a l'operateur une source qu'il a le
+// droit de lire :
+//
+//   1. `clubs(nom)` quand la RLS l'ouvre (production, administration) ;
+//   2. sinon `prestations.clients(nom)`, par la mission. Mesure par le chemin reel : Antoine (photo)
+//      lit 2 lignes de `clients`, « RCP Fontainebleau » et « SF Villemomble » — les MEMES noms que
+//      `clubs.nom`. Et ses galeries sont, par construction, celles de ses missions : le nom est donc
+//      la ou il peut le lire ;
+//   3. sinon `structure_externe`, qui nomme une structure non cliente (un tournoi, un club adverse) ;
+//   4. sinon rien, et le groupe s'appelle « Sans club » — le mot de l'OS, pas une invention.
+//
+// Un embarquement que la RLS refuse rend NULL, il ne leve pas : verifie en HTTP avec un vrai jeton,
+// 57 lignes, 21 avec `clubs.nom`, 16 avec `club_teams.name`, 0 avec `prestations` (mission_id NULL
+// partout). C'est ce qui rend ce repli en cascade possible sans deuxieme requete.
+//
+// LE TAUX DE REMPLISSAGE COMMANDE LE DESSIN, et il est mesure : sur 57 galeries, 21 ont un club
+// (15 RCP Fontainebleau, 6 SF Villemomble) et 36 n'en ont pas ; 16 ont une equipe, 27 une structure
+// externe, et 24 n'ont NI club NI structure. Un tri par club qui laisserait 36 galeries hors des
+// groupes ne trierait rien : « Sans club » est donc un groupe a part entiere, le plus gros.
+//
+// L'ORIGINAL N'EST PAS DANS LA MEME COLONNE QUE L'APERCU, et il n'est meme pas toujours chez
+// Supabase : 5 117 originaux sur 7 784 sont sur Cloudflare R2. `lirePhotosGalerie` rend donc
+// desormais, en plus de l'apercu, de quoi aller chercher le fichier source. La mecanique vit dans
+// `os-telechargement.ts` ; ici on ne fait que rapporter ce que la base dit.
 import { supabase } from "./supabase";
 import { SUPABASE_URL } from "./config";
 
@@ -149,6 +183,14 @@ export interface Galerie {
   missionId: string | null;
   /** Le club, sans lequel aucune équipe ne peut être proposée : une équipe appartient à un club. */
   clubId: string | null;
+  /**
+   * Le nom du club, ou du client de la mission, ou de la structure externe. `null` quand la galerie
+   * n'est rattachée à rien : 24 galeries sur 57 sont dans ce cas, et c'est un cas NORMAL (un
+   * tournoi, une académie). Cf. la cascade décrite en tête de fichier.
+   */
+  clubNom: string | null;
+  /** Le nom de l'équipe rattachée (`club_teams.name`). 16 galeries sur 57 en portent une. */
+  equipeNom: string | null;
   /** L'équipe principale, celle que `creer_galeries_mission` écrit. */
   equipeId: string | null;
   /**
@@ -176,7 +218,8 @@ export async function lireMesGaleries(): Promise<Galerie[]> {
     // `media_albums` et `media_assets` sont liées DEUX FOIS (album_id, et cover_asset_id) : sans
     // lui, PostgREST répond 300 et demande de choisir.
     .select(`id, title, event_date, status, photo_count, structure_externe, mission_id, club_id,
-             team_id, team_ids, club_teams ( name ), prestations ( reference ),
+             team_id, team_ids, club_teams ( name ), clubs ( nom ),
+             prestations ( reference, clients ( nom ) ),
              prets:media_assets!media_assets_album_id_fkey ( count )`)
     // Le même filtre que l'écran d'une galerie : 6 photos sont en `failed` et 1 en `hidden`, et ce
     // sont exactement les 7 qui n'ont ni aperçu ni vignette. Vérifié : sur la galerie qui porte 4
@@ -195,7 +238,8 @@ export async function lireMesGaleries(): Promise<Galerie[]> {
     mission_id: string | null; club_id: string | null; team_id: string | null;
     team_ids: string[] | null;
     club_teams: { name: string | null } | null;
-    prestations: { reference: string | null } | null;
+    clubs: { nom: string | null } | null;
+    prestations: { reference: string | null; clients: { nom: string | null } | null } | null;
     /** PostgREST rend l'agrégat dans un tableau d'un seul objet, même pour un `count`. */
     prets: { count: number }[] | null;
   };
@@ -216,6 +260,15 @@ export async function lireMesGaleries(): Promise<Galerie[]> {
     reference: r.prestations?.reference ?? null,
     missionId: r.mission_id ?? null,
     clubId: r.club_id ?? null,
+    // DEUX SOURCES, ET PAS TROIS. `clubs.nom` d'abord, le nom officiel du club partenaire ; le
+    // client de la mission ensuite, parce que c'est le seul nom qu'un opérateur a le droit de lire.
+    // `structure_externe` N'ENTRE PAS ICI : mesuré, elle vaut « RCPF U16A », « U14 A RCPF »,
+    // « Melun Sénior » — c'est un nom d'ÉQUIPE ou de sélection, pas un nom de club, et 4 galeries
+    // la portent EN MÊME TEMPS qu'un club SportVision. La mettre dans le nom du club aurait
+    // fabriqué des groupes « RCPF U16A » et « RCP Fontainebleau » côte à côte pour le même club.
+    // Elle reste dans `categorie`, qui est justement le champ de l'équipe ou de la structure.
+    clubNom: (r.clubs?.nom ?? r.prestations?.clients?.nom ?? "").trim() || null,
+    equipeNom: (r.club_teams?.name ?? "").trim() || null,
     equipeId: r.team_id ?? null,
     equipesEnPlus: Array.isArray(r.team_ids) ? r.team_ids.map(String) : [],
   }));
@@ -228,6 +281,19 @@ export interface PhotoGalerie {
   net: boolean;
   /** Le rapport largeur/hauteur, pour que l'agrandissement ne déforme pas. */
   ratio: number;
+  /**
+   * OÙ VIT L'ORIGINAL, ET SOUS QUEL NOM (01/10/2026).
+   *
+   * `storage_bucket` vaut « r2 » sur 5 117 photos et « sportvision-media-prive » sur 2 667 : ce
+   * n'est PAS l'emplacement de l'aperçu (qui est toujours public, cf. l'en-tête), c'est celui de
+   * l'ORIGINAL, et les deux ne se signent pas de la même façon. `os-telechargement.ts` tranche.
+   */
+  seau: string | null;
+  chemin: string | null;
+  /** Le nom du fichier du reflex. C'est celui que l'opérateur reconnaît : « 114-DSC09819.jpg ». */
+  nomFichier: string | null;
+  /** Le poids réel de l'original, pour annoncer un lot avant de le lancer. */
+  octets: number | null;
 }
 
 export interface PagePhotos {
@@ -251,7 +317,11 @@ export async function lirePhotosGalerie(albumId: string, page = 0, parPage = 60)
   const debut = page * parPage;
   const { data, error, count } = await supabase
     .from("media_assets")
-    .select("id, thumb_path, preview_path, preview_clair_path, width, height", { count: "exact" })
+    .select(
+      `id, thumb_path, preview_path, preview_clair_path, width, height,
+       storage_bucket, original_path, original_filename, bytes`,
+      { count: "exact" },
+    )
     .eq("album_id", albumId)
     .eq("status", "ready")
     // Le même ordre que la base sert au club et aux familles : la position voulue par qui a versé
@@ -266,6 +336,8 @@ export async function lirePhotosGalerie(albumId: string, page = 0, parPage = 60)
   type Ligne = {
     id: string; thumb_path: string | null; preview_path: string | null;
     preview_clair_path: string | null; width: number | null; height: number | null;
+    storage_bucket: string | null; original_path: string | null;
+    original_filename: string | null; bytes: number | null;
   };
   const lignes = (data ?? []) as unknown as Ligne[];
 
@@ -298,10 +370,78 @@ export async function lirePhotosGalerie(albumId: string, page = 0, parPage = 60)
       // Les photos réelles sont en 4000×6000 : sans ce garde-fou, une largeur manquante donnerait
       // une division par zéro et une case de hauteur infinie.
       ratio: l > 0 && h > 0 ? l / h : 1,
+      seau: r.storage_bucket ?? null,
+      chemin: r.original_path ?? null,
+      nomFichier: r.original_filename ?? null,
+      octets: typeof r.bytes === "number" ? r.bytes : null,
     });
   }
 
   return { photos, total: typeof count === "number" ? count : photos.length };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+//  TOUS LES ORIGINAUX D'UNE GALERIE, POUR UN TÉLÉCHARGEMENT EN LOT (01/10/2026)
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * La liste complète des originaux d'une galerie, sans les aperçus.
+ *
+ * POURQUOI PAS `lirePhotosGalerie` : elle pagine par 60 et signe soixante aperçus nets au passage.
+ * Un lot porte sur TOUTE la galerie — jusqu'à 431 photos — et n'a besoin d'aucun aperçu. Demander
+ * les aperçus pour télécharger les originaux, c'est huit appels de signature pour rien.
+ *
+ * ON PAGINE QUAND MÊME, par mille : PostgREST plafonne ses réponses, et une galerie de 431 photos
+ * passe en un seul aller-retour là où l'écran en fait huit. Le plafond de sécurité à 5 000 existe
+ * parce qu'une boucle sans borne sur une réponse mal formée tournerait indéfiniment.
+ *
+ * L'ORDRE EST CELUI DE LA GRILLE, et ce n'est pas cosmétique : un lot qui s'arrête au bout de
+ * quarante photos doit s'être arrêté aux quarante PREMIÈRES de la galerie, celles qu'on a sous les
+ * yeux, pas à quarante photos au hasard.
+ */
+export async function lireOriginauxGalerie(albumId: string): Promise<PhotoGalerie[]> {
+  const parPage = 1000;
+  const tout: PhotoGalerie[] = [];
+  for (let page = 0; page < 5; page += 1) {
+    const debut = page * parPage;
+    const { data, error } = await supabase
+      .from("media_assets")
+      .select("id, storage_bucket, original_path, original_filename, bytes, width, height")
+      .eq("album_id", albumId)
+      .eq("status", "ready")
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(debut, debut + parPage - 1);
+    if (error) throw error;
+
+    type Ligne = {
+      id: string; storage_bucket: string | null; original_path: string | null;
+      original_filename: string | null; bytes: number | null;
+      width: number | null; height: number | null;
+    };
+    const lignes = (data ?? []) as unknown as Ligne[];
+    for (const r of lignes) {
+      // SANS CHEMIN, IL N'Y A RIEN À TÉLÉCHARGER. La compter dans le lot donnerait un total
+      // annoncé plus grand que le nombre de fichiers réellement enregistrables : le compteur
+      // finirait à « 429 sur 431 » sans que rien n'ait échoué, et on chercherait la panne.
+      if (!r.original_path) continue;
+      const l = r.width ?? 0;
+      const h = r.height ?? 0;
+      tout.push({
+        id: String(r.id),
+        url: "",
+        net: false,
+        ratio: l > 0 && h > 0 ? l / h : 1,
+        seau: r.storage_bucket ?? null,
+        chemin: r.original_path,
+        nomFichier: r.original_filename ?? null,
+        octets: typeof r.bytes === "number" ? r.bytes : null,
+      });
+    }
+    if (lignes.length < parPage) break;
+  }
+  return tout;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════

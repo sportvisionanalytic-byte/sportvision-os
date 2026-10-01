@@ -23,15 +23,22 @@
 // « Masquée » ce qui n'est pas `actif`. Mesuré avec le jeton d'Antoine (opérateur) : 12 fiches
 // visibles sur 12. La colonne `publie` ne sert donc plus à rien, et l'écran ne s'en sert pas.
 //
-// LE RÈGLEMENT : L'ÉTAT, PAS LE TEXTE, ET PAS DE BOUTON « ACCEPTER ». C'est le choix le plus
-// discutable de cet écran, donc il est motivé ici. La base accepterait l'écriture
-// (`validations_own` permet à chacun d'insérer sa propre validation), et le bouton marcherait. Mais
-// le texte des neuf chapitres n'est pas en base : il faudrait en garder une copie dans
-// l'application. Or ce texte est celui qu'on ACCEPTE — sanctions, exclusion, confidentialité, et
-// une version figée à « 1.0 ». Une copie qui dérive, c'est quelqu'un qui accepte un texte qui n'est
-// plus celui en vigueur, sans le savoir. On affiche donc où chacun en est, on nomme les chapitres
-// avec les mots de l'OS, et on dit où se lit et s'accepte le texte. Une case cochée sur un texte
-// qu'on ne peut pas lire n'est pas un consentement.
+// LE RÈGLEMENT SE LIT ET S'ACCEPTE ICI, DEPUIS LE 01/10/2026. La version du 30/09 de ce fichier
+// n'affichait QUE l'état des neuf chapitres, sans leur texte et sans bouton « Accepter », et elle
+// expliquait pourquoi : « le texte des neuf chapitres n'est pas en base : il faudrait en garder une
+// copie dans l'application. Or ce texte est celui qu'on ACCEPTE. Une copie qui dérive, c'est
+// quelqu'un qui accepte un texte qui n'est plus celui en vigueur, sans le savoir. »
+//
+// Le raisonnement était bon, la conclusion a changé parce que la base a changé. La migration v381
+// met le règlement en base : `centre_reglement_chapitres` (9 lignes, avec leur VERSION en vigueur)
+// et `centre_reglement_sections` (27 sections, 116 points). Il n'y a plus de copie : l'application
+// affiche le texte de la base, et renvoie à l'acceptation la version qu'elle a affichée.
+//
+// ET C'EST LA BASE QUI REFUSE UNE VERSION DÉPASSÉE, PAS L'ÉCRAN. Le déclencheur
+// `centre_validation_version_en_vigueur` de la v381 lève « Version dépassée : vous acceptez la
+// version 0.9 du chapitre « comportement », or la version en vigueur est la 1.0 » — vérifié par le
+// chemin réel. L'écran n'a donc aucune règle de version à tenir : il envoie ce qu'il a montré, et
+// si le texte a été republié entre-temps, le refus vient de la base avec son propre message.
 import { supabase } from "./supabase";
 
 // ── LES RESSOURCES ────────────────────────────────────────────────────────────────────────────
@@ -50,25 +57,31 @@ export interface Ressource {
 
 // ── LE RÈGLEMENT ──────────────────────────────────────────────────────────────────────────────
 //
-// Les neuf chapitres de `SV_REGLEMENT`, leurs identifiants et leurs titres, mot pour mot. Rien
-// d'autre : pas une ligne de leur contenu. Les identifiants sont ceux que `centre_validations`
-// enregistre — vérifié : les 9 `chapitre_id` distincts en base sont exactement ceux-là.
-const CHAPITRES: { id: string; titre: string }[] = [
-  { id: "comportement", titre: "Chapitre 1 — Respect et comportement" },
-  { id: "ponctualite", titre: "Chapitre 2 — Ponctualité" },
-  { id: "disponibilites", titre: "Chapitre 3 — Disponibilités et absences" },
-  { id: "tenue", titre: "Chapitre 4 — Tenue et présentation" },
-  { id: "clients", titre: "Chapitre 5 — Relation avec les clients" },
-  { id: "confidentialite", titre: "Chapitre 6 — Confidentialité et propriété" },
-  { id: "materiel", titre: "Chapitre 7 — Matériel et kits" },
-  { id: "communication", titre: "Chapitre 8 — Communication interne" },
-  { id: "sanctions", titre: "Chapitre 9 — Sanctions & Pénalités" },
-];
+// PLUS AUCUN CONTENU ICI. Les neuf chapitres, leurs titres, leurs sections et leurs 116 points
+// viennent de `centre_reglement_chapitres` et `centre_reglement_sections` (v381). Les identifiants
+// sont ceux que `centre_validations` enregistre déjà sur 81 lignes.
+
+export interface Section {
+  id: string;
+  titre: string;
+  /** Les puces, dans l'ordre de la base. */
+  points: string[];
+}
 
 export interface Chapitre {
   id: string;
+  /** Le numéro, séparé du titre en base : l'écran écrit « Chapitre 1 » sans tiret long. */
+  numero: number;
   titre: string;
+  icone: string | null;
+  /** La version EN VIGUEUR. C'est elle qu'on renvoie en acceptant, jamais une valeur en dur. */
+  version: string;
+  sections: Section[];
   accepte: boolean;
+  /** La version que j'ai acceptée, quand ce n'est pas celle en vigueur. */
+  versionAcceptee: string | null;
+  /** Vrai quand j'ai accepté une version ANTÉRIEURE : à relire et à réaccepter. */
+  aRelire: boolean;
 }
 
 // ── QUI CONTACTER ─────────────────────────────────────────────────────────────────────────────
@@ -115,6 +128,8 @@ export interface Centre {
   ressources: Ressource[];
   chapitres: Chapitre[];
   chapitresAcceptes: number;
+  /** Combien de chapitres j'ai acceptés dans une version qui n'est plus en vigueur. */
+  chapitresARelire: number;
   contacts: Contact[];
 }
 
@@ -127,14 +142,22 @@ export interface Centre {
  * quelques-uns. La base a raison de les lui montrer ailleurs, pas sur son écran à elle.
  */
 export async function lireCentre(moiId: string): Promise<Centre> {
-  const [ressources, validations, equipe] = await Promise.all([
+  const [ressources, chapitresBase, sectionsBase, validations, equipe] = await Promise.all([
     supabase
       .from("centre_ressources")
       .select("id, type, titre, description, contenu, url, icone, actif, ordre")
       .order("ordre", { ascending: true, nullsFirst: false }),
     supabase
+      .from("centre_reglement_chapitres")
+      .select("id, numero, titre, icone, version, ordre")
+      .order("ordre", { ascending: true }),
+    supabase
+      .from("centre_reglement_sections")
+      .select("id, chapitre_id, ordre, titre, points")
+      .order("ordre", { ascending: true }),
+    supabase
       .from("centre_validations")
-      .select("chapitre_id")
+      .select("chapitre_id, version")
       .eq("collaborateur_id", moiId)
       .eq("type", "accepte"),
     supabase
@@ -143,7 +166,7 @@ export async function lireCentre(moiId: string): Promise<Centre> {
       .order("prenom", { ascending: true }),
   ]);
 
-  for (const r of [ressources, validations, equipe]) if (r.error) throw r.error;
+  for (const r of [ressources, chapitresBase, sectionsBase, validations, equipe]) if (r.error) throw r.error;
 
   type LigneRessource = {
     id: string; type: string | null; titre: string; description: string | null;
@@ -160,12 +183,44 @@ export async function lireCentre(moiId: string): Promise<Centre> {
     actif: r.actif !== false,
   }));
 
-  const acceptes = new Set(
-    ((validations.data ?? []) as unknown as { chapitre_id: string | null }[])
-      .map((v) => v.chapitre_id)
-      .filter((x): x is string => !!x),
-  );
-  const chapitres: Chapitre[] = CHAPITRES.map((c) => ({ ...c, accepte: acceptes.has(c.id) }));
+  // ON GARDE LA VERSION ACCEPTÉE, PAS SEULEMENT LE FAIT DE L'AVOIR ACCEPTÉ. Une personne peut avoir
+  // accepté la 1.0 d'un chapitre republié depuis en 1.1 : la base garde les deux lignes, et ce
+  // n'est pas la même chose que « accepté ». Sans cette nuance, un chapitre republié s'afficherait
+  // coché et personne ne relirait le nouveau texte.
+  const acceptees = new Map<string, string[]>();
+  for (const v of (validations.data ?? []) as unknown as { chapitre_id: string | null; version: string | null }[]) {
+    if (!v.chapitre_id) continue;
+    const liste = acceptees.get(v.chapitre_id) ?? [];
+    if (v.version) liste.push(v.version);
+    acceptees.set(v.chapitre_id, liste);
+  }
+
+  type LigneSection = { id: string; chapitre_id: string; ordre: number; titre: string; points: string[] | null };
+  const parChapitre = new Map<string, Section[]>();
+  for (const x of (sectionsBase.data ?? []) as unknown as LigneSection[]) {
+    const liste = parChapitre.get(String(x.chapitre_id)) ?? [];
+    liste.push({ id: String(x.id), titre: x.titre, points: (x.points ?? []).map((p) => String(p)) });
+    parChapitre.set(String(x.chapitre_id), liste);
+  }
+
+  type LigneChapitre = {
+    id: string; numero: number; titre: string; icone: string | null; version: string; ordre: number;
+  };
+  const chapitres: Chapitre[] = ((chapitresBase.data ?? []) as unknown as LigneChapitre[]).map((c) => {
+    const versions = acceptees.get(String(c.id)) ?? [];
+    const enVigueur = versions.includes(c.version);
+    return {
+      id: String(c.id),
+      numero: Number(c.numero),
+      titre: c.titre,
+      icone: (c.icone ?? "").trim() || null,
+      version: String(c.version),
+      sections: parChapitre.get(String(c.id)) ?? [],
+      accepte: enVigueur,
+      versionAcceptee: enVigueur ? c.version : (versions.length ? versions[versions.length - 1] : null),
+      aRelire: !enVigueur && versions.length > 0,
+    };
+  });
 
   type LigneProfil = {
     id: string; prenom: string | null; nom: string | null; role: string | null;
@@ -193,8 +248,44 @@ export async function lireCentre(moiId: string): Promise<Centre> {
     ressources: fiches,
     chapitres,
     chapitresAcceptes: chapitres.filter((c) => c.accepte).length,
+    chapitresARelire: chapitres.filter((c) => c.aRelire).length,
     contacts,
   };
+}
+
+/**
+ * Accepter un chapitre du règlement.
+ *
+ * ON ENVOIE LA VERSION QU'ON A AFFICHÉE, et c'est le point entier de ce geste. Le déclencheur
+ * `centre_validation_version_en_vigueur` (v381) refuse toute autre version, avec un message qui dit
+ * quoi faire : « Version dépassée […] Rechargez le règlement pour lire le texte à jour. » On relaie
+ * ce message tel quel plutôt que d'en écrire un autre : c'est la base qui sait ce qui est en
+ * vigueur, et son texte est déjà juste.
+ *
+ * `.select("id")` ET ON LÈVE SI LE TABLEAU EST VIDE (règle 4). `validations_own` n'autorise que sa
+ * propre ligne, et PostgREST rendrait zéro ligne sans erreur si elle refusait. Un « accepté » qui
+ * n'est pas en base, sur un règlement, c'est le pire des faux succès.
+ */
+export async function accepterChapitre(
+  moiId: string,
+  chapitreId: string,
+  version: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("centre_validations")
+    .insert({ collaborateur_id: moiId, chapitre_id: chapitreId, version, type: "accepte" })
+    .select("id");
+
+  // Déjà accepté dans cette version : l'index unique (collaborateur, chapitre, version) refuse, et
+  // l'état voulu est déjà celui-là. Un double appui n'est pas une faute.
+  if (error && error.code === "23505") return;
+  if (error) throw new Error(error.message);
+  if (!data || !data.length) {
+    throw new Error(
+      "Acceptation non enregistrée : la base a refusé l'écriture. " +
+      "Votre compte n'a peut-être plus accès à l'OS.",
+    );
+  }
 }
 
 /**
