@@ -22,11 +22,13 @@
 //     seulement qu'elle n'a pas ete confirmee. La formulation le dit, comme la fonction de rappel de
 //     la base le fait deja pour ses notifications.
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Probleme, Vide } from "../../../src/ui/Ecran";
 import { Pastille } from "../../../src/ui/Base";
 import { Barre } from "../../../src/ui/Barre";
+import { Ionicons } from "@expo/vector-icons";
 import { Ecusson } from "../../../src/ui/Ecusson";
+import { appeler } from "../../../src/lib/os-pilotage";
 import { EcranProd } from "./_layout";
 import { useDonnees } from "../../../src/lib/cache";
 import { dateDuJourParis, heureCourte, quand } from "../../../src/lib/dates";
@@ -211,10 +213,24 @@ function CartePersonne({
             {[
               c.role === "photo" ? "Opérateur terrain" : c.role === "cm" ? "Community manager" : c.role,
               c.niveau ? `niveau ${c.niveau}` : null,
-              // Le telephone est ce qu'on cherche quand une mission commence dans vingt minutes.
-              c.telephone,
             ].filter(Boolean).join(" · ")}
           </Text>
+          {/* LE NUMERO EST APPELABLE, et c'est la seule exception a la regle 2 du contrat : `tel:`
+              n'ouvre pas une page web dans un cadre, il passe la main au telephone. Un responsable
+              qui voit « personne sur place » a vingt minutes du coup d'envoi doit pouvoir appeler,
+              pas recopier dix chiffres. Le meme motif existe deja dans `terrain.tsx`. */}
+          {c.telephone ? (
+            <Pressable
+              onPress={() => void appeler(c.telephone)}
+              accessibilityRole="button"
+              accessibilityLabel={`Appeler ${c.nom || "cette personne"} au ${c.telephone}`}
+              hitSlop={8}
+              style={({ pressed }) => [s.appel, pressed ? { opacity: 0.7 } : null]}
+            >
+              <Ionicons name="call" size={14} color={C.accentClair} />
+              <Text style={s.appelTexte}>{c.telephone}</Text>
+            </Pressable>
+          ) : null}
         </View>
         <View style={{ alignItems: "flex-end", gap: 4 }}>
           <Pastille
@@ -248,6 +264,12 @@ function CartePersonne({
 }
 
 const s = StyleSheet.create({
+  appel: {
+    flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start",
+    minHeight: 32, paddingHorizontal: E.s, borderRadius: R.pill,
+    backgroundColor: "rgba(22,134,255,.10)", borderWidth: 1, borderColor: "rgba(22,134,255,.28)",
+  },
+  appelTexte: { color: C.accentClair, fontFamily: P.texteFort, fontSize: 13 },
   attente: { paddingVertical: E.xl * 2, alignItems: "center" },
   carte: {
     gap: E.s, padding: E.m, borderRadius: R.l,

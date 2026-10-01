@@ -22,9 +22,10 @@
 // freelance. Ce sont des decisions, pas des consultations. L'ecran les MONTRE ; le verdict reste
 // dans l'OS jusqu'a ce que Fouka tranche.
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Probleme, Vide } from "../../../src/ui/Ecran";
-import { Pastille } from "../../../src/ui/Base";
+import { Bouton, Champ, Erreur, Pastille } from "../../../src/ui/Base";
+import { demanderCorrection, validerLien } from "../../../src/lib/os-pilotage";
 import { Barre } from "../../../src/ui/Barre";
 import { EcranProd } from "./_layout";
 import { useDonnees } from "../../../src/lib/cache";
@@ -121,6 +122,7 @@ export default function EcranLivraisons() {
             "Les liens déposés par les opérateurs arrivent ici tant que la production ne les a pas " +
             "validés. Un lien sans état compte comme « à vérifier », exactement comme en base."
           }
+          surChangement={relire}
         />
       ) : liste === "corrections" ? (
         <ParMission
@@ -131,6 +133,7 @@ export default function EcranLivraisons() {
             "Quand la production demande une correction sur un lien, il se range ici avec le motif, " +
             "et la mission passe dans le groupe « Corrections » du cockpit."
           }
+          surChangement={relire}
         />
       ) : liste === "a_clore" ? (
         aClore.length ? (
@@ -194,8 +197,12 @@ export default function EcranLivraisons() {
 
 /** Les liens ranges sous leur mission : on ne lit jamais un lien sans savoir de quel match il parle. */
 function ParMission({
-  liens, missions, videTitre, videTexte,
-}: { liens: Lien[]; missions: MissionProd[]; videTitre: string; videTexte: string }) {
+  liens, missions, videTitre, videTexte, surChangement,
+}: {
+  liens: Lien[]; missions: MissionProd[]; videTitre: string; videTexte: string;
+  /** Relit la liste apres un verdict : la ligne doit quitter « A verifier » sous les yeux. */
+  surChangement: () => void;
+}) {
   const groupes = useMemo(() => {
     const m = new Map<string, Lien[]>();
     for (const l of liens) {
@@ -218,7 +225,7 @@ function ParMission({
               <Text style={s.nom}>Mission hors de votre pôle</Text>
             )}
             <View style={{ gap: E.xs }}>
-              {sesLiens.map((l) => <LigneLien key={l.id} l={l} />)}
+              {sesLiens.map((l) => <LigneLien key={l.id} l={l} surChangement={surChangement} />)}
             </View>
           </View>
         );
@@ -242,7 +249,41 @@ function EnteteMission({ m }: { m: MissionProd }) {
   );
 }
 
-function LigneLien({ l }: { l: Lien }) {
+/**
+ * UNE LIVRAISON, ET LE VERDICT QUI VA AVEC (01/10/2026).
+ *
+ * Cet ecran n'avait AUCUN element appuyable — mesure a l'audit : zero. Il annoncait « 8 liens a
+ * verifier » et la Production ne pouvait rien en faire depuis son telephone, pendant que l'ecran
+ * de l'operateur lui disait que sa mission restait bloquee tant qu'elle n'avait pas valide. On
+ * demandait a quelqu'un d'attendre un geste qu'on avait rendu impossible.
+ *
+ * LE MOTIF EST OBLIGATOIRE POUR UNE CORRECTION, et le formulaire ne s'ouvre que si on la demande :
+ * un champ de texte affiche en permanence sous chaque lien pousserait a ecrire avant d'avoir
+ * decide. Depuis la v375, l'operateur ne peut plus effacer ce motif ; c'est la seule phrase qu'il
+ * lira.
+ */
+function LigneLien({ l, surChangement }: { l: Lien; surChangement: () => void }) {
+  const [enCours, setEnCours] = useState<"valider" | "corriger" | null>(null);
+  const [formulaire, setFormulaire] = useState(false);
+  const [motif, setMotif] = useState("");
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  const agir = async (quoi: "valider" | "corriger") => {
+    setErreur(null);
+    setEnCours(quoi);
+    try {
+      if (quoi === "valider") await validerLien(l.id);
+      else await demanderCorrection(l.id, motif);
+      setFormulaire(false);
+      setMotif("");
+      surChangement();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEnCours(null);
+    }
+  };
+
   return (
     <View style={s.lien}>
       <View style={s.ligne}>
@@ -271,11 +312,73 @@ function LigneLien({ l }: { l: Lien }) {
       {/* Pas de lien cliquable : cette application ne renvoie vers aucune page (règle 2). L'adresse
           est affichée pour reconnaître le fournisseur, et la vérification se fait sur ordinateur. */}
       {l.url ? <Text style={s.url} numberOfLines={1}>{l.url}</Text> : null}
+
+      {/* On ne propose pas de valider ce qui l'est deja. Un bouton « Valider » sur une livraison
+          validee ne fait rien de visible : c'est exactement ce qui fait croire a une application
+          figee. */}
+      {l.statut === "valide" ? null : (
+        <View style={{ gap: E.s }}>
+          <Erreur message={erreur} />
+          {formulaire ? (
+            <View style={{ gap: E.s }}>
+              <Champ
+                label="Qu'est-ce qu'il faut corriger ?"
+                value={motif}
+                onChangeText={setMotif}
+                placeholder="Ce que l'opérateur lira, et la seule chose qu'il lira."
+                multiline
+                hauteur={92}
+              />
+              <View style={s.gestes}>
+                <Pressable
+                  onPress={() => { setFormulaire(false); setMotif(""); setErreur(null); }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Annuler la demande de correction"
+                  style={({ pressed }) => [s.secondaire, pressed ? { opacity: 0.8 } : null]}
+                >
+                  <Text style={s.secondaireTexte}>Annuler</Text>
+                </Pressable>
+                <View style={{ flex: 1 }}>
+                  <Bouton
+                    titre="Demander la correction"
+                    onPress={() => agir("corriger")}
+                    enCours={enCours === "corriger"}
+                  />
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={s.gestes}>
+              <Pressable
+                onPress={() => { setFormulaire(true); setErreur(null); }}
+                accessibilityRole="button"
+                accessibilityLabel={`Demander une correction sur ${l.nom}`}
+                style={({ pressed }) => [s.secondaire, pressed ? { opacity: 0.8 } : null]}
+              >
+                <Text style={s.secondaireTexte}>Demander une correction</Text>
+              </Pressable>
+              <View style={{ flex: 1 }}>
+                <Bouton
+                  titre="Valider"
+                  onPress={() => agir("valider")}
+                  enCours={enCours === "valider"}
+                />
+              </View>
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
 
 const s = StyleSheet.create({
+  gestes: { flexDirection: "row", alignItems: "center", gap: E.s },
+  secondaire: {
+    minHeight: 44, justifyContent: "center", paddingHorizontal: E.m, borderRadius: R.pill,
+    backgroundColor: "rgba(255,255,255,.06)", borderWidth: 1, borderColor: C.bordureForte,
+  },
+  secondaireTexte: { color: C.texte, fontFamily: P.texteFort, fontSize: 13 },
   attente: { paddingVertical: E.xl * 2, alignItems: "center" },
   carte: {
     gap: E.s, padding: E.m, borderRadius: R.l,

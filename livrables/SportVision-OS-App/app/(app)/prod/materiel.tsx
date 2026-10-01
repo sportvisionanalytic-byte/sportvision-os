@@ -21,9 +21,10 @@
 //   · 0 controle de kit, 0 incident materiel, 0 maintenance : ces trois modules de l'OS n'ont jamais
 //     servi, l'application ne les dessine pas.
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Probleme, Vide } from "../../../src/ui/Ecran";
-import { Pastille } from "../../../src/ui/Base";
+import { Bouton, Erreur, Pastille } from "../../../src/ui/Base";
+import { enregistrerRetourKit } from "../../../src/lib/os-pilotage";
 import { Barre } from "../../../src/ui/Barre";
 import { EcranProd } from "./_layout";
 import { useDonnees } from "../../../src/lib/cache";
@@ -99,7 +100,7 @@ export default function EcranMateriel() {
       ) : liste === "dehors" ? (
         dehors.length ? (
           <View style={{ gap: E.s }}>
-            {dehors.map((r) => <CarteReservation key={r.id} r={r} />)}
+            {dehors.map((r) => <CarteReservation key={r.id} r={r} surChangement={relire} />)}
           </View>
         ) : (
           <Vide
@@ -110,7 +111,7 @@ export default function EcranMateriel() {
       ) : liste === "echus" ? (
         echus.length ? (
           <View style={{ gap: E.s }}>
-            {echus.map((r) => <CarteReservation key={r.id} r={r} echu />)}
+            {echus.map((r) => <CarteReservation key={r.id} r={r} echu surChangement={relire} />)}
           </View>
         ) : (
           <Vide
@@ -159,7 +160,36 @@ export default function EcranMateriel() {
   );
 }
 
-function CarteReservation({ r, echu }: { r: Reservation; echu?: boolean }) {
+/**
+ * UNE SORTIE DE KIT, ET LE GESTE QUI LA FERME (01/10/2026).
+ *
+ * ENREGISTRER LE RETOUR DEBLOQUE LES RESERVATIONS, et c'est nouveau depuis la v369 : une
+ * reservation dont le retour n'est ni prevu ni enregistre occupe le kit SANS FIN. Les deux kits de
+ * SportVision sont sortis depuis le 12 septembre ; tant que personne n'enregistre leur retour,
+ * plus aucune reservation n'est possible, et le refus de la base nomme cette carte.
+ *
+ * Cet ecran etait une liste a regarder — zero element appuyable, mesure a l'audit. Il annoncait le
+ * blocage sans donner la sortie.
+ */
+function CarteReservation({
+  r, echu, surChangement,
+}: { r: Reservation; echu?: boolean; surChangement: () => void }) {
+  const [enCours, setEnCours] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  const rendre = async () => {
+    setErreur(null);
+    setEnCours(true);
+    try {
+      await enregistrerRetourKit(r.id, r.kitId);
+      surChangement();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEnCours(false);
+    }
+  };
+
   return (
     <View style={s.carte}>
       <View style={s.ligne}>
@@ -198,6 +228,12 @@ function CarteReservation({ r, echu }: { r: Reservation; echu?: boolean }) {
       ) : null}
 
       {r.consignes ? <Text style={s.consignes}>{r.consignes}</Text> : null}
+
+      <Erreur message={erreur} />
+      <Bouton titre="Enregistrer le retour" onPress={rendre} enCours={enCours} />
+      <Text style={s.note}>
+        Tant que le retour n'est pas enregistré, ce kit ne peut être réservé pour personne d'autre.
+      </Text>
     </View>
   );
 }
