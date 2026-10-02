@@ -13,7 +13,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "fr.sportvision.os.beta",
-      "buildNumber": "4",
+      "buildNumber": "5",
       "entitlements": {
         "aps-environment": "production"
       },
@@ -38,7 +38,13 @@
       "expo-notifications",
       "expo-status-bar",
       "expo-image",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "_note": "faceIDPermission: false RETIRE NSFaceIDUsageDescription (02/10/2026). Le greffon posait le texte d'exemple d'Expo, en anglais : « Allow $(PRODUCT_NAME) to access your Face ID biometric data. » Or l'application n'utilise Face ID NULLE PART — verifie par recherche sur tout src/ et app/, aucune trace de LocalAuthentication ni de biometrie. Declarer l'acces a une donnee sensible qu'on n'utilise pas, avec un texte d'exemple en anglais dans une application francaise, est un motif de refus Apple (5.1.1). Dans @expo/config-plugins, la valeur false SUPPRIME la cle (Permissions.js : `if (permissions[p] === false) delete infoPlist[p]`), verifie dans le code du greffon avant d'ecrire cette ligne.",
+          "faceIDPermission": false
+        }
+      ],
       "expo-system-ui",
       [
         "expo-media-library",
