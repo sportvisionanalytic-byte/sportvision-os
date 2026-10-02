@@ -36,8 +36,34 @@ import {
 } from "../../../src/lib/os-materiel";
 import { C, E, R } from "../../../src/theme/couleurs";
 import { P } from "../../../src/theme/polices";
+import { KITS_ACTIFS } from "../../../src/lib/modules";
+
+// LE MODULE EST ETEINT (02/10/2026, decision de Fouka : « pour le moment on retire les trucs de
+// kit »). La puce « Materiel » a disparu de la rangee du haut ; cet ecran reste joignable par une
+// URL ou un lien deja envoye, et il doit alors DIRE qu'il est retire. Afficher les deux kits comme
+// si on les tenait serait pire que de ne rien afficher : quelqu'un enregistrerait un retour dans un
+// module que personne ne suit. Le code d'origine est intact en dessous, derriere `KITS_ACTIFS`.
+function MaterielRetire() {
+  return (
+    <EcranProd titre="Matériel">
+      <Vide
+        titre="Le suivi du matériel est mis de côté"
+        texte={
+          "Les kits et leurs sorties ne sont pas suivis pour l'instant : le module sera repris plus " +
+          "tard. Rien n'est perdu, les kits et le matériel sont toujours en base. En attendant, une " +
+          "sortie de kit se convient directement avec l'opérateur, et aucune mission n'en dépend."
+        }
+      />
+    </EcranProd>
+  );
+}
 
 export default function EcranMateriel() {
+  if (!KITS_ACTIFS) return <MaterielRetire />;
+  return <EcranMaterielKits />;
+}
+
+function EcranMaterielKits() {
   const [liste, setListe] = useState("dehors");
 
   const { donnees, chargement, rafraichissement, erreur, relire } = useDonnees<EtatMateriel>(

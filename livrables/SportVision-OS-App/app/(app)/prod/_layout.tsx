@@ -20,6 +20,7 @@ import { Stack, usePathname, useRouter } from "expo-router";
 import { Ecran, Vide } from "../../../src/ui/Ecran";
 import { Barre } from "../../../src/ui/Barre";
 import { estProduction, useSession } from "../../../src/lib/session";
+import { KITS_ACTIFS } from "../../../src/lib/modules";
 import { C } from "../../../src/theme/couleurs";
 import { P, T } from "../../../src/theme/polices";
 
@@ -45,12 +46,18 @@ export default function PileProduction() {
   );
 }
 
-/** Les quatre ecrans, dans l'ordre du travail : on affecte, on suit, on regarde qui, puis avec quoi. */
+/**
+ * Les ecrans, dans l'ordre du travail : on affecte, on suit, on regarde qui, puis avec quoi.
+ *
+ * « Materiel » n'apparait que si les kits sont allumes (`KITS_ACTIFS`, retires le 02/10/2026 sur
+ * decision de Fouka). On filtre la liste plutot que de retirer la ligne : le jour ou les kits
+ * reviennent, il n'y a rien a reecrire ni a replacer dans le bon ordre.
+ */
 const ECRANS = [
   { cle: "affectation", libelle: "Affectation" },
   { cle: "livraisons", libelle: "Livraisons" },
   { cle: "equipe", libelle: "Équipe" },
-  { cle: "materiel", libelle: "Matériel" },
+  ...(KITS_ACTIFS ? [{ cle: "materiel", libelle: "Matériel" }] : []),
 ];
 
 /**
@@ -82,9 +89,9 @@ export function EcranProd({
         <Vide
           titre="Cet écran est celui de la production"
           texte={
-            "Affecter un opérateur, suivre les livraisons, le matériel : ces gestes appartiennent " +
-            "au responsable de production et à l'administration. Si vous avez besoin d'une " +
-            "affectation ou d'un kit, demandez-la à la production."
+            "Affecter un opérateur, suivre les livraisons, voir qui est sur quoi : ces gestes " +
+            "appartiennent au responsable de production et à l'administration. Si vous avez " +
+            "besoin d'une affectation, demandez-la à la production."
           }
         />
       </Ecran>

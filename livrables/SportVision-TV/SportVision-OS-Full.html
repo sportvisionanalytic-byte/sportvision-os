@@ -814,6 +814,18 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
      l'utilisateur ni impact sur le reste de l'app. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script>
+// ── L'INTERRUPTEUR DES MODULES MIS DE COTE ───────────────────────────────────────────────────
+// Fouka, le 02/10/2026 : « pour le moment on retire les trucs de kit, les kits attribués tout ça,
+// je vais les refaire bien plus tard ». Le module n'est pas supprimé : il est éteint. Les entrées
+// de menu sont commentées (une ligne à décommenter), et les alertes qui réclamaient un geste
+// dedans sont conditionnées à ce drapeau. Remettre `true` rallume les alertes ; rendre le menu
+// demande de décommenter les lignes marquées « 02/10/2026 ».
+//
+// Ce qui a été retiré EN BASE au même moment, et qu'il faudra remettre avec : le déclencheur
+// `trg_rattacher_kits_mission` sur `prestations_equipe` (migration v450). Il se déclenchait à
+// CHAQUE acceptation de mission, donc une garde de kit qui lève y faisait échouer l'acceptation
+// d'une mission — pour une raison étrangère à la mission.
+const KITS_ACTIFS = false;
 // ── ICONS ────────────────────────────────
 const IC={
   dash:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.5"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.5"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.5"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.5"/></svg>`,
@@ -918,7 +930,9 @@ const NAV={
     {id:'recrutement',lb:'Recrutement',ic:'col'},
     {type:'sep',lb:'Production'},
     {id:'prodhub',lb:'Production',ic:'pre'},
-    {id:'kits',lb:'Kits',ic:'kits'},
+    // 02/10/2026 : « Kits » retire du menu sur decision de Fouka (module mis de cote, a
+    // reprendre plus tard). Une seule ligne a decommenter pour le rendre.
+    // {id:'kits',lb:'Kits',ic:'kits'},
     {id:'incidents',lb:'Incidents',ic:'alert'},
     // ══ LA SECTION FINANCE, RANGEE EN QUATRE (30/09/2026) ════════════════════════════════════════
     //
@@ -1140,7 +1154,8 @@ const NAV={
     {id:'equipe',lb:'Équipe terrain',ic:'col'},
     // Recrutement : retiré à la Production le 10/09/2026 au soir (décision de Fouka, v139) ; il
     // reste à l'administration, au secrétariat (retenus) et aux responsables de pôle (Mon pôle).
-    {id:'kits',lb:'Matériel',ic:'kits'},
+    // 02/10/2026 : « Materiel » retire du menu de la Production, meme decision.
+    // {id:'kits',lb:'Matériel',ic:'kits'},
     // 11/09/2026 (v149) : ses finances, calculées par le système, validées par l'Admin/la compta.
     {type:'sep',lb:'Finance'},
     // 12/09/2026 — « Remunerations » portait les seuls boutons « Valider » et « Transmettre a la
@@ -2253,7 +2268,10 @@ const VIEWS={
       <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('livr')"><div class="kpi-ey">Livraisons à valider</div><div class="kpi-v" id="prod-kpi-livval">—</div><span class="kpi-d dnt">à contrôler</span></div>
       <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="ouvrirMedias('liens')"><div class="kpi-ey">Corrections en cours</div><div class="kpi-v" id="prod-kpi-correc">—</div><span class="kpi-d dnt">en attente opérateur</span></div>
       <div class="kpi" style="--kl:#00B8D4;cursor:pointer" onclick="openNotifPanel()"><div class="kpi-ey">Changements CM</div><div class="kpi-v" id="prod-kpi-cm">—</div><span class="kpi-d dnt">impact à valider</span></div>
+      <!-- 02/10/2026 — module kits mis de cote (decision de Fouka), KPI « Conflits materiel » retire :
+           il menait a un ecran sorti du menu. A remettre avec le module.
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Conflits matériel</div><div class="kpi-v" id="prod-kpi-conflit" style="color:var(--er)">—</div><span class="kpi-d dnt">à résoudre</span></div>
+      -->
     </div>
     <div id="prod-rentab-clubs" style="margin-bottom:13px"></div>
     <div id="prod-dash-priorite" style="margin-bottom:13px;display:none">
@@ -2313,7 +2331,7 @@ const VIEWS={
       <button onclick="setProdPlanTab('mois')" class="btn bg2 bs" id="pplt-mois" style="flex-shrink:0">Mois</button>
       <div style="width:1px;background:var(--b1);flex-shrink:0;align-self:stretch"></div>
       <button onclick="setProdPlanTab('equipe')" class="btn bg2 bs" id="pplt-eq" style="flex-shrink:0">Équipe</button>
-      <button onclick="setProdPlanTab('kits')" class="btn bg2 bs" id="pplt-kits" style="flex-shrink:0">Kits</button>
+      <!-- /* 02/10/2026 — module kits mis de cote (decision de Fouka). A remettre avec lui. */ <button onclick="setProdPlanTab('kits')" class="btn bg2 bs" id="pplt-kits" style="flex-shrink:0">Kits</button> -->
     </div>
     <div id="prod-plan-real"><div class="cd" style="padding:0;overflow:hidden">${_prodSkelRows(4,60)}</div></div>`,
 
@@ -3595,7 +3613,8 @@ const VIEWS={
   // ── PARAMÈTRES (tous rôles non-admin) ───
   'sec.set':()=>_settingsView(),
   'prod.set':()=>_settingsView(),
-  'photo.set':()=>`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn bg2 bs" onclick="switchView('kits')">🎒 Mes kits assignés</button></div>`+_settingsView(),
+  // /* 02/10/2026 — module kits mis de cote (decision de Fouka). A remettre avec lui. */ « Mes kits assignes » retire des reglages de l'operateur.
+  'photo.set':()=>_settingsView(),
   'cm.set':()=>_settingsView(),
   'compta.set':()=>_settingsView(),
   'com.set':()=>_settingsView(),
@@ -11241,13 +11260,13 @@ async function computeATraiterItems(roleFilter){
   // opérateur du tout).
   pre.filter(p=>p.date_prestation&&p.date_prestation>=today&&p.date_prestation<=in7s
     &&(p.prestations_equipe||[]).some(e=>e.statut==='acceptée'&&!e.collaborateur?.materiel_personnel&&!kitRes.some(r=>r.prestation_id===p.id)))
-    .forEach(p=>add('production','important','Kit à attribuer',`${p.clients?.nom||p.reference||'—'} (opérateur sans matériel perso)`,`switchView('kits')`,'prod','prestations',p.id,p.date_prestation));
+    .forEach(p=>KITS_ACTIFS&&add('production','important','Kit à attribuer',`${p.clients?.nom||p.reference||'—'} (opérateur sans matériel perso)`,`switchView('kits')`,'prod','prestations',p.id,p.date_prestation));
   // Conflit matériel : >1 réservation active sur le même kit le même jour (même
   // regroupement que loadProdDash).
   const kitConflitMap=new Map();
   kitRes.forEach(r=>{const dd=r.prestations?.date_prestation;if(!dd)return;const key=r.kit_id+'|'+dd;if(!kitConflitMap.has(key))kitConflitMap.set(key,[]);kitConflitMap.get(key).push(r);});
   [...kitConflitMap.entries()].filter(([,g])=>g.length>1).forEach(([key,g])=>{
-    add('production','important','Conflit matériel',`${g.length} réservations sur le même kit — ${g[0].prestations?.clients?.nom||g[0].prestations?.reference||'—'}`,`switchView('kits')`,'prod','kit_reservations',key,g[0].prestations?.date_prestation);
+    KITS_ACTIFS&&add('production','important','Conflit matériel',`${g.length} réservations sur le même kit — ${g[0].prestations?.clients?.nom||g[0].prestations?.reference||'—'}`,`switchView('kits')`,'prod','kit_reservations',key,g[0].prestations?.date_prestation);
   });
   notifRefus.forEach(n=>add('production','important','Opérateur a refusé',n.prestations?.clients?.nom||msgErreur(n,'—'),n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
   notifCm.forEach(n=>add('production','important',n.type==='nouvelle_mission'?'Nouvelle mission à affecter':(n.titre||'Mission modifiée par le CM'),n.prestations?.clients?.nom||msgErreur(n,'—'),n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`,'prod','notifications',n.id,n.created_at));
@@ -11701,7 +11720,7 @@ async function loadProdDash(){
     missions7j.filter(p=>(p.prestations_equipe||[]).some(e=>e.statut==='acceptée'
       &&!e.collaborateur?.materiel_personnel
       &&!kitRes.some(r=>r.prestation_id===p.id))).slice(0,3)
-      .forEach(p=>prioItems.push({lvl:'er',txt:`Kit à attribuer : ${esc(p.clients?.nom||'—')} (opérateur sans matériel perso)`,action:`switchView('kits')`}));
+      .forEach(p=>KITS_ACTIFS&&prioItems.push({lvl:'er',txt:`Kit à attribuer : ${esc(p.clients?.nom||'—')} (opérateur sans matériel perso)`,action:`switchView('kits')`}));
     notifRefus.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`Opérateur a refusé : ${esc(n.prestations?.clients?.nom||msgErreur(n,'—'))}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
     notifCm.slice(0,3).forEach(n=>prioItems.push({lvl:'wa',txt:`${n.type==='nouvelle_mission'?'Nouvelle mission à affecter':esc(n.titre||'Mission modifiée par le CM')} : ${esc(n.prestations?.clients?.nom||msgErreur(n,'—'))}`,action:n.prestation_id?`modalDetailById('${n.prestation_id}')`:`openNotifPanel()`}));
     livraisonsAValider.slice(0,3).forEach(p=>prioItems.push({lvl:'ok',txt:`Livraison à valider : ${esc(p.clients?.nom||'—')}`,action:`modalDetailById('${p.id}')`}));
@@ -42856,14 +42875,14 @@ const MOB_MORE_ITEMS={
   // commercialisation le même jour, mais oublié de MOB_MORE_ITEMS.admin ET de BNAV_ITEMS.admin :
   // un admin sur mobile n'avait aucun moyen d'atteindre cet écran (bug trouvé en audit
   // transversal Médias & Ventes, aucun autre écran touché).
-  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'medias',lb:'Médias & Ventes',ic:'📸',sub:'Politique & produits par club'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finmedias',lb:'Ventes médias',ic:'📸',sub:'CA Pass Photo & opérations'},{id:'finpoles',lb:'Finance par pôle',ic:'🏢',sub:'Ventilation'},{id:'polerem',lb:'Rémunération pôle',ic:'📐',sub:'Grille responsable'},{id:'finprod',lb:'Finance Production',ic:'🎬',sub:'Responsable Production'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
+  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'medias',lb:'Médias & Ventes',ic:'📸',sub:'Politique & produits par club'},/* kits retires le 02/10/2026, a remettre avec le module : {id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'}, */{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipeoverview',lb:'Équipe',ic:'📊',sub:"Vue d'ensemble"},{id:'equipehub',lb:'Collaborateurs',ic:'🏃',sub:'Fiches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:"Vue d'ensemble",ic:'💰',sub:'Finance'},{id:'finrevenus',lb:'Revenus',ic:'📈',sub:'Factures & paiements'},{id:'findepenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs & charges'},{id:'finequipe',lb:'Équipe',ic:'💸',sub:'Rémunérations'},{id:'finmedias',lb:'Ventes médias',ic:'📸',sub:'CA Pass Photo & opérations'},{id:'finpoles',lb:'Finance par pôle',ic:'🏢',sub:'Ventilation'},{id:'polerem',lb:'Rémunération pôle',ic:'📐',sub:'Grille responsable'},{id:'finprod',lb:'Finance Production',ic:'🎬',sub:'Responsable Production'},{id:'finrapports',lb:'Rapports & exports',ic:'📊',sub:'Analyse & clôtures'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'agendasec',lb:'Agenda',ic:'📅',sub:'RDV & rappels'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'recrutement',lb:'Recrutement',ic:'🎯',sub:'Candidatures'},{id:'docrh',lb:'Documents',ic:'📁',sub:'Pièces'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   // 29/08 (refonte nav prod) : équipe/kits sortis (déjà dans BNAV_ITEMS.prod), kanban/post/
   // equipes retirés (redondants avec les onglets Missions), ajout des accès contextuels
   // (jourj/planning/brief/incidents/media/rem/frais) qui n'ont plus de case dans NAV.prod.
-  prod:[{id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'},{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Galeries photo',ic:'🎬',sub:'Photos, offres et ventes'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
+  prod:[/* kits retires le 02/10/2026, a remettre avec le module : {id:'kits',lb:'Matériel',ic:'🎒',sub:'Kits & réservations'}, */{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission en direct'},{id:'planning',lb:'Calendrier',ic:'📅',sub:'Vue missions'},{id:'brief',lb:'Briefings',ic:'📄',sub:'Consignes mission'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Galeries photo',ic:'🎬',sub:'Photos, offres et ventes'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'equipes',lb:'Affectations',ic:'🧩',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Mon suivi'},{id:'frais',lb:'Frais & km',ic:'🚗',sub:'Déclarations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
-  photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
+  photo:[{id:'jourj',lb:'Mode Jour J',ic:'🔴',sub:'Mission du jour'},{id:'medias',lb:'Mes médias',ic:'🖼️',sub:'Liens à transmettre'},/* kits retires le 02/10/2026, a remettre avec le module : {id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'}, */{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Mon profil',ic:'⚙️',sub:'Compte'}],
   // 29/08 (refonte CM) : aligné sur NAV.cm refondue — demandes/briefs sortent (déjà
   // dans BNAV ou accessibles depuis Demandes), mediabank/publications/analytics/charge/
   // rapports/msgclients/annuaire/centre restent de vraies vues, atteignables ici plutôt
