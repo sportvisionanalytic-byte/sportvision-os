@@ -36683,10 +36683,67 @@ function _recapRenderApayer(lignes,documents){
         <div style="font-size:11.5px;color:var(--t3);margin-top:2px">${esc(l.fonction_principale||'Fonction non renseignée')} · ${l.nb_prestations} prestation${l.nb_prestations>1?'s':''} · ${esc(l.email||'pas d\'adresse e-mail')}</div>
         <div style="display:flex;gap:9px;flex-wrap:wrap;font-size:12px;margin-top:8px">${detail}</div>
         <div style="font-size:15px;font-weight:700;color:var(--acc);margin-top:8px;font-variant-numeric:tabular-nums">Dû ${_recapEur(du)}</div>
+        <button class="btn bg2 bs" style="margin-top:8px" onclick="recapBasculerDetail('${l.collaborateur_id}')"
+                id="recdet-b-${l.collaborateur_id}">Voir le détail des prestations</button>
+        <div id="recdet-${l.collaborateur_id}" style="display:none;margin-top:10px"></div>
       </div>
       ${action}
     </div>`;
   }).join('');
+}
+
+// ── LE DÉTAIL DE CE QU'ON PAIE (v480, 02/10/2026) ──────────────────────────────────────────────
+//
+// Fouka : « eux voient le détail, moi je ne le vois pas ». L'écran n'affichait que cinq totaux par
+// personne. L'opérateur, lui, voit ses prestations une par une dans son application : celui qui
+// DÉCIDE du montant en voyait moins que celui qui le reçoit.
+//
+// Le détail vient de `recap_detail_collaborateur`, réservée serveur à la direction et à la
+// comptabilité — on ne recopie aucun contrôle d'accès ici. Les deux gestes par ligne réutilisent
+// les modales qui existaient déjà et ne servaient qu'à partir de la fiche d'une mission.
+async function recapBasculerDetail(collaborateurId){
+  const zone=document.getElementById('recdet-'+collaborateurId);
+  const bouton=document.getElementById('recdet-b-'+collaborateurId);
+  if(!zone)return;
+  if(zone.style.display!=='none'){ zone.style.display='none'; if(bouton)bouton.textContent='Voir le détail des prestations'; return; }
+  zone.style.display='block';
+  if(bouton)bouton.textContent='Masquer le détail';
+  zone.innerHTML='<div style="font-size:12px;color:var(--t3);padding:8px 0">Chargement…</div>';
+  // `_recapMois` porte DEJA le premier jour du mois affiche (pose par loadRecapMois).
+  // Lui rajouter un suffixe donnait une date invalide : verifie avant d'ecrire cette ligne.
+  const mois=_recapMois||(new Date().toISOString().slice(0,7)+'-01');
+  const r=await sbFetch('rpc/recap_detail_collaborateur',{method:'POST',body:{p_collaborateur_id:collaborateurId,p_mois:mois}}).catch(()=>null);
+  if(!Array.isArray(r)){ zone.innerHTML='<div style="font-size:12px;color:var(--er);padding:8px 0">Le détail est indisponible pour le moment.</div>'; return; }
+  if(!r.length){ zone.innerHTML='<div style="font-size:12px;color:var(--t3);padding:8px 0">Aucune prestation acceptée sur ce mois.</div>'; return; }
+  zone.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr style="color:var(--t3);text-align:left">'
+    +'<th style="padding:4px 6px">Date</th><th style="padding:4px 6px">Mission</th><th style="padding:4px 6px">Client</th>'
+    +'<th style="padding:4px 6px;text-align:right">Rémunération</th><th style="padding:4px 6px;text-align:right">Prime</th>'
+    +'<th style="padding:4px 6px;text-align:right">Ajustement</th><th style="padding:4px 6px;text-align:right">Net</th>'
+    +'<th style="padding:4px 6px">Travail</th><th style="padding:4px 6px"></th></tr></thead><tbody>'
+    +r.map(d=>{
+      // Ce qui doit sauter aux yeux AVANT de payer : un travail jamais jugé, et surtout une
+      // prestation payée sans qu'aucun livrable n'ait été déposé.
+      const verdict=d.travail_valide===true?'<span style="color:var(--ok)">validé</span>'
+                   :d.travail_valide===false?'<span style="color:var(--er)">refusé</span>'
+                   :'<span style="color:var(--wa)">jamais jugé</span>';
+      const alerte=Number(d.liens_deposes)===0?' <span style="color:var(--er)" title="Aucun livrable déposé sur cette mission">• 0 livrable</span>':'';
+      const conteste=d.contestation_en_attente?' <span style="color:var(--wa)" title="Ajustement contesté, en attente de votre décision">• contesté</span>':'';
+      return '<tr style="border-top:1px solid var(--b1)">'
+        +'<td style="padding:5px 6px;white-space:nowrap">'+esc(d.date_prestation)+'</td>'
+        +'<td style="padding:5px 6px"><a href="#" onclick="modalDetailById(\''+d.prestation_id+'\');return false">'+esc(d.reference)+'</a></td>'
+        +'<td style="padding:5px 6px">'+esc(d.client||'—')+'</td>'
+        +'<td style="padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums">'+_recapEur(d.remuneration)+'</td>'
+        +'<td style="padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums">'+(Number(d.primes)?_recapEur(d.primes):'—')+'</td>'
+        +'<td style="padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums">'+(Number(d.ajustements)?('−'+_recapEur(d.ajustements)):'—')+'</td>'
+        +'<td style="padding:5px 6px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">'+_recapEur(d.net)+'</td>'
+        +'<td style="padding:5px 6px">'+verdict+alerte+conteste+'</td>'
+        +'<td style="padding:5px 6px;white-space:nowrap">'
+          +'<button class="btn bg2 bs" onclick="modalPrimeMission(\''+d.affectation_id+'\',\''+d.prestation_id+'\',\''+esc(d.reference)+'\','+Number(d.remuneration||0)+','+Number(d.primes||0)+')">Prime</button> '
+          +'<button class="btn bg2 bs" onclick="modalPenaliteMission(\''+d.affectation_id+'\',\''+d.prestation_id+'\',\''+esc(d.reference)+'\','+Number(d.remuneration||0)+','+Number(d.ajustements||0)+')">Ajustement</button>'
+        +'</td></tr>';
+    }).join('')
+    +'</tbody></table>';
 }
 
 // LE VIREMENT SE LIT, IL NE SE DÉDUIT PLUS (v363). La version précédente concluait « viré » quand
