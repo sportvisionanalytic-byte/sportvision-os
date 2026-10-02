@@ -103,9 +103,27 @@ export default function CreerCompte() {
     return () => { vivant = false; clearTimeout(t); };
   }, [recherche, etape, declare]);
 
+  // LA DATE DE NAISSANCE EST FACULTATIVE (02/10/2026 — refus Apple, directive 5.1.1(v)).
+  //
+  // Apple, mot pour mot : « The app requires users to provide personal information that is not
+  // directly relevant to the app's core functionality — Update the app to not require users to
+  // provide the following personal information: Date of birth. » Le cœur de l'application, c'est
+  // voir les photos de son enfant ; on peut créer un compte sans donner sa date de naissance.
+  //
+  // ELLE RESTE DEMANDÉE, ET C'EST PERMIS : Apple autorise explicitement de demander une
+  // information utile à une fonction NON ESSENTIELLE, à condition de la rendre facultative. Ici
+  // elle sert à deux choses réelles : distinguer deux joueurs du même nom dans un club, et savoir
+  // à QUI demander l'accord de reconnaissance (un parent avant 15 ans, le sportif lui-même
+  // ensuite). Tant qu'elle manque, la base refuse qu'une photo devienne une empreinte (v389) :
+  // la protection du mineur ne repose pas sur ce formulaire.
+  //
+  // VIDE N'EST PAS ILLISIBLE. Un champ laissé vide passe. Un champ REMPLI qu'on n'arrive pas à
+  // lire bloque, parce que l'avaler en silence créerait un compte avec une date fausse — et c'est
+  // cette date qui décide qui consent pour un mineur.
+  const naissanceLisible = naissance.trim() === "" || !!dateValide(naissance);
   const identiteComplete = useMemo(() => {
     const baseOk = prenom.trim() && nom.trim() && emailValide(email) && motDePasse.length >= 8;
-    if (profil === "joueur") return !!baseOk && !!dateValide(naissance);
+    if (profil === "joueur") return !!baseOk && (naissance.trim() === "" || !!dateValide(naissance));
     return !!baseOk;
   }, [prenom, nom, email, motDePasse, naissance, profil]);
 
@@ -205,13 +223,18 @@ export default function CreerCompte() {
                   <Champ label="Prénom" value={prenom} onChangeText={setPrenom} placeholder="Lucas" autoCapitalize="words" textContentType="givenName" />
                   <Champ label="Nom" value={nom} onChangeText={setNom} placeholder="Moreau" autoCapitalize="words" textContentType="familyName" />
                   {profil === "joueur" ? (
-                    <Champ
-                      label="Date de naissance"
-                      value={naissance}
-                      onChangeText={(t) => setNaissance(formateDate(t, naissance))}
-                      placeholder="JJ/MM/AAAA"
-                      keyboardType="number-pad"
-                    />
+                    <>
+                      <Champ
+                        label="Date de naissance (facultative)"
+                        value={naissance}
+                        onChangeText={(t) => setNaissance(formateDate(t, naissance))}
+                        placeholder="JJ/MM/AAAA"
+                        keyboardType="number-pad"
+                      />
+                      {naissance.trim() !== "" && !naissanceLisible ? (
+                        <Erreur message="Date non reconnue. Attendu JJ/MM/AAAA, ou laissez le champ vide." />
+                      ) : null}
+                    </>
                   ) : null}
                   <Champ label="Adresse e-mail" value={email} onChangeText={setEmail} placeholder="vous@exemple.fr" keyboardType="email-address" textContentType="emailAddress" />
                   <Champ label="Mot de passe" value={motDePasse} onChangeText={setMotDePasse} placeholder="Huit caractères au minimum" secureTextEntry textContentType="newPassword" />
