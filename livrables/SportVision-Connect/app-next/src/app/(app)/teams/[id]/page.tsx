@@ -44,6 +44,7 @@ import { fetchClubMembers } from "@/lib/data/club/users";
 import { peutOpererClub } from "@/lib/data/club/invitations";
 import type { OrgUser } from "@/lib/types/settings";
 import { ConstituerEffectifCard } from "@/components/teams/ConstituerEffectifCard";
+import { GrilleEffectif } from "@/components/teams/GrilleEffectif";
 import { PhotoReferenceJoueur } from "@/components/teams/PhotoReferenceJoueur";
 import { peutConstituerEffectif } from "@/lib/data/club/effectif";
 import { TeamStaffCard } from "@/components/teams/TeamStaffCard";
@@ -688,6 +689,10 @@ function RealTeamDetail({ organizationId, teamId }: { organizationId: string; te
               onEffectifChange={() => setRechargement((n) => n + 1)}
             />
           )}
+          {/* 02/10/2026 — La grille de visages, juste sous la saisie : c'est là qu'on voit en une
+              seconde qui n'a pas encore de photo, et qu'on la dépose d'un clic. Elle remplace le
+              parcours d'avant, qui obligeait à ouvrir chaque joueur l'un après l'autre. */}
+          <GrilleEffectif roster={roster} peutDeposerPhoto={peutConstituer} />
           <RealRosterTab
             roster={roster}
             teamId={teamId}
