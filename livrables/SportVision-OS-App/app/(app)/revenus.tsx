@@ -96,7 +96,17 @@ const TON: Record<StatutVersement, "neutre" | "succes" | "alerte" | "info"> = {
 };
 
 export default function Revenus() {
-  const [periode, setPeriode] = useState<Periode>("mois");
+  // LA PERIODE PAR DEFAUT EST L'ANNEE, PAS LE MOIS (02/10/2026, decision de Fouka).
+  //
+  // Mesure qui a tranche : le 01/10, 10 des 11 prestations de la base etaient datees de septembre.
+  // « Ce mois » affichait donc 0,00 EUR a tout le monde le premier jour du mois, c'est-a-dire
+  // exactement le jour ou quelqu'un vient verifier ce qu'il a gagne. Un ecran qui dit vrai mais qui
+  // ne repond pas a la question posee est un cul-de-sac : le zero etait exact, la periode etait
+  // mal choisie.
+  //
+  // « Cette annee » contient toujours le mois en cours, donc on ne cache rien ; les trois periodes
+  // restent a portee d'un appui, et le mois se retrouve en une fois.
+  const [periode, setPeriode] = useState<Periode>("annee");
   const { donnees, chargement, rafraichissement, erreur, relire } =
     useDonnees<MesRevenus>("os:revenus", lireMesRevenus);
 

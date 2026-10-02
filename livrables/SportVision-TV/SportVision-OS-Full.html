@@ -1989,7 +1989,7 @@ const VIEWS={
     <div id="findepenses-real">${_finSkelRows(6,44)}</div>`,
 
   'admin.finequipe':()=>`
-    <div class="sh"><div><div class="sh-t">Équipe — Paiements</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Ce que l'entreprise doit à son équipe : missions, salaires, remboursements, commissions — distinct des fiches collaborateurs (menu Équipe & RH)</div></div></div>
+    <div class="sh"><div><div class="sh-t">Équipe — Paiements</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Ce que l'entreprise doit à son équipe : missions, rémunérations mensuelles, remboursements, commissions — distinct des fiches collaborateurs (menu Équipe & RH)</div></div></div>
     <div class="g3" style="margin-bottom:13px">
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À payer</div><div class="fs-v" id="fineq-kpi-att" style="color:var(--wa)">—</div></div>
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Payés (mois)</div><div class="fs-v" id="fineq-kpi-paye" style="color:var(--ok)">—</div></div>
@@ -3387,7 +3387,7 @@ const VIEWS={
       <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA ce mois (HT)</div><div class="kpi-v" id="rent-kpi-ca" style="font-size:18px">—</div><span class="kpi-d dnt">missions du mois</span></div>
       <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Coûts directs</div><div class="kpi-v" id="rent-kpi-ch" style="font-size:18px">—</div><span class="kpi-d dnt">rém. + frais + dépenses</span></div>
       <div class="kpi" style="--kl:#E8A33D"><div class="kpi-ey">Coûts indirects alloués</div><div class="kpi-v" id="rent-kpi-ind" style="font-size:18px">—</div><span class="kpi-d dnt">cf. réglage admin</span></div>
-      <div class="kpi" style="--kl:#366BFF" title="Revenu HT moins rémunérations, frais et dépenses directement liés à la mission, moins la part de coûts indirects (loyer, logiciels…) allouée selon le réglage admin. N'inclut pas les charges de structure non allouées à une mission (ex. salaires fixes hors allocation, TVA, amortissements) — donc pas un résultat net complet au sens comptable."><div class="kpi-ey">Marge après coûts alloués</div><div class="kpi-v" id="rent-kpi-marge" style="font-size:18px">—</div><span class="kpi-d dnt">CA - coûts directs - indirects alloués</span></div>
+      <div class="kpi" style="--kl:#366BFF" title="Revenu HT moins rémunérations, frais et dépenses directement liés à la mission, moins la part de coûts indirects (loyer, logiciels…) allouée selon le réglage admin. N'inclut pas les charges de structure non allouées à une mission (ex. rémunérations fixes hors allocation, TVA, amortissements) — donc pas un résultat net complet au sens comptable."><div class="kpi-ey">Marge après coûts alloués</div><div class="kpi-v" id="rent-kpi-marge" style="font-size:18px">—</div><span class="kpi-d dnt">CA - coûts directs - indirects alloués</span></div>
       <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Taux de marge</div><div class="kpi-v" id="rent-kpi-tx">—</div><span class="kpi-d dnt">%</span></div>
     </div>
     <div class="cd">
