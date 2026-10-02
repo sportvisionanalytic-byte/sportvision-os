@@ -16,13 +16,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, ImageOff, Loader2 } from "lucide-react";
+import { Camera, ImageOff, Loader2, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { createClient } from "@/lib/supabase/client";
 import {
+  PHOTOS_MAX,
   deposerPhotoEffectif,
   listerPhotosEffectif,
   refuserPhoto,
+  retirerPhotoEffectif,
   signerPhotos,
   type PhotoEffectif,
 } from "@/lib/data/club/effectif";
@@ -30,7 +32,9 @@ import type { TeamRosterPlayer } from "@/lib/data/club/team-detail";
 
 interface Vignette {
   photos: PhotoEffectif[];
-  url: string | null;
+  /** L'adresse signée de CHAQUE photo, par identifiant : on en affiche une sur la grille, et
+   *  toutes dans le panneau d'un sportif. */
+  urls: Map<string, string>;
 }
 
 export function GrilleEffectif({
@@ -43,6 +47,8 @@ export function GrilleEffectif({
   const [etat, setEtat] = useState<Map<string, Vignette>>(new Map());
   const [chargement, setChargement] = useState(true);
   const [enCours, setEnCours] = useState<string | null>(null);
+  /** Le sportif dont on regarde toutes les photos, ouvert sous la grille. */
+  const [ouvert, setOuvert] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
@@ -64,8 +70,12 @@ export function GrilleEffectif({
       const urls = chemins.length ? await signerPhotos(supabase, chemins) : new Map<string, string>();
       const m = new Map<string, Vignette>();
       for (const [id, photos] of paires) {
-        const premiere = photos[0];
-        m.set(id, { photos, url: premiere ? (urls.get(premiere.storagePath) ?? null) : null });
+        const parPhoto = new Map<string, string>();
+        for (const ph of photos) {
+          const u = urls.get(ph.storagePath);
+          if (u) parPhoto.set(ph.id, u);
+        }
+        m.set(id, { photos, urls: parPhoto });
       }
       setEtat(m);
     } catch (e) {
@@ -114,20 +124,52 @@ export function GrilleEffectif({
             vignette={etat.get(p.id)}
             peutDeposer={peutDeposerPhoto}
             occupe={enCours === p.id}
-            onDepot={async (fichier) => {
+            ouvert={ouvert === p.id}
+            onOuvrir={() => setOuvert((v) => (v === p.id ? null : p.id))}
+            onDepot={async (fichiers) => {
               setErreur(null);
-              const refus = refuserPhoto(fichier);
-              if (refus) {
-                setErreur(`${p.firstName} ${p.lastName} : ${refus}`);
+              const dejaLa = etat.get(p.id)?.photos.length ?? 0;
+              const place = PHOTOS_MAX - dejaLa;
+              if (place <= 0) {
+                setErreur(`${p.firstName} ${p.lastName} : ${PHOTOS_MAX} photos au maximum.`);
                 return;
               }
+              // On dépose une par une et on NOMME celle qui échoue : « le dépôt a échoué » sur
+              // cinq fichiers ne dit pas lequel, et oblige à tout recommencer.
               setEnCours(p.id);
               try {
-                await deposerPhotoEffectif(createClient(), p.id, fichier);
+                const supabase = createClient();
+                for (const f of fichiers.slice(0, place)) {
+                  const refus = refuserPhoto(f);
+                  if (refus) {
+                    setErreur(`${p.firstName} ${p.lastName} — ${f.name} : ${refus}`);
+                    continue;
+                  }
+                  await deposerPhotoEffectif(supabase, p.id, f);
+                }
+                if (fichiers.length > place) {
+                  setErreur(
+                    `${p.firstName} ${p.lastName} : ${PHOTOS_MAX} photos au maximum, seules les ${place} premières ont été ajoutées.`,
+                  );
+                }
                 await charger();
               } catch (e) {
                 setErreur(
                   `${p.firstName} ${p.lastName} : ${e instanceof Error ? e.message : "le dépôt a échoué."}`,
+                );
+              } finally {
+                setEnCours(null);
+              }
+            }}
+            onRetirer={async (photoId) => {
+              setErreur(null);
+              setEnCours(p.id);
+              try {
+                await retirerPhotoEffectif(createClient(), photoId);
+                await charger();
+              } catch (e) {
+                setErreur(
+                  `${p.firstName} ${p.lastName} : ${e instanceof Error ? e.message : "le retrait a échoué."}`,
                 );
               } finally {
                 setEnCours(null);
@@ -145,17 +187,27 @@ function CaseJoueur({
   vignette,
   peutDeposer,
   occupe,
+  ouvert,
+  onOuvrir,
   onDepot,
+  onRetirer,
 }: {
   joueur: TeamRosterPlayer;
   vignette: Vignette | undefined;
   peutDeposer: boolean;
   occupe: boolean;
-  onDepot: (fichier: File) => Promise<void>;
+  ouvert: boolean;
+  onOuvrir: () => void;
+  onDepot: (fichiers: File[]) => Promise<void>;
+  onRetirer: (photoId: string) => Promise<void>;
 }) {
   const champ = useRef<HTMLInputElement>(null);
-  const nb = vignette?.photos.length ?? 0;
+  const photos = vignette?.photos ?? [];
+  const nb = photos.length;
+  const premiere = photos[0];
+  const url = premiere ? (vignette?.urls.get(premiere.id) ?? null) : null;
   const prenom = joueur.firstName || joueur.lastName || "Sportif";
+  const complet = nb >= PHOTOS_MAX;
 
   const cadre = (
     <div
@@ -167,17 +219,15 @@ function CaseJoueur({
     >
       {occupe ? (
         <Loader2 className="h-5 w-5 animate-spin text-text-soft" aria-hidden />
-      ) : vignette?.url ? (
+      ) : url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={vignette.url} alt="" className="h-full w-full object-cover" />
+        <img src={url} alt="" className="h-full w-full object-cover" />
       ) : nb ? (
         <ImageOff className="h-5 w-5 text-text-soft" aria-hidden />
       ) : (
         <span className="flex flex-col items-center gap-1 text-text-soft">
           <Camera className="h-4 w-4" aria-hidden />
-          <span className="text-[10.5px] font-bold">
-            {peutDeposer ? "Ajouter" : "Sans photo"}
-          </span>
+          <span className="text-[10.5px] font-bold">{peutDeposer ? "Ajouter" : "Sans photo"}</span>
         </span>
       )}
       {nb > 1 ? (
@@ -190,10 +240,10 @@ function CaseJoueur({
 
   return (
     <div className="flex flex-col gap-1">
-      {peutDeposer ? (
+      {peutDeposer && !complet ? (
         <label
           className="cursor-pointer"
-          aria-label={`Ajouter une photo de référence pour ${prenom} ${joueur.lastName}`}
+          aria-label={`Ajouter des photos de référence pour ${prenom} ${joueur.lastName}`}
         >
           {cadre}
           <input
@@ -201,12 +251,13 @@ function CaseJoueur({
             type="file"
             accept="image/*"
             capture="user"
+            multiple
             className="sr-only"
             disabled={occupe}
             onChange={async (e) => {
-              const f = e.target.files?.[0];
-              if (f) await onDepot(f);
+              const f = Array.from(e.target.files ?? []);
               if (champ.current) champ.current.value = "";
+              if (f.length) await onDepot(f);
             }}
           />
         </label>
@@ -217,6 +268,74 @@ function CaseJoueur({
         {prenom}
       </div>
       <div className="truncate text-[10.5px] text-text-soft">{joueur.lastName}</div>
+
+      {/* Dès qu'il y a une photo, on peut les voir toutes et en retirer une. Le bouton ne
+          s'affiche pas sur une case vide : il n'y aurait rien à montrer. */}
+      {nb ? (
+        <button
+          type="button"
+          onClick={onOuvrir}
+          className="text-left text-[10.5px] font-bold text-brand-blue-electric hover:underline"
+        >
+          {ouvert ? "Masquer" : `${nb} photo${nb > 1 ? "s" : ""}`}
+        </button>
+      ) : null}
+
+      {ouvert ? (
+        <div className="flex flex-wrap gap-1.5 rounded-sv border border-border-strong/60 bg-surface-alt p-1.5">
+          {photos.map((ph) => {
+            const u = vignette?.urls.get(ph.id) ?? null;
+            return (
+              <div
+                key={ph.id}
+                className="relative h-[42px] w-[42px] overflow-hidden rounded-sv border border-border-strong"
+                title={ph.promue ? "Référence active" : "En attente de l'accord et de la date de naissance"}
+              >
+                {u ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={u} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <ImageOff className="m-auto h-4 w-4 text-text-soft" aria-hidden />
+                )}
+                {!ph.promue ? (
+                  <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-center text-[8px] font-bold text-white">
+                    attente
+                  </span>
+                ) : null}
+                {peutDeposer ? (
+                  <button
+                    type="button"
+                    disabled={occupe}
+                    onClick={() => void onRetirer(ph.id)}
+                    aria-label="Retirer cette photo"
+                    className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-bl-sv bg-black/70 text-white"
+                  >
+                    <X className="h-2.5 w-2.5" aria-hidden />
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
+          {peutDeposer && !complet ? (
+            <label className="flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-sv border-2 border-dashed border-border-strong bg-surface hover:border-brand-blue-electric">
+              <Camera className="h-3.5 w-3.5 text-text-soft" aria-hidden />
+              <input
+                type="file"
+                accept="image/*"
+                capture="user"
+                multiple
+                className="sr-only"
+                disabled={occupe}
+                onChange={async (e) => {
+                  const f = Array.from(e.target.files ?? []);
+                  e.currentTarget.value = "";
+                  if (f.length) await onDepot(f);
+                }}
+              />
+            </label>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

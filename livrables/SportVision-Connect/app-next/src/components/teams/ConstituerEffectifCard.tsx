@@ -41,6 +41,7 @@ import { Badge } from "@/components/ui/Badge";
 import { createClient } from "@/lib/supabase/client";
 import {
   LIGNES_MAX,
+  PHOTOS_MAX,
   VERDICT_LABEL,
   VERDICT_TONE,
   constituerEffectif,
@@ -58,7 +59,8 @@ Inès;Bernard;2017-11-22;4;F`;
 interface Ajout {
   prenom: string;
   nom: string;
-  avecPhoto: boolean;
+  /** Combien de photos ont réellement été enregistrées, pas combien on en a choisi. */
+  photos: number;
 }
 
 export function ConstituerEffectifCard({
@@ -120,8 +122,11 @@ export function ConstituerEffectifCard({
 function UnParUn({ teamId, onEffectifChange }: { teamId: string; onEffectifChange: () => void }) {
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [apercu, setApercu] = useState<string | null>(null);
+  // PLUSIEURS PHOTOS PAR SPORTIF (02/10/2026). Fouka : « parfois j'ai plusieurs photos de
+  // référence ». La base en accepte PHOTOS_MAX, et plus il y en a, mieux la reconnaissance
+  // retrouve l'enfant — de face, de profil, avec et sans casquette.
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [apercus, setApercus] = useState<string[]>([]);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [ajouts, setAjouts] = useState<Ajout[]>([]);
@@ -130,24 +135,47 @@ function UnParUn({ teamId, onEffectifChange }: { teamId: string; onEffectifChang
 
   const pret = prenom.trim().length > 0 && nom.trim().length > 0 && !envoi;
 
-  function choisirPhoto(f: File | null) {
+  function viderPhotos() {
+    for (const u of apercus) URL.revokeObjectURL(u);
+    setPhotos([]);
+    setApercus([]);
+  }
+
+  function ajouterPhotos(fichiers: File[]) {
     setErreur(null);
-    if (!f) {
-      setPhoto(null);
-      if (apercu) URL.revokeObjectURL(apercu);
-      setApercu(null);
+    if (!fichiers.length) return;
+    // Le refus se dit AVANT l'envoi, fichier par fichier : un format inconnu ou un fichier trop
+    // lourd doit être signalé tout de suite, pas après trente secondes de téléversement. Et on
+    // nomme CELUI qui pose problème : « une photo est trop lourde » ne dit pas laquelle.
+    const retenus: File[] = [];
+    for (const f of fichiers) {
+      const refus = refuserPhoto(f);
+      if (refus) {
+        setErreur(`${f.name} : ${refus}`);
+        continue;
+      }
+      retenus.push(f);
+    }
+    if (!retenus.length) return;
+    const place = PHOTOS_MAX - photos.length;
+    if (place <= 0) {
+      setErreur(`${PHOTOS_MAX} photos au maximum par sportif.`);
       return;
     }
-    // Le refus se dit AVANT l'envoi : un fichier trop lourd ou d'un format inconnu doit être
-    // signalé tout de suite, pas après trente secondes de téléversement.
-    const refus = refuserPhoto(f);
-    if (refus) {
-      setErreur(refus);
-      return;
+    const gardes = retenus.slice(0, place);
+    if (retenus.length > place) {
+      setErreur(`${PHOTOS_MAX} photos au maximum : seules les ${place} premières ont été retenues.`);
     }
-    if (apercu) URL.revokeObjectURL(apercu);
-    setPhoto(f);
-    setApercu(URL.createObjectURL(f));
+    setPhotos((l) => [...l, ...gardes]);
+    setApercus((l) => [...l, ...gardes.map((f) => URL.createObjectURL(f))]);
+  }
+
+  function retirerPhoto(i: number) {
+    // `noUncheckedIndexedAccess` : l'index peut sortir du tableau, on ne libere que ce qui existe.
+    const u = apercus[i];
+    if (u) URL.revokeObjectURL(u);
+    setPhotos((l) => l.filter((_, j) => j !== i));
+    setApercus((l) => l.filter((_, j) => j !== i));
   }
 
   async function ajouter() {
@@ -167,27 +195,31 @@ function UnParUn({ teamId, onEffectifChange }: { teamId: string; onEffectifChang
         return;
       }
 
-      // La photo n'est déposée QUE si la fiche existe : sans identifiant, on n'invente rien.
-      let avecPhoto = false;
-      if (photo && verdict.ficheId) {
-        try {
-          await deposerPhotoEffectif(supabase, verdict.ficheId, photo);
-          avecPhoto = true;
-        } catch (e) {
-          // La fiche est créée, c'est l'essentiel : on le dit, et la photo se rajoute depuis la
-          // grille. Faire échouer l'ajout entier ferait perdre le joueur qu'on vient de saisir.
-          setErreur(
-            `${verdict.prenom} ${verdict.nom} est ajouté, mais sa photo n'a pas pu être enregistrée : ${
-              e instanceof Error ? e.message : "erreur inconnue"
-            }. Vous pouvez la déposer depuis la grille ci-dessous.`,
-          );
+      // Les photos ne sont déposées QUE si la fiche existe : sans identifiant, on n'invente rien.
+      // On les envoie une par une et on COMPTE celles qui sont passées : un échec sur la
+      // troisième ne doit pas faire croire que les deux premières ont échoué.
+      let posees = 0;
+      if (photos.length && verdict.ficheId) {
+        for (const f of photos) {
+          try {
+            await deposerPhotoEffectif(supabase, verdict.ficheId, f);
+            posees += 1;
+          } catch (e) {
+            // La fiche est créée, c'est l'essentiel : on le dit, et la photo se rajoute depuis la
+            // grille. Faire échouer l'ajout entier ferait perdre le joueur qu'on vient de saisir.
+            setErreur(
+              `${verdict.prenom} ${verdict.nom} est ajouté, mais « ${f.name} » n'a pas pu être enregistrée : ${
+                e instanceof Error ? e.message : "erreur inconnue"
+              }. Vous pouvez la déposer depuis la grille ci-dessous.`,
+            );
+          }
         }
       }
 
-      setAjouts((liste) => [{ prenom: verdict.prenom, nom: verdict.nom, avecPhoto }, ...liste]);
+      setAjouts((liste) => [{ prenom: verdict.prenom, nom: verdict.nom, photos: posees }, ...liste]);
       setPrenom("");
       setNom("");
-      choisirPhoto(null);
+      viderPhotos();
       if (champFichier.current) champFichier.current.value = "";
       onEffectifChange();
       // On reprend le focus sur le prénom : c'est ce qui permet d'enchaîner sans la souris.
@@ -202,43 +234,56 @@ function UnParUn({ teamId, onEffectifChange }: { teamId: string; onEffectifChang
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 rounded-sv border border-border-strong/60 bg-surface-alt p-4 sm:flex-row sm:items-start">
-        {/* La photo à gauche, grande et cliquable en entier : c'est la cible la plus facile au
-            doigt comme à la souris. */}
+        {/* Les photos à gauche, en petite grille : une case toujours vide pour en ajouter une de
+            plus. Fouka en a souvent plusieurs par enfant, et plus il y en a, mieux la
+            reconnaissance le retrouvera — de face, de profil, avec et sans casquette. */}
         <div className="shrink-0">
-          <label
-            className="relative flex h-[104px] w-[104px] cursor-pointer items-center justify-center overflow-hidden rounded-sv border-2 border-dashed border-border-strong bg-surface transition hover:border-brand-blue-electric"
-            aria-label="Choisir ou prendre la photo de référence"
-          >
-            {apercu ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={apercu} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span className="flex flex-col items-center gap-1 text-text-soft">
-                <Camera className="h-5 w-5" aria-hidden />
-                <span className="text-[11px] font-bold">Photo</span>
-              </span>
-            )}
-            <input
-              ref={champFichier}
-              type="file"
-              accept="image/*"
-              capture="user"
-              className="sr-only"
-              onChange={(e) => choisirPhoto(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          {photo ? (
-            <button
-              type="button"
-              onClick={() => {
-                choisirPhoto(null);
-                if (champFichier.current) champFichier.current.value = "";
-              }}
-              className="mt-1.5 flex items-center gap-1 text-[11.5px] font-bold text-text-soft hover:text-text"
-            >
-              <X className="h-3 w-3" aria-hidden /> Retirer
-            </button>
-          ) : null}
+          <div className="flex w-[108px] flex-wrap gap-1.5">
+            {apercus.map((u, i) => (
+              <div
+                key={u}
+                className="relative h-[50px] w-[50px] overflow-hidden rounded-sv border border-border-strong"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={u} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => retirerPhoto(i)}
+                  aria-label={`Retirer la photo ${i + 1}`}
+                  className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-bl-sv bg-black/70 text-white"
+                >
+                  <X className="h-2.5 w-2.5" aria-hidden />
+                </button>
+              </div>
+            ))}
+            {photos.length < PHOTOS_MAX ? (
+              <label
+                className="flex h-[50px] w-[50px] cursor-pointer items-center justify-center rounded-sv border-2 border-dashed border-border-strong bg-surface transition hover:border-brand-blue-electric"
+                aria-label="Choisir ou prendre une photo de référence"
+              >
+                <span className="flex flex-col items-center text-text-soft">
+                  <Camera className="h-4 w-4" aria-hidden />
+                </span>
+                <input
+                  ref={champFichier}
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  multiple
+                  className="sr-only"
+                  onChange={(e) => {
+                    ajouterPhotos(Array.from(e.target.files ?? []));
+                    if (champFichier.current) champFichier.current.value = "";
+                  }}
+                />
+              </label>
+            ) : null}
+          </div>
+          <div className="mt-1.5 w-[108px] text-[10.5px] leading-tight text-text-soft">
+            {photos.length
+              ? `${photos.length} photo${photos.length > 1 ? "s" : ""} sur ${PHOTOS_MAX}`
+              : "Photos facultatives"}
+          </div>
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -297,9 +342,13 @@ function UnParUn({ teamId, onEffectifChange }: { teamId: string; onEffectifChang
           </div>
           <div className="flex flex-wrap gap-1.5">
             {ajouts.map((a, i) => (
-              <Badge key={`${a.prenom}-${a.nom}-${i}`} tone={a.avecPhoto ? "success" : "neutral"}>
+              <Badge key={`${a.prenom}-${a.nom}-${i}`} tone={a.photos ? "success" : "neutral"}>
                 {a.prenom} {a.nom}
-                {a.avecPhoto ? " · photo" : " · sans photo"}
+                {a.photos === 0
+                  ? " · sans photo"
+                  : a.photos === 1
+                    ? " · 1 photo"
+                    : ` · ${a.photos} photos`}
               </Badge>
             ))}
           </div>
