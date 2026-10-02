@@ -20,7 +20,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "fr.sportvision.app",
-      "buildNumber": "20",
+      "buildNumber": "21",
       "infoPlist": {
         "CFBundleDisplayName": "SportVision",
         "ITSAppUsesNonExemptEncryption": false,
@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "fr.sportvision.app",
-      "versionCode": 15,
+      "versionCode": 16,
       "adaptiveIcon": {
         "backgroundColor": "#070B18",
         "foregroundImage": "./assets/android-icon-foreground.png"
