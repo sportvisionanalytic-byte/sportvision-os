@@ -60,7 +60,9 @@
         {
           "_note": "AJOUTE LE 01/10/2026 pour la photo de profil. IL EST PLACE APRES expo-media-library A DESSEIN : les deux ecrivent NSPhotoLibraryUsageDescription et le dernier gagne. Mesure avant d'ecrire : l'operateur PEUT mettre a jour sa propre ligne de `profiles`, `avatar_url` comprise (1 ligne modifiee avec le jeton d'Antoine, transaction annulee). Ce qui manquait n'etait pas un droit, c'etait un moyen de choisir une image.",
           "photosPermission": "SportVision OS ouvre vos photos pour que vous puissiez choisir votre photo de profil.",
-          "cameraPermission": "SportVision OS ouvre l'appareil photo pour que vous puissiez prendre votre photo de profil."
+          "cameraPermission": "SportVision OS ouvre l'appareil photo pour que vous puissiez prendre votre photo de profil.",
+          "_note_micro": "microphonePermission: false RETIRE NSMicrophoneUsageDescription (02/10/2026). Le greffon d'expo-image-picker le pose par defaut, avec le texte d'exemple anglais « Allow $(PRODUCT_NAME) to access your microphone », parce qu'il sait enregistrer de la VIDEO. Ici on ne choisit qu'une photo de profil : le micro n'est jamais utilise. Premiere tentative : je l'avais retire du Info.plist en concluant qu'aucun greffon ne le produisait — c'etait faux, `expo prebuild` l'a remis. Le retirer du plist ne sert donc a rien, il faut le dire au greffon.",
+          "microphonePermission": false
         }
       ],
       [
