@@ -84,6 +84,16 @@ export function OffersSheet({
                     Vous avez coché {selection} photos : {selection - o.photosAllowance} seraient à retirer.
                   </span>
                 )}
+                {/* ET LE CAS INVERSE, QUI A COÛTÉ 10 € À UN PARENT (03/10/2026). Il avait coché 4
+                    photos, pris la formule à 15 et payé : rien ne lui a dit qu'il en laissait onze.
+                    Elles sont désormais récupérables après paiement (v490/v491), mais autant qu'il
+                    le sache ici, pendant qu'il choisit. */}
+                {selection > 0 && o.photosAllowance !== null && selection < o.photosAllowance && (
+                  <span className={`mt-0.5 block text-[11.5px] ${o.featured ? "text-white/70" : "text-text-faint"}`}>
+                    Vous avez coché {selection} photo{selection > 1 ? "s" : ""} sur les {o.photosAllowance} de
+                    cette formule : vous choisirez les {o.photosAllowance - selection} autres après le paiement.
+                  </span>
+                )}
               </span>
               <span className="flex-none font-sora text-[17px] font-extrabold tabular-nums">
                 {o.priceCents === 0 ? "Offert" : formatPrice(o.priceCents, o.currency)}

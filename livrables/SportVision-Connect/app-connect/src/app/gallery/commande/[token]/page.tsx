@@ -60,7 +60,18 @@ export default async function OrderPage({ params }: { params: Promise<{ token: s
   // Pack payé, photos pas encore choisies : on n'affiche pas une page « vos photos sont prêtes »
   // avec une grille vide. L'acheteur est envoyé directement là où il doit agir.
   if (order.photosAllowance !== null && !order.selectionFaite) {
-    return <OrderSelect token={token} allowance={order.photosAllowance} albumTitre={order.albumTitre} />;
+    // `restant` et pas `photosAllowance` (03/10/2026) : un pack peut être entamé. Un parent qui
+    // avait coché 4 photos avant de payer une formule à 15 revient ici pour prendre les onze
+    // dernières, et l'écran doit compter onze, pas quinze. Voir v490/v491.
+    return (
+      <OrderSelect
+        token={token}
+        restant={order.photosAllowance - order.photos.length}
+        dejaPrises={order.photos.length}
+        allowance={order.photosAllowance}
+        albumTitre={order.albumTitre}
+      />
+    );
   }
 
   return <OrderView token={token} order={order} archive={await fetchArchiveInfo(token)} />;
