@@ -90,8 +90,8 @@ export function OffersSheet({
                     le sache ici, pendant qu'il choisit. */}
                 {selection > 0 && o.photosAllowance !== null && selection < o.photosAllowance && (
                   <span className={`mt-0.5 block text-[11.5px] ${o.featured ? "text-white/70" : "text-text-faint"}`}>
-                    Vous avez coché {selection} photo{selection > 1 ? "s" : ""} sur les {o.photosAllowance} de
-                    cette formule : vous choisirez les {o.photosAllowance - selection} autres après le paiement.
+                    Vous avez coché {selection} photo{selection > 1 ? "s" : ""} ; cette formule en permet
+                    jusqu'à {o.photosAllowance}. Vous pourrez en ajouter après le paiement, ou vous en tenir là.
                   </span>
                 )}
               </span>

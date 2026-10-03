@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 /* eslint-disable @next/next/no-img-element */
 
 import { useState } from "react";
@@ -27,10 +29,15 @@ export function OrderView({
   token,
   order,
   archive,
+  restant = 0,
 }: {
   token: string;
   order: OrderSummary;
   archive: ArchiveInfo | null;
+  /** Crédits non utilisés d'une formule « jusqu'à N photos ». 0 quand il n'y a rien à ajouter.
+   *  On le PROPOSE, on ne l'impose pas : un parent qui a payé un pack de 15 et n'en voulait que 4
+   *  a le droit de s'arrêter à 4, et doit pouvoir télécharger ses 4 sans qu'on l'en empêche. */
+  restant?: number;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +108,24 @@ export function OrderView({
           Commande {order.orderId.slice(0, 8).toUpperCase()} · {formatMontant(order.totalCents, order.currency)}
           {!order.dejaRattachee && ` · disponible jusqu'au ${expiration}`}
         </p>
+
+        {/* UNE PROPOSITION, PAS UNE RELANCE (03/10/2026). Sa formule couvre plus de photos qu'il
+            n'en a prises. Il a le droit de s'en tenir là : ses photos sont juste au-dessous, et
+            rien ici ne lui barre la route. S'il en veut d'autres, le lien les lui ouvre. */}
+        {restant > 0 && (
+          <div className="mt-4 rounded-sv border border-border bg-surface px-4 py-3">
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              Votre formule vous permet de choisir jusqu'à {restant} photo{restant > 1 ? "s" : ""} de
+              plus, sans rien payer. Si celles-ci vous suffisent, vous n'avez rien à faire.
+            </p>
+            <Link
+              href={`/gallery/commande/${token}?choisir=1`}
+              className="mt-2.5 inline-block rounded-sv-pill border border-border-strong px-4 py-2 text-[13px] font-semibold"
+            >
+              Choisir d'autres photos
+            </Link>
+          </div>
+        )}
       </header>
 
       <main className="mx-auto max-w-[720px] px-5 sm:px-6">

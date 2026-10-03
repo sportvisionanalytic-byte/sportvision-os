@@ -49,7 +49,9 @@ export interface LinkOffer {
  * résument pas de la même façon. */
 export function offerSummary(offer: LinkOffer, photoCount: number): string {
   if (offer.photosAllowance !== null) {
-    return `${offer.photosAllowance} photo${offer.photosAllowance > 1 ? "s" : ""} au choix, en pleine qualité`;
+    // « jusqu'à » et pas un nombre sec (décision de Fouka, 03/10/2026) : la formule est un
+    // plafond. Un parent qui n'en veut que quatre ne doit pas croire qu'il en doit quinze.
+    return `jusqu'à ${offer.photosAllowance} photo${offer.photosAllowance > 1 ? "s" : ""} au choix, en pleine qualité`;
   }
   return `Les ${photoCount} photo${photoCount > 1 ? "s" : ""} de la galerie, en pleine qualité`;
 }

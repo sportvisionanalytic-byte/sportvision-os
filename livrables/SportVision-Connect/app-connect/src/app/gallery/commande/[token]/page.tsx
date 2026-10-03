@@ -42,8 +42,15 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function OrderPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function OrderPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ choisir?: string }>;
+}) {
   const { token } = await params;
+  const { choisir } = await searchParams;
   const supabase = await createClient();
   const order = await fetchOrderSummary(supabase, token);
 
@@ -59,14 +66,18 @@ export default async function OrderPage({ params }: { params: Promise<{ token: s
 
   // Pack payé, photos pas encore choisies : on n'affiche pas une page « vos photos sont prêtes »
   // avec une grille vide. L'acheteur est envoyé directement là où il doit agir.
-  if (order.photosAllowance !== null && !order.selectionFaite) {
-    // `restant` et pas `photosAllowance` (03/10/2026) : un pack peut être entamé. Un parent qui
-    // avait coché 4 photos avant de payer une formule à 15 revient ici pour prendre les onze
-    // dernières, et l'écran doit compter onze, pas quinze. Voir v490/v491.
+  const restant = order.photosAllowance === null ? 0 : order.photosAllowance - order.photos.length;
+
+  // UNE FORMULE EST UN PLAFOND, PAS UN DÛ (03/10/2026). On n'envoie vers l'écran de choix que
+  // ceux qui n'ont RIEN, ou ceux qui le demandent (`?choisir=1`). Le 03/10 au matin, la condition
+  // était `!selectionFaite` : un parent ayant pris 4 photos sur un pack de 15 se retrouvait
+  // enfermé dans l'écran de choix, SANS accès aux 4 photos qu'il possédait déjà. Il a le droit de
+  // s'arrêter où il veut, et ses photos ne se négocient pas contre les suivantes.
+  if (order.photosAllowance !== null && restant > 0 && (order.photos.length === 0 || choisir === "1")) {
     return (
       <OrderSelect
         token={token}
-        restant={order.photosAllowance - order.photos.length}
+        restant={restant}
         dejaPrises={order.photos.length}
         allowance={order.photosAllowance}
         albumTitre={order.albumTitre}
@@ -74,7 +85,9 @@ export default async function OrderPage({ params }: { params: Promise<{ token: s
     );
   }
 
-  return <OrderView token={token} order={order} archive={await fetchArchiveInfo(token)} />;
+  return (
+    <OrderView token={token} order={order} archive={await fetchArchiveInfo(token)} restant={restant} />
+  );
 }
 
 function OrderClosed({ titre, texte }: { titre: string; texte: string }) {

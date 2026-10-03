@@ -25,6 +25,11 @@ import type { GalleryPhoto } from "@/lib/gallery/data";
 // mot. Un pack entamé se reprend donc là où il s'est arrêté : `restant` dit ce qui lui reste, et la
 // base plafonne au quota (v490/v491). Une photo prise, en revanche, reste prise.
 //
+// ET LA FORMULE EST UN PLAFOND, JAMAIS UNE OBLIGATION (décision de Fouka, 03/10/2026). « Choisissez
+// jusqu'à 15 photos », pas « choisissez vos 15 photos » : un parent qui paie 10 € et n'en veut que
+// quatre s'arrête à quatre, c'est son droit et l'écran ne doit pas le harceler. Il garde ses quatre
+// photos, téléchargeables immédiatement, et la suite reste ouverte sans jamais être réclamée.
+//
 // Rien n'est vérifié ici : le quota et l'appartenance des photos à l'album sont revalidés en base
 // par media_gallery_order_select. Ce qui est compté à l'écran ne sert qu'à guider la main.
 
@@ -147,8 +152,8 @@ export function OrderSelect({
 
         <h1 className="mt-5 font-sora text-[24px] font-extrabold leading-tight tracking-tight sm:text-[30px]">
           {dejaPrises > 0
-            ? `Il vous reste ${restant} photo${restant > 1 ? "s" : ""} à choisir`
-            : `Choisissez vos ${allowance} photo${allowance > 1 ? "s" : ""}`}
+            ? `Vous pouvez choisir jusqu'à ${restant} photo${restant > 1 ? "s" : ""} de plus`
+            : `Choisissez jusqu'à ${allowance} photo${allowance > 1 ? "s" : ""}`}
         </h1>
         <p className="mt-1.5 text-[13px] leading-relaxed text-text-tertiary">
           Votre paiement est confirmé{albumTitre ? ` pour ${albumTitre}` : ""}. Sélectionnez les photos que
@@ -162,9 +167,12 @@ export function OrderSelect({
             Celles-là vous restent acquises et ne sont plus proposées ci-dessous.
           </p>
         )}
+        <p className="mt-1.5 text-[13px] leading-relaxed text-text-tertiary">
+          {restant} est un maximum, pas une obligation : prenez-en moins si vous préférez, et
+          validez. Vous pourrez revenir compléter plus tard avec ce même lien.
+        </p>
         <p className="mt-1 text-[12.5px] font-semibold text-attente">
-          Une photo validée vous est acquise et ne peut plus être échangée. Si vous en choisissez
-          moins que {restant}, vous pourrez revenir finir plus tard avec ce même lien.
+          Une photo validée vous est acquise et ne peut plus être échangée.
         </p>
       </header>
 
@@ -244,13 +252,14 @@ export function OrderSelect({
           <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
             <div className="min-w-0">
               <div className="text-[13.5px] font-bold">
-                {dejaPrises + selected.length} / {allowance} photo{allowance > 1 ? "s" : ""} choisie
-                {dejaPrises + selected.length > 1 ? "s" : ""}
+                {dejaPrises + selected.length} photo{dejaPrises + selected.length > 1 ? "s" : ""} choisie
+                {dejaPrises + selected.length > 1 ? "s" : ""} sur {allowance} possible
+                {allowance > 1 ? "s" : ""}
               </div>
               <div className="text-[12px] text-text-tertiary">
                 {complet
-                  ? "Votre formule est complète."
-                  : `Encore ${restant - selected.length} à choisir parmi ${total}.`}
+                  ? "Vous avez pris le maximum de votre formule."
+                  : `Vous pouvez en ajouter jusqu'à ${restant - selected.length}, ou valider maintenant.`}
               </div>
             </div>
             <button
@@ -280,7 +289,7 @@ export function OrderSelect({
             </h2>
             <p className="mt-2 text-[13px] leading-relaxed text-text-tertiary">
               {selected.length < restant
-                ? `Ces ${selected.length} photo${selected.length > 1 ? "s" : ""} vous ${selected.length > 1 ? "seront acquises" : "sera acquise"} définitivement. Il vous restera ${restant - selected.length} photo${restant - selected.length > 1 ? "s" : ""} à choisir, avec ce même lien, jusqu'au bout de votre formule.`
+                ? `Ces ${selected.length} photo${selected.length > 1 ? "s" : ""} vous ${selected.length > 1 ? "seront acquises" : "sera acquise"} définitivement, et vous pourrez les télécharger tout de suite. Votre formule en permet ${restant - selected.length} de plus si vous en voulez un jour : ce même lien les rouvrira.`
                 : "Ce choix est définitif : ces photos vous sont acquises et ne pourront plus être échangées."}
             </p>
 
@@ -336,7 +345,7 @@ export function OrderSelect({
               {selected.includes(photos[apercu]!.id)
                 ? "Retirer de mon choix"
                 : complet
-                  ? `Votre formule est complète (${allowance})`
+                  ? `Maximum atteint (${allowance})`
                   : "Choisir cette photo"}
             </button>
           </div>
