@@ -14397,9 +14397,28 @@ function _galBandeauApercusNets(){
   zone.innerHTML=html;
 }
 
+// 03/10/2026 — UNE GALERIE DE 843 PHOTOS EN AFFICHAIT 500, ET C'ETAIT TOUT L'ECRAN QUI MENTAIT.
+// Un seul appel, p_limit:500, p_offset:0, et la RPC plafonne elle-meme a 500 : demander davantage
+// n'y aurait rien change. Le compteur annoncait donc « 500 au total » sur 843 deposees, mais le
+// defaut n'etait pas cosmetique — `_galAssets` alimente aussi `_galRendreFinal()` (le bouton de
+// mise en ligne), le rattachement des joueurs et les actions de masse. Au-dela de 500 photos,
+// toutes travaillaient sur une galerie tronquee sans le dire.
+// On pagine donc jusqu'a epuisement. Le garde-fou a 60 pages (30 000 photos) existe pour qu'une
+// RPC qui renverrait toujours une page pleine ne tourne pas en boucle dans le navigateur.
+const GAL_PAGE_ASSETS=500, GAL_PAGES_MAX=60;
+
 async function _galChargerAssets(){
-  const rows=await sbFetch('rpc/media_album_assets',{method:'POST',body:{p_album_id:_galAlbum.id,p_limit:500,p_offset:0}}).catch(()=>[]);
-  _galAssets=Array.isArray(rows)?rows:[];
+  const tout=[];
+  for(let page=0;page<GAL_PAGES_MAX;page++){
+    const rows=await sbFetch('rpc/media_album_assets',{method:'POST',body:{
+      p_album_id:_galAlbum.id,p_limit:GAL_PAGE_ASSETS,p_offset:page*GAL_PAGE_ASSETS}}).catch(()=>null);
+    if(!Array.isArray(rows))break;
+    tout.push(...rows);
+    // Une page incomplete est la derniere. Une page pleine ne prouve pas qu'il en reste, mais
+    // demander la suivante coute un aller-retour et evite de s'arreter juste avant la fin.
+    if(rows.length<GAL_PAGE_ASSETS)break;
+  }
+  _galAssets=tout;
   const c=document.getElementById('gal-count');
   if(c)c.textContent=_galAssets.filter(a=>a.status==='ready').length+' photo(s) publiable(s) · '+_galAssets.length+' au total';
   _galBandeauApercusNets();
